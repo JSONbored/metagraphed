@@ -11,23 +11,27 @@
 // positions naming it against nothing, so delegated_tao comes out merely too
 // LOW and no cell says so.
 //
-// EVERY TEST BELOW THAT EXPECTS A LEG IS RED ON PURPOSE. Removing D1 left this
-// module's store selector unable to answer, in three independent ways, and each
-// of them turns a proven leg into a silent decline:
+// THE STORE SELECTOR THIS MODULE USES, and why it is `readStore` and not
+// `observationsReadDb` (#10170). Removing D1 exposed three independent ways the
+// latter could not answer here, each of which turns a proven leg into a silent
+// decline -- and a null leg drops free_tao / delegated_tao / total_tao from the
+// published artifact entirely, which reads as "these sorts are unavailable"
+// rather than as a broken read:
 //
-//   1. `observationsReadDb(env, ctx)` returns `undefined` without a usable ctx
-//      -- it used to fall back to `env.METAGRAPH_HEALTH_DB` -- and
+//   1. `observationsReadDb(env, ctx)` needs a usable ctx to reach Neon, and
 //      src/top-holders-flow-tier.ts calls `topHoldersHoldings(env)` with none,
 //      because ProjectionLane.compute is `(env, network)` and has no ctx to
-//      give. The tests here pass a ctx so they measure 2 and 3 rather than
-//      stopping at 1.
+//      give. Threading one was never the fix; readStore needs none.
 //   2. `pgObservationsReadDb` exposes `prepare(text) -> { bind, all }` and NO
 //      `first()`, so both completeness probes (hotkey-alpha and
-//      account-balances) throw, are caught, and report `unavailable` -- nothing
-//      can ever be proven, so nothing can ever be priced.
+//      account-balances) would throw, be caught, and report `unavailable` --
+//      nothing could ever be proven, so nothing could ever be priced.
 //   3. its `all()` resolves to a BARE ARRAY, while this module does
 //      `if (!Array.isArray(res?.results)) throw`. `res.results` on an array is
 //      undefined, so even a successful read lands in the decline branch.
+//
+// readStore's handle has `first()` and the `{ results }` envelope, which is why
+// every readStore-based reader in the tree was unaffected by the same change.
 //
 // src/read-store.ts's handle has `first()` and returns `{ results }`, which is
 // why every readStore-based reader in this repo is unaffected. Weakening these
@@ -79,14 +83,10 @@ function d1() {
   return { ...pgMockEnv() } as unknown as Env;
 }
 
-/** A real ExecutionContext stand-in. The selector refuses to build a client
- * without somewhere to park the connection teardown, so a test that omits this
- * measures the decline rather than the query. */
-const CTX = { waitUntil: () => undefined };
-
-/** The module under test, with the store wired the way production wires it. */
+/** The module under test, called exactly as production calls it -- no ctx,
+ * because src/top-holders-flow-tier.ts has none to pass. */
 function holdings(env: Env | null | undefined, cap?: number) {
-  return topHoldersHoldings(env, cap, CTX);
+  return topHoldersHoldings(env, cap);
 }
 
 function pass(table: string, capturedAt: number, complete: boolean) {

@@ -11,7 +11,8 @@
 // emits [netuid, uid]. buildSubnetWeightSetters reads `hotkey` and `uid`
 // independently and is null-safe on the first, so the published row carries the
 // identity the event actually recorded and nothing invents a hotkey.
-import { observationsReadDb } from "./observations-read-runner.ts";
+import { readStore } from "./read-store.ts";
+import { SUBNET_HYPERPARAMS_TEMPO_TABLES } from "./read-store-tables.ts";
 import { buildSubnetWeightSetters } from "./subnet-weight-setters.ts";
 import {
   CHAIN_WEIGHTS_ROLLUP,
@@ -75,14 +76,21 @@ export async function loadSubnetWeightSettersColdTier(
 async function loadSubnetTempo(
   env: Parameters<typeof r2SqlQuery>[0],
   netuid: number,
-  // Threaded so this follows subnet_hyperparams to whichever store owns it
-  // (#10086). Absent, the selector declines and this reads D1, as before.
-  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null,
 ): Promise<unknown> {
-  const db = observationsReadDb(
-    env as unknown as Record<string, unknown>,
-    ctx,
-  ) as D1Like | undefined;
+  // readStore, NOT observationsReadDb (#10170). Two reasons, either fatal:
+  //
+  //   observationsReadDb needs an ExecutionContext to reach Neon, and this
+  //   function's only caller is `loadSubnetTempo(env, netuid)` -- there is no
+  //   ctx anywhere in the chain, so it declined on every call.
+  //
+  //   Its Neon handle offers only `all()`, and the read below is `.first?.()`.
+  //   Threading a ctx would therefore have swapped a decline for a throw.
+  //
+  // A null tempo here is not visibly wrong -- it publishes `tempo: null` /
+  // `overdue: null` on every subnet's weight-setters card, which is exactly the
+  // #9389 regression #9396 fixed.
+  const db = readStore(env, SUBNET_HYPERPARAMS_TEMPO_TABLES) as unknown as
+    D1Like | undefined;
   if (!db?.prepare) return null;
   try {
     const res = await db

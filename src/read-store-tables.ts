@@ -46,6 +46,24 @@ export const ALPHA_PRICING_TABLES = [
   "hotkey_alpha_passes",
 ] as const;
 
+/** topHoldersHoldings -- the alpha-pricing set, plus the balances leg and the
+ * snapshot prices its SQL joins against.
+ *
+ * ALL SIX OR NONE, and that is not conservatism: the statement is one query
+ * with a CTE per leg, so a set split across stores would run a JOIN whose other
+ * side is missing and answer an empty result rather than an error. Both pass
+ * ledgers are in because each leg gates on its own newest COMPLETE pass --
+ * pricing against a scan the rows do not belong to is the failure #9832 was. */
+export const TOP_HOLDERS_HOLDINGS_TABLES = [
+  ...ALPHA_PRICING_TABLES,
+  "account_balances",
+  "account_balances_passes",
+  "subnet_snapshots",
+] as const;
+
+/** loadSubnetTempo, in the weight-setters loader. */
+export const SUBNET_HYPERPARAMS_TEMPO_TABLES = ["subnet_hyperparams"] as const;
+
 /** loadSubnetBurnHistory */
 export const SUBNET_BURN_HISTORY_TABLES = ["subnet_burn_history"] as const;
 

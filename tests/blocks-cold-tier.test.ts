@@ -237,13 +237,10 @@ describe("loadBlockFeedColdTier", () => {
   test("serves entirely from D1 when the page fits above the seam", async () => {
     const { db, sql, params } = d1([headRow(SEAM + 3), headRow(SEAM + 2)]);
     const queries = lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 2,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 2);
     assert.equal(data!.blocks[0]!.block_number, SEAM + 3);
     // `$n`, not `?`: the loader writes SQLite's `?` and toPositionalPlaceholders
@@ -257,13 +254,10 @@ describe("loadBlockFeedColdTier", () => {
   test("stitches D1 then the lakehouse, strictly below the last D1 row", async () => {
     const { db } = d1([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 3,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 3,
+      offset: 0,
+    });
     assert.deepEqual(
       data!.blocks.map((b) => b.block_number),
       [SEAM + 1, SEAM, SEAM - 1],
@@ -281,13 +275,10 @@ describe("loadBlockFeedColdTier", () => {
   test("with no D1 rows the lakehouse leg starts at the seam itself", async () => {
     const { db } = d1([]);
     const queries = lakeFetch([lakeRow(SEAM)]);
-    await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     // No D1 rows -> an exclusive block ceiling at the seam, not a tuple seek.
     assert.match(queries[0]!, new RegExp(`block_number < ${SEAM + 1}`));
   });
@@ -315,13 +306,10 @@ describe("loadBlockFeedColdTier", () => {
   test("offset is applied once, after both legs are concatenated", async () => {
     const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 2,
-        offset: 2,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 2,
+    });
     assert.deepEqual(
       data!.blocks.map((b) => b.block_number),
       [SEAM, SEAM - 1],
@@ -333,13 +321,10 @@ describe("loadBlockFeedColdTier", () => {
   test("D1 rows are formatted ONCE, by the shared formatter", async () => {
     const { db } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     const b = data!.blocks[0]!;
     assert.equal(b.block_number, SEAM + 1);
     assert.equal(b.block_hash, `0xhead${SEAM + 1}`);
@@ -353,13 +338,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a cold D1 degrades to the lakehouse rather than failing", async () => {
     const { db } = d1([], { throws: true });
     lakeFetch([lakeRow(SEAM)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1);
   });
 
@@ -390,13 +372,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a full page carries a next cursor, a short page does not", async () => {
     const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
     lakeFetch([]);
-    const full = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      {
-        limit: 2,
-        offset: 0,
-      },
-    );
+    const full = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 0,
+    });
     // The Postgres tier's own token for this row: observed_at.block_number.
     assert.equal(
       full!.next_cursor,
@@ -442,7 +421,10 @@ describe("loadBlockFeedColdTier", () => {
     // Qualified to `b`: these columns exist on BOTH sides of the
     // chain_detail_blocks join, so an unqualified predicate is an ambiguous
     // -column error in SQLite rather than a silently wrong answer.
-    assert.match(sql[0]!, /\(b\.observed_at, b\.block_number\) < \(\$\d, \$\d\)/);
+    assert.match(
+      sql[0]!,
+      /\(b\.observed_at, b\.block_number\) < \(\$\d, \$\d\)/,
+    );
     assert.match(sql[0]!, /b\.block_number >= \$\d/);
     assert.match(sql[0]!, /b\.block_number <= \$\d/);
     assert.match(sql[0]!, /b\.observed_at >= \$\d/);
@@ -483,10 +465,10 @@ describe("loadBlockFeedColdTier", () => {
       }),
     };
     lakeFetch([lakeRow(SEAM)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      { limit: 1, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1);
     assert.equal(
       data!.blocks[0]!.block_number,
@@ -540,10 +522,10 @@ describe("loadBlockFeedColdTier", () => {
     globalThis.fetch = (async () => {
       throw new Error("lakehouse down");
     }) as unknown as typeof fetch;
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      { limit: 5, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 5,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1, "partial beats nothing");
     assert.equal(data!.blocks[0]!.block_number, SEAM + 1);
   });
@@ -551,10 +533,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a full page whose last row has no usable height carries no cursor", async () => {
     const { db } = d1([{ ...headRow(SEAM + 1), block_number: "not-a-height" }]);
     lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, ...db } as never,
-      { limit: 1, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(
       data!.next_cursor ?? null,
       null,
@@ -698,10 +680,7 @@ describe("loadBlockColdTier", () => {
     const { db, sql } = d1([]);
     const queries = lakeFetch([]);
     assert.equal(
-      await loadBlockColdTier(
-        { ...TOKEN, ...db } as never,
-        "'; DROP TABLE --",
-      ),
+      await loadBlockColdTier({ ...TOKEN, ...db } as never, "'; DROP TABLE --"),
       null,
     );
     assert.equal(sql.length, 0);
