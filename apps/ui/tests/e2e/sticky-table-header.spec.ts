@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
+import { gotoThroughRestart } from "./server-restart.ts";
 
 // A sticky <thead> pins against ITS OWN scroll container, and nothing else.
 // Every regression in this area has come from getting that one sentence
@@ -160,7 +161,7 @@ for (const route of ROUTES) {
           if (fixture) await page.route(pattern, (r) => r.fulfill(fixture));
         }
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
-        await page.goto(route);
+        await gotoThroughRestart(page, route);
         try {
           await page.waitForLoadState("networkidle", { timeout: 5000 });
         } catch {

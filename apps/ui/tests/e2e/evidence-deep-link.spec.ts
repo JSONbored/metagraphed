@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
+import { gotoThroughRestart } from "./server-restart.ts";
 
 // #6434 (historical): /subnets/:netuid used to render EvidencePanel twice -- a
 // preview embedded in the Overview tab and the full section under a dedicated
@@ -47,7 +48,7 @@ async function openWithHar(page: import("@playwright/test").Page, url: string) {
       await page.route(pattern, (route) => route.fulfill(fixture));
     }
   }
-  await page.goto(url);
+  await gotoThroughRestart(page, url);
   // HAR responses resolve instantly, which starves "networkidle" of the quiet
   // window it needs on a route with recurring refetches -- fall back to a fixed
   // settle rather than hanging (same rationale as responsive-overflow.spec.ts).

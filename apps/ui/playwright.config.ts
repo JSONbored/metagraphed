@@ -10,6 +10,18 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // #10013: Playwright's default per-test budget is 30s, and these specs were
+  // already spending most of it before any restart: sticky-table-header waits
+  // up to 5s for networkidle and then up to 20s for the <thead> (measured --
+  // /chain/extrinsics needs ~10s to paint its table), leaving under 5s of
+  // slack on a route that was expected to be slow. That left no room for
+  // gotoThroughRestart to wait out a supervised `wrangler dev` restart, so a
+  // test landing in the restart window failed on the timeout instead.
+  //
+  // A cap is not a cost: a passing test finishes when it finishes, and this
+  // only changes how long a genuinely stuck one is allowed to hang. 90s is the
+  // 45s restart budget plus the ~25s these specs already use, rounded up.
+  timeout: 90_000,
   reporter: process.env.CI ? "github" : "list",
   // #8928: pinned, because Playwright's default is os.cpus().length / 2 -- 2
   // workers on the 4-core ubuntu-latest runner, leaving half the machine idle

@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
+import { gotoThroughRestart } from "./server-restart.ts";
 
 // #8384: the PWA foundation's own e2e coverage (issue requirement 7) --
 // registers public/sw.js against the SAME HAR-replay fixtures every other
@@ -66,7 +67,7 @@ test.describe.fixme("#8384 offline PWA shell", () => {
       if (fixture) await context.route(pattern, (route) => route.fulfill(fixture));
     }
 
-    await page.goto(ROUTE);
+    await gotoThroughRestart(page, ROUTE);
     await page.waitForFunction(() => navigator.serviceWorker?.controller != null, {
       timeout: 15_000,
     });
@@ -105,7 +106,7 @@ test.describe.fixme("#8384 offline PWA shell", () => {
     // Register the service worker via a real (HAR-served) load of the home
     // route first -- a worker can only ever serve public/offline.html once
     // it's actually installed and controlling the page.
-    await page.goto(ROUTE);
+    await gotoThroughRestart(page, ROUTE);
     await page.waitForFunction(() => navigator.serviceWorker?.controller != null, {
       timeout: 15_000,
     });

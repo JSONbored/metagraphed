@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
+import { gotoThroughRestart } from "./server-restart.ts";
 
 // #6426: extrinsics.$hash.tsx's "Related Multisig calls" section had no isError
 // branch. A failed relatedQuery fetch left `data` undefined, so relatedCalls
@@ -69,7 +70,7 @@ async function openExtrinsic(
   // The related-calls lookup -- the request under test.
   await page.route((url) => isRelatedCalls(url.toString()), relatedResponder);
 
-  await page.goto(ROUTE);
+  await gotoThroughRestart(page, ROUTE);
   // The client retries a failed query 3x with backoff (router.tsx), so give the
   // error state time to settle rather than asserting on a mid-retry skeleton.
   const section = page.locator("section#multisig-chain");
