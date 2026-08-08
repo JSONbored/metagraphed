@@ -60,6 +60,12 @@ export function pgObservationsReadDb(sql: ReadRunnerSql): ObservationsReadDb {
             all: () => sql.unsafe(text, values),
           };
         },
+        // BOTH SHAPES, because D1 has both and this codebase uses both.
+        // src/top-holders-holdings.ts calls `prepare(sql).all?.()` with no
+        // bind at all -- its statement carries no parameters -- and an adapter
+        // offering only the bind path would throw there rather than fall back,
+        // turning a store swap into a route outage.
+        all: () => sql.unsafe(text, []),
       };
     },
   };
