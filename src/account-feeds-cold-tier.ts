@@ -94,6 +94,7 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { readStore } from "./read-store.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -434,8 +435,7 @@ async function neuronSlots(
   env: Env | null | undefined,
   addr: string,
 ): Promise<{ netuid: number; uid: number }[] | null> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
   if (!db?.prepare) return null;
   let results: unknown[];
   try {

@@ -40,6 +40,7 @@ import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
+import { laneHealthStore } from "./lane-health-store.ts";
 import { withLaneHealth, type SelfHealth } from "./self-health.ts";
 import {
   GetSelfHealthInputSchema,
@@ -203,9 +204,13 @@ export async function loadSelfHealth(
   // and the empty floor are both buildSelfHealth output, and withLaneHealth only
   // spreads the value and appends two fields.
   const lanes = await loadLatestLaneHealth(
-    ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-      typeof loadLatestLaneHealth
-    >[0],
+    // laneHealthStore, not the binding (#10148). Every other lane_health
+    // reader already goes through it; this one still named D1, so self-health
+    // would have reported an empty lane floor -- which renders as "no alarms"
+    // -- the moment D1 went away.
+    laneHealthStore(
+      ctx.env as unknown as Record<string, unknown>,
+    ) as unknown as Parameters<typeof loadLatestLaneHealth>[0],
   );
   return withLaneHealth(card as SelfHealth, lanes);
 }

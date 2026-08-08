@@ -47,6 +47,7 @@ import {
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { readStore } from "./read-store.ts";
 import {
   resolveDecodeWatermark,
   type DecodeWatermarkDeps,
@@ -118,12 +119,18 @@ interface D1Like {
   };
 }
 
-/** The two bindings this module reads, independent of the full Env shape so
- * the module stays testable with a plain object. */
+/** The one binding this module still reads directly, independent of the full
+ * Env shape so the module stays testable with a plain object. The store behind
+ * the SQL comes from readStore now (#10148), not from a binding read here. */
 interface ColdTierBindings {
-  METAGRAPH_HEALTH_DB?: D1Like;
   ICEBERG_BLOCKS_MAX?: unknown;
 }
+
+/** Both tables D1_FROM joins. Neon owns them together or the read stays where
+ *  it is: a LEFT JOIN with one side in the other store returns rows with every
+ *  `c.` column null, which reads exactly like a block the hot lane never
+ *  wrote -- a wrong answer with a valid shape. */
+const BLOCKS_SEAM_TABLES = ["blocks_head", "chain_detail_blocks"] as const;
 
 function bindings(env: unknown): ColdTierBindings {
   return (env ?? {}) as ColdTierBindings;
@@ -235,7 +242,8 @@ async function d1HeadRows(
   seam: number,
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
-  const db = bindings(env).METAGRAPH_HEALTH_DB;
+  const db = readStore(env, BLOCKS_SEAM_TABLES) as unknown as
+    D1Like | undefined;
   if (!db?.prepare || want <= 0) return null;
 
   // Every predicate is qualified to `b`: block_number, observed_at and
@@ -399,7 +407,7 @@ export async function loadBlockColdTier(
   // Mainnet-only, for the same reason the feed's head leg is.
   const db =
     network === DEFAULT_CHAIN_NETWORK
-      ? bindings(env).METAGRAPH_HEALTH_DB
+      ? (readStore(env, BLOCKS_SEAM_TABLES) as unknown as D1Like | undefined)
       : undefined;
   // "Above the seam" means "too new for the lakehouse, so D1 is the only
   // source" — a statement that is only true on mainnet, because only mainnet

@@ -60,6 +60,7 @@ import {
 import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
+import { readStore } from "./read-store.ts";
 
 /** Kept identical to the retired Postgres tier's SELECT list (minus `coldkey`,
  * which the predicate already fixes) so both tiers hand the formatter the
@@ -109,8 +110,7 @@ export async function neuronStakeByHotkeys(
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
   if (hotkeys.length === 0) return new Map();
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
   if (!db?.prepare) return null;
   const chunks: string[][] = [];
   for (let i = 0; i < hotkeys.length; i += D1_BIND_PARAM_CAP) {
