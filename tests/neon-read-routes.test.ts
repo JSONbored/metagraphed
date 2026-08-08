@@ -586,10 +586,24 @@ describe("the deployed flag", () => {
     // Hyphenated mirror lane -> underscored table, so the two vocabularies can
     // be compared at all. See the same normalisation in
     // tests/account-position-history.test.ts.
+    // A LANE IS NOT ALWAYS A TABLE. The neurons mirror writes THREE tables
+    // under one lane name, and chain-detail writes four -- so munging the lane
+    // name resolves only the common single-table case. Lanes that write a
+    // family declare their tables; everything else keeps the munge.
+    const LANE_TABLES: Readonly<Record<string, readonly string[]>> = {
+      neurons: ["neurons", "neuron_daily", "account_position_daily"],
+      "chain-detail": [
+        "chain_detail_blocks",
+        "chain_detail_extrinsics",
+        "chain_detail_chain_events",
+        "chain_detail_account_events",
+      ],
+    };
     const written = new Set(
       [...writes, ...backfills]
-        .map((l) => l.trim().replace(/-/g, "_"))
-        .filter(Boolean),
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")]),
     );
     for (const lane of named) {
       assert.ok(

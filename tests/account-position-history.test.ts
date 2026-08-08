@@ -409,10 +409,24 @@ describe("the Neon read cutover (metagraphed-infra#336)", () => {
     // as unwritten -- which is the opposite of what this test is for, and it
     // would push someone to delete a correct read lane rather than fix a real
     // gap. tests/neon-backfill.test.ts normalises the same way.
+    // A LANE IS NOT ALWAYS A TABLE. The neurons mirror writes THREE tables
+    // under one lane name, and chain-detail writes four -- so munging the lane
+    // name resolves only the common single-table case. Lanes that write a
+    // family declare their tables; everything else keeps the munge.
+    const LANE_TABLES: Readonly<Record<string, readonly string[]>> = {
+      neurons: ["neurons", "neuron_daily", "account_position_daily"],
+      "chain-detail": [
+        "chain_detail_blocks",
+        "chain_detail_extrinsics",
+        "chain_detail_chain_events",
+        "chain_detail_account_events",
+      ],
+    };
     const written = new Set(
       [...writes, ...backfills]
-        .map((lane) => lane.trim().replace(/-/g, "_"))
-        .filter(Boolean),
+        .map((lane) => lane.trim())
+        .filter(Boolean)
+        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")]),
     );
     for (const lane of named) {
       assert.ok(

@@ -7669,6 +7669,7 @@ export function decodeBlockHeader(
 export async function writeTaoUsdIndexRow(
   env: Env,
   row: TaoUsdIndexRow,
+  ctx?: ExecutionContext,
 ): Promise<{ inserted: boolean }> {
   // User-state D1, same runner the account/alert routes use. A missing
   // binding throws here and surfaces as ingestTaoUsdIndex's caught
@@ -7679,7 +7680,23 @@ export async function writeTaoUsdIndexRow(
   // RETURNING plus a length check, rather than trusting a rowcount: ON CONFLICT
   // DO NOTHING returns zero rows on a re-run, which is precisely the signal
   // wanted -- "this height was already recorded" is a success, not a failure.
-  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+  // A RUNNER CHOICE, not a mirror (#9787). This is one of the few writes that
+  // moves stores without a rewrite: createPgSql is interface-compatible with
+  // createD1Sql, and nothing in this statement is dialect-specific -- ON
+  // CONFLICT DO NOTHING and RETURNING both mean the same thing in Postgres.
+  //
+  // So there is no dual-write phase here and nothing to prove across ticks:
+  // the flag names the table or it does not, and whichever store is chosen
+  // gets the ONLY write. `ctx` is required to reach Neon because createPgSql
+  // returns the pooled connection through waitUntil; without one this stays on
+  // D1 rather than leaking a connection per tick.
+  const neonOwns =
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    Boolean(ctx) &&
+    neonOwnsTable(env as unknown as Record<string, unknown>, "tao_usd_index");
+  const sql = neonOwns
+    ? createPgSql(env.HYPERDRIVE, ctx!)
+    : createD1Sql(env.METAGRAPH_HEALTH_DB);
   const written = await sql`
     INSERT INTO tao_usd_index
       (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
@@ -7697,7 +7714,10 @@ export async function writeTaoUsdIndexRow(
   return { inserted: written.length > 0 };
 }
 
-export async function ingestTaoUsdIndex(env: Env): Promise<Row> {
+export async function ingestTaoUsdIndex(
+  env: Env,
+  ctx?: ExecutionContext,
+): Promise<Row> {
   if (!env.ETH_RPC_URL) {
     return { ok: false, skipped: true, reason: "ETH_RPC_URL not configured" };
   }
@@ -7725,7 +7745,7 @@ export async function ingestTaoUsdIndex(env: Env): Promise<Row> {
     });
     if (!row) return { ok: false, reason: "observation_unusable" };
 
-    const { inserted } = await writeTaoUsdIndexRow(env, row);
+    const { inserted } = await writeTaoUsdIndexRow(env, row, ctx);
     return {
       ok: true,
       inserted,
@@ -7791,7 +7811,7 @@ export default {
     if (controller?.cron !== TAO_USD_INDEX_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };
     }
-    return ingestTaoUsdIndex(env);
+    return ingestTaoUsdIndex(env, ctx);
   },
   async fetch(
     request: Request,
