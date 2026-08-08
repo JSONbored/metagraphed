@@ -648,17 +648,21 @@ const BUILT_ARTIFACT_MARKERS = ["subnets", "health"];
  *
  * METAGRAPH_ARCHIVE.get() returns `null` for a missing file, and `null` is the
  * CORRECT signal for "this artifact carries no data" -- every reader degrades
- * on it to a schema-stable empty card. So an unbuilt tree was indistinguishable
- * from an empty one: the reader degraded, the assertion read
- * `service_count >= 1` as `false !== true`, and nothing anywhere said "run the
+ * on it to a schema-stable empty card. So an unbuilt tree is indistinguishable
+ * from an empty one: the reader degrades, an assertion reads
+ * `service_count >= 1` as `false !== true`, and nothing anywhere says "run the
  * build". Same shape as the confident zeros this repo keeps finding -- a
  * correct-looking decline standing in for a missing producer.
  *
- * Checked once per env rather than per read, and only for the absence of the
- * whole tree: a single missing artifact stays a `null`, because that is a real
- * condition the readers are supposed to handle.
+ * CALLED BY THE CALLER, not by createLocalArtifactEnv. Wiring it into the
+ * factory broke `validate:committed-seed`, which builds that env deliberately
+ * against the COMMITTED tree -- an unbuilt tree is its subject, not its bug.
+ * Only a caller that needs real per-entity artifacts should assert this.
+ *
+ * Checks only for the absence of the whole tree: a single missing artifact
+ * stays a `null`, because that is a real condition readers must handle.
  */
-function assertArtifactsBuilt(): void {
+export function assertArtifactsBuilt(): void {
   const built = BUILT_ARTIFACT_MARKERS.some(
     (marker) =>
       existsSync(path.join(r2StagingRoot, marker)) ||
@@ -676,7 +680,6 @@ function assertArtifactsBuilt(): void {
 }
 
 export function createLocalArtifactEnv(overrides: Row = {}): Row {
-  assertArtifactsBuilt();
   return {
     ASSETS: {
       async fetch(request: Request) {
