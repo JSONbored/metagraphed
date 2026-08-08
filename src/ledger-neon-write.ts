@@ -27,6 +27,11 @@
 // silent regression -- both writes would otherwise succeed.
 
 import {
+  PASS_TABLES,
+  writePassTallyToNeon,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
+import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
   writeRowsToNeon,
@@ -127,6 +132,13 @@ export async function mirrorLedgerToNeon(
   lane: string,
   rows: Record<string, unknown>[],
   deps: LedgerMirrorDeps = {},
+  /** This chunk's completeness tally, when the producer declared a pass and
+   * the lane has a table in PASS_TABLES (#10056).
+   *
+   * A SIXTH PARAMETER rather than a field on `deps`, because deps is for
+   * injectables a test swaps out and this is data the producer sent. Optional,
+   * so the lanes with no pass table call this exactly as before. */
+  pass?: PassTallyInput | null,
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
   const plan = LEDGER_MIRROR_PLANS[lane];
   // An unknown lane is a NO-OP rather than a throw, and deliberately so: the
@@ -163,5 +175,28 @@ export async function mirrorLedgerToNeon(
     plan.filter,
   );
   await recordNeonWriteVerdict(laneDb, lane, result, now());
+
+  // THE TALLY GOES LAST, AND ONLY IF THE ROWS LANDED (#10056).
+  //
+  // D1 gets this ordering free by appending the tally to the same batch. Here
+  // it is explicit: a pass marked complete whose rows did not land is the one
+  // failure this ledger exists to make impossible, and it is never revisited,
+  // whereas withholding it costs nothing because the next chunk re-sends.
+  if (pass && PASS_TABLES[lane]) {
+    const tally = result.ok
+      ? await writePassTallyToNeon(sql, lane, pass)
+      : { ok: false, reason: "rows did not land; tally withheld" };
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${lane}-pass`,
+      {
+        ok: tally.ok,
+        rows: tally.ok ? 1 : 0,
+        statements: 1,
+        ...(tally.reason ? { reason: tally.reason } : {}),
+      },
+      now(),
+    );
+  }
   return { attempted: true, result };
 }
