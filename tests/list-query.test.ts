@@ -4,6 +4,7 @@ import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
 import {
   applyQueryFilters,
   canonicalListSearch,
+  integerCeilingError,
   paginationLinkHeader,
   validateListQueryParams,
 } from "../workers/list-query.ts";
@@ -1567,5 +1568,75 @@ describe("list-query presence filter", () => {
       "empty-notes",
       "no-field",
     ]);
+  });
+});
+
+// A published `maximum` on an integer filter is enforced, not decorative
+// (#10073).
+//
+// Before this, `?netuid=70000` on any list collection returned 200 with zero
+// rows. 70000 cannot name a subnet -- netuid is a u16 -- so that was a
+// confident empty answer to a malformed request, indistinguishable from "that
+// subnet exists and matches nothing". The same silent-wrong-answer class as
+// #9916's clamped page size, and the reason the bound is now published AND
+// checked rather than only published.
+describe("integer filters are rejected above their published ceiling (#10073)", () => {
+  test("the netuid filter publishes the u16 ceiling, from the vocabulary", () => {
+    assert.deepEqual(queryCollections.subnets.filters.netuid, {
+      type: "integer",
+      minimum: 0,
+      maximum: 65535,
+    });
+  });
+
+  test("a netuid past the u16 ceiling is a 400, not an empty result", () => {
+    assert.deepEqual(
+      validateListQueryParams(query("/api/v1/subnets?netuid=70000"), "subnets"),
+      {
+        parameter: "netuid",
+        message: "netuid must be an integer between 0 and 65535.",
+      },
+    );
+  });
+
+  test("a netuid at the ceiling, and one well inside it, still pass", () => {
+    for (const netuid of [65535, 64]) {
+      assert.equal(
+        validateListQueryParams(
+          query(`/api/v1/subnets?netuid=${netuid}`),
+          "subnets",
+        ),
+        null,
+      );
+    }
+  });
+
+  test("a negative netuid keeps its own message — integerParam rejects it first", () => {
+    assert.deepEqual(
+      validateListQueryParams(query("/api/v1/subnets?netuid=-1"), "subnets"),
+      {
+        parameter: "netuid",
+        message: "netuid must be a non-negative integer.",
+      },
+    );
+  });
+
+  // Every integer filter carries a ceiling today, so the no-ceiling branch has
+  // no production data to exercise it. Pinned directly rather than left to the
+  // next filter to discover.
+  test("a filter that declares no ceiling accepts any non-negative integer", () => {
+    assert.equal(
+      integerCeilingError("block", 9_000_000, { type: "integer" }),
+      null,
+    );
+  });
+
+  test("the ceiling is inclusive", () => {
+    const schema = { type: "integer", maximum: 100 };
+    assert.equal(integerCeilingError("limit", 100, schema), null);
+    assert.deepEqual(integerCeilingError("limit", 101, schema), {
+      parameter: "limit",
+      message: "limit must be an integer between 0 and 100.",
+    });
   });
 });

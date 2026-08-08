@@ -1,3 +1,17 @@
+import { z } from "zod";
+import {
+  fieldsSchema,
+  filterTokenSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  querySchema,
+} from "../schemas-src/query-params.ts";
+import { MAX_LIMIT } from "../workers/request-params.ts";
+// Surface-agnostic despite the module name: the sentinel bounds Zod stamps on
+// every `z.int()` are not an MCP concern, and both published surfaces drop them.
+import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
 import { artifactStorageTierForPath } from "./artifact-storage.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
@@ -220,24 +234,59 @@ export const QUERY_ENUMS = {
   ],
 };
 
-const integerSchema = { type: "integer", minimum: 0 };
-// Free-text query params carry an explicit maxLength so an arbitrarily long
-// value can't drive unbounded per-row scan work in searchRows / filter matching
-// (#5544) — every other validated param already bounds its input. `q` is
-// free-typed search prose (a generous 200-char ceiling); the exact-ish filters
-// (provider, id, review_state, reason_codes) are structured tokens, bounded
-// tighter at 100, in line with the existing pallet/method/call_module limits.
-// SEARCH_TEXT_MAX_LENGTH is exported because the generic maxLength check in
-// validateListQuery only iterates config.filters — `q` is a search param, not a
-// filter, so workers/list-query.ts enforces its bound from this single source.
-export const SEARCH_TEXT_MAX_LENGTH = 200;
-const FILTER_TEXT_MAX_LENGTH = 100;
-const searchTextSchema = { type: "string", maxLength: SEARCH_TEXT_MAX_LENGTH };
-const filterTextSchema = { type: "string", maxLength: FILTER_TEXT_MAX_LENGTH };
-const fieldListSchema = {
-  type: "string",
-  pattern: "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
-};
+// The published query-parameter schemas, derived from the ONE vocabulary in
+// schemas-src/query-params.ts (#10073).
+//
+// These four used to be raw JSON literals declared here, a second vocabulary
+// beside the Zod one the MCP surface publishes from. Two declarations of one
+// parameter is what put 290 of 658 tool/route argument pairs into disagreement
+// — `netuid` bounded on one side and not the other, `fields` carrying two
+// different regexes, `q` a ceiling on one surface only.
+//
+// CONSTRAINTS ONLY. `parameterSchema()` drops the builder's `description` and
+// `examples`, so the MCP-audience wording does not leak into openapi.json:
+// an agent and an OpenAPI reader need different prose, and the REST side has
+// its own in SHARED_QUERY_PARAMETER_DESCRIPTIONS. What is shared is the part
+// that must not disagree — the bound.
+//
+// These objects are load-bearing at RUNTIME, not just documentation:
+// validateListQuery (workers/list-query.ts) reads `type`, `enum`, `maxLength`,
+// `pattern`, `minimum` and `maximum` straight off them to decide a 400.
+function parameterSchema(schema: z.ZodType): Row {
+  const emitted = z.toJSONSchema(schema, {
+    target: "draft-2020-12",
+    io: "input",
+  }) as Row;
+  // `$schema` is per-document metadata; an OpenAPI parameter is embedded.
+  // `description`/`examples` are the builder's MCP prose, deliberately dropped.
+  const {
+    $schema: _schema,
+    description: _description,
+    examples: _examples,
+    ...rest
+  } = emitted;
+  // z.int() stamps the safe-integer range as if it were a declared bound; the
+  // same normalisation the MCP surface applies, for the same reason — a
+  // parameter that genuinely has no ceiling (`cursor`) must not publish a fake
+  // one, and stripping the sentinel is what lets a real `.max()` mean something.
+  return stripSentinelIntegerBounds(rest);
+}
+
+// `netuid` is the ONLY parameter this shape was ever used for (20 sites), and
+// it is a u16 on chain — so it publishes the real ceiling now rather than
+// leaving 65536..2^53 looking like a subnet id nobody has registered yet.
+const integerSchema = parameterSchema(netuidSchema());
+const searchTextSchema = parameterSchema(querySchema());
+const filterTextSchema = parameterSchema(filterTokenSchema());
+// Every route that publishes `fields` resolves it through the SAME
+// `parseFieldsParam` (src/field-projection.ts), so they all publish the same
+// syntax. Four routes outside the list collections -- chain/emission-pipeline
+// and the three neuron reads -- used to publish a bare `{type:"string"}`
+// instead, documenting nothing on the one parameter whose format a caller
+// cannot guess. Confirmed against production: `?fields=bogus!!` is a 400 on
+// emission-pipeline, and `?fields=uid,%20hotkey` is a 200 on the metagraph
+// read, which is exactly what this pattern says.
+const fieldListSchema = parameterSchema(fieldsSchema());
 
 export const API_QUERY_COLLECTIONS = {
   candidates: queryCollection("candidates", {
@@ -2579,7 +2628,7 @@ export const API_ROUTES = [
             maximum: EMISSION_PIPELINE_LIMIT_MAX,
           },
         },
-        { name: "fields", schema: { type: "string" } },
+        { name: "fields", schema: fieldListSchema },
       ],
     },
     [],
@@ -3329,7 +3378,7 @@ export const API_ROUTES = [
     ["subnets", "analytics"],
     csvRouteQuery([
       { name: "validator_permit", schema: { type: "string", enum: ["true"] } },
-      { name: "fields", schema: { type: "string" } },
+      { name: "fields", schema: fieldListSchema },
     ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
@@ -3341,7 +3390,7 @@ export const API_ROUTES = [
     "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "fields", schema: { type: "string" } }],
+    [{ name: "fields", schema: fieldListSchema }],
     [
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "uid", schema: { type: "integer", minimum: 0 } },
@@ -3381,7 +3430,7 @@ export const API_ROUTES = [
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([{ name: "fields", schema: { type: "string" } }]),
+    csvRouteQuery([{ name: "fields", schema: fieldListSchema }]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -6739,11 +6788,17 @@ function listQuery(collection: string, options: { exclude?: string[] } = {}) {
       },
       {
         name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: 1000 },
+        schema: parameterSchema(limitSchema(MAX_LIMIT)),
       },
       {
+        // A collection `cursor` is a ROW OFFSET, not a keyset token:
+        // validateListQuery rejects a non-integer and clamps it to rows.length,
+        // and `meta.pagination.next_cursor` is the integer offset of the next
+        // page. numericCursorSchema() is the vocabulary entry that says so —
+        // the pair exists precisely because the two page differently and only
+        // one is safe across an inserting table.
         name: "cursor",
-        schema: { type: "integer", minimum: 0 },
+        schema: parameterSchema(numericCursorSchema()),
       },
       {
         name: "sort",
@@ -6752,10 +6807,14 @@ function listQuery(collection: string, options: { exclude?: string[] } = {}) {
         schema: { type: "string", enum: config.sort_fields },
       },
       {
+        // `sort` stays on enumSchema: its values are per-collection, so the
+        // vocabulary's sortSchema() would contribute only prose this strips —
+        // and z.enum() cannot express a collection that declares no sort keys.
+        // The constraint shape is already identical on both surfaces.
         name: "order",
         description:
           "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
-        schema: { enum: ["asc", "desc"] },
+        schema: parameterSchema(orderSchema()),
       },
     ],
   };
