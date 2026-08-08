@@ -65604,7 +65604,10 @@
               "enum": [
                 "total_tao",
                 "free_tao",
-                "delegated_tao"
+                "delegated_tao",
+                "net_flow_7d",
+                "net_flow_30d",
+                "net_flow_90d"
               ],
               "type": "string"
             }
@@ -78590,12 +78593,14 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page. A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "type": "string"
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
@@ -78604,7 +78609,8 @@
             "name": "offset",
             "required": false,
             "schema": {
-              "type": "string"
+              "minimum": 0,
+              "type": "integer"
             }
           }
         ],

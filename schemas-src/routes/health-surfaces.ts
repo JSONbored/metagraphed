@@ -147,9 +147,13 @@ export type BulkHealthTrendsArtifact = z.infer<
  *
  * `workers/config.ts`'s HEALTH_TREND_WINDOWS maps each label to its day count
  * and is the runtime's copy; this is the published vocabulary. They are checked
- * against each other by tests/bulk-health-trends.test.ts rather than one
- * importing the other, because schemas-src must not depend on the Worker's
+ * against each other by tests/route-limit-contract-parity.test.ts rather than
+ * one importing the other, because schemas-src must not depend on the Worker's
  * config module -- see this directory's leaf-module rule.
+ *
+ * That cross-check named a test file that did not exist until #10089. A comment
+ * asserting a guard is not a guard: the vocabularies happened to agree, and
+ * nothing would have said so if they stopped.
  */
 export const HEALTH_TREND_WINDOW_VALUES = ["7d", "30d"] as const;
 

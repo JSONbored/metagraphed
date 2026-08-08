@@ -52,8 +52,10 @@ import {
   SEMANTIC_LIMIT_DEFAULT,
   SEMANTIC_LIMIT_MAX,
   SEMANTIC_QUERY_MAX_LENGTH,
+  BULK_HEALTH_TRENDS_LIMIT_MAX,
 } from "./route-limits.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "./emission-pipeline-surface.ts";
+import { TOP_HOLDERS_SORTS } from "./top-holders.ts";
 import {
   CONCENTRATION_LENSES,
   CONCENTRATION_RANKING_SORTS,
@@ -2883,8 +2885,19 @@ export const API_ROUTES = [
     ["health", "analytics"],
     [
       { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "string" } },
-      { name: "offset", schema: { type: "string" } },
+      // Integers, not strings (#10089). handleBulkHealthTrends runs
+      // parseLimitParam/parseNonNegativeIntParam, so `?limit=abc` has always
+      // been a 400 -- the published `{"type":"string"}` said otherwise.
+      // `offset` carries no ceiling because the handler enforces none.
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: BULK_HEALTH_TRENDS_LIMIT_MAX,
+        },
+      },
+      { name: "offset", schema: { type: "integer", minimum: 0 } },
     ],
   ),
   route(
@@ -3340,10 +3353,13 @@ export const API_ROUTES = [
     csvRouteQuery([
       {
         name: "sort",
-        schema: {
-          type: "string",
-          enum: ["total_tao", "free_tao", "delegated_tao"],
-        },
+        // From TOP_HOLDERS_SORTS, not a literal copy of it. The copy that used
+        // to sit here listed the three HOLDINGS sorts and omitted
+        // net_flow_7d/30d/90d (#10089) -- so the published enum offered exactly
+        // the three that DECLINE to a fixed 2026-08-02 materialization when
+        // their producer's last pass is unproven, and withheld the three that
+        // are recomputed daily. The route's own 400 has always named all six.
+        schema: parameterSchema(enumSchema(TOP_HOLDERS_SORTS)),
       },
       {
         name: "limit",
