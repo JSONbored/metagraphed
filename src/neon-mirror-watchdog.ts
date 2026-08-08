@@ -54,6 +54,7 @@ import { neonDualWriteLanes } from "./neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "./ledger-neon-write.ts";
 import { NEURON_MIRROR_PLANS } from "./neurons-neon-write.ts";
 import { NOMINATOR_POSITIONS_NEON_LANE } from "./nominator-positions-neon-write.ts";
+import { FAMILY_MIRROR_PLANS } from "./hyperparams-identity-neon-write.ts";
 import {
   loadLatestLaneHealth,
   recordLaneVerdict,
@@ -99,6 +100,16 @@ export const MIRROR_LANE_TABLES: Readonly<Record<string, string>> = {
     Object.entries(NEURON_MIRROR_PLANS).map(([lane, plan]) => [
       lane,
       plan.table,
+    ]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(FAMILY_MIRROR_PLANS).map(([lane, plan]) => [
+      lane,
+      // The LATEST table, not the history. A family's two tables are written
+      // by one pass, so one of them lagging is the lane lagging -- and the
+      // card is the one whose captured_at this watchdog can read (the history
+      // has no such column, which is why it cannot be the pairing).
+      plan.latest.table,
     ]),
   ),
   [NOMINATOR_POSITIONS_NEON_LANE]: "nominator_positions",

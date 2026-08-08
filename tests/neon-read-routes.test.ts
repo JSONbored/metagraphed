@@ -583,8 +583,13 @@ describe("the deployed flag", () => {
     const backfills = (
       /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
     ).split(",");
+    // Hyphenated mirror lane -> underscored table, so the two vocabularies can
+    // be compared at all. See the same normalisation in
+    // tests/account-position-history.test.ts.
     const written = new Set(
-      [...writes, ...backfills].map((l) => l.trim()).filter(Boolean),
+      [...writes, ...backfills]
+        .map((l) => l.trim().replace(/-/g, "_"))
+        .filter(Boolean),
     );
     for (const lane of named) {
       assert.ok(

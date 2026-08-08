@@ -57,7 +57,13 @@ interface FamilyPlan {
   history: { table: string; columns: readonly string[]; conflict: string[] };
 }
 
-const PLANS: Readonly<Record<string, FamilyPlan>> = {
+/**
+ * Exported so src/neon-mirror-watchdog.ts can DERIVE its lane->table pairing
+ * from the same constant the writer uses, rather than restate it. A lane the
+ * flag can name but the watchdog has no pairing for is a mirror nothing
+ * watches, and restating is how that happens.
+ */
+export const FAMILY_MIRROR_PLANS: Readonly<Record<string, FamilyPlan>> = {
   [SUBNET_HYPERPARAMS_NEON_LANE]: {
     lane: SUBNET_HYPERPARAMS_NEON_LANE,
     latest: {
@@ -121,7 +127,7 @@ export async function mirrorFamilyToNeon(
   input: FamilyMirrorInput,
   deps: FamilyMirrorDeps = {},
 ): Promise<FamilyMirrorOutcome> {
-  const plan = PLANS[lane];
+  const plan = FAMILY_MIRROR_PLANS[lane];
   // An unknown lane is a no-op rather than a throw: the flag is a free-text
   // list, and a typo there must not take down the D1 write this runs behind.
   if (!plan || !neonDualWriteEnabled(env, lane))
