@@ -34,8 +34,11 @@
 // explain. Every plan below points at the constant its D1 prune already uses.
 
 import { laneHealthStore } from "./lane-health-store.ts";
-import { assertIdentifier } from "./neon-backfill.ts";
-import { neonOwnsTable, type PgUnsafe } from "./neon-write.ts";
+import {
+  assertIdentifier,
+  neonOwnsTable,
+  type PgUnsafe,
+} from "./neon-write.ts";
 import {
   createPgSql,
   type HyperdriveLike,

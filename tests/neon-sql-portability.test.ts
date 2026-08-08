@@ -499,22 +499,37 @@ describe("the deny-list is honest", () => {
     }
   });
 
-  test("BOOLEAN_COLUMNS is the set the mirror actually converts", () => {
-    // The authority is src/neon-backfill.ts: the columns it wraps in
-    // Boolean() are precisely the ones Neon declares BOOLEAN. If a plan gains
-    // one and this list does not, the new column is unguarded -- so derive the
-    // expectation from that file rather than trusting the copy above.
-    const source = readFileSync("src/neon-backfill.ts", "utf8");
+  test("BOOLEAN_COLUMNS covers every column a write plan converts", () => {
+    // The authority WAS src/neon-backfill.ts, whose plans wrapped these in
+    // Boolean(). The reconciler is gone (#10166), so the surviving authorities
+    // are the write plans that still declare `booleans:` -- derived from the
+    // files rather than trusting the copy above, which is the same property
+    // stated against a different set of modules.
+    //
+    // Every declared column must be guarded. The reverse does NOT have to
+    // hold: BOOLEAN_COLUMNS also lists columns whose only writer is a
+    // storeBoolean call in src/pg-d1-adapter.ts, and dropping those from the
+    // deny-list because no plan happens to name them is how one goes
+    // unguarded.
     const declared = new Set<string>();
-    for (const m of source.matchAll(/booleans:\s*\[([^\]]*)\]/g)) {
-      for (const q of m[1]!.matchAll(/["']([^"']+)["']/g)) declared.add(q[1]!);
+    for (const file of [
+      "src/chain-detail-neon-write.ts",
+      "src/registry-sync-neon.ts",
+    ]) {
+      const source = readFileSync(file, "utf8");
+      for (const m of source.matchAll(/booleans:\s*\[([^\]]*)\]/g)) {
+        for (const q of m[1]!.matchAll(/["']([^"']+)["']/g))
+          declared.add(q[1]!);
+      }
     }
     assert.ok(declared.size > 0, "no `booleans:` plan entries found");
+    const unguarded = [...declared].filter(
+      (c) => !(BOOLEAN_COLUMNS as readonly string[]).includes(c),
+    );
     assert.deepEqual(
-      [...declared].sort(),
-      [...BOOLEAN_COLUMNS].sort(),
-      "NEON_BACKFILL_PLANS names a different set of boolean columns than this " +
-        "deny-list guards",
+      unguarded,
+      [],
+      "a write plan converts a column this deny-list does not guard",
     );
   });
 });

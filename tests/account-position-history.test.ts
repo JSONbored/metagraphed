@@ -408,7 +408,7 @@ describe("the Neon read cutover (metagraphed-infra#336)", () => {
     // they can be compared. Without this, a table that gained a mirror reads
     // as unwritten -- which is the opposite of what this test is for, and it
     // would push someone to delete a correct read lane rather than fix a real
-    // gap. tests/neon-backfill.test.ts normalises the same way.
+    // gap. The reconciler that normalised the same way is gone (#10166).
     // A LANE IS NOT ALWAYS A TABLE. The neurons mirror writes THREE tables
     // under one lane name, and chain-detail writes four -- so munging the lane
     // name resolves only the common single-table case. Lanes that write a

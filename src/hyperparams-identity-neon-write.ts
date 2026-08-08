@@ -59,7 +59,7 @@ interface FamilyPlan {
 }
 
 /**
- * Exported so src/neon-mirror-watchdog.ts can DERIVE its lane->table pairing
+ * Exported so a lane->table pairing can be DERIVED rather than restated
  * from the same constant the writer uses, rather than restate it. A lane the
  * flag can name but the watchdog has no pairing for is a mirror nothing
  * watches, and restating is how that happens.

@@ -61,7 +61,7 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
-import { neonBackfillLanes, neonOwnsTable } from "./neon-write.ts";
+import { neonOwnsTable } from "./neon-write.ts";
 import { readStore, type ReadStoreDb } from "./read-store.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
@@ -322,10 +322,9 @@ async function pruneChainDetailNeon(
   // a partially-listed set would leave one table holding blocks its siblings
   // dropped -- a join across the seam would then find a block header with no
   // events, which reads as corruption rather than as retention.
-  const lanes = neonBackfillLanes(bag);
-  const neonHolds = (table: string) =>
-    lanes.has(table) || neonOwnsTable(bag, table);
-  if (!PRUNE_TABLES.every(neonHolds)) return {};
+  // Ownership alone since #10166 deleted the reconciler: the second arm was
+  // "or it is being backfilled", and there is no backfill any more.
+  if (!PRUNE_TABLES.every((table) => neonOwnsTable(bag, table))) return {};
   try {
     const sql = injected ?? createPgSql(hyperdrive!, ctx!);
     for (const table of PRUNE_TABLES) {

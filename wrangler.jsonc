@@ -83,7 +83,6 @@
     // ---------------------------------------------------------------------
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
     "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
-    "NEON_BACKFILL_LANES": "",
     "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes",
     // Staging drift tripwire (types-epic B, #7860): when "true", the routes
     // schemas-src/ covers (subnets, subnet-detail, health, economics,
