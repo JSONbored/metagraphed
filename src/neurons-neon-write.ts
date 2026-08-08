@@ -75,7 +75,41 @@ export const ACCOUNT_POSITION_DAILY_COLUMNS = [
 ];
 
 /** The UTC day a capture belongs to. */
-export function neuronSnapshotDate(capturedAtMs: number): string {
+/**
+ * The floor below which a value is not epoch MILLISECONDS.
+ *
+ * 1e12 is 2001-09-09. Every real capture is far above it, and every
+ * seconds-valued timestamp this decade is far below (2026 in seconds is ~1.79e9),
+ * so the two populations are separated by three orders of magnitude with nothing
+ * legitimate in between. A bound rather than a digit count because that is the
+ * question actually being asked: is this plausibly a millisecond stamp.
+ */
+export const EPOCH_MS_FLOOR = 1e12;
+
+/** Whether `value` is plausibly an epoch-millisecond stamp. */
+export function isEpochMillis(value: unknown): value is number {
+  return (
+    Number.isFinite(value as number) && (value as number) >= EPOCH_MS_FLOOR
+  );
+}
+
+/**
+ * The day a capture belongs to, or null if its stamp is not milliseconds.
+ *
+ * RETURNS NULL RATHER THAN A DATE, because the failure it guards against is
+ * silent by construction. `new Date(1785715160)` is a perfectly good Date --
+ * 1970-01-21 -- so a seconds-valued stamp does not throw, does not warn, and
+ * produces a row keyed under a date fifty-six years in the past. One such row
+ * exists in account_position_daily today (#9782): its `updated_at` is correct
+ * milliseconds and its `captured_at` is the same instant with the last three
+ * digits gone, so the two disagree by exactly 1000.
+ *
+ * It is one row, and the reason to guard rather than only repair is that it
+ * put `account_position_daily`'s date range at `1970-01-21 .. 2026-08-07`,
+ * outside every served window and inside every COUNT(*).
+ */
+export function neuronSnapshotDate(capturedAtMs: number): string | null {
+  if (!isEpochMillis(capturedAtMs)) return null;
   return new Date(capturedAtMs).toISOString().slice(0, 10);
 }
 
@@ -108,7 +142,11 @@ export function netuidMaxCapturedAt(rows: Row[]): Map<number, number> {
     const netuid = row?.netuid;
     const capturedAt = row?.captured_at;
     if (!Number.isFinite(netuid as number)) continue;
-    if (!Number.isFinite(capturedAt as number)) continue;
+    // The same bound as the snapshot date, and for a sharper reason: this map
+    // is the PRUNE cutoff. A seconds-valued stamp here is a cutoff below every
+    // real row, which deletes nothing -- but a stray LARGE value would delete
+    // the netuid, so the pair is checked as one question rather than two.
+    if (!isEpochMillis(capturedAt)) continue;
     const current = cutoffs.get(netuid as number);
     if (current == null || (capturedAt as number) > current) {
       cutoffs.set(netuid as number, capturedAt as number);
@@ -117,13 +155,23 @@ export function netuidMaxCapturedAt(rows: Row[]): Map<number, number> {
   return cutoffs;
 }
 
-/** `neuron_daily` rows: the posted row plus its day and a write stamp. */
+/**
+ * `neuron_daily` rows: the posted row plus its day and a write stamp.
+ *
+ * A row whose `captured_at` is not milliseconds is DROPPED rather than written
+ * under whatever date it derives to. Dropping loses one row; writing it puts a
+ * permanent 1970 entry in an append-only table, where it is outside every
+ * served window and inside every aggregate -- and no later pass revises it,
+ * because the key it landed under is one nothing else will ever write.
+ */
 export function neuronDailyRows(rows: Row[], nowMs: number): Row[] {
-  return rows.map((row) => ({
-    ...row,
-    snapshot_date: neuronSnapshotDate(row.captured_at as number),
-    updated_at: nowMs,
-  }));
+  const out: Row[] = [];
+  for (const row of rows) {
+    const snapshotDate = neuronSnapshotDate(row.captured_at as number);
+    if (snapshotDate === null) continue;
+    out.push({ ...row, snapshot_date: snapshotDate, updated_at: nowMs });
+  }
+  return out;
 }
 
 /**
