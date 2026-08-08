@@ -359,6 +359,24 @@ export const formatSchema = () =>
     .meta({ examples: ["csv"] });
 
 /**
+ * RPC POOL kinds -- what a pool of endpoints is FOR.
+ *
+ * Deliberately its own vocabulary next to ENDPOINT_LAYER_VALUES, because the
+ * two look interchangeable and are not: a layer says where an endpoint sits in
+ * the stack (`bittensor-base`, `subnet-app`), a pool kind says which base-layer
+ * protocol the pool serves. `list_rpc_pools` published the layer values for
+ * this parameter, so all four of the values it advertised were rejected by its
+ * route and none of the three that work was advertised (#10118).
+ */
+export const RPC_POOL_KIND_VALUES = [
+  "subtensor-rpc",
+  "subtensor-wss",
+  "archive",
+] as const;
+export const RpcPoolKindSchema = z.enum(RPC_POOL_KIND_VALUES);
+export type RpcPoolKind = z.infer<typeof RpcPoolKindSchema>;
+
+/**
  * A `kind` filter. Like `window`/`sort`, the value sets are per-tool (surface
  * kinds, pool kinds, feed kinds …), so only the meaning is shared.
  */

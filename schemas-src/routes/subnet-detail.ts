@@ -232,8 +232,15 @@ export const AUTHORITY_VALUES = [
 export const AuthoritySchema = z.enum(AUTHORITY_VALUES);
 export type Authority = z.infer<typeof AuthoritySchema>;
 
-/** The vocabulary, exported as a tuple so every other schema that needs
- * these values imports them instead of restating them (#9799). */
+/**
+ * Where an endpoint sits in the stack. NOT a pool kind -- `RPC_POOL_KIND_VALUES`
+ * in schemas-src/query-params.ts is that, and the two look interchangeable
+ * enough that both pool tools published THIS list for a `kind` filter, so every
+ * value they advertised was rejected by their route (#10118).
+ *
+ * The vocabulary, exported as a tuple so every other schema that needs these
+ * values imports them instead of restating them (#9799).
+ */
 export const ENDPOINT_LAYER_VALUES = [
   "bittensor-base",
   "subnet-app",

@@ -8,6 +8,7 @@ import {
   numericCursorSchema,
   orderSchema,
   querySchema,
+  RPC_POOL_KIND_VALUES,
   sortSchema,
   windowSchema,
 } from "../schemas-src/query-params.ts";
@@ -448,7 +449,12 @@ export const API_QUERY_COLLECTIONS = {
   "endpoint-pools": queryCollection("pools", {
     filters: {
       id: filterTextSchema,
-      kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
+      // From the vocabulary rather than a literal, and stated in three
+      // collections before this. list_rpc_pools published ENDPOINT_LAYER_VALUES
+      // for the same parameter and every value it advertised was rejected here
+      // (#10118): two lists that look interchangeable need one name each, and
+      // every surface needs to read the same one.
+      kind: enumSchema(RPC_POOL_KIND_VALUES),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
     rangeFilters: ["eligible_count", "endpoint_count"],
@@ -459,7 +465,7 @@ export const API_QUERY_COLLECTIONS = {
   "rpc-pools": queryCollection("pools", {
     filters: {
       id: filterTextSchema,
-      kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
+      kind: enumSchema(RPC_POOL_KIND_VALUES),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
     rangeFilters: ["eligible_count", "endpoint_count"],
@@ -778,7 +784,7 @@ export const API_QUERY_COLLECTIONS = {
   pools: queryCollection("pools", {
     filters: {
       id: filterTextSchema,
-      kind: enumSchema(["subtensor-rpc", "subtensor-wss", "archive"]),
+      kind: enumSchema(RPC_POOL_KIND_VALUES),
     },
     sort: ["eligible_count", "endpoint_count", "id", "kind"],
     rangeFilters: ["eligible_count", "endpoint_count"],

@@ -112,13 +112,6 @@ export const ENDPOINT_POOL_SORT_VALUES = [
   "kind",
 ] as const;
 
-/** Shared across MCP tools that have no single route owner (#9799). */
-export const ENDPOINT_LAYER_VALUES = [
-  "subtensor-rpc",
-  "subtensor-wss",
-  "archive",
-] as const;
-
 // --- Bounded input primitives --------------------------------------
 //
 // Every tool author wrote `z.int().min(0)` inline, so no parameter declared a real

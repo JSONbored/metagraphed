@@ -34,7 +34,11 @@ const ECONOMICS_SORT_FIELDS = [
   "alpha_price_tao",
   "block",
   "emission_share",
-  "max_stake_tao",
+  // The column is denominated in the subnet's ALPHA token, which is the
+  // name /api/v1/economics publishes and accepts. `max_stake_tao` was a
+  // `_tao` suffix applied by habit, and the route answers it with a 400
+  // (#10118).
+  "max_stake_alpha",
   "max_uids",
   "max_validators",
   "miner_count",
