@@ -204,7 +204,7 @@
     // Naming a latest-only table here would copy 800,000 rows to prove they
     // already agree, which is why this is a third flag rather than a reuse of
     // the write list.
-    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index,blocks_head,raw_capture_state",
+    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above

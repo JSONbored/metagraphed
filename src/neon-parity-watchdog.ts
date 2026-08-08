@@ -92,6 +92,13 @@ export const PARITY_TABLES = [
   // it is total.
   "blocks_head",
   "raw_capture_state",
+  // The decoded seam (#10024). Both stores now prune these to the SAME
+  // resolved block watermark (#10017), so a persistent gap here is a real
+  // fault rather than the two windows disagreeing.
+  "chain_detail_blocks",
+  "chain_detail_extrinsics",
+  "chain_detail_chain_events",
+  "chain_detail_account_events",
 ] as const;
 
 /**
