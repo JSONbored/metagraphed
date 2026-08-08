@@ -5,7 +5,7 @@
 // downstream write logic itself is covered by tests/data-api.test.ts.
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { handleRequest } from "../workers/api.ts";
+import { handleRequest, INTERNAL_SYNC_RATE_LIMIT } from "../workers/api.ts";
 
 function post(body: unknown, { method = "POST" }: { method?: string } = {}) {
   return new Request("https://api.metagraph.sh/api/v1/internal/neurons-sync", {
@@ -142,8 +142,18 @@ test("rate limiting: 429 with the rate-limit header family when the limiter reje
   assert.equal(res.status, 429);
   assert.equal((await res.json()).error.code, "internal_sync_rate_limited");
   assert.equal(res.headers.get("retry-after"), "60");
-  assert.equal(res.headers.get("x-ratelimit-limit"), "30");
-  assert.equal(res.headers.get("x-ratelimit-policy"), "30;w=60");
+  // The published headers must state the limit that is actually enforced --
+  // asked of the constant rather than restated, because a restated number is
+  // how the two drift and the header starts advertising a ceiling that is not
+  // the one being applied.
+  assert.equal(
+    res.headers.get("x-ratelimit-limit"),
+    String(INTERNAL_SYNC_RATE_LIMIT.limit),
+  );
+  assert.equal(
+    res.headers.get("x-ratelimit-policy"),
+    `${INTERNAL_SYNC_RATE_LIMIT.limit};w=${INTERNAL_SYNC_RATE_LIMIT.windowSeconds}`,
+  );
   assert.equal(res.headers.get("x-ratelimit-remaining"), "0");
   assert.equal(calls, 0);
 });

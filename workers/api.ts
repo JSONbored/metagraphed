@@ -3347,7 +3347,34 @@ async function handleRegistrySyncProxy(request: Request, env: Env) {
 // ratelimit namespaces are scoped to the Worker script that checks them, and
 // this check runs in api.ts, not data-api.ts. Optional-chained so it's a
 // no-op when the binding is absent (local dev/CI).
-const INTERNAL_SYNC_RATE_LIMIT = { limit: 30, windowSeconds: 60 };
+//
+// RESIZED 30 -> 300 (#10180), for the same reason and with the same arithmetic
+// #5027 used on CHAIN_FIREHOSE_INGEST_RATE_LIMIT forty lines below: a cap sized
+// for one traffic shape, never recalibrated when the producer's changed.
+//
+// THE MEASUREMENT. The validator-nominators job posts BOTH its tables in one
+// run -- validator_nominator_counts (112,250 rows) and nominator_positions
+// (123,511) -- and `lane_health` recorded "739565 scanned, 222343 written"
+// against 429s on 2026-08-07 18:22, 18:37 and 2026-08-08 08:51. At the per-route
+// row caps (50,000 and 25,000) a full pass would be ~8 requests and could never
+// trip 30, so the producer is chunking far smaller; at the alpha scan's
+// page_size of 1000 a pass is ~236 requests, which trips 30/60s about eight
+// seconds in. nominator_positions sat 28 HOURS stale as a result, and
+// hotkey_alpha's #9558 filter prices against whatever positions it can see.
+//
+// 300 lets one full pass through a single window with headroom. It is not a
+// number invented here: DATA_RATE_LIMITER_KEYED in this same file is 300/60s,
+// and the firehose precedent was a 10x lift for an identical diagnosis.
+//
+// WHAT IT DOES NOT WEAKEN. The abuse ceiling was never really the request count
+// -- each route independently caps ROWS per request, and each authenticates
+// downstream with its own secret. This bucket is keyed per IP, so it slows a
+// single leaked-secret script rather than stopping a distributed one; it is a
+// speed bump by construction, and 300 keeps it one.
+//
+// The better fix is upstream and is filed as such: a producer posting at the
+// row cap would put a pass at ~8 requests and need no limit here at all.
+export const INTERNAL_SYNC_RATE_LIMIT = { limit: 300, windowSeconds: 60 };
 
 async function internalSyncRateLimited(request: Request, env: Env) {
   if (!env.INTERNAL_SYNC_RATE_LIMITER?.limit) return null;
