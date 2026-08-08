@@ -33,7 +33,7 @@ import { laneHealthStore } from "./lane-health-store.ts";
 
 /** Where the registry lives. Not configurable: this lane exists to mirror THIS
  * repo's registry, and a wrong value would silently sync someone else's. */
-const REPO = "JSONbored/metagraphed";
+export const REPO = "JSONbored/metagraphed";
 const KV_KEY = "registry-sync:last-synced-sha";
 export const REGISTRY_SYNC_LANE = "registry-sync";
 const API = "https://api.github.com";
@@ -75,7 +75,7 @@ function githubHeaders(env: Record<string, unknown>): Record<string, string> {
   return headers;
 }
 
-async function ghJson(
+export async function ghJson(
   env: Record<string, unknown>,
   path: string,
 ): Promise<unknown | null> {
@@ -92,7 +92,7 @@ async function ghJson(
 }
 
 /** One file's parsed overlay at a commit, or null when it is not there. */
-async function fileAt(
+export async function fileAt(
   env: Record<string, unknown>,
   path: string,
   ref: string,

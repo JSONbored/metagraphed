@@ -238,6 +238,19 @@ export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // Minutes 10/25/40/55 tick on none of the hourly crons in this file and stay
 // off the */5 raw-capture and */15 probe grids.
 export const REGISTRY_SYNC_CRON = "10,25,40,55 * * * *";
+/**
+ * The full-registry reconciler (#10236), hourly.
+ *
+ * Hourly is the TICK, not the pass. A pass walks ~265 files 100 at a time and
+ * then refuses to start another for 20h, so this is roughly three consecutive
+ * ticks once a day. The lane's own interval gate does the pacing, because the
+ * cadence that matters is "how stale may the registry tables get", not "how
+ * often does the cron fire".
+ *
+ * Offset from REGISTRY_SYNC_CRON's minutes so the two never contend for the
+ * same GitHub rate-limit window or the same sync route.
+ */
+export const REGISTRY_RESYNC_CRON = "35 * * * *";
 // #9464: the top-holders leaderboard's alarm. That lane had NO watchdog and no
 // producer -- `account_balances` died with the box and is not in the poller
 // Container's job set -- so the route served a one-shot pre-decommission

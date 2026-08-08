@@ -424,6 +424,7 @@ import {
   runChainDetailStalenessWatchdog,
 } from "../src/chain-detail-staleness-watchdog.ts";
 import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
+import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
@@ -501,6 +502,7 @@ import {
   PROJECTION_STALENESS_WATCHDOG_CRON,
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
+  REGISTRY_RESYNC_CRON,
   REGISTRY_SYNC_CRON,
   CHAIN_CONCENTRATION_ROLLUP_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
@@ -2127,6 +2129,7 @@ function cronLabel(cron: string): string {
     return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === REGISTRY_SYNC_CRON) return "registry-sync";
+  if (cron === REGISTRY_RESYNC_CRON) return "registry-resync";
   if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON)
     return "chain-concentration-rollup";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
@@ -2532,6 +2535,15 @@ async function dispatchScheduled(
     // surface_history froze on 2026-08-02 as a result. Returns a summary
     // rather than throwing, like the rest of the cron family.
     return runRegistrySyncLane(env);
+  }
+  if (cron === REGISTRY_RESYNC_CRON) {
+    // #10236: the incremental lane above only ever syncs forward from its
+    // cursor, and the "scheduled full resync" its comment relies on to close
+    // any pre-existing gap was one of the same dead GitHub Actions scripts.
+    // The registry tables sat 145-160h stale while `registry-sync` reported
+    // `ok` on every tick, because "no registry files changed" was true for the
+    // window it looks at and the gap was outside it.
+    return runRegistryResyncLane(env);
   }
   if (cron === CHAIN_DETAIL_PRUNE_CRON) {
     // #9208 retention. Returns a summary rather than throwing so the #8998
