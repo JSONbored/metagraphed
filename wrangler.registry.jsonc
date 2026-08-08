@@ -101,6 +101,24 @@
       "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
     },
   ],
+  // AND BACK AGAIN (#10060). The paragraph above removed Hyperdrive when this
+  // Worker left the self-hosted Postgres box for D1, on the reasoning that a
+  // dead connection string in config is a hazard. That reasoning was right and
+  // is why this entry is only landing now that it points somewhere live: Neon,
+  // the same Hyperdrive config the data-api Worker uses.
+  //
+  // With this bound, applyRegistrySyncToNeon takes the write path and D1 is not
+  // written at all -- no mirror, no dual-write. This family is the one place
+  // that is safe: nothing outside this Worker reads these four tables (the
+  // public registry serves from R2 artifacts), and all four are rebuildable by
+  // re-running the sync from registry/subnets/*.json. Rollback is removing this
+  // binding, which falls the handler back to REGISTRY_DB.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8a09dc673733497f987434f59689287e",
+    },
+  ],
   // Per-caller abuse control for this Worker's only route (#5548) -- the
   // shared-secret check above authenticates the CALLER, not the REQUEST
   // VOLUME, so anyone holding REGISTRY_SYNC_SECRET could otherwise script
