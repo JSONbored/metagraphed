@@ -1,3 +1,4 @@
+import { z } from "zod";
 // Normalisation applied to every MCP tool input schema on the way out.
 //
 // ## The problem this exists to solve
@@ -105,4 +106,46 @@ export function hasSentinelIntegerBound(schema: unknown): boolean {
     JSON.stringify(schema) !==
     JSON.stringify(stripSentinelIntegerBounds(schema))
   );
+}
+
+/**
+ * The JSON Schema every MCP tool INPUT is emitted as.
+ *
+ * One helper instead of `{ target: "draft-2020-12" }` repeated at ~376 call
+ * sites, so the emission options are chosen once.
+ *
+ * Deliberately does NOT extract reused sub-schemas into `$defs`, unlike its
+ * output-side sibling. An input schema is read by clients that build a form
+ * from `properties` and by model providers that consume it directly; a `$ref`
+ * there is spec-legal and still risks a tool that silently cannot be called.
+ * The saving is on the output side anyway (#9685).
+ */
+export function inputJsonSchema(schema: z.ZodType) {
+  return z.toJSONSchema(schema, { target: "draft-2020-12" });
+}
+
+/**
+ * The JSON Schema every MCP tool OUTPUT is emitted as.
+ *
+ * Identical to the input side today, and kept separate because the two have
+ * different consumers and the question of whether to diverge them keeps coming
+ * back. MEASURED, so it does not have to be asked again:
+ *
+ * `z.toJSONSchema(..., { reused: "ref" })` extracts repeated sub-schemas into
+ * `$defs` -- Zod's own extraction, not a hand-rolled deduper -- and both
+ * consumers accept it (Ajv2020 compiles one; the MCP SDK's
+ * `ListToolsResultSchema` parses one). On the single worst schema it is worth
+ * 37%. Repo-wide it is worth **5.8%** -- 618,068 B to 582,332 B -- because
+ * only 64 tools reuse a sub-schema by identity at all.
+ *
+ * Not taken. A 3% cut of `tools/list` does not pay for changing the emitted
+ * SHAPE on the surface with the most external callers, where a client that
+ * walks `properties` without resolving `$ref` sees a tool it cannot describe.
+ * The real weight is CROSS-tool repetition -- 377 KB, 61% of the output
+ * schemas -- and `$defs` cannot reach it, because each tool's schema has to be
+ * self-contained. Shrinking that means the schemas carrying less, not being
+ * encoded more cleverly (#9685, #9981).
+ */
+export function outputJsonSchema(schema: z.ZodType) {
+  return z.toJSONSchema(schema, { target: "draft-2020-12" });
 }
