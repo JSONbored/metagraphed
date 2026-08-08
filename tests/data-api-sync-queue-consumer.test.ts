@@ -27,19 +27,31 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA =
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0011_nominator_positions.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0011_nominator_positions.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0017_account_balances.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0017_account_balances.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0020_account_balances_passes.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0020_account_balances_passes.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0010_chain_detail.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0010_chain_detail.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
@@ -65,11 +77,17 @@ const SCHEMA =
   // description of the tables. What is under test here is the consumer's
   // disposal decision, not the dialect.
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0019_hotkey_alpha.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0019_hotkey_alpha.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql",
+    ),
     "utf8",
   );
 

@@ -1,7 +1,7 @@
 // The subnet-hyperparams + account-identity family, exercised END TO END
 // against a REAL SQLite database standing in for Postgres, through the real
 // Worker fetch handler -- same rationale and harness as
-// tests/data-api-neurons-d1.test.ts.
+// tests/data-api-neurons.test.ts.
 //
 // Both families are Neon's outright (#10179): the sync reads its own history
 // table to diff, writes both tables, and REPORTS a failure of either rather
@@ -34,7 +34,10 @@ vi.mock("pg", () => pg.module);
 const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql",
+  ),
   "utf8",
 );
 

@@ -22,7 +22,10 @@ import {
 } from "../src/hotkey-alpha-completeness.ts";
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql",
+  ),
   "utf8",
 );
 

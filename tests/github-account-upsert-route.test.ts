@@ -3,13 +3,13 @@
 // only via the DATA_API service binding from src/github-oauth.ts's
 // callback handler (see that module's own test file for the OAuth-flow
 // side). Mirrors tests/wallet-auth-keys-route.test.ts's shape: its own
-// per-test queue over the shared `pg` double (tests/user-state-d1-queue.ts),
+// per-test queue over the shared `pg` double (tests/user-state-store-queue.ts),
 // scoped only to this file -- github_accounts is one of ACCOUNT_STATE_TABLES,
 // and Neon is the only store behind them.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { wireQueuedPg } from "./user-state-d1-queue.ts";
+import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside

@@ -49,7 +49,10 @@ import type { Row } from "./row-type.ts";
 // production cannot reach.
 const SCHEMA = (() => {
   const sql = fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0004_user_state.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0004_user_state.sql",
+    ),
     "utf8",
   );
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS tao_usd_index");

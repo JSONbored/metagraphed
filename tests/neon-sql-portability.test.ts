@@ -36,7 +36,7 @@
 //
 // The route that broke worst did not hold its own SQL. /validators is served
 // by loadGlobalValidators in src/metagraph-neurons.ts, reached through an
-// injected runner that createPgD1Runner can swap for a Postgres one. Scanning
+// injected runner that createPgQuestionMarkRunner can swap for a Postgres one. Scanning
 // only matchNeuronsD1Route would have declared #9802 impossible while it was
 // live. Anything a movable route can reach is in scope.
 import assert from "node:assert/strict";
@@ -192,7 +192,7 @@ const ALL_RULES: readonly Rule[] = [...SQLITE_ONLY, ...BOOLEAN_MISUSE];
 /**
  * Modules whose SQL a movable route can execute through an injected runner.
  *
- * These hold the loaders the analytics routes delegate to. `createPgD1Runner`
+ * These hold the loaders the analytics routes delegate to. `createPgQuestionMarkRunner`
  * makes them store-agnostic by construction -- which is exactly why their SQL
  * has to be portable, and why #9802 lived here rather than in the matcher.
  */
@@ -516,7 +516,7 @@ describe("the deny-list is honest", () => {
     //
     // Every declared column must be guarded. The reverse does NOT have to
     // hold: BOOLEAN_COLUMNS also lists columns whose only writer is a
-    // storeBoolean call in src/pg-d1-adapter.ts, and dropping those from the
+    // storeBoolean call in src/pg-statement-client.ts, and dropping those from the
     // deny-list because no plan happens to name them is how one goes
     // unguarded.
     const declared = new Set<string>();

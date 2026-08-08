@@ -50,7 +50,10 @@ import type { Row } from "./row-type.ts";
 // The real DDL, so every CHECK constraint (the source enum, the 0/1 booleans,
 // the two-arm shape check on emission_flow_watch) is enforced in fixtures too.
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0005_emission_gate.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0005_emission_gate.sql",
+  ),
   "utf8",
 );
 

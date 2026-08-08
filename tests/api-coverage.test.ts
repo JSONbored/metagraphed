@@ -6,7 +6,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
-// src/read-store.ts and src/pg-d1-adapter.ts -- neither of which a
+// src/read-store.ts and src/pg-statement-client.ts -- neither of which a
 // `handleRequest(request, env, ctx)` or `handleScheduled(...)` caller can
 // inject into. Mocking the module is the seam; see tests/helpers/pg-mock.ts
 // for why, and for why the controller has to be built inside vi.hoisted.
@@ -3029,7 +3029,7 @@ describe("health trends store error handling", () => {
 
   // "bulk route treats a D1 response without results as empty" was DELETED
   // here. Its subject was D1's `{ results }` envelope arriving without the
-  // key; on Postgres src/pg-d1-adapter.ts constructs that envelope itself from
+  // key; on Postgres src/pg-statement-client.ts constructs that envelope itself from
   // `res.rows ?? []`, so the shape it guarded against cannot occur and the
   // test could only have been restated as "an empty read is an empty payload"
   // -- which the two cases above already cover.
@@ -3271,9 +3271,14 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     const { DatabaseSync } = await import("node:sqlite");
     const fs = await import("node:fs");
     const db = new DatabaseSync(":memory:");
-    db.exec(fs.readFileSync("tests/fixtures/sqlite-schema/0005_emission_gate.sql", "utf8"));
+    db.exec(
+      fs.readFileSync(
+        "tests/fixtures/sqlite-schema/0005_emission_gate.sql",
+        "utf8",
+      ),
+    );
     // The sqlite fixture stands BEHIND the pg double rather than being handed
-    // to the handler: producerStore builds its own `createPgD1` handle from
+    // to the handler: producerStore builds its own `createPgStatementClient` handle from
     // env.HYPERDRIVE, so there is nothing to inject. sqliteBackedPg translates
     // the statement text the writer emits; pg-mock maps the binds -- the gate
     // lane writes real booleans now (#10112) and node:sqlite takes no boolean

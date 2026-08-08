@@ -5,7 +5,7 @@
 // this table's shape.
 //
 // One fake: a per-test queue over the shared `pg` double
-// (tests/user-state-d1-queue.ts), which is the only tier these routes touch --
+// (tests/user-state-store-queue.ts), which is the only tier these routes touch --
 // chain_alert_triggers/chain_alert_deliveries are ALERT_TRIGGER_TABLES and Neon
 // is the only store behind them, and the Postgres mock that used to stand in
 // for the dereg-risk snapshot's chain-table reads went with the tier itself
@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { wireQueuedPg } from "./user-state-d1-queue.ts";
+import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside

@@ -47,7 +47,10 @@ const MIGRATIONS = [
   "0021_hotkey_alpha_passes.sql",
   "0022_nominator_positions_hotkey_netuid.sql",
 ].map((f) =>
-  fs.readFileSync(path.join(process.cwd(), "tests/fixtures/sqlite-schema", f), "utf8"),
+  fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema", f),
+    "utf8",
+  ),
 );
 
 const HOTKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";

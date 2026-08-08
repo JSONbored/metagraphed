@@ -1,6 +1,6 @@
 // The revived validator-nominator-counts sync lane (#9146), exercised END TO
 // END against a REAL SQLite database through the real Worker fetch handler --
-// same harness and rationale as tests/data-api-nominator-positions-d1.test.ts.
+// same harness and rationale as tests/data-api-nominator-positions.test.ts.
 //
 // This route answered `503 hyperdrive binding unavailable` from the box wipe
 // (#9193) until migration 0012 gave it a Cloudflare-native store. Its producer

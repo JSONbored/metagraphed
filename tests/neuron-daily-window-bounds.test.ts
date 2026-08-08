@@ -1,6 +1,6 @@
 // The four query shapes of neuronDailyWindowBounds (#9798).
 //
-// tests/data-api-neurons-d1.test.ts drives the two shapes today's routes reach,
+// tests/data-api-neurons.test.ts drives the two shapes today's routes reach,
 // end to end against real SQLite. This file covers all four, because the other
 // two are unreachable only by accident of the current window maps --
 // CHAIN_TURNOVER_WINDOWS and MOVERS_WINDOWS are `Record<string, number>` so a

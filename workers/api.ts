@@ -3,7 +3,10 @@ import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
-import { createPgD1, storeBoolean } from "../src/pg-d1-adapter.ts";
+import {
+  createPgStatementClient,
+  storeBoolean,
+} from "../src/pg-statement-client.ts";
 import { neonOwnsTable } from "../src/neon-write.ts";
 import {
   API_QUERY_COLLECTIONS,
@@ -2179,7 +2182,7 @@ function producerStore(
     Boolean(env.HYPERDRIVE?.connectionString) &&
     tables.every((table) => neonOwnsTable(bag, table));
   if (!owned) return { db: undefined, close: () => undefined };
-  const pg = createPgD1(env.HYPERDRIVE!.connectionString);
+  const pg = createPgStatementClient(env.HYPERDRIVE!.connectionString);
   return {
     db: pg,
     close: () => ctx?.waitUntil?.(pg.close()),
@@ -3848,7 +3851,7 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
 }
 
 /** The producer store's read surface, as this lane uses it. */
-type ProducerDb = ReturnType<typeof createPgD1>;
+type ProducerDb = ReturnType<typeof createPgStatementClient>;
 
 async function emissionGateSyncRows(
   db: ProducerDb,

@@ -57,7 +57,10 @@ const MIGRATIONS = [
   "0022_nominator_positions_hotkey_netuid.sql",
   "0023_nominator_positions_netuid.sql",
 ].map((f) =>
-  fs.readFileSync(path.join(process.cwd(), "tests/fixtures/sqlite-schema", f), "utf8"),
+  fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema", f),
+    "utf8",
+  ),
 );
 
 const PASS = 1_785_900_000_000;

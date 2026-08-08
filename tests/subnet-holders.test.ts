@@ -62,7 +62,10 @@ const MIGRATIONS = [
   "0022_nominator_positions_hotkey_netuid.sql",
   "0023_nominator_positions_netuid.sql",
 ].map((file) =>
-  fs.readFileSync(path.join(process.cwd(), "tests/fixtures/sqlite-schema", file), "utf8"),
+  fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema", file),
+    "utf8",
+  ),
 );
 
 const NETUID = 74;

@@ -3,7 +3,7 @@
 // watch-token authorized) and handleInternalPushSubscription (AlerterHub-only,
 // internal-token gated).
 //
-// Own per-test queue over the shared `pg` double (tests/user-state-d1-queue.ts),
+// Own per-test queue over the shared `pg` double (tests/user-state-store-queue.ts),
 // scoped to this file, mirroring tests/wallet-auth-keys-route.test.ts's shape --
 // watch_push_subscriptions is one of ALERT_TRIGGER_TABLES, and Neon is the only
 // store behind them.
@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { wireQueuedPg } from "./user-state-d1-queue.ts";
+import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside
