@@ -429,6 +429,7 @@ import {
 import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
 import { runDailySeriesCoverageWatchdog } from "../src/daily-series-coverage-watchdog.ts";
+import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
@@ -2499,9 +2500,32 @@ async function dispatchScheduled(
     // The neurons live lane's alarm. Zero alerts is the correct steady state;
     // a stale verdict records one exception under
     // watchdog:neurons-staleness, which is the project's alert channel.
-    return runNeuronsStalenessWatchdog(
+    // #10262 rides this tick rather than taking a cron of its own. It needs
+    // exactly what this watchdog already reads -- the netuid set at `neurons`'
+    // newest stamp, and whether that pass cleared the coverage floor -- so a
+    // separate trigger would re-read the same pass on a different schedule and
+    // add a 35th cron expression to the 34 that #10226 exists to collapse.
+    //
+    // Guarded, and deliberately AFTER the watchdog: the alarm is the load-
+    // bearing half. A lifecycle write that throws must not cost the estate its
+    // neurons staleness verdict, so its failure is swallowed here and recorded
+    // in its own lane_health row.
+    const staleness = await runNeuronsStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
+    const lifecycle = runSubnetLifecycleLane(
+      env as unknown as Record<string, unknown>,
+      { ctx },
+    ).catch(() => undefined);
+    // waitUntil where there is one, AWAIT where there is not. A bare `{}` ctx
+    // reaches here from callers that have none to give, and calling
+    // `ctx.waitUntil` on it throws -- which would take the staleness alarm down
+    // with it, the precise outcome the guard above exists to prevent. Awaiting
+    // is the safe fallback rather than dropping the promise, because a floating
+    // promise in an isolate that is about to end is work silently not done.
+    if (typeof ctx?.waitUntil === "function") ctx.waitUntil(lifecycle);
+    else await lifecycle;
+    return staleness;
   }
   if (cron === PROJECTION_STALENESS_WATCHDOG_CRON) {
     // The projection lanes' alarm (#9423). Zero alerts is the correct steady
