@@ -86,8 +86,13 @@ describe("probeComponent", () => {
   });
 
   test("a hung request is down rather than hanging the tick", async () => {
+    // `wait` is injected rather than relying on setTimeout: this test passed
+    // locally and hung for the full 30s vitest budget in CI, which is the same
+    // shape as this repo's unresolved webhook-retry-timer case. What matters is
+    // the timeout PATH, and that is testable without betting on a timer.
     const result = await probeComponent("api", "https://x/y", {
       fetch: (() => new Promise(() => {})) as never,
+      wait: async () => undefined,
       timeoutMs: 5,
     });
     assert.equal(result.ok, false);

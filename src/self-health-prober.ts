@@ -49,6 +49,11 @@ export const SELF_HEALTH_PROBE_LANE = "self-health-probe";
 /** How long a component gets before the probe calls it down. */
 export const SELF_HEALTH_TIMEOUT_MS = 10_000;
 
+/** The default timeout clock. Separated so a test can replace it -- see
+ *  SelfHealthProberDeps.wait for why that is not optional hygiene. */
+const defaultWait = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
 /** What each component's probe actually requests. */
 export const SELF_HEALTH_TARGETS: Readonly<Record<string, string>> = {
   // A data route rather than /health -- see this module's header.
@@ -67,6 +72,14 @@ export interface SelfHealthProbeResult {
 export interface SelfHealthProberDeps {
   fetch?: typeof fetch;
   now?: () => number;
+  /** The timeout clock, injectable.
+   *
+   * A test cannot rely on the default firing: setTimeout has been observed NOT
+   * to run in this repo's worker test environment (the unresolved
+   * webhook-retry-timer case), and this test hung for the full 30s vitest
+   * budget in CI while passing locally. Injecting the wait tests the timeout
+   * PATH without betting on a timer. */
+  wait?: (ms: number) => Promise<void>;
   sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
   laneHealthDb?: LaneHealthDb | null;
   timeoutMs?: number;
@@ -92,9 +105,9 @@ export async function probeComponent(
         headers: { "cache-control": "no-cache" },
         redirect: "follow",
       }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), timeoutMs),
-      ),
+      (deps.wait ?? defaultWait)(timeoutMs).then((): never => {
+        throw new Error("timeout");
+      }),
     ]);
     const status = response.status;
     return {
