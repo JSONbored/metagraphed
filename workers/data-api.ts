@@ -384,6 +384,7 @@ import {
   SUBNET_HYPERPARAMS_NEON_LANE,
   failedTables,
   mirrorFamilyToNeon,
+  FAMILY_MIRROR_PLANS,
 } from "../src/hyperparams-identity-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
@@ -1441,19 +1442,29 @@ async function handleSubnetHyperparamsSync(
   // since the box went away (#9157's contract, applied to this lane). Checked
   // HERE, after parsing and validation, not at the top: a malformed body is a
   // 400 whether or not a store happens to be bound.
-  if (!env.METAGRAPH_HEALTH_DB) {
+  // THE INVERSION (#10094). Once Neon owns both tables of the family the D1
+  // write is skipped outright rather than written and ignored -- a second copy
+  // kept up to date by nothing is the state this migration exists to end.
+  const neonOwns = neonOwnsFamily(env, SUBNET_HYPERPARAMS_NEON_LANE);
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
-  // D1 first, and it must succeed: it is where this family lives now.
-  let d1Statements: number;
+  // 0 when Neon owns the family and the D1 write is skipped entirely.
+  let d1Statements = 0;
   let d1HistoryAppended: number;
   // Hoisted so the Neon write below sees the SAME diff D1 was given -- one
   // derivation, two stores, so the two histories cannot disagree about which
   // revisions exist.
   let neonHistoryRows: Row[];
+  // The latest-hash read comes from the store that HOLDS the history, so the
+  // diff is against the revisions that actually exist. Reading D1's copy while
+  // Neon owns it would re-append every revision Neon already has.
+  const historySql = neonOwns
+    ? createPgSql(env.HYPERDRIVE!, ctx)
+    : createD1Sql(env.METAGRAPH_HEALTH_DB);
   try {
-    const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+    const d1Sql = historySql;
     // Latest hash per netuid -- group-wise MAX(id) join, the SQLite spelling
     // of the Postgres side's `DISTINCT ON (netuid) ... ORDER BY netuid, id
     // DESC` below.
@@ -1470,12 +1481,14 @@ async function handleSubnetHyperparamsSync(
     const historyRows = diffHyperparamsHistory(hashedRows, latestByNetuid, now);
     neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
-    ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeSubnetHyperparamsToD1
-      >[0],
-      { rows, netuids, historyRows },
-    ));
+    if (!neonOwns) {
+      ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeSubnetHyperparamsToD1
+        >[0],
+        { rows, netuids, historyRows },
+      ));
+    }
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync D1 write failed:", err);
     await captureDataApiError(err, "subnet-hyperparams-sync-d1", env);
@@ -1497,11 +1510,35 @@ async function handleSubnetHyperparamsSync(
     { rows, historyRows: neonHistoryRows },
   );
 
+  // THE OTHER HALF OF THE INVERSION. While D1 served the reads a Neon failure
+  // had to cost a lane verdict and not the pass. Once Neon IS the store that
+  // reasoning flips: a pass that did not reach it did not happen, and ok:true
+  // would tell the producer its rows are safe when nothing holds them.
+  if (neonOwns) {
+    const failed = failedTables(neon);
+    if (!neon.attempted || (failed && failed.length > 0)) {
+      console.error(
+        "data-api subnet-hyperparams-sync Neon write failed:",
+        failed,
+      );
+      await captureDataApiError(
+        new Error(
+          failed && failed.length > 0
+            ? `neon write failed: ${failed.join(", ")}`
+            : "neon write not attempted while Neon owns the family",
+        ),
+        "subnet-hyperparams-sync-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
   return writeJson({
     ok: true,
     subnet_hyperparams_written: rows.length,
-    history_appended: d1HistoryAppended,
-    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
+    history_appended: neonOwns ? neonHistoryRows.length : d1HistoryAppended,
+    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
     neon: neon.attempted ? neon.results : undefined,
     neon_failed: neon.attempted ? failedTables(neon) : undefined,
@@ -1685,18 +1722,27 @@ async function handleAccountIdentitySync(
   // D1 is the binding this path REQUIRES -- the only store this family has
   // since the box went away (#9157's contract, applied to this lane). Checked
   // after parsing and validation for the same reason as the hyperparams sync.
-  if (!env.METAGRAPH_HEALTH_DB) {
+  // THE INVERSION (#10094), the identity half. Same shape as the hyperparams
+  // sync above: once Neon owns both tables the D1 write is skipped outright.
+  const neonOwns = neonOwnsFamily(env, ACCOUNT_IDENTITY_NEON_LANE);
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
-  let d1Statements: number;
+  let d1Statements = 0;
   let d1HistoryAppended: number;
   // Hoisted so the Neon write sees the SAME diff D1 was given -- one
   // derivation, two stores, so the two histories cannot disagree about which
   // revisions exist.
   let neonHistoryRows: Row[];
+  // The latest-hash read comes from the store that HOLDS the history: diffing
+  // against D1's copy while Neon owns it would re-append every revision Neon
+  // already has.
+  const historySql = neonOwns
+    ? createPgSql(env.HYPERDRIVE!, ctx)
+    : createD1Sql(env.METAGRAPH_HEALTH_DB);
   try {
-    const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+    const d1Sql = historySql;
     // Latest hash per account -- group-wise MAX(id) join, the SQLite
     // spelling of the Postgres `DISTINCT ON (account)` below.
     const latest = await d1Sql`
@@ -1712,12 +1758,14 @@ async function handleAccountIdentitySync(
     const historyRows = diffIdentityHistory(hashedRows, latestByAccount, now);
     neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
-    ({ statements: d1Statements } = await writeAccountIdentityToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeAccountIdentityToD1
-      >[0],
-      { rows, historyRows },
-    ));
+    if (!neonOwns) {
+      ({ statements: d1Statements } = await writeAccountIdentityToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeAccountIdentityToD1
+        >[0],
+        { rows, historyRows },
+      ));
+    }
   } catch (err) {
     console.error("data-api account-identity-sync D1 write failed:", err);
     await captureDataApiError(err, "account-identity-sync-d1", env);
@@ -1735,11 +1783,34 @@ async function handleAccountIdentitySync(
     { rows, historyRows: neonHistoryRows },
   );
 
+  // The other half of the inversion -- see the hyperparams sync for the
+  // reasoning. Once Neon is the store, a pass that did not reach it did not
+  // happen.
+  if (neonOwns) {
+    const failed = failedTables(neon);
+    if (!neon.attempted || (failed && failed.length > 0)) {
+      console.error(
+        "data-api account-identity-sync Neon write failed:",
+        failed,
+      );
+      await captureDataApiError(
+        new Error(
+          failed && failed.length > 0
+            ? `neon write failed: ${failed.join(", ")}`
+            : "neon write not attempted while Neon owns the family",
+        ),
+        "account-identity-sync-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
   return writeJson({
     ok: true,
     account_identity_written: rows.length,
-    history_appended: d1HistoryAppended,
-    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
+    history_appended: neonOwns ? neonHistoryRows.length : d1HistoryAppended,
+    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
     neon: neon.attempted ? neon.results : undefined,
     neon_failed: neon.attempted ? failedTables(neon) : undefined,
@@ -3069,6 +3140,26 @@ export function neonOwnsNeuronsSnapshot(env: Env): boolean {
   return (
     Boolean(env.HYPERDRIVE?.connectionString) &&
     NEURONS_SNAPSHOT_TABLES.every((table) =>
+      neonOwnsTable(env as unknown as Record<string, unknown>, table),
+    )
+  );
+}
+
+/**
+ * Whether Neon is the ONLY store behind one hyperparams/identity family.
+ *
+ * BOTH tables of the family, never one. The sync derives its history rows by
+ * reading the CURRENT latest hash out of the history table and diffing -- so a
+ * family split across stores would diff against the wrong store's history and
+ * append revisions that already exist, or miss ones that do not. The pair moves
+ * together or not at all.
+ */
+export function neonOwnsFamily(env: Env, lane: string): boolean {
+  const plan = FAMILY_MIRROR_PLANS[lane];
+  if (!plan) return false;
+  return (
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    [plan.latest.table, plan.history.table].every((table) =>
       neonOwnsTable(env as unknown as Record<string, unknown>, table),
     )
   );
