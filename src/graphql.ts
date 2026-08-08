@@ -6168,7 +6168,8 @@ const rootValue = {
     return {
       take_u16: data.take_u16 ?? null,
       take_last_changed_date: data.take_last_changed_date ?? null,
-      next_take_change_eligible_date: data.next_take_change_eligible_date ?? null,
+      next_take_change_eligible_date:
+        data.next_take_change_eligible_date ?? null,
       take_change_observable: data.take_change_observable ?? null,
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,

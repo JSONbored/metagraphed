@@ -27,10 +27,36 @@
 import { readFileSync } from "node:fs";
 import { parse } from "graphql";
 import { GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
-import type { GraphQLOutputType, ObjectTypeDefinitionNode, TypeNode } from "graphql";
+import type {
+  GraphQLOutputType,
+  ObjectTypeDefinitionNode,
+  TypeNode,
+} from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 
-type Json = Record<string, any>;
+/** Only the sliver of the OpenAPI document this gate reads. */
+export interface OpenApiDocument {
+  paths?: Record<
+    string,
+    {
+      get?: {
+        responses?: Record<
+          string,
+          {
+            content?: Record<
+              string,
+              {
+                schema?: {
+                  allOf?: { properties?: { data?: { $ref?: string } } }[];
+                };
+              }
+            >;
+          }
+        >;
+      };
+    }
+  >;
+}
 
 const SDL_PATH = "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
@@ -64,22 +90,21 @@ const PAGINATION_FIELDS = new Set([
  */
 const DECLARED: Record<string, string> = {};
 
-const openapi = JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as Json;
-
-const literal = /export const SDL = \/\* GraphQL \*\/ `([\s\S]*?)`;\s*$/m.exec(
-  readFileSync(SDL_PATH, "utf8"),
-);
-if (!literal) {
-  console.error(`graphql-component-parity: no SDL template literal in ${SDL_PATH}`);
-  process.exit(1);
+export interface ParityReport {
+  violations: string[];
+  stale: string[];
+  comparedTypes: number;
+  comparedFields: number;
+  projections: string[];
 }
 
-const sdlTypes = new Map<string, ObjectTypeDefinitionNode>();
-for (const def of parse(literal[1]).definitions) {
-  if (def.kind === "ObjectTypeDefinition") sdlTypes.set(def.name.value, def);
+/** Pull the SDL out of the TypeScript template literal that holds it. */
+export function extractSdl(source: string): string | null {
+  const match = /export const SDL = \/\* GraphQL \*\/ `([\s\S]*?)`;\s*$/m.exec(
+    source,
+  );
+  return match ? match[1] : null;
 }
-
-const { types: generated } = emitTypes();
 
 function sdlTypeName(node: TypeNode): string {
   let current = node;
@@ -89,99 +114,151 @@ function sdlTypeName(node: TypeNode): string {
 
 function generatedTypeName(type: GraphQLOutputType): string | null {
   let current: unknown = type;
-  while (current instanceof GraphQLNonNull || current instanceof GraphQLList) current = current.ofType;
+  while (current instanceof GraphQLNonNull || current instanceof GraphQLList)
+    current = current.ofType;
   return current instanceof GraphQLObjectType ? current.name : null;
 }
 
-/** The component a route's `data` property refs. */
-function dataComponent(route: string): string | null {
-  const schema = openapi.paths?.[route]?.get?.responses?.["200"]?.content?.["application/json"]?.schema;
-  for (const part of schema?.allOf ?? []) {
-    const ref = part?.properties?.data?.$ref;
-    if (typeof ref === "string") return ref.replace("#/components/schemas/", "");
+/**
+ * Compare a GraphQL SDL against the Zod components its types mirror.
+ *
+ * Takes the SDL text and the OpenAPI document rather than reading them, so a
+ * test can drive it with a MUTATED schema and prove the gate actually fails.
+ * A gate only ever run against a passing tree proves nothing.
+ */
+export function checkComponentParity(
+  sdl: string,
+  openapi: OpenApiDocument,
+  declared: Record<string, string> = DECLARED,
+): ParityReport {
+  const sdlTypes = new Map<string, ObjectTypeDefinitionNode>();
+  for (const def of parse(sdl).definitions) {
+    if (def.kind === "ObjectTypeDefinition") sdlTypes.set(def.name.value, def);
   }
-  return null;
-}
+  const { types: generated } = emitTypes();
 
-// ── seed from the Query bindings, then propagate through matching fields ────
-const pairs: [string, string][] = [];
-for (const field of sdlTypes.get("Query")?.fields ?? []) {
-  const mirrors = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(field.description?.value ?? "");
-  if (!mirrors) continue;
-  const component = dataComponent(mirrors[1].replace(/\.$/, ""));
-  if (component) pairs.push([sdlTypeName(field.type), component]);
-}
+  /** The component a route's `data` property refs. */
+  const dataComponent = (route: string): string | null => {
+    const schema =
+      openapi.paths?.[route]?.get?.responses?.["200"]?.content?.[
+        "application/json"
+      ]?.schema;
+    for (const part of schema?.allOf ?? []) {
+      const ref = part?.properties?.data?.$ref;
+      if (typeof ref === "string")
+        return ref.replace("#/components/schemas/", "");
+    }
+    return null;
+  };
 
-/** SDL type name -> every component it mirrors (a shared type mirrors many). */
-const paired = new Map<string, Set<string>>();
-const queue = [...pairs];
-while (queue.length) {
-  const [sdlName, componentName] = queue.shift()!;
-  const sdlType = sdlTypes.get(sdlName);
-  const genType = generated.get(componentName);
-  if (!sdlType || !genType) continue;
-  const seen = paired.get(sdlName);
-  if (seen?.has(componentName)) continue;
-  if (seen) seen.add(componentName);
-  else paired.set(sdlName, new Set([componentName]));
-  const genFields = genType.getFields();
-  for (const field of sdlType.fields ?? []) {
-    const child = genFields[field.name.value];
-    if (!child) continue;
-    const childSdl = sdlTypeName(field.type);
-    const childGen = generatedTypeName(child.type);
-    if (childGen && sdlTypes.has(childSdl) && generated.has(childGen)) {
-      queue.push([childSdl, childGen]);
+  // ── seed from the Query bindings, then propagate through matching fields ──
+  const queue: [string, string][] = [];
+  for (const field of sdlTypes.get("Query")?.fields ?? []) {
+    const mirrors = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(
+      field.description?.value ?? "",
+    );
+    if (!mirrors) continue;
+    const component = dataComponent(mirrors[1].replace(/\.$/, ""));
+    if (component) queue.push([sdlTypeName(field.type), component]);
+  }
+
+  /** SDL type name -> every component it mirrors (a shared type mirrors many). */
+  const paired = new Map<string, Set<string>>();
+  while (queue.length) {
+    const [sdlName, componentName] = queue.shift()!;
+    const sdlType = sdlTypes.get(sdlName);
+    const genType = generated.get(componentName);
+    if (!sdlType || !genType) continue;
+    const seen = paired.get(sdlName);
+    if (seen?.has(componentName)) continue;
+    if (seen) seen.add(componentName);
+    else paired.set(sdlName, new Set([componentName]));
+    const genFields = genType.getFields();
+    for (const field of sdlType.fields ?? []) {
+      const child = genFields[field.name.value];
+      if (!child) continue;
+      const childSdl = sdlTypeName(field.type);
+      const childGen = generatedTypeName(child.type);
+      if (childGen && sdlTypes.has(childSdl) && generated.has(childGen)) {
+        queue.push([childSdl, childGen]);
+      }
     }
   }
-}
 
-// ── compare each mirror against every component it mirrors ─────────────────
-const violations: string[] = [];
-const projections: string[] = [];
-const matched = new Set<string>();
-let comparedTypes = 0;
-let comparedFields = 0;
+  // ── compare each mirror against every component it mirrors ───────────────
+  const violations: string[] = [];
+  const projections: string[] = [];
+  const matched = new Set<string>();
+  let comparedTypes = 0;
+  let comparedFields = 0;
 
-for (const [sdlName, components] of paired) {
-  const sdlType = sdlTypes.get(sdlName)!;
-  const sdlFields = new Set((sdlType.fields ?? []).map((f) => f.name.value));
-  for (const componentName of components) {
-    const genFields = generated.get(componentName)!.getFields();
-    const genNames = Object.keys(genFields);
-    const addedPagination = [...sdlFields].filter((f) => PAGINATION_FIELDS.has(f) && !genNames.includes(f));
-    if (addedPagination.length >= 2) {
-      projections.push(`${sdlName} <- ${componentName}`);
-      continue;
-    }
-    comparedTypes += 1;
-    for (const name of genNames) {
-      comparedFields += 1;
-      if (sdlFields.has(name)) continue;
-      const key = `${sdlName}.${name}`;
-      if (DECLARED[key]) {
-        matched.add(key);
+  for (const [sdlName, components] of paired) {
+    const sdlFields = new Set(
+      (sdlTypes.get(sdlName)!.fields ?? []).map((f) => f.name.value),
+    );
+    for (const componentName of components) {
+      const genNames = Object.keys(generated.get(componentName)!.getFields());
+      const addedPagination = [...sdlFields].filter(
+        (f) => PAGINATION_FIELDS.has(f) && !genNames.includes(f),
+      );
+      if (addedPagination.length >= 2) {
+        projections.push(`${sdlName} <- ${componentName}`);
         continue;
       }
-      violations.push(`${key} -- ${componentName} publishes it, the SDL does not declare it`);
+      comparedTypes += 1;
+      for (const name of genNames) {
+        comparedFields += 1;
+        if (sdlFields.has(name)) continue;
+        const key = `${sdlName}.${name}`;
+        if (declared[key]) {
+          matched.add(key);
+          continue;
+        }
+        violations.push(
+          `${key} -- ${componentName} publishes it, the SDL does not declare it`,
+        );
+      }
     }
   }
+
+  return {
+    violations,
+    stale: Object.keys(declared).filter((key) => !matched.has(key)),
+    comparedTypes,
+    comparedFields,
+    projections,
+  };
 }
 
-const stale = Object.keys(DECLARED).filter((key) => !matched.has(key));
-
-console.log(
-  `graphql-component-parity: ${comparedTypes} mirror type(s), ${comparedFields} field(s) compared, ` +
-    `${projections.length} resolver-built projection(s) skipped.`,
-);
-
-if (violations.length) {
-  console.error(`\n${violations.length} field(s) a component publishes that GraphQL does not expose:`);
-  for (const line of violations.sort()) console.error(`  - ${line}`);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const sdl = extractSdl(readFileSync(SDL_PATH, "utf8"));
+  if (!sdl) {
+    console.error(
+      `graphql-component-parity: no SDL template literal in ${SDL_PATH}`,
+    );
+    process.exit(1);
+  }
+  const report = checkComponentParity(
+    sdl,
+    JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as OpenApiDocument,
+  );
+  console.log(
+    `graphql-component-parity: ${report.comparedTypes} mirror type(s), ` +
+      `${report.comparedFields} field(s) compared, ` +
+      `${report.projections.length} resolver-built projection(s) skipped.`,
+  );
+  if (report.violations.length) {
+    console.error(
+      `\n${report.violations.length} field(s) a component publishes that GraphQL does not expose:`,
+    );
+    for (const line of report.violations.sort()) console.error(`  - ${line}`);
+  }
+  if (report.stale.length) {
+    console.error(
+      `\n${report.stale.length} stale DECLARED entr(y/ies) -- the omission is gone, delete the entry:`,
+    );
+    for (const key of report.stale) console.error(`  - ${key}`);
+  }
+  if (report.violations.length || report.stale.length) process.exit(1);
+  console.log("graphql-component-parity: OK");
 }
-if (stale.length) {
-  console.error(`\n${stale.length} stale DECLARED entr(y/ies) -- the omission is gone, delete the entry:`);
-  for (const key of stale) console.error(`  - ${key}`);
-}
-if (violations.length || stale.length) process.exit(1);
-console.log("graphql-component-parity: OK");

@@ -1572,7 +1572,9 @@ export const SDL = /* GraphQL */ `
     window_registrations: Int!
     "Of those, the ones with no observed previous holder."
     unattributed_registrations: Int!
-    """True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least \`unattributed_registrations\`. Treat the value as 'at least this many', never as a total."""
+    """
+    True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least \`unattributed_registrations\`. Treat the value as 'at least this many', never as a total.
+    """
     is_lower_bound: Boolean
   }
 
@@ -2457,7 +2459,6 @@ export const SDL = /* GraphQL */ `
     type_definitions_url: String
     notes: JSON
     artifacts: [JSON!]!
-    status_domain: JSON
   }
 
   type BuildSummary {
@@ -3366,7 +3367,9 @@ export const SDL = /* GraphQL */ `
     last_set_at: String
     seconds_since_last_set: Int
     tempos_since_last_set: Float
-    """Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time')."""
+    """
+    Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time').
+    """
     overdue: Boolean
   }
 
@@ -3836,7 +3839,9 @@ export const SDL = /* GraphQL */ `
     stake_threshold_units: Float
     tao_weight: Float
     root_tao_to_clear_threshold: Float
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -3864,7 +3869,9 @@ export const SDL = /* GraphQL */ `
     window: String!
     "Newest first."
     points: [ValidatorEconomicsHistoryPoint!]!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -3901,7 +3908,9 @@ export const SDL = /* GraphQL */ `
     model_agreement: ValidatorPermitModelAgreement
     "Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'."
     degraded_reason: String
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4174,7 +4183,9 @@ export const SDL = /* GraphQL */ `
     king: JSON
     count: Int!
     leaderboard: [JSON!]!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4195,7 +4206,9 @@ export const SDL = /* GraphQL */ `
     leased: Boolean
     lease: JSON
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4205,7 +4218,9 @@ export const SDL = /* GraphQL */ `
     ss58: String!
     balance_tao: Float
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4236,7 +4251,9 @@ export const SDL = /* GraphQL */ `
     claim_type: RootClaimType
     hotkeys: [RootClaimHotkey!]
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4246,7 +4263,9 @@ export const SDL = /* GraphQL */ `
     account: String!
     subnets: [AccountChildSubnet!]
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4269,7 +4288,9 @@ export const SDL = /* GraphQL */ `
     account: String!
     subnets: [AccountParentSubnet!]
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4330,7 +4351,9 @@ export const SDL = /* GraphQL */ `
     h160: String!
     ss58: String
     queried_at: String!
-    """Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5."""
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
     field_sources: JSON
   }
 
@@ -4504,7 +4527,9 @@ export const SDL = /* GraphQL */ `
     points: [ValidatorHistoryPoint!]!
     take_u16: Int
     take_last_changed_date: String
-    """take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'."""
+    """
+    take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'.
+    """
     next_take_change_eligible_date: String
     take_change_observable: Boolean
   }
@@ -5298,11 +5323,17 @@ export const SDL = /* GraphQL */ `
   }
 
   type AccountPositionsDegraded {
-    """\`tier_unavailable\`: every tier declined, so this zero is a read failure. \`snapshot_predates_stake_activity\`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so \`positions: 0\` is a claim the ledger is not entitled to make. \`positions_unpriceable\`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from \`positions\` and from \`total_stake_alpha\` rather than reported with a fabricated zero, so the total understates the real holding."""
+    """
+    \`tier_unavailable\`: every tier declined, so this zero is a read failure. \`snapshot_predates_stake_activity\`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so \`positions: 0\` is a claim the ledger is not entitled to make. \`positions_unpriceable\`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from \`positions\` and from \`total_stake_alpha\` rather than reported with a fabricated zero, so the total understates the real holding.
+    """
     reason: String!
-    """The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for."""
+    """
+    The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for.
+    """
     snapshot_captured_at: String!
-    """The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero."""
+    """
+    The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero.
+    """
     latest_stake_event_at: String!
   }
 

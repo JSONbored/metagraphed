@@ -8,23 +8,26 @@
 // the SDL never declared at all: a one-directional gate over a hand-written
 // mirror.
 //
-// What that cost: 45 SDL types were missing 117 fields their route publishes,
-// 66 of them domain fields rather than envelope metadata. Among them the
-// completeness markers -- `NominatorList.concentration_complete`,
-// `RuntimeVersionHistory.coverage_complete`, `EmissionPipeline.
-// matched_subnet_count` -- so a GraphQL client could read `nominator_gini`
-// with no way to learn the concentration behind it was computed over a partial
-// set. That is the confident-zeros failure (#9803) reached through a different
-// door: a well-formed, confident answer with the caveat stripped off.
+// What that cost: 36 mirror types omitted 88 fields their component publishes
+// (measured after excluding the 25 pagination views the resolvers build, which
+// are not mirrors). Among them the completeness markers --
+// `NominatorList.concentration_complete`, `RuntimeVersionHistory.
+// coverage_complete`, `EmissionPipeline.matched_subnet_count` -- so a GraphQL
+// client could read `nominator_gini` with no way to learn the concentration
+// behind it was computed over a partial set. That is the confident-zeros
+// failure (#9803) reached through a different door: a well-formed, confident
+// answer with the caveat stripped off.
 //
 // Generating the types from the same Zod schemas the routes serve makes that
 // class unrepresentable -- a field cannot go missing from a type derived from
 // the schema that produces it.
 //
-// SCOPE. This module owns the type system (object types, scalars, enums). The
-// Query root is assembled by ./query.ts from the field->route bindings, which
-// are the one genuinely authored input: no rule derives the GraphQL field name
-// `subnet_health` from the path `/api/v1/subnets/{netuid}/health`.
+// SCOPE. This module owns the type system: the object types every mirror is
+// checked against by scripts/validate-graphql-component-parity.ts. The Query
+// root and the resolver-built pagination views stay in src/graphql-sdl.ts --
+// no rule derives the field name `subnet_health` from the path
+// `/api/v1/subnets/{netuid}/health`, and a list view is a resolver's shape
+// rather than a component's.
 import { z } from "zod";
 import {
   GraphQLBoolean,
@@ -40,7 +43,21 @@ import {
 } from "graphql";
 import { openApiComponentRegistry } from "../openapi-registry.ts";
 
-type Json = Record<string, any>;
+/** The subset of JSON Schema 2020-12 that Zod's emitter actually produces. */
+interface SchemaNode {
+  $ref?: string;
+  type?: string;
+  properties?: Record<string, SchemaNode>;
+  required?: string[];
+  items?: SchemaNode;
+  allOf?: SchemaNode[];
+  anyOf?: SchemaNode[];
+  oneOf?: SchemaNode[];
+  additionalProperties?: SchemaNode | boolean;
+  description?: string;
+  const?: unknown;
+  enum?: unknown[];
+}
 
 /**
  * The escape hatch for a shape GraphQL's type system cannot express: a record
@@ -65,17 +82,17 @@ export const JSONScalar = new GraphQLScalarType({
  * anonymous "__shared" bucket with no usable name. Inlining duplicates that
  * small shape per call site instead, which is what both emitters want.
  */
-export function componentSchemas(): Record<string, Json> {
+export function componentSchemas(): Record<string, SchemaNode> {
   const generated = z.toJSONSchema(openApiComponentRegistry, {
     target: "draft-2020-12",
     reused: "inline",
     uri: (id) => `#/components/schemas/${id}`,
   });
-  return generated.schemas as Record<string, Json>;
+  return generated.schemas as Record<string, SchemaNode>;
 }
 
 /** `#/components/schemas/Foo` -> `Foo`; anything else -> null. */
-function refName(node: Json): string | null {
+function refName(node: SchemaNode): string | null {
   const ref = node?.$ref;
   if (typeof ref !== "string") return null;
   const match = /#\/components\/schemas\/(.+)$/.exec(ref);
@@ -83,19 +100,25 @@ function refName(node: Json): string | null {
 }
 
 /** Collapse `allOf` into one node so the caller sees a single object shape. */
-function flattenAllOf(node: Json, resolve: (name: string) => Json | null): Json {
+function flattenAllOf(
+  node: SchemaNode,
+  resolve: (name: string) => SchemaNode | null,
+): SchemaNode {
   if (!Array.isArray(node.allOf)) return node;
-  const merged: Json = { ...node, type: "object", properties: {}, required: [] };
-  delete merged.allOf;
+  const properties: Record<string, SchemaNode> = {};
+  const required: string[] = [];
   for (const part of node.allOf) {
     const target = refName(part) ? resolve(refName(part)!) : part;
     if (!target) continue;
     const flat = flattenAllOf(target, resolve);
-    Object.assign(merged.properties, flat.properties ?? {});
-    merged.required.push(...(flat.required ?? []));
+    Object.assign(properties, flat.properties ?? {});
+    required.push(...(flat.required ?? []));
   }
-  Object.assign(merged.properties, node.properties ?? {});
-  merged.required.push(...(node.required ?? []));
+  // The node's own properties win over the branches it composes.
+  Object.assign(properties, node.properties ?? {});
+  required.push(...(node.required ?? []));
+  const merged: SchemaNode = { ...node, type: "object", properties, required };
+  delete merged.allOf;
   return merged;
 }
 
@@ -105,8 +128,8 @@ function flattenAllOf(node: Json, resolve: (name: string) => Json | null): Json 
  * Returns the remaining single branch, or null when the union is genuinely
  * heterogeneous (which becomes {@link JSONScalar}).
  */
-function unwrapNullableUnion(node: Json): Json | null {
-  const branches: Json[] | undefined = node.anyOf ?? node.oneOf;
+function unwrapNullableUnion(node: SchemaNode): SchemaNode | null {
+  const branches: SchemaNode[] | undefined = node.anyOf ?? node.oneOf;
   if (!Array.isArray(branches)) return null;
   const real = branches.filter((b) => b?.type !== "null");
   return real.length === 1 ? real[0] : null;
@@ -121,27 +144,19 @@ export function pascalCase(input: string): string {
     .join("");
 }
 
-export interface EmitOptions {
-  /**
-   * Names for nested objects that have no registry id of their own, keyed by
-   * the structural path that reaches them (`SelfHealthArtifact.components[]`).
-   *
-   * A nested object gets a deterministic path-derived name when absent, so a
-   * NEW schema always emits without an entry here. Entries exist to PIN names
-   * the published schema already shipped -- a generated `SelfHealthComponents`
-   * would rename the `SelfHealthComponentView` clients write fragments
-   * against, which is a breaking change to a public contract for cosmetic
-   * reasons.
-   */
-  nestedTypeNames?: Record<string, string>;
-}
-
 export interface EmittedTypes {
   /** Every object type, keyed by GraphQL type name. */
   types: Map<string, GraphQLObjectType>;
   /** Resolve a registry component id to its emitted type. */
   componentType(name: string): GraphQLObjectType | null;
-  /** Structural paths that fell back to a derived name, for the drift gate. */
+  /**
+   * Nested objects that had no registry id and took a path-derived name.
+   *
+   * Empty today: every nested object in the registry is a named component, so
+   * every emitted type carries the name the registry gave it. A non-empty map
+   * means a schema grew an inline nested object -- it still emits, under
+   * `ParentFieldName`, but that name was invented here rather than chosen.
+   */
   derivedNames: Map<string, string>;
   /**
    * Properties dropped because GraphQL cannot name them (`x-metagraphed`, an
@@ -149,9 +164,19 @@ export interface EmittedTypes {
    * `xMetagraphed` would publish a field name that appears in no contract.
    */
   unnameable: string[];
+  /**
+   * Properties typed `z.null()` -- the value is null and nothing else.
+   *
+   * GraphQL has no null type. Publishing one as `JSON` or `String` would
+   * advertise a field a client can select and never learn anything from, so
+   * these are dropped and reported instead. `ContractsArtifact.status_domain`
+   * is the one today: the builder hardcodes `status_domain: null`, so the Zod
+   * type is faithful and the field is vestigial.
+   */
+  nullOnly: string[];
 }
 
-/** GraphQL spec name: `/[_A-Za-z][_A-Za-z0-9]*​/`. */
+/** A name the GraphQL spec allows: a letter or underscore, then word chars. */
 function isNameable(key: string): boolean {
   return /^[_A-Za-z][_A-Za-z0-9]*$/.test(key);
 }
@@ -163,25 +188,30 @@ function isNameable(key: string): boolean {
  * printer owns SDL syntax (escaping, block strings, field ordering), so this
  * module never concatenates schema source.
  */
-export function emitTypes(options: EmitOptions = {}): EmittedTypes {
+export function emitTypes(): EmittedTypes {
   const schemas = componentSchemas();
-  const pinned = options.nestedTypeNames ?? {};
   const types = new Map<string, GraphQLObjectType>();
   const derivedNames = new Map<string, string>();
   const unnameable: string[] = [];
+  const nullOnly: string[] = [];
   const inFlight = new Set<string>();
 
-  const resolve = (name: string): Json | null => schemas[name] ?? null;
+  const resolve = (name: string): SchemaNode | null => schemas[name] ?? null;
 
-  /** Claim a GraphQL type name for the object reached by `path`. */
+  /**
+   * Name an object that has no registry id of its own, and record that the
+   * name was derived here rather than chosen by whoever wrote the schema.
+   */
   function nameFor(path: string, fallback: string): string {
-    const pin = pinned[path];
-    if (pin) return pin;
     derivedNames.set(path, fallback);
     return fallback;
   }
 
-  function objectType(node: Json, typeName: string, path: string): GraphQLObjectType {
+  function objectType(
+    node: SchemaNode,
+    typeName: string,
+    path: string,
+  ): GraphQLObjectType {
     const existing = types.get(typeName);
     if (existing) return existing;
     // Registered before walking fields so a self-referential component
@@ -193,12 +223,22 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
         const flat = flattenAllOf(node, resolve);
         const required = new Set<string>(flat.required ?? []);
         const fields: GraphQLFieldConfigMap<unknown, unknown> = {};
-        for (const [key, raw] of Object.entries<Json>(flat.properties ?? {})) {
+        for (const [key, raw] of Object.entries<SchemaNode>(
+          flat.properties ?? {},
+        )) {
           if (!isNameable(key)) {
             unnameable.push(`${path}.${key}`);
             continue;
           }
-          const inner = outputType(raw, `${path}.${key}`, `${typeName}${pascalCase(key)}`);
+          if (raw?.type === "null") {
+            nullOnly.push(`${path}.${key}`);
+            continue;
+          }
+          const inner = outputType(
+            raw,
+            `${path}.${key}`,
+            `${typeName}${pascalCase(key)}`,
+          );
           fields[key] = {
             type: required.has(key) ? new GraphQLNonNull(inner) : inner,
             description: raw?.description,
@@ -213,7 +253,11 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
 
   // Always a NULLABLE type: non-null is applied by the caller from the
   // component's `required` list, so this never returns a GraphQLNonNull.
-  function outputType(node: Json, path: string, fallbackName: string): GraphQLNullableOutputType {
+  function outputType(
+    node: SchemaNode,
+    path: string,
+    fallbackName: string,
+  ): GraphQLNullableOutputType {
     if (!node || typeof node !== "object") return JSONScalar;
 
     const ref = refName(node);
@@ -232,7 +276,11 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
     if (Array.isArray(node.anyOf ?? node.oneOf)) return JSONScalar;
 
     if (Array.isArray(node.allOf)) {
-      return objectType(flattenAllOf(node, resolve), nameFor(path, fallbackName), path);
+      return objectType(
+        flattenAllOf(node, resolve),
+        nameFor(path, fallbackName),
+        path,
+      );
     }
 
     if (node.type === "array") {
@@ -243,7 +291,8 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
     if (node.type === "object" || node.properties) {
       // A record (`additionalProperties` with no fixed keys) is keyed by data,
       // so it has no GraphQL field set -- that is what JSON is for.
-      if (!node.properties || Object.keys(node.properties).length === 0) return JSONScalar;
+      if (!node.properties || Object.keys(node.properties).length === 0)
+        return JSONScalar;
       return objectType(node, nameFor(path, fallbackName), path);
     }
 
@@ -251,7 +300,8 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
     // and a pinned `schema_version: 1` is an Int, not a Float. Reading `type`
     // first would publish Float for all 68 components that pin it that way.
     if (node.const !== undefined) {
-      if (typeof node.const === "number") return Number.isInteger(node.const) ? GraphQLInt : GraphQLFloat;
+      if (typeof node.const === "number")
+        return Number.isInteger(node.const) ? GraphQLInt : GraphQLFloat;
       if (typeof node.const === "boolean") return GraphQLBoolean;
       return GraphQLString;
     }
@@ -260,7 +310,10 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
     if (node.type === "number") return GraphQLFloat;
     if (node.type === "boolean") return GraphQLBoolean;
     if (node.type === "string") return GraphQLString;
-    if (Array.isArray(node.enum) && node.enum.every((v: unknown) => typeof v === "string")) {
+    if (
+      Array.isArray(node.enum) &&
+      node.enum.every((v: unknown) => typeof v === "string")
+    ) {
       return GraphQLString;
     }
     return JSONScalar;
@@ -270,11 +323,19 @@ export function emitTypes(options: EmitOptions = {}): EmittedTypes {
     const schema = resolve(name);
     if (!schema) return null;
     const flat = flattenAllOf(schema, resolve);
-    if (!flat.properties || Object.keys(flat.properties).length === 0) return null;
+    if (!flat.properties || Object.keys(flat.properties).length === 0)
+      return null;
     return objectType(schema, name, name);
   }
 
   for (const name of Object.keys(schemas)) componentType(name);
 
-  return { types, componentType, derivedNames, unnameable };
+  // graphql-js resolves `fields` lazily, which is what lets a self-referential
+  // component build at all. Force every field map now that construction is
+  // done: an invalid field name or a broken type reference should fail here,
+  // where the schema is being built, rather than on the first query that
+  // happens to select it -- and `unnameable` is only populated by that walk.
+  for (const type of types.values()) type.getFields();
+
+  return { types, componentType, derivedNames, unnameable, nullOnly };
 }
