@@ -13,6 +13,7 @@
 // schemas-src/routes/chain-network-rollups.ts (ChainDeregistrationsArtifact).
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 import type { DeregistrationDerivation } from "./deregistration-derivation.ts";
 import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
 
@@ -178,10 +179,11 @@ export function buildChainDeregistrations(
   } = {},
 ): ChainDeregistrationsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_DEREGISTRATIONS_LIMIT_MAX))
-    : CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+    CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainDeregistrationsResult = {

@@ -8,6 +8,7 @@
 // (never throws), matching the sibling live tiers.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The two account_events kinds that move stake: StakeAdded is capital entering a subnet,
 // StakeRemoved is capital leaving. Both carry a positive amount_tao, so net = staked - unstaked.
@@ -164,10 +165,11 @@ export function buildChainStakeFlow(
   }: { window?: string | null; limit?: number } = {},
 ): ChainStakeFlowResult {
   const list = Array.isArray(rows) ? rows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_STAKE_FLOW_LIMIT_MAX))
-    : CHAIN_STAKE_FLOW_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+    CHAIN_STAKE_FLOW_LIMIT_MAX,
+  );
 
   const perNetuid = new Map<
     number,
