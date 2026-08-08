@@ -64,6 +64,16 @@ type Row = Record<string, unknown>;
 
 export const CROWDLOANS_KV_TTL = 120; // seconds -- same freshness profile as subnet-lease.ts
 export const CROWDLOANS_NEGATIVE_KV_TTL = 10; // seconds
+
+/**
+ * `degraded.reason` when the crowdloan storage batch read did not land (#9898).
+ *
+ * Distinct from an empty chain: `{crowdloan_count: 0, next_crowdloan_id: 15}`
+ * is a documented, legitimate state meaning every allocated id was dissolved,
+ * so the failed read had no way to announce itself and was published as that
+ * fact instead.
+ */
+export const CROWDLOANS_DEGRADED_RPC = "crowdloan_storage_unavailable";
 export const CROWDLOANS_RPC_TIMEOUT_MS = 5000;
 
 // A crowdloan id is a u32 on-chain. Anything outside that range can never
@@ -279,10 +289,15 @@ export function decodeCrowdloan(hex: unknown): Row | null {
  *
  * Every crowdloan field is a measured read of `Crowdloan.Crowdloans`.
  * `crowdloan_count` is ours -- it reports how many ids `NextCrowdloanId`
- * covered, which is a fact about the enumeration rather than a stored value.
+ * covered, which is a fact about the enumeration rather than a stored value,
+ * and is null when the read failed rather than 0.
  */
 export const CROWDLOANS_FIELD_SOURCES = {
   crowdloan_count: { kind: "reconstructed", storage: null },
+  // Ours too, and about the READ rather than the chain: it reports that the
+  // storage batch did not land, which is exactly what `crowdloan_count: 0`
+  // used to be published as instead (#9898).
+  degraded: { kind: "reconstructed", storage: null },
   next_crowdloan_id: {
     kind: "measured",
     storage: "Crowdloan.NextCrowdloanId",
@@ -364,18 +379,39 @@ async function loadCrowdloansSnapshot(
     }
   }
 
+  // `rpcOk` used to be computed correctly and then used for exactly one thing:
+  // picking the cache TTL. It never reached the caller, so a storage batch that
+  // did not land was published as `{crowdloan_count: 0, next_crowdloan_id: 15}`
+  // -- a shape this route's own contract documents as "15 ids were allocated
+  // and all 15 have been dissolved". A confident, specific, wrong claim about
+  // the chain, with no error and no header (#9898).
+  //
+  // Observed live: under concurrent load the route returned `crowdloans: []`,
+  // and seconds later at rest the same route returned all 15 records. Nothing
+  // about the chain had changed.
+  //
+  // The count is now NULL rather than 0 -- we do not know it -- which is the
+  // same discipline the sibling /crowdloans/{id} already uses (`exists` is null,
+  // not false, on RPC failure) and /subnets/{netuid}/lease (`leased` is null).
+  // The list route was the outlier.
   const payload: Row = {
     schema_version: 1,
-    crowdloan_count: crowdloans.length,
+    crowdloan_count: rpcOk ? crowdloans.length : null,
     next_crowdloan_id: nextId,
     crowdloans,
     queried_at: queriedAt,
+    ...(rpcOk ? {} : { degraded: { reason: CROWDLOANS_DEGRADED_RPC } }),
   };
 
-  if (kv?.put) {
+  // A degraded payload is NOT cached. The old negative TTL cached it for 10s
+  // and served it to everyone who asked in that window -- including the `cached`
+  // early return above, which cannot tell a negative-cached entry from a good
+  // one -- so one failed read became several wrong answers for callers who did
+  // nothing wrong.
+  if (kv?.put && rpcOk) {
     try {
       await kv.put(cacheKey, JSON.stringify(payload), {
-        expirationTtl: rpcOk ? CROWDLOANS_KV_TTL : CROWDLOANS_NEGATIVE_KV_TTL,
+        expirationTtl: CROWDLOANS_KV_TTL,
       });
     } catch {
       // KV write failure is non-fatal.

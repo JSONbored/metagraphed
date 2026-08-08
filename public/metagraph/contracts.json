@@ -1610,7 +1610,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live Crowdloan-pallet state (#8696) — every crowdloan the chain has ever opened, with its terms (creator, deposit, cap, min contribution, end block, funds account, target address) and how much it raised, read from the pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Served live, no static file. A crowdloan whose record was dissolved is omitted rather than returned as a null hole, so crowdloan_count can be lower than next_crowdloan_id.",
+      "description": "Live Crowdloan-pallet state (#8696) — every crowdloan the chain has ever opened, with its terms (creator, deposit, cap, min contribution, end block, funds account, target address) and how much it raised, read from the pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Served live, no static file. A crowdloan whose record was dissolved is omitted rather than returned as a null hole, so crowdloan_count can be lower than next_crowdloan_id. If the chain read does not land, crowdloan_count is null and a `degraded` block says so (#9898) — it is never published as 0, which would read as 'every allocated id was dissolved'.",
       "id": "crowdloans",
       "path": "/metagraph/crowdloans.json",
       "retirement": null,

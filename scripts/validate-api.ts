@@ -1613,6 +1613,18 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     "/api/v1/crowdloans",
     (body) => {
       assert.ok(Array.isArray(body.data.crowdloans));
+      // `crowdloan_count` is null when the chain read did not land (#9898) --
+      // the same nullable-on-RPC-failure discipline as `leased` just above and
+      // `exists` on /crowdloans/{id}. It is NOT 0, which this route's contract
+      // documents as "every allocated id was dissolved". Nothing is asserted
+      // about the array in that case: an empty list is all a failed read can
+      // produce, and asserting it would assert the failure rather than the
+      // contract.
+      if (body.data.crowdloan_count === null) {
+        assert.equal(typeof body.data.degraded?.reason, "string");
+        return;
+      }
+      assert.equal(body.data.degraded, undefined);
       assert.equal(body.data.crowdloan_count, body.data.crowdloans.length);
       // A dissolved record is omitted while NextCrowdloanId keeps counting,
       // so the count is bounded by it rather than equal to it.
