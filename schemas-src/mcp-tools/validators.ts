@@ -17,6 +17,10 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import {
+  NOMINATOR_LIMIT_DEFAULT,
+  NOMINATOR_LIMIT_MAX,
+} from "../../src/validator-nominators.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   NeuronFieldsInputSchema,
@@ -200,7 +204,13 @@ export const GetValidatorNominatorsInputSchema = z
     hotkey: accountKeySchema("hotkey"),
     window: RouteQuery_validators_hotkey_nominators.shape.window,
     sort: RouteQuery_validators_hotkey_nominators.shape.sort,
-    limit: RouteQuery_validators_hotkey_nominators.shape.limit,
+    // NOT the route's ceiling. REST enforces GLOBAL_VALIDATOR_LIMIT_MAX (2000)
+    // and this tool clamps at NOMINATOR_LIMIT_MAX (100), so inheriting the
+    // route's limit would advertise a page size MCP never serves. A declared
+    // narrowing, which is the normal category for a tool sized to a context
+    // window -- and the reason a derivation has to be checked against the
+    // handler, not just the route (#10064).
+    limit: limitSchema(NOMINATOR_LIMIT_MAX, NOMINATOR_LIMIT_DEFAULT).optional(),
     offset: offsetSchema().optional(),
     coldkey: accountKeySchema("coldkey").optional(),
   })

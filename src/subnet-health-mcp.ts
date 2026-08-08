@@ -4,6 +4,7 @@
 // /metagraph/health/subnets/{netuid}.json artifact.
 
 import { z } from "zod";
+import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -86,12 +87,6 @@ function optionalEnum(
   return value;
 }
 
-function clampLimit(value: unknown, fallback: number, max: number): number {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 export function subnetHealthQueryUrl(
   args: Record<string, unknown> | null | undefined,
 ): URL {
@@ -114,7 +109,7 @@ export function subnetHealthQueryUrl(
   const order = optionalEnum(args, "order", ["asc", "desc"]);
   if (order) url.searchParams.set("order", order);
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
+    url.searchParams.set("limit", String(clampToolLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;

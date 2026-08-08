@@ -5493,6 +5493,26 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
     schema?: { maximum?: number; minimum?: number; enum?: unknown[] };
   }) => string
 > = {
+  // ── Why this map exists ALONGSIDE limitSchema's own .describe() ───────────
+  //
+  // Not two audiences reading the same fact differently -- the two surfaces
+  // genuinely BEHAVE differently for this parameter, and each sentence is only
+  // true of its own. Measured, not assumed:
+  //
+  //   GET  /api/v1/blocks?limit=99999   -> 400 "limit must be an integer
+  //                                       between 1 and 100."
+  //   MCP  list_blocks {limit: 99999}   -> 200, returns 100, echoes limit: 100
+  //
+  // REST rejects (#9916); MCP clamps, and tests/mcp-schema-enforcement.test.ts
+  // pins the clamp on purpose so it cannot be "tightened" into a breaking
+  // change for agent callers. One shared sentence would make one of the two
+  // contracts a lie.
+  //
+  // `tests/pagination-bound-parity.test.ts` holds both halves to that, derived
+  // over every route and every tool -- so if either surface changes, the gate
+  // fails and these sentences have to change with it. It is what caught the
+  // "on every route" clause below being false on /api/v1/chain-events, which
+  // clamps like MCP does.
   limit: (parameter) => {
     const maximum = parameter.schema?.maximum;
     // The ceiling is read off the parameter's own schema rather than restated,
@@ -5501,8 +5521,8 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
       "Maximum number of rows to return in one page" +
       (typeof maximum === "number" ? ` (at most ${maximum})` : "") +
       ". A larger value, or a non-positive one, is rejected with 400 " +
-      "`invalid_query` on every route -- it is never silently clamped, so a " +
-      "short page always means the result set is exhausted (#9916)."
+      "`invalid_query` -- so a short page means the result set is exhausted, " +
+      "not that the server quietly capped you (#9916)."
     );
   },
   offset: () =>

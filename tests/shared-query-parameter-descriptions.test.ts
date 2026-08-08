@@ -185,10 +185,15 @@ describe("shared query parameters are described in the published spec (#9131)", 
     );
     // And the shared default is genuinely reaching the routes that have no
     // inline text, rather than the map being wired up but never applied.
+    // Matched on `invalid_query` rather than the old "never silently clamped"
+    // clause, which was removed because it was FALSE: /api/v1/chain-events
+    // publishes a ceiling and clamps to it (verified live), so the sentence
+    // claimed a guarantee one route does not give. See #10174 and
+    // tests/pagination-bound-parity.test.ts, which pins the real partition.
     const shared = PARAMETERS.filter(
       ({ parameter }) =>
         parameter.name === "limit" &&
-        (parameter.description ?? "").includes("never silently clamped"),
+        (parameter.description ?? "").includes("`invalid_query`"),
     );
     assert.ok(
       shared.length > 50,

@@ -36,6 +36,7 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { clampToolLimit } from "../workers/request-params.ts";
 import { serveWithSdk } from "./mcp-sdk-adapter.ts";
 import { z } from "zod";
 import {
@@ -1076,6 +1077,7 @@ import {
 import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+  CHAIN_CALL_MODULE_MAX_LENGTH,
 } from "./route-limits.ts";
 import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
@@ -3951,17 +3953,6 @@ function requireHotkey(args: Row) {
 // src/data-api-mcp.ts (exported optionalBlocksWindow, #7432) beside its
 // loadChainActivity loader — shared with GraphQL's chain_events_stats field.
 
-function clampLimit(value: unknown, fallback: number, max: number) {
-  // A missing/blank/<1 limit falls back to the default — it must NOT clamp UP to
-  // 1. tools/call does not enforce the inputSchema `minimum`, so an explicit
-  // limit:0 reaches here; `Math.max(1, …)` would return a single result, which
-  // reads to an agent as "this registry knows one subnet" (see the same fix in
-  // src/ai-search.ts).
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 // Resolve a lenient `cursor` arg into a non-negative offset. Mirrors the old
 // bespoke `offset` handling (floor + clamp to 0, no throw): tools/call does not
 // enforce the inputSchema `minimum`, so a bad cursor degrades to the first page
@@ -4031,7 +4022,7 @@ function searchResponse(
     {
       collection: "subnets",
       dataKey: "subnets",
-      limit: clampLimit(args?.limit, 10, 50),
+      limit: clampToolLimit(args?.limit, 10, 50),
       cursor: resolveCursor(args),
     },
   );
@@ -4769,7 +4760,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         cursorWindow(ordered, {
           collection: "subnets",
           dataKey: "subnets",
-          limit: clampLimit(args?.limit, 50, 100),
+          limit: clampToolLimit(args?.limit, 50, 100),
           cursor: resolveCursor(args),
         });
       const subnets = page.map((subnet: Row) => ({
@@ -4955,7 +4946,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const topValidatorsLimit =
         optionalPositiveInt(args, "top_validators_limit") ?? 10;
-      const recentEventsLimit = clampLimit(args?.recent_events_limit, 10, 1000);
+      const recentEventsLimit = clampToolLimit(
+        args?.recent_events_limit,
+        10,
+        1000,
+      );
       const [hyperparams, concentration, performance, validators, events] =
         await Promise.all([
           tryPostgresTier(
@@ -5177,7 +5172,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // 448,827 B, the largest response this server produces; `subnet_count`
       // still spans every subnet the window measured, so the denominator
       // survives the narrowing.
-      const limit = clampLimit(row?.limit, 25, 512);
+      const limit = clampToolLimit(row?.limit, 25, 512);
       const offset = Number.isFinite(row?.offset)
         ? Math.max(0, Math.floor(row.offset as number))
         : 0;
@@ -6137,7 +6132,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_TURNOVER_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_TURNOVER_LIMIT_DEFAULT,
         CHAIN_TURNOVER_LIMIT_MAX,
@@ -6185,7 +6180,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_STAKE_FLOW_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
         CHAIN_STAKE_FLOW_LIMIT_MAX,
@@ -6231,7 +6226,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetChainAlphaVolumeInputSchema>,
       ctx: McpCtx,
     ) {
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
         CHAIN_ALPHA_VOLUME_LIMIT_MAX,
@@ -6283,7 +6278,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_WEIGHTS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_WEIGHTS_LIMIT_DEFAULT,
         CHAIN_WEIGHTS_LIMIT_MAX,
@@ -6337,7 +6332,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_WEIGHT_SETTERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
         CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
@@ -6393,7 +6388,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_STAKE_MOVES_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
         CHAIN_STAKE_MOVES_LIMIT_MAX,
@@ -6447,7 +6442,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_STAKE_TRANSFERS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
         CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
@@ -6504,7 +6499,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_AXON_REMOVALS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
         CHAIN_AXON_REMOVALS_LIMIT_MAX,
@@ -6554,7 +6549,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_SERVING_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_SERVING_LIMIT_DEFAULT,
         CHAIN_SERVING_LIMIT_MAX,
@@ -6613,7 +6608,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_PROMETHEUS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_PROMETHEUS_LIMIT_DEFAULT,
         CHAIN_PROMETHEUS_LIMIT_MAX,
@@ -6896,7 +6891,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${SUBNET_EVENT_SUMMARY_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
@@ -7424,7 +7419,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `sort must be one of: ${MOVERS_SORTS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         MOVERS_LIMIT_DEFAULT,
         MOVERS_LIMIT_MAX,
@@ -7507,7 +7502,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const board = optionalEnum(args, "board", LEADERBOARD_BOARDS);
-      const limit = clampLimit(args?.limit, 20, 100);
+      const limit = clampToolLimit(args?.limit, 20, 100);
       const profiles =
         (await loadArtifactData(ctx, "/metagraph/profiles.json")).profiles ||
         [];
@@ -7856,7 +7851,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const sort =
         optionalEnum(args, "sort", GLOBAL_VALIDATOR_SORTS) ??
         DEFAULT_GLOBAL_VALIDATOR_SORT;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
         GLOBAL_VALIDATOR_LIMIT_MAX,
@@ -8077,7 +8072,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         DEFAULT_NOMINATOR_WINDOW;
       const sort =
         optionalEnum(args, "sort", NOMINATOR_SORTS) ?? DEFAULT_NOMINATOR_SORT;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         NOMINATOR_LIMIT_DEFAULT,
         NOMINATOR_LIMIT_MAX,
@@ -8332,7 +8327,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
       const cursor = optionalString(args, "cursor");
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -8406,7 +8401,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
       // cursor is validated for REST-parity and forwarded to the Postgres tier
       // below; the D1 fallback (buildSubnetHyperparamsHistory([])) never sees
@@ -8775,7 +8770,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "Argument `netuid` must be an integer in the u16 range 0..65535.",
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         SURFACE_HISTORY_LIMIT_DEFAULT,
         SURFACE_HISTORY_LIMIT_MAX,
@@ -8825,7 +8820,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // kind". Normalising here keeps that distinction at the boundary.
       const kind =
         optionalEnum(args, "kind", [...EMISSION_CHANGE_KINDS]) ?? undefined;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         EMISSION_CHANGES_LIMIT_DEFAULT,
         EMISSION_CHANGES_LIMIT_MAX,
@@ -8874,7 +8869,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const sort =
         optionalEnum(args, "sort", [...CHAIN_HOLDERS_SORTS]) ??
         DEFAULT_CHAIN_HOLDERS_SORT;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_HOLDERS_LIMIT_DEFAULT,
         CHAIN_HOLDERS_LIMIT_MAX,
@@ -9113,7 +9108,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "Argument `netuid` must be an integer in the u16 range 0..65535.",
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         SUBNET_HOLDERS_LIMIT_DEFAULT,
         SUBNET_HOLDERS_LIMIT_MAX,
@@ -9631,7 +9626,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
       const cursor = optionalString(args, "cursor");
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -9782,7 +9777,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const recentEventsLimit = clampLimit(args?.recent_events_limit, 10, 1000);
+      const recentEventsLimit = clampToolLimit(
+        args?.recent_events_limit,
+        10,
+        1000,
+      );
       // balance is a live RPC call (its own rate limiter + address-network
       // check, mirroring get_account_balance's handler exactly) -- every
       // other slice is a Postgres-tier read with its own graceful fallback,
@@ -9910,7 +9909,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
       const cursor = optionalString(args, "cursor");
       return (
@@ -10409,7 +10408,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
       const cursor = optionalString(args, "cursor");
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -10489,7 +10488,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
       const cursor = optionalString(args, "cursor");
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -10628,7 +10627,21 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // buildBlockFeed([]) D1 fallback ignores them (nothing left to filter
       // now that blocks' D1 write path is retired, #4772).
       const cursor = optionalString(args, "cursor");
+      // #10065: these are PUBLISHED constraints -- the tool advertises the SS58
+      // pattern, the 0x-hash pattern and the call_module ceiling -- and the
+      // handler honoured none of them. A malformed value filtered to nothing
+      // and answered 200 with an empty page, which is the #9013 shape: an
+      // agent that typos a hotkey is told the chain has no such activity
+      // rather than that it mistyped. Found by probing every published
+      // `pattern`/`maxLength`, the one constraint class #8942's audit and its
+      // gate had never covered.
       const author = optionalString(args, "author");
+      if (author != null && !isFinneySs58Address(author)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `author` must be a valid finney SS58 account address.",
+        );
+      }
       const specVersion = optionalNonNegativeInt(args, "spec_version");
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
@@ -10636,7 +10649,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const to = optionalNonNegativeInt(args, "to");
       const minExtrinsics = optionalNonNegativeInt(args, "min_extrinsics");
       const minEvents = optionalNonNegativeInt(args, "min_events");
-      const limit = clampLimit(args?.limit, 50, 100);
+      const limit = clampToolLimit(args?.limit, 50, 100);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -10726,7 +10739,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ref = requireString(args, "ref");
-      const limit = clampLimit(args?.limit, 50, 100);
+      const limit = clampToolLimit(args?.limit, 50, 100);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -10783,7 +10796,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ref = requireString(args, "ref");
-      const limit = clampLimit(args?.limit, 100, 1000);
+      const limit = clampToolLimit(args?.limit, 100, 1000);
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
@@ -10842,10 +10855,39 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // Validated for REST-parity but, like the D1 filters they used to bound, have
       // nothing left to filter now that extrinsics is retired (#4772) --
       // buildExtrinsicFeed([]) below never sees them.
+      // #10065: these are PUBLISHED constraints -- the tool advertises the SS58
+      // pattern, the 0x-hash pattern and the call_module ceiling -- and the
+      // handler honoured none of them. A malformed value filtered to nothing
+      // and answered 200 with an empty page, which is the #9013 shape: an
+      // agent that typos a hotkey is told the chain has no such activity
+      // rather than that it mistyped. Found by probing every published
+      // `pattern`/`maxLength`, the one constraint class #8942's audit and its
+      // gate had never covered.
       const signer = optionalString(args, "signer");
+      if (signer != null && !isFinneySs58Address(signer)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `signer` must be a valid finney SS58 account address.",
+        );
+      }
       const callModule = optionalString(args, "call_module");
+      if (
+        callModule != null &&
+        callModule.length > CHAIN_CALL_MODULE_MAX_LENGTH
+      ) {
+        throw toolError(
+          "invalid_params",
+          `Argument \`call_module\` must be at most ${CHAIN_CALL_MODULE_MAX_LENGTH} characters.`,
+        );
+      }
       const callFunction = optionalString(args, "call_function");
       const callHash = optionalString(args, "call_hash");
+      if (callHash != null && !/^0x[0-9a-fA-F]{64}$/.test(callHash)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `call_hash` must be a 0x-prefixed 32-byte hex hash.",
+        );
+      }
       const cursor = optionalString(args, "cursor");
       const block = optionalNonNegativeInt(args, "block");
       const success = optionalSuccessFilter(args);
@@ -10869,7 +10911,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // ignoring the filter (same gate as REST's handleExtrinsics).
         (callHash == null
           ? await loadExtrinsicFeedColdTier(ctx.env, {
-              limit: clampLimit(args?.limit, 50, 100),
+              limit: clampToolLimit(args?.limit, 50, 100),
               offset: Number.isFinite(args?.offset)
                 ? Math.max(0, Math.floor(args.offset as number))
                 : 0,
@@ -10886,7 +10928,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             })
           : null) ??
         buildExtrinsicFeed([], {
-          limit: clampLimit(args?.limit, 50, 100),
+          limit: clampToolLimit(args?.limit, 50, 100),
           offset: Number.isFinite(args?.offset)
             ? Math.max(0, Math.floor(args.offset as number))
             : 0,
@@ -10953,7 +10995,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // The category predicate is data-api's own pathname->module mapping
         // ("Sudo"), expressed against the lakehouse verbatim.
         (await loadExtrinsicFeedColdTier(ctx.env, {
-          limit: clampLimit(args?.limit, 50, 100),
+          limit: clampToolLimit(args?.limit, 50, 100),
           offset: Number.isFinite(args?.offset)
             ? Math.max(0, Math.floor(args.offset as number))
             : 0,
@@ -11078,7 +11120,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // The category predicate is data-api's own pathname->module mapping
         // ("AdminUtils"), expressed against the lakehouse verbatim.
         (await loadExtrinsicFeedColdTier(ctx.env, {
-          limit: clampLimit(args?.limit, 50, 100),
+          limit: clampToolLimit(args?.limit, 50, 100),
           offset: Number.isFinite(args?.offset)
             ? Math.max(0, Math.floor(args.offset as number))
             : 0,
@@ -11188,7 +11230,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const sort =
         optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
         DEFAULT_ACCOUNTS_LIST_SORT;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         ACCOUNTS_LIST_LIMIT_DEFAULT,
         ACCOUNTS_LIST_LIMIT_MAX,
@@ -11242,7 +11284,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const sort =
         optionalEnum(args, "sort", TOP_HOLDERS_SORTS) ??
         DEFAULT_TOP_HOLDERS_SORT;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         TOP_HOLDERS_LIMIT_DEFAULT,
         TOP_HOLDERS_LIMIT_MAX,
@@ -11410,7 +11452,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const groupBy =
         optionalEnum(args, "group_by", ["module", "module_function"]) ||
         "module";
-      const limit = clampLimit(args?.limit, 50, 100);
+      const limit = clampToolLimit(args?.limit, 50, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
         throw toolError(
@@ -11474,7 +11516,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { label, days } = parsed!;
       const sort =
         optionalEnum(args, "sort", CHAIN_SIGNERS_SORTS) || "tx_count";
-      const limit = clampLimit(args?.limit, 50, 100);
+      const limit = clampToolLimit(args?.limit, 50, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
         throw toolError(
@@ -11532,7 +11574,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label, days } = parsed!;
-      const limit = clampLimit(args?.limit, 25, 100);
+      const limit = clampToolLimit(args?.limit, 25, 100);
       const callModule = optionalString(args, "call_module");
       if (callModule != null && callModule.length > 100) {
         throw toolError(
@@ -11600,7 +11642,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed!;
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_REGISTRATIONS_LIMIT_MAX,
@@ -11655,7 +11697,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_DEREGISTRATIONS_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
         CHAIN_DEREGISTRATIONS_LIMIT_MAX,
@@ -11709,7 +11751,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `window must be one of: ${CHAIN_TRANSFER_WINDOW_KEYS.join(", ")}.`,
         );
       }
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_TRANSFER_LIMIT_DEFAULT,
         CHAIN_TRANSFER_LIMIT_MAX,
@@ -11768,7 +11810,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const sort =
         optionalEnum(args, "sort", CHAIN_TRANSFER_PAIR_SORTS) ?? "volume";
-      const limit = clampLimit(
+      const limit = clampToolLimit(
         args?.limit,
         CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
         CHAIN_TRANSFER_PAIR_LIMIT_MAX,
@@ -12614,7 +12656,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof GetBestRpcEndpointInputSchema>,
       ctx: McpCtx,
     ) {
-      const limit = clampLimit(args?.limit, 3, 10);
+      const limit = clampToolLimit(args?.limit, 3, 10);
       const poolData = await loadArtifactData(ctx, "/metagraph/rpc/pools.json");
       const liveRpcPool = ctx.readHealthKv
         ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
@@ -12979,7 +13021,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       args: z.infer<typeof ListEnrichmentTargetsInputSchema>,
       ctx: McpCtx,
     ) {
-      const limit = clampLimit(args?.limit, 10, 50);
+      const limit = clampToolLimit(args?.limit, 10, 50);
       const tier = optionalEnum(args, "tier", COVERAGE_DEPTH_TIERS);
       const severity = optionalEnum(
         args,
@@ -13109,7 +13151,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const board = optionalEnum(args, "board", ECONOMIC_LEADERBOARD_BOARDS);
-      const limit = clampLimit(args?.limit, 10, 100);
+      const limit = clampToolLimit(args?.limit, 10, 100);
       const economics = await loadArtifactData(
         ctx,
         "/metagraph/economics.json",
@@ -13218,7 +13260,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const task = requireString(args, "task");
-      const limit = clampLimit(args?.limit, 5, 20);
+      const limit = clampToolLimit(args?.limit, 5, 20);
       const live = await mcpLiveHealth(ctx);
       const catalog = await loadArtifactData(
         ctx,

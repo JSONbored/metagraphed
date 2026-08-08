@@ -3,6 +3,7 @@
 // health/history snapshots with health-surfaces filters.
 
 import { z } from "zod";
+import { clampToolLimit } from "../workers/request-params.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -70,12 +71,6 @@ function optionalEnum(
   return value;
 }
 
-function clampLimit(value: unknown, fallback: number, max: number): number {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 export function healthHistoryQueryUrl(
   args: Record<string, unknown> | null | undefined,
 ): URL {
@@ -109,7 +104,10 @@ export function healthHistoryQueryUrl(
   const fields = optionalString(args, "fields");
   if (fields) url.searchParams.set("fields", fields);
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 100, 1000)));
+    url.searchParams.set(
+      "limit",
+      String(clampToolLimit(args.limit, 100, 1000)),
+    );
   }
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;

@@ -66,11 +66,25 @@ export const netuidListSchema = () =>
  * `fallback` is the value the handler uses when the argument is omitted, and
  * passing it is what puts the documented default INTO the contract rather than
  * only in the tool's prose. Deliberately NOT a Zod `.default()`: that would
- * substitute the value during parse, and these handlers own that decision —
- * they clamp an out-of-range limit and fall back on a missing or malformed
- * one, forgiving behaviour tests/mcp-schema-enforcement.test.ts pins on
- * purpose (#8942). Declaring the default without applying it keeps the
- * published contract honest and the runtime behaviour untouched.
+ * substitute the value during parse, and these handlers own that decision.
+ * Declaring the default without applying it keeps the published contract
+ * honest and the runtime behaviour untouched.
+ *
+ * THE SENTENCE NO LONGER PROMISES CLAMPING. It used to -- "a larger value is
+ * clamped to the ceiling rather than rejected" -- and that is false for 25 MCP
+ * tools, measured by dispatching `limit: max + 1` at every tool that publishes
+ * a ceiling: 15 collection-backed ones reject through validateListQuery, and
+ * 10 hand-rolled handlers reject through parseBoundedIntParam.
+ *
+ * Clamp-vs-reject is a property of the HANDLER, not of the surface. That is
+ * also why the REST-side sentence in contracts.ts was over-general the other
+ * way ("rejected ... on every route", false on /api/v1/chain-events, which
+ * clamps). Two published sentences, each true of most of its surface and
+ * neither true of all of it, and nothing compared them until #10064.
+ *
+ * `tests/pagination-bound-parity.test.ts` pins the real partition on both
+ * surfaces, so a handler moving between clamping and rejecting is a visible
+ * change rather than a caller's surprise.
  */
 export const limitSchema = (max: number, fallback?: number) => {
   const schema = z.int().min(1).max(max);
@@ -80,8 +94,8 @@ export const limitSchema = (max: number, fallback?: number) => {
         .meta({ examples: [Math.min(20, max)] })
     : schema
         .describe(
-          `Maximum rows to return (1-${max}). Defaults to ${fallback} when omitted; ` +
-            "a larger value is clamped to the ceiling rather than rejected.",
+          `Maximum rows to return (1-${max}). Defaults to ${fallback} when ` +
+            "omitted. The response reports the limit actually applied.",
         )
         .meta({ default: fallback, examples: [fallback] });
 };

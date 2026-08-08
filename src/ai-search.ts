@@ -19,6 +19,7 @@ import {
   SEMANTIC_QUERY_MAX_LENGTH,
   SEMANTIC_TYPES,
 } from "./route-limits.ts";
+import { clampToolLimit } from "../workers/request-params.ts";
 import {
   recordAiDegradedEvent,
   recordAiEmbeddingEvent,
@@ -203,14 +204,12 @@ function costUsd(tokens: unknown, ratePerMillion: number): number | undefined {
     : undefined;
 }
 
+// This surface's callers pass URL params, so the value arrives as a string.
+// `Number(null)` and `Number("")` are 0 (not NaN), which the shared rule then
+// treats as "below 1" and answers with the default -- the same outcome the
+// hand-written version reached, now stated once.
 function clampLimit(value: unknown, fallback: number, max: number): number {
-  const n = Number(value);
-  // Number(null) and Number("") are 0 (not NaN), so a missing/blank/<1 limit
-  // must fall back to the default — NOT clamp UP to 1. The old `Math.max(1, …)`
-  // turned every default-limit query (e.g. `?q=…` with no &limit) into a single
-  // result, which read as "this registry knows one subnet" to agents.
-  if (!Number.isFinite(n) || n < 1) return fallback;
-  return Math.min(max, Math.floor(n));
+  return clampToolLimit(Number(value), fallback, max);
 }
 
 // Stable, dependency-free 53-bit string hash (cyrb53) for change detection.

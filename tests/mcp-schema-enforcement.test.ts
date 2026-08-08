@@ -83,17 +83,18 @@ function baselineArgs(schema: Row, except?: string): Record<string, unknown> {
   return args;
 }
 
+async function isRunnable(tool: Row): Promise<boolean> {
+  const code = await errorCode(
+    tool.name as string,
+    baselineArgs(tool.inputSchema as Row),
+  );
+  return code === null || code === "invalid_params";
+}
+
 describe("published MCP enums are enforced at runtime (#8942)", () => {
   // A tool that cannot run at all in this env would "fail" any probe for the
   // wrong reason, so it is skipped rather than counted — the same control that
   // turned an unreviewable 234-item finding into the real 101.
-  async function isRunnable(tool: Row): Promise<boolean> {
-    const code = await errorCode(
-      tool.name as string,
-      baselineArgs(tool.inputSchema as Row),
-    );
-    return code === null || code === "invalid_params";
-  }
 
   test("every enum-valued argument rejects an out-of-enum value", async () => {
     const unenforced: string[] = [];
@@ -268,4 +269,73 @@ describe("a tool that advertises `fields` publishes projectable rows (#10064)", 
     );
     assert.ok(checked >= 30, `only ${checked} fields-capable tools found`);
   });
+});
+
+describe("published string constraints are enforced at runtime (#10065)", () => {
+  // The constraint class #8942's audit never covered. It measured enums (zero
+  // gaps) and numeric bounds (all of which were the deliberate pagination
+  // clamping); `pattern` and `maxLength` were probed for the first time here.
+  //
+  // Four gaps, all the same shape: the tool ADVERTISES the constraint and the
+  // handler ignored it, so a malformed value filtered to nothing and answered
+  // 200 with an empty page. An agent that typos a hotkey was told the chain
+  // has no such activity rather than that it mistyped — the #9013 defect,
+  // wearing a pattern instead of an enum.
+  //
+  //   list_blocks.author        SS58 pattern, unenforced
+  //   list_extrinsics.signer    SS58 pattern, unenforced
+  //   list_extrinsics.call_hash 0x-hash pattern, unenforced
+  //   list_extrinsics.call_module  maxLength 100, unenforced
+  //
+  // Derived from listToolDefinitions() like its siblings, so a tool that
+  // publishes a pattern tomorrow is covered tonight.
+  test("every published pattern and maxLength rejects a violating value", async () => {
+    const unenforced: string[] = [];
+    let checked = 0;
+
+    for (const tool of listToolDefinitions() as Row[]) {
+      const properties = (tool.inputSchema as Row)?.properties as
+        Row | undefined;
+      if (!properties) continue;
+      if (!(await isRunnable(tool))) continue;
+
+      for (const [key, raw] of Object.entries(properties)) {
+        const property = raw as Row;
+        // An enum already has its own gate above, and a violating value for it
+        // is the same probe — no reason to count it twice.
+        if (Array.isArray(property.enum)) continue;
+        let violating: string | null = null;
+        if (typeof property.pattern === "string") {
+          violating = "!!!definitely-not-matching-any-pattern!!!";
+        } else if (typeof property.maxLength === "number") {
+          violating = "x".repeat(property.maxLength + 50);
+        }
+        if (violating === null) continue;
+        checked += 1;
+        const args = baselineArgs(tool.inputSchema as Row, key);
+        args[key] = violating;
+        if ((await errorCode(tool.name as string, args)) === null) {
+          unenforced.push(
+            `${tool.name}.${key} silently ACCEPTED a value its own schema forbids`,
+          );
+        }
+      }
+    }
+
+    // 51 today. Lower than the 129 the schemas declare, because `isRunnable`
+    // skips the tools that need live bindings and enums are left to the gate
+    // above — the floor guards against the probe silently reaching nothing,
+    // not against the catalogue changing size.
+    assert.ok(
+      checked > 40,
+      `expected to probe real constraints, got ${checked}`,
+    );
+    assert.deepEqual(
+      unenforced,
+      [],
+      "these publish a `pattern` or `maxLength` and do not enforce it, so a " +
+        "malformed value filters to nothing and returns a confidently empty " +
+        `page instead of an error:\n${unenforced.join("\n")}`,
+    );
+  }, 180_000);
 });
