@@ -4082,6 +4082,21 @@ export function sortSubnets(rows: Row[], field: string, order: unknown) {
 // `readiness` alias is kept for `integration_readiness` so existing `min_readiness`
 // callers are unaffected.
 const LIST_SUBNETS_RANGE_BOUNDS = [
+  // The ROUTE's published names (#10018). GET /api/v1/subnets documents
+  // `min_integration_readiness`, so an agent reading our own OpenAPI sends
+  // that -- and was rejected for an unknown argument until now, while the same
+  // value worked over REST. Both names map to the same field; the route's is
+  // canonical and the shorter one stays so existing callers are unaffected.
+  {
+    arg: "min_integration_readiness",
+    field: "integration_readiness",
+    op: "min",
+  },
+  {
+    arg: "max_integration_readiness",
+    field: "integration_readiness",
+    op: "max",
+  },
   { arg: "min_readiness", field: "integration_readiness", op: "min" },
   { arg: "max_readiness", field: "integration_readiness", op: "max" },
   { arg: "min_surface_count", field: "surface_count", op: "min" },
@@ -4500,6 +4515,25 @@ function withoutSchemaMeta(schema: Row): Row {
  * actually validate against, while leaving Zod parsing (and the inferred TS
  * input type) untouched.
  */
+/**
+ * Read a value the caller may name either way (#10018).
+ *
+ * Two tools renamed the route's `q` to `query`, so an agent reading our own
+ * OpenAPI sent the published name and was rejected. Both are accepted now;
+ * `canonical` is the route's name and wins when both are present, so the
+ * outcome is defined rather than dependent on which key is read first.
+ */
+function requireEitherString(args: Row, canonical: string, alias: string) {
+  const value = args?.[canonical] ?? args?.[alias];
+  if (typeof value !== "string" || !value.trim()) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${canonical}\` (or its alias \`${alias}\`) is required and must be a non-empty string.`,
+    );
+  }
+  return value;
+}
+
 function requireAnyOf(
   schema: Record<string, unknown>,
   keys: string[],
@@ -4622,11 +4656,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Paginated like list_subnets: pass `cursor` to page past the first " +
       "results; the response carries `total` and a `next_cursor` (null at the " +
       "end) so the whole ranked match set is reachable.",
-    inputSchema: z.toJSONSchema(SearchSubnetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: requireAnyOf(
+      z.toJSONSchema(SearchSubnetsInputSchema, { target: "draft-2020-12" }),
+      ["q", "query"],
+    ),
     async handler(args: z.infer<typeof SearchSubnetsInputSchema>, ctx: McpCtx) {
-      const query = requireString(args, "query");
+      // Either name (#10018). The route publishes `q`; `query` is the alias
+      // this tool shipped with. Canonical wins when both are given, so the
+      // resolution is stated rather than left to argument order.
+      const query = requireEitherString(args, "q", "query");
       const index = await loadArtifactData(ctx, "/metagraph/search.json");
       const terms = queryTerms(query);
       const docs = Array.isArray(index.documents) ? index.documents : [];
@@ -13048,15 +13086,21 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "hit, optionally scoped to subnets, surfaces, and/or providers via `type`. " +
       "Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
-    inputSchema: z.toJSONSchema(SemanticSearchInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: requireAnyOf(
+      z.toJSONSchema(SemanticSearchInputSchema, { target: "draft-2020-12" }),
+      // Both optional in Zod so either may be used; without this the published
+      // schema would say NOTHING is required and an agent would call it empty
+      // (#10018, same reasoning as how_do_i_call).
+      ["q", "query"],
+    ),
     async handler(
       args: z.infer<typeof SemanticSearchInputSchema>,
       ctx: McpCtx,
     ) {
       requireAi(ctx);
-      const query = requireString(args, "query");
+      // Either name (#10018) -- the route publishes `q`. NOT applied to
+      // query_graphql, whose `query` is a GraphQL document, not search text.
+      const query = requireEitherString(args, "q", "query");
       await requireAiRateLimit(ctx, "semantic");
       return runAi(() =>
         semanticSearch(ctx.env, query, {

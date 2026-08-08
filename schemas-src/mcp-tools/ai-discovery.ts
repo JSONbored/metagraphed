@@ -67,10 +67,23 @@ export type FindSubnetOpportunitiesOutput = z.infer<
 
 export const SemanticSearchInputSchema = z
   .object({
+    // The name the ROUTE publishes (#10018). GET /api/v1/search/semantic
+    // documents `q`, so an agent reading our own OpenAPI sends that and was
+    // rejected for an unknown argument. Canonical; `query` stays so existing
+    // callers are unaffected. Exactly one is required -- expressed with
+    // requireAnyOf on the tool, since z.toJSONSchema drops a Zod refinement.
+    q: z
+      .string()
+      .optional()
+      .describe(
+        "The search text, embedded and ranked by meaning. The name GET /api/v1/search/semantic publishes; `query` is the alias this tool shipped with.",
+      )
+      .meta({ examples: ["inference"] }),
     query: z
       .string()
+      .optional()
       .describe(
-        "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
+        "Alias for `q`, the name this tool shipped with. Search text, embedded and ranked by meaning.",
       )
       .meta({ examples: ["inference"] }),
     limit: limitSchema(20).optional(),
