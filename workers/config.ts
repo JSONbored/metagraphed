@@ -58,6 +58,27 @@ export const LINK_STATUS_SYNC_CRON = "35 7 * * *";
 export const RAW_CAPTURE_CRON = "*/5 * * * *";
 
 /**
+ * metagraphed's own uptime probe (#9836).
+ *
+ * EVERY FIVE MINUTES, which is what the published series can honestly claim.
+ * The frozen history this replaces was written at one check a minute (1,440 a
+ * day), and matching that would mean 288 Worker invocations an hour to resolve
+ * a verdict nobody reads faster than they load a page. At 5 minutes a day holds
+ * 288 checks, so a single failed probe moves the day's uptime_ratio by 0.35% --
+ * fine-grained enough that a real outage is visible in the ratio, coarse enough
+ * that one edge blip does not read as an incident.
+ *
+ * The daily rows this writes are NOT comparable in `checks` to the pre-2026-08-02
+ * ones, and must not be: they are a count of probes taken, and the cadence
+ * changed. `uptime_ratio` is the comparable field, which is why that is the one
+ * the endpoint publishes.
+ *
+ * Minute 3 of each 5 is free of every other lane on this Worker.
+ */
+export const SELF_HEALTH_PROBE_CRON =
+  "3,8,13,18,23,28,33,38,43,48,53,58 * * * *";
+
+/**
  * The registration-cost capture lane (#9402).
  *
  * Minutes 1/16/31/46 -- the ONLY 15-minute grid left that collides with none of the
