@@ -121,6 +121,27 @@ describe("observationsReadDb", () => {
     );
   });
 
+  test("a ctx with NO waitUntil keeps it on D1", () => {
+    // Every serving handler defaults `ctx: EdgeCacheCtx = {}`, and EdgeCacheCtx
+    // declares waitUntil OPTIONAL. A truthiness check would take `{}` for a
+    // usable ctx and hand createPgSql nowhere to return the connection --
+    // leaking one per request on a serving path, which is worse than the stale
+    // read this whole selector exists to avoid.
+    for (const bad of [{}, { waitUntil: undefined }]) {
+      assert.equal(
+        observationsReadDb(
+          {
+            METAGRAPH_HEALTH_DB: D1,
+            HYPERDRIVE,
+            NEON_SOLE_STORE_TABLES: ALL_OWNED,
+          },
+          bad as { waitUntil?: (p: Promise<unknown>) => void },
+        ),
+        D1,
+      );
+    }
+  });
+
   test("no Hyperdrive keeps it on D1 even with every table named", () => {
     assert.equal(
       observationsReadDb(

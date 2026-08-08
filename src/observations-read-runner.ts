@@ -80,7 +80,10 @@ export interface ObservationsReadDeps {
  */
 export function observationsReadDb(
   env: Record<string, unknown> | null | undefined,
-  ctx?: WaitUntilLike | null,
+  // Optional-`waitUntil` on purpose: the serving handlers pass an EdgeCacheCtx,
+  // whose waitUntil is itself optional, and a ctx that cannot defer work is not
+  // a ctx for this purpose -- see the guard below.
+  ctx?: Partial<WaitUntilLike> | null,
   deps: ObservationsReadDeps = {},
 ): ObservationsReadDb | undefined {
   const d1 = env?.METAGRAPH_HEALTH_DB as ObservationsReadDb | undefined;
@@ -89,8 +92,11 @@ export function observationsReadDb(
   if (injected) return pgObservationsReadDb(injected);
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // neonOwnsObservations already proved the connection string is there; the
-  // ctx is the part it cannot see, and without one createPgSql would leak a
-  // connection per call rather than release it.
-  if (!ctx) return d1;
-  return pgObservationsReadDb(createPgSql(hyperdrive!, ctx));
+  // ctx is the part it cannot see. createPgSql returns its connection via
+  // waitUntil, so an absent one leaks a connection per request rather than
+  // releasing it -- and a leak on a serving path is worse than a stale read.
+  // `{}` reaches here from every handler defaulting `ctx: EdgeCacheCtx = {}`,
+  // which is why this tests the METHOD and not just the object.
+  if (typeof ctx?.waitUntil !== "function") return d1;
+  return pgObservationsReadDb(createPgSql(hyperdrive!, ctx as WaitUntilLike));
 }

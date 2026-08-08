@@ -23,6 +23,7 @@
 // `configureAnalytics({ readHealthMetaKv })` at api.ts load time. Everything else
 // is imported directly from leaf modules, so this file never imports api.ts.
 
+import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
@@ -732,7 +733,10 @@ export async function handleBulkHealthTrends(
         const d1Generation = currentD1ReadFailureGeneration();
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
-          db: env.METAGRAPH_HEALTH_DB,
+          db: observationsReadDb(
+            env as unknown as Record<string, unknown>,
+            ctx,
+          ),
           window: url.searchParams.get("window"),
           limit: trendsLimit.limit ?? null,
           offset: trendsOffset.value ?? 0,
@@ -804,7 +808,7 @@ export async function handleHealthTrends(
       const meta = await readHealthMetaKv(env);
       data = await loadSubnetHealthTrends(netuid, {
         observedAt: meta?.last_run_at || null,
-        db: env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
       } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
       usedFallback =
         !env.METAGRAPH_HEALTH_DB ||
@@ -866,7 +870,10 @@ export async function handleHealthPercentiles(
         data = await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
-          db: env.METAGRAPH_HEALTH_DB,
+          db: observationsReadDb(
+            env as unknown as Record<string, unknown>,
+            ctx,
+          ),
         } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
         usedFallback =
           !env.METAGRAPH_HEALTH_DB ||
@@ -926,7 +933,10 @@ export async function handleHealthIncidents(
         data = await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: meta?.last_run_at || null,
-          db: env.METAGRAPH_HEALTH_DB,
+          db: observationsReadDb(
+            env as unknown as Record<string, unknown>,
+            ctx,
+          ),
         } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
         usedFallback =
           !env.METAGRAPH_HEALTH_DB ||
