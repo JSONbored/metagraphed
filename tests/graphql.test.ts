@@ -9689,8 +9689,16 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
   });
 
   test("domain_summary rolls up one tag", async () => {
+    // emission_concentration takes a sub-selection since #9889: it is the same
+    // 12-key ConcentrationMetrics scorecard the route has served all along, not
+    // the Float the SDL used to declare. Selecting it as a leaf is now a
+    // GraphQL validation error rather than a coercion failure that nulled the
+    // field and read as "this domain has no members".
     const { status, body } = await gql(
-      '{ domain_summary(tag: "agents") { schema_version domain subnet_count netuids total_stake_tao total_emission_share emission_concentration } }',
+      `{ domain_summary(tag: "agents") {
+          schema_version domain subnet_count netuids total_stake_tao total_emission_share
+          emission_concentration { holders gini hhi nakamoto_coefficient }
+        } }`,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -9698,7 +9706,51 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(s.domain, "agents");
     assert.equal(s.subnet_count, 0);
     assert.deepEqual(s.netuids, []);
+    // Still null for a domain with no members -- the meaning the SDL always
+    // documented, now reachable only when it is actually true.
     assert.equal(s.emission_concentration, null);
+  });
+
+  test("emission_concentration resolves the scorecard for a domain with members", async () => {
+    // The positive half. The null above is only meaningful if a POPULATED
+    // domain returns the object -- against the empty default env every domain
+    // has subnet_count 0, so the same assertions would pass while resolving
+    // nothing. This seeds two member subnets so the scorecard is real.
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [
+          { netuid: 1, name: "A", categories: ["agents"] },
+          { netuid: 2, name: "B", categories: ["agents"] },
+        ],
+      },
+      "/metagraph/economics.json": {
+        subnets: [
+          { netuid: 1, total_stake_alpha: 100, emission_share: 0.6 },
+          { netuid: 2, total_stake_alpha: 50, emission_share: 0.4 },
+        ],
+      },
+    });
+    const { status, body } = await gql(
+      `{ domains { domains {
+          domain subnet_count
+          emission_concentration { holders total gini hhi nakamoto_coefficient entropy }
+        } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const rows = body.data.domains.domains as {
+      domain: string;
+      subnet_count: number;
+      emission_concentration: { holders: number } | null;
+    }[];
+    const agents = rows.find((row) => row.domain === "agents");
+    assert.ok(agents, "expected an agents rollup");
+    assert.equal(agents.subnet_count, 2);
+    // The whole point of #9889: this used to be null with a coercion error
+    // alongside it, which the SDL's own comment defined as "no members".
+    assert.ok(agents.emission_concentration, "expected the scorecard object");
+    assert.equal(agents.emission_concentration.holders, 2);
   });
 
   test("domain_summary rejects a tag outside the fixed taxonomy", async () => {

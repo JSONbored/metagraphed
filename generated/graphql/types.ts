@@ -1951,8 +1951,8 @@ export type DomainOverview = {
 export type DomainSummary = {
   __typename?: 'DomainSummary';
   domain: Scalars['String']['output'];
-  /** Within-domain emission HHI; null when the domain has no members. */
-  emission_concentration?: Maybe<Scalars['Float']['output']>;
+  /** Within-domain emission concentration scorecard; null when the domain has no members. Declared Float until #9889 — the route has served the full 12-key scorecard for long enough that the scalar coerced to null on every domain, which this type's own comment then read as 'no members'. */
+  emission_concentration?: Maybe<ConcentrationMetrics>;
   netuids: Array<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
@@ -8525,7 +8525,7 @@ export type DomainOverviewResolvers<ContextType = GqlContext, ParentType extends
 
 export type DomainSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DomainSummary'] = ResolversParentTypes['DomainSummary']> = ResolversObject<{
   domain?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  emission_concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_concentration?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
   netuids?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
