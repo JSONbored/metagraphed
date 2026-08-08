@@ -17,6 +17,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
+import { stripSentinelIntegerBounds } from "../src/mcp-input-schema.ts";
 
 type Row = Record<string, unknown>;
 
@@ -199,22 +200,281 @@ const openapi = JSON.parse(
 ) as Row;
 
 /** route path -> the query and path parameter names it publishes. */
-const published = new Map<string, { query: Set<string>; path: Set<string> }>();
+const published = new Map<
+  string,
+  { query: Set<string>; path: Set<string>; querySchemas: Map<string, Row> }
+>();
 for (const [route, operations] of Object.entries(
   (openapi.paths ?? {}) as Record<string, Row>,
 )) {
   const query = new Set<string>();
   const path = new Set<string>();
+  const querySchemas = new Map<string, Row>();
   for (const operation of Object.values(operations)) {
     for (const parameter of ((operation as Row)?.parameters ?? []) as Row[]) {
       (parameter.in === "query" ? query : path).add(String(parameter.name));
+      if (parameter.in === "query")
+        querySchemas.set(
+          String(parameter.name),
+          (parameter.schema ?? {}) as Row,
+        );
     }
   }
-  published.set(route, { query, path });
+  published.set(route, { query, path, querySchemas });
 }
 
+// ---- the CONSTRAINTS half (#10064) ----------------------------------------
+//
+// Everything above compares NAMES. That was the whole gate until now, and it
+// leaves the more common failure untouched: a tool that takes the right
+// argument and accepts the wrong values.
+//
+// Measured when this was written: of 654 shared argument pairs, 212 disagreed
+// about what the value may BE. They are not one problem, so they are not one
+// verdict.
+//
+//   LOOSER    the tool drops a constraint its route publishes -- an `enum` it
+//             does not name, a `pattern` it does not apply, a `maxLength` it
+//             does not cap. This is the defect. An agent cannot discover the
+//             accepted values from the tool schema, and a wrong value is not
+//             an error: it filters to nothing and reads as "no data". The
+//             unbounded text ones cost real work too, since `searchRows` scans
+//             per term per row (#5544).
+//
+//   NARROWED  the tool is STRICTER -- a lower `maximum`, a declared `default`,
+//             an integer where the route says number. Correct and deliberate
+//             (#9701: a browser can stream 9 MB, a context window cannot).
+//             Allowed without a declaration, because a tool cannot become
+//             wrong by accepting less than its route.
+//
+//   SHAPE     the same value in the form each surface speaks -- a boolean
+//             instead of `"true"`, an array instead of a comma-separated
+//             string. Legitimate, but DECLARED, because a wrong shape looks
+//             exactly like a right one from here.
+//
+// 4/5 closes LOOSER by deriving the tool input from the route's Zod. Until
+// then every one is listed, and the list can only shrink.
+
+type Divergence = "LOOSER" | "NARROWED" | "SHAPE";
+
+const CONSTRAINT_KEYWORDS = [
+  "enum",
+  "pattern",
+  "maxLength",
+  "minLength",
+  "maximum",
+  "minimum",
+  "format",
+] as const;
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    const row = value as Row;
+    return `{${Object.keys(row)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonical(row[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** A schema as this gate compares it -- prose and examples are not contract. */
+function constraintsOnly(schema: Row): string {
+  const {
+    description: _description,
+    examples: _examples,
+    ...rest
+  } = stripSentinelIntegerBounds(schema);
+  return canonical(rest);
+}
+
+/**
+ * How a tool argument differs from the route parameter it mirrors, or null
+ * when they agree.
+ *
+ * Computed rather than declared: which KIND of difference this is falls out of
+ * the two schemas, and only the ones that need a human judgement get listed.
+ */
+function classify(toolSchema: Row, routeSchema: Row): Divergence | null {
+  const tool = stripSentinelIntegerBounds(toolSchema);
+  const route = stripSentinelIntegerBounds(routeSchema);
+  const ignore = new Set(["description", "examples", "default", "$schema"]);
+  const same = (key: string) => canonical(tool[key]) === canonical(route[key]);
+  const differing = [
+    ...new Set([...Object.keys(tool), ...Object.keys(route)]),
+  ].filter((key) => !ignore.has(key) && !same(key));
+  if (differing.length === 0) return null;
+
+  // A different `type`, or one side using a composite, is the surface speaking
+  // its own dialect -- JSON has booleans and arrays, a query string does not.
+  if (
+    tool.type !== route.type ||
+    tool.anyOf !== undefined ||
+    route.anyOf !== undefined
+  ) {
+    return "SHAPE";
+  }
+  // Dropping a constraint the route states is the defect, whatever else also
+  // differs. Checked first so a tool that both loosens an enum and lowers a
+  // maximum is reported as the loosening.
+  for (const keyword of CONSTRAINT_KEYWORDS) {
+    if (route[keyword] !== undefined && tool[keyword] === undefined)
+      return "LOOSER";
+    if (keyword === "maxLength" || keyword === "maximum") {
+      if (
+        typeof route[keyword] === "number" &&
+        typeof tool[keyword] === "number" &&
+        (tool[keyword] as number) > (route[keyword] as number)
+      )
+        return "LOOSER";
+    }
+    if (keyword === "enum" && route.enum && tool.enum) {
+      const routeValues = new Set(route.enum as string[]);
+      if ((tool.enum as string[]).some((value) => !routeValues.has(value)))
+        return "LOOSER";
+    }
+    if (keyword === "pattern" && route.pattern && tool.pattern) {
+      if (route.pattern !== tool.pattern) return "LOOSER";
+    }
+  }
+  return "NARROWED";
+}
+
+/**
+ * Constraint divergences that are NOT the tool simply being stricter.
+ *
+ * `LOOSER` entries are standing debt -- delete one by TIGHTENING the tool, not
+ * by keeping it. `SHAPE` entries are the surface speaking JSON where the route
+ * speaks a query string, and are permanent.
+ *
+ * A stale entry fails, so the list can only shrink.
+ */
+const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
+  // SHAPE -- the same value in the form each surface speaks. Permanent.
+  "compare_subnets.dimensions": "SHAPE",
+  "compare_subnets.netuids": "SHAPE",
+  "compare_validators.hotkeys": "SHAPE",
+  "get_governance_config_changes.success": "SHAPE",
+  "get_neuron.fields": "SHAPE",
+  "get_subnet_endpoints.pool_eligible": "SHAPE",
+  "get_subnet_metagraph.fields": "SHAPE",
+  "get_subnet_metagraph.validator_permit": "SHAPE",
+  "get_subnet_turnover.changes": "SHAPE",
+  "get_sudo.success": "SHAPE",
+  "list_endpoints.pool_eligible": "SHAPE",
+  "list_extrinsics.success": "SHAPE",
+  "list_provider_endpoints.pool_eligible": "SHAPE",
+  "list_rpc_endpoints.cursor": "SHAPE",
+  "list_rpc_endpoints.fields": "SHAPE",
+  "list_rpc_endpoints.pool_eligible": "SHAPE",
+  "list_subnet_validators.fields": "SHAPE",
+  "list_subnets.max_candidate_count": "SHAPE",
+  "list_subnets.max_integration_readiness": "SHAPE",
+  "list_subnets.max_mechanism_count": "SHAPE",
+  "list_subnets.max_participant_count": "SHAPE",
+  "list_subnets.max_probed_surface_count": "SHAPE",
+  "list_subnets.max_surface_count": "SHAPE",
+  "list_subnets.max_tempo": "SHAPE",
+  "list_subnets.min_candidate_count": "SHAPE",
+  "list_subnets.min_integration_readiness": "SHAPE",
+  "list_subnets.min_mechanism_count": "SHAPE",
+  "list_subnets.min_participant_count": "SHAPE",
+  "list_subnets.min_probed_surface_count": "SHAPE",
+  "list_subnets.min_surface_count": "SHAPE",
+  "list_subnets.min_tempo": "SHAPE",
+
+  // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool
+  // (4/5, #10064), never by keeping it.
+  "get_account_history.from": "LOOSER",
+  "get_account_history.to": "LOOSER",
+  "get_chain_calls.call_module": "LOOSER",
+  "get_chain_fees.call_module": "LOOSER",
+  "get_chain_signers.call_module": "LOOSER",
+  "get_coverage_depth.fields": "LOOSER",
+  "get_economics.sort": "LOOSER",
+  "get_extrinsic_chain_events.cursor": "LOOSER",
+  "get_health_history.fields": "LOOSER",
+  "get_health_history.provider": "LOOSER",
+  "get_subnet_candidates.fields": "LOOSER",
+  "get_subnet_candidates.id": "LOOSER",
+  "get_subnet_candidates.provider": "LOOSER",
+  "get_subnet_endpoints.fields": "LOOSER",
+  "get_subnet_endpoints.provider": "LOOSER",
+  "get_subnet_health.provider": "LOOSER",
+  "get_subnet_surfaces.fields": "LOOSER",
+  "get_subnet_surfaces.id": "LOOSER",
+  "get_subnet_surfaces.provider": "LOOSER",
+  "list_adapter_candidates.fields": "LOOSER",
+  "list_adapter_candidates.reason_codes": "LOOSER",
+  "list_candidates.fields": "LOOSER",
+  "list_candidates.id": "LOOSER",
+  "list_candidates.provider": "LOOSER",
+  "list_chain_events.cursor": "LOOSER",
+  "list_chain_events.method": "LOOSER",
+  "list_chain_events.pallet": "LOOSER",
+  "list_curation.fields": "LOOSER",
+  "list_endpoint_incidents.fields": "LOOSER",
+  "list_endpoint_incidents.provider": "LOOSER",
+  "list_endpoint_pools.fields": "LOOSER",
+  "list_endpoint_pools.id": "LOOSER",
+  "list_endpoint_pools.kind": "LOOSER",
+  "list_endpoints.fields": "LOOSER",
+  "list_endpoints.provider": "LOOSER",
+  "list_enrichment_evidence.fields": "LOOSER",
+  "list_enrichment_queue.fields": "LOOSER",
+  "list_enrichment_queue.reason_codes": "LOOSER",
+  "list_enrichment_queue.review_state": "LOOSER",
+  "list_evidence.fields": "LOOSER",
+  "list_extrinsics.call_hash": "LOOSER",
+  "list_gaps.fields": "LOOSER",
+  "list_profile_completeness.fields": "LOOSER",
+  "list_profiles.fields": "LOOSER",
+  "list_profiles.review_state": "LOOSER",
+  "list_provider_endpoints.fields": "LOOSER",
+  "list_providers.fields": "LOOSER",
+  "list_providers.id": "LOOSER",
+  "list_review_enrichment_targets.fields": "LOOSER",
+  "list_review_enrichment_targets.reason_codes": "LOOSER",
+  "list_review_gaps.fields": "LOOSER",
+  "list_review_gaps.sort": "LOOSER",
+  "list_rpc_endpoints.provider": "LOOSER",
+  "list_rpc_pools.fields": "LOOSER",
+  "list_rpc_pools.id": "LOOSER",
+  "list_rpc_pools.kind": "LOOSER",
+  "list_search.fields": "LOOSER",
+  "list_search_index.fields": "LOOSER",
+  "list_source_snapshots.fields": "LOOSER",
+  "list_subnet_candidates.fields": "LOOSER",
+  "list_subnet_candidates.id": "LOOSER",
+  "list_subnet_candidates.provider": "LOOSER",
+  "list_subnet_endpoints.fields": "LOOSER",
+  "list_subnet_endpoints.provider": "LOOSER",
+  "list_subnet_evidence.fields": "LOOSER",
+  "list_subnet_gaps.fields": "LOOSER",
+  "list_subnet_gaps.review_state": "LOOSER",
+  "list_subnet_health.provider": "LOOSER",
+  "list_subnet_surfaces.id": "LOOSER",
+  "list_subnet_surfaces.provider": "LOOSER",
+  "list_subnets.domain": "LOOSER",
+  "list_subnets.netuids": "LOOSER",
+  "list_subnets.status": "LOOSER",
+  "list_subnets.subnet_type": "LOOSER",
+  "list_surfaces.fields": "LOOSER",
+  "list_surfaces.id": "LOOSER",
+  "list_surfaces.provider": "LOOSER",
+  "list_validator_economics.offset": "LOOSER",
+  "search_subnets.q": "LOOSER",
+  "semantic_search.q": "LOOSER",
+};
+
 const errors: string[] = [];
+const constraintErrors: string[] = [];
 const used = new Set<string>();
+const constraintUsed = new Set<string>();
+let sharedPairs = 0;
+let identicalPairs = 0;
+let narrowedPairs = 0;
 let compared = 0;
 let aligned = 0;
 
@@ -241,6 +501,38 @@ for (const tool of listToolDefinitions()) {
       continue;
     }
     undeclaredByRoute.push(argument);
+  }
+
+  // The constraints half: for every argument the tool and route SHARE, do they
+  // agree on what the value may be?
+  const toolProperties = ((tool.inputSchema as Row)?.properties ??
+    {}) as Record<string, Row>;
+  for (const [argument, toolSchema] of Object.entries(toolProperties)) {
+    const routeSchema = parameters.querySchemas.get(argument);
+    if (!routeSchema) continue;
+    sharedPairs += 1;
+    const divergence = classify(toolSchema, routeSchema);
+    if (divergence === null) {
+      identicalPairs += 1;
+      continue;
+    }
+    if (divergence === "NARROWED") {
+      narrowedPairs += 1;
+      continue;
+    }
+    const key = `${tool.name}.${argument}`;
+    const declared = CONSTRAINT_DIVERGENCES[key];
+    if (declared === divergence) {
+      constraintUsed.add(key);
+      continue;
+    }
+    constraintErrors.push(
+      declared === undefined
+        ? `${tool.name}.${argument} is ${divergence} than ${route} publishes\n` +
+            `    route: ${constraintsOnly(routeSchema)}\n` +
+            `    tool:  ${constraintsOnly(toolSchema)}`
+        : `${tool.name}.${argument} is declared ${declared} but is now ${divergence}`,
+    );
   }
 
   const unreachable: string[] = [];
@@ -290,6 +582,19 @@ if (stale.length > 0) {
   );
 }
 
+// A stale constraint declaration means the tool was tightened (or the route
+// loosened) and nobody deleted the admission.
+const staleConstraints = Object.keys(CONSTRAINT_DIVERGENCES)
+  .filter((key) => !constraintUsed.has(key))
+  .sort();
+if (staleConstraints.length > 0) {
+  constraintErrors.push(
+    `${staleConstraints.length} CONSTRAINT_DIVERGENCES entr(y/ies) no longer diverge — delete them:\n` +
+      staleConstraints.map((key) => `    ${key}`).join("\n"),
+  );
+}
+errors.push(...constraintErrors);
+
 if (errors.length > 0) {
   console.error(
     `MCP input-parity validation failed with ${errors.length} issue(s):`,
@@ -298,6 +603,12 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
+const looserCount = Object.values(CONSTRAINT_DIVERGENCES).filter(
+  (kind) => kind === "LOOSER",
+).length;
+const shapeCount = Object.values(CONSTRAINT_DIVERGENCES).filter(
+  (kind) => kind === "SHAPE",
+).length;
 const debt = Object.entries(DECLARED).filter(
   ([, reason]) => reason === NOT_YET_EXPOSED,
 ).length;
@@ -305,5 +616,9 @@ assert.ok(compared > 0, "no tool resolved to a published route");
 console.log(
   `MCP input-parity validation passed: ${compared} tools compared against their route's ` +
     `published parameters, ${aligned} aligned exactly, ` +
-    `${Object.keys(DECLARED).length} declared divergences (${debt} of them standing debt).`,
+    `${Object.keys(DECLARED).length} declared divergences (${debt} of them standing debt). ` +
+    `${sharedPairs} shared argument pairs: ${identicalPairs} identical, ` +
+    `${narrowedPairs} narrowed for the context window, ` +
+    `${looserCount} looser than their route (standing debt), ` +
+    `${shapeCount} a declared JSON-shape adaptation.`,
 );
