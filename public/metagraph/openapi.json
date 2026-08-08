@@ -52454,7 +52454,15 @@
             "type": "array"
           },
           "stale": {
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this surface's verification is older than its kind's freshness TTL. NULL when the surface has never been verified (#9906): that is unverified, not fresh, and 78% of surfaces were in that state while publishing false. Same unknown-is-not-a-value convention as `exists` on /crowdloans/{id}, `leased` on /subnets/{netuid}/lease, and lane_health's `verdict: unknown`."
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"

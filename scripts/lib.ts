@@ -1108,17 +1108,26 @@ export function surfaceFreshnessTtlDays(kind: string): number {
 
 // True when a surface's verification is older than its kind's TTL, measured
 // against `nowMs` (the dataset's native-snapshot captured_at, a committed +
-// deterministic reference — never wall-clock — so the flag is reproducible). A
-// surface with no last_verified_at is NOT stale: that's "unverified", a distinct
-// state the null timestamp already signals.
+// deterministic reference — never wall-clock — so the flag is reproducible).
+//
+// NULL when there is nothing to measure: no last_verified_at, an unparseable
+// one, or a non-finite reference. This used to return `false` on the reasoning
+// that the null timestamp already signalled "unverified" — but `stale` is
+// published as its own field, and read as one: 2,731 of 3,493 surfaces (78%)
+// had never been verified and every one of them published `stale: false`, so a
+// consumer filtering on `stale === false` for "this verification is current"
+// got a set in which four out of five entries had no verification behind them
+// (#9906). Null is the same unknown-is-not-a-value convention this codebase
+// already uses for `exists` on /crowdloans/{id}, `leased` on
+// /subnets/{netuid}/lease, and lane_health's `verdict: "unknown"`.
 export function isSurfaceStale(
   lastVerifiedAt: unknown,
   kind: string,
   nowMs: number,
-): boolean {
-  if (!lastVerifiedAt) return false;
+): boolean | null {
+  if (!lastVerifiedAt) return null;
   const verifiedMs = Date.parse(lastVerifiedAt as string);
-  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return null;
   return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
 }
 
@@ -1139,7 +1148,13 @@ export function withSurfaceFreshness(surfaces: Row[], nowMs: number): Row[] {
       // #1757: re-resolve the trust tier now that staleness is known — a stale
       // verification demotes machine-verified/maintainer-reviewed down to
       // candidate-discovered, the same demotion the freshness model applies
-      // elsewhere. subnet_curation_level isn't carried on the flattened row, so
+      // elsewhere.
+      //
+      // A NULL `stale` (never verified, #9906) takes the else branch, which is
+      // correct and unchanged: resolveSurfaceCurationLevel already floors a
+      // never-verified surface at candidate-discovered on its own, which is
+      // exactly where a demoted stale surface lands. Only the published label
+      // changed, not the trust ordering. subnet_curation_level isn't carried on the flattened row, so
       // an already-resolved maintainer-reviewed/adapter-backed level (set in
       // flattenSurfaces from the subnet ceiling) is preserved when still fresh.
       curation_level: stale

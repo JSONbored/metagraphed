@@ -11704,7 +11704,8 @@ export interface components {
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
             schema_url?: string;
             source_urls?: string[];
-            stale?: boolean;
+            /** @description Whether this surface's verification is older than its kind's freshness TTL. NULL when the surface has never been verified (#9906): that is unverified, not fresh, and 78% of surfaces were in that state while publishing false. Same unknown-is-not-a-value convention as `exists` on /crowdloans/{id}, `leased` on /subnets/{netuid}/lease, and lane_health's `verdict: unknown`. */
+            stale?: boolean | null;
             status?: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;

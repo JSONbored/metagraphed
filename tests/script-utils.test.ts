@@ -1859,12 +1859,17 @@ describe("script utility contracts", () => {
     const now = Date.parse("2026-06-14T00:00:00.000Z");
     const daysAgo = (n: number) => new Date(now - n * 86_400_000).toISOString();
 
-    // Unverified surfaces are NOT stale — null is a distinct state the agent reads.
-    assert.equal(isSurfaceStale(null, "subnet-api", now), false);
-    assert.equal(isSurfaceStale(undefined, "docs", now), false);
-    // Unparseable inputs never throw and never flag stale.
-    assert.equal(isSurfaceStale("not-a-date", "docs", now), false);
-    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), false);
+    // Never verified is NULL, not false (#9906): there is no verification to
+    // call fresh, and `false` asserted freshness for 78% of all surfaces.
+    assert.equal(isSurfaceStale(null, "subnet-api", now), null);
+    assert.equal(isSurfaceStale(undefined, "docs", now), null);
+    // Unparseable inputs never throw, and are likewise unknown rather than
+    // fresh -- an unreadable timestamp is not evidence of a recent check.
+    assert.equal(isSurfaceStale("not-a-date", "docs", now), null);
+    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), null);
+    // The distinction the field exists to make: null vs false vs true are
+    // three states, and only `false` means "verified, and still fresh".
+    assert.notEqual(isSurfaceStale(null, "docs", now), false);
     // Fresh: age below the kind TTL.
     assert.equal(isSurfaceStale(daysAgo(10), "subnet-api", now), false);
     // Boundary: exactly at the TTL is still fresh (strict greater-than).
@@ -1891,7 +1896,8 @@ describe("script utility contracts", () => {
       [
         ["a", true],
         ["b", false],
-        ["c", false],
+        // Never verified: null, not false (#9906).
+        ["c", null],
       ],
     );
     assert.equal(stamped[0].kind, "openapi");
