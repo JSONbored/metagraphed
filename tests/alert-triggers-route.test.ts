@@ -181,7 +181,7 @@ test("create: 400 on a validation failure, without ever touching Postgres", asyn
   assert.equal(sqlCalls.length, 0);
 });
 
-test("create: 503 when METAGRAPH_HEALTH_DB is unbound", async () => {
+test("create: 503 when no user-state store is bound", async () => {
   const res = await fetch(
     req("/api/v1/alerts/triggers", {
       method: "POST",
@@ -191,7 +191,10 @@ test("create: 503 when METAGRAPH_HEALTH_DB is unbound", async () => {
     { ...env, METAGRAPH_HEALTH_DB: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), { error: "d1 binding unavailable" });
+  // The message names the STORE GROUP, not D1 (#10144): userStateRunner
+  // answers for whichever store owns api_keys/alert_triggers, so an unbound
+  // D1 is only half of what "nothing here" can mean.
+  assert.deepEqual(await res.json(), { error: "no user-state store bound" });
 });
 
 test("create: 502 when the insert fails", async () => {

@@ -453,6 +453,7 @@ import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
+import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
   handleDeadLetterBatch,
   isDeadLetterQueue,
@@ -775,14 +776,22 @@ async function handleNeuronsSync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- it is the only store left (#9146,
-  // #9193), so the sync has to keep working with nothing else bound or the
-  // only live-refreshed family in the product stops advancing.
+  // THE INVERSION (#9787). Once Neon solely owns all three tables the D1
+  // write is skipped outright rather than written and ignored -- leaving it in
+  // would keep a second copy diverging quietly, which is the state this whole
+  // migration exists to end.
+  const neonOwns = neonOwnsNeuronsSnapshot(env);
+
+  // D1 is the binding this path requires UNTIL Neon owns the tables (#10144).
+  // Asked before the write, and only when the write is going to happen: the
+  // check used to be unconditional, so unbinding D1 answered 503 here and the
+  // Neon write below -- the one that would have succeeded -- was never
+  // reached.
   //
   // Checked HERE, after parsing and validation, not at the top: a malformed
   // body is a 400 whether or not a store happens to be bound, and answering
   // 503 to it would blame the infrastructure for the caller's payload.
-  if (!env.METAGRAPH_HEALTH_DB) {
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
@@ -792,11 +801,6 @@ async function handleNeuronsSync(
   // left un-pruned.
   // 0 when Neon owns the tables and the D1 write is skipped entirely.
   let d1Statements = 0;
-  // THE INVERSION (#9787). Once Neon solely owns all three tables the D1
-  // write is skipped outright rather than written and ignored -- leaving it in
-  // would keep a second copy diverging quietly, which is the state this whole
-  // migration exists to end.
-  const neonOwns = neonOwnsNeuronsSnapshot(env);
   if (!neonOwns) {
     try {
       ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
@@ -940,14 +944,15 @@ async function handleChainDetailSync(
   const batch = parseChainDetailSync(parsed, Date.now());
   if (!batch.ok) return writeJson({ error: batch.error }, batch.status);
 
-  // D1 is the binding this path REQUIRES -- it is the only store (data-api's
-  // Postgres tier was deleted in #9202), so the lane has nowhere else to land.
+  // D1 is the binding this path requires UNTIL Neon owns the four families
+  // (#10144) -- asked only when the D1 write below is going to happen, since an
+  // unconditional check answered 503 here and never reached the Neon write.
   //
   // Checked HERE, after parsing and validation, not at the top: a malformed
   // body is a 400 whether or not a store happens to be bound, and answering 503
   // to it would blame the infrastructure for the caller's payload. Same
   // ordering, and the same reason, as handleNeuronsSync above.
-  if (!env.METAGRAPH_HEALTH_DB) {
+  if (!neonOwnsChainDetail(env) && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
@@ -1070,6 +1075,16 @@ async function handleChainDetailSync(
 async function handleChainDetailSyncHead(request: Request, env: Env) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
+  // DELIBERATELY still unconditional, unlike its sibling above (#10144).
+  //
+  // chainDetailCoverage reads chain_detail_blocks out of src/chain-detail-hot-
+  // tier.ts, which is D1-only -- it has no Neon path to fall through to yet.
+  // Relaxing this check would turn "I cannot tell you" into `head: null`, and
+  // `head: null` is a documented real answer that tells the producer to start
+  // from the current finalized head. A 503 makes it retry; a wrong null makes
+  // it skip, and leaves a hole nothing will ever fill.
+  //
+  // This unblocks when the hot tier moves (#9773).
   if (!env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
@@ -1194,25 +1209,35 @@ async function handleNeuronDailyBackfill(
 
   // Same write shape as handleNeuronsSync's #9157 port, minus the `neurons`
   // write and the prune this handler must never run (see the header comment
-  // above -- that invariant is store-independent). D1 is the binding this
-  // path REQUIRES; it is also how the operator replays the box's
-  // neuron_daily/account_position_daily history into D1. Checked after
-  // validation for the same 400-before-503 reasoning as the sync handler.
-  if (!env.METAGRAPH_HEALTH_DB) {
+  // above -- that invariant is store-independent).
+  //
+  // THE INVERSION (#10144). This route was still ordered the way the whole
+  // system used to be: write D1, fail the request if that write fails, then
+  // mirror to Neon and report `stores: ["d1","neon"]`. Both tables it writes
+  // are Neon's outright, so that ordering had the authoritative store in the
+  // mirror's position -- a backfill could report success on a D1 write nothing
+  // reads, and a Neon failure was invisible.
+  //
+  // Checked after validation for the same 400-before-503 reasoning as the sync
+  // handler, and only when the D1 write is still going to happen.
+  const neonOwns = neonOwnsNeuronsSnapshot(env);
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
-  let d1Statements: number;
-  try {
-    ({ statements: d1Statements } = await writeNeuronDailyBackfillToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeNeuronDailyBackfillToD1
-      >[0],
-      { dailyRows, positionRows },
-    ));
-  } catch (err) {
-    console.error("data-api neuron-daily-backfill D1 write failed:", err);
-    await captureDataApiError(err, "neuron-daily-backfill-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+  let d1Statements = 0;
+  if (!neonOwns) {
+    try {
+      ({ statements: d1Statements } = await writeNeuronDailyBackfillToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeNeuronDailyBackfillToD1
+        >[0],
+        { dailyRows, positionRows },
+      ));
+    } catch (err) {
+      console.error("data-api neuron-daily-backfill D1 write failed:", err);
+      await captureDataApiError(err, "neuron-daily-backfill-d1", env);
+      return writeJson({ error: "d1 write failed" }, 502);
+    }
   }
 
   // THE SECOND WRITER, mirrored too (#9717).
@@ -1238,11 +1263,43 @@ async function handleNeuronDailyBackfill(
     { rows: [], dailyRows, positionRows },
   );
 
+  // Once Neon owns the tables, a backfill that did not reach Neon did not
+  // happen -- and the operator replaying a year of history is precisely the
+  // caller who must not be told `ok` for rows that landed nowhere. Below the
+  // inversion this stays best-effort, exactly as it was.
+  //
+  // The two tables are named rather than folded over `neon.results`, because
+  // the mirror returns `{ attempted: true, results: {} }` when Hyperdrive is
+  // unbound -- a failure a "no result said not-ok" test would read as success.
+  // Absent has to fail here, not just present-and-false.
+  if (neonOwns) {
+    const reason = ["neuron_daily", "account_position_daily"]
+      .map((table) => {
+        const result = neon.results?.[table];
+        if (!result) return `${table}: no Neon write recorded`;
+        return result.ok ? null : `${table}: ${result.reason ?? "failed"}`;
+      })
+      .filter(Boolean)
+      .join("; ");
+    if (reason) {
+      console.error(
+        "data-api neuron-daily-backfill Neon write failed:",
+        reason,
+      );
+      await captureDataApiError(
+        new Error(reason),
+        "neuron-daily-backfill-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
   return writeJson({
     ok: true,
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
-    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
+    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
     neon: neon.attempted ? neon.results : undefined,
   });
@@ -2961,8 +3018,15 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   if (!incoming.length || !incoming.every(validPollerJobOutcome)) {
     return writeJson({ error: "rows must match the outcome shape" }, 400);
   }
-  if (!env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+  // Whichever store holds lane_health (#10127). Every one of this repo's 27
+  // watchdogs already writes its verdicts through laneHealthStore; this route
+  // was the one writer still reaching for the D1 binding by name, so the
+  // poller's job outcomes were the only verdicts that would have stopped
+  // landing when D1 went away -- and recordLaneVerdict swallows failures, so
+  // they would have stopped silently.
+  const laneDb = laneHealthStore(env as unknown as Record<string, unknown>);
+  if (!laneDb) {
+    return writeJson({ error: "no lane_health store bound" }, 503);
   }
 
   // recordLaneVerdict swallows its own failures by design -- an alarm whose
@@ -2970,9 +3034,17 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   // that actually landed is reported rather than assumed.
   let written = 0;
   for (const row of incoming.map(coercePollerJobOutcome)) {
-    if (await recordLaneVerdict(env.METAGRAPH_HEALTH_DB, row)) written += 1;
+    if (await recordLaneVerdict(laneDb, row)) written += 1;
   }
-  return writeJson({ ok: true, lane_health_written: written, stores: ["d1"] });
+  return writeJson({
+    ok: true,
+    lane_health_written: written,
+    stores: [
+      neonOwnsTable(env as unknown as Record<string, unknown>, "lane_health")
+        ? "neon"
+        : "d1",
+    ],
+  });
 }
 
 function json(data: unknown, status: number = 200) {
@@ -3317,7 +3389,10 @@ async function withAlertTriggersSql(
 ) {
   const sql = userStateRunner(env, ctx, ALERT_TRIGGER_TABLES);
   if (!sql) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+    // userStateRunner is store-neutral (#10106): nothing back from it means
+    // NEITHER store is bound, so naming D1 here pointed at the wrong half of
+    // a two-store answer.
+    return writeJson({ error: "no user-state store bound" }, 503);
   }
   try {
     return await fn(sql);
@@ -4437,7 +4512,8 @@ async function withAccountsSql<T>(
 ): Promise<T | Response> {
   const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
   if (!sql) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+    // Store-neutral, same as withAlertTriggersSql above.
+    return writeJson({ error: "no user-state store bound" }, 503);
   }
   try {
     return await fn(sql);
