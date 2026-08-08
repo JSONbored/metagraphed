@@ -1399,7 +1399,6 @@ async function handleSubnetHyperparamsSync(
   }
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
-  const netuids = incoming.map((row: Row) => row.netuid);
 
   // Hashed ONCE, before either store writes, on the RAW incoming rows
   // (pre-coercion) -- formatSubnetHyperparams' toD1Flag(value) tolerates
@@ -7152,10 +7151,7 @@ const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
 // `since` filters on last_checked, the column that records when the row was
 // written; since=0 (or absent/unparseable) returns everything, which is what
 // "the last known row, however stale" means for the prober's continuity read.
-function matchHealthStatusD1Route(
-  url: URL,
-  env: Env,
-): NeuronsD1RouteHandler | null {
+function matchHealthStatusD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (url.pathname !== "/api/v1/internal/health-status-live") return null;
   return async (sql) => {
     const since = Number(url.searchParams.get("since"));
@@ -7198,7 +7194,6 @@ const ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS = `id, observed_at, ${IDENTITY_FI
 
 function matchHyperparamsIdentityD1Route(
   url: URL,
-  env: Env,
 ): NeuronsD1RouteHandler | null {
   // GET /api/v1/subnets/:netuid/hyperparameters -- twin of the Postgres
   // route of the same name below, latest-only single-row lookup.
@@ -7622,7 +7617,7 @@ async function dispatchDataApiRequest(
     // and the health-serving fallback have both always called. Same envelope
     // as the neurons block above.
     {
-      const healthStatusD1Handler = matchHealthStatusD1Route(url, env);
+      const healthStatusD1Handler = matchHealthStatusD1Route(url);
       if (healthStatusD1Handler) {
         const store = routeStore(env, ctx, url);
         if (!store) {
@@ -7644,10 +7639,7 @@ async function dispatchDataApiRequest(
     // independently). Same catch envelope: log + masked-route capture + an
     // opaque 502 that never leaks DB detail.
     {
-      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(
-        url,
-        env,
-      );
+      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(url);
       if (hyperparamsIdentityD1Handler) {
         const store = routeStore(env, ctx, url);
         if (!store) {

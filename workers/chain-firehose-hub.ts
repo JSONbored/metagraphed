@@ -66,7 +66,6 @@ import {
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
-import { neonOwnsTable } from "../src/neon-write.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 

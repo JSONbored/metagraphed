@@ -57,26 +57,10 @@ const hk = (n: number) => `5Hotkey0${String(n).padStart(40, "0")}`;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
-  return {
-    prepare(text: string) {
-      const run = (values: unknown[]) => ({
-        async all() {
-          return { results: db.prepare(text).all(...(values as never[])) };
-        },
-        async first() {
-          return db.prepare(text).get(...(values as never[])) ?? null;
-        },
-      });
-      return { bind: (...values: unknown[]) => run(values), ...run([]) };
-    },
-  };
-}
-
 /** The surface's env: a connection string for readStore to find, every table
- * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
- * the `pg` double -- so a surface assertion and a loader assertion are looking
- * at one set of rows. */
+ * declared Neon's, and the in-memory engine behind the `pg` double answering
+ * every read -- so a surface assertion and a loader assertion are looking at
+ * one set of rows. */
 const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 async function gql(query: string, e: Env = env()) {

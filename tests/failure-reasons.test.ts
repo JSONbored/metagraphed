@@ -38,26 +38,6 @@ function rollupDb() {
   return sqlite;
 }
 
-/** The ObservationsDb shape the rollup writer binds against. */
-function asDb(sqlite: DatabaseSync) {
-  return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind(...values: unknown[]) {
-          return { __stmt: stmt, __values: values };
-        },
-      };
-    },
-    async batch(stmts: Array<{ __stmt: unknown; __values: unknown[] }>) {
-      for (const s of stmts) {
-        (s.__stmt as { run(...v: unknown[]): void }).run(...s.__values);
-      }
-      return [];
-    },
-  } as never;
-}
-
 /** A read surface over the rollup table, for loadFailureReasons. */
 function readDb(sqlite: DatabaseSync) {
   return {
@@ -76,7 +56,6 @@ function readDb(sqlite: DatabaseSync) {
   };
 }
 
-const DAY_MS = 86_400_000;
 const T = Date.UTC(2026, 7, 5, 12); // 2026-08-05T12:00:00Z
 
 describe("loadFailureReasons", () => {

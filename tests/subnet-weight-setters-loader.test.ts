@@ -9,7 +9,7 @@
 // subnet but the busiest.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, test, vi } from "vitest";
+import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One store since #10179. The tempo read reaches it through a selector that

@@ -20,7 +20,6 @@
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
-import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
