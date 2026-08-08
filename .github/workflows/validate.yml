@@ -388,6 +388,7 @@ jobs:
           npm run validate:openapi-examples
           npm run validate:generated-client
           npm run validate:graphql-types-drift
+          npm run validate:worker-types-parity
           npm run validate:graphql-route-parity
           npm run validate:committed-seed
 
