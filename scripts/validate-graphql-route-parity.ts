@@ -98,30 +98,105 @@ function routeDataSchema(route: string): Json | null {
 
 const sdl = readFileSync(SDL_PATH, "utf8");
 
-type SdlField = { name: string; type: string; doc: string };
+type SdlArgument = { name: string; type: string };
+type SdlField = {
+  name: string;
+  type: string;
+  doc: string;
+  args: SdlArgument[];
+};
 type SdlType = { name: string; fields: SdlField[] };
 
+/**
+ * Parse `type X { … }` blocks, including fields whose argument list spans
+ * several lines.
+ *
+ * The first version of this parser tried to "skip argument lines of a
+ * multi-line field signature" with a single-line regex, and did the opposite:
+ * `sort: String` sitting inside `subnets( … )` matches the field pattern
+ * exactly, so every argument was recorded as a field of `Query` and the field
+ * it belonged to was never recorded at all. Because a Query field's `Mirrors
+ * GET …` doc landed on its FIRST argument, whose type is a scalar rather than
+ * an SDL object type, `byName.get(...)` missed and the pair was skipped in
+ * silence — 55 of 160 type/route pairs, a third of the surface, and exactly
+ * the paginated/filterable half most likely to drift.
+ *
+ * Two real divergences were hiding in that third: SourceSnapshotList and
+ * EvidenceList both declared `schema_version: String` where the route
+ * publishes `{const: 1, type: number}`. GraphQL's String scalar coerces an
+ * integer rather than erroring, so the two surfaces served `"1"` and `1` for
+ * the same field, and nothing anywhere said so.
+ *
+ * So it tracks paren depth instead: a line opening `name(` starts an argument
+ * list, `): Type` closes it, and everything between is an argument.
+ */
 function parseTypes(source: string): SdlType[] {
   const types: SdlType[] = [];
   const blocks = source.matchAll(/^ {2}type (\w+) \{\n([\s\S]*?)^ {2}\}/gm);
   for (const block of blocks) {
     const fields: SdlField[] = [];
     let doc = "";
+    let open: { name: string; doc: string; args: SdlArgument[] } | null = null;
     for (const raw of block[2].split("\n")) {
       const line = raw.trim();
       if (!line) continue;
+      if (open) {
+        const close = /^\):\s*(.+)$/.exec(line);
+        if (close) {
+          fields.push({
+            name: open.name,
+            type: close[1].replace(/,$/, ""),
+            doc: open.doc,
+            args: open.args,
+          });
+          open = null;
+          continue;
+        }
+        const argument = /^(\w+):\s*([\w![\]]+),?$/.exec(line);
+        if (argument) open.args.push({ name: argument[1], type: argument[2] });
+        continue;
+      }
       if (line.startsWith('"')) {
         doc = line.replace(/^"+|"+$/g, "");
         continue;
       }
-      // Skip argument lines of a multi-line field signature.
-      const match = /^(\w+)(?:\([^)]*\))?:\s*([\w![\]]+)$/.exec(line);
-      if (match) fields.push({ name: match[1], type: match[2], doc });
+      const inline = /^(\w+)\(([^)]*)\):\s*([\w![\]]+)$/.exec(line);
+      if (inline) {
+        fields.push({
+          name: inline[1],
+          type: inline[3],
+          doc,
+          args: parseInlineArguments(inline[2]),
+        });
+        doc = "";
+        continue;
+      }
+      const plain = /^(\w+):\s*([\w![\]]+)$/.exec(line);
+      if (plain) {
+        fields.push({ name: plain[1], type: plain[2], doc, args: [] });
+        doc = "";
+        continue;
+      }
+      const opening = /^(\w+)\($/.exec(line);
+      if (opening) {
+        open = { name: opening[1], doc, args: [] };
+        doc = "";
+        continue;
+      }
       doc = "";
     }
     types.push({ name: block[1], fields });
   }
   return types;
+}
+
+function parseInlineArguments(source: string): SdlArgument[] {
+  const args: SdlArgument[] = [];
+  for (const part of source.split(",")) {
+    const match = /^\s*(\w+):\s*([\w![\]]+)\s*$/.exec(part);
+    if (match) args.push({ name: match[1], type: match[2] });
+  }
+  return args;
 }
 
 const types = parseTypes(sdl);
@@ -238,17 +313,304 @@ for (const field of queryType.fields) {
   }
 }
 
+// --- arguments -------------------------------------------------------------
+//
+// The types above were gated by #9889; the ARGUMENTS were not, and they are
+// the other half of the same mirror. `buildSchema(SDL)` builds an SDL-only
+// schema with no resolver map, so there is no per-field hook that could
+// validate an argument at request time: whatever the SDL declares is exactly
+// what a client may send, and whatever it omits is a route capability GraphQL
+// callers simply cannot reach. Both directions are checked here.
+//
+// Four exemptions are DERIVED rather than declared, because each follows a
+// rule the SDL already keeps, and each stops applying by itself the moment the
+// underlying fact changes:
+//
+//   `network` — the network-scoped routes are served at a `/{network}/` twin
+//   path, so `network` is a path segment there rather than a query parameter
+//   on the base path the annotation names. Allowed exactly when that twin
+//   exists in openapi.json.
+//
+//   `format` — selects the CSV export. GraphQL has no CSV surface, and the
+//   SDL declares zero `format` arguments across all 194 Query fields, so this
+//   is a rule the schema follows already, not an exception carved for it.
+//
+//   `fields` on a TYPED return — `fields` is REST's projection parameter, and
+//   a GraphQL selection set already is one. Exempt exactly when the field's
+//   return type is a named SDL object type carrying no `JSON` member: there,
+//   asking for a subset is what the query language does. When the return is
+//   the opaque `JSON` scalar or a `[JSON!]` row array, the selection set
+//   cannot reach inside it and the caller has no projection at all — that is
+//   a real gap and is reported. The SDL declares `fields` on 21 fields
+//   already, so this exemption describes the existing split rather than
+//   inventing one.
+//
+//   `Boolean` against a published `["true"]` / `["true","false"]` string
+//   enum — a query string can only carry those two words as text; GraphQL has
+//   a real Boolean. Every resolver on this shape normalises the same way
+//   (`if (changes === true) params.set("changes", "true")`), so the SDL is
+//   the stricter and more honest of the two spellings, not a divergence.
+//
+// Everything else diverging goes in one of the two DECLARED maps below with
+// the reason, and a stale entry fails.
+
+/**
+ * A GraphQL Int is 32 bits signed (max 2,147,483,647) where JSON's integer is
+ * not, so an epoch-ms bound has to cross as a String. `src/graphql.ts`'s
+ * `blocks` resolver states it at the source: "from/to are observed_at epoch-ms
+ * and overflow GraphQL Int's 32 bits, so they are String args passed
+ * verbatim". Not drift — the only spelling GraphQL has for the value.
+ */
+const EPOCH_MS_BOUND =
+  "observed_at epoch-ms bound; overflows GraphQL's 32-bit Int, so the SDL " +
+  "passes it as a String verbatim (see the `blocks` resolver's own comment). " +
+  "The route's `integer` and the SDL's `String` are the same value in the two " +
+  "type systems that can each hold it.";
+
+/**
+ * `cursor` is REST's positional offset on these five, not an opaque key, and
+ * the runtime says so: `economics(cursor:"abc")` answers "cursor must be a
+ * non-negative integer" (verified live). So `String` is a genuine
+ * under-typing — the schema should reject at validation time what the
+ * resolver rejects at execution time.
+ *
+ * It is declared rather than fixed here because `String` → `Int` is a
+ * BREAKING change to a published schema: a client sending `cursor: "2"`
+ * today would stop validating. That is a deliberate decision with a migration
+ * note, not a line in a gate PR. Tracked separately.
+ */
+const CURSOR_UNDERTYPED =
+  "REST's positional offset typed as String. The runtime already rejects a " +
+  "non-integer ('cursor must be a non-negative integer', verified live), so " +
+  "the SDL is looser than the resolver. Tightening to Int is a BREAKING " +
+  "schema change and is tracked on its own.";
+
+/** SDL arguments the mirrored route does not publish, each with the reason. */
+const DECLARED_ARGUMENTS: Record<string, string> = {
+  "agent_catalog.netuid":
+    "the field merges TWO routes: netuid absent reads /api/v1/agent-catalog, " +
+    "netuid present reads the sibling detail route /api/v1/agent-catalog/{netuid} " +
+    "(src/graphql.ts `agent_catalog`), where it is a path parameter. The doc " +
+    "annotation can only name one of the two.",
+  "validators.cursor":
+    "GraphQL-only pagination. /api/v1/validators publishes sort+limit and 400s " +
+    "on cursor (verified live: 'cursor is not supported for this route'); the " +
+    "resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once and paginates in-process, " +
+    "keyed by hotkey, the way providers/economics do. A capability GraphQL adds, " +
+    "not a claim about the route.",
+  "validator_history.netuid":
+    "the route DOES accept and honour netuid — handleValidatorHistory allowlists " +
+    "['window','netuid'] and the response echoes data.netuid (verified live) — but " +
+    "route-queries.ts declares only `window`, so openapi.json never published it. " +
+    "The divergence is in what the route publishes, not in the SDL; remove this " +
+    "entry when the parameter is declared.",
+  "account_history.cursor":
+    "same shape as validator_history.netuid: handleAccountHistory allowlists " +
+    "cursor and forwards it to loadAccountHistoryColdTier (verified live — " +
+    "?cursor=1 is accepted, not 400'd), but the route publishes only limit/offset.",
+  "compare.netuids":
+    "/api/v1/compare takes a comma-joined string (pattern ^\\d{1,5}(,\\d{1,5}){0,127}$) " +
+    "because a query string has no list type. GraphQL does, so the SDL takes " +
+    "[Int!]! and the resolver joins — the stricter spelling of the same input, " +
+    "with the arity bound enforced by the schema instead of a regex.",
+  "extrinsics.from": EPOCH_MS_BOUND,
+  "extrinsics.to": EPOCH_MS_BOUND,
+  "blocks.from": EPOCH_MS_BOUND,
+  "blocks.to": EPOCH_MS_BOUND,
+  "sudo.from": EPOCH_MS_BOUND,
+  "sudo.to": EPOCH_MS_BOUND,
+  "economics.cursor": CURSOR_UNDERTYPED,
+  "surfaces.cursor": CURSOR_UNDERTYPED,
+  "endpoints.cursor": CURSOR_UNDERTYPED,
+  "provider_endpoints.cursor": CURSOR_UNDERTYPED,
+  "rpc_endpoints.cursor": CURSOR_UNDERTYPED,
+};
+
+/**
+ * Published query parameters with no SDL argument, each with the reason.
+ *
+ * These are capabilities a REST or MCP caller has and a GraphQL caller does
+ * not. Closing one means adding the argument AND forwarding it in the
+ * resolver, so they are recorded rather than silently tolerated — every entry
+ * here is a gap to close, not a difference to keep.
+ */
+const NO_PROJECTION =
+  "the field returns opaque JSON (or JSON rows), so a selection set cannot " +
+  "project it and the route's `fields` parameter is the only projection " +
+  "available — which the SDL does not offer. A real gap.";
+
+const DECLARED_MISSING_ARGUMENTS: Record<string, string> = {
+  "curation.fields": NO_PROJECTION,
+  "candidates.fields": NO_PROJECTION,
+  "search.fields": NO_PROJECTION,
+  "search_index.fields": NO_PROJECTION,
+  "subnet_metagraph.fields": NO_PROJECTION,
+  "provider_endpoints.fields": NO_PROJECTION,
+  "incidents.fields": NO_PROJECTION,
+  "global_incidents.fields": NO_PROJECTION,
+  "emission_pipeline.fields": NO_PROJECTION,
+  "coverage_depth.fields": NO_PROJECTION,
+
+  // /api/v1/coverage-depth publishes ten query parameters and the SDL field
+  // takes none of them: `coverage_depth: JSON` is a bare artifact passthrough.
+  // A GraphQL caller can read the whole report and filter or page none of it.
+  "coverage_depth.netuid": "coverage_depth takes no arguments at all",
+  "coverage_depth.tier": "coverage_depth takes no arguments at all",
+  "coverage_depth.agent_status": "coverage_depth takes no arguments at all",
+  "coverage_depth.blocker_level": "coverage_depth takes no arguments at all",
+  "coverage_depth.q": "coverage_depth takes no arguments at all",
+  "coverage_depth.limit": "coverage_depth takes no arguments at all",
+  "coverage_depth.cursor": "coverage_depth takes no arguments at all",
+  "coverage_depth.sort": "coverage_depth takes no arguments at all",
+  "coverage_depth.order": "coverage_depth takes no arguments at all",
+
+  "health_trends.window": "health_trends takes no arguments at all",
+  "health_trends.limit": "health_trends takes no arguments at all",
+  "health_trends.offset": "health_trends takes no arguments at all",
+
+  "emission_pipeline.sort": "the SDL exposes only netuid of the five",
+  "emission_pipeline.order": "the SDL exposes only netuid of the five",
+  "emission_pipeline.limit": "the SDL exposes only netuid of the five",
+
+  // loadSurfacesList already accepts these three -- `surfaces` passes `args`
+  // straight to it -- so the SDL is the only thing withholding them.
+  "surfaces.auth_required": "filter the shared loader already accepts",
+  "surfaces.public_safe": "filter the shared loader already accepts",
+  "surfaces.rate_limited": "filter the shared loader already accepts",
+
+  "tao_usd.include_points":
+    "REST can opt into the point series; the GraphQL field cannot",
+  "validator_nominators.basis":
+    "REST can pick the stake basis; the GraphQL field cannot",
+};
+
+const argumentFindings: Finding[] = [];
+const suppressedArguments = new Set<string>();
+let comparedArguments = 0;
+
+function publishedParameters(route: string): Map<string, Json> | null {
+  const get = ((openapi.paths as Json | undefined)?.[route] as Json | undefined)
+    ?.get as Json | undefined;
+  if (!get) return null;
+  const parameters = Array.isArray(get.parameters) ? get.parameters : [];
+  const byParameterName = new Map<string, Json>();
+  for (const parameter of parameters) {
+    const resolved = deref(parameter);
+    if (resolved && typeof resolved.name === "string") {
+      byParameterName.set(resolved.name, resolved);
+    }
+  }
+  return byParameterName;
+}
+
+/** True when the route has a `/api/v1/{network}/…` twin. */
+function hasNetworkTwin(route: string): boolean {
+  const twin = route.replace("/api/v1/", "/api/v1/{network}/");
+  return Boolean((openapi.paths as Json | undefined)?.[twin]);
+}
+
+/**
+ * True when the field's return type is fully typed, so a selection set can
+ * already project it and REST's `fields` parameter has no work left to do.
+ */
+function returnsProjectableType(fieldType: string): boolean {
+  const named = byName.get(bareType(fieldType));
+  if (!named) return false;
+  return !named.fields.some((f) => bareType(f.type) === "JSON");
+}
+
+/** True when the published parameter is a string enum of `true`/`false`. */
+function isBooleanStringEnum(schema: Json): boolean {
+  if (schema.type !== "string") return false;
+  const values = schema.enum;
+  if (!Array.isArray(values) || values.length === 0) return false;
+  return values.every((value) => value === "true" || value === "false");
+}
+
+for (const field of queryType.fields) {
+  const mirror = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(field.doc);
+  if (!mirror) continue;
+  const route = mirror[1].replace(/\.$/, "");
+  const published = publishedParameters(route);
+  if (!published) continue;
+
+  const declaredArguments = new Set(field.args.map((arg) => arg.name));
+
+  for (const arg of field.args) {
+    const key = `${field.name}.${arg.name}`;
+    const parameter = published.get(arg.name);
+    if (!parameter) {
+      if (arg.name === "network" && hasNetworkTwin(route)) continue;
+      if (key in DECLARED_ARGUMENTS) {
+        suppressedArguments.add(key);
+        continue;
+      }
+      argumentFindings.push({
+        key,
+        detail: `SDL takes ${arg.name} but ${route} publishes no such parameter`,
+      });
+      continue;
+    }
+    comparedArguments += 1;
+    const schema = deref(parameter.schema);
+    if (!schema) continue;
+    if (bareType(arg.type) === "Boolean" && isBooleanStringEnum(schema)) {
+      continue;
+    }
+    const jsonTypes = jsonTypesOf(schema);
+    const bare = bareType(arg.type);
+    if (jsonTypes.length === 0 || !SCALARS.has(bare)) continue;
+    const allowed = SCALAR_JSON_TYPES[bare] ?? [];
+    if (jsonTypes.some((t) => allowed.includes(t))) continue;
+    if (key in DECLARED_ARGUMENTS) {
+      suppressedArguments.add(key);
+      continue;
+    }
+    argumentFindings.push({
+      key,
+      detail: `SDL types ${arg.name} as ${arg.type} but ${route} publishes ${jsonTypes.join("|")}`,
+    });
+  }
+
+  for (const [name, parameter] of published) {
+    if (parameter.in !== "query") continue;
+    if (declaredArguments.has(name)) continue;
+    if (name === "format") continue;
+    if (name === "fields" && returnsProjectableType(field.type)) continue;
+    const key = `${field.name}.${name}`;
+    if (key in DECLARED_MISSING_ARGUMENTS) {
+      suppressedArguments.add(key);
+      continue;
+    }
+    argumentFindings.push({
+      key,
+      detail: `${route} publishes ${name} and the SDL takes no such argument`,
+    });
+  }
+}
+
 // --- report ----------------------------------------------------------------
 
 const declaredKeys = Object.keys(DECLARED);
-const stale = declaredKeys.filter((key) => !suppressed.has(key));
+const argumentDeclaredKeys = [
+  ...Object.keys(DECLARED_ARGUMENTS),
+  ...Object.keys(DECLARED_MISSING_ARGUMENTS),
+];
+const stale = [
+  ...declaredKeys.filter((key) => !suppressed.has(key)),
+  ...argumentDeclaredKeys.filter((key) => !suppressedArguments.has(key)),
+];
 
 console.log(
   `GraphQL↔route parity: ${comparedPairs} type/route pairs, ${comparedFields} fields compared, ` +
     `${findings.length} divergence(s), ${declaredKeys.length} declared.`,
 );
+console.log(
+  `GraphQL↔route arguments: ${comparedArguments} argument/parameter pairs, ` +
+    `${argumentFindings.length} divergence(s), ${argumentDeclaredKeys.length} declared.`,
+);
 
-if (comparedPairs < 100) {
+if (comparedPairs < 155) {
   console.error(
     `\nOnly ${comparedPairs} pairs resolved — the comparison is not reaching the SDL.\n` +
       "This usually means the 200-schema allOf merge broke, which reports a clean\n" +
@@ -263,6 +625,16 @@ if (stale.length > 0) {
   );
 }
 
+if (comparedArguments < 400) {
+  console.error(
+    `\nOnly ${comparedArguments} argument/parameter pairs resolved — the argument\n` +
+      "comparison is not reaching the SDL. A multi-line argument list that stops\n" +
+      "parsing reports zero divergences while checking nothing, which is how the\n" +
+      "type half of this gate ran blind over a third of the schema until #10065.",
+  );
+  process.exit(1);
+}
+
 if (findings.length > 0) {
   console.error("\nThe SDL disagrees with the route it says it mirrors:\n");
   for (const finding of findings) {
@@ -274,4 +646,21 @@ if (findings.length > 0) {
   );
 }
 
-process.exit(findings.length > 0 || stale.length > 0 ? 1 : 0);
+if (argumentFindings.length > 0) {
+  console.error(
+    "\nThe SDL's arguments disagree with the route's parameters:\n",
+  );
+  for (const finding of argumentFindings) {
+    console.error(`  Query.${finding.key}: ${finding.detail}`);
+  }
+  console.error(
+    "\nAdd the argument to the SDL and forward it in the resolver, or declare it in\n" +
+      "DECLARED_ARGUMENTS / DECLARED_MISSING_ARGUMENTS with the reason.",
+  );
+}
+
+process.exit(
+  findings.length > 0 || argumentFindings.length > 0 || stale.length > 0
+    ? 1
+    : 0,
+);

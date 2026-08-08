@@ -2280,7 +2280,7 @@ export const SDL = /* GraphQL */ `
 
   type SourceSnapshotList {
     generated_at: String
-    schema_version: String
+    schema_version: Int
     summary: JSON
     sources: [JSON!]!
     total: Int!
@@ -2322,7 +2322,7 @@ export const SDL = /* GraphQL */ `
 
   type EvidenceList {
     generated_at: String
-    schema_version: String
+    schema_version: Int
     summary: JSON
     claims: [JSON!]!
     total: Int!

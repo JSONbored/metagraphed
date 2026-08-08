@@ -2154,7 +2154,13 @@ describe("graphql — source_snapshots", () => {
     assert.equal(status, 200);
     assert.equal(body.data.source_snapshots.sources[0].id, "chain-events");
     assert.equal(body.data.source_snapshots.summary.source_count, 2);
-    assert.equal(body.data.source_snapshots.schema_version, "1");
+    // A NUMBER, matching what the route publishes ({const: 1, type: number})
+    // and what the loader emits. This asserted the string "1" until #10065:
+    // the SDL typed the field `String`, and GraphQL's String scalar coerces an
+    // integer rather than erroring, so the same field crossed REST as 1 and
+    // GraphQL as "1". The assertion pinned the coercion, which is why nothing
+    // caught it — a comparison against the route did.
+    assert.equal(body.data.source_snapshots.schema_version, 1);
   });
 
   test("surfaces an invalid sort as a GraphQL error, not a silent default", async () => {
