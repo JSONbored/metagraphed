@@ -28,6 +28,7 @@
 // a new gap this route introduces.
 
 import { loadD1AlphaPricesByNetuid } from "./metagraph-neurons.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -249,13 +250,13 @@ export function buildAccountsList(
   const normalizedSort = ACCOUNTS_LIST_SORTS.includes(sort)
     ? sort
     : DEFAULT_ACCOUNTS_LIST_SORT;
-  const flooredLimit = Math.floor(Number(limit));
-  // Floor at 0, not 1, so an explicit limit=0 returns an empty leaderboard
-  // rather than being silently bumped up to one account — mirrors
-  // buildGlobalValidators' own clamp.
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, ACCOUNTS_LIST_LIMIT_MAX))
-    : ACCOUNTS_LIST_LIMIT_DEFAULT;
+  // Floor at 0, not 1: an explicit limit=0 returns an empty leaderboard
+  // rather than one row nobody asked for. clampRowLimit is that rule.
+  const normalizedLimit = clampRowLimit(
+    limit,
+    ACCOUNTS_LIST_LIMIT_DEFAULT,
+    ACCOUNTS_LIST_LIMIT_MAX,
+  );
 
   const accountsByHotkey = new Map<string, AccountAccumulator>();
   let latestCapturedAt: number | null = null;

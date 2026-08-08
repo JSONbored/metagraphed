@@ -42,7 +42,7 @@ export const ListCurationInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.curation.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -70,7 +70,7 @@ export const ListGapsInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.gaps.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

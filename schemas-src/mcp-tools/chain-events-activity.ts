@@ -12,6 +12,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { CHAIN_EVENTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { blockEventCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
@@ -93,7 +94,7 @@ export const ListChainEventsInputSchema = z
         "Legacy cursor: return rows strictly BEFORE this block height. Prefer `cursor` where a tool offers one.",
       )
       .meta({ examples: [8783000] }),
-    limit: limitSchema(200).optional(),
+    limit: limitSchema(200, CHAIN_EVENTS_LIMIT_DEFAULT).optional(),
     network: McpNetworkSchema.optional(),
   })
   .strict();

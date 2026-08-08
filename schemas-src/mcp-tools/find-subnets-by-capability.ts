@@ -15,7 +15,7 @@ export const FindSubnetsByCapabilityInputSchema = z
       )
       .meta({ examples: ["inference"] }),
     cursor: numericCursorSchema().optional(),
-    limit: limitSchema(50).optional(),
+    limit: limitSchema(50, 10).optional(),
   })
   .strict();
 export type FindSubnetsByCapabilityInput = z.infer<

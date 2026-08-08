@@ -15,6 +15,7 @@
 // schema-stable empty stub, never D1.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a coldkey transfers stake to another coldkey (transfer_stake).
 export const STAKE_TRANSFERRED_EVENT_KIND = "StakeTransferred";
@@ -159,10 +160,11 @@ export function buildChainStakeTransfers(
   } = {},
 ): ChainStakeTransfersResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_STAKE_TRANSFERS_LIMIT_MAX))
-    : CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+    CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainStakeTransfersResult = {

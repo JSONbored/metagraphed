@@ -83,6 +83,35 @@ export function clampToolLimit(
   return Math.min(max, Math.floor(value));
 }
 
+/**
+ * The BUILDER page-size rule: clamp into [0, max], falling back to the default
+ * only when the value is not a finite number.
+ *
+ * The third of three, and the difference from `clampToolLimit` is the zero.
+ * These are pure row-shaping builders running BEHIND a handler that has
+ * already validated the request, so `limit: 0` reaching one is a caller who
+ * genuinely asked for no rows, not the unenforced `minimum` that made the tool
+ * rule fall back. Clamping 0 up would hand back a row nobody asked for.
+ *
+ * Exported because 17 modules had written the same four lines inline, each
+ * with its own pair of constants:
+ *
+ *   const flooredLimit = Math.floor(Number(limit));
+ *   const normalizedLimit = Number.isFinite(flooredLimit)
+ *     ? Math.max(0, Math.min(flooredLimit, X_LIMIT_MAX))
+ *     : X_LIMIT_DEFAULT;
+ */
+export function clampRowLimit(
+  value: unknown,
+  fallback: number,
+  max: number,
+): number {
+  const floored = Math.floor(Number(value));
+  return Number.isFinite(floored)
+    ? Math.max(0, Math.min(floored, max))
+    : fallback;
+}
+
 // Clamp a raw offset into [0, MAX_OFFSET], falling back to 0 when
 // absent/blank/non-finite.
 export function clampOffset(raw: string | number | null | undefined): number {

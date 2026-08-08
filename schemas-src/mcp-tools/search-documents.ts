@@ -39,7 +39,7 @@ export const ListSearchIndexInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -65,7 +65,7 @@ export const ListSearchInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

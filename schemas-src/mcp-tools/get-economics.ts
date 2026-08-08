@@ -39,7 +39,7 @@ export const GetEconomicsInputSchema = z
     // format anywhere — comma-separated? a JSON array? — so the one parameter an agent
     // could not guess was the only one left undocumented.
     fields: fieldsSchema().optional(),
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: offsetSchema().optional(),
   })
   .strict();

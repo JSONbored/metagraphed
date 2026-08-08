@@ -48,7 +48,7 @@ export type GetRpcUsageOutput = z.infer<typeof GetRpcUsageOutputSchema>;
 
 export const GetBestRpcEndpointInputSchema = z
   .object({
-    limit: limitSchema(10).optional(),
+    limit: limitSchema(10, 3).optional(),
   })
   .strict();
 export type GetBestRpcEndpointInput = z.infer<

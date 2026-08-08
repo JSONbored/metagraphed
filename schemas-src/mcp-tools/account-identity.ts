@@ -39,7 +39,9 @@ export type GetAccountIdentityOutput = z.infer<
 export const GetAccountIdentityHistoryInputSchema = z
   .object({
     ss58: ss58Schema(),
-    limit: RouteQuery_accounts_ss58_identity_history.shape.limit,
+    limit: RouteQuery_accounts_ss58_identity_history.shape.limit.meta({
+      default: 100,
+    }),
     offset: RouteQuery_accounts_ss58_identity_history.shape.offset,
     cursor: RouteQuery_accounts_ss58_identity_history.shape.cursor,
   })

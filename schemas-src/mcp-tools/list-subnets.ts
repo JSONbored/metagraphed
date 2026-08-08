@@ -41,7 +41,7 @@ const LIST_SUBNETS_SORT_FIELDS = [
 export const ListSubnetsInputSchema = z
   .object({
     cursor: numericCursorSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 50).optional(),
     // A SUBNET status, not a health one. This described "rows with this health
     // status" and gave `ok` as the example -- a health verdict, on a parameter
     // whose route accepts active | inactive. The prose and the example both

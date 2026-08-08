@@ -12,6 +12,7 @@
 // schema-stable empty feed and never throws.
 
 import { formatIdentityHistoryEntry } from "./subnet-identity-history.ts";
+import { clampToolLimit } from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -28,12 +29,14 @@ export {
 // non-finite. The Worker handler validates + REJECTS an out-of-range value with a
 // 400 (parseLimitParam); this keeps the pure loader's contract aligned when a
 // direct caller (e.g. the MCP tool) passes a plain number.
+// The shared tool page-size rule (workers/request-params.ts), coerced first
+// because this feed takes its limit straight off a raw argument.
 function clampFeedLimit(raw: unknown): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT;
-  const floored = Math.floor(n);
-  if (floored < 1) return CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT;
-  return Math.min(floored, CHAIN_IDENTITY_HISTORY_LIMIT_MAX);
+  return clampToolLimit(
+    Number(raw),
+    CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+    CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  );
 }
 
 // Coerce a raw D1 netuid cell to a valid subnet id or null. Guards the coercion the

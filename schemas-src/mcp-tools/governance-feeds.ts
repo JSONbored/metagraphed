@@ -64,7 +64,7 @@ export const GetSudoInputSchema = z
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
-    limit: RouteQuery_sudo.shape.limit,
+    limit: RouteQuery_sudo.shape.limit.meta({ default: 50 }),
     offset: RouteQuery_sudo.shape.offset,
     cursor: RouteQuery_sudo.shape.cursor,
   })
@@ -128,7 +128,9 @@ export const GetGovernanceConfigChangesInputSchema = z
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
-    limit: RouteQuery_governance_config_changes.shape.limit,
+    limit: RouteQuery_governance_config_changes.shape.limit.meta({
+      default: 50,
+    }),
     offset: RouteQuery_governance_config_changes.shape.offset,
     cursor: RouteQuery_governance_config_changes.shape.cursor,
   })

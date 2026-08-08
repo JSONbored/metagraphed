@@ -34,7 +34,7 @@ export const GetChainCallsInputSchema = z
         "How to bucket the counts: by pallet, or by pallet and call together.",
       )
       .meta({ examples: ["module"] }),
-    limit: RouteQuery_chain_calls.shape.limit,
+    limit: RouteQuery_chain_calls.shape.limit.meta({ default: 50 }),
     call_module: RouteQuery_chain_calls.shape.call_module
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
@@ -53,7 +53,7 @@ export const GetChainSignersInputSchema = z
   .object({
     window: RouteQuery_chain_signers.shape.window,
     sort: RouteQuery_chain_signers.shape.sort,
-    limit: RouteQuery_chain_signers.shape.limit,
+    limit: RouteQuery_chain_signers.shape.limit.meta({ default: 50 }),
     call_module: RouteQuery_chain_signers.shape.call_module
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
@@ -70,7 +70,7 @@ export type GetChainSignersOutput = z.infer<typeof GetChainSignersOutputSchema>;
 export const GetChainFeesInputSchema = z
   .object({
     window: RouteQuery_chain_fees.shape.window,
-    limit: RouteQuery_chain_fees.shape.limit,
+    limit: RouteQuery_chain_fees.shape.limit.meta({ default: 25 }),
     call_module: RouteQuery_chain_fees.shape.call_module
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",

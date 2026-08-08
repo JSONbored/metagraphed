@@ -49,7 +49,7 @@ export type RegistrySummaryOutput = z.infer<typeof RegistrySummaryOutputSchema>;
 // against the actual runtime source at the time of writing.
 export const ListEnrichmentTargetsInputSchema = z
   .object({
-    limit: limitSchema(50).optional(),
+    limit: limitSchema(50, 10).optional(),
     tier: API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.tier
       .optional()
       .describe("How agent-ready the subnet is.")
@@ -214,7 +214,7 @@ export const ListSubnetGapsInputSchema = z
     ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

@@ -63,7 +63,7 @@ export const GetHealthHistoryInputSchema = z
     ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

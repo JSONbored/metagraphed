@@ -14,6 +14,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT } from "../../src/chain-deregistrations.ts";
+import { CHAIN_REGISTRATIONS_LIMIT_DEFAULT } from "../../src/chain-registrations.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   ChainDeregistrationsArtifactSchema,
@@ -29,7 +31,9 @@ const RouteQuery_chain_deregistrations =
 export const GetChainRegistrationsInputSchema = z
   .object({
     window: RouteQuery_chain_registrations.shape.window,
-    limit: RouteQuery_chain_registrations.shape.limit,
+    limit: RouteQuery_chain_registrations.shape.limit.meta({
+      default: CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+    }),
   })
   .strict();
 export type GetChainRegistrationsInput = z.infer<
@@ -50,7 +54,9 @@ export type GetChainRegistrationsOutput = z.infer<
 export const GetChainDeregistrationsInputSchema = z
   .object({
     window: RouteQuery_chain_deregistrations.shape.window,
-    limit: RouteQuery_chain_deregistrations.shape.limit,
+    limit: RouteQuery_chain_deregistrations.shape.limit.meta({
+      default: CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+    }),
   })
   .strict();
 export type GetChainDeregistrationsInput = z.infer<
