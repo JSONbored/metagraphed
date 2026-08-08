@@ -32,6 +32,8 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import { readStore } from "./read-store.ts";
+import { neonOwnsTable } from "./neon-write.ts";
 
 /** This watchdog's own lane. */
 export const TABLE_FRESHNESS_LANE = "table-freshness";
@@ -520,7 +522,6 @@ export async function runTableFreshnessWatchdog(
   env: Record<string, unknown> | null | undefined,
   deps: FreshnessDeps = {},
 ): Promise<FreshnessOutcome> {
-  const db = deps.db ?? (env?.METAGRAPH_HEALTH_DB as FreshnessDb | undefined);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   const spec = deps.spec ?? TABLE_FRESHNESS;
@@ -529,8 +530,32 @@ export async function runTableFreshnessWatchdog(
     .map(([t]) => t)
     .sort();
 
+  // PARTITIONED BY STORE, not batched across it (#10160).
+  //
+  // This is the one reader that spans the whole estate -- ~47 tables, and they
+  // do not all live in the same place. readStore is all-or-nothing per call for
+  // good reason, so a batch mixing an owned table with an unowned one falls
+  // back to D1 and every Neon-only table in it throws "relation does not
+  // exist". That is not a small loss: the sweep is a single UNION per batch, so
+  // one wrong store condemns the batch, and the retry below then walks it a
+  // table at a time only to fail on each.
+  //
+  // So the tables are split by owner FIRST and batched inside each half. Both
+  // halves keep the same batch size: D1 caps a compound SELECT at 5 terms, and
+  // matching it on the Neon side keeps one number to reason about rather than
+  // two that happen to differ.
+  const partitions: string[][] = deps.db
+    ? [tables]
+    : [
+        tables.filter((t) => neonOwnsTable(env, t)),
+        tables.filter((t) => !neonOwnsTable(env, t)),
+      ].filter((group) => group.length > 0);
+
   const newest = new Map<string, number>();
-  const readBatch = async (group: string[]): Promise<boolean> => {
+  const readBatch = async (
+    group: string[],
+    db: FreshnessDb | undefined,
+  ): Promise<boolean> => {
     try {
       const result = await db?.prepare(freshnessSql(group, spec)).all();
       if (!result) throw new Error("no result");
@@ -550,18 +575,22 @@ export async function runTableFreshnessWatchdog(
   // which was both imprecise (one bad table condemned four) and unactionable
   // ("7 of 12 batches unreadable" names nothing to go and fix).
   const unreadable: string[] = [];
-  for (let i = 0; i < tables.length; i += FRESHNESS_BATCH) {
-    const batch = tables.slice(i, i + FRESHNESS_BATCH);
-    if (await readBatch(batch)) continue;
-    // ONE bad table used to cost its whole batch. The sweep is a single UNION
-    // per batch, so a table that does not exist (or whose column does not)
-    // makes the statement throw and takes its neighbours with it -- which is
-    // how 12 bad entries blinded 7 of 12 batches, 58% of the estate. Retrying
-    // the batch one table at a time costs at most FRESHNESS_BATCH extra round
-    // trips on a path that should be empty, and localises the loss to the
-    // table actually at fault.
-    for (const table of batch) {
-      if (!(await readBatch([table]))) unreadable.push(table);
+  for (const partition of partitions) {
+    const db =
+      deps.db ?? (readStore(env, partition) as FreshnessDb | undefined);
+    for (let i = 0; i < partition.length; i += FRESHNESS_BATCH) {
+      const batch = partition.slice(i, i + FRESHNESS_BATCH);
+      if (await readBatch(batch, db)) continue;
+      // ONE bad table used to cost its whole batch. The sweep is a single UNION
+      // per batch, so a table that does not exist (or whose column does not)
+      // makes the statement throw and takes its neighbours with it -- which is
+      // how 12 bad entries blinded 7 of 12 batches, 58% of the estate. Retrying
+      // the batch one table at a time costs at most FRESHNESS_BATCH extra round
+      // trips on a path that should be empty, and localises the loss to the
+      // table actually at fault.
+      for (const table of batch) {
+        if (!(await readBatch([table], db))) unreadable.push(table);
+      }
     }
   }
 
