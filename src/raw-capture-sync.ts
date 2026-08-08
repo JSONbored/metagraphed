@@ -392,10 +392,25 @@ export async function runRawCaptureSync(
       "METAGRAPH_ARCHIVE is not bound; refusing to run. Captured bytes have nowhere durable to land, and a tick that cannot store is a gap.",
     );
   }
-  if (!env?.METAGRAPH_HEALTH_DB?.prepare) {
+  // A watermark this tick can READ AND WRITE, from whichever store holds
+  // raw_capture_state (#10158). mirroredWatermark already routes both halves to
+  // Neon once it owns the table -- the D1 store it wraps is dead code in that
+  // case -- so this check was refusing to run over a binding the lane no longer
+  // uses. The refusal itself stays: without a durable watermark the next tick
+  // cannot know where to resume, which is exactly how a gap forms.
+  const captureStateOnNeon =
+    neonOwnsTable(
+      env as unknown as Record<string, unknown>,
+      "raw_capture_state",
+    ) &&
+    Boolean(
+      (env as { HYPERDRIVE?: { connectionString?: string } })?.HYPERDRIVE
+        ?.connectionString,
+    );
+  if (!captureStateOnNeon && !env?.METAGRAPH_HEALTH_DB?.prepare) {
     return loud(
       "watermark_unavailable",
-      "METAGRAPH_HEALTH_DB is not bound; refusing to run. Without a durable watermark the next tick cannot know where to resume, which is exactly how a gap forms.",
+      "no store holds raw_capture_state; refusing to run. Without a durable watermark the next tick cannot know where to resume, which is exactly how a gap forms.",
     );
   }
 
@@ -475,7 +490,10 @@ async function runLane(
       // MIRRORED AT THE WATERMARK, not at the row writes: this table IS the
       // watermark, so wrapping the store is the whole write path.
       watermark: mirroredWatermark(
-        d1Watermark(env.METAGRAPH_HEALTH_DB!, now, lane.network),
+        // `as never` where the binding may legitimately be absent: once Neon
+        // owns raw_capture_state, mirroredWatermark never calls through to
+        // this store, and d1Watermark only dereferences inside its methods.
+        d1Watermark(env.METAGRAPH_HEALTH_DB as never, now, lane.network),
         ctx.env as unknown as Record<string, unknown>,
         ctx.waitUntil,
         lane.network,

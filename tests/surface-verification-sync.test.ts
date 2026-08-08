@@ -362,7 +362,7 @@ describe("readProberLastRunAt", () => {
 });
 
 describe("runSurfaceVerificationSync", () => {
-  test("no D1 binding: refuses to run LOUDLY rather than publish a registry-wide demotion", async () => {
+  test("no store bound: refuses to run LOUDLY rather than publish a registry-wide demotion", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { env, puts } = syncEnv({ METAGRAPH_HEALTH_DB: undefined });
     const deps = syncDeps();
@@ -376,12 +376,12 @@ describe("runSurfaceVerificationSync", () => {
     assert.deepEqual(result, {
       ok: false,
       skipped: true,
-      reason: "d1_binding_missing",
+      reason: "store_unavailable",
     });
     assert.equal(errorSpy.mock.calls.length, 1);
     assert.equal(
       (deps.recordException as Row).mock.calls[0][1].errorCode,
-      "surface_verification_d1_missing",
+      "surface_verification_store_missing",
     );
     assert.equal(puts.length, 0);
     // Never even asked the registry what to sweep.

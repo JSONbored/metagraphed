@@ -8191,7 +8191,13 @@ export default {
     // attempt wearing a different hat, writing rows whose write is what killed
     // them. `handleDeadLetterBatch` acks and records; it never retries.
     if (isDeadLetterQueue(batch.queue)) {
-      await handleDeadLetterBatch(batch, env.METAGRAPH_HEALTH_DB);
+      // The dead-letter record is a lane verdict, so it goes where the other
+      // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
+      // written to a store nobody reads is a message lost twice over.
+      await handleDeadLetterBatch(
+        batch,
+        laneHealthStore(env as unknown as Record<string, unknown>) as never,
+      );
       return;
     }
     // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A
@@ -8410,13 +8416,16 @@ export default {
     }
     if (invalid > 0) {
       ctx.waitUntil(
-        recordLaneVerdict(env.METAGRAPH_HEALTH_DB, {
-          lane: "sync-batches",
-          verdict: "stale",
-          age_ms: null,
-          detail: `${invalid} unparseable message(s) in a batch of ${batch.messages.length}`,
-          checked_at: Date.now(),
-        }).then(() => undefined),
+        recordLaneVerdict(
+          laneHealthStore(env as unknown as Record<string, unknown>),
+          {
+            lane: "sync-batches",
+            verdict: "stale",
+            age_ms: null,
+            detail: `${invalid} unparseable message(s) in a batch of ${batch.messages.length}`,
+            checked_at: Date.now(),
+          },
+        ).then(() => undefined),
       );
     }
   },

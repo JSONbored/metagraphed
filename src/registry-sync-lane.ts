@@ -29,6 +29,7 @@ import {
   type ResolvedRegistryFile,
   type Row,
 } from "./registry-sync-payload.ts";
+import { laneHealthStore } from "./lane-health-store.ts";
 
 /** Where the registry lives. Not configurable: this lane exists to mirror THIS
  * repo's registry, and a wrong value would silently sync someone else's. */
@@ -143,16 +144,13 @@ export async function runRegistrySyncLane(
   // lane did its job by looking. Only a tick that could NOT do its job is
   // `stale`, which is what a watcher should act on.
   const bag = (env ?? {}) as Record<string, unknown>;
-  await recordLaneVerdict(
-    deps.laneHealthDb ?? (bag.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined),
-    {
-      lane: REGISTRY_SYNC_LANE,
-      verdict: result.ok ? "ok" : "stale",
-      age_ms: null,
-      detail: laneDetail(result),
-      checked_at: (deps.now ?? Date.now)(),
-    },
-  );
+  await recordLaneVerdict(laneHealthStore(bag, deps.laneHealthDb), {
+    lane: REGISTRY_SYNC_LANE,
+    verdict: result.ok ? "ok" : "stale",
+    age_ms: null,
+    detail: laneDetail(result),
+    checked_at: (deps.now ?? Date.now)(),
+  });
   return result;
 }
 

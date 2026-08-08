@@ -1118,7 +1118,12 @@ export async function writeSubnetSnapshotRows(
   // this function touches any more -- so on a deployment with the D1 binding
   // and no sync secret it would have declined with the write sitting right
   // there, ready to run.
-  if (!env?.METAGRAPH_HEALTH_DB) {
+  // Gated on a store, not on the D1 binding (#10158). The write below already
+  // goes through observationsRunner, so this check was asking about a binding
+  // the write no longer uses -- unbinding D1 would have declined here with the
+  // Neon write sitting right there, ready to run. Which is the same shape as
+  // the bug the comment above describes, one binding later.
+  if (!observationsRunner(env, ctx) && !env?.METAGRAPH_HEALTH_DB) {
     return { synced: false, reason: "unavailable" };
   }
   if (!Array.isArray(profiles) || profiles.length === 0) {
