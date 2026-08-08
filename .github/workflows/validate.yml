@@ -638,6 +638,19 @@ jobs:
       - name: Validate module-state resets
         run: npm run validate:module-state-resets
 
+      # A SQL bind whose static type is an array or a structured object is
+      # REINTERPRETED by node-postgres: an array becomes a Postgres array
+      # literal ({"a","b"}), which the column's own JSON.parse reader then
+      # degrades to null on every read. That is how a `table_filter` scoped to
+      # one table came to fire on all of them (#10179) — the generalisation of
+      # that fix, since `jsonColumn` only covers the two columns it reached.
+      # Type-directed because the bug is invisible in the source:
+      # `${v.tableFilter}` and `${v.name}` look identical, and only the type
+      # says one is a string[]. Unconditional for the same reason as the locks
+      # above — it reads only the source tree, and costs ~3s.
+      - name: Validate Postgres JSON binds
+        run: npm run validate:pg-json-binds
+
       - name: Validate Cloudflare config
         if: env.DOCS_ONLY != 'true'
         run: npm run cloudflare:verify:dry-run
