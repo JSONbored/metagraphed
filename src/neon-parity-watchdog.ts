@@ -87,6 +87,12 @@ export const PARITY_TABLES = [
   "surface_failure_daily",
   "subnet_burn_history",
   "tao_usd_index",
+  // Added by migrations/neon/0005 and named in NEON_BACKFILL_LANES, but never
+  // added here -- so both were reconciled into Neon with nothing comparing the
+  // two sides, which is the exact gap this lane exists to close. The deployed
+  // -wiring test caught it and had been failing on main.
+  "blocks_head",
+  "raw_capture_state",
 ] as const;
 
 /**
