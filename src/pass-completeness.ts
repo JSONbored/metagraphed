@@ -55,6 +55,16 @@ const NONE: PassCompleteness = {
  */
 export const PASS_TABLES: Readonly<Record<string, string>> = {
   neurons: "neurons_passes",
+  // Absent until #10124, which is why account_balances_passes had ZERO rows in
+  // Neon while D1's copy filled: writeAccountBalancesToD1 takes the pass and
+  // writes the tally, but mirrorLedgerToNeon skips any lane missing from this
+  // map -- silently, since a lane with no pass table is a legitimate state.
+  //
+  // `scanned` and `outcome` exist on the D1 table and on Neon's, and NEITHER
+  // writer sets them; they are nullable leftovers. So the generic four-column
+  // tally is not a narrowing here -- it writes exactly what D1's own statement
+  // writes.
+  "account-balances": "account_balances_passes",
   "nominator-positions": "nominator_positions_passes",
   "validator-nominator-counts": "validator_nominator_counts_passes",
 };
