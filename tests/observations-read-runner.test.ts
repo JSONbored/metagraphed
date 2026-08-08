@@ -47,6 +47,27 @@ describe("pgObservationsReadDb", () => {
     assert.equal((await d1All(db, "SELECT 1", [])).length, 2);
   });
 
+  test("prepare().all() works WITHOUT a bind, the shape D1 also offers", async () => {
+    // src/top-holders-holdings.ts calls `db.prepare(sql).all?.()` -- its
+    // statement carries no parameters, so it never binds. An adapter offering
+    // only the bind path would make `.all` undefined there; the `?.` would
+    // swallow it into `undefined` rows and the route would serve an empty
+    // holdings list rather than fail loudly.
+    const seen: unknown[][] = [];
+    const db = pgObservationsReadDb({
+      unsafe: async (_text: string, values: unknown[] = []) => {
+        seen.push(values);
+        return [{ netuid: 1 }];
+      },
+    });
+    const prepared = db.prepare("SELECT netuid FROM subnet_snapshots") as {
+      all?: () => Promise<unknown>;
+    };
+    assert.equal(typeof prepared.all, "function");
+    assert.deepEqual(await prepared.all!(), [{ netuid: 1 }]);
+    assert.deepEqual(seen, [[]]);
+  });
+
   test("a rejected read degrades to zero rows rather than throwing", async () => {
     // d1All's contract, which the adapter must not break: these are serving
     // paths and a failed read is a schema-stable empty payload, not a 500.
