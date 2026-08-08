@@ -123,6 +123,75 @@ describe("TABLE_FRESHNESS coverage", () => {
     }
   });
 
+  test("every swept column exists on its table (#9866)", () => {
+    // THE GAP THAT LET TWELVE THROUGH. The check above asserts the map names
+    // no missing TABLE; nothing checked the COLUMN. Eleven entries named a
+    // column their table does not have -- chain_detail_* and blocks_head and
+    // tao_usd_index carry `observed_at` not `captured_at`, the registry
+    // cluster carries `updated_at`, surface_status carries `updated_at` not
+    // `checked_at` -- and every one of them threw its whole batch.
+    //
+    // Reads migrations/d1, which is the same source as the table check and
+    // needs no credentials. It cannot see a migration that was never APPLIED
+    // (raw_capture_state_v2, #9867) -- that is a different problem, and the
+    // reason that entry is excluded with column: "" rather than corrected.
+    const dir = path.join(process.cwd(), "migrations/d1");
+    const columns = new Map<string, Set<string>>();
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
+      const sql = readFileSync(path.join(dir, file), "utf8");
+      for (const m of sql.matchAll(
+        /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)\s*\(([\s\S]*?)\n\s*\);/gi,
+      )) {
+        const table = m[1];
+        // Strip line comments FIRST: they contain commas, and splitting on
+        // those turns a comment word into a phantom column name.
+        const body = m[2].replace(/--[^\n]*/g, "");
+        const names = new Set<string>(columns.get(table) ?? []);
+        let depth = 0;
+        let cur = "";
+        for (const ch of body) {
+          if (ch === "(") depth += 1;
+          if (ch === ")") depth -= 1;
+          if (ch === "," && depth === 0) {
+            cur = "";
+            continue;
+          }
+          cur += ch;
+          if (cur.trim().split(/\s+/).length === 1) continue;
+          const first = cur.trim().split(/\s+/)[0];
+          if (!/^(PRIMARY|UNIQUE|FOREIGN|CHECK|CONSTRAINT)$/i.test(first)) {
+            names.add(first.replace(/^["`[]|["`\]]$/g, ""));
+          }
+        }
+        columns.set(table, names);
+      }
+      // ALTER TABLE ... ADD COLUMN is how several of these arrived.
+      for (const m of sql.matchAll(
+        /ALTER TABLE\s+(\w+)\s+ADD COLUMN\s+(\w+)/gi,
+      )) {
+        const set = columns.get(m[1]) ?? new Set<string>();
+        set.add(m[2]);
+        columns.set(m[1], set);
+      }
+    }
+    const missing: string[] = [];
+    for (const [table, e] of Object.entries(TABLE_FRESHNESS)) {
+      if (e.column === "") continue;
+      const known = columns.get(table);
+      if (!known || known.size === 0) continue; // table check owns that case
+      if (!known.has(e.column)) {
+        missing.push(
+          `${table}.${e.column} (has: ${[...known].sort().join(", ")})`,
+        );
+      }
+    }
+    assert.deepEqual(
+      missing,
+      [],
+      `a swept column does not exist, so its whole batch throws:\n  ${missing.join("\n  ")}`,
+    );
+  });
+
   test("every entry gives a reason, and a threshold or an explicit null", () => {
     for (const [table, e] of Object.entries(TABLE_FRESHNESS)) {
       assert.ok(e.reason.length > 8, `${table} has no real reason`);
@@ -346,8 +415,11 @@ describe("runTableFreshnessWatchdog", () => {
     assert.equal(spy.written[0].age, 9 * HOUR);
   });
 
-  test("ONE failed batch does not hide the healthy tables beside it", async () => {
-    // The other batches still carry real information.
+  test("ONE bad table costs ONLY itself, not the three beside it (#9866)", async () => {
+    // a/b/c/d share a batch (FRESHNESS_BATCH = 4) and the stub fails any SQL
+    // naming 'a'. The batch UNION therefore throws -- and used to take b, c
+    // and d down with it, which is how 12 bad entries blinded 7 of 12 batches
+    // and 58% of the estate. The retry reads them individually.
     const spy = fakeDb({ ...fresh, e: NOW - 9 * HOUR }, ["'a'"]);
     const out = await runTableFreshnessWatchdog(null, {
       db: spy.db,
@@ -355,11 +427,64 @@ describe("runTableFreshnessWatchdog", () => {
       now: () => NOW,
       spec,
     });
+    assert.equal(
+      out.checked,
+      4,
+      "b, c and d must survive their batch-mate; e comes from its own batch",
+    );
     assert.deepEqual(
       out.stale?.map((s) => s.table),
       ["e"],
     );
-    assert.match(String(spy.written[0].detail), /1 of 2 batches unreadable/);
+    // Names the table, not a batch count -- "7 of 12 batches unreadable" gave
+    // nobody anything to go and fix.
+    assert.match(String(spy.written[0].detail), /1 unreadable: a/);
+  });
+
+  test("an unreadable table makes the verdict unknown, never ok (#9866)", async () => {
+    // THE BUG: `failed` reached the detail STRING and never the verdict, so a
+    // sweep that read 5 of 12 batches still published `ok` -- and lane-alarm
+    // keys on the verdict, so nothing fired.
+    const spy = fakeDb(fresh, ["'a'"]);
+    await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec,
+    });
+    assert.equal(
+      spy.written[0].verdict,
+      "unknown",
+      "nothing measured is stale, but the sweep did not establish that every " +
+        "table is fresh — `ok` is the one answer that cannot be right",
+    );
+    assert.match(String(spy.written[0].detail), /1 unreadable: a/);
+  });
+
+  test("a stale finding outranks an incomplete sweep", async () => {
+    // A real breach is information; report it rather than downgrading to
+    // unknown because some other table could not be read.
+    const spy = fakeDb({ ...fresh, e: NOW - 9 * HOUR }, ["'a'"]);
+    await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec,
+    });
+    assert.equal(spy.written[0].verdict, "stale");
+  });
+
+  test("a complete sweep that measured NOTHING is not ok either", async () => {
+    // D1 can answer without a `results` key; the `?? []` absorbs it rather
+    // than throwing. Absorbing the crash must not also manufacture a green.
+    const empty = fakeDb({});
+    await runTableFreshnessWatchdog(null, {
+      db: empty.db,
+      laneHealthDb: empty.db,
+      now: () => NOW,
+      spec,
+    });
+    assert.equal(empty.written[0].verdict, "unknown");
   });
 
   test("EVERY batch failing is unknown, never ok", async () => {
