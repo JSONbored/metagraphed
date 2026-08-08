@@ -43,6 +43,7 @@
 // COST: one walk of ~112k rows on a `19,49 * * * *` cron, 48 ticks a day, so
 // ~5.4M D1 rows read a day.
 
+import { observationsReadDb } from "./observations-read-runner.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
@@ -215,6 +216,8 @@ interface D1Like {
 }
 
 export interface ValidatorNominatorCountsStalenessDeps {
+  /** Threaded so the read can follow the table to Neon (#10086). */
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null;
   /** Injectable durable sink, so a test can assert the verdict was RECORDED and
    * not merely notified — the distinction #9330/#9340 exist about. */
   laneHealthDb?: LaneHealthDb | null;
@@ -234,7 +237,13 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = env?.METAGRAPH_HEALTH_DB as D1Like | undefined;
+  // Follows validator_nominator_counts to whichever store owns it (#10086).
+  // A watchdog left on the abandoned store reports the frozen copy's staleness,
+  // which is the alarm firing about the wrong thing entirely.
+  const db = observationsReadDb(
+    env as Record<string, unknown> | null | undefined,
+    deps.ctx,
+  ) as D1Like | undefined;
   if (!db?.prepare) return { ok: false, reason: "d1 binding unavailable" };
 
   const thresholdMs =

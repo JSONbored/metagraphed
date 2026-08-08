@@ -11,6 +11,7 @@
 // emits [netuid, uid]. buildSubnetWeightSetters reads `hotkey` and `uid`
 // independently and is null-safe on the first, so the published row carries the
 // identity the event actually recorded and nothing invents a hotkey.
+import { observationsReadDb } from "./observations-read-runner.ts";
 import { buildSubnetWeightSetters } from "./subnet-weight-setters.ts";
 import {
   CHAIN_WEIGHTS_ROLLUP,
@@ -74,9 +75,14 @@ export async function loadSubnetWeightSettersColdTier(
 async function loadSubnetTempo(
   env: Parameters<typeof r2SqlQuery>[0],
   netuid: number,
+  // Threaded so this follows subnet_hyperparams to whichever store owns it
+  // (#10086). Absent, the selector declines and this reads D1, as before.
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null,
 ): Promise<unknown> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = observationsReadDb(
+    env as unknown as Record<string, unknown>,
+    ctx,
+  ) as D1Like | undefined;
   if (!db?.prepare) return null;
   try {
     const res = await db
