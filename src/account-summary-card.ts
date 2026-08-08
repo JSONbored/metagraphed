@@ -42,6 +42,7 @@ import {
 } from "./account-events.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { isR2SqlConfigured } from "./r2-sql.ts";
+import { readStore } from "./read-store.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand it a
  * plain object (the same pattern as src/blocks-cold-tier.ts). */
@@ -77,8 +78,7 @@ export async function loadAccountRegistrationsD1(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<Record<string, unknown>[] | null> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
   if (!db?.prepare) return [];
   try {
     const res = await db.prepare(ACCOUNT_REGISTRATIONS_SQL).bind(ss58).all?.();

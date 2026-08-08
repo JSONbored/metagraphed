@@ -35,6 +35,7 @@ import {
   neuronStakeByHotkeys,
   POSITION_SCAN_CAP,
 } from "./nominator-positions-cold-tier.ts";
+import { readStore } from "./read-store.ts";
 
 /** The D1 surface this module needs -- structural, so tests can hand a plain
  * object (same pattern as src/nominator-positions-cold-tier.ts). */
@@ -66,8 +67,8 @@ export async function loadAccountPositionsD1(
   env: Env | null | undefined,
   ss58: string,
 ): Promise<ReturnType<typeof buildAccountPositions> | null> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, ["nominator_positions"]) as unknown as
+    D1Like | undefined;
   if (!db?.prepare) return null;
 
   let rows: Record<string, unknown>[];

@@ -45,6 +45,7 @@ import { decodeChainEventArgs } from "./chain-event-args.ts";
 import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { safeBlockNumber } from "./r2-sql.ts";
+import { readStore } from "./read-store.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 
 type Row = Record<string, unknown>;
@@ -57,13 +58,19 @@ interface D1Statement {
 interface D1Like {
   prepare(sql: string): D1Statement;
 }
-interface HotTierBindings {
-  METAGRAPH_HEALTH_DB?: D1Like;
-}
+/** The four tables every statement in this module reads (#10148). Handed to
+ *  readStore as one set: a hot tier split across stores would answer a block
+ *  detail with extrinsics from one and events from the other. */
+export const CHAIN_DETAIL_HOT_TIER_TABLES = [
+  "chain_detail_blocks",
+  "chain_detail_extrinsics",
+  "chain_detail_chain_events",
+  "chain_detail_account_events",
+] as const;
 
 function db(env: unknown): D1Like | null {
-  const binding = (env as HotTierBindings | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const binding = readStore(env, CHAIN_DETAIL_HOT_TIER_TABLES) as unknown as
+    D1Like | undefined;
   return binding?.prepare ? binding : null;
 }
 
