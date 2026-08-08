@@ -453,6 +453,14 @@ describe("the deployed wiring", () => {
         // one captured_at, because that producer rescans every subnet each
         // pass -- which is why it left this lane and this one did not.
         "account_identity",
+        // 121 rows, MEASURED 2026-08-08: D1 365,295 vs Neon 365,174 -- but the
+        // NEWEST PASS is identical on both, 365,116 rows at the same
+        // captured_at. So the mirror is not behind; these are rows written to
+        // D1 before the mirror lane existed, for accounts the producer no
+        // longer emits. Same shape as account_identity above: this producer
+        // emits only the accounts it OBSERVED, so a row it wrote days ago is
+        // never rewritten and reaches Neon by no other path.
+        "account_balances",
       ]);
       // ACCUMULATING, not just date-partitioned. "date" and "append" both
       // grow forever, so for both the mirror only ever covers the passes it

@@ -60,6 +60,12 @@ export interface NominatorPositionsMirrorOutcome {
   attempted: boolean;
   write?: NeonWriteResult;
   prune?: NeonWriteResult;
+  /** The pass tally, SURFACED so an inverted caller can require it (#10109).
+   * It was written but not reported, so once this lane is Neon's the request
+   * could answer ok while nominator_positions_passes -- a table with no other
+   * writer -- took nothing. A completeness ledger nobody can tell is empty is
+   * worse than no ledger. */
+  pass?: NeonWriteResult;
 }
 
 export interface NominatorPositionsMirrorDeps {
@@ -155,6 +161,7 @@ export async function mirrorNominatorPositionsToNeon(
   // whole once the stale rows are gone: a tally written between the two would
   // declare a complete pass over a table that still holds superseded
   // positions, which is the state the prune exists to end.
+  let passResult: NeonWriteResult | undefined;
   if (input.pass) {
     const tally = prune.ok
       ? await writePassTallyToNeon(
@@ -163,6 +170,12 @@ export async function mirrorNominatorPositionsToNeon(
           input.pass,
         )
       : { ok: false, reason: "prune did not land; tally withheld" };
+    passResult = {
+      ok: tally.ok,
+      rows: tally.ok ? 1 : 0,
+      statements: 1,
+      ...(tally.reason ? { reason: tally.reason } : {}),
+    };
     await recordNeonWriteVerdict(
       laneDb,
       `${NOMINATOR_POSITIONS_NEON_LANE}-pass`,
@@ -175,5 +188,5 @@ export async function mirrorNominatorPositionsToNeon(
       now(),
     );
   }
-  return { attempted: true, write, prune };
+  return { attempted: true, write, prune, pass: passResult };
 }

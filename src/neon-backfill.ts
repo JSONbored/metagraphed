@@ -59,6 +59,7 @@
 // end. If this never finishes, what it did finish is the part anything asks
 // for.
 
+import { ACCOUNT_BALANCE_INSERT_COLUMNS } from "./account-balances-d1-write.ts";
 import {
   neonBackfillLanes,
   writeRowsToNeon,
@@ -670,6 +671,20 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // explain the gap, which leaves the ordinary one -- rows written to D1
   // before the mirror lane existed, for coldkeys the producer no longer emits.
   // The mirror carries ~485 rows a pass; it will never reach them.
+  // THE 121 THE MIRROR CANNOT REACH (#10109). D1 holds 365,295 rows and Neon
+  // 365,174, but the NEWEST PASS is identical on both -- 365,116 rows at the
+  // same captured_at. So this is not a mirror that is behind; it is rows
+  // written to D1 before the mirror lane existed, for accounts the producer no
+  // longer emits. The mirror carries only what a pass carries, so it will
+  // never reach them, and the table cannot invert until something does.
+  account_balances: {
+    table: "account_balances",
+    columns: ACCOUNT_BALANCE_INSERT_COLUMNS,
+    conflict: ["ss58"],
+    keyset: ["ss58"],
+    partition: "whole",
+    booleans: [],
+  },
   nominator_positions: {
     table: "nominator_positions",
     columns: NOMINATOR_POSITIONS_COLUMNS,
