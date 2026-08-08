@@ -378,7 +378,10 @@ import {
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
-import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
+import {
+  chainDetailTables,
+  mirrorChainDetailToNeon,
+} from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
   SUBNET_HYPERPARAMS_NEON_LANE,
@@ -992,26 +995,52 @@ async function handleChainDetailSync(
     });
   }
 
-  let statements: number;
+  let statements = 0;
+  let neon: Awaited<ReturnType<typeof mirrorChainDetailToNeon>>;
+  const neonOwns = neonOwnsChainDetail(env);
   try {
-    ({ statements } = await writeChainDetailToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeChainDetailToD1
-      >[0],
-      batch.rows,
-    ));
+    if (!neonOwns) {
+      ({ statements } = await writeChainDetailToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeChainDetailToD1
+        >[0],
+        batch.rows,
+      ));
+    }
     // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
     // other and mirrors too -- #9728 is the precedent for why covering one of
     // two is worse than covering neither: the row count looks nearly right.
-    await mirrorChainDetailToNeon(
+    neon = await mirrorChainDetailToNeon(
       env as unknown as Record<string, unknown>,
       ctx,
       batch.rows as unknown as Parameters<typeof mirrorChainDetailToNeon>[2],
     );
   } catch (err) {
-    console.error("data-api chain-detail-sync D1 write failed:", err);
+    console.error("data-api chain-detail-sync write failed:", err);
     await captureDataApiError(err, "chain-detail-sync-d1", env);
     return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  // Once Neon owns the tables its failure IS the pass's failure. While D1
+  // served the reads it cost a lane verdict; reporting ok:true now would tell
+  // the producer its blocks are durable when nothing holds them -- and this
+  // lane's producer advances its resume head on ok, so a false ok skips those
+  // blocks forever rather than retrying them.
+  if (neonOwns) {
+    const failed = failedTables(neon);
+    if (!neon.attempted || (failed && failed.length > 0)) {
+      console.error("data-api chain-detail-sync Neon write failed:", failed);
+      await captureDataApiError(
+        new Error(
+          failed && failed.length > 0
+            ? `neon write failed: ${failed.join(", ")}`
+            : "neon write not attempted while Neon owns the tables",
+        ),
+        "chain-detail-sync-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
   }
 
   return writeJson({
@@ -1021,7 +1050,7 @@ async function handleChainDetailSync(
     chain_events_written: batch.rows.chainEventRows.length,
     account_events_written: batch.rows.accountEventRows.length,
     head: batch.rows.head,
-    stores: ["d1"],
+    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: statements,
   });
 }
@@ -3195,6 +3224,18 @@ export function neonOwnsNominatorPositions(env: Env): boolean {
   return (
     Boolean(env.HYPERDRIVE?.connectionString) &&
     ["nominator_positions", "nominator_positions_passes"].every((table) =>
+      neonOwnsTable(env as unknown as Record<string, unknown>, table),
+    )
+  );
+}
+
+/** Whether Neon solely owns every chain_detail table. Shared by BOTH of this
+ * lane's writers -- #9728 is the precedent for why covering one of two is worse
+ * than covering neither: the row count looks nearly right. */
+export function neonOwnsChainDetail(env: Env): boolean {
+  return (
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    chainDetailTables().every((table) =>
       neonOwnsTable(env as unknown as Record<string, unknown>, table),
     )
   );
@@ -8113,12 +8154,14 @@ export default {
               chainEventRows: families.chainEventRows ?? [],
               accountEventRows: families.accountEventRows ?? [],
             };
-            const result = await writeChainDetailToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeChainDetailToD1
-              >[0],
-              rows as Parameters<typeof writeChainDetailToD1>[1],
-            );
+            const result = neonOwnsChainDetail(env)
+              ? { statements: 0 }
+              : await writeChainDetailToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeChainDetailToD1
+                  >[0],
+                  rows as Parameters<typeof writeChainDetailToD1>[1],
+                );
             // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
             // path.
             await mirrorChainDetailToNeon(
