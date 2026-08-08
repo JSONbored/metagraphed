@@ -42,22 +42,38 @@ function okBody(rows: Record<string, unknown>[]) {
 }
 
 describe("alphaPriceHistoryQuery", () => {
-  test("uses SQLite date arithmetic, not Postgres INTERVAL", () => {
+  // THE INCIDENT THIS PINS. This query has TWO engines behind it -- the D1 HTTP
+  // door at build time, and Postgres through readStore in
+  // src/live-economics-refresh.ts. It used to carry `date('now','-40 days')`,
+  // which is SQLite's spelling and `function date(unknown, unknown) does not
+  // exist` on Postgres. The read sits inside refreshLiveEconomics's own try, so
+  // the throw took the WHOLE tick: KV `economics:current` stopped advancing
+  // while the last good blob kept being served.
+  //
+  // So what is asserted is the ABSENCE of a dialect, not the presence of one.
+  test("carries no date function at all, in either dialect", () => {
     const sql = alphaPriceHistoryQuery();
-    // date('now','-40 days') is the D1 spelling; CURRENT_DATE - INTERVAL is
-    // the Postgres one and would be a syntax error here.
-    assert.match(
-      sql,
-      new RegExp(
-        `date\\('now','-${ALPHA_PRICE_HISTORY_LOOKBACK_DAYS} days'\\)`,
-      ),
-    );
+    assert.ok(!/date\s*\(/i.test(sql), `a date function survived: ${sql}`);
     assert.ok(!sql.includes("INTERVAL"));
+    assert.ok(!sql.includes("CURRENT_DATE"));
     assert.match(sql, /ORDER BY netuid ASC, snapshot_date ASC/);
   });
 
+  test("compares against a plain YYYY-MM-DD literal, which both engines parse", () => {
+    const sql = alphaPriceHistoryQuery(ALPHA_PRICE_HISTORY_LOOKBACK_DAYS, () =>
+      Date.parse("2026-08-08T00:00:00Z"),
+    );
+    // 40 days before 2026-08-08.
+    assert.match(sql, /WHERE snapshot_date >= '2026-06-29'/);
+  });
+
   test("truncates a fractional lookback rather than emitting a broken literal", () => {
-    assert.match(alphaPriceHistoryQuery(7.9), /-7 days/);
+    const sql = alphaPriceHistoryQuery(7.9, () =>
+      Date.parse("2026-08-08T00:00:00Z"),
+    );
+    // 7 days, not 7.9 -- a fractional day would land mid-day and shift the
+    // boundary by the time of day the build happened to run.
+    assert.match(sql, /WHERE snapshot_date >= '2026-08-01'/);
   });
 });
 

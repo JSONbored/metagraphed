@@ -43,12 +43,41 @@ interface D1HttpResult {
 }
 
 /**
- * SQLite date arithmetic, not Postgres': `date('now','-40 days')` is the
- * D1 spelling of `CURRENT_DATE - 40 * INTERVAL '1 day'`. Inlined rather than
- * bound because the lookback is a module constant, never caller input.
+ * The cutoff as a DATE LITERAL, computed here rather than by the database.
+ *
+ * THIS QUERY HAS TWO ENGINES BEHIND IT, which is the whole reason the cutoff
+ * moved out of the SQL. `loadAlphaPriceHistoryByNetuid` below sends it to D1
+ * over HTTP at build time; `src/live-economics-refresh.ts` sends the same text
+ * through `readStore`, which is Postgres. It used to read
+ * `date('now','-40 days')` -- SQLite's spelling, and `function date(unknown,
+ * unknown) does not exist` on Postgres, verified against the live database.
+ *
+ * The failure was total rather than partial: the read sits inside
+ * refreshLiveEconomics's own try, so the throw took the WHOLE tick and KV
+ * `economics:current` simply stopped advancing -- with the last good blob still
+ * being served, which is what made it look like nothing was wrong.
+ *
+ * Computing the date in JS is the same move #9798 made for the neuron_daily
+ * window, and for the same reason: it removes the dialect from the question
+ * instead of translating it. A quoted `YYYY-MM-DD` literal compares correctly
+ * against `snapshot_date` on both engines, and there is no date function left
+ * for two dialects to disagree about.
+ *
+ * Inlined rather than bound because one of the two callers is an HTTP door with
+ * no bind slot, and the value is generated from a number rather than accepted
+ * from one.
  */
+export function alphaPriceHistoryCutoff(
+  lookbackDays: number = ALPHA_PRICE_HISTORY_LOOKBACK_DAYS,
+  now: () => number = Date.now,
+): string {
+  const cutoff = now() - Math.trunc(lookbackDays) * 86_400_000;
+  return new Date(cutoff).toISOString().slice(0, 10);
+}
+
 export function alphaPriceHistoryQuery(
   lookbackDays: number = ALPHA_PRICE_HISTORY_LOOKBACK_DAYS,
+  now: () => number = Date.now,
 ): string {
   return (
     // captured_at is load-bearing, not decoration (#9449): a snapshot row is
@@ -57,7 +86,7 @@ export function alphaPriceHistoryQuery(
     // actually are. Two consecutive dates were measured one hour apart.
     "SELECT netuid, snapshot_date, alpha_price_tao, captured_at " +
     "FROM subnet_snapshots " +
-    `WHERE snapshot_date >= date('now','-${Math.trunc(lookbackDays)} days') ` +
+    `WHERE snapshot_date >= '${alphaPriceHistoryCutoff(lookbackDays, now)}' ` +
     "ORDER BY netuid ASC, snapshot_date ASC"
   );
 }
