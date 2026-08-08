@@ -60,6 +60,42 @@ import { jsonBody, type AnyFn, type Row } from "./row-type.ts";
 // still prove a Postgres-tier hit never falls through to a D1 read.
 type TestEnv = Env & { __healthMeta?: unknown; METAGRAPH_HEALTH_DB: Row };
 
+/** The METAGRAPH_*_SOURCE keys the generated Env declares. */
+type SourceFlagName = Extract<keyof Env, `METAGRAPH_${string}_SOURCE`>;
+
+/**
+ * Configure a mock env as if the DEPLOYMENT set `flag` to `value`.
+ *
+ * `wrangler types` pins each of these vars to the string LITERAL currently in
+ * wrangler.jsonc ("d1", "retired"), so `env.METAGRAPH_HEALTH_SOURCE =
+ * "postgres"` is a type error. The handlers do not read them that narrowly --
+ * they pass the flag NAME to tryPostgresTier, which compares `env[flagName]`
+ * at runtime with no narrowing -- so it is the generated TYPE, not the code,
+ * that objects.
+ *
+ * BE HONEST ABOUT WHAT THE "postgres" CALLERS BELOW PIN. No deployed flag in
+ * any of the three wrangler configs holds "postgres" any more; they are all
+ * "d1" or "retired". So these tests pin tryPostgresTier's own forwarding
+ * CONTRACT, not a path production takes -- the live path is its other
+ * disjunct, `"d1"` plus membership in DATA_API_D1_FLAGS. They are kept because
+ * that contract, and the `=== "postgres"` branch implementing it, are still in
+ * the tree: deleting the tests while the branch stays would leave it untested
+ * rather than retired. Retiring the disjunct itself is the change that makes
+ * them genuinely removable, and it is tracked in #10190 -- a serving change,
+ * not a types one.
+ *
+ * Keeping TestEnv itself assignable to Env matters more than avoiding this
+ * cast: every handler call in this suite passes the mock as `env: Env`, and
+ * widening the flags on the type would break all of them.
+ */
+function setSourceFlag(
+  env: TestEnv,
+  flag: SourceFlagName,
+  value: string,
+): void {
+  (env as unknown as Record<string, string>)[flag] = value;
+}
+
 // `caches` is `declare const caches: CacheStorage` -- a module-scope const,
 // not a `globalThis` property -- so stubbing/restoring it for a test needs
 // this cast (matches workers/request-handlers/analytics.ts's own precedent).
@@ -1115,7 +1151,7 @@ describe("handleBulkHealthTrends", () => {
     const cache = mockCaches();
     cache.install();
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     let dataApiCalls = 0;
     env.DATA_API = {
       fetch: async () => {
@@ -1359,7 +1395,7 @@ describe("handleHealthPercentiles", () => {
     const cache = mockCaches();
     cache.install();
     const env = analyticsEnv([]);
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
@@ -1582,7 +1618,7 @@ describe("handleGlobalIncidents", () => {
   // in the exact shape formatGlobalIncidents emits.
   function withSurfaces(surfaces: Row[]) {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({
@@ -2042,80 +2078,21 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
         ],
       },
     },
-    {
-      name: "chain-fees",
-      path: "/api/v1/chain/fees",
-      handler: handleChainFees,
-      pgBody: {
-        schema_version: 1,
-        window: "7d",
-        observed_at: null,
-        day_count: 1,
-        daily: [
-          {
-            day: "2026-07-10",
-            extrinsic_count: 10,
-            signed_extrinsic_count: 10,
-            total_fee_tao: 1,
-            avg_fee_tao: 0.1,
-            median_fee_tao: 0.1,
-            total_tip_tao: 0,
-            avg_tip_tao: 0,
-            median_tip_tao: 0,
-          },
-        ],
-        top_fee_payers: [
-          {
-            signer: "5PgPayer",
-            total_fee_tao: 1,
-            total_tip_tao: 0,
-            extrinsic_count: 10,
-          },
-        ],
-      },
-    },
   ];
 
-  test("chain-fees charges the data-tier limiter before Postgres", async () => {
-    let limiterCalls = 0;
-    let dataApiCalls = 0;
-    const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_RATE_LIMITER = {
-      limit: async ({ key }) => {
-        limiterCalls += 1;
-        assert.equal(key, "data:203.0.113.10");
-        return { success: false };
-      },
-    };
-    env.DATA_API = {
-      fetch: async () => {
-        dataApiCalls += 1;
-        return Response.json({});
-      },
-    } as unknown as Fetcher;
-
-    const res = await handleChainFees(
-      req("/api/v1/chain/fees?window=7d&call_module=Balances", {
-        headers: { "cf-connecting-ip": "203.0.113.10" },
-      }),
-      env,
-      url("/api/v1/chain/fees?window=7d&call_module=Balances"),
-      ctx,
-    );
-
-    const body = await errorJson(res, 429);
-    assert.equal(body.error.code, "data_rate_limited");
-    assert.equal(res.headers.get("retry-after"), "60");
-    assert.equal(limiterCalls, 1);
-    assert.equal(dataApiCalls, 0);
-  });
-
+  // "chain-fees charges the data-tier limiter before Postgres" stood here, and
+  // chain-fees was a fourth entry in `cases` above. Both went with the route's
+  // Postgres tier: it sat behind an inline
+  // `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"` pre-check that has been
+  // false since the var went to "retired" (#9193), so neither the limiter call
+  // nor the tryPostgresTier call had been executing. The three siblings below
+  // keep their coverage -- they call tryPostgresTier bare, which still forwards
+  // on "postgres".
   for (const { name, path, handler, pgBody } of cases) {
     test(`${name}: flag=postgres serves the DATA_API response, D1 never queried`, async () => {
       let d1Called = false;
       const { env } = dbWith({ rows: [] });
-      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      setSourceFlag(env, "METAGRAPH_EXTRINSICS_SOURCE", "postgres");
       env.DATA_API = {
         fetch: async () => Response.json(pgBody),
       } as unknown as Fetcher;
@@ -2135,7 +2112,7 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
 
     test(`${name}: flag=postgres falls back to D1 when DATA_API fails`, async () => {
       const { env } = dbWith({ rows: [] });
-      env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
+      setSourceFlag(env, "METAGRAPH_EXTRINSICS_SOURCE", "postgres");
       env.DATA_API = {
         fetch: async () => {
           throw new Error("boom");
@@ -2157,7 +2134,7 @@ describe("health analytics: postgres tier wiring", () => {
   test("handleBulkHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, windows: { "7d": {}, "30d": {} } }),
@@ -2182,7 +2159,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleBulkHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2198,7 +2175,7 @@ describe("health analytics: postgres tier wiring", () => {
   test("handleHealthTrends: flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, windows: {} }),
@@ -2219,7 +2196,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthTrends: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2235,7 +2212,7 @@ describe("health analytics: postgres tier wiring", () => {
   test("handleHealthPercentiles: flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
@@ -2256,7 +2233,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthPercentiles: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2272,7 +2249,7 @@ describe("health analytics: postgres tier wiring", () => {
   test("handleHealthIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
@@ -2293,7 +2270,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleHealthIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
@@ -2309,7 +2286,7 @@ describe("health analytics: postgres tier wiring", () => {
   test("handleGlobalIncidents: flag=postgres serves the DATA_API response, D1 never queried", async () => {
     let d1Called = false;
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () =>
         Response.json({
@@ -2334,7 +2311,7 @@ describe("health analytics: postgres tier wiring", () => {
 
   test("handleGlobalIncidents: flag=postgres falls back to D1 when DATA_API fails", async () => {
     const { env } = dbWith({ rows: [] });
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
+    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
     env.DATA_API = {
       fetch: async () => {
         throw new Error("boom");
