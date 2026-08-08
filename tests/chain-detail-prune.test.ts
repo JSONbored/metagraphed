@@ -259,10 +259,12 @@ describe("the Neon side of the prune (#10017)", () => {
       {
         METAGRAPH_HEALTH_DB: d1.binding,
         HYPERDRIVE: { connectionString: "postgresql://example/db" },
-        NEON_BACKFILL_LANES: NEON_LANES,
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
       },
       { waitUntil: () => undefined },
       {
+        // Neon owns the tables here, so the window comes from Neon (#10152).
+        readDb: readerWithWindow(1, 10_000_000),
         sql: {
           unsafe: async (text: string, values: unknown[] = []) => {
             seen.push({ text, values });

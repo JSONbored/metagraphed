@@ -191,42 +191,6 @@
     //
     // Rollback remains deleting the entry.
     "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
-    // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
-    //
-    // The mirror above writes what each request carries, which finishes the job
-    // for the five LATEST-ONLY tables -- one producer cycle rewrites `neurons`,
-    // `nominator_positions` and the three flat ledgers whole, and `neurons`
-    // duly matched D1 exactly on its first pass. These two accumulate by date
-    // and are never rewritten, so the mirror covers only the days it was
-    // running for. Measured 2026-08-07: `neuron_daily` D1 846,912 / Neon
-    // 30,109; `account_position_daily` D1 834,081 / Neon 833,849.
-    //
-    // Naming a latest-only table here would copy 800,000 rows to prove they
-    // already agree, which is why this is a third flag rather than a reuse of
-    // the write list.
-    // subnet_hyperparams LEFT on 2026-08-08 (#10046). It gained a mirror, and
-    // a mirror finishes this table on its own: all 129 rows carry the SAME
-    // captured_at (04:30:13.876Z when measured), so one producer pass rewrites
-    // the whole thing. Reconciling it would copy 129 rows every tick to learn
-    // what the mirror already wrote. account_identity STAYS despite gaining
-    // the same mirror -- see the provenStuck note in tests/neon-backfill.test.ts.
-    // neuron_daily and account_position_daily REMOVED 2026-08-08, urgently.
-    // Both are in NEON_SOLE_STORE_TABLES (#10045 inverted the neurons lane),
-    // so their D1 copies froze the moment that flag took effect -- and a
-    // reconciler still naming them would copy that frozen D1 OVER live Neon
-    // rows, because "D1 is the source" is the only direction it has. No damage
-    // done: the lane is deficit-driven, and Neon being AHEAD of a frozen D1
-    // leaves no deficit to copy. It was a landmine, not a fire.
-    //
-    // tests/neon-backfill.test.ts now asserts the two lists never intersect,
-    // which is what found this.
-    // raw_capture_state LEFT on 2026-08-08 (#9787). It gained a mirror, and it
-    // is the one table here a mirror finishes completely: ONE ROW PER NETWORK,
-    // written by exactly one writer (the watermark store's own `write`), so
-    // every advance is mirrored and there is no older row to reconcile.
-    // blocks_head STAYS despite gaining the same mirror -- it is an APPEND
-    // table, so the mirror only covers blocks polled since it existed.
-    "NEON_BACKFILL_LANES": "",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above
@@ -621,7 +585,6 @@
   // different answers:
   //
   //   NEON_DUAL_WRITE_LANES  which lanes MIRROR into Neon after their D1 write
-  //   NEON_BACKFILL_LANES    which tables are RECONCILED D1 -> Neon on a cron
   //   NEON_READ_LANES        which lanes are SERVED from Neon
   //
   // Both empty at this commit, so rebinding moves nothing. The order is fixed:

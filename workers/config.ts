@@ -342,45 +342,6 @@ export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
 export const TAO_USD_INDEX_CRON = "* * * * *";
 
 /**
- * The D1 -> Neon reconciler tick (metagraphed-infra#336).
- *
- * On the data-api Worker for the same reason as the line above -- it is the
- * only Worker holding BOTH the D1 binding the rows come from and the Hyperdrive
- * binding they go to, so anywhere else this would be a copy over HTTP.
- *
- * EVERY THREE MINUTES, which is a backfill cadence rather than a watchdog one.
- * The first run has ~817,000 rows of `neuron_daily` history to move at up to
- * four dates a tick, and at this cadence that converges in well under an hour;
- * an hourly cron would take a day. It does not stay expensive once it lands:
- * the lane skips its comparison entirely for an hour after a clean verdict
- * (IDLE_RECHECK_MS), so the steady state is one grouped count per store per
- * hour and every tick in between is a single read of `lane_health`.
- *
- * Distinct from TAO_USD_INDEX_CRON's `* * * * *` rather than folded into it:
- * two expressions deliver two events with two `controller.cron` values, which
- * is what lets the handler dispatch without a minute-of-the-hour test that
- * would drift the moment either cadence changed.
- */
-export const NEON_BACKFILL_CRON = "*/3 * * * *";
-
-/**
- * The mirror-lag watchdog tick (metagraphed#9770).
- *
- * HOURLY, and deliberately far slower than the mirrors it watches. It reads
- * `MAX(captured_at)` per mirrored table, which is a scan of each -- 364,935
- * rows for `account_balances` alone -- so a 3-minute cadence would spend
- * millions of D1 row reads an hour to re-learn a fact that changes at most
- * every 15 minutes and, for the ledger lanes, every 12 to 48 HOURS.
- *
- * The threshold it enforces (MIRROR_LAG_THRESHOLD_MS) is an hour, so checking
- * hourly cannot miss a fault it would otherwise report -- it can only report it
- * one tick later.
- *
- * Minute 26 is free of every other lane on this Worker.
- */
-export const NEON_MIRROR_LAG_CRON = "26 * * * *";
-
-/**
  * The all-tables freshness sweep (metagraphed#9786).
  *
  * HOURLY. It reads `MAX(<timestamp>)` from every declared table, so a fast

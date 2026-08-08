@@ -45,12 +45,7 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
-import {
-  NEON_BACKFILL_CRON,
-  NEON_MIRROR_LAG_CRON,
-  TABLE_FRESHNESS_CRON,
-  TAO_USD_INDEX_CRON,
-} from "./config.ts";
+import { TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -399,12 +394,6 @@ import {
 } from "../src/ledger-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
-import { runNeonBackfill } from "../src/neon-backfill.ts";
-import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
-import {
-  NEON_PARITY_CRON,
-  runNeonParityWatchdog,
-} from "../src/neon-parity-watchdog.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import {
@@ -8073,32 +8062,12 @@ export default {
         env as unknown as Record<string, unknown>,
       );
     }
-    if (controller?.cron === NEON_MIRROR_LAG_CRON) {
-      // No ctx: this reads D1 only. It never touches Neon -- the whole point is
-      // to judge the mirrors from evidence they already left behind.
-      return runNeonMirrorWatchdog(env as unknown as Record<string, unknown>);
-    }
     if (controller?.cron === NEON_PRUNE_CRON) {
       // Neon's own retention for the rolling windows (#9891). Independent of
       // D1's prune by design -- two stores computing the same boundary from
       // the same constant stay aligned, whereas one waiting on the other stops
       // pruning the moment the other breaks.
       return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
-    }
-    if (controller?.cron === NEON_PARITY_CRON) {
-      // `ctx` because this one DOES touch Neon: it is the only check that
-      // compares the two stores for tables the reconciler does not own, which
-      // is where all three of 2026-08-07's parity gaps were hiding (#9846).
-      return runNeonParityWatchdog(
-        env as unknown as Record<string, unknown>,
-        ctx,
-      );
-    }
-    if (controller?.cron === NEON_BACKFILL_CRON) {
-      // `ctx` is threaded through rather than ignored: createPgSql needs a
-      // waitUntil to hold the Hyperdrive connection open past the handler's
-      // return, and without it the reconciler declines instead of copying.
-      return runNeonBackfill(env as unknown as Record<string, unknown>, ctx);
     }
     if (controller?.cron !== TAO_USD_INDEX_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };

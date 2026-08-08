@@ -373,23 +373,6 @@ export function neonReadLanes(
   return parseLaneList(env?.NEON_READ_LANES);
 }
 
-/**
- * Which tables the D1 -> Neon reconciler covers (src/neon-backfill.ts).
- *
- * A THIRD flag rather than a reuse of the write list, because it answers a
- * third question. Mirroring a lane says new writes reach Neon; reconciling one
- * says everything written BEFORE the mirror does too. The five latest-only
- * tables need only the first -- one producer cycle rewrites them whole -- so
- * naming them here would copy 800,000 rows to prove they already match.
- *
- * Names TABLES, not lanes, because that is what a deficit is measured over.
- */
-export function neonBackfillLanes(
-  env: Record<string, unknown> | null | undefined,
-): Set<string> {
-  return parseLaneList(env?.NEON_BACKFILL_LANES);
-}
-
 /** Whether `lane`'s reads should be served from Neon on this deployment. */
 export function neonReadEnabled(
   env: Record<string, unknown> | null | undefined,
@@ -439,4 +422,31 @@ export function neonOwnsTable(
   table: string,
 ): boolean {
   return neonSoleStoreTables(env).has(table);
+}
+
+/**
+ * `name`, if it is a bare SQL identifier -- otherwise a throw.
+ *
+ * Moved here when the reconciler was deleted (#10166): src/neon-prune.ts is the
+ * surviving caller, and it already imports from this module.
+ *
+ * Every plan's table and column name is interpolated into SQL rather than
+ * bound, because a placeholder cannot stand where an identifier goes. The
+ * names are repo constants, not input, so this is a guard against a typo
+ * rather than against an attacker -- but it is the line where that would
+ * become a vulnerability rather than a bug.
+ *
+ * Throwing rather than escaping is deliberate. A plan naming something that is
+ * not a bare identifier is a mistake in the plan, and the loud failure belongs
+ * at the lane, not quoted into a query that then does something unintended.
+ */
+const BARE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export function assertIdentifier(name: string, what: string): string {
+  if (!BARE_IDENTIFIER.test(name)) {
+    throw new Error(
+      `${what} is not a bare SQL identifier: ${JSON.stringify(name)}`,
+    );
+  }
+  return name;
 }

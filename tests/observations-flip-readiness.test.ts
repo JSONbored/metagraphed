@@ -48,16 +48,16 @@ function readSiteFiles(): string[] {
 }
 
 /** Modules that legitimately talk to one store on purpose: the two write
- * halves, the per-store adapters, and the cross-store lanes whose whole job is
- * to hold both at once. */
+ * halves, the per-store adapters, and Neon's own retention lane.
+ *
+ * The three cross-store lanes that used to be here -- the reconciler, the
+ * parity sweep and the mirror-lag watchdog -- were deleted with D1 (#10166).
+ * Their whole job was holding both stores at once, which is not a job any more. */
 const STORE_AWARE = [
   "src/observations-neon.ts",
   "src/observations-d1.ts",
   "src/observations-read-runner.ts",
-  "src/neon-backfill.ts",
-  "src/neon-parity-watchdog.ts",
   "src/neon-prune.ts",
-  "src/neon-mirror-watchdog.ts",
   "src/health-sql.ts",
 ];
 

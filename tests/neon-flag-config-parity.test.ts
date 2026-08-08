@@ -32,10 +32,14 @@ import { describe, test } from "vitest";
  * silently dropped them look like a config nobody asked about. */
 const GATED_CONFIGS = ["wrangler.jsonc", "wrangler.data.jsonc"] as const;
 
+/** NEON_BACKFILL_LANES is gone (#10166) -- it named the tables the D1 -> Neon
+ *  reconciler covered, and there is no reconciler. It is deliberately NOT left
+ *  declared-and-empty: an empty flag reads as "no tables need this" rather than
+ *  "this question no longer exists", and two prune gates had already inverted
+ *  under exactly that ambiguity (#10152, #10164). */
 const FLAGS = [
   "NEON_DUAL_WRITE_LANES",
   "NEON_READ_LANES",
-  "NEON_BACKFILL_LANES",
   "NEON_SOLE_STORE_TABLES",
 ] as const;
 
@@ -71,31 +75,6 @@ describe("the Neon migration flags", () => {
       }
     });
   }
-
-  test("a table Neon SOLELY owns is never also reconciled", () => {
-    // The same invariant tests/neon-backfill.test.ts pins for the data Worker,
-    // asserted here against the copy this Worker reads -- a reconciler pointed
-    // at a frozen D1 would copy it over live Neon rows.
-    for (const config of GATED_CONFIGS) {
-      const sole = new Set(
-        (declared(config, "NEON_SOLE_STORE_TABLES") ?? "")
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
-      );
-      const reconciled = (declared(config, "NEON_BACKFILL_LANES") ?? "")
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-      for (const table of reconciled) {
-        assert.equal(
-          sole.has(table),
-          false,
-          `${config}: ${table} is sole-store AND reconciled`,
-        );
-      }
-    }
-  });
 
   test("the flag list itself has not outgrown this test", () => {
     // A fifth flag added to the data config and not to this list would go
