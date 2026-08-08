@@ -207,6 +207,37 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
     );
   });
 
+  test("with Neon owning the lane, the D1 BINDING requirement is gone", async () => {
+    // The assertion that distinguishes the inversion. #10098 named this table
+    // sole-store while BOTH writers still wrote D1 -- the flag claimed a
+    // cutover that had not happened, and no test noticed because disabling the
+    // (absent) guard changed nothing.
+    //
+    // A row-count assertion would prove nothing here: the Neon write fails
+    // against a fake connection string, so D1 goes unwritten either way. What
+    // only the inverted path can do is stop demanding a D1 binding.
+    const res = await post({ rows: [countRow()] }, SECRET, {
+      METAGRAPH_HEALTH_DB: undefined,
+      VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_SOLE_STORE_TABLES:
+        "validator_nominator_counts,validator_nominator_counts_passes",
+    } as unknown as Env);
+    assert.notEqual(res.status, 503, "still demanding a D1 binding");
+  });
+
+  test("owning the table but NOT its pass ledger keeps writing D1", async () => {
+    // Both or neither. A tally in one store describing rows in the other
+    // answers a question about nothing (#10056).
+    const res = await post({ rows: [countRow()] }, SECRET, {
+      METAGRAPH_HEALTH_DB: undefined,
+      VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_SOLE_STORE_TABLES: "validator_nominator_counts",
+    } as unknown as Env);
+    assert.equal(res.status, 503);
+  });
+
   test("rejects a body that is not JSON, or not a row array", async () => {
     assert.equal((await post("not json")).status, 400);
     assert.equal((await post({ rows: "nope" })).status, 400);
