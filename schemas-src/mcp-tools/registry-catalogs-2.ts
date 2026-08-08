@@ -17,6 +17,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
   McpListArtifactStamp,
@@ -25,7 +26,6 @@ import {
   fieldsSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -44,23 +44,18 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
-import { PROFILE_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
 import {
   CONFIDENCE_LEVEL_VALUES,
   IDENTITY_LEVEL_VALUES,
   NATIVE_NAME_QUALITY_VALUES,
   PROFILE_LEVEL_VALUES,
 } from "../shared.ts";
-import {
-  ENDPOINT_POOL_SORT_VALUES,
-  ENDPOINT_SORT_VALUES,
-  EVIDENCE_ENTRY_SORT_VALUES,
-} from "./shared.ts";
+import {} from "./shared.ts";
 
 export const ListEvidenceInputSchema = z
   .object({
     q: querySchema().optional(),
-    sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -88,15 +83,15 @@ export const ListRpcEndpointsInputSchema = z
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
       )
       .meta({ examples: [ENDPOINT_LAYERS[0]] }),
-    netuid: netuidSchema().optional(),
+    netuid: API_QUERY_COLLECTIONS.endpoints.filter_schemas.netuid.optional(),
     provider: providerSlugSchema().optional(),
-    publication_state: z
-      .enum(ENDPOINT_PUBLICATION_STATES)
-      .optional()
-      .describe(
-        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      )
-      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
+    publication_state:
+      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
+        .optional()
+        .describe(
+          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+        )
+        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .boolean()
@@ -133,7 +128,7 @@ export const ListRpcEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
     order: orderSchema().optional(),
     // Both `fields` and `cursor` are UNIONS here, unlike everywhere else, so
     // neither can take a shared builder -- the sentence has to say which forms
@@ -205,7 +200,7 @@ export const ListRpcPoolsInputSchema = z
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
       )
       .meta({ examples: [10] }),
-    sort: sortSchema(ENDPOINT_POOL_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS["rpc-pools"].sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -228,12 +223,10 @@ export const ListRpcPoolsOutputSchema = RpcPoolsArtifactSchema.pick({
 });
 export type ListRpcPoolsOutput = z.infer<typeof ListRpcPoolsOutputSchema>;
 
-const SOURCE_SORT_FIELDS = ["id", "kind", "path", "record_count"] as const;
-
 export const ListSourceSnapshotsInputSchema = z
   .object({
     q: querySchema().optional(),
-    sort: sortSchema(SOURCE_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.sources.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -254,21 +247,27 @@ export type ListSourceSnapshotsOutput = z.infer<
 
 export const ListProfileCompletenessInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    profile_level: z
-      .enum(PROFILE_LEVEL_VALUES)
+    netuid:
+      API_QUERY_COLLECTIONS[
+        "profile-completeness"
+      ].filter_schemas.netuid.optional(),
+    profile_level: API_QUERY_COLLECTIONS[
+      "profile-completeness"
+    ].filter_schemas.profile_level
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
       .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
-    confidence: z
-      .enum(CONFIDENCE_LEVEL_VALUES)
+    confidence: API_QUERY_COLLECTIONS[
+      "profile-completeness"
+    ].filter_schemas.confidence
       .optional()
       .describe("How confident the machine assessment is.")
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
-    identity_level: z
-      .enum(IDENTITY_LEVEL_VALUES)
+    identity_level: API_QUERY_COLLECTIONS[
+      "profile-completeness"
+    ].filter_schemas.identity_level
       .optional()
       .describe("How complete the subnet's published identity is.")
       .meta({ examples: [IDENTITY_LEVEL_VALUES[0]] }),
@@ -279,12 +278,15 @@ export const ListProfileCompletenessInputSchema = z
         "Restrict to subnets where surfaces of this kind would promote the subnet's identity. One kind per call; see this parameter's enum.",
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
-    native_name_quality: z
-      .enum(NATIVE_NAME_QUALITY_VALUES)
+    native_name_quality: API_QUERY_COLLECTIONS[
+      "profile-completeness"
+    ].filter_schemas.native_name_quality
       .optional()
       .describe("Whether the on-chain name is real, a placeholder, or empty.")
       .meta({ examples: [NATIVE_NAME_QUALITY_VALUES[0]] }),
-    sort: sortSchema(PROFILE_SORT_FIELDS).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["profile-completeness"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

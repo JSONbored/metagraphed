@@ -16,12 +16,12 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
   fieldsSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -40,14 +40,12 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
-import { CANDIDATE_SORT_VALUES, SURFACE_SORT_VALUES } from "./shared.ts";
 
 // Symbolic in each hand-written original (src/contracts.ts's QUERY_ENUMS /
 // API_QUERY_COLLECTIONS.*.sort_fields), cross-checked against the actual
 // runtime source at the time of writing.
 const PROVIDER_KINDS = PROVIDER_KIND_VALUES;
 const PROVIDER_AUTHORITIES = AUTHORITY_VALUES;
-const PROVIDER_SORT_FIELDS = ["authority", "id", "kind", "name"] as const;
 
 export const ListProvidersInputSchema = z
   .object({
@@ -60,7 +58,7 @@ export const ListProvidersInputSchema = z
         "Who asserts this record: the operator, the community, a provider, or the registry's own probes.",
       )
       .meta({ examples: [PROVIDER_AUTHORITIES[0]] }),
-    sort: sortSchema(PROVIDER_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.providers.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -77,7 +75,10 @@ export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 export const ListSurfacesInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
+    netuid:
+      API_QUERY_COLLECTIONS[
+        "curated-surfaces"
+      ].filter_schemas.netuid.optional(),
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
     id: idFilterSchema().optional(),
@@ -93,28 +94,33 @@ export const ListSurfacesInputSchema = z
     // "a filter that silently under-reports by 99% is worse than one that
     // errors, because it looks like it worked". An agent narrowing a page it
     // fetched is in exactly that position.
-    auth_required: z
-      .enum(["true", "false"])
+    auth_required: API_QUERY_COLLECTIONS[
+      "curated-surfaces"
+    ].filter_schemas.auth_required
       .optional()
       .describe(
         "Restrict to surfaces that do (`true`) or do not (`false`) require authentication. Applied server-side across the whole catalog, not to one page.",
       )
       .meta({ examples: ["false"] }),
-    public_safe: z
-      .enum(["true", "false"])
+    public_safe: API_QUERY_COLLECTIONS[
+      "curated-surfaces"
+    ].filter_schemas.public_safe
       .optional()
       .describe(
         "Restrict to surfaces marked safe (`true`) or unsafe (`false`) to call from a public client.",
       )
       .meta({ examples: ["true"] }),
-    rate_limited: z
-      .enum(["true", "false"])
+    rate_limited: API_QUERY_COLLECTIONS[
+      "curated-surfaces"
+    ].filter_schemas.rate_limited
       .optional()
       .describe(
         "Restrict to surfaces that declare rate-limit notes (`true`) or declare none (`false`). A presence filter over `rate_limit_notes`, not a claim that an unlimited surface exists.",
       )
       .meta({ examples: ["true"] }),
-    sort: sortSchema(SURFACE_SORT_VALUES).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -131,21 +137,19 @@ export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
 const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
 export const ListCandidatesInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
+    netuid: API_QUERY_COLLECTIONS.candidates.filter_schemas.netuid.optional(),
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
-    state: z
-      .enum(CANDIDATE_STATES)
+    state: API_QUERY_COLLECTIONS.candidates.filter_schemas.state
       .optional()
       .describe("The incident's lifecycle state.")
       .meta({ examples: [CANDIDATE_STATES[0]] }),
     id: idFilterSchema().optional(),
-    confidence: z
-      .enum(CONFIDENCE_LEVEL_VALUES)
+    confidence: API_QUERY_COLLECTIONS.candidates.filter_schemas.confidence
       .optional()
       .describe("How confident the machine assessment is.")
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
-    sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.candidates.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),

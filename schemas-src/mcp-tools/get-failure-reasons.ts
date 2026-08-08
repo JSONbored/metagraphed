@@ -11,21 +11,22 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { kindStringSchema, netuidSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { FAILURE_REASONS_WINDOWS } from "../../src/route-limits.ts";
 import { FailureReasonsArtifactSchema } from "../routes/failure-reasons.ts";
 
+const RouteQuery_health_failure_reasons =
+  ROUTE_QUERY_SCHEMAS["/api/v1/health/failure-reasons"];
+
 export const GetFailureReasonsInputSchema = z
   .object({
-    window: z
-      .enum(FAILURE_REASONS_WINDOWS as [string, ...string[]])
-      .optional()
+    window: RouteQuery_health_failure_reasons.shape.window
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
       )
       .meta({ examples: [FAILURE_REASONS_WINDOWS[0]] }),
-    netuid: netuidSchema().optional(),
-    kind: kindStringSchema().optional(),
+    netuid: RouteQuery_health_failure_reasons.shape.netuid,
+    kind: RouteQuery_health_failure_reasons.shape.kind,
   })
   .strict();
 export type GetFailureReasonsInput = z.infer<

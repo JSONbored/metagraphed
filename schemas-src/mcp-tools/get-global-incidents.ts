@@ -14,9 +14,9 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   sortSchema,
@@ -27,18 +27,12 @@ import { GlobalIncidentsArtifactSchema } from "../routes/health-surfaces.ts";
 // Symbolic in the hand-written original (src/contracts.ts's
 // API_QUERY_COLLECTIONS.incidents.sort_fields), cross-checked against the
 // actual runtime array at the time of writing.
-const GLOBAL_INCIDENTS_SORT_FIELDS = [
-  "downtime_ms",
-  "incident_count",
-  "netuid",
-  "surface_id",
-] as const;
 
 export const GetGlobalIncidentsInputSchema = z
   .object({
     window: windowSchema(["7d", "30d"]).optional(),
-    netuid: netuidSchema().optional(),
-    sort: sortSchema(GLOBAL_INCIDENTS_SORT_FIELDS).optional(),
+    netuid: API_QUERY_COLLECTIONS.incidents.filter_schemas.netuid.optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.incidents.sort_fields).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),

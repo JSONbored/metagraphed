@@ -14,7 +14,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import {
   ChainBurnArtifactSchema,
@@ -22,6 +23,9 @@ import {
   SubnetBurnHistoryArtifactSchema,
   SubnetRecycledArtifactSchema,
 } from "../routes/subnet-registration-cost.ts";
+
+const RouteQuery_subnets_netuid_burn_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/burn/history"];
 
 export const GetSubnetRecycledInputSchema = z
   .object({
@@ -72,7 +76,7 @@ export type GetChainBurnOutput = z.infer<typeof GetChainBurnOutputSchema>;
 export const GetSubnetBurnHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(["24h", "7d", "30d", "90d"]).optional(),
+    window: RouteQuery_subnets_netuid_burn_history.shape.window,
   })
   .strict();
 export type GetSubnetBurnHistoryInput = z.infer<

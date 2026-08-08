@@ -13,6 +13,7 @@
 // subnetType,curationLevel,profileLevel} and the "profiles" query
 // collection's sort_fields at the time of writing.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
   reviewStateSchema,
@@ -30,49 +31,33 @@ import { PROFILE_LEVEL_VALUES } from "../shared.ts";
 
 const SUBNET_TYPE = ["root", "application"] as const;
 const CURATION_LEVEL = CURATION_LEVEL_VALUES;
-const PROFILES_SORT_FIELDS = [
-  "candidate_count",
-  "completeness_score",
-  "curation_level",
-  "interface_count",
-  "missing_critical_count",
-  "name",
-  "netuid",
-  "operational_interface_count",
-  "profile_level",
-  "review_state",
-] as const;
 
 export const ListProfilesInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    subnet_type: z
-      .enum(SUBNET_TYPE)
+    netuid: API_QUERY_COLLECTIONS.profiles.filter_schemas.netuid.optional(),
+    subnet_type: API_QUERY_COLLECTIONS.profiles.filter_schemas.subnet_type
       .optional()
       .describe("Root subnet or an application subnet.")
       .meta({ examples: [SUBNET_TYPE[0]] }),
-    curation_level: z
-      .enum(CURATION_LEVEL)
+    curation_level: API_QUERY_COLLECTIONS.profiles.filter_schemas.curation_level
       .optional()
       .describe(
         "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
       )
       .meta({ examples: [CURATION_LEVEL[0]] }),
     review_state: reviewStateSchema().optional(),
-    confidence: z
-      .enum(["low", "medium", "high"])
+    confidence: API_QUERY_COLLECTIONS.profiles.filter_schemas.confidence
       .optional()
       .describe("How confident the machine assessment is.")
       .meta({ examples: ["low"] }),
-    profile_level: z
-      .enum(PROFILE_LEVEL_VALUES)
+    profile_level: API_QUERY_COLLECTIONS.profiles.filter_schemas.profile_level
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
       .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
     q: querySchema().optional(),
-    sort: sortSchema(PROFILES_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.profiles.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),

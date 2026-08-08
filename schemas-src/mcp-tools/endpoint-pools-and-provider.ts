@@ -11,6 +11,7 @@
 // REQUIRED (a path param, not a filter), unlike every other filter in this
 // file.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
@@ -19,7 +20,6 @@ import {
   idFilterSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -36,7 +36,6 @@ import {
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
 import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "../routes/endpoints-pools.ts";
-import { ENDPOINT_POOL_SORT_VALUES, ENDPOINT_SORT_VALUES } from "./shared.ts";
 
 export const ListEndpointPoolsInputSchema = z
   .object({
@@ -73,7 +72,9 @@ export const ListEndpointPoolsInputSchema = z
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
       )
       .meta({ examples: [10] }),
-    sort: sortSchema(ENDPOINT_POOL_SORT_VALUES).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["endpoint-pools"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -98,35 +99,29 @@ export type ListEndpointPoolsOutput = z.infer<
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
 const INCIDENT_STATES = ["active", "resolved"] as const;
-const INCIDENT_SORT_FIELDS = [
-  "detected_at",
-  "endpoint_id",
-  "kind",
-  "last_checked",
-  "netuid",
-  "provider",
-  "severity",
-  "state",
-  "status",
-] as const;
 
 export const ListEndpointIncidentsInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
+    netuid:
+      API_QUERY_COLLECTIONS[
+        "endpoint-incidents"
+      ].filter_schemas.netuid.optional(),
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
     status: kindSchema(HEALTH_STATUSES).optional(),
-    severity: z
-      .enum(ENDPOINT_INCIDENT_SEVERITY_VALUES)
+    severity: API_QUERY_COLLECTIONS[
+      "endpoint-incidents"
+    ].filter_schemas.severity
       .optional()
       .describe("How serious the incident is.")
       .meta({ examples: [ENDPOINT_INCIDENT_SEVERITY_VALUES[0]] }),
-    state: z
-      .enum(INCIDENT_STATES)
+    state: API_QUERY_COLLECTIONS["endpoint-incidents"].filter_schemas.state
       .optional()
       .describe("The incident's lifecycle state.")
       .meta({ examples: [INCIDENT_STATES[0]] }),
-    sort: sortSchema(INCIDENT_SORT_FIELDS).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["endpoint-incidents"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -169,14 +164,14 @@ export const ListProviderEndpointsInputSchema = z
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
       )
       .meta({ examples: [ENDPOINT_LAYERS[0]] }),
-    netuid: netuidSchema().optional(),
-    publication_state: z
-      .enum(ENDPOINT_PUBLICATION_STATES)
-      .optional()
-      .describe(
-        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      )
-      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
+    netuid: API_QUERY_COLLECTIONS.endpoints.filter_schemas.netuid.optional(),
+    publication_state:
+      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
+        .optional()
+        .describe(
+          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+        )
+        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .boolean()
@@ -213,7 +208,7 @@ export const ListProviderEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

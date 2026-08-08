@@ -11,33 +11,30 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema, limitSchema, ss58Schema } from "./shared.ts";
 import { AccountTransfersArtifactSchema } from "../routes/account-events-feed.ts";
 import { CounterpartyRelationshipSchema } from "../routes/account-counterparties.ts";
 
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+const RouteQuery_accounts_ss58_transfers =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/transfers"];
+
+const RouteQuery_accounts_ss58_counterparties =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/counterparties"];
 
 export const GetAccountTransfersInputSchema = z
   .object({
     ss58: ss58Schema(),
-    direction: z
-      .enum(["all", "sent", "received"])
-      .optional()
+    direction: RouteQuery_accounts_ss58_transfers.shape.direction
       .describe(
         "Which side of the flow to include: everything, only outgoing, or only incoming.",
       )
       .meta({ examples: ["all"] }),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_accounts_ss58_transfers.shape.limit,
+    offset: RouteQuery_accounts_ss58_transfers.shape.offset,
+    cursor: RouteQuery_accounts_ss58_transfers.shape.cursor,
   })
   .strict();
 export type GetAccountTransfersInput = z.infer<
@@ -54,7 +51,7 @@ export type GetAccountTransfersOutput = z.infer<
 export const GetAccountCounterpartiesInputSchema = z
   .object({
     ss58: ss58Schema(),
-    counterparty: Ss58Schema.optional()
+    counterparty: RouteQuery_accounts_ss58_counterparties.shape.counterparty
       .describe(
         "The other SS58 account in the transfer pair — results are restricted to flows between the subject account and this one.",
       )

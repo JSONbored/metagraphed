@@ -14,30 +14,28 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { ChainConcentrationArtifactSchema } from "../routes/chain-concentration.ts";
 import { ChainConcentrationSubnetsArtifactSchema } from "../routes/chain-concentration-subnets.ts";
 import { ChainPerformanceArtifactSchema } from "../routes/chain-performance.ts";
-import { limitSchema, orderSchema, sortSchema } from "./shared.ts";
+import { limitSchema } from "./shared.ts";
 import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
 import { ChainIdleStakeArtifactSchema } from "../routes/chain-idle-stake.ts";
 import { ChainYieldArtifactSchema } from "../routes/chain-yield.ts";
-import {
-  CONCENTRATION_LENSES,
-  CONCENTRATION_RANKING_SORTS,
-} from "../routes/chain-concentration-subnets.ts";
 
 // --- get_chain_concentration_subnets (#9717) ---------------------------------
 // The cross-subnet RANKING, as opposed to get_chain_concentration's single
 // network aggregate over the same read.
 
+const RouteQuery_chain_concentration_subnets =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/concentration/subnets"];
+
 export const GetChainConcentrationSubnetsInputSchema = z
   .object({
-    lens: z
-      .enum(CONCENTRATION_LENSES)
-      .optional()
+    lens: RouteQuery_chain_concentration_subnets.shape.lens
       .describe(
         "Which distribution to rank subnets by. `emission` (the default) is " +
           "the reward question — who actually receives emissions. `stake` is " +
@@ -45,8 +43,8 @@ export const GetChainConcentrationSubnetsInputSchema = z
           "hotkeys into one holder, so a Sybil running twenty UIDs counts once.",
       )
       .meta({ examples: ["emission"] }),
-    sort: sortSchema(CONCENTRATION_RANKING_SORTS).optional(),
-    order: orderSchema().optional(),
+    sort: RouteQuery_chain_concentration_subnets.shape.sort,
+    order: RouteQuery_chain_concentration_subnets.shape.order,
     limit: limitSchema(
       CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
       CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,

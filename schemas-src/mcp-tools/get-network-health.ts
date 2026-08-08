@@ -14,9 +14,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { HealthSummaryArtifactSchema } from "../routes/health.ts";
-import { HEALTH_STATUS_VALUES } from "../shared.ts";
-import { netuidSchema } from "./shared.ts";
 
 /**
  * #10014. This took NO arguments -- not even `netuid` -- and returned every
@@ -29,12 +28,11 @@ import { netuidSchema } from "./shared.ts";
  */
 export const GetNetworkHealthInputSchema = z
   .object({
-    netuid: netuidSchema()
+    netuid: API_QUERY_COLLECTIONS["health-subnets"].filter_schemas.netuid
       .optional()
       .describe("Restrict to one subnet's health row.")
       .meta({ examples: [64] }),
-    status: z
-      .enum(HEALTH_STATUS_VALUES)
+    status: API_QUERY_COLLECTIONS["health-subnets"].filter_schemas.status
       .optional()
       .describe(
         "Restrict to subnets in this operational state. `failed` is the one an alerting caller usually wants; `unknown` means unprobed, which is NOT the same as healthy.",

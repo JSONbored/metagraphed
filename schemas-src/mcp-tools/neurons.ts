@@ -14,12 +14,12 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   NeuronFieldsInputSchema,
   accountKeySchema,
   netuidSchema,
   uidSchema,
-  windowSchema,
 } from "./shared.ts";
 import {
   NeuronHistoryArtifactSchema,
@@ -38,6 +38,9 @@ import {
 // The handler still enforces it (this server validates arguments in the
 // handler by design, #8942). The published constraint is what an agent READS
 // before calling; the handler is what makes the reading true.
+const RouteQuery_subnets_netuid_neurons_uid_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/neurons/{uid}/history"];
+
 export const GetNeuronInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -87,7 +90,7 @@ export const GetNeuronHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
     uid: uidSchema(),
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: RouteQuery_subnets_netuid_neurons_uid_history.shape.window,
   })
   .strict();
 export type GetNeuronHistoryInput = z.infer<typeof GetNeuronHistoryInputSchema>;

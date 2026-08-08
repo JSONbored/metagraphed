@@ -14,7 +14,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { RegistryLeaderboardsArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 
 const LEADERBOARD_BOARDS = [
@@ -32,14 +32,15 @@ const LEADERBOARD_BOARDS = [
   "biggest-alpha-gain-7d",
 ] as const;
 
+const RouteQuery_registry_leaderboards =
+  ROUTE_QUERY_SCHEMAS["/api/v1/registry/leaderboards"];
+
 export const GetRegistryLeaderboardsInputSchema = z
   .object({
-    board: z
-      .enum(LEADERBOARD_BOARDS)
-      .optional()
+    board: RouteQuery_registry_leaderboards.shape.board
       .describe("Which leaderboard to return.")
       .meta({ examples: [LEADERBOARD_BOARDS[0]] }),
-    limit: limitSchema(100).optional(),
+    limit: RouteQuery_registry_leaderboards.shape.limit,
   })
   .strict();
 export type GetRegistryLeaderboardsInput = z.infer<

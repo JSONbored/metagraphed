@@ -1,11 +1,14 @@
 // get_tao_usd (#9609): the TAO/USD index, mirroring GET
 // /api/v1/network/tao-usd.
 import { z } from "zod";
-import { windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+
+const RouteQuery_network_tao_usd =
+  ROUTE_QUERY_SCHEMAS["/api/v1/network/tao-usd"];
 
 export const GetTaoUsdInputSchema = z
   .object({
-    window: windowSchema(["1h", "24h", "7d", "30d"]).optional(),
+    window: RouteQuery_network_tao_usd.shape.window,
     // #9720. The series is ~1,428 points and ~143 KB on the default window,
     // while every summary a caller usually wants -- latest, change_usd,
     // change_pct, point_count, priced_point_count, oldest_observed_at -- sits
@@ -13,9 +16,7 @@ export const GetTaoUsdInputSchema = z
     // the REST route: a browser can stream 143 KB and a context window cannot,
     // so the surface with the hard constraint carries the default (the same
     // asymmetry #9701 established for list_candidates).
-    include_points: z
-      .boolean()
-      .optional()
+    include_points: RouteQuery_network_tao_usd.shape.include_points
       .describe(
         "Include the full per-point price series. Defaults to FALSE here — " +
           "the summary above it (latest, change_usd, change_pct, the counts) " +

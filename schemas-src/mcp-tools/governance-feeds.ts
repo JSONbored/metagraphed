@@ -12,16 +12,16 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-} from "./shared.ts";
-import { EXTRINSICS_LIMIT_MAX } from "./extrinsics.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { ExtrinsicsFeedArtifactSchema } from "../routes/extrinsics.ts";
 import { SudoKeyArtifactSchema } from "../routes/network-singletons.ts";
+
+const RouteQuery_sudo = ROUTE_QUERY_SCHEMAS["/api/v1/sudo"];
+
+const RouteQuery_governance_config_changes =
+  ROUTE_QUERY_SCHEMAS["/api/v1/governance/config-changes"];
 
 export const GetSudoInputSchema = z
   .object({
@@ -31,9 +31,7 @@ export const GetSudoInputSchema = z
       .optional()
       .describe("Restrict to this exact block height.")
       .meta({ examples: [8783000] }),
-    call_function: z
-      .string()
-      .optional()
+    call_function: RouteQuery_sudo.shape.call_function
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
       )
@@ -66,9 +64,9 @@ export const GetSudoInputSchema = z
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
-    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_sudo.shape.limit,
+    offset: RouteQuery_sudo.shape.offset,
+    cursor: RouteQuery_sudo.shape.cursor,
   })
   .strict();
 export type GetSudoInput = z.infer<typeof GetSudoInputSchema>;
@@ -97,9 +95,7 @@ export const GetGovernanceConfigChangesInputSchema = z
       .optional()
       .describe("Restrict to this exact block height.")
       .meta({ examples: [8783000] }),
-    call_function: z
-      .string()
-      .optional()
+    call_function: RouteQuery_governance_config_changes.shape.call_function
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
       )
@@ -132,9 +128,9 @@ export const GetGovernanceConfigChangesInputSchema = z
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
-    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_governance_config_changes.shape.limit,
+    offset: RouteQuery_governance_config_changes.shape.offset,
+    cursor: RouteQuery_governance_config_changes.shape.cursor,
   })
   .strict();
 export type GetGovernanceConfigChangesInput = z.infer<

@@ -12,10 +12,10 @@
 // constraint means NOT tightening beyond what already shipped, even though
 // the real per-row data happens to satisfy the deeper REST schema too.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   fieldsSchema,
   limitSchema,
-  netuidSchema,
   offsetSchema,
   orderSchema,
   querySchema,
@@ -24,44 +24,16 @@ import {
 import { EconomicsSummarySchema } from "../routes/economics.ts";
 import { SubnetEconomicsSchema } from "../shared.ts";
 
-const ECONOMICS_SORT_FIELDS = [
-  "alpha_fdv_tao",
-  "alpha_market_cap_tao",
-  "alpha_price_change_1d",
-  "alpha_price_change_1h",
-  "alpha_price_change_1m",
-  "alpha_price_change_7d",
-  "alpha_price_tao",
-  "block",
-  "emission_share",
-  // The column is denominated in the subnet's ALPHA token, which is the
-  // name /api/v1/economics publishes and accepts. `max_stake_tao` was a
-  // `_tao` suffix applied by habit, and the route answers it with a 400
-  // (#10118).
-  "max_stake_alpha",
-  "max_uids",
-  "max_validators",
-  "miner_count",
-  "miner_readiness",
-  "name",
-  "netuid",
-  "open_slots",
-  "registration_cost_tao",
-  "subnet_volume_tao",
-  "total_stake_alpha",
-  "validator_count",
-] as const;
-
 export const GetEconomicsInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    registration_allowed: z
-      .enum(["true", "false"])
-      .optional()
-      .describe("Restrict to subnets currently accepting registrations.")
-      .meta({ examples: ["true"] }),
+    netuid: API_QUERY_COLLECTIONS.economics.filter_schemas.netuid.optional(),
+    registration_allowed:
+      API_QUERY_COLLECTIONS.economics.filter_schemas.registration_allowed
+        .optional()
+        .describe("Restrict to subnets currently accepting registrations.")
+        .meta({ examples: ["true"] }),
     q: querySchema().optional(),
-    sort: sortSchema(ECONOMICS_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.economics.sort_fields).optional(),
     order: orderSchema().optional(),
     // `sort` and `order` were enums while this was a bare string with no stated
     // format anywhere — comma-separated? a JSON array? — so the one parameter an agent

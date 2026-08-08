@@ -9,6 +9,7 @@
 // mirror an existing schemas-src/routes/ REST schema -- modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   reasonCodesSchema,
   reviewStateSchema,
@@ -17,7 +18,6 @@ import {
   fieldsSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -36,10 +36,7 @@ import { ReviewGapPrioritiesArtifactSchema } from "../routes/review-gaps-profile
 import { ReviewEnrichmentTargetsArtifactSchema } from "../routes/review-enrichment.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
-import {
-  EVIDENCE_SORT_FIELDS,
-  TARGET_SORT_FIELDS,
-} from "../routes/review-enrichment.ts";
+import {} from "../routes/review-enrichment.ts";
 import { PRIORITY_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
 import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
 
@@ -49,14 +46,17 @@ const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 export const ListEnrichmentEvidenceInputSchema = z
   .object({
     q: querySchema().optional(),
-    netuid: netuidSchema().optional(),
-    lane: z
-      .enum(LANES)
+    netuid:
+      API_QUERY_COLLECTIONS[
+        "enrichment-evidence"
+      ].filter_schemas.netuid.optional(),
+    lane: API_QUERY_COLLECTIONS["enrichment-evidence"].filter_schemas.lane
       .optional()
       .describe("Which contribution lane the item belongs to.")
       .meta({ examples: [LANES[0]] }),
-    evidence_action: z
-      .enum(EVIDENCE_ACTIONS)
+    evidence_action: API_QUERY_COLLECTIONS[
+      "enrichment-evidence"
+    ].filter_schemas.evidence_action
       .optional()
       .describe("What the evidence is asking a contributor to do.")
       .meta({ examples: [EVIDENCE_ACTIONS[0]] }),
@@ -74,7 +74,9 @@ export const ListEnrichmentEvidenceInputSchema = z
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
-    sort: sortSchema(EVIDENCE_SORT_FIELDS).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["enrichment-evidence"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -102,7 +104,7 @@ export type ListEnrichmentEvidenceOutput = z.infer<
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 export const ListReviewGapsInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
+    netuid: API_QUERY_COLLECTIONS.gaps.filter_schemas.netuid.optional(),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     missing_kinds: z
       .enum(SURFACE_KINDS)
@@ -140,52 +142,62 @@ const TARGET_TYPES = REVIEW_ENRICHMENT_TARGET_TYPE_VALUES;
 export const ListReviewEnrichmentTargetsInputSchema = z
   .object({
     q: querySchema().optional(),
-    netuid: netuidSchema().optional(),
-    target_type: z
-      .enum(TARGET_TYPES)
+    netuid:
+      API_QUERY_COLLECTIONS[
+        "enrichment-targets"
+      ].filter_schemas.netuid.optional(),
+    target_type: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.target_type
       .optional()
       .describe("What kind of enrichment target this is.")
       .meta({ examples: [TARGET_TYPES[0]] }),
-    target_action: z
-      .enum(TARGET_ACTIONS)
+    target_action: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.target_action
       .optional()
       .describe("What the target is asking a contributor to do.")
       .meta({ examples: [TARGET_ACTIONS[0]] }),
     kind: kindSchema(SURFACE_KINDS).optional(),
-    lane: z
-      .enum(LANES)
+    lane: API_QUERY_COLLECTIONS["enrichment-targets"].filter_schemas.lane
       .optional()
       .describe("Which contribution lane the item belongs to.")
       .meta({ examples: [LANES[0]] }),
-    evidence_action: z
-      .enum(EVIDENCE_ACTIONS)
+    evidence_action: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.evidence_action
       .optional()
       .describe("What the evidence is asking a contributor to do.")
       .meta({ examples: [EVIDENCE_ACTIONS[0]] }),
-    identity_level: z
-      .enum(IDENTITY_LEVEL_VALUES)
+    identity_level: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.identity_level
       .optional()
       .describe("How complete the subnet's published identity is.")
       .meta({ examples: [IDENTITY_LEVEL_VALUES[0]] }),
-    profile_level: z
-      .enum(PROFILE_LEVEL_VALUES)
+    profile_level: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.profile_level
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
       .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
-    submission_route: z
-      .enum(SUBMISSION_ROUTES)
+    submission_route: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.submission_route
       .optional()
       .describe("How a contribution for this gap should be submitted.")
       .meta({ examples: [SUBMISSION_ROUTES[0]] }),
-    auto_review_candidate: z
-      .enum(BOOLEAN_STRINGS)
+    auto_review_candidate: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.auto_review_candidate
       .optional()
       .describe("Restrict to items eligible for automated review.")
       .meta({ examples: [BOOLEAN_STRINGS[0]] }),
-    manual_review_required: z
-      .enum(BOOLEAN_STRINGS)
+    manual_review_required: API_QUERY_COLLECTIONS[
+      "enrichment-targets"
+    ].filter_schemas.manual_review_required
       .optional()
       .describe("Restrict to items that do (or do not) need a human reviewer.")
       .meta({ examples: [BOOLEAN_STRINGS[0]] }),
@@ -197,7 +209,9 @@ export const ListReviewEnrichmentTargetsInputSchema = z
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
     reason_codes: reasonCodesSchema().optional(),
-    sort: sortSchema(TARGET_SORT_FIELDS).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["enrichment-targets"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

@@ -12,17 +12,21 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema } from "./shared.ts";
 import { BlockEventsArtifactSchema } from "../routes/block-events.ts";
 import { BlockExtrinsicsArtifactSchema } from "../routes/block-extrinsics.ts";
 import { BlockSchema, BlocksFeedArtifactSchema } from "../routes/blocks.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+
+const RouteQuery_blocks = ROUTE_QUERY_SCHEMAS["/api/v1/blocks"];
+
+const RouteQuery_blocks_ref_extrinsics =
+  ROUTE_QUERY_SCHEMAS["/api/v1/blocks/{ref}/extrinsics"];
+
+const RouteQuery_blocks_ref_events =
+  ROUTE_QUERY_SCHEMAS["/api/v1/blocks/{ref}/events"];
 
 export const ListBlocksInputSchema = z
   .object({
@@ -73,9 +77,9 @@ export const ListBlocksInputSchema = z
         "Inclusive lower bound on a block's event count; quieter blocks are excluded.",
       )
       .meta({ examples: [20] }),
-    limit: limitSchema(100).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_blocks.shape.limit,
+    offset: RouteQuery_blocks.shape.offset,
+    cursor: RouteQuery_blocks.shape.cursor,
   })
   .strict();
 export type ListBlocksInput = z.infer<typeof ListBlocksInputSchema>;
@@ -129,8 +133,8 @@ export const ListBlockExtrinsicsInputSchema = z
           "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
         ],
       }),
-    limit: limitSchema(100).optional(),
-    offset: offsetSchema().optional(),
+    limit: RouteQuery_blocks_ref_extrinsics.shape.limit,
+    offset: RouteQuery_blocks_ref_extrinsics.shape.offset,
   })
   .strict();
 export type ListBlockExtrinsicsInput = z.infer<
@@ -155,8 +159,8 @@ export const GetBlockEventsInputSchema = z
           "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
         ],
       }),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
+    limit: RouteQuery_blocks_ref_events.shape.limit,
+    offset: RouteQuery_blocks_ref_events.shape.offset,
   })
   .strict();
 export type GetBlockEventsInput = z.infer<typeof GetBlockEventsInputSchema>;

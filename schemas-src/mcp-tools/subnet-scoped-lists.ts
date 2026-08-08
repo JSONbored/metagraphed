@@ -16,6 +16,7 @@
 // list_subnet_surfaces/list_subnet_health have no `fields` projection param
 // at all, unlike every other list_* tool in this epic.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListPageFields,
   McpSubnetListArtifactStamp,
@@ -41,11 +42,7 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
-import {
-  ENDPOINT_SORT_VALUES,
-  HEALTH_CLASSIFICATION_VALUES,
-  HEALTH_SURFACE_SORT_VALUES,
-} from "./shared.ts";
+import { HEALTH_CLASSIFICATION_VALUES } from "./shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
@@ -64,16 +61,15 @@ export const ListSubnetEndpointsInputSchema = z
       )
       .meta({ examples: [ENDPOINT_LAYERS[0]] }),
     provider: providerSlugSchema().optional(),
-    publication_state: z
-      .enum(ENDPOINT_PUBLICATION_STATES)
-      .optional()
-      .describe(
-        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      )
-      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
+    publication_state:
+      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
+        .optional()
+        .describe(
+          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+        )
+        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
-    pool_eligible: z
-      .enum(BOOLEAN_STRINGS)
+    pool_eligible: API_QUERY_COLLECTIONS.endpoints.filter_schemas.pool_eligible
       .optional()
       .describe(
         "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
@@ -107,7 +103,7 @@ export const ListSubnetEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -173,14 +169,17 @@ export const ListSubnetHealthInputSchema = z
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
     status: kindSchema(HEALTH_STATUSES).optional(),
-    classification: z
-      .enum(HEALTH_CLASSIFICATION_VALUES)
+    classification: API_QUERY_COLLECTIONS[
+      "health-surfaces"
+    ].filter_schemas.classification
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
       )
       .meta({ examples: [HEALTH_CLASSIFICATION_VALUES[0]] }),
-    sort: sortSchema(HEALTH_SURFACE_SORT_VALUES).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["health-surfaces"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),

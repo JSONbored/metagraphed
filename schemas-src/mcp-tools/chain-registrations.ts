@@ -14,19 +14,22 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   ChainDeregistrationsArtifactSchema,
   ChainRegistrationsArtifactSchema,
 } from "../routes/chain-network-rollups.ts";
 
-const WINDOWS_2 = ["7d", "30d"] as const;
-const LIMIT_MAX_100 = 100;
+const RouteQuery_chain_registrations =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/registrations"];
+
+const RouteQuery_chain_deregistrations =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/deregistrations"];
 
 export const GetChainRegistrationsInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_2).optional(),
-    limit: limitSchema(LIMIT_MAX_100).optional(),
+    window: RouteQuery_chain_registrations.shape.window,
+    limit: RouteQuery_chain_registrations.shape.limit,
   })
   .strict();
 export type GetChainRegistrationsInput = z.infer<
@@ -46,8 +49,8 @@ export type GetChainRegistrationsOutput = z.infer<
 
 export const GetChainDeregistrationsInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_2).optional(),
-    limit: limitSchema(LIMIT_MAX_100).optional(),
+    window: RouteQuery_chain_deregistrations.shape.window,
+    limit: RouteQuery_chain_deregistrations.shape.limit,
   })
   .strict();
 export type GetChainDeregistrationsInput = z.infer<

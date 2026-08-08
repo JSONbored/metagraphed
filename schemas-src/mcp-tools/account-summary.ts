@@ -12,15 +12,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  kindStringSchema,
-  limitSchema,
-  netuidSchema,
-  offsetSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema, netuidSchema, ss58Schema } from "./shared.ts";
 import { AccountEntitiesArtifactSchema } from "../routes/account-entities.ts";
 import { AccountEventsArtifactSchema } from "../routes/account-events-feed.ts";
 import { AccountActivitySchema } from "../routes/account-summary.ts";
@@ -61,6 +54,9 @@ const AccountLabelItemSchema = z
     source_urls: z.array(z.string()).optional(),
   })
   .passthrough();
+
+const RouteQuery_accounts_ss58_events =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/events"];
 
 export const GetAccountInputSchema = z
   .object({
@@ -116,13 +112,13 @@ export type GetAccountEntitiesOutput = z.infer<
 export const GetAccountEventsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    kind: kindStringSchema().optional(),
-    netuid: netuidSchema().optional(),
+    kind: RouteQuery_accounts_ss58_events.shape.kind,
+    netuid: RouteQuery_accounts_ss58_events.shape.netuid,
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_accounts_ss58_events.shape.limit,
+    offset: RouteQuery_accounts_ss58_events.shape.offset,
+    cursor: RouteQuery_accounts_ss58_events.shape.cursor,
   })
   .strict();
 export type GetAccountEventsInput = z.infer<typeof GetAccountEventsInputSchema>;

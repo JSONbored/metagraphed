@@ -11,13 +11,13 @@
 // schemas-src/routes/ REST schema -- modeled fresh, matching each
 // hand-written literal field-for-field.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
   NotesFieldSchema,
   fieldsSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -28,18 +28,15 @@ import { SearchIndexArtifactSchema } from "../routes/evidence-search.ts";
 import { SearchArtifactSchema } from "../routes/evidence-search.ts";
 import { SEARCH_DOCUMENT_TYPE_VALUES } from "../routes/evidence-search.ts";
 
-const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"] as const;
-
 export const ListSearchIndexInputSchema = z
   .object({
     q: querySchema().optional(),
-    type: z
-      .enum(SEARCH_DOCUMENT_TYPE_VALUES)
+    type: API_QUERY_COLLECTIONS.documents.filter_schemas.type
       .optional()
       .describe("Which entity kind to search over.")
       .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
-    netuid: netuidSchema().optional(),
-    sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
+    netuid: API_QUERY_COLLECTIONS.documents.filter_schemas.netuid.optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -60,13 +57,12 @@ export type ListSearchIndexOutput = z.infer<typeof ListSearchIndexOutputSchema>;
 export const ListSearchInputSchema = z
   .object({
     q: querySchema().optional(),
-    type: z
-      .enum(SEARCH_DOCUMENT_TYPE_VALUES)
+    type: API_QUERY_COLLECTIONS.documents.filter_schemas.type
       .optional()
       .describe("Which entity kind to search over.")
       .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
-    netuid: netuidSchema().optional(),
-    sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
+    netuid: API_QUERY_COLLECTIONS.documents.filter_schemas.netuid.optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.documents.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

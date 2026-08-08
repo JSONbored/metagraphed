@@ -11,20 +11,21 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { kindSchema, ss58Schema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { kindSchema, ss58Schema } from "./shared.ts";
 import { AccountStakeFlowArtifactSchema } from "../routes/account-activity.ts";
-import {
-  ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES,
-  WINDOW_ENUM,
-} from "../routes/account-activity.ts";
+import { ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES } from "../routes/account-activity.ts";
 
 // Symbolic in the hand-written original (src/stake-flow.ts's
 // STAKE_FLOW_WINDOWS/STAKE_FLOW_DIRECTIONS), cross-checked against the
 // actual runtime source at the time of writing.
+const RouteQuery_accounts_ss58_stake_flow =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/stake-flow"];
+
 export const GetAccountStakeFlowInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM).optional(),
+    window: RouteQuery_accounts_ss58_stake_flow.shape.window,
     direction: kindSchema(ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES).optional(),
   })
   .strict();

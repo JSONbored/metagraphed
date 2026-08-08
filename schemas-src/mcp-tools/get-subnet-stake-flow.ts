@@ -11,17 +11,18 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { kindSchema, netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { kindSchema, netuidSchema } from "./shared.ts";
 import { SubnetStakeFlowArtifactSchema } from "../routes/subnet-stake-flow.ts";
-import {
-  SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES,
-  SUBNET_STAKE_FLOW_WINDOW_VALUES,
-} from "../routes/subnet-stake-flow.ts";
+import { SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES } from "../routes/subnet-stake-flow.ts";
+
+const RouteQuery_subnets_netuid_stake_flow =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/stake-flow"];
 
 export const GetSubnetStakeFlowInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_STAKE_FLOW_WINDOW_VALUES).optional(),
+    window: RouteQuery_subnets_netuid_stake_flow.shape.window,
     direction: kindSchema(SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES).optional(),
   })
   .strict();

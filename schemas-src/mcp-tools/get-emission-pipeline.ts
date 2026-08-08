@@ -11,35 +11,31 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  fieldsSchema,
-  limitSchema,
-  netuidSchema,
-  orderSchema,
-  projectableRows,
-  sortSchema,
-} from "./shared.ts";
-import { EMISSION_PIPELINE_SORT_FIELDS } from "../../src/emission-pipeline-surface.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { limitSchema, projectableRows } from "./shared.ts";
 import {
   EMISSION_PIPELINE_LIMIT_MAX,
   EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
 } from "../../src/route-limits.ts";
 import { EmissionPipelineArtifactSchema } from "../routes/emission-pipeline.ts";
 
+const RouteQuery_chain_emission_pipeline =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/emission-pipeline"];
+
 export const GetEmissionPipelineInputSchema = z
   .object({
     // Narrows the per-subnet rows only; the aggregate and the identity checks
     // stay network-wide, matching ?netuid= on the REST route.
-    netuid: netuidSchema().optional(),
+    netuid: RouteQuery_chain_emission_pipeline.shape.netuid,
     // #9720. 129 subnets x 16 fields is ~56 KB, and `netuid` was the only
     // filter -- it narrows to ONE subnet or leaves all of them, with nothing in
     // between. NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT: the
     // aggregate and the four identity checks are computed over every subnet
     // before any of this applies, so `verification` still covers the whole
     // distribution.
-    sort: sortSchema(EMISSION_PIPELINE_SORT_FIELDS).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
+    sort: RouteQuery_chain_emission_pipeline.shape.sort,
+    order: RouteQuery_chain_emission_pipeline.shape.order,
+    fields: RouteQuery_chain_emission_pipeline.shape.fields,
     limit: limitSchema(
       EMISSION_PIPELINE_LIMIT_MAX,
       EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,

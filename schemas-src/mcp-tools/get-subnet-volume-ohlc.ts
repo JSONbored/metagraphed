@@ -12,9 +12,13 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { netuidSchema } from "./shared.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "../routes/subnet-alpha-volume.ts";
 import { SubnetOhlcArtifactSchema } from "../routes/subnet-ohlc.ts";
+
+const RouteQuery_subnets_netuid_ohlc =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/ohlc"];
 
 export const GetSubnetVolumeInputSchema = z
   .object({
@@ -27,21 +31,14 @@ export const GetSubnetVolumeOutputSchema = SubnetAlphaVolumeArtifactSchema;
 export type GetSubnetVolumeOutput = z.infer<typeof GetSubnetVolumeOutputSchema>;
 
 const OHLC_INTERVALS = ["1h", "1d"] as const;
-const MAX_OHLC_WINDOW_DAYS = 365;
 
 export const GetSubnetOhlcInputSchema = z
   .object({
     netuid: netuidSchema(),
-    interval: z
-      .enum(OHLC_INTERVALS)
-      .optional()
+    interval: RouteQuery_subnets_netuid_ohlc.shape.interval
       .describe("Bucket size for the returned series.")
       .meta({ examples: [OHLC_INTERVALS[0]] }),
-    days: z
-      .int()
-      .min(1)
-      .max(MAX_OHLC_WINDOW_DAYS)
-      .optional()
+    days: RouteQuery_subnets_netuid_ohlc.shape.days
       .describe("How many trailing days to cover, ending today (UTC).")
       .meta({ examples: [7, 30] }),
   })

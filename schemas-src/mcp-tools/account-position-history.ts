@@ -14,14 +14,18 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, ss58Schema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema, ss58Schema } from "./shared.ts";
 import { AccountPositionHistoryArtifactSchema } from "../routes/account-positions.ts";
+
+const RouteQuery_accounts_ss58_subnets_netuid_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/subnets/{netuid}/history"];
 
 export const GetAccountPositionHistoryInputSchema = z
   .object({
     ss58: ss58Schema(),
     netuid: netuidSchema(),
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: RouteQuery_accounts_ss58_subnets_netuid_history.shape.window,
   })
   .strict();
 export type GetAccountPositionHistoryInput = z.infer<

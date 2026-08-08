@@ -11,25 +11,22 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  kindStringSchema,
-  limitSchema,
-  netuidSchema,
-  offsetSchema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema, netuidSchema } from "./shared.ts";
 import { SubnetEventsArtifactSchema } from "../routes/subnet-events.ts";
+
+const RouteQuery_subnets_netuid_events =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/events"];
 
 export const GetSubnetEventsInputSchema = z
   .object({
     netuid: netuidSchema(),
-    kind: kindStringSchema().optional(),
+    kind: RouteQuery_subnets_netuid_events.shape.kind,
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_subnets_netuid_events.shape.limit,
+    offset: RouteQuery_subnets_netuid_events.shape.offset,
+    cursor: RouteQuery_subnets_netuid_events.shape.cursor,
   })
   .strict();
 export type GetSubnetEventsInput = z.infer<typeof GetSubnetEventsInputSchema>;

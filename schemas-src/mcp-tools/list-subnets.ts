@@ -10,6 +10,7 @@
 // only coverage_level/curation_level/sort/order were actually enum-
 // constrained on the wire, and only those reuse a shared enum.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 // The route's own filter vocabularies. These three published a bare
 // `{"type":"string"}` while the route named its values, so an agent had to
 // guess and a wrong guess filtered to nothing rather than erroring (#10115).
@@ -17,11 +18,8 @@ import { z } from "zod";
 // (#10131) -- importing that from here is the edge that broke the data-api
 // build on #10121.
 import { QUERY_ENUMS } from "../query-enums.ts";
-import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
-  kindSchema,
   limitSchema,
-  netuidListSchema,
   netuidSchema,
   numericCursorSchema,
   orderSchema,
@@ -49,15 +47,15 @@ export const ListSubnetsInputSchema = z
     // whose route accepts active | inactive. The prose and the example both
     // named a different parameter, and neither could be seen to be wrong while
     // the enum was a bare string (#10131).
-    status: kindSchema(QUERY_ENUMS.subnetStatus as [string, ...string[]])
+    status: API_QUERY_COLLECTIONS.subnets.filter_schemas.status
       .optional()
       .describe("Restrict to subnets in this lifecycle state.")
       .meta({ examples: [QUERY_ENUMS.subnetStatus[0]] }),
-    subnet_type: kindSchema(QUERY_ENUMS.subnetType as [string, ...string[]])
+    subnet_type: API_QUERY_COLLECTIONS.subnets.filter_schemas.subnet_type
       .optional()
       .describe("Root subnet or an application subnet.")
       .meta({ examples: ["application"] }),
-    domain: kindSchema(DOMAIN_TAGS as [string, ...string[]])
+    domain: API_QUERY_COLLECTIONS.subnets.filter_schemas.domain
       .optional()
       .describe("The subnet's primary domain of use.")
       .meta({ examples: ["inference"] }),
@@ -82,7 +80,8 @@ export const ListSubnetsInputSchema = z
         "EXCLUDE rows with this domain. Applied after any positive `domain` filter, so the two can be combined.",
       )
       .meta({ examples: ["media"] }),
-    coverage_level: CoverageLevelSchema.optional()
+    coverage_level: API_QUERY_COLLECTIONS.subnets.filter_schemas.coverage_level
+      .optional()
       .describe(
         "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
       )
@@ -92,7 +91,8 @@ export const ListSubnetsInputSchema = z
         "EXCLUDE rows with this coverage level. Applied after any positive `coverage_level` filter, so the two can be combined.",
       )
       .meta({ examples: [CoverageLevelSchema.options[0]] }),
-    curation_level: CurationLevelSchema.optional()
+    curation_level: API_QUERY_COLLECTIONS.subnets.filter_schemas.curation_level
+      .optional()
       .describe(
         "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
       )
@@ -255,7 +255,7 @@ export const ListSubnetsInputSchema = z
     // #10014: the two simplest filters the subnets collection declares, absent
     // while thirty others were present. `min_netuid`/`max_netuid` below give a
     // RANGE; neither expresses "these three subnets".
-    netuid: netuidSchema()
+    netuid: API_QUERY_COLLECTIONS.subnets.filter_schemas.netuid
       .optional()
       .describe("Restrict to exactly this subnet.")
       .meta({ examples: [64] }),
@@ -266,7 +266,7 @@ export const ListSubnetsInputSchema = z
     // ids, each at most 5 digits (a netuid is a u16). The `^\d+(,\d+)*$` this
     // declared was unbounded in count and accepted 9-digit "netuids", so the
     // tool advertised a list its own route rejects (#10115).
-    netuids: netuidListSchema().optional(),
+    netuids: API_QUERY_COLLECTIONS.subnets.filter_schemas.netuids.optional(),
     min_netuid: z
       .int()
       .min(0)

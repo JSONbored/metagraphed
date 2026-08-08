@@ -11,23 +11,19 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema, sortSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { limitSchema } from "./shared.ts";
 import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
 import { ChainHoldersArtifactSchema } from "../routes/chain-holders.ts";
 
+const RouteQuery_chain_holders = ROUTE_QUERY_SCHEMAS["/api/v1/chain/holders"];
+
 export const GetChainHoldersInputSchema = z
   .object({
-    sort: sortSchema([
-      "top1_share",
-      "top5_share",
-      "top10_share",
-      "top20_share",
-      "holder_count",
-      "total_alpha",
-    ]).optional(),
+    sort: RouteQuery_chain_holders.shape.sort,
     limit: limitSchema(
       CHAIN_HOLDERS_LIMIT_MAX,
       CHAIN_HOLDERS_LIMIT_DEFAULT,

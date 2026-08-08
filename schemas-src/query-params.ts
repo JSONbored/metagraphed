@@ -161,8 +161,17 @@ export const windowSchema = <T extends readonly [string, ...string[]]>(
 
 /**
  * Which side of a two-sided flow to count. Values are per-route -- the transfer
- * feeds say `all|sent|received`, the stake feeds `all|in|out`, the stake quote
- * `stake|unstake` -- so, like `window` and `sort`, only the meaning is shared.
+ * feeds say `all|sent|received` and the stake feeds `all|in|out` -- so, like
+ * `window` and `sort`, only the meaning is shared.
+ *
+ * NOT the stake quote's `direction`, which this used to cover on the strength
+ * of the shared name. That one selects an ACTION (`stake|unstake`), omitting it
+ * quotes a `stake` rather than "both", and there is no flow to have a side of
+ * -- so the sentence below was false on that route. It went unnoticed while the
+ * prose lived only in the MCP copy, which said something generic instead;
+ * deriving the tool input from the route (#10064) would have published the
+ * wrong sentence to every agent. A coincident name, not a shared meaning --
+ * the distinction #9799 drew. See `stakeActionSchema`.
  *
  * The sentence carries the part no enum can: that the default is BOTH sides,
  * and that a direction is relative to the account or subnet in the path rather
@@ -179,6 +188,23 @@ export const directionSchema = <T extends readonly [string, ...string[]]>(
         "see this parameter's enum.",
     )
     .meta({ examples: [values[0]] });
+
+/**
+ * Which side of a stake quote to price.
+ *
+ * Distinct from `directionSchema` despite the shared parameter name: this is an
+ * action, not a side of a flow, and omitting it prices a `stake` rather than
+ * returning both. Verified live -- /subnets/1/stake-quote?amount=1 answers
+ * `direction: "stake"`.
+ */
+export const stakeActionSchema = () =>
+  z
+    .enum(["stake", "unstake"] as const)
+    .describe(
+      "Which side of the trade to price: `stake` buys alpha with TAO, " +
+        "`unstake` sells alpha for TAO. Omit for `stake`.",
+    )
+    .meta({ examples: ["stake"] });
 
 /** Which column the result is ranked by. Values are per-tool. */
 export const sortSchema = <T extends readonly [string, ...string[]]>(

@@ -17,14 +17,13 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   NeuronFieldsInputSchema,
   accountKeySchema,
   limitSchema,
   netuidSchema,
   offsetSchema,
-  sortSchema,
-  windowSchema,
 } from "./shared.ts";
 import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
@@ -36,17 +35,24 @@ import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
 import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import { CompareValidatorEntrySchema } from "../routes/compare-validators.ts";
-import { GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES } from "../routes/global-validators.ts";
-import {
-  VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES,
-  VALIDATOR_NOMINATORS_WINDOW_VALUES,
-} from "../routes/validator-nominators.ts";
+import {} from "../routes/validator-nominators.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
 // convention of inlining its own regex constants, e.g. subnets.ts's
 // HttpUrlSchema).
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+
+const RouteQuery_validators = ROUTE_QUERY_SCHEMAS["/api/v1/validators"];
+
+const RouteQuery_compare_validators =
+  ROUTE_QUERY_SCHEMAS["/api/v1/compare/validators"];
+
+const RouteQuery_validators_hotkey_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/validators/{hotkey}/history"];
+
+const RouteQuery_validators_hotkey_nominators =
+  ROUTE_QUERY_SCHEMAS["/api/v1/validators/{hotkey}/nominators"];
 
 export const ListSubnetValidatorsInputSchema = z
   .object({
@@ -110,7 +116,7 @@ export type ListSubnetValidatorsOutput = z.infer<
 // checked against the actual runtime source at the time of writing.
 export const ListGlobalValidatorsInputSchema = z
   .object({
-    sort: sortSchema(GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES).optional(),
+    sort: RouteQuery_validators.shape.sort,
     // Was a hardcoded 100 while this tool's own description — interpolated from
     // GLOBAL_VALIDATOR_LIMIT_MAX — said "max 2000", and the handler clamped to 2000.
     // The tool advertised 2000 in prose, 100 in schema, and served 2000. Now the
@@ -162,7 +168,7 @@ export const CompareValidatorsInputSchema = z
       .meta({
         examples: [["5CS3g6nVJM6ouns8n9buN9CzFf2C1YDHVcVGRcxoirKs2xbV"]],
       }),
-    netuid: netuidSchema().optional(),
+    netuid: RouteQuery_compare_validators.shape.netuid,
   })
   .strict();
 export type CompareValidatorsInput = z.infer<
@@ -192,9 +198,9 @@ export type CompareValidatorsOutput = z.infer<
 export const GetValidatorNominatorsInputSchema = z
   .object({
     hotkey: accountKeySchema("hotkey"),
-    window: windowSchema(VALIDATOR_NOMINATORS_WINDOW_VALUES).optional(),
-    sort: sortSchema(VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES).optional(),
-    limit: limitSchema(100).optional(),
+    window: RouteQuery_validators_hotkey_nominators.shape.window,
+    sort: RouteQuery_validators_hotkey_nominators.shape.sort,
+    limit: RouteQuery_validators_hotkey_nominators.shape.limit,
     offset: offsetSchema().optional(),
     coldkey: accountKeySchema("coldkey").optional(),
   })
@@ -213,10 +219,10 @@ export type GetValidatorNominatorsOutput = z.infer<
 export const GetValidatorHistoryInputSchema = z
   .object({
     hotkey: accountKeySchema("hotkey"),
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: RouteQuery_validators_hotkey_history.shape.window,
     // #9383: scopes the series to one subnet and switches the points to the
     // per-subnet shape (vTrust, consensus, dividends, take, native alpha).
-    netuid: netuidSchema().optional(),
+    netuid: RouteQuery_validators_hotkey_history.shape.netuid,
   })
   .strict();
 export type GetValidatorHistoryInput = z.infer<
