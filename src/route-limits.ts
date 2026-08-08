@@ -297,6 +297,22 @@ export const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
 export const CHAIN_EVENTS_LIMIT_MAX = 100;
 
 /**
+ * The ceiling on a Substrate runtime NAME in a query filter (#10096).
+ *
+ * `call_module` on the three chain-analytics feeds, and `pallet`/`method` on
+ * the event feed. The number was written out eight times before this: three
+ * `validateMaxLength(url, "call_module", 100)` calls in
+ * workers/request-handlers/analytics.ts, three published schemas, and two
+ * local consts in schemas-src/mcp-tools/.
+ *
+ * The event feed's 64 is deliberately different -- a pallet or method name is
+ * shorter than a module path -- so it is its own number rather than a shared
+ * one pretending the two are the same constraint.
+ */
+export const CHAIN_CALL_MODULE_MAX_LENGTH = 100;
+export const CHAIN_EVENT_NAME_MAX_LENGTH = 64;
+
+/**
  * `/api/v1/health/trends` -- the all-subnet trend matrix (#10089).
  *
  * The same defect the semantic block above records, on a second route: `limit`

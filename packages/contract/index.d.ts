@@ -46905,7 +46905,7 @@ export interface operations {
     validatorEconomicsRanking: {
         parameters: {
             query?: {
-                sort?: string;
+                sort?: "earning_floor_cost_tao" | "permit_floor_cost_tao" | "permit_to_earning_multiple" | "tao_inflow_per_day" | "validator_headroom";
                 /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */

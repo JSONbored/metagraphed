@@ -57,7 +57,10 @@ import {
   tryPostgresTier,
 } from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
-import { BULK_HEALTH_TRENDS_LIMIT_MAX } from "../../src/route-limits.ts";
+import {
+  BULK_HEALTH_TRENDS_LIMIT_MAX,
+  CHAIN_CALL_MODULE_MAX_LENGTH,
+} from "../../src/route-limits.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
@@ -421,8 +424,15 @@ function validateFormatParam(url: URL): QueryError | null {
   return validateEnumParam(url, "format", ["json", "csv"]);
 }
 
-// Bound an optional free-text filter so an oversized value never reaches D1.
-function validateMaxLength(
+/**
+ * Bound an optional free-text filter so an oversized value never reaches D1.
+ *
+ * Exported (#10096) because /api/v1/extrinsics needed it and did not have it:
+ * the three chain-analytics feeds rejected an over-length `call_module` while
+ * the fourth route taking the same filter accepted any length, so one filter
+ * had two behaviours depending on which door you came through.
+ */
+export function validateMaxLength(
   url: URL,
   parameter: string,
   max: number,
@@ -1415,7 +1425,11 @@ export async function handleChainCalls(
   if ("error" in limitResult) return analyticsQueryError(limitResult.error);
   const { limit } = limitResult;
   const groupBy = url.searchParams.get("group_by") || "module";
-  const callModuleError = validateMaxLength(url, "call_module", 100);
+  const callModuleError = validateMaxLength(
+    url,
+    "call_module",
+    CHAIN_CALL_MODULE_MAX_LENGTH,
+  );
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
@@ -1525,7 +1539,11 @@ export async function handleChainSigners(
   if ("error" in limitResult) return analyticsQueryError(limitResult.error);
   const { limit } = limitResult;
   const sort = url.searchParams.get("sort") || "tx_count";
-  const callModuleError = validateMaxLength(url, "call_module", 100);
+  const callModuleError = validateMaxLength(
+    url,
+    "call_module",
+    CHAIN_CALL_MODULE_MAX_LENGTH,
+  );
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
@@ -2827,7 +2845,11 @@ export async function handleChainFees(
   const { limit } = limitResult;
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_module_block.
-  const callModuleError = validateMaxLength(url, "call_module", 100);
+  const callModuleError = validateMaxLength(
+    url,
+    "call_module",
+    CHAIN_CALL_MODULE_MAX_LENGTH,
+  );
   if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
