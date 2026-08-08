@@ -2895,19 +2895,22 @@ async function handleHotkeyAlphaSync(
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleAccountBalancesSync's
   // own 400-before-503 reasoning).
-  if (!env.METAGRAPH_HEALTH_DB) {
+  const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
-  let d1Statements: number;
+  let d1Statements = 0;
   try {
-    ({ statements: d1Statements } = await writeHotkeyAlphaToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeHotkeyAlphaToD1
-      >[0],
-      rows,
-      pass,
-    ));
+    if (!neonOwns) {
+      ({ statements: d1Statements } = await writeHotkeyAlphaToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeHotkeyAlphaToD1
+        >[0],
+        rows,
+        pass,
+      ));
+    }
   } catch (err) {
     console.error("data-api hotkey-alpha-sync D1 write failed:", err);
     await captureDataApiError(err, "hotkey-alpha-sync-d1", env);
@@ -2915,19 +2918,30 @@ async function handleHotkeyAlphaSync(
   }
 
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
-  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
-  // table short while the row count looked nearly right.
-  await mirrorLedgerToNeon(
+  // other -- #9728 was a single unmirrored writer leaving a table short while
+  // the row count looked nearly right. THE PASS RIDES ALONG: it did not, so
+  // D1's tally filled while hotkey_alpha_passes stayed empty in Neon.
+  const neon = await mirrorLedgerToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
     "hotkey-alpha",
     rows,
+    {},
+    pass,
   );
+
+  // Once Neon is the store, a pass that did not reach it did not happen.
+  if (neonOwns && !neon.result?.ok) {
+    const reason = neon.result?.reason ?? "neon write not attempted";
+    console.error("data-api hotkey-alpha-sync Neon write failed:", reason);
+    await captureDataApiError(new Error(reason), "hotkey-alpha-sync-neon", env);
+    return writeJson({ error: "neon write failed" }, 502);
+  }
 
   return writeJson({
     ok: true,
     hotkey_alpha_written: rows.length,
-    stores: ["d1"],
+    stores: neonOwns ? ["neon"] : ["d1"],
     d1_statements: d1Statements,
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
@@ -8224,21 +8238,35 @@ export default {
     const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB
       ? {
           "hotkey-alpha": async (rows, pass) => {
-            const result = await writeHotkeyAlphaToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeHotkeyAlphaToD1
-              >[0],
-              rows,
-              pass,
-            );
-            // THE LANE'S OTHER WRITER, mirrored here as well as on the
-            // HTTP path.
-            await mirrorLedgerToNeon(
+            const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
+            const result = neonOwns
+              ? { statements: 0 }
+              : await writeHotkeyAlphaToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeHotkeyAlphaToD1
+                  >[0],
+                  rows,
+                  pass,
+                );
+            // THE LANE'S OTHER WRITER, and the pass rides along here too.
+            const neon = await mirrorLedgerToNeon(
               env as unknown as Record<string, unknown>,
               ctx,
               "hotkey-alpha",
               rows,
+              {},
+              pass,
             );
+            // Once Neon is the only store, a normal return would ACK a message
+            // whose rows never landed. writeSyncBatch turns a throw into a
+            // retry, which is the only thing that can still save them.
+            if (neonOwns && !neon.result?.ok) {
+              throw new Error(
+                `hotkey-alpha neon write failed: ${
+                  neon.result?.reason ?? "not attempted"
+                }`,
+              );
+            }
             return result;
           }, // Recomputes the prune map from THIS message's rows, which is sound
           // only because the message asserted `key_complete` -- the
