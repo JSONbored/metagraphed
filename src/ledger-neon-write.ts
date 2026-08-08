@@ -26,6 +26,7 @@
 // retried chunk arriving after a newer pass must be a no-op rather than a
 // silent regression -- both writes would otherwise succeed.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   PASS_TABLES,
   writePassTallyToNeon,
@@ -167,8 +168,7 @@ export async function mirrorLedgerToNeon(
   const sql =
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 
   if (!sql) {

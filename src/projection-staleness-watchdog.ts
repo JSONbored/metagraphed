@@ -17,6 +17,7 @@
 // a pure rule, a summary rather than a throw, and one exception event per
 // stale tick. Zero alerts is the correct steady state.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
 import { PROJECTION_LANES, PROJECTION_NETWORKS } from "./projection-lanes.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -278,22 +279,19 @@ export async function runProjectionStalenessWatchdog(
   // projection was fresh" from "the watchdog has not run since the deploy".
   //
   // Never throws -- see recordLaneVerdict.
-  await recordLaneVerdict(
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
-    {
-      lane: "projection-staleness",
-      verdict: verdict.stale ? "stale" : "ok",
-      // The OLDEST lane's age, since one stale lane is a stale fleet and that
-      // is the number worth keeping a history of.
-      age_ms: verdict.entries.reduce<number | null>(
-        (oldest, entry) =>
-          entry.age_ms === null ? oldest : Math.max(oldest ?? 0, entry.age_ms),
-        null,
-      ),
-      detail: verdict.stale ? verdict.stale_lanes.join(",") : null,
-      checked_at: now(),
-    },
-  );
+  await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+    lane: "projection-staleness",
+    verdict: verdict.stale ? "stale" : "ok",
+    // The OLDEST lane's age, since one stale lane is a stale fleet and that
+    // is the number worth keeping a history of.
+    age_ms: verdict.entries.reduce<number | null>(
+      (oldest, entry) =>
+        entry.age_ms === null ? oldest : Math.max(oldest ?? 0, entry.age_ms),
+      null,
+    ),
+    detail: verdict.stale ? verdict.stale_lanes.join(",") : null,
+    checked_at: now(),
+  });
 
   return { ok: true, ...verdict };
 }

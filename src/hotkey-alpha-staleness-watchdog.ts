@@ -60,6 +60,7 @@
 // (`nominator-positions-staleness`), so restating its verdict here would put two
 // lanes' names on one fault and send whoever reads it to the wrong producer.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
@@ -290,16 +291,13 @@ export async function runHotkeyAlphaStalenessWatchdog(
     // because a dropped $exception is indistinguishable from a lane that was
     // fine. Writing every tick is also what makes "the watchdog stopped
     // running" visible at all. Never throws -- see recordLaneVerdict.
-    await recordLaneVerdict(
-      deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
-      {
-        lane: "hotkey-alpha-staleness",
-        verdict: verdict.stale ? "stale" : "ok",
-        age_ms: verdict.age_ms,
-        detail: verdict.reason ?? null,
-        checked_at: now(),
-      },
-    );
+    await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+      lane: "hotkey-alpha-staleness",
+      verdict: verdict.stale ? "stale" : "ok",
+      age_ms: verdict.age_ms,
+      detail: verdict.reason ?? null,
+      checked_at: now(),
+    });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.
     return { ok: true, alerted: verdict.stale, ...verdict };
   } catch (err) {

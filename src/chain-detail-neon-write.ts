@@ -12,6 +12,7 @@
 // write returns, never instead of it, and never throws past its own boundary.
 // While D1 is still the store the routes read, a Neon failure costs a mirror
 // and a lane verdict and nothing else.
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -145,8 +146,7 @@ export async function mirrorChainDetailToNeon(
   const sql =
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 
   if (!sql) {

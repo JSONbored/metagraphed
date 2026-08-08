@@ -30,6 +30,7 @@
 // metagraph look recovered while 108 of 129 netuids were still missing: a
 // fresh timestamp on a partial table passes here and fails there.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
 /** This watchdog's own lane. */
@@ -520,8 +521,7 @@ export async function runTableFreshnessWatchdog(
   deps: FreshnessDeps = {},
 ): Promise<FreshnessOutcome> {
   const db = deps.db ?? (env?.METAGRAPH_HEALTH_DB as FreshnessDb | undefined);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   const spec = deps.spec ?? TABLE_FRESHNESS;
   const tables = Object.entries(spec)

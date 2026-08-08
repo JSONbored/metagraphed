@@ -19,6 +19,7 @@
 // mirror call site including this one get deleted. A reconciler or mirror that
 // outlives the inversion is worse than dead code -- it would copy a frozen D1
 // over live Neon rows, because it cannot tell the direction reversed.
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
   ACCOUNT_IDENTITY_HISTORY_COLUMNS,
@@ -137,8 +138,7 @@ export async function mirrorFamilyToNeon(
   const sql =
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 
   if (!sql) {

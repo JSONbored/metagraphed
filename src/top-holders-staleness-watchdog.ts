@@ -48,6 +48,7 @@
 //
 // None of them is suppressed, on #9475's reasoning, which stands unchanged.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
   topHoldersFlowRows,
@@ -238,16 +239,13 @@ export async function runTopHoldersStalenessWatchdog(
   // because a dropped `$exception` is indistinguishable from a lane that was
   // fine, and writing on every tick is also what makes "the watchdog stopped
   // running" visible at all. Never throws -- see recordLaneVerdict.
-  await recordLaneVerdict(
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
-    {
-      lane: "top-holders-flow-staleness",
-      verdict: flow.stale ? "stale" : "ok",
-      age_ms: flow.age_ms,
-      detail: flow.reason,
-      checked_at: now(),
-    },
-  );
+  await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+    lane: "top-holders-flow-staleness",
+    verdict: flow.stale ? "stale" : "ok",
+    age_ms: flow.age_ms,
+    detail: flow.reason,
+    checked_at: now(),
+  });
 
   // `ok` describes whether the TICK ran, not whether the lane is fresh. The
   // verdict is flat now that there is one artifact rather than two; `flow` is

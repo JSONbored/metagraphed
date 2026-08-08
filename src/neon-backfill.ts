@@ -59,6 +59,7 @@
 // end. If this never finishes, what it did finish is the part anything asks
 // for.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { ACCOUNT_BALANCE_INSERT_COLUMNS } from "./account-balances-d1-write.ts";
 import {
   neonBackfillLanes,
@@ -1870,8 +1871,7 @@ export async function runNeonBackfill(
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
   const db = deps.db ?? (env?.METAGRAPH_HEALTH_DB as BackfillDb | undefined);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   const startedAt = now();
   const elapsed = deps.elapsed ?? (() => now() - startedAt);

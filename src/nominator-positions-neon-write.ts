@@ -24,6 +24,7 @@
 // worst a failure can do in that order is leave a stale position until the next
 // tick -- never delete a position without having written its replacement first.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   writePassTallyToNeon,
   type PassTallyInput,
@@ -100,8 +101,7 @@ export async function mirrorNominatorPositionsToNeon(
   const sql =
     deps.sql ??
     (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 
   if (!sql) {

@@ -25,6 +25,7 @@
 // API. Do not move a read onto a table here until its `neon:` lane has been
 // green across several producer ticks.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -144,8 +145,7 @@ export async function mirrorNeuronSnapshotToNeon(
   // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op: somebody
   // named the lane and the binding is missing, and that deserves a verdict
   // rather than silence. It is recorded under the lane so #9698 reports it.
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   if (!sql) {
     await recordNeonWriteVerdict(

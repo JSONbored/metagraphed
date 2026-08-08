@@ -33,6 +33,7 @@
 // keep different amounts of history and parity reports a gap nobody can
 // explain. Every plan below points at the constant its D1 prune already uses.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { assertIdentifier } from "./neon-backfill.ts";
 import { neonBackfillLanes, type PgUnsafe } from "./neon-write.ts";
 import {
@@ -198,8 +199,7 @@ export async function runNeonPrune(
 ): Promise<PruneOutcome> {
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   const sql = deps.sql ?? (hyperdrive ? createPgSql(hyperdrive, ctx) : null);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   if (!sql?.unsafe) return { attempted: false };
 
