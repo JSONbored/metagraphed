@@ -19,7 +19,7 @@ import { z } from "zod";
 import {
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -109,7 +109,7 @@ export const ListSubnetEndpointsInputSchema = z
       .meta({ examples: [100] }),
     sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

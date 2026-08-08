@@ -315,21 +315,6 @@ export const fieldsSchema = () =>
     .meta({ examples: ["netuid,name,slug"] });
 
 /**
- * The `fields=` projection as a bare string. Same syntax as `fieldsSchema()`
- * but without the regex, for the tools whose handler accepts a looser form —
- * the sentence is what was missing on all 26 of them.
- */
-export const fieldsStringSchema = () =>
-  z
-    .string()
-    .describe(
-      "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
-        "Bare identifiers only — not a JSON array, no paths or indices. " +
-        "Omit for the full row.",
-    )
-    .meta({ examples: ["netuid,name,slug"] });
-
-/**
  * A YYYY-MM-DD calendar-date bound on a day-partitioned feed.
  *
  * Deliberately NOT `z.iso.date()`. That emits a calendar-correct pattern —
@@ -405,12 +390,37 @@ export const kindStringSchema = () =>
     .meta({ examples: ["subnet-api"] });
 
 /**
+ * An `id` filter -- the record's own stable identifier.
+ *
+ * The sentence was written out at 7 tool sites, and the bound at none of them:
+ * `id` is matched by `validateListQuery`, which reads `maxLength` off the
+ * PUBLISHED schema to decide a 400, so a tool declaring it unbounded advertises
+ * a value its route rejects. Same ceiling as every other exact-match filter.
+ */
+export const idFilterSchema = () =>
+  z
+    .string()
+    .max(FILTER_TEXT_MAX_LENGTH)
+    .describe(
+      "The record's stable identifier, as returned by the corresponding list " +
+        "tool. Exact match; an unknown id yields an empty result rather than " +
+        "an error.",
+    )
+    .meta({ examples: ["sn-64-chutes-subnet-api"] });
+
+/**
  * A provider slug. Says it is the slug rather than the display name, which is
  * the mistake the parameter invites — `npm run providers:list` prints them.
  */
 export const providerSlugSchema = () =>
   z
     .string()
+    // The same ceiling `filterTokenSchema()` carries, because it is the same
+    // filter: `validateListQuery` reads `maxLength` off the PUBLISHED schema to
+    // decide a 400, so a builder without it advertises a value the route
+    // rejects. This one exists for the PROSE -- "by slug, not display name" is
+    // the mistake the parameter invites -- not to be looser.
+    .max(FILTER_TEXT_MAX_LENGTH)
     .describe(
       "Restrict to one provider, by SLUG (`opentensor-foundation`), not " +
         "display name. Unknown slugs yield an empty result, not an error.",

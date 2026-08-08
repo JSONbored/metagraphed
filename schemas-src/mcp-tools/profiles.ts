@@ -15,7 +15,7 @@
 import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
-  fieldsStringSchema,
+  fieldsSchema,
   limitSchema,
   netuidSchema,
   numericCursorSchema,
@@ -77,7 +77,7 @@ export const ListProfilesInputSchema = z
     q: querySchema().optional(),
     sort: sortSchema(PROFILES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),
     cursor: numericCursorSchema().optional(),
   })

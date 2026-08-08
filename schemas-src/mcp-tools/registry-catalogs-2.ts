@@ -18,9 +18,10 @@
 // now publishes.
 import { z } from "zod";
 import {
+  idFilterSchema,
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -60,7 +61,7 @@ export const ListEvidenceInputSchema = z
     q: querySchema().optional(),
     sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -169,13 +170,7 @@ export type ListRpcEndpointsOutput = z.infer<
 
 export const ListRpcPoolsInputSchema = z
   .object({
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    id: idFilterSchema().optional(),
     kind: kindSchema(ENDPOINT_LAYER_VALUES).optional(),
     min_eligible_count: z
       .number()
@@ -207,7 +202,7 @@ export const ListRpcPoolsInputSchema = z
       .meta({ examples: [10] }),
     sort: sortSchema(ENDPOINT_POOL_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -235,7 +230,7 @@ export const ListSourceSnapshotsInputSchema = z
     q: querySchema().optional(),
     sort: sortSchema(SOURCE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -286,7 +281,7 @@ export const ListProfileCompletenessInputSchema = z
       .meta({ examples: [NATIVE_NAME_QUALITY_VALUES[0]] }),
     sort: sortSchema(PROFILE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

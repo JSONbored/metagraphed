@@ -10,7 +10,7 @@
 // ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";
 import {
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -62,7 +62,7 @@ export const GetHealthHistoryInputSchema = z
       .meta({ examples: [HEALTH_CLASSIFICATION_VALUES[0]] }),
     sort: sortSchema(HEALTH_SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),
     cursor: numericCursorSchema().optional(),
   })

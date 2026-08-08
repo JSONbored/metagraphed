@@ -15,7 +15,7 @@ import {
   McpListArtifactStamp,
   McpListPageFields,
   NotesFieldSchema,
-  fieldsStringSchema,
+  fieldsSchema,
   limitSchema,
   netuidSchema,
   numericCursorSchema,
@@ -41,7 +41,7 @@ export const ListSearchIndexInputSchema = z
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -68,7 +68,7 @@ export const ListSearchInputSchema = z
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

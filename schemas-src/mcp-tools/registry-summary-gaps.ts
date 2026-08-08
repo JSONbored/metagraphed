@@ -10,7 +10,7 @@ import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leader
 import {
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -213,7 +213,7 @@ export const ListSubnetGapsInputSchema = z
       .meta({ examples: ["pending"] }),
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

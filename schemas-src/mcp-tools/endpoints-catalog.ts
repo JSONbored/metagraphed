@@ -16,7 +16,7 @@
 // now publishes.
 import { z } from "zod";
 import {
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -99,7 +99,7 @@ export const ListEndpointsInputSchema = z
       .meta({ examples: [100] }),
     sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
     limit: limitSchema(1000).optional(),

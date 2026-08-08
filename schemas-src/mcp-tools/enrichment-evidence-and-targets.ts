@@ -12,7 +12,7 @@ import { z } from "zod";
 import {
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -74,7 +74,7 @@ export const ListEnrichmentEvidenceInputSchema = z
       .meta({ examples: [SURFACE_KINDS[0]] }),
     sort: sortSchema(EVIDENCE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -116,7 +116,7 @@ export const ListReviewGapsInputSchema = z
       .meta({ examples: ["pending"] }),
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -207,7 +207,7 @@ export const ListReviewEnrichmentTargetsInputSchema = z
       .meta({ examples: ["stale-evidence"] }),
     sort: sortSchema(TARGET_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

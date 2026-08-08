@@ -13,7 +13,7 @@ import { z } from "zod";
 import {
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -45,7 +45,7 @@ export const ListCurationInputSchema = z
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(CURATION_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -74,7 +74,7 @@ export const ListGapsInputSchema = z
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(GAPS_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

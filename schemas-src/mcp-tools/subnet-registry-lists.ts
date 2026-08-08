@@ -19,9 +19,10 @@
 // now publishes.
 import { z } from "zod";
 import {
+  idFilterSchema,
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -83,13 +84,7 @@ export const ListSubnetCandidatesInputSchema = z
       .optional()
       .describe("The incident's lifecycle state.")
       .meta({ examples: [CANDIDATE_STATES[0]] }),
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    id: idFilterSchema().optional(),
     confidence: z
       .enum(CONFIDENCE_LEVEL_VALUES)
       .optional()
@@ -97,7 +92,7 @@ export const ListSubnetCandidatesInputSchema = z
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
     sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -141,7 +136,7 @@ export const ListSubnetEvidenceInputSchema = z
     q: querySchema().optional(),
     sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
