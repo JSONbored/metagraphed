@@ -502,3 +502,61 @@ test("a D1 failure is contained as a 502, never an uncaught throw", async () => 
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error.code, "emission_gate_sync_failed");
 });
+
+// --- the store swap, and the booleans it turns on (#10112) -------------------
+//
+// All four flag columns -- enabled, previous_enabled, is_set, predates_capture
+// -- are BOOLEAN in Neon and INTEGER in D1. Binding 1/0 is `operator does not
+// exist: boolean = integer` on one store; binding true/false is wrong on the
+// other. So the coercion is per store, and this pins both directions.
+
+/** The three tables named as Neon's, plus a Hyperdrive to reach it with. */
+const NEON_OWNED = {
+  HYPERDRIVE: { connectionString: "postgresql://example/db" },
+  NEON_SOLE_STORE_TABLES:
+    "emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch",
+};
+
+test("on D1, the flag columns still bind as 0/1", async () => {
+  // The pre-existing tests above assert `predates_capture === 1` against the
+  // real SQLite fixture, so this only has to pin that the D1 path was NOT
+  // switched to booleans by the port.
+  const res = await post(baseBody());
+  assert.equal(res.status, 200);
+  const row = db
+    .prepare(
+      "SELECT predates_capture FROM emission_gate_param_history WHERE param = 'emission_gate_bar'",
+    )
+    .get() as { predates_capture: unknown };
+  assert.equal(row.predates_capture, 1, "D1 must keep integer flags");
+});
+
+test("owning all three tables moves the lane off D1 entirely", async () => {
+  // The Neon write cannot succeed against a fake connection string, so a 502
+  // is the outcome -- and that is the point: it proves the handler took the
+  // Neon path rather than quietly writing D1. A row-count assertion could not
+  // tell those apart.
+  const before = count("emission_gate_param_history");
+  const res = await post(baseBody(), env(NEON_OWNED));
+  assert.equal(res.status, 502);
+  assert.equal(
+    count("emission_gate_param_history"),
+    before,
+    "D1 was written while Neon owns the family",
+  );
+});
+
+test("owning only SOME of the three keeps the whole lane on D1", async () => {
+  // One sync derives all three change sets from ONE observation and writes
+  // them in ONE batch, so a family split across stores would put a param
+  // change and the enabled change it was derived alongside into different
+  // databases.
+  const res = await post(
+    baseBody(),
+    env({
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_SOLE_STORE_TABLES: "emission_gate_param_history",
+    }),
+  );
+  assert.equal(res.status, 200, "a partial family must stay on D1");
+});

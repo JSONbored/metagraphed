@@ -7,7 +7,11 @@
 // time would satisfy every other assertion here and lose exactly that.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { createPgD1, type PgD1Client } from "../src/pg-d1-adapter.ts";
+import {
+  createPgD1,
+  storeBoolean,
+  type PgD1Client,
+} from "../src/pg-d1-adapter.ts";
 
 function fakeClient(opts: { failOn?: RegExp; rows?: unknown[] } = {}) {
   const log: { text: string; values: unknown[] }[] = [];
@@ -153,5 +157,37 @@ describe("batch() is a real transaction", () => {
       f.log.filter((l) => l.text.startsWith("INSERT")).map((l) => l.values),
       [["a"], ["b"]],
     );
+  });
+});
+
+describe("storeBoolean", () => {
+  test("Postgres gets real booleans; SQLite gets 1/0", () => {
+    // A `boolean` column rejects 1/0 with `operator does not exist: boolean =
+    // integer`, and SQLite has no boolean type. The same row therefore needs a
+    // different binding per store -- the mapping cannot be fixed at the schema.
+    assert.equal(storeBoolean(true, true), true);
+    assert.equal(storeBoolean(true, false), false);
+    assert.equal(storeBoolean(false, true), 1);
+    assert.equal(storeBoolean(false, false), 0);
+  });
+
+  test("NULL survives on BOTH stores", () => {
+    // previous_enabled uses null for "no prior observation", which is not the
+    // same as false: collapsing it would record every first sighting as a
+    // transition from disabled.
+    assert.equal(storeBoolean(true, null), null);
+    assert.equal(storeBoolean(false, null), null);
+    assert.equal(storeBoolean(true, undefined), null);
+    assert.equal(storeBoolean(false, undefined), null);
+  });
+
+  test("never returns a number for Postgres, nor a boolean for SQLite", () => {
+    // The property, stated over the whole domain rather than four literals --
+    // a future edit that returns `Number(value)` unconditionally would satisfy
+    // the SQLite half above and still break every Postgres write.
+    for (const v of [true, false]) {
+      assert.equal(typeof storeBoolean(true, v), "boolean");
+      assert.equal(typeof storeBoolean(false, v), "number");
+    }
   });
 });
