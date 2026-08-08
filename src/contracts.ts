@@ -3,10 +3,13 @@ import {
   fieldsSchema,
   filterTokenSchema,
   limitSchema,
+  netuidListSchema,
   netuidSchema,
   numericCursorSchema,
   orderSchema,
   querySchema,
+  sortSchema,
+  windowSchema,
 } from "../schemas-src/query-params.ts";
 import { MAX_LIMIT } from "../workers/request-params.ts";
 // Surface-agnostic despite the module name: the sentinel bounds Zod stamps on
@@ -275,9 +278,15 @@ function parameterSchema(schema: z.ZodType): Row {
 // `netuid` is the ONLY parameter this shape was ever used for (20 sites), and
 // it is a u16 on chain — so it publishes the real ceiling now rather than
 // leaving 65536..2^53 looking like a subnet id nobody has registered yet.
-const integerSchema = parameterSchema(netuidSchema());
+//
+// `integerSchema` and `filterTextSchema` are the two used as COLLECTION FILTER
+// values, so they stay Zod (#10080): queryCollection() renders each filter to
+// JSON for the readers that need it and keeps the Zod for listQuerySchema() to
+// compose with. `searchTextSchema` and `fieldListSchema` are only ever used at
+// a direct parameter site, so they are rendered here.
+const integerSchema = netuidSchema();
+const filterTextSchema = filterTokenSchema();
 const searchTextSchema = parameterSchema(querySchema());
-const filterTextSchema = parameterSchema(filterTokenSchema());
 // Every route that publishes `fields` resolves it through the SAME
 // `parseFieldsParam` (src/field-projection.ts), so they all publish the same
 // syntax. Four routes outside the list collections -- chain/emission-pipeline
@@ -287,6 +296,23 @@ const filterTextSchema = parameterSchema(filterTokenSchema());
 // emission-pipeline, and `?fields=uid,%20hotkey` is a 200 on the metagraph
 // read, which is exactly what this pattern says.
 const fieldListSchema = parameterSchema(fieldsSchema());
+
+/**
+ * Query parameters a LIST route adds on top of its collection's own (#6571).
+ *
+ * Keyed by route path and held as Zod, so the published parameter and
+ * `listQuerySchema()`'s property come from ONE object rather than from a
+ * literal at the route() call and a copy in the schema. One entry today; this
+ * is where the second one goes.
+ */
+export const LIST_QUERY_ROUTE_EXTRAS: Record<
+  string,
+  Record<string, z.ZodType>
+> = {
+  // The incidents feed is scoped by a trailing window on top of the
+  // collection's filters.
+  "/api/v1/incidents": { window: windowSchema(["7d", "30d"]) },
+};
 
 export const API_QUERY_COLLECTIONS = {
   candidates: queryCollection("candidates", {
@@ -776,11 +802,7 @@ export const API_QUERY_COLLECTIONS = {
     arrayFilters: { domain: ["categories", "derived_categories"] },
     filters: {
       netuid: integerSchema,
-      netuids: {
-        type: "string",
-        maxLength: 767,
-        pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
-      },
+      netuids: netuidListSchema(),
       coverage_level: enumSchema(QUERY_ENUMS.coverageLevel),
       curation_level: enumSchema(QUERY_ENUMS.curationLevel),
       domain: enumSchema(DOMAIN_TAGS),
@@ -2618,8 +2640,11 @@ export const API_ROUTES = [
     {
       parameters: [
         { name: "netuid", schema: { type: "integer", minimum: 0 } },
-        { name: "sort", schema: enumSchema(EMISSION_PIPELINE_SORT_FIELDS) },
-        { name: "order", schema: enumSchema(["asc", "desc"]) },
+        {
+          name: "sort",
+          schema: parameterSchema(enumSchema(EMISSION_PIPELINE_SORT_FIELDS)),
+        },
+        { name: "order", schema: parameterSchema(orderSchema()) },
         {
           name: "limit",
           schema: {
@@ -4908,9 +4933,15 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics", "subnets"],
     [
-      { name: "lens", schema: enumSchema(CONCENTRATION_LENSES) },
-      { name: "sort", schema: enumSchema(CONCENTRATION_RANKING_SORTS) },
-      { name: "order", schema: enumSchema(["asc", "desc"]) },
+      {
+        name: "lens",
+        schema: parameterSchema(enumSchema(CONCENTRATION_LENSES)),
+      },
+      {
+        name: "sort",
+        schema: parameterSchema(enumSchema(CONCENTRATION_RANKING_SORTS)),
+      },
+      { name: "order", schema: parameterSchema(orderSchema()) },
       {
         name: "limit",
         schema: {
@@ -5123,7 +5154,7 @@ export const API_ROUTES = [
     [
       {
         name: "tag",
-        schema: enumSchema(DOMAIN_TAGS),
+        schema: parameterSchema(enumSchema(DOMAIN_TAGS)),
       },
     ],
   ),
@@ -5244,9 +5275,12 @@ export const API_ROUTES = [
     "Fetch recent cross-subnet downtime incidents reconstructed from probe history over a 7d or 30d window (computed live from D1). Pair with /api/v1/health for the overall status summary.",
     "short",
     ["health", "analytics"],
-    listQueryWith("incidents", [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-    ]),
+    listQueryWith(
+      "incidents",
+      Object.entries(LIST_QUERY_ROUTE_EXTRAS["/api/v1/incidents"]).map(
+        ([name, schema]) => ({ name, schema: parameterSchema(schema) }),
+      ),
+    ),
   ),
   route(
     "schemas",
@@ -6722,9 +6756,25 @@ function route(
 }
 
 function queryCollection(dataKey: string, options: Row = {}) {
+  // `filters` is authored as ZOD and stored twice (#10080): once as the emitted
+  // JSON every existing reader already uses, and once as the Zod itself so
+  // `listQuerySchema()` can compose with it.
+  //
+  // Two renderings of ONE authored input, both computed here -- not two
+  // declarations. The distinction matters: the JSON form is what
+  // `validateListQuery` reads at RUNTIME (`type`, `enum`, `maxLength`,
+  // `pattern`, `maximum`) to decide a 400, so it cannot become a second thing
+  // somebody edits.
+  const filterSchemas = (options.filters || {}) as Record<string, z.ZodType>;
   return {
     data_key: dataKey,
-    filters: options.filters || {},
+    filters: Object.fromEntries(
+      Object.entries(filterSchemas).map(([name, schema]) => [
+        name,
+        parameterSchema(schema),
+      ]),
+    ),
+    filter_schemas: filterSchemas,
     // CSV membership filters: param name -> the row field it matches against.
     // e.g. { netuids: "netuid" } makes `?netuids=1,7,74` return those rows.
     csv_filters: options.csvFilters || {},
@@ -6751,8 +6801,82 @@ function queryCollection(dataKey: string, options: Row = {}) {
   };
 }
 
+// A closed-set filter. Returns Zod so a collection's filters are all one kind
+// of thing (#10080); queryCollection() renders it to `{type:"string", enum}`,
+// byte-for-byte what this used to return directly.
 function enumSchema(values: readonly string[]) {
-  return { type: "string", enum: values };
+  return z.enum(values as [string, ...string[]]);
+}
+
+/**
+ * One collection list route's query parameters, as Zod (#10080).
+ *
+ * The 34 collection routes are the ones no hand-written `*QuerySchema` can
+ * cover: `listQuery()` GENERATES their 9-18 parameters from the collection
+ * config, so a hand-written copy would be a second declaration of a computed
+ * thing — the exact failure #10073 removed one layer of.
+ *
+ * This composes the same parameter set from the same config, so 3/5 can emit
+ * the published parameters from Zod and 4/5 can derive the MCP tool's inputs
+ * from it. `tests/query-collection-schema.test.ts` asserts the two agree for
+ * every collection, because two producers of one parameter list is precisely
+ * what must not be able to drift.
+ *
+ * Everything is `.optional()`: a query parameter is, and the handlers own their
+ * own defaults (see limitSchema's note on why the default is declared rather
+ * than applied).
+ */
+export function listQuerySchema(
+  collection: string,
+  {
+    exclude = [],
+    csvResponse = false,
+    extend = {},
+  }: ListQuerySchemaOptions = {},
+): z.ZodObject {
+  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
+  /* v8 ignore next 3 -- same developer config invariant listQuery() guards */
+  if (!config) {
+    throw new Error(`Unknown API query collection: ${collection}`);
+  }
+  const excluded = new Set(exclude);
+  const shape: Record<string, z.ZodType> = { ...extend };
+
+  for (const [name, schema] of Object.entries(
+    config.filter_schemas as Record<string, z.ZodType>,
+  )) {
+    if (!excluded.has(name)) shape[name] = schema.optional();
+  }
+  if ((config.search_keys as string[]).length > 0) {
+    shape.q = querySchema().optional();
+  }
+  // Each numeric range field F -> an inclusive `min_F` + `max_F` pair. Plain
+  // numbers, not integers: `numberParam` is what validateListQuery accepts, and
+  // several of these fields are ratios.
+  for (const field of config.range_filters as string[]) {
+    shape[`min_${field}`] = z.number().optional();
+    shape[`max_${field}`] = z.number().optional();
+  }
+  shape.fields = fieldsSchema().optional();
+  shape.limit = limitSchema(MAX_LIMIT).optional();
+  shape.cursor = numericCursorSchema().optional();
+  // A collection that declares no sort keys publishes `enum: []`, which
+  // `z.enum()` cannot express — it stays absent rather than being invented.
+  const sortFields = config.sort_fields as string[];
+  if (sortFields.length > 0) {
+    shape.sort = sortSchema(sortFields as [string, ...string[]]).optional();
+  }
+  shape.order = orderSchema().optional();
+  if (csvResponse) shape.format = z.enum(["json", "csv"]).optional();
+
+  return z.object(shape).strict();
+}
+
+interface ListQuerySchemaOptions {
+  exclude?: string[];
+  csvResponse?: boolean;
+  /** Route-level parameters on top of the collection's, from LIST_QUERY_ROUTE_EXTRAS. */
+  extend?: Record<string, z.ZodType>;
 }
 
 function listQuery(collection: string, options: { exclude?: string[] } = {}) {
