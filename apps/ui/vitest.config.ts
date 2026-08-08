@@ -14,7 +14,17 @@ export default defineConfig({
     // a browser environment, in keeping with this suite's "plain node is
     // enough" scope -- real component/interaction behavior stays covered
     // by the separate Playwright e2e suite.
-    include: ["src/**/*.test.{ts,tsx}"],
+    // `tests/e2e/**/*.unit.ts` covers the e2e HARNESS itself -- helpers whose
+    // logic decides whether the suite is trustworthy (see server-restart.ts,
+    // which must retry a restarting server and must NOT retry a real failure).
+    // Those live beside the specs they serve, but are plain node logic and
+    // should not need a browser to test.
+    //
+    // `.unit.ts`, deliberately not `.test.ts`: playwright.config.ts sets
+    // testDir to ./tests/e2e, and Playwright's default testMatch claims BOTH
+    // *.spec.ts and *.test.ts -- so a .test.ts here would be collected by
+    // Playwright as an e2e test with no test() calls in it.
+    include: ["src/**/*.test.{ts,tsx}", "tests/e2e/**/*.unit.ts"],
   },
   resolve: {
     alias: {

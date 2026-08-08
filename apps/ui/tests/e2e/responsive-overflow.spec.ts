@@ -8,6 +8,7 @@ import {
   EMPTY_LIST_ALLOWED,
 } from "./overflow-check.config.ts";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
+import { gotoThroughRestart } from "./server-restart.ts";
 
 // Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
 // overflow bugs (#3930, #3931, #3985, etc.) that are separately-scored
@@ -95,7 +96,7 @@ for (const route of ROUTES) {
           }
         }
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
-        await page.goto(route);
+        await gotoThroughRestart(page, route);
         // HAR-replayed responses resolve near-instantly (no real network
         // latency), which removes the natural gaps "networkidle" needs to
         // detect quiet -- pages with any recurring refetch/poll (/, /subnets/1,
