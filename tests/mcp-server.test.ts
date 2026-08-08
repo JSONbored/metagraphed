@@ -8514,6 +8514,41 @@ describe("MCP keyword discovery relevance", () => {
     },
   });
 
+  test("search_subnets accepts the route's `q` as well as `query` (#10018)", async () => {
+    // GET /api/v1/search publishes `q`. This tool took only `query`, so an
+    // agent reading our own OpenAPI was rejected for an unknown argument.
+    const byAlias = await callTool("search_subnets", { query: "ai" }, { deps });
+    const byCanonical = await callTool("search_subnets", { q: "ai" }, { deps });
+    assert.equal(byCanonical.body.result.isError, false);
+    // Same ROWS, not merely both accepted.
+    assert.deepEqual(
+      byCanonical.body.result.structuredContent.results,
+      byAlias.body.result.structuredContent.results,
+    );
+  });
+
+  test("search_subnets still requires one of them", async () => {
+    // Both are optional in Zod so either may be used, which means the
+    // requirement lives in the handler and in an `anyOf` on the published
+    // schema. Neither given must still be an error, not an empty search.
+    const res = await callTool("search_subnets", {}, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
+  test("search_subnets publishes the either-or requirement", () => {
+    // Without the anyOf the schema would say NOTHING is required and an agent
+    // would call it empty -- the failure requireAnyOf exists for.
+    const tool = listToolDefinitions().find((t) => t.name === "search_subnets");
+    assert.deepEqual(tool?.inputSchema.anyOf, [
+      { required: ["q"] },
+      { required: ["query"] },
+    ]);
+  });
+
   test('search_subnets: "ai" matches the real AI subnet, not "brain"/"domain"', async () => {
     const res = await callTool("search_subnets", { query: "ai" }, { deps });
     const out = res.body.result.structuredContent;
@@ -9687,6 +9722,37 @@ describe("list_subnets", () => {
           ],
         },
       });
+
+    test("the route's parameter names work, alongside the tool's own (#10018)", async () => {
+      // GET /api/v1/subnets publishes `min_integration_readiness`. An agent
+      // reading our own OpenAPI sent that and was REJECTED for an unknown
+      // argument, while the same value worked over REST -- both surfaces
+      // correct in isolation, disagreeing only at the boundary.
+      //
+      // Asserts the same ROWS, not merely that the argument is accepted: an
+      // alias wired into the schema and not the filter table would pass a
+      // shape check while filtering nothing.
+      const ids = async (args: Row) =>
+        (
+          (await callTool("list_subnets", args, { deps })).body.result
+            .structuredContent.subnets as Row[]
+        ).map((r: Row) => r.netuid);
+
+      const canonical = await ids({ min_integration_readiness: 20 });
+      const alias = await ids({ min_readiness: 20 });
+      assert.deepEqual(canonical, alias);
+      assert.notDeepEqual(
+        canonical,
+        await ids({}),
+        "the bound must actually exclude rows, or this proves nothing",
+      );
+      // Both given: they intersect, so the tighter bound wins rather than one
+      // silently overwriting the other.
+      assert.deepEqual(
+        await ids({ min_integration_readiness: 20, max_readiness: 20 }),
+        await ids({ min_readiness: 20, max_integration_readiness: 20 }),
+      );
+    });
 
     test("netuid and netuids narrow the registry (#10014)", async () => {
       // min_netuid/max_netuid gave a RANGE; neither expressed "these three
