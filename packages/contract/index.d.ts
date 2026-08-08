@@ -8127,9 +8127,18 @@ export interface components {
                 max_validator_trust: number | null;
                 /** @description Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero. */
                 nominator_count: number | null;
+                /** @description Realized return on staked capital over a NOMINAL 1-day window. The interval is not exact: the baseline is the newest neuron_daily snapshot within a 2-day tolerance of the target date (#8837), so this can measure 1, 2 or 3 elapsed days. Read realized_return_1d_as_of for the day it actually resolved to before annualizing or plotting day-over-day (#9885). */
                 realized_return_1d: number | null;
+                /** @description The neuron_daily snapshot_date the 1-day baseline resolved to, or null when there is no baseline (in which case realized_return_1d is null too). Subtract it from the response stamp for the true elapsed interval. */
+                realized_return_1d_as_of: string | null;
+                /** @description Realized return over a NOMINAL 30-day window; the same 2-day tolerance makes the true interval 28-32 days. See realized_return_1m_as_of (#9885). */
                 realized_return_1m: number | null;
+                /** @description The neuron_daily snapshot_date the 30-day baseline resolved to, or null when realized_return_1m is null. */
+                realized_return_1m_as_of: string | null;
+                /** @description Realized return over a NOMINAL 7-day window; the same 2-day tolerance makes the true interval 5-9 days. See realized_return_1w_as_of (#9885). */
                 realized_return_1w: number | null;
+                /** @description The neuron_daily snapshot_date the 7-day baseline resolved to, or null when realized_return_1w is null. */
+                realized_return_1w_as_of: string | null;
                 root_stake_tao: number;
                 stake_dominance: number | null;
                 subnet_count: number;
@@ -11948,9 +11957,18 @@ export interface components {
             max_validator_trust: number | null;
             /** @description Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero. */
             nominator_count: number | null;
+            /** @description Realized return on staked capital over a NOMINAL 1-day window. The interval is not exact: the baseline is the newest neuron_daily snapshot within a 2-day tolerance of the target date (#8837), so this can measure 1, 2 or 3 elapsed days. Read realized_return_1d_as_of for the day it actually resolved to before annualizing or plotting day-over-day (#9885). */
             realized_return_1d: number | null;
+            /** @description The neuron_daily snapshot_date the 1-day baseline resolved to, or null when there is no baseline (in which case realized_return_1d is null too). Subtract it from the response stamp for the true elapsed interval. */
+            realized_return_1d_as_of: string | null;
+            /** @description Realized return over a NOMINAL 30-day window; the same 2-day tolerance makes the true interval 28-32 days. See realized_return_1m_as_of (#9885). */
             realized_return_1m: number | null;
+            /** @description The neuron_daily snapshot_date the 30-day baseline resolved to, or null when realized_return_1m is null. */
+            realized_return_1m_as_of: string | null;
+            /** @description Realized return over a NOMINAL 7-day window; the same 2-day tolerance makes the true interval 5-9 days. See realized_return_1w_as_of (#9885). */
             realized_return_1w: number | null;
+            /** @description The neuron_daily snapshot_date the 7-day baseline resolved to, or null when realized_return_1w is null. */
+            realized_return_1w_as_of: string | null;
             root_stake_tao: number;
             schema_version: number;
             subnet_count: number;
@@ -46321,8 +46339,11 @@ export interface operations {
                      *             "max_validator_trust": 0.5,
                      *             "nominator_count": 1,
                      *             "realized_return_1d": 0.5,
+                     *             "realized_return_1d_as_of": "example",
                      *             "realized_return_1m": 0.5,
+                     *             "realized_return_1m_as_of": "example",
                      *             "realized_return_1w": 0.5,
+                     *             "realized_return_1w_as_of": "example",
                      *             "root_stake_tao": 0.5,
                      *             "stake_dominance": 0.5,
                      *             "subnet_count": 1,
@@ -46469,8 +46490,11 @@ export interface operations {
                      *         "max_validator_trust": 0.5,
                      *         "nominator_count": 1,
                      *         "realized_return_1d": 0.5,
+                     *         "realized_return_1d_as_of": "example",
                      *         "realized_return_1m": 0.5,
+                     *         "realized_return_1m_as_of": "example",
                      *         "realized_return_1w": 0.5,
+                     *         "realized_return_1w_as_of": "example",
                      *         "root_stake_tao": 0.5,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
