@@ -26,7 +26,7 @@ import {
 } from "../routes/coverage.ts";
 import {
   COVERAGE_DEPTH_SORT_VALUES,
-  fieldsStringSchema,
+  fieldsSchema,
   limitSchema,
   netuidSchema,
   numericCursorSchema,
@@ -107,7 +107,7 @@ export const GetCoverageDepthInputSchema = z
       .meta({ examples: ["hard-blocked"] }),
     sort: sortSchema(COVERAGE_DEPTH_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     // Defaults to a PAGE, not the whole scorecard (#10027). Measured at
     // 268,088 B for 129 rows -- ~2 KB each -- so an unbounded call spent most
     // of an agent's context before it had asked anything specific. `total`

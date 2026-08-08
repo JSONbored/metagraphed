@@ -11,7 +11,7 @@ import { z } from "zod";
 import {
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsStringSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -101,7 +101,7 @@ export const ListEnrichmentQueueInputSchema = z
       .meta({ examples: ["pending"] }),
     sort: sortSchema(QUEUE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -154,7 +154,7 @@ export const ListAdapterCandidatesInputSchema = z
       .meta({ examples: ["stale-evidence"] }),
     sort: sortSchema(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })

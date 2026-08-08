@@ -17,7 +17,8 @@
 // now publishes.
 import { z } from "zod";
 import {
-  fieldsStringSchema,
+  idFilterSchema,
+  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
@@ -50,13 +51,7 @@ const PROVIDER_SORT_FIELDS = ["authority", "id", "kind", "name"] as const;
 
 export const ListProvidersInputSchema = z
   .object({
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    id: idFilterSchema().optional(),
     kind: kindSchema(PROVIDER_KINDS).optional(),
     authority: z
       .enum(PROVIDER_AUTHORITIES)
@@ -67,7 +62,7 @@ export const ListProvidersInputSchema = z
       .meta({ examples: [PROVIDER_AUTHORITIES[0]] }),
     sort: sortSchema(PROVIDER_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -85,13 +80,7 @@ export const ListSurfacesInputSchema = z
     netuid: netuidSchema().optional(),
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    id: idFilterSchema().optional(),
     // #10008: the three the curated-surfaces collection declares and this tool
     // could not pass. Strings, not booleans, because that is what the route
     // accepts -- these are query parameters, and `?auth_required=true` is a
@@ -127,7 +116,7 @@ export const ListSurfacesInputSchema = z
       .meta({ examples: ["true"] }),
     sort: sortSchema(SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
   })
@@ -150,13 +139,7 @@ export const ListCandidatesInputSchema = z
       .optional()
       .describe("The incident's lifecycle state.")
       .meta({ examples: [CANDIDATE_STATES[0]] }),
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    id: idFilterSchema().optional(),
     confidence: z
       .enum(CONFIDENCE_LEVEL_VALUES)
       .optional()
@@ -164,7 +147,7 @@ export const ListCandidatesInputSchema = z
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
     sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
-    fields: fieldsStringSchema().optional(),
+    fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),
     cursor: numericCursorSchema().optional(),
   })
