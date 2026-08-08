@@ -390,7 +390,11 @@ import {
   FAMILY_MIRROR_PLANS,
 } from "../src/hyperparams-identity-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
-import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
+import {
+  LEDGER_MIRROR_PLANS,
+  mirrorLedgerToNeon,
+} from "../src/ledger-neon-write.ts";
+import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
 import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
@@ -2028,19 +2032,22 @@ async function handleValidatorNominatorCountsSync(
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleNominatorPositionsSync's
   // own 400-before-503 reasoning).
-  if (!env.METAGRAPH_HEALTH_DB) {
+  const neonOwns = neonOwnsLedger(env, "validator-nominator-counts");
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
-  let d1Statements: number;
+  let d1Statements = 0;
   try {
-    ({ statements: d1Statements } = await writeValidatorNominatorCountsToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeValidatorNominatorCountsToD1
-      >[0],
-      rows,
-      pass,
-    ));
+    if (!neonOwns) {
+      ({ statements: d1Statements } = await writeValidatorNominatorCountsToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeValidatorNominatorCountsToD1
+        >[0],
+        rows,
+        pass,
+      ));
+    }
   } catch (err) {
     console.error(
       "data-api validator-nominator-counts-sync D1 write failed:",
@@ -2053,7 +2060,7 @@ async function handleValidatorNominatorCountsSync(
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
   // other and mirrors too -- #9728 was a single unmirrored writer leaving a
   // table short while the row count looked nearly right.
-  await mirrorLedgerToNeon(
+  const neon = await mirrorLedgerToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
     "validator-nominator-counts",
@@ -2063,10 +2070,25 @@ async function handleValidatorNominatorCountsSync(
     pass,
   );
 
+  // Once Neon is the store, a pass that did not reach it did not happen.
+  if (neonOwns && !neon.result?.ok) {
+    const reason = neon.result?.reason ?? "neon write not attempted";
+    console.error(
+      "data-api validator-nominator-counts-sync Neon write failed:",
+      reason,
+    );
+    await captureDataApiError(
+      new Error(reason),
+      "validator-nominator-counts-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
+  }
+
   return writeJson({
     ok: true,
     nominator_counts_written: rows.length,
-    stores: ["d1"],
+    stores: neonOwns ? ["neon"] : ["d1"],
     d1_statements: d1Statements,
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
@@ -3220,6 +3242,32 @@ export function neonOwnsNeuronsSnapshot(env: Env): boolean {
  * 92 rows short while the count looked nearly right. The pass ledger moves with
  * the rows: a tally in one store describing rows in the other answers a
  * question about nothing. */
+/**
+ * Whether Neon solely owns a ledger lane's table AND its pass ledger.
+ *
+ * BOTH, because a completeness tally in one store describing rows in the other
+ * answers a question about nothing (#10056). Lanes with no pass table pass a
+ * single-element list and behave as before.
+ *
+ * This existed as a FLAG before it existed as a code path: #10098 named
+ * validator_nominator_counts sole-store while both its writers still wrote D1,
+ * so the flag claimed a cutover that had not happened. Inert rather than
+ * dangerous -- D1 kept its rows and the mirror kept Neon's -- but a flag that
+ * lies about which store owns a table is how the next change gets it wrong.
+ */
+export function neonOwnsLedger(env: Env, lane: string): boolean {
+  const tables = [LEDGER_MIRROR_PLANS[lane]?.table, PASS_TABLES[lane]].filter(
+    (t): t is string => Boolean(t),
+  );
+  if (!tables.length) return false;
+  return (
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    tables.every((table) =>
+      neonOwnsTable(env as unknown as Record<string, unknown>, table),
+    )
+  );
+}
+
 export function neonOwnsNominatorPositions(env: Env): boolean {
   return (
     Boolean(env.HYPERDRIVE?.connectionString) &&
@@ -8250,13 +8298,15 @@ export default {
               { ...neuronSnapshotWrite(rows, Date.now()), pass },
             ),
           "validator-nominator-counts": async (rows, pass) => {
-            const result = await writeValidatorNominatorCountsToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeValidatorNominatorCountsToD1
-              >[0],
-              rows,
-              pass,
-            );
+            const result = neonOwnsLedger(env, "validator-nominator-counts")
+              ? { statements: 0 }
+              : await writeValidatorNominatorCountsToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeValidatorNominatorCountsToD1
+                  >[0],
+                  rows,
+                  pass,
+                );
             // THE LANE'S OTHER WRITER, mirrored here as well as on the
             // HTTP path.
             await mirrorLedgerToNeon(
