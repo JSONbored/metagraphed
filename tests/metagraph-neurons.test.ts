@@ -920,6 +920,51 @@ describe("metagraph-neurons builders", () => {
     assert.equal(entry.realized_return_1m, null);
   });
 
+  // The window labels are NOMINAL (#9885). REALIZED_RETURN_BASELINE_TOLERANCE_DAYS
+  // lets a window fall back to the prior day when a snapshot is missing or late
+  // (#8837), so on such a day every validator's "1-day" return is really a
+  // two-day one -- and before this the response said nothing about it. The
+  // `ranked` CTE always knew which day won; the projection dropped it.
+  test("buildGlobalValidators publishes the day each baseline actually resolved to (#9885)", () => {
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
+      {
+        realizedStakeByHotkey: new Map([
+          [
+            "hk-a",
+            {
+              d1: 800,
+              d7: 500,
+              d30: null,
+              // The 1-day window fell back two days -- the case the field exists for.
+              d1_as_of: "2026-08-05",
+              d7_as_of: "2026-07-31",
+              d30_as_of: null,
+            },
+          ],
+        ]),
+      },
+    );
+    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1d, 0.25);
+    assert.equal(entry.realized_return_1d_as_of, "2026-08-05");
+    assert.equal(entry.realized_return_1w_as_of, "2026-07-31");
+    // No baseline means no date to report, so the pair stays consistent rather
+    // than pairing a null return with a date that measured nothing.
+    assert.equal(entry.realized_return_1m, null);
+    assert.equal(entry.realized_return_1m_as_of, null);
+  });
+
+  test("a baseline that arrives without its date reports null rather than guessing (#9885)", () => {
+    const data = buildGlobalValidators(
+      [{ ...ROW, netuid: 3, uid: 0, hotkey: "hk-a", stake_tao: 1000 }],
+      { realizedStakeByHotkey: new Map([["hk-a", { d1: 800 }]]) },
+    );
+    const entry = data.validators.find((v: Row) => v.hotkey === "hk-a");
+    assert.equal(entry.realized_return_1d, 0.25);
+    assert.equal(entry.realized_return_1d_as_of, null);
+  });
+
   test("buildGlobalValidators sums current stake across memberships in rao before the realized-return ratio (#7228)", () => {
     // Two memberships -> current total 1500; a 1200 baseline gives
     // (1500-1200)/1200 = 0.25, computed from the rao-BigInt stake sum.

@@ -5889,11 +5889,13 @@ async function loadRealizedStakeBaselinesD1(
           ` AND nd.snapshot_date <= ? AND nd.snapshot_date >= ?
             GROUP BY nd.hotkey, nd.snapshot_date
           ), ranked AS (
-            SELECT hotkey, stake_tao,
+            SELECT hotkey, stake_tao, snapshot_date,
               ROW_NUMBER() OVER (PARTITION BY hotkey ORDER BY snapshot_date DESC) AS rn
             FROM daily
           )
-          SELECT hotkey, stake_tao AS baseline_stake_tao FROM ranked WHERE rn = 1`;
+          SELECT hotkey, stake_tao AS baseline_stake_tao,
+            snapshot_date AS baseline_date
+          FROM ranked WHERE rn = 1`;
         return sql.unsafe(
           text,
           hotkey ? [hotkey, cutoff, floor] : [cutoff, floor],
@@ -5908,8 +5910,22 @@ async function loadRealizedStakeBaselinesD1(
           d1: null,
           d7: null,
           d30: null,
+          d1_as_of: null,
+          d7_as_of: null,
+          d30_as_of: null,
         };
         entry[key] = numberOrNull(row.baseline_stake_tao);
+        // The date the tolerance actually landed on (#9885). The `ranked` CTE
+        // orders by snapshot_date DESC, so it has always KNOWN which day won --
+        // the projection just dropped it, leaving one field carrying a 1-, 2- or
+        // 3-day return with no way for a caller to tell which.
+        //
+        // Taken as-is, with no type guard: `snapshot_date` is TEXT on BOTH
+        // stores (migrations/neon/0001_side_tables.sql keeps it TEXT rather
+        // than DATE precisely so the value round-trips identically), and it is
+        // in the GROUP BY, so a returned row always carries a 'YYYY-MM-DD'
+        // string. A `typeof` guard here would be a branch no query can take.
+        entry[`${key}_as_of`] = row.baseline_date;
         byHotkey.set(row.hotkey, entry);
       }
     });

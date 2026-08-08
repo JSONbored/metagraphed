@@ -714,6 +714,17 @@ function realizedReturns(
   const out: Row = {};
   for (const [key, field] of REALIZED_RETURN_FIELDS) {
     out[field] = realizedReturn(currentStakeRao, (b[key] as number) ?? null);
+    // The date the baseline actually resolved to (#9885). The window labels
+    // are NOMINAL: REALIZED_RETURN_BASELINE_TOLERANCE_DAYS lets `_1d` fall back
+    // to the prior day when a snapshot is missing or late, so on such a day
+    // every validator's "1-day" return is really a two-day one and nothing in
+    // the response said so. Publishing the date lets a caller compute the true
+    // elapsed interval and decide whether to use, scale, or discard the figure.
+    //
+    // Null whenever the return is null -- there is no baseline to date -- so
+    // the pair is always consistent.
+    out[`${field}_as_of`] =
+      out[field] == null ? null : ((b[`${key}_as_of`] as string) ?? null);
   }
   return out;
 }
