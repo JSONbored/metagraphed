@@ -25,6 +25,8 @@ import {
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
+import { neonOwnsTable } from "./neon-write.ts";
+import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import type { WaitUntilLike } from "./pg-sql.ts";
 import {
   CHAIN_RPC_URLS,
@@ -251,6 +253,37 @@ interface D1LikeDb {
  * The mirror runs AFTER D1 returns and its failure is a lane verdict only --
  * the capture must not lose a tick because the copy is unreachable.
  */
+/**
+ * The watermark as Neon holds it, or null when Neon cannot be reached.
+ *
+ * Returns a reader rather than a value so the connection is opened only on the
+ * tick that actually reads. Null (rather than 0) on any failure: the capture
+ * treats null as "start at the floor" and 0 as a real watermark, so a failed
+ * read must never be mistaken for a genesis restart.
+ */
+function neonWatermarkRead(
+  env: Record<string, unknown> | null | undefined,
+  waitUntil: WaitUntilLike | undefined,
+  network: string,
+): (() => Promise<number | null>) | null {
+  const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
+  if (!hyperdrive?.connectionString || !waitUntil) return null;
+  return async () => {
+    try {
+      const sql = createPgSql(hyperdrive, waitUntil);
+      const rows = (await sql.unsafe(
+        "SELECT last_contiguous_block FROM raw_capture_state WHERE network = $1",
+        [network],
+      )) as { last_contiguous_block?: unknown }[];
+      const value = rows?.[0]?.last_contiguous_block;
+      return typeof value === "number" ? value : null;
+    } catch (error) {
+      console.error("[raw-capture-watermark-neon]", String(error));
+      return null;
+    }
+  };
+}
+
 export function mirroredWatermark(
   inner: WatermarkStore,
   env: Record<string, unknown> | null | undefined,
@@ -258,10 +291,20 @@ export function mirroredWatermark(
   network: string,
   now: () => number,
 ): WatermarkStore {
+  // Once Neon owns raw_capture_state the inner (D1) write is skipped and the
+  // mirror IS the write.
+  //
+  // THE READ HAS TO MOVE WITH IT. This nearly shipped writing Neon while still
+  // reading `inner` -- the caller always builds a D1-backed store -- so the
+  // watermark would have been read from a D1 row nothing updated again. The
+  // capture resumes FROM that value, so it would have re-captured the same
+  // blocks every tick, forever, while both stores looked healthy.
+  const neonOwns = neonOwnsTable(env, "raw_capture_state");
+  const neonRead = neonWatermarkRead(env, waitUntil, network);
   return {
-    read: () => inner.read(),
+    read: () => (neonOwns && neonRead ? neonRead() : inner.read()),
     async write(value: number) {
-      const result = await inner.write(value);
+      const result = neonOwns ? undefined : await inner.write(value);
       await mirrorRawCaptureStateToNeon(env, waitUntil, network, value, now());
       return result;
     },

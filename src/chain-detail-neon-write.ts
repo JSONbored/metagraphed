@@ -53,6 +53,17 @@ interface DetailPlan {
  * In WRITE ORDER, and the object literal's order is what the loop below
  * follows. blocks last -- see this module's header.
  */
+/**
+ * Every table this lane writes, for the ownership check (#10107).
+ *
+ * Derived from the plans below rather than restated: this lane has TWO writers
+ * (the HTTP sync and the sync-batches queue consumer), and a hand-kept list
+ * would be a third place for them to disagree about which tables move.
+ */
+export function chainDetailTables(): readonly string[] {
+  return CHAIN_DETAIL_MIRROR_PLANS.map((plan) => plan.table);
+}
+
 export const CHAIN_DETAIL_MIRROR_PLANS: readonly DetailPlan[] = [
   {
     table: "chain_detail_extrinsics",

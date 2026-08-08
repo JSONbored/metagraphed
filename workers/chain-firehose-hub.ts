@@ -66,6 +66,7 @@ import {
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
+import { neonOwnsTable } from "../src/neon-write.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -1085,7 +1086,18 @@ export class ChainFirehoseHub implements DurableObject {
           this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
         await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
-        const db = this.env.METAGRAPH_HEALTH_DB;
+        // THE INVERSION (#10107). Once Neon owns blocks_head the D1 write is
+        // skipped outright; the mirror below becomes the only write. Reading
+        // the flag per block rather than caching it is deliberate -- this is a
+        // Durable Object that outlives a deploy, so a cached answer would keep
+        // writing the store the config has already moved off.
+        const neonOwns =
+          Boolean(this.env.HYPERDRIVE?.connectionString) &&
+          neonOwnsTable(
+            this.env as unknown as Record<string, unknown>,
+            "blocks_head",
+          );
+        const db = neonOwns ? null : this.env.METAGRAPH_HEALTH_DB;
         if (db?.prepare) {
           await db
             .prepare(
