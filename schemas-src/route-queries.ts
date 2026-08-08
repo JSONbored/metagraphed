@@ -103,7 +103,6 @@ import { CHAIN_WEIGHT_SETTERS_LIMIT_MAX } from "../src/chain-weight-setters.ts";
 import { CHAIN_WEIGHTS_LIMIT_MAX } from "../src/chain-weights.ts";
 import { TOP_HOLDERS_SORTS } from "../src/top-holders.ts";
 import { VALIDATOR_ECONOMICS_SORTS } from "../src/validator-economics.ts";
-import { NOMINATOR_LIMIT_MAX } from "../src/validator-nominators.ts";
 import {
   blockBoundSchema,
   daySchema,
@@ -435,7 +434,19 @@ export const ROUTE_QUERY_SCHEMAS = {
       "gross_staked",
       "last_activity",
     ] as const).optional(),
-    limit: limitSchema(NOMINATOR_LIMIT_MAX).optional(),
+    // PUBLISHED 100 while the route enforced 2000 (#10064 sweep). Three
+    // statements disagreed: this contract and the cold-tier builder said
+    // NOMINATOR_LIMIT_MAX (100), handleValidatorNominators validated against
+    // GLOBAL_VALIDATOR_LIMIT_MAX (2000), and production serves 2000 --
+    // verified live, `?limit=2000` returns 2000 rows and `?limit=2001` is the
+    // 400. A caller reading the contract made 20 requests where one would do.
+    //
+    // Declared as what the route ENFORCES rather than narrowing the route,
+    // because narrowing would 400 callers who are being served today. The
+    // cold-tier builder still clamps at NOMINATOR_LIMIT_MAX, so a fallback
+    // page is shorter than this ceiling; that is a tier difference, not a
+    // second contract.
+    limit: limitSchema(GLOBAL_VALIDATOR_LIMIT_MAX).optional(),
     offset: unboundedOffsetSchema().optional(),
     // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
     // verified live -- and the contract simply did not say so, while

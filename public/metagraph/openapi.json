@@ -56243,7 +56243,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -56744,7 +56744,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -56914,7 +56914,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57250,7 +57250,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57681,7 +57681,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57973,7 +57973,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58146,7 +58146,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58310,7 +58310,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58483,7 +58483,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58659,7 +58659,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58832,7 +58832,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58996,7 +58996,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59160,7 +59160,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59324,7 +59324,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59500,7 +59500,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -60052,7 +60052,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -60381,7 +60381,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -61488,7 +61488,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -62306,7 +62306,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -62901,7 +62901,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63308,7 +63308,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63487,7 +63487,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63677,7 +63677,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63944,7 +63944,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -65424,7 +65424,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -65713,7 +65713,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -66469,7 +66469,7 @@
         "operationId": "blocksFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -66922,7 +66922,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67076,7 +67076,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67511,7 +67511,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67741,7 +67741,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68124,7 +68124,7 @@
         "operationId": "chainAlphaVolume",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68272,7 +68272,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68529,7 +68529,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68926,7 +68926,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69050,7 +69050,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69230,7 +69230,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69363,7 +69363,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69520,7 +69520,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69645,7 +69645,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69754,7 +69754,7 @@
         "operationId": "chainIdentityHistory",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70170,7 +70170,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70316,7 +70316,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70464,7 +70464,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70622,7 +70622,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70779,7 +70779,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70927,7 +70927,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71075,7 +71075,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71223,7 +71223,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71383,7 +71383,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71532,7 +71532,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71678,7 +71678,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71824,7 +71824,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -72662,7 +72662,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73096,7 +73096,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73507,7 +73507,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73927,7 +73927,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74144,7 +74144,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74433,7 +74433,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74629,7 +74629,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74884,7 +74884,7 @@
         "operationId": "extrinsicsFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -77793,7 +77793,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -77941,7 +77941,7 @@
         "operationId": "governanceConfigChanges",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78194,7 +78194,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78578,7 +78578,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78745,7 +78745,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78899,7 +78899,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79756,7 +79756,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79981,7 +79981,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80400,7 +80400,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80599,7 +80599,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80915,7 +80915,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81201,7 +81201,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81536,7 +81536,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81939,7 +81939,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82167,7 +82167,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82442,7 +82442,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82766,7 +82766,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82983,7 +82983,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83506,7 +83506,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83697,7 +83697,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83963,7 +83963,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84300,7 +84300,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84693,7 +84693,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -85428,7 +85428,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86347,7 +86347,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86547,7 +86547,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 50). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 50). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86692,7 +86692,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86874,7 +86874,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87090,7 +87090,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87353,7 +87353,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87994,7 +87994,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -88220,7 +88220,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -88382,7 +88382,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -90970,7 +90970,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -91176,7 +91176,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -92795,7 +92795,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -92928,7 +92928,7 @@
         "operationId": "sudoCalls",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93344,7 +93344,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93638,7 +93638,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -94059,12 +94059,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "maximum": 100,
+              "maximum": 2000,
               "minimum": 1,
               "type": "integer"
             }
@@ -94226,7 +94226,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,

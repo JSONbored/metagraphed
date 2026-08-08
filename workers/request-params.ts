@@ -55,6 +55,34 @@ export function clampLimit(
   return clampInt(raw, defaultLimit, MIN_LIMIT, maxLimit);
 }
 
+/**
+ * The TOOL page-size rule: below 1, non-finite or non-numeric falls back to the
+ * default — it must never clamp UP to 1.
+ *
+ * A second rule rather than a variant of `clampLimit`, because the difference
+ * is deliberate and load-bearing. `clampLimit` goes through `clampInt`, which
+ * does `Math.max(min, …)`; `tools/call` does not enforce the inputSchema's
+ * `minimum`, so an explicit `limit: 0` reaches the loader, and clamping it up
+ * would answer with a SINGLE row — which reads to an agent as "this registry
+ * knows one subnet" rather than "you asked for none".
+ *
+ * Exported because 18 modules had each written this out privately: 17
+ * byte-identical copies plus `src/mcp-server.ts`'s, which is the one carrying
+ * the comment that explains them all. This module's own header already said
+ * the raw primitives exist so "the shared D1 loaders + MCP tools clamp
+ * identically off plain values" — they just could not reach a rule that was
+ * never exported.
+ */
+export function clampToolLimit(
+  value: unknown,
+  fallback: number,
+  max: number,
+): number {
+  if (typeof value !== "number") return fallback;
+  if (!Number.isFinite(value) || value < 1) return fallback;
+  return Math.min(max, Math.floor(value));
+}
+
 // Clamp a raw offset into [0, MAX_OFFSET], falling back to 0 when
 // absent/blank/non-finite.
 export function clampOffset(raw: string | number | null | undefined): number {

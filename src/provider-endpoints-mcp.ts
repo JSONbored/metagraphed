@@ -4,6 +4,7 @@
 // /metagraph/providers/{slug}/endpoints.json artifact.
 
 import { z } from "zod";
+import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -85,12 +86,6 @@ function optionalRangeBound(
   return value;
 }
 
-function clampLimit(value: unknown, fallback: number, max: number): number {
-  if (typeof value !== "number") return fallback;
-  if (!Number.isFinite(value) || value < 1) return fallback;
-  return Math.min(max, Math.floor(value));
-}
-
 export function parseProviderSlug(
   args: Record<string, unknown> | null | undefined,
 ): string {
@@ -167,7 +162,7 @@ export function providerEndpointsQueryUrl(
   const maxScore = optionalRangeBound(args, "max_score");
   if (maxScore !== null) url.searchParams.set("max_score", String(maxScore));
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampLimit(args.limit, 50, 100)));
+    url.searchParams.set("limit", String(clampToolLimit(args.limit, 50, 100)));
   }
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;
