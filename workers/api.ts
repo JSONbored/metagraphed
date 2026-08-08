@@ -409,6 +409,7 @@ import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positio
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
+import { isFinneySs58Address } from "../src/account-balance.ts";
 import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import {
   readChainDetailHead,
@@ -452,6 +453,7 @@ import {
   ACCOUNT_CHILDREN_PATH_PATTERN,
   ACCOUNT_PARENTS_PATH_PATTERN,
   ACCOUNT_ENTITIES_PATH_PATTERN,
+  ACCOUNT_SS58_SEGMENT_PATH_PATTERN,
   ACCOUNT_EVENTS_PATH_PATTERN,
   ACCOUNT_HISTORY_PATH_PATTERN,
   ACCOUNT_EXTRINSICS_PATH_PATTERN,
@@ -5489,6 +5491,29 @@ export async function handleRequest(
         env,
         Number(subnetEventsMatch[1]),
         resolved.url,
+      );
+    }
+    // One checksum guard for every stored-data account route below (#10036).
+    // The four live-chain ones (balance/root-claim/children/parents) already
+    // reject a bad address in their handlers before spending an RPC call, and
+    // dispatchLiveChainRoute runs above, so they never reach this. Everything
+    // below reads a STORED address and used to answer a bad-checksum address
+    // with a confident empty result — the exact output a one-character typo
+    // produces, and indistinguishable from "this account holds nothing". The
+    // guard sits here, once, rather than in 21 handlers: an account route
+    // added tomorrow inherits it instead of having to remember it.
+    //
+    // Only ADDRESS-SHAPED segments reach this. An unshaped one matches no
+    // account route and keeps 404ing at the router, which is the honest answer
+    // for a path that identifies nothing.
+    const accountSs58Match = ACCOUNT_SS58_SEGMENT_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (accountSs58Match && !isFinneySs58Address(accountSs58Match[1])) {
+      return errorResponse(
+        "invalid_ss58",
+        "ss58 address must be a valid finney SS58 account address.",
+        400,
       );
     }
     // Account entity routes (#1347): computed live from the account_events +

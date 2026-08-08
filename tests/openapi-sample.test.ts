@@ -104,8 +104,8 @@ describe("sampleFromSchema", () => {
       method: "GET",
       ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
       from: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-      counterparty: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
-      to: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+      counterparty: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
+      to: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
       surface_id: "example",
       unmatched_field: "example",
     };
@@ -164,7 +164,7 @@ describe("sampleFromSchema", () => {
         { type: "string", pattern: "^[1-9A-HJ-NP-Za-km-z]{47,48}$" },
         "counterparty",
       ),
-      "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+      "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
     );
     assert.match(
       s({ type: "string", pattern: "^[a-z0-9][a-z0-9-]*$" }),
@@ -349,7 +349,7 @@ describe("sampleFromSchema", () => {
     assert.equal(sample.total_received_tao, 0);
     assert.deepEqual(sample.counterparties, [
       {
-        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        address: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
         sent_tao: 0.5,
         received_tao: 0,
         net_tao: -0.5,
@@ -513,14 +513,14 @@ describe("sampleFromSchema", () => {
         transfer_count: 3,
       },
       {
-        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        address: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
         volume_tao: 20,
         transfer_count: 2,
       },
     ]);
     assert.deepEqual(sample.top_receivers, [
       {
-        address: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        address: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
         volume_tao: 55,
         transfer_count: 4,
       },
@@ -1390,7 +1390,7 @@ describe("sampleFromSchema", () => {
     assert.deepEqual(sample.pairs, [
       {
         from: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-        to: "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+        to: "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
         volume_tao: 80,
         transfer_count: 5,
         last_block: 5000000,

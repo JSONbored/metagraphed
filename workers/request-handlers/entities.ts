@@ -31,7 +31,7 @@ import {
   networkKvKey,
   type ChainNetworkId,
 } from "../../src/chain-network.ts";
-import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
+import { resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
   FEED_PAGINATION,
@@ -1605,7 +1605,7 @@ export async function handleValidatorNominators(
   });
   if ("error" in offset) return analyticsQueryError(offset.error);
   const coldkeyParam = url.searchParams.get("coldkey");
-  if (coldkeyParam !== null && !SS58_ADDRESS_PATTERN.test(coldkeyParam)) {
+  if (coldkeyParam !== null && !isFinneySs58Address(coldkeyParam)) {
     return analyticsQueryError({
       parameter: "coldkey",
       message: `"coldkey" must be a valid SS58 address.`,
@@ -5314,7 +5314,7 @@ export async function handleAccountCounterparties(
           "format=csv is not supported with counterparty; remove counterparty to export the list-mode counterparties CSV.",
       });
     }
-    if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+    if (!isFinneySs58Address(counterparty)) {
       return analyticsQueryError({
         parameter: "counterparty",
         message: "counterparty must be a valid SS58 account address.",

@@ -9495,8 +9495,8 @@ describe("graphql — subnet_concentration_history (#5901, neuron_daily trend + 
 });
 
 describe("graphql — discovery parity (#6989, search/domains/compare_validators)", () => {
-  const HOTKEY_A = "5FnPunMdSFTr8swMhMTdSGFqiZAJTBEDaAgTmrKfSpvRQyaR";
-  const HOTKEY_B = "5CXRfP2ZfvGCe8EQoZnjuBVUkado1RyfHf1zPTMhVpvSJHnp";
+  const HOTKEY_A = "5CdBXrFknELV1B3FwPTzwA4Qc5hhne7WknsX2ZNfS6vGrgta";
+  const HOTKEY_B = "5C4tRBiY1m1W3TC7WiJk8K5cmHGTtPCzz64JHgaYQLQfAxmX";
 
   test("search pages the baked full index", async () => {
     const env = fixtureEnv({

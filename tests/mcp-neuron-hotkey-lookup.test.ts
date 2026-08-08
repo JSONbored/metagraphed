@@ -11,8 +11,8 @@ import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
 const HOTKEY_A = "5GP7c3fFazW9GXK8Up3qgu2DJBk8inu4aK9TZy3RuoSWVCMi";
-const HOTKEY_B = "5CzcUxRe7rFbtGjw4DGfoJZTFqPnMwUFMTiMFURxCWmwBhqK";
-const HOTKEY_ABSENT = "5DkwfxC9mZTTCsRUt6nrnwQEWVQ4xnWDkGDMDkFHqTfxNZTP";
+const HOTKEY_B = "5CDYzuoN75FE8fBEJ3A587zsra9ee7xBLEwxrSgSpB3s4nsp";
+const HOTKEY_ABSENT = "5CS3g6nVJM6ouns8n9buN9CzFf2C1YDHVcVGRcxoirKs2xbV";
 
 function snapshotRows(): Row[] {
   return [
