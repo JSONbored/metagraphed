@@ -12,6 +12,7 @@ import {
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
@@ -155,7 +156,7 @@ describe("changelog-mcp", () => {
     const validate = new Ajv2020({ strict: false }).compile(
       GET_CHANGELOG_OUTPUT_SCHEMA,
     );
-    assert.ok(validate(SAMPLE_CHANGELOG));
+    assertValid(validate, SAMPLE_CHANGELOG);
   });
 
   test("MCP server exports wire get_changelog", () => {

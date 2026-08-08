@@ -13,6 +13,7 @@ import {
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
@@ -183,7 +184,7 @@ describe("adapters-mcp", () => {
     const validate = new Ajv2020({ strict: false }).compile(
       GET_ADAPTER_OUTPUT_SCHEMA,
     );
-    assert.ok(validate(SAMPLE_ADAPTER));
+    assertValid(validate, SAMPLE_ADAPTER);
   });
 
   test("MCP server exports wire get_adapter", () => {
