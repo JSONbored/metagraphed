@@ -50,6 +50,7 @@
 // its own cron and would report health whether or not the producer ever ran.
 // Table freshness is the one signal every mirrored lane actually has.
 
+import { compoundBatches, D1_MAX_COMPOUND_TERMS } from "./d1-compound.ts";
 import { neonDualWriteLanes } from "./neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "./ledger-neon-write.ts";
 import { NEURON_MIRROR_PLANS } from "./neurons-neon-write.ts";
@@ -146,11 +147,15 @@ export interface MirrorLag {
 }
 
 /**
- * A table's newest write, per table, in one statement.
+ * A table's newest write, for up to D1_MAX_COMPOUND_TERMS tables at a time.
  *
- * One query rather than one per table: this runs on a cron beside five other
- * lanes, and six round trips to answer "did anything move" is five more than
- * the question needs.
+ * Unioned rather than one query per table: this runs on a cron beside five
+ * other lanes, and a round trip per table to answer "did anything move" is
+ * more than the question needs.
+ *
+ * NEVER call this with the whole watched list -- use mirrorFreshnessBatches.
+ * Past the ceiling D1 throws on the statement instead of truncating it, so an
+ * over-wide sweep reads NOTHING (#10081).
  */
 export function mirrorFreshnessSql(tables: readonly string[]): string {
   return tables
@@ -159,6 +164,22 @@ export function mirrorFreshnessSql(tables: readonly string[]): string {
         `SELECT '${table}' AS t, MAX(${freshnessColumn(table)}) AS mx FROM ${table}`,
     )
     .join(" UNION ALL ");
+}
+
+/**
+ * The freshness sweep, split into statements D1 will actually parse.
+ *
+ * This lane sat at exactly five watched tables -- the ceiling -- until #10053
+ * added `subnet-hyperparams` and `account-identity` to NEON_DUAL_WRITE_LANES,
+ * and it reported `unknown: table freshness unreadable` on every run from the
+ * next hour onward. Every lane the D1->Neon migration adds widens it further,
+ * so the split belongs here rather than in a caller that must remember to ask.
+ */
+export function mirrorFreshnessBatches(
+  tables: readonly string[],
+  perBatch: number = D1_MAX_COMPOUND_TERMS,
+): string[] {
+  return compoundBatches(tables, mirrorFreshnessSql, perBatch);
 }
 
 /**
@@ -317,10 +338,19 @@ export async function runNeonMirrorWatchdog(
 
   let freshness: Map<string, number>;
   try {
-    const result = await db?.prepare(mirrorFreshnessSql(tables)).all();
-    if (!result) throw new Error("no result");
+    // Batched, and every batch must answer. A partial read would understate
+    // freshness for the tables in a batch that failed, and this watchdog reads
+    // a MISSING table as "never written" -- which is the shape of an alarm,
+    // not of a missing measurement. Failing the whole sweep keeps `unknown`
+    // meaning "I could not look" rather than quietly meaning "some of it".
+    const results = await Promise.all(
+      mirrorFreshnessBatches(tables).map((statement) =>
+        db?.prepare(statement).all(),
+      ),
+    );
+    if (results.some((result) => !result)) throw new Error("no result");
     freshness = new Map();
-    for (const raw of result.results ?? []) {
+    for (const raw of results.flatMap((result) => result?.results ?? [])) {
       const row = raw as Record<string, unknown>;
       // NULL CHECKED BEFORE Number(), because `Number(null)` is 0 and 0 passes
       // Number.isFinite. `MAX(captured_at)` over an empty table returns NULL,

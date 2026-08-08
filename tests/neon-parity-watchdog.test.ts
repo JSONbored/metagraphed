@@ -6,8 +6,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import { D1_MAX_COMPOUND_TERMS } from "../src/d1-compound.ts";
 import {
-  D1_MAX_COMPOUND_TERMS,
   NEON_PARITY_CRON,
   NEON_PARITY_LANE,
   PARITY_MIN_ROWS,
