@@ -207,19 +207,40 @@ describe("the Neon side of the prune (#10017)", () => {
   /** A D1 double that reports a wide window, so a real prune always runs. */
   function d1WithWindow(floor: number, head: number) {
     const deleted: unknown[] = [];
+    // Bounds reads are counted, not just answered: once Neon owns the tables
+    // the window must come from Neon, and "D1 was never asked" is the only way
+    // to tell that apart from "D1 happened to hold the same numbers" (#10152).
+    const bounds = { reads: 0 };
     return {
       deleted,
+      bounds,
       binding: {
         prepare: (sql: string) => ({
           bind: (...v: unknown[]) => {
             deleted.push({ sql, v });
             return { sql, v };
           },
-          first: async () => ({ floor, head }),
+          first: async () => {
+            bounds.reads += 1;
+            return { floor, head };
+          },
         }),
         batch: async (s: unknown[]) => s,
       },
     };
+  }
+
+  /** The bounds reader, which since #10152 follows the ROWS rather than always
+   *  being D1's. Separate from d1WithWindow because the whole point of that
+   *  change is that the two can now be different stores holding different
+   *  windows -- and once Neon owns the tables, D1's window is a frozen one. */
+  function readerWithWindow(floor: number | null, head: number | null) {
+    return {
+      prepare: () => ({
+        bind: () => ({ first: async () => ({ floor, head }) }),
+        first: async () => ({ floor, head }),
+      }),
+    } as never;
   }
 
   const NEON_LANES =
@@ -312,6 +333,9 @@ describe("the Neon side of the prune (#10017)", () => {
       },
       { waitUntil: () => undefined },
       {
+        // Neon owns the tables, so the window comes from Neon (#10152). Handing
+        // D1's fixture in here instead would measure the frozen store.
+        readDb: readerWithWindow(1, 10_000_000),
         sql: {
           unsafe: async (text: string) => {
             seen.push(text);
@@ -322,6 +346,93 @@ describe("the Neon side of the prune (#10017)", () => {
     );
     assert.equal(result.neon_pruned, true);
     assert.equal(seen.length, 4);
+    // D1 is bound but must NOT be deleted from: nothing is behind it.
+    assert.deepEqual(d1.deleted, []);
+  });
+
+  test("prunes Neon with NO D1 binding at all -- the endgame (#10152)", async () => {
+    // THE BUG THIS EXISTS FOR. Every number this function derives came from one
+    // MIN/MAX, and that read was always D1's. Once D1 stopped being written the
+    // watermark was pinned; once D1 is DROPPED the read returns nothing, and
+    // `if (floor === null || head === null) return { ok: true, reason: "no
+    // rows" }` reports a healthy prune that pruned nothing -- while Neon's
+    // chain_detail_* grew without bound. Silent, and worse every hour.
+    const seen: string[] = [];
+    const result = await pruneChainDetail(
+      {
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_BACKFILL_LANES: "",
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      {
+        readDb: readerWithWindow(1, 10_000_000),
+        sql: {
+          unsafe: async (text: string) => {
+            seen.push(text);
+            return [];
+          },
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.neon_pruned, true);
+    assert.equal(seen.length, 4);
+    // And it pruned a real range, rather than reporting success over nothing.
+    assert.ok((result.blocks_pruned ?? 0) > 0);
+  });
+
+  test("does not ask D1 for the window once Neon owns the tables", async () => {
+    // No readDb injected on purpose: this is the one test where readStore's own
+    // choice is what runs, so reverting the reader to the binding fails here
+    // and nowhere else. The injected-reader tests above cannot see it.
+    const d1 = d1WithWindow(1, 10_000_000);
+    await pruneChainDetail(
+      {
+        METAGRAPH_HEALTH_DB: d1.binding,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      { sql: { unsafe: async () => [] } },
+    );
+    assert.equal(
+      d1.bounds.reads,
+      0,
+      "the window came from D1, which stopped advancing when the lane inverted",
+    );
+    assert.deepEqual(d1.deleted, []);
+  });
+
+  test("an unbound D1 is not a failure once Neon owns the tables", async () => {
+    // Also uninjected. Before #10152 this returned
+    // { ok: false, reason: "d1 binding unavailable" } and never reached Neon at
+    // all -- the literal shape of the lane on the day D1 is dropped.
+    const result = await pruneChainDetail(
+      {
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      { sql: { unsafe: async () => [] } },
+    );
+    assert.notEqual(result.reason, "d1 binding unavailable");
+  });
+
+  test("an empty store is still 'no rows', not a failure", async () => {
+    // The other half of the same read: a genuinely empty tier means the lane
+    // has not written yet, which is a real state on a first deploy and must not
+    // alarm. What changed is only WHICH store is asked.
+    const result = await pruneChainDetail(
+      {
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      { readDb: readerWithWindow(null, null), sql: { unsafe: async () => [] } },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.reason, "no rows");
   });
 
   test("neither reconciled nor owned still skips, so nothing connects for nothing", async () => {

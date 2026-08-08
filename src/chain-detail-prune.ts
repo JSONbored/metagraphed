@@ -62,6 +62,7 @@ import {
   type WaitUntilLike,
 } from "./pg-sql.ts";
 import { neonBackfillLanes, neonOwnsTable } from "./neon-write.ts";
+import { readStore, type ReadStoreDb } from "./read-store.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -170,6 +171,10 @@ export interface ChainDetailPruneDeps {
   /** Injectable Postgres runner, so the Neon half is testable without a
    * database -- the same escape hatch src/neon-prune.ts takes. */
   sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+  /** Injectable bounds reader, for the same reason: the MIN/MAX that every
+   * number here is derived from now follows the rows rather than always being
+   * D1's (#10152). */
+  readDb?: ReadStoreDb | null;
 }
 
 export async function pruneChainDetail(
@@ -179,11 +184,30 @@ export async function pruneChainDetail(
 ): Promise<ChainDetailPruneResult> {
   const binding = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
     ?.METAGRAPH_HEALTH_DB;
-  if (!binding?.prepare || !binding.batch)
+  // THE WATERMARK MUST COME FROM THE STORE THAT HOLDS THE ROWS (#10152).
+  //
+  // Every number below is derived from one MIN/MAX read, and that read was
+  // always D1's. Once the chain-detail lane inverted, D1 stopped advancing --
+  // so Neon's retention watermark was pinned to a frozen floor, and the tier it
+  // is supposed to bound grew without limit.
+  //
+  // The end state is worse than the drift. `if (floor === null || head === null)
+  // return { ok: true, reason: "no rows" }` reads an EMPTY D1 as "the lane has
+  // not written yet", which is true exactly once and false forever after. Drop
+  // D1 and this returns success, prunes nothing, and reports a healthy lane
+  // while Neon's chain_detail_* grows unbounded.
+  const neonOwns = PRUNE_TABLES.every((table) =>
+    neonOwnsTable(env as Record<string, unknown>, table),
+  );
+  // The D1 half needs `batch` for its transactional DELETE; the bounds read
+  // does not, so it goes through readStore and follows the rows.
+  if (!neonOwns && (!binding?.prepare || !binding.batch))
     return { ok: false, reason: "d1 binding unavailable" };
+  const reader = readStore(env, PRUNE_TABLES, deps.readDb);
+  if (!reader?.prepare) return { ok: false, reason: "no store bound" };
 
   try {
-    const bounds = (await binding
+    const bounds = (await reader
       .prepare(
         "SELECT MIN(block_number) AS floor, MAX(block_number) AS head " +
           "FROM chain_detail_blocks",
@@ -211,13 +235,18 @@ export async function pruneChainDetail(
       window.keepFrom,
       floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
     );
-    await binding.batch(
-      PRUNE_TABLES.map((table) =>
-        binding
-          .prepare(`DELETE FROM ${table} WHERE block_number < ?`)
-          .bind(deletedBelow),
-      ),
-    );
+    // Skipped outright once Neon owns the tables -- there is nothing behind D1
+    // to delete, and issuing the DELETE anyway would make an unbound binding
+    // fail a prune that had already done its real work below.
+    if (!neonOwns) {
+      await binding!.batch!(
+        PRUNE_TABLES.map((table) =>
+          binding!
+            .prepare(`DELETE FROM ${table} WHERE block_number < ?`)
+            .bind(deletedBelow),
+        ),
+      );
+    }
     const neon = await pruneChainDetailNeon(env, ctx, deletedBelow, deps);
     return {
       ok: true,
