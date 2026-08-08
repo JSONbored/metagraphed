@@ -4,7 +4,8 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
-import { limitSchema, netuidSchema } from "./shared.ts";
+import { limitSchema, netuidSchema, querySchema } from "./shared.ts";
+import { SEMANTIC_QUERY_MAX_LENGTH } from "../../src/route-limits.ts";
 import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
 import { ECONOMIC_LEADERBOARD_BOARDS } from "../routes/registry-summary-leaderboards.ts";
 import { SEARCH_DOCUMENT_TYPE_VALUES } from "../routes/evidence-search.ts";
@@ -72,15 +73,13 @@ export const SemanticSearchInputSchema = z
     // rejected for an unknown argument. Canonical; `query` stays so existing
     // callers are unaffected. Exactly one is required -- expressed with
     // requireAnyOf on the tool, since z.toJSONSchema drops a Zod refinement.
-    q: z
-      .string()
+    q: querySchema(SEMANTIC_QUERY_MAX_LENGTH)
       .optional()
       .describe(
         "The search text, embedded and ranked by meaning. The name GET /api/v1/search/semantic publishes; `query` is the alias this tool shipped with.",
       )
       .meta({ examples: ["inference"] }),
-    query: z
-      .string()
+    query: querySchema(SEMANTIC_QUERY_MAX_LENGTH)
       .optional()
       .describe(
         "Alias for `q`, the name this tool shipped with. Search text, embedded and ranked by meaning.",

@@ -10,7 +10,12 @@
 // tightening here, only relocating where the schema is defined (#7863's own
 // "hard wire-compatibility constraint").
 import { z } from "zod";
-import { limitSchema, netuidSchema, numericCursorSchema } from "./shared.ts";
+import {
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  querySchema,
+} from "./shared.ts";
 
 export const SearchSubnetsInputSchema = z
   .object({
@@ -19,15 +24,13 @@ export const SearchSubnetsInputSchema = z
     // an unknown argument until now. Canonical; `query` stays so existing
     // callers are unaffected. Exactly one is required -- see requireAnyOf on
     // the tool, since Zod cannot express it in a way z.toJSONSchema keeps.
-    q: z
-      .string()
+    q: querySchema()
       .optional()
       .describe(
         "The search text. The name GET /api/v1/search publishes; `query` is the alias this tool shipped with.",
       )
       .meta({ examples: ["inference"] }),
-    query: z
-      .string()
+    query: querySchema()
       .optional()
       .describe(
         "Alias for `q`, the name this tool shipped with. The subnet search text.",

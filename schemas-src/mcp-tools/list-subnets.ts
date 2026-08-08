@@ -12,6 +12,7 @@
 import { z } from "zod";
 import {
   limitSchema,
+  netuidListSchema,
   netuidSchema,
   numericCursorSchema,
   orderSchema,
@@ -250,14 +251,11 @@ export const ListSubnetsInputSchema = z
     // A CSV membership filter on the route (csv_filters: { netuids: "netuid" }),
     // so a STRING on the wire -- "1,7,64" -- not an array. Without it, asking
     // for three subnets is three calls or a full scan.
-    netuids: z
-      .string()
-      .regex(/^\d+(,\d+)*$/)
-      .optional()
-      .describe(
-        "Restrict to this comma-separated list of subnet ids (`1,7,64`). One request instead of one per subnet.",
-      )
-      .meta({ examples: ["1,7,64"] }),
+    // netuidListSchema() carries the bounds the route enforces: at most 128
+    // ids, each at most 5 digits (a netuid is a u16). The `^\d+(,\d+)*$` this
+    // declared was unbounded in count and accepted 9-digit "netuids", so the
+    // tool advertised a list its own route rejects (#10115).
+    netuids: netuidListSchema().optional(),
     min_netuid: z
       .int()
       .min(0)

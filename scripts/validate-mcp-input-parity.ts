@@ -386,8 +386,6 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
 
   // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool
   // (4/5, #10064), never by keeping it.
-  "get_account_history.from": "LOOSER",
-  "get_account_history.to": "LOOSER",
   "get_chain_calls.call_module": "LOOSER",
   "get_chain_fees.call_module": "LOOSER",
   "get_chain_signers.call_module": "LOOSER",
@@ -399,12 +397,9 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
   "list_review_enrichment_targets.reason_codes": "LOOSER",
   "list_review_gaps.sort": "LOOSER",
   "list_subnets.domain": "LOOSER",
-  "list_subnets.netuids": "LOOSER",
   "list_subnets.status": "LOOSER",
   "list_subnets.subnet_type": "LOOSER",
   "list_validator_economics.offset": "LOOSER",
-  "search_subnets.q": "LOOSER",
-  "semantic_search.q": "LOOSER",
 };
 
 const errors: string[] = [];
