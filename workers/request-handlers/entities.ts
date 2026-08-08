@@ -486,6 +486,21 @@ import {
   CHAIN_TURNOVER_LIMIT_MAX,
 } from "../../src/chain-turnover.ts";
 import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
+import { readStore, type ReadStoreDb } from "../../src/read-store.ts";
+import { laneHealthStore } from "../../src/lane-health-store.ts";
+import {
+  ALPHA_PRICING_TABLES,
+  CHAIN_CONCENTRATION_HISTORY_TABLES,
+  EMISSION_CHANGES_TABLES,
+  FAILURE_REASONS_TABLES,
+  INDEXER_LAG_TABLES,
+  SUBNET_BURN_HISTORY_TABLES,
+  SUBNET_SNAPSHOT_TABLES,
+  SURFACE_HISTORY_TABLES,
+  TAO_USD_TABLES,
+  VALIDATOR_ECONOMICS_RANKING_TABLES,
+  VALIDATOR_ECONOMICS_TABLES,
+} from "../../src/read-store-tables.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -1584,7 +1599,7 @@ export async function handleValidatorNominators(
     if ("error" in positionsOffset)
       return analyticsQueryError(positionsOffset.error);
     const read = await loadNominatorPositions(
-      env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
         typeof loadNominatorPositions
       >[0],
       hotkey,
@@ -2217,7 +2232,11 @@ export async function handleSelfHealth(request: Request, env: Env, url: URL) {
   // that a lane's health must be readable without depending on the analytics vendor --
   // or, here, on which serving tier happened to be reachable.
   const lanes = await loadLatestLaneHealth(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    // laneHealthStore, not the binding (#10155) -- lane_health is Neon's, and
+    // this is /health's own lane floor. Reading it from D1 would render an
+    // empty result as "no alarms", which is the one answer a health endpoint
+    // must never invent.
+    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
       typeof loadLatestLaneHealth
     >[0],
   );
@@ -3721,7 +3740,8 @@ export async function buildSubnetValidatorEconomicsPayload(
   const readParams = deps.loadParams ?? loadNetworkParameters;
   const readBurn = deps.loadBurn ?? loadSubnetBurn;
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
-  const db = env.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, VALIDATOR_ECONOMICS_TABLES) as
+    ReadStoreDb | undefined;
   const rows = db
     ? ((
         await db
@@ -3949,7 +3969,10 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   const db = observationsReadDb(
     env as unknown as Record<string, unknown>,
     deps.ctx,
-  ) as typeof env.METAGRAPH_HEALTH_DB | undefined;
+    // Typed against the reader, not the binding: naming METAGRAPH_HEALTH_DB
+    // here kept a reference to a D1 shape in a call that had already moved off
+    // it (#10155), and that type disappears with the binding.
+  ) as ReadStoreDb | undefined;
 
   const neuronRows = db
     ? ((
@@ -4112,7 +4135,8 @@ export async function buildValidatorEconomicsRankingPayload(
       };
     });
 
-  const db = env.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, VALIDATOR_ECONOMICS_RANKING_TABLES) as
+    ReadStoreDb | undefined;
   const neuronRows = db
     ? ((
         await db
@@ -6159,9 +6183,10 @@ export async function handleSubnetBurnHistory(
     });
   }
   const rows = await loadSubnetBurnHistory(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-      typeof loadSubnetBurnHistory
-    >[0],
+    readStore(
+      env,
+      SUBNET_BURN_HISTORY_TABLES,
+    ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
     netuid,
     { windowDays },
   );
@@ -6211,7 +6236,7 @@ export async function handleSubnetHolders(
   if ("error" in limit) return analyticsQueryError(limit.error);
 
   const read = await loadSubnetHolders(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
       typeof loadSubnetHolders
     >[0],
     netuid,
@@ -6254,7 +6279,7 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
     });
   }
   const rows = await loadTaoUsdSeries(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
       typeof loadTaoUsdSeries
     >[0],
     { windowHours },
@@ -6298,7 +6323,7 @@ export async function handleSubnetSurfaceHistory(
   if ("error" in limit) return analyticsQueryError(limit.error);
 
   const rows = await loadSurfaceHistory(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, SURFACE_HISTORY_TABLES) as never as unknown as Parameters<
       typeof loadSurfaceHistory
     >[0],
     netuid,
@@ -6346,7 +6371,7 @@ export async function handleEmissionChanges(
   if ("error" in limit) return analyticsQueryError(limit.error);
 
   const rows = await loadEmissionChanges(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, EMISSION_CHANGES_TABLES) as never as unknown as Parameters<
       typeof loadEmissionChanges
     >[0],
     { limit: limit.value, kind: kindParam ?? undefined },
@@ -6394,7 +6419,7 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
   if ("error" in limit) return analyticsQueryError(limit.error);
 
   const read = await loadChainHolders(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
       typeof loadChainHolders
     >[0],
   );
@@ -6445,7 +6470,7 @@ export async function handleFailureReasons(
   const kind = url.searchParams.get("kind") ?? undefined;
 
   const rows = await loadFailureReasons(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, FAILURE_REASONS_TABLES) as never as unknown as Parameters<
       typeof loadFailureReasons
     >[0],
     { window, netuid, kind },
@@ -6473,7 +6498,9 @@ export async function handleIndexerLag(request: Request, env: Env, url: URL) {
   if (validationError) return analyticsQueryError(validationError);
 
   const row = await loadIndexerLag(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<typeof loadIndexerLag>[0],
+    readStore(env, INDEXER_LAG_TABLES) as never as unknown as Parameters<
+      typeof loadIndexerLag
+    >[0],
   );
   // The handler owns the clock, so the module whose subject is two clocks does
   // not quietly introduce a third of its own.
@@ -6508,7 +6535,10 @@ export async function handleChainConcentrationHistory(
   }
 
   const rows = await loadChainConcentrationHistory(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(
+      env,
+      CHAIN_CONCENTRATION_HISTORY_TABLES,
+    ) as never as unknown as Parameters<
       typeof loadChainConcentrationHistory
     >[0],
     { window },
@@ -6548,7 +6578,7 @@ export async function handleSubnetPipelineHistory(
   }
 
   const rows = await loadPipelineHistory(
-    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+    readStore(env, SUBNET_SNAPSHOT_TABLES) as never as unknown as Parameters<
       typeof loadPipelineHistory
     >[0],
     netuid,

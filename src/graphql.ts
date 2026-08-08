@@ -860,6 +860,18 @@ import type {
   QueryValidator_HistoryArgs,
   QueryValidator_NominatorsArgs,
 } from "../generated/graphql/types.ts";
+import { readStore } from "./read-store.ts";
+import {
+  ALPHA_PRICING_TABLES,
+  CHAIN_CONCENTRATION_HISTORY_TABLES,
+  EMISSION_CHANGES_TABLES,
+  FAILURE_REASONS_TABLES,
+  INDEXER_LAG_TABLES,
+  SUBNET_BURN_HISTORY_TABLES,
+  SUBNET_SNAPSHOT_TABLES,
+  SURFACE_HISTORY_TABLES,
+  TAO_USD_TABLES,
+} from "./read-store-tables.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -2830,7 +2842,7 @@ const rootValue = {
       });
     }
     const rows = await loadTaoUsdSeries(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      readStore(context.env, TAO_USD_TABLES) as never as unknown as Parameters<
         typeof loadTaoUsdSeries
       >[0],
       { windowHours: TAO_USD_WINDOWS[label] },
@@ -2857,9 +2869,10 @@ const rootValue = {
     }
     const safeLimit = limit ?? SURFACE_HISTORY_LIMIT_DEFAULT;
     const rows = await loadSurfaceHistory(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadSurfaceHistory
-      >[0],
+      readStore(
+        context.env,
+        SURFACE_HISTORY_TABLES,
+      ) as never as unknown as Parameters<typeof loadSurfaceHistory>[0],
       netuid,
       { limit: safeLimit },
     );
@@ -2896,9 +2909,10 @@ const rootValue = {
     const safeLimit = limit ?? EMISSION_CHANGES_LIMIT_DEFAULT;
     const safeKind = kind ?? undefined;
     const rows = await loadEmissionChanges(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadEmissionChanges
-      >[0],
+      readStore(
+        context.env,
+        EMISSION_CHANGES_TABLES,
+      ) as never as unknown as Parameters<typeof loadEmissionChanges>[0],
       { limit: safeLimit, kind: safeKind },
     );
     return buildEmissionChanges(rows, { limit: safeLimit, kind: safeKind });
@@ -2932,9 +2946,10 @@ const rootValue = {
       );
     }
     const read = await loadChainHolders(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadChainHolders
-      >[0],
+      readStore(
+        context.env,
+        ALPHA_PRICING_TABLES,
+      ) as never as unknown as Parameters<typeof loadChainHolders>[0],
     );
     return buildChainHolders(read, {
       sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
@@ -2971,9 +2986,10 @@ const rootValue = {
       kind: kind ?? undefined,
     };
     const rows = await loadFailureReasons(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadFailureReasons
-      >[0],
+      readStore(
+        context.env,
+        FAILURE_REASONS_TABLES,
+      ) as never as unknown as Parameters<typeof loadFailureReasons>[0],
       args,
     );
     return rows === null
@@ -2984,9 +3000,10 @@ const rootValue = {
   async indexer_lag(_args: Record<string, never>, context: GqlContext) {
     // #9620. Shares the REST/MCP loader for #9540's reason.
     const row = await loadIndexerLag(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadIndexerLag
-      >[0],
+      readStore(
+        context.env,
+        INDEXER_LAG_TABLES,
+      ) as never as unknown as Parameters<typeof loadIndexerLag>[0],
     );
     return buildIndexerLag(row, Date.now());
   },
@@ -3009,7 +3026,10 @@ const rootValue = {
       window: window ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW,
     };
     const rows = await loadChainConcentrationHistory(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      readStore(
+        context.env,
+        CHAIN_CONCENTRATION_HISTORY_TABLES,
+      ) as never as unknown as Parameters<
         typeof loadChainConcentrationHistory
       >[0],
       args,
@@ -3032,9 +3052,10 @@ const rootValue = {
     }
     const args = { window: window ?? DEFAULT_PIPELINE_HISTORY_WINDOW };
     const rows = await loadPipelineHistory(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadPipelineHistory
-      >[0],
+      readStore(
+        context.env,
+        SUBNET_SNAPSHOT_TABLES,
+      ) as never as unknown as Parameters<typeof loadPipelineHistory>[0],
       netuid,
       args,
     );
@@ -3068,9 +3089,10 @@ const rootValue = {
     }
     const safeLimit = limit ?? SUBNET_HOLDERS_LIMIT_DEFAULT;
     const read = await loadSubnetHolders(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadSubnetHolders
-      >[0],
+      readStore(
+        context.env,
+        ALPHA_PRICING_TABLES,
+      ) as never as unknown as Parameters<typeof loadSubnetHolders>[0],
       netuid,
       { limit: safeLimit },
     );
@@ -9038,9 +9060,10 @@ const rootValue = {
     // been recording this subnet" is a real state, and the same convention the
     // sibling history fields already follow.
     const rows = await loadSubnetBurnHistory(
-      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof loadSubnetBurnHistory
-      >[0],
+      readStore(
+        context.env,
+        SUBNET_BURN_HISTORY_TABLES,
+      ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
       netuid,
       { windowDays },
     );

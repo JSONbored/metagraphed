@@ -1609,6 +1609,22 @@ import {
   NOMINATOR_LIMIT_MAX,
 } from "./validator-nominators.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
+import { readStore } from "./read-store.ts";
+import {
+  ALPHA_PRICING_TABLES,
+  CHAIN_CONCENTRATION_HISTORY_TABLES,
+  COMPARE_SUBNETS_TABLES,
+  EMISSION_CHANGES_TABLES,
+  FAILURE_REASONS_TABLES,
+  HEALTH_CHECK_TABLES,
+  INDEXER_LAG_TABLES,
+  LEADERBOARD_TABLES,
+  SUBNET_BURN_HISTORY_TABLES,
+  SUBNET_SNAPSHOT_TABLES,
+  SURFACE_HISTORY_TABLES,
+  TAO_USD_TABLES,
+  UPTIME_DAILY_TABLES,
+} from "./read-store-tables.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -5122,7 +5138,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         )) ??
         (await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
         }))
       );
     },
@@ -5181,7 +5197,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (postgres) return postgres;
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
-        db: ctx.env.METAGRAPH_HEALTH_DB,
+        db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
         window,
         limit,
         offset,
@@ -5224,7 +5240,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
         }))
       );
     },
@@ -5265,7 +5281,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
         }))
       );
     },
@@ -5656,7 +5672,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
         )) ??
         (await loadSubnetTrajectory(netuid, {
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
         }))
       );
     },
@@ -5701,7 +5717,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
-        db: ctx.env.METAGRAPH_HEALTH_DB,
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
       });
       return data;
     },
@@ -7468,7 +7484,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ((await loadSubnetUptime(netuid, {
           window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
         })) as Row)
       );
     },
@@ -7501,7 +7517,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         board,
         limit,
         observedAt: await mcpObservedAt(ctx),
-        db: ctx.env.METAGRAPH_HEALTH_DB,
+        db: readStore(ctx.env, LEADERBOARD_TABLES) as never,
       });
     },
   },
@@ -7640,7 +7656,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         netuids,
         dimensions,
         observedAt,
-        db: ctx.env.METAGRAPH_HEALTH_DB,
+        db: readStore(ctx.env, COMPARE_SUBNETS_TABLES) as never,
       });
     },
   },
@@ -7681,7 +7697,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           windowLabel: label,
           windowDays: days,
           observedAt: await mcpObservedAt(ctx),
-          db: ctx.env.METAGRAPH_HEALTH_DB,
+          db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
         }));
       return applyGlobalIncidentsListQuery(
         data as Record<string, unknown>,
@@ -8668,9 +8684,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         optionalEnum(args, "window", Object.keys(BURN_HISTORY_WINDOWS)) ??
         DEFAULT_BURN_HISTORY_WINDOW;
       const rows = await loadSubnetBurnHistory(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadSubnetBurnHistory
-        >[0],
+        readStore(
+          ctx.env,
+          SUBNET_BURN_HISTORY_TABLES,
+        ) as never as unknown as Parameters<typeof loadSubnetBurnHistory>[0],
         netuid,
         { windowDays: BURN_HISTORY_WINDOWS[label] },
       );
@@ -8709,7 +8726,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         optionalEnum(args, "window", Object.keys(TAO_USD_WINDOWS)) ??
         DEFAULT_TAO_USD_WINDOW;
       const rows = await loadTaoUsdSeries(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        readStore(ctx.env, TAO_USD_TABLES) as never as unknown as Parameters<
           typeof loadTaoUsdSeries
         >[0],
         { windowHours: TAO_USD_WINDOWS[label] },
@@ -8764,9 +8781,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SURFACE_HISTORY_LIMIT_MAX,
       );
       const rows = await loadSurfaceHistory(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadSurfaceHistory
-        >[0],
+        readStore(
+          ctx.env,
+          SURFACE_HISTORY_TABLES,
+        ) as never as unknown as Parameters<typeof loadSurfaceHistory>[0],
         netuid,
         { limit },
       );
@@ -8813,9 +8831,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         EMISSION_CHANGES_LIMIT_MAX,
       );
       const rows = await loadEmissionChanges(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadEmissionChanges
-        >[0],
+        readStore(
+          ctx.env,
+          EMISSION_CHANGES_TABLES,
+        ) as never as unknown as Parameters<typeof loadEmissionChanges>[0],
         { limit, kind },
       );
       return buildEmissionChanges(rows, { limit, kind });
@@ -8861,9 +8880,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_HOLDERS_LIMIT_MAX,
       );
       const read = await loadChainHolders(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadChainHolders
-        >[0],
+        readStore(
+          ctx.env,
+          ALPHA_PRICING_TABLES,
+        ) as never as unknown as Parameters<typeof loadChainHolders>[0],
       );
       return buildChainHolders(read, { sort, limit });
     },
@@ -8905,9 +8925,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const netuid = typeof args?.netuid === "number" ? args.netuid : undefined;
       const kind = typeof args?.kind === "string" ? args.kind : undefined;
       const rows = await loadFailureReasons(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadFailureReasons
-        >[0],
+        readStore(
+          ctx.env,
+          FAILURE_REASONS_TABLES,
+        ) as never as unknown as Parameters<typeof loadFailureReasons>[0],
         { window, netuid, kind },
       );
       return rows === null
@@ -8944,9 +8965,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const row = await loadIndexerLag(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadIndexerLag
-        >[0],
+        readStore(
+          ctx.env,
+          INDEXER_LAG_TABLES,
+        ) as never as unknown as Parameters<typeof loadIndexerLag>[0],
       );
       return buildIndexerLag(row, Date.now());
     },
@@ -8988,7 +9010,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ...CHAIN_CONCENTRATION_HISTORY_WINDOWS,
         ]) ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW;
       const rows = await loadChainConcentrationHistory(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        readStore(
+          ctx.env,
+          CHAIN_CONCENTRATION_HISTORY_TABLES,
+        ) as never as unknown as Parameters<
           typeof loadChainConcentrationHistory
         >[0],
         { window },
@@ -9035,9 +9060,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         optionalEnum(args, "window", [...PIPELINE_HISTORY_WINDOWS]) ??
         DEFAULT_PIPELINE_HISTORY_WINDOW;
       const rows = await loadPipelineHistory(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadPipelineHistory
-        >[0],
+        readStore(
+          ctx.env,
+          SUBNET_SNAPSHOT_TABLES,
+        ) as never as unknown as Parameters<typeof loadPipelineHistory>[0],
         netuid,
         { window },
       );
@@ -9093,9 +9119,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_HOLDERS_LIMIT_MAX,
       );
       const read = await loadSubnetHolders(
-        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadSubnetHolders
-        >[0],
+        readStore(
+          ctx.env,
+          ALPHA_PRICING_TABLES,
+        ) as never as unknown as Parameters<typeof loadSubnetHolders>[0],
         netuid,
         { limit },
       );
@@ -12476,7 +12503,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: "30d",
             windowDays: 30,
             observedAt: await mcpObservedAt(ctx),
-            db: ctx.env.METAGRAPH_HEALTH_DB,
+            db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
           });
         },
       });
