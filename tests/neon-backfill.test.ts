@@ -372,6 +372,35 @@ describe("the deployed wiring", () => {
     assert.ok(wrangler.includes('"binding": "HYPERDRIVE"'));
   });
 
+  test("never reconciles a table Neon SOLELY owns", () => {
+    // THE ENDGAME HAZARD, asserted (#10051). Once a table is in
+    // NEON_SOLE_STORE_TABLES its D1 copy stops being written and freezes. A
+    // reconciler still naming that table would then copy the frozen D1 OVER
+    // the live Neon rows -- it cannot tell the direction reversed, because
+    // "D1 is the source" is the only direction it has ever had.
+    //
+    // That is data loss rather than stale code, and it is silent: the copy
+    // succeeds. So the two lists must never intersect, and this is the check
+    // that makes inverting a reconciled table impossible to do by halves.
+    const named = (re: RegExp) =>
+      new Set(
+        (re.exec(wrangler)?.[1] ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      );
+    const sole = named(/"NEON_SOLE_STORE_TABLES":\s*"([^"]*)"/);
+    const reconciled = named(/"NEON_BACKFILL_LANES":\s*"([^"]*)"/);
+    for (const table of sole) {
+      assert.equal(
+        reconciled.has(table),
+        false,
+        `${table} is solely owned by Neon but STILL reconciled from D1 -- ` +
+          `the reconciler would copy a frozen D1 over live Neon rows`,
+      );
+    }
+  });
+
   test("names only tables the mirror cannot finish on its own", () => {
     // This used to hardcode the two accumulating tables, which stated the
     // answer rather than the RULE and failed the moment #9814 added three
