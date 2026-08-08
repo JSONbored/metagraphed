@@ -30,7 +30,18 @@ import { describe, test } from "vitest";
  * "which Workers have gated paths" is the thing being asserted -- deriving it
  * from which files happen to contain the flags would make a config that
  * silently dropped them look like a config nobody asked about. */
-const GATED_CONFIGS = ["wrangler.jsonc", "wrangler.data.jsonc"] as const;
+// wrangler.registry.jsonc joined the list when the self-health probe moved
+// there (#10194): it went from "runs no gated path" to running one, and the
+// flags did not follow. The probe wrote nothing and could not even record why,
+// because the verdict sink is gated on the same missing flag. A config becomes
+// gated the moment any code path on it asks neonOwnsTable -- which is not
+// visible from the config itself, and is why this list is checked rather than
+// assumed.
+const GATED_CONFIGS = [
+  "wrangler.jsonc",
+  "wrangler.data.jsonc",
+  "wrangler.registry.jsonc",
+] as const;
 
 /** NEON_BACKFILL_LANES is gone (#10166) -- it named the tables the D1 -> Neon
  *  reconciler covered, and there is no reconciler. It is deliberately NOT left
