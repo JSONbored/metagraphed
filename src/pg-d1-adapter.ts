@@ -151,3 +151,27 @@ export function createPgD1(connectionString: string, deps: PgD1Deps = {}) {
     },
   };
 }
+
+/**
+ * A boolean bound for the store that will receive it.
+ *
+ * Postgres columns declared `boolean` reject 1/0 with `operator does not
+ * exist: boolean = integer`; SQLite has no boolean type and stores 1/0. So the
+ * SAME row needs a different binding depending on which store it lands in, and
+ * the choice cannot be made once at the schema level.
+ *
+ * NULL SURVIVES BOTH. `previous_enabled` uses it to mean "no prior
+ * observation", which is not the same as false -- collapsing it would turn
+ * every first sighting into a recorded transition from disabled.
+ *
+ * Exported and pure so the mapping can be tested directly: the alternative is
+ * asserting it through a handler that cannot reach a real Postgres, where a
+ * wrong binding fails at a connection it never opened.
+ */
+export function storeBoolean(
+  neonOwns: boolean,
+  value: boolean | null | undefined,
+): boolean | number | null {
+  if (value === null || value === undefined) return null;
+  return neonOwns ? value : value ? 1 : 0;
+}

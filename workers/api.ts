@@ -3,7 +3,7 @@ import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
-import { createPgD1 } from "../src/pg-d1-adapter.ts";
+import { createPgD1, storeBoolean } from "../src/pg-d1-adapter.ts";
 import { neonOwnsTable } from "../src/neon-write.ts";
 import {
   API_QUERY_COLLECTIONS,
@@ -2154,8 +2154,12 @@ function cronLabel(cron: string): string {
  * it.
  */
 function producerStore(
+  // Only waitUntil is used, so the parameter is the CAPABILITY rather than the
+  // full ExecutionContext -- api.ts's own request `Ctx` carries just that, and
+  // widening here beats casting at each call site (a cast would let a ctx with
+  // no waitUntil through, and the connection would leak per tick).
   env: Env,
-  ctx: ExecutionContext | undefined,
+  ctx: { waitUntil?: (promise: Promise<unknown>) => void } | undefined,
   tables: readonly string[],
 ): { db: unknown; close: () => void } {
   const bag = env as unknown as Record<string, unknown>;
@@ -3790,7 +3794,21 @@ async function emissionGateSyncRows(
   return (outcome?.results ?? []) as Row[];
 }
 
-async function handleEmissionGateSync(request: Request, env: Env) {
+/** Every table this lane writes. All three or none: one sync derives all three
+ * change sets from ONE observation and writes them in ONE batch, so a family
+ * split across stores would put a param change and the enabled change it was
+ * derived alongside into different databases. */
+const EMISSION_GATE_TABLES = [
+  "emission_gate_param_history",
+  "subnet_emission_enabled_history",
+  "emission_flow_watch",
+] as const;
+
+async function handleEmissionGateSync(
+  request: Request,
+  env: Env,
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+) {
   if (request.method !== "POST") {
     return errorResponse("method_not_allowed", "Only POST is supported.", 405);
   }
@@ -3809,8 +3827,7 @@ async function handleEmissionGateSync(request: Request, env: Env) {
       401,
     );
   }
-  const db = env.METAGRAPH_HEALTH_DB;
-  if (!db) {
+  if (!env.METAGRAPH_HEALTH_DB && !env.HYPERDRIVE?.connectionString) {
     return errorResponse(
       "emission_gate_sync_unavailable",
       "The health D1 database is not bound to this deployment.",
@@ -3845,6 +3862,21 @@ async function handleEmissionGateSync(request: Request, env: Env) {
   const body = parsed as Row;
   const blockNumber = body.block_number as number;
   const observedAt = body.observed_at as number;
+
+  // Opened HERE rather than at the top of the handler: every check above can
+  // return, and a connection opened before them leaks on each one (#10112).
+  // producerStore hands back the SAME D1-shaped object either way, so the
+  // reads, the prepares and the batch below are untouched -- only the handle.
+  const store = producerStore(env, ctx, EMISSION_GATE_TABLES);
+  const neonOwns = store.db !== env.METAGRAPH_HEALTH_DB;
+  // BOOLEANS ARE BOOLEANS ON NEON. `enabled`, `previous_enabled`, `is_set` and
+  // `predates_capture` are all `boolean` there and INTEGER in D1, so binding
+  // 1/0 is `operator does not exist: boolean = integer` on one store and
+  // binding true/false is wrong on the other. Null stays null on both --
+  // previous_enabled uses it to mean "no prior observation", which is not the
+  // same as false.
+  const flag = (v: boolean | null) => storeBoolean(neonOwns, v);
+  const db = store.db as NonNullable<typeof env.METAGRAPH_HEALTH_DB>;
 
   try {
     // Last known value per key, from the three history tables -- the same
@@ -3914,7 +3946,7 @@ async function handleEmissionGateSync(request: Request, env: Env) {
             change.source,
             change.block_number,
             change.observed_at,
-            change.predates_capture ? 1 : 0,
+            flag(change.predates_capture),
           ),
       ),
       ...enabledChanges.map((change) =>
@@ -3922,15 +3954,11 @@ async function handleEmissionGateSync(request: Request, env: Env) {
           .prepare(EMISSION_GATE_INSERT_ENABLED_SQL)
           .bind(
             change.netuid,
-            change.enabled ? 1 : 0,
-            change.previous_enabled === null
-              ? null
-              : change.previous_enabled
-                ? 1
-                : 0,
+            flag(change.enabled),
+            flag(change.previous_enabled),
             change.block_number,
             change.observed_at,
-            change.predates_capture ? 1 : 0,
+            flag(change.predates_capture),
           ),
       ),
       ...flowEvents.map((event) =>
@@ -3939,11 +3967,11 @@ async function handleEmissionGateSync(request: Request, env: Env) {
           .bind(
             event.item,
             event.netuid,
-            event.is_set ? 1 : 0,
+            flag(event.is_set),
             event.ema_block,
             event.block_number,
             event.observed_at,
-            event.predates_capture ? 1 : 0,
+            flag(event.predates_capture),
           ),
       ),
     ];
@@ -3987,6 +4015,11 @@ async function handleEmissionGateSync(request: Request, env: Env) {
       "The emission-gate history write failed; retry.",
       502,
     );
+  } finally {
+    // Every exit, including the 502 above. close() is a no-op on the D1 handle
+    // and parks the Postgres teardown on waitUntil, so this costs nothing on
+    // the path that did not open a connection.
+    store.close();
   }
 }
 
@@ -4401,7 +4434,7 @@ export async function handleRequest(
   // chain-indexer Postgres. POST-only, so it runs before the read-only
   // method gate below, like the other internal sync routes above.
   if (url.pathname === "/api/v1/internal/emission-gate-sync") {
-    return handleEmissionGateSync(request, env);
+    return handleEmissionGateSync(request, env, ctx);
   }
   // The write path the #4981 box-side relay POSTs #4980's NOTIFY payloads to
   // (#4982, ADR 0015) -- forwards into ChainFirehoseHub after its own
