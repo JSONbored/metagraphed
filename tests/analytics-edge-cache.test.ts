@@ -1991,10 +1991,21 @@ describe("degraded-tier labelling (#9110)", () => {
     const routes = [
       "/api/v1/chain/calls?window=30d",
       "/api/v1/chain/signers?window=7d",
-      // Carries its own inline tier branch rather than the shared helper; the
-      // `&& env.DATA_API` it used to guard with swallowed the degradation
-      // signal entirely, so this route is here on purpose.
-      "/api/v1/chain/fees?window=7d",
+      // /api/v1/chain/fees was listed here because it carried its own inline
+      // tier branch rather than the shared helper. That branch is gone -- it
+      // was gated on `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"`, false
+      // since the var went to "retired" (#9193) -- so the route no longer has
+      // a tier that CAN degrade, which is what this sweep enumerates.
+      //
+      // Worth being precise about what that does and does not mean. Setting
+      // the flag here was the only reason the route ever took the labelled
+      // path: with the deployed value, the inline branch never ran, so an
+      // empty chain-fees payload has been going out UNLABELLED in production
+      // all along. Dropping it from this list removes an assertion that was
+      // only ever true under a forced flag; it does not remove a label
+      // production was emitting. Whether the projection tier's own empty stub
+      // should carry #9110's header is tracked in #10189 -- a serving change,
+      // not a types one.
       "/api/v1/chain/transfers?window=7d",
       "/api/v1/chain/activity?window=7d",
       "/api/v1/chain/stake-flow?window=7d",

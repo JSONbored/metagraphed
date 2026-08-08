@@ -125,44 +125,21 @@ describe("self-health-mcp", () => {
   // workflow. So `artifact_not_found` was production's only state, and both
   // get_self_health and the GraphQL selfHealth field returned not_found while
   // GET /api/v1/self-health returned verdict "operational". These pin the
-  // resolution order that fixes it: live tier, then artifact, then the
+  // resolution order that fixes it: cold tier, then artifact, then the
   // schema-stable empty shape.
-  const tierEnv = (fetchImpl: (request: Request) => Promise<Response>) => {
-    const env = mockEnv() as unknown as Row;
-    env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
-    env.DATA_API = { fetch: fetchImpl };
-    return env as unknown as Env;
-  };
+  //
+  // The DATA_API live tier that used to head that order, and the eight tests
+  // that drove it through a `tierEnv` helper, are gone with the tier itself:
+  // it was gated on METAGRAPH_SELF_HEALTH_SOURCE === "postgres" (the var reads
+  // "retired" since #9193) and forwarded to an /api/v1/self-health route
+  // workers/data-api.ts does not serve. Their #8987 lesson -- assert the
+  // envelope the PRODUCER emits, not the one the code expects -- is recorded in
+  // src/self-health-mcp.ts's header for whatever live tier lands here next
+  // (#10187 tracks the one that should: REST's #9836 Neon tier).
   const artifactNotFound = (async () => ({
     ok: false,
     code: "artifact_not_found",
   })) as unknown as ReadArtifact;
-
-  test("prefers the LIVE tier over a baked artifact, so all three surfaces agree", async () => {
-    // Even with a perfectly good artifact present, the tier wins: self-health
-    // is live probe data and a bake would serve a stale verdict.
-    //
-    // #8987: the body here is the document BARE. It used to be
-    // `{ ok: true, data: SAMPLE_SELF_HEALTH }`, which is a shape the DATA_API
-    // binding never produces -- workers/data-api.ts's `json()` serializes the
-    // value directly. That fiction is why this test passed for a month while
-    // get_self_health served all-nulls in production: the test asserted the
-    // envelope the code expected instead of the one the producer emits.
-    const stale = { ...SAMPLE_SELF_HEALTH, verdict: "outage" };
-    const out = (await loadSelfHealth({
-      env: tierEnv(async (request) => {
-        assert.equal(new URL(request.url).pathname, "/api/v1/self-health");
-        return new Response(JSON.stringify(SAMPLE_SELF_HEALTH), {
-          headers: { "content-type": "application/json" },
-        });
-      }),
-      readArtifact: (async () => ({
-        ok: true,
-        data: stale,
-      })) as unknown as ReadArtifact,
-    })) as Row;
-    assert.equal(out.verdict, "operational");
-  });
 
   test("falls back to the artifact when no tier is configured", async () => {
     // Dev/test and any fixture-backed environment: the artifact path is kept
@@ -187,118 +164,6 @@ describe("self-health-mcp", () => {
     assert.equal(out.verdict, "degraded");
     assert.equal((out.components as Row[]).length, 3);
     assert.equal((out.components as Row[])[0]!.current_ok, null);
-  });
-
-  test("a tier that throws degrades to the artifact rather than failing the call", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(async () => {
-        throw new Error("binding exploded");
-      }),
-      readArtifact: (async () => ({
-        ok: true,
-        data: SAMPLE_SELF_HEALTH,
-      })) as unknown as ReadArtifact,
-    })) as Row;
-    assert.equal(out.verdict, "operational");
-  });
-
-  // A non-2xx from the binding degrades before the body is even read. This
-  // branch was untested before #8987 -- which is part of why the whole
-  // function could return null on every call without anything going red.
-  test("a tier returning a non-2xx status is treated as no data", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response(JSON.stringify(SAMPLE_SELF_HEALTH), {
-            status: 503,
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "degraded");
-  });
-
-  test("a tier returning an error body is treated as no data", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response(JSON.stringify({ ok: false, error: { code: "boom" } }), {
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "degraded");
-  });
-
-  // #8987 REGRESSION PIN. The old code required `{ ok, data }` and unwrapped
-  // `.data`; nothing upstream emits that, so the live tier was dead. Asserting
-  // the wrapped form is NOT accepted is what stops a future edit from
-  // reintroducing envelope-unwrapping "for compatibility" -- if data-api is
-  // ever changed to wrap its responses, this fails loudly and points here,
-  // rather than the MCP tool silently going all-null again.
-  test("an { ok, data } envelope is NOT accepted -- the binding returns bare", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response(JSON.stringify({ ok: true, data: SAMPLE_SELF_HEALTH }), {
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "degraded");
-  });
-
-  // The exact production symptom of #8987, end to end: a healthy live tier and
-  // an absent artifact (production's real state -- nothing has ever written
-  // /metagraph/self-health.json) must yield the LIVE verdict, not the empty
-  // shape. Before the fix this returned verdict "degraded" with three all-null
-  // components and measured_component_count 0.
-  test("a healthy tier with NO artifact serves the live verdict", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response(JSON.stringify(SAMPLE_SELF_HEALTH), {
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "operational");
-    assert.equal(out.measured_component_count, 1);
-    assert.equal((out.components as Row[])[0]!.current_ok, true);
-  });
-
-  // `typeof null === "object"` is true, so the null check is load-bearing
-  // rather than defensive noise -- without it this throws on `.components`.
-  test("a tier returning a JSON null body degrades", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response("null", {
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "degraded");
-  });
-
-  // A 200 carrying something that is not a self-health document degrades
-  // instead of being handed to an agent as if it were one.
-  test("a tier returning a non-document body degrades", async () => {
-    const out = (await loadSelfHealth({
-      env: tierEnv(
-        async () =>
-          new Response(JSON.stringify("not a document"), {
-            headers: { "content-type": "application/json" },
-          }),
-      ),
-      readArtifact: artifactNotFound,
-    })) as Row;
-    assert.equal(out.verdict, "degraded");
   });
 
   test("loadSelfHealth surfaces other artifact failures with the path", async () => {

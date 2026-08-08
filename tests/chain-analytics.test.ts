@@ -405,8 +405,7 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 // separate D1 queries now happens server-side in Postgres (workers/data-api.ts's
 // own dedicated coverage, not re-tested here) -- the handler's own contract is
 // just to forward call_module + group_by on the request it hands to
-// tryPostgresTier, and to pass the Postgres-tier body through untouched
-// (mirrors the "GET /api/v1/chain/fees forwards call_module" test below).
+// tryPostgresTier, and to pass the Postgres-tier body through untouched.
 test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier for module-function groups", async () => {
   let requestedUrl: URL | undefined;
   const env = {
@@ -1324,43 +1323,13 @@ test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA
   assert.equal(body.data.total_volume_tao, 0);
 });
 
-// D1 fully eliminated (2026-07-16): extrinsics' D1 write path is retired
-// (#4772) and the table is dropped in production, so the call_module scoping
-// this used to verify across 3 separate D1 queries now happens server-side
-// in Postgres -- the handler's own contract is just to forward call_module
-// on the request it hands to tryPostgresTier.
-test("GET /api/v1/chain/fees forwards call_module on the Postgres-tier request", async () => {
-  let requestedUrl: URL | undefined;
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async (request: Request) => {
-        requestedUrl = new URL(request.url);
-        return Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: null,
-          day_count: 0,
-          daily: [],
-          top_fee_payers: [],
-        });
-      },
-    },
-  };
-  const res = await handleRequest(
-    new Request(
-      "https://api.metagraph.sh/api/v1/chain/fees?call_module=SubtensorModule",
-    ),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  assert.equal(
-    requestedUrl!.searchParams.get("call_module"),
-    "SubtensorModule",
-  );
-});
+// "GET /api/v1/chain/fees forwards call_module on the Postgres-tier request"
+// stood here until that tier was deleted from handleChainFees: it was gated on
+// an inline `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"` that has been
+// false since the var went to "retired" (#9193). The route's call_module
+// contract did not go with it -- it moved to the projection tier, and
+// tests/chain-fees-artifact.test.ts ("a call_module scope declines -- it is
+// never precomputed") covers it where that path actually lives.
 
 test("chain signers/fees reject an over-long call_module with 400", async () => {
   const env = createLocalArtifactEnv();
@@ -1538,58 +1507,10 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
   assert.equal(JSON.parse(JSON.stringify(out)).daily[0].median_fee_tao, null);
 });
 
-// D1 fully eliminated (2026-07-16): the COALESCE/median SQL-shape assertions
-// this used to verify against D1 now apply to Postgres's own equivalent
-// query in workers/data-api.ts's chain-fees route (its own dedicated
-// coverage, not re-tested here) -- this just proves the REST envelope
-// passes the Postgres-tier body through untouched.
-test("GET /api/v1/chain/fees returns daily series + top payers from the Postgres tier", async () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: "2026-06-25T00:00:00.000Z",
-          day_count: 1,
-          daily: [
-            {
-              day: "2026-06-25",
-              extrinsic_count: 50,
-              signed_extrinsic_count: 50,
-              total_fee_tao: 0.5,
-              avg_fee_tao: 0.01,
-              median_fee_tao: 0.006,
-              total_tip_tao: 0,
-              avg_tip_tao: 0,
-              median_tip_tao: 0,
-            },
-          ],
-          top_fee_payers: [
-            {
-              signer: "5Pay",
-              total_fee_tao: 0.5,
-              total_tip_tao: 0,
-              extrinsic_count: 50,
-            },
-          ],
-        }),
-    },
-  };
-  const res = await handleRequest(
-    new Request("https://api.metagraph.sh/api/v1/chain/fees?window=7d"),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.daily[0].avg_fee_tao, 0.01);
-  assert.equal(body.data.daily[0].median_fee_tao, 0.006);
-  assert.equal(body.data.daily[0].median_tip_tao, 0);
-  assert.equal(body.data.top_fee_payers[0].signer, "5Pay");
-});
+// "GET /api/v1/chain/fees returns daily series + top payers from the Postgres
+// tier" stood here, deleted with that tier for the same reason as the
+// call_module test above. The envelope pass-through it proved is now the
+// projection tier's, covered in tests/chain-fees-artifact.test.ts.
 
 test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {
   const env = createLocalArtifactEnv();

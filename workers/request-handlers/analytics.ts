@@ -31,7 +31,6 @@ import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   MAX_INCIDENT_ROWS,
-  resolveClientIp,
 } from "../config.ts";
 import {
   type ChainNetworkId,
@@ -388,28 +387,12 @@ export function canonicalHealthWindowCachePath(url: URL): string {
   return `${url.pathname}?window=${encodeURIComponent(windowResult.label)}`;
 }
 
-async function dataRateLimitResponse(
-  request: Request,
-  env: Env,
-): Promise<Response | null> {
-  if (!env.DATA_RATE_LIMITER?.limit) return null;
-  const { success } = await env.DATA_RATE_LIMITER.limit({
-    key: `data:${resolveClientIp(request)}`,
-  });
-  if (success) return null;
-  return errorResponse(
-    "data_rate_limited",
-    "Too many data API requests from this client; slow down.",
-    429,
-    {},
-    {
-      "retry-after": "60",
-      "x-ratelimit-limit": "60",
-      "x-ratelimit-policy": "60;w=60",
-      "x-ratelimit-remaining": "0",
-    },
-  );
-}
+// dataRateLimitResponse lived here until the chain-fees Postgres tier above was
+// deleted, which left it with no callers. Nothing is unprotected by its going:
+// the anonymous DATA_RATE_LIMITER policy is applied centrally by the router
+// (workers/api.ts's DATA_RATE_LIMIT_POLICIES, 60/60s), so this was a second,
+// route-local application of the same binding that had not run since
+// METAGRAPH_EXTRINSICS_SOURCE went to "retired".
 
 function analyticsQueryError(error: QueryError): Response {
   return errorResponse("invalid_query", error.message, 400, {
@@ -2872,35 +2855,36 @@ export async function handleChainFees(
       const meta = await readHealthMetaKv(env);
       // #4909/#4772 D1 retirement: extrinsics' D1 write path is retired and
       // the table is dropped in production, so a D1 query here would always
-      // miss. Postgres → schema-stable empty stub, never a live D1 read.
-      let data: ReturnType<typeof buildChainFees> | null = null;
-      if (env.METAGRAPH_EXTRINSICS_SOURCE === "postgres") {
-        // The `&& env.DATA_API` this condition used to carry swallowed the
-        // degradation signal (#9110): tryPostgresTier handles a missing
-        // DATA_API itself and marks the fallback, and skipping the call meant
-        // this route returned an unlabelled empty payload where every sibling
-        // returned a labelled one. The rate limiter still only runs when there
-        // is an upstream to protect.
-        if (env.DATA_API) {
-          const limited = await dataRateLimitResponse(cacheRequest, env);
-          if (limited) return limited;
-        }
-        data = (await tryPostgresTier(
-          env,
-          cacheRequest,
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) as ReturnType<typeof buildChainFees> | null;
-      }
-      // The projection tier (#9146): a cron recomputes this window's fee
-      // series + payer leaderboard from the lakehouse; the reader slices to
-      // the request's limit and feeds the same formatter, declining any
-      // call_module scope. The #8242 trim below applies to it exactly as it
-      // applies to a live answer. See src/chain-fees-artifact.ts.
-      data ??= await loadChainFeesFromArtifact(env, {
-        window: label,
-        limit,
-        callModule: url.searchParams.get("call_module"),
-      });
+      // miss.
+      //
+      // The Postgres tier this route used to try FIRST is gone with it. It sat
+      // behind an inline `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"`
+      // pre-check, and the var has read "retired" since #9193 -- so the whole
+      // block, its rate-limiter call included, had stopped executing. Three
+      // independent facts make it unrevivable rather than merely parked: the
+      // flag is not in postgres-tier.ts's DATA_API_D1_FLAGS, so a "d1" value
+      // would not forward either; DATA_API serves no chain-fees route to
+      // forward TO; and no deployed flag anywhere holds "postgres" now.
+      // Deleting it is what the route already does at runtime.
+      //
+      // Note this route was the only extrinsics reader with such a pre-check;
+      // its siblings (handleChainActivity, -Calls, -Signers) call
+      // tryPostgresTier bare and let it own the gate. Those calls are equally
+      // inert today, but they are invisible to tsc and are left alone here --
+      // retiring them is a separate sweep (#10190), not a types change.
+      //
+      // The projection tier (#9146), now this route's FIRST tier rather than
+      // its second: a cron recomputes this window's fee series + payer
+      // leaderboard from the lakehouse; the reader slices to the request's
+      // limit and feeds the same formatter, declining any call_module scope.
+      // The #8242 trim below applies to it exactly as it applies to a live
+      // answer. See src/chain-fees-artifact.ts.
+      let data: ReturnType<typeof buildChainFees> | null =
+        await loadChainFeesFromArtifact(env, {
+          window: label,
+          limit,
+          callModule: url.searchParams.get("call_module"),
+        });
       data ??= buildChainFees({
         window: label,
         observedAt: meta?.last_run_at || null,

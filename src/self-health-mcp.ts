@@ -22,19 +22,36 @@
 //     a `meta.artifact_path` LABEL -- never for data. A build-time bake would
 //     serve a stale verdict.
 //
-// So the live tier comes first, matching REST byte for byte. The artifact is
+// So a live tier comes first where one exists, matching REST. The artifact is
 // deliberately KEPT as a fallback rather than deleted: it is what dev, test
 // and any fixture-backed environment load, and it costs nothing to honour a
 // baked file if one ever appears. The schema-stable empty shape is the floor.
 //
 // #8987 -- AND THAT REORDER DID NOT ACTUALLY FIX IT. The ordering above landed
-// in #8633, but readSelfHealthTier then required an `{ ok, data }` envelope the
+// in #8633, but the live tier then required an `{ ok, data }` envelope the
 // DATA_API binding has never emitted, so the newly-promoted branch returned
 // null on every call and both surfaces kept serving the empty shape. The
 // paragraphs above described a working fix for over a month while production
-// behaved exactly as before it. See readSelfHealthTier for the detail; the
-// lesson worth keeping is that the test which should have caught it asserted
-// the envelope the CODE expected rather than the one the PRODUCER emits.
+// behaved exactly as before it. The lesson worth keeping, for whatever live
+// tier lands here next: the test that should have caught it asserted the
+// envelope the CODE expected rather than the one the PRODUCER emits.
+//
+// That DATA_API tier is now gone from this file entirely. It was gated on
+// METAGRAPH_SELF_HEALTH_SOURCE === "postgres", a var that has read "retired"
+// since #9193, and it forwarded to an /api/v1/self-health route that
+// workers/data-api.ts does not serve -- so it could not have answered even if
+// the flag were flipped back. What remains is the cold tier, the artifact, and
+// the empty floor.
+//
+// KNOWN GAP, and it is NOT closed by that deletion: handleSelfHealth
+// (workers/request-handlers/entities.ts) grew a NEON tier in #9836 --
+// loadSelfHealthNeon, where the prober writes now -- and this chain never got
+// it. So REST answers from current readings while `get_self_health` and the
+// GraphQL `selfHealth` field fall to the cold rollup, which ends 2026-08-02.
+// That is the same divergence as #8633/#8987/#9153, for the same structural
+// reason: a resolution chain maintained in parallel with the route's instead
+// of shared with it. Closing it is a serving change, not a types change, so it
+// is deliberately not folded in here.
 
 import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -65,67 +82,6 @@ export function selfHealthToolError(
 }
 
 /**
- * The live verdict, from the same place GET /api/v1/self-health gets it.
- *
- * Reached by asking the DATA_API binding for that very route rather than by
- * re-implementing the query: `handleSelfHealth` does
- * `tryPostgresTier(env, request, "METAGRAPH_SELF_HEALTH_SOURCE")`, which
- * forwards the request by PATH, so the honest way to share it is to send the
- * path. One source of truth; no second copy of the aggregation to drift.
- *
- * Returns null rather than throwing on every failure, so the caller can fall
- * through instead of surfacing plumbing to an agent.
- *
- * #8987 -- THE BINDING RETURNS THE DOCUMENT BARE. This previously required an
- * `{ ok, data }` envelope and unwrapped `payload.data`. No such envelope ever
- * arrives here: workers/data-api.ts's `json()` helper serializes the value
- * directly, and the self-health route returns `json(buildSelfHealth(...))`, so
- * `payload.ok` was `undefined` on every call and this function returned null
- * unconditionally. `get_self_health` and the GraphQL `selfHealth` field both
- * served the all-null degraded shape in production for over a month while
- * GET /api/v1/self-health returned `verdict: "operational"` beside them.
- *
- * The `{ ok, data }` envelope is added by the API Worker's response wrapper on
- * the way OUT to the public; it is not what a service binding hands back. The
- * sibling workers/postgres-tier.ts `tryPostgresTier` gets this right and does
- * no `ok` check at all.
- *
- * What replaces it is a SHAPE check, not another envelope guess: a self-health
- * document has a `components` array. That keeps the "don't hand an agent
- * nonsense" property the old check accidentally provided -- an unexpected body
- * still degrades rather than being served -- without inventing a wrapper the
- * producer does not emit. It is also self-correcting in the direction that
- * matters: if the payload shape ever changes, this degrades loudly to the
- * empty verdict rather than silently serving a body no consumer understands.
- */
-function isSelfHealthDocument(payload: unknown): boolean {
-  return (
-    typeof payload === "object" &&
-    payload !== null &&
-    Array.isArray((payload as { components?: unknown }).components)
-  );
-}
-
-async function readSelfHealthTier(env: Env): Promise<unknown | null> {
-  if (env.METAGRAPH_SELF_HEALTH_SOURCE !== "postgres" || !env.DATA_API) {
-    return null;
-  }
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request("https://api.metagraph.sh/api/v1/self-health", {
-        method: "GET",
-        headers: { accept: "application/json" },
-      }),
-    );
-    if (!upstream.ok) return null;
-    const payload = await upstream.json();
-    return isSelfHealthDocument(payload) ? payload : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * The card, from the first tier that can answer. Lane verdicts are attached by the
  * caller, not here, so that this stays a pure mirror of handleSelfHealth's tier chain
  * and the two can be compared line for line.
@@ -137,28 +93,27 @@ async function resolveSelfHealthCard(
   },
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>,
 ): Promise<unknown> {
-  // 1. Live tier — what REST serves, so the three surfaces agree.
-  const live = await readSelfHealthTier(ctx.env);
-  if (live) return live;
-
-  // 2. Lakehouse cold tier — the same one REST falls through to.
+  // 1. Lakehouse cold tier — the same one REST falls through to.
   //
   // #9153 gave the REST route this step and did not give it to us, and when
-  // METAGRAPH_SELF_HEALTH_SOURCE went to "retired" the live tier above stopped
-  // answering for both. REST kept serving the preserved 90-day rollup; this loader
-  // dropped straight past to the empty card. Measured 2026-08-04, the same minute:
-  // GET /api/v1/self-health returned seven days per component, `get_self_health`
-  // returned `days: []` and `uptime_90d: null` for all three.
+  // METAGRAPH_SELF_HEALTH_SOURCE went to "retired" the DATA_API tier that used to
+  // sit above this one stopped answering for both. REST kept serving the preserved
+  // 90-day rollup; this loader dropped straight past to the empty card. Measured
+  // 2026-08-04, the same minute: GET /api/v1/self-health returned seven days per
+  // component, `get_self_health` returned `days: []` and `uptime_90d: null` for all
+  // three.
   //
   // That is the THIRD time this module has served an empty card beside a working
   // REST route (#8633 had the tiers in the wrong order, #8987 unwrapped an envelope
   // the producer never sent). The recurring cause is a resolution chain maintained
   // in parallel with the route's instead of shared with it, so the fix that matters
-  // is the ordering being identical here to handleSelfHealth's, tier for tier.
+  // is the ordering being identical here to handleSelfHealth's, tier for tier --
+  // which it is NOT today, because REST's #9836 Neon tier is still missing from
+  // this chain. See the KNOWN GAP note in the module header.
   const cold = await loadSelfHealthColdTier(ctx.env);
   if (cold) return cold;
 
-  // 3. Baked artifact — dev/test/fixture environments, and any future bake.
+  // 2. Baked artifact — dev/test/fixture environments, and any future bake.
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, SELF_HEALTH_ARTIFACT);
   if (result?.ok) return result.data;
@@ -166,7 +121,7 @@ async function resolveSelfHealthCard(
   const code =
     (result as { code?: string } | undefined)?.code || "artifact_unavailable";
 
-  // 4. An ABSENT artifact is not an error: it is production's normal state,
+  // 3. An ABSENT artifact is not an error: it is production's normal state,
   //    and "we have no readings" is a real answer. Returning the schema-stable
   //    empty shape (three components, current_ok null, verdict "degraded") is
   //    precisely handleSelfHealth's own documented convention -- it never 404s
@@ -200,9 +155,9 @@ export async function loadSelfHealth(
   // that depends on which tier happened to be reachable.
   //
   // The cast is safe by construction and no wider than what the tiers already
-  // guarantee: the live tier is shape-checked by isSelfHealthDocument, the cold tier
-  // and the empty floor are both buildSelfHealth output, and withLaneHealth only
-  // spreads the value and appends two fields.
+  // guarantee: the cold tier and the empty floor are both buildSelfHealth output,
+  // the artifact is schema-checked on read, and withLaneHealth only spreads the
+  // value and appends two fields.
   const lanes = await loadLatestLaneHealth(
     // laneHealthStore, not the binding (#10148). Every other lane_health
     // reader already goes through it; this one still named D1, so self-health
