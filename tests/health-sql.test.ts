@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  OK_COUNT,
   OK_LATENCY,
   SURFACE_STATUS_OK_LATENCY,
   dailyLatencyColumns,
@@ -11,7 +12,41 @@ import {
 
 describe("health-sql latency builders", () => {
   test("OK_LATENCY gates latency on a successful probe that recorded one", () => {
-    assert.equal(OK_LATENCY, "ok = 1 AND latency_ms IS NOT NULL");
+    assert.equal(OK_LATENCY, "ok AND latency_ms IS NOT NULL");
+  });
+
+  test("no builder compares `ok` against a number", () => {
+    // THE PROPERTY, not the string (#10086). `surface_checks.ok` is INTEGER in
+    // D1 and BOOLEAN in Neon, so `ok = 1` / `ok = 0` / `SUM(ok)` parse on both
+    // and only Postgres rejects them -- at runtime, with `operator does not
+    // exist: boolean = integer`. A bare `ok` means the same thing on both.
+    //
+    // Asserted over every builder rather than over OK_LATENCY alone, because
+    // the literal above can be fixed while a sibling builder keeps the old
+    // spelling, which is exactly how the two stores drifted in the first place.
+    const built = [
+      OK_LATENCY,
+      OK_COUNT,
+      rankedChecksCte("netuid = ?"),
+      dailyLatencyColumns(),
+      latencyStatColumns(),
+      surfaceStatusAvgLatencySql(),
+      surfaceStatusAvgLatencySql({ rounded: true }),
+    ].join("\n");
+    assert.doesNotMatch(
+      built,
+      /\bok\s*(=|<>|!=)\s*[01]\b/,
+      "a builder compares `ok` to a number; that is a type error on Neon",
+    );
+    assert.doesNotMatch(
+      built,
+      /\bSUM\(\s*ok\s*\)/i,
+      "SUM(ok) has no meaning in Postgres -- use OK_COUNT",
+    );
+  });
+
+  test("OK_COUNT counts successes without summing a boolean", () => {
+    assert.equal(OK_COUNT, "SUM(CASE WHEN ok THEN 1 ELSE 0 END)");
   });
 
   test("SURFACE_STATUS_OK_LATENCY mirrors OK_LATENCY over surface_status.status", () => {

@@ -19,6 +19,7 @@ import {
 import {
   dailyLatencyColumns,
   latencyStatColumns,
+  OK_COUNT,
   rankedChecksCte,
   surfaceStatusAvgLatencySql,
 } from "./health-sql.ts";
@@ -391,7 +392,7 @@ export async function loadSubnetHealthTrends(
            SELECT MAX(surface_id) AS surface_id,
                   surface_key,
                   COUNT(*) AS total,
-                  SUM(ok) AS ok_count,
+                  ${OK_COUNT} AS ok_count,
                   ${latencyStatColumns({ includeMinMax: false })}
            FROM ranked
            GROUP BY surface_key`,
@@ -481,7 +482,7 @@ export async function loadSubnetIncidents(
       `SELECT MAX(surface_id) AS surface_id,
               COALESCE(surface_key, surface_id) AS surface_key,
               COUNT(*) AS total,
-              SUM(ok) AS ok_count
+              ${OK_COUNT} AS ok_count
        FROM surface_checks
        WHERE netuid = ? AND checked_at >= ?
        GROUP BY COALESCE(surface_key, surface_id)`,
@@ -507,7 +508,7 @@ export async function loadSubnetIncidents(
        ),
        grouped AS (
          SELECT surface_key, surface_id, checked_at, ok,
-                SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+                SUM(CASE WHEN ok OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                   OVER (PARTITION BY surface_key ORDER BY checked_at) AS grp
          FROM checks
        ),
@@ -518,7 +519,7 @@ export async function loadSubnetIncidents(
                 MAX(checked_at) AS ended_at,
                 COUNT(*) AS failed_samples
          FROM grouped
-         WHERE ok = 0
+         WHERE NOT ok
          GROUP BY surface_key, grp
          HAVING COUNT(*) >= ?
        )
@@ -606,7 +607,7 @@ export async function loadGlobalIncidentRows(
      ),
      grouped AS (
        SELECT netuid, surface_key, surface_id, checked_at, ok,
-              SUM(CASE WHEN ok = 1 OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
+              SUM(CASE WHEN ok OR gap IS NULL OR gap > ? THEN 1 ELSE 0 END)
                 OVER (PARTITION BY netuid, surface_key ORDER BY checked_at) AS grp
        FROM checks
      )
@@ -617,7 +618,7 @@ export async function loadGlobalIncidentRows(
             MAX(checked_at) AS ended_at,
             COUNT(*) AS failed_samples
      FROM grouped
-     WHERE ok = 0
+     WHERE NOT ok
      GROUP BY netuid, surface_key, grp
      HAVING COUNT(*) >= ?
      ORDER BY started_at DESC
