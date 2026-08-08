@@ -86,4 +86,26 @@ export default {
   ): Promise<void> => {
     await handler.scheduled(controller, env, ctx);
   },
+  // #9847: this MUST be here, for exactly the reason the
+  // .scheduled note above gives.
+  //
+  // A queue consumer is registered at deploy time only if the deployed Worker
+  // actually exports a `queue` handler -- and "deployed Worker" means THIS
+  // file, not api.ts. #9655 added queue() to api.ts and wired both consumers
+  // in wrangler.jsonc, but the composed object here was never extended, so
+  // Cloudflare saw a Worker with no queue handler and registered neither:
+  //
+  //   webhook-deliveries      producers 1 (worker:metagraphed)  consumers 0
+  //   webhook-deliveries-dlq  producers 0                       consumers 0
+  //
+  // The PRODUCER registered from the same config block, because a producer is
+  // just a binding and needs no handler -- which is what made this look like a
+  // Cloudflare-side inconsistency rather than a missing export. metagraphed-
+  // data-api's queues work because its wrangler "main" points straight at the
+  // raw handler, so its queue() is on the deployed entry by construction.
+  queue: (
+    batch: MessageBatch<unknown>,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> => handler.queue(batch, env, ctx),
 };
