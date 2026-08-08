@@ -7,6 +7,14 @@
   // Deploy: wrangler deploy -c wrangler.registry.jsonc
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "metagraphed-registry-sync-api",
+  // metagraphed's own uptime probe (#10194). It lives on this Worker because
+  // this is the only one with NO public route -- api.metagraph.sh is a custom
+  // domain of the main Worker, so probing it from there is a self-fetch that
+  // Cloudflare refuses, and /api/v1/self-health published `verdict: "outage"`
+  // on a healthy API for hours. From here the fetch leaves and returns through
+  // the real edge, which is what the lane claims to measure. Cadence is fixed
+  // by SELF_HEALTH_PROBE_CRON in workers/config.ts.
+  "triggers": { "crons": ["3,8,13,18,23,28,33,38,43,48,53,58 * * * *"] },
   // metagraphed#7766: Sentry's deploy-entry wrapper removed (Sentry fully
   // decommissioned) -- "main" now points straight at the raw handler.
   "main": "workers/registry-sync-api.ts",

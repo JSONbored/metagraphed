@@ -45,12 +45,7 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
-import {
-  SELF_HEALTH_PROBE_CRON,
-  TABLE_FRESHNESS_CRON,
-  TAO_USD_INDEX_CRON,
-} from "./config.ts";
-import { runSelfHealthProbe } from "../src/self-health-prober.ts";
+import { TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -7848,26 +7843,6 @@ export default {
       // the same constant stay aligned, whereas one waiting on the other stops
       // pruning the moment the other breaks.
       return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
-    }
-    if (controller?.cron === SELF_HEALTH_PROBE_CRON) {
-      // OUR OWN UPTIME PROBE, AND IT LIVES HERE RATHER THAN ON THE MAIN WORKER
-      // FOR ONE REASON (#10194): `api.metagraph.sh` is a custom domain of the
-      // metagraphed Worker, so probing it from inside that Worker is a
-      // self-fetch. Cloudflare does not let a script reach its own route, and
-      // the probe came back 522 every time.
-      //
-      // That was not a quiet failure. `/api/v1/self-health` published
-      // `verdict: "outage"` with 0 of 36 checks OK for `api` and `publish`,
-      // while the same URLs answered 200 from anywhere else -- a public
-      // statement that our own API was down. The one component that worked,
-      // `site`, is the only target this Worker does not serve, which is what
-      // pinned the cause.
-      //
-      // data-api serves no public hostname (it is reached through a service
-      // binding), so from here the fetch leaves and comes back through the
-      // real edge -- the same DNS, TLS and routing path a user's request
-      // takes, which is exactly what this lane claims to measure.
-      return runSelfHealthProbe(env as unknown as Record<string, unknown>, ctx);
     }
     if (controller?.cron !== TAO_USD_INDEX_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };

@@ -27,6 +27,8 @@
 // resync) call over HTTPS from GitHub Actions. GitHub Actions only ever needs
 // a REGISTRY_SYNC_SECRET value and the public HTTPS endpoint -- it never had,
 // and still does not have, any direct network path to the database.
+import { SELF_HEALTH_PROBE_CRON } from "./config.ts";
+import { runSelfHealthProbe } from "../src/self-health-prober.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import {
   newSpanId,
@@ -293,6 +295,34 @@ async function dispatchRegistrySyncRequest(
 }
 
 export default {
+  /**
+   * metagraphed's own uptime probe (#10194), and it runs on THIS Worker for one
+   * reason: it is the only one in the fleet with no public route at all.
+   *
+   * api.metagraph.sh is a custom domain of the `metagraphed` Worker, so probing
+   * it from inside that Worker is a self-fetch -- Cloudflare refuses, the probe
+   * came back 522 every time, and /api/v1/self-health published
+   * `verdict: "outage"` on a healthy API. The one component that worked,
+   * `site`, is the only target that Worker does not serve.
+   *
+   * A registry-sync Worker probing uptime looks unrelated, and that IS the
+   * point: the measurement has to be taken from somewhere that is not the thing
+   * being measured. This Worker is reached only through a service binding, so
+   * the fetch leaves and comes back through the real edge -- the same DNS, TLS
+   * and routing a user's request takes, which is what the lane claims to
+   * measure. It already has HYPERDRIVE for the write, and no crons of its own
+   * to collide with.
+   */
+  async scheduled(
+    controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ) {
+    if (controller?.cron !== SELF_HEALTH_PROBE_CRON) {
+      return { ok: false, skipped: true, reason: "unknown cron" };
+    }
+    return runSelfHealthProbe(env as unknown as Record<string, unknown>, ctx);
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
     // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
