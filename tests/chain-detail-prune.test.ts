@@ -294,6 +294,51 @@ describe("the Neon side of the prune (#10017)", () => {
     assert.equal(result.neon_pruned, undefined);
   });
 
+  test("a SOLE-STORE table is still pruned, with nothing reconciling it", async () => {
+    // The landmine the old gate was carrying (#10084). #10078 established that
+    // a table leaves NEON_BACKFILL_LANES exactly when Neon becomes its sole
+    // store -- so a gate reading only the backfill lanes would switch this
+    // prune off at the precise moment Neon held the only copy, and these four
+    // tables would grow without bound with no second store to notice.
+    const d1 = d1WithWindow(1, 10_000_000);
+    const seen: string[] = [];
+    const result = await pruneChainDetail(
+      {
+        METAGRAPH_HEALTH_DB: d1.binding,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        // Reconciled by NOTHING, owned outright by Neon -- the endgame state.
+        NEON_BACKFILL_LANES: "",
+        NEON_SOLE_STORE_TABLES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      {
+        sql: {
+          unsafe: async (text: string) => {
+            seen.push(text);
+            return [];
+          },
+        },
+      },
+    );
+    assert.equal(result.neon_pruned, true);
+    assert.equal(seen.length, 4);
+  });
+
+  test("neither reconciled nor owned still skips, so nothing connects for nothing", async () => {
+    const d1 = d1WithWindow(1, 10_000_000);
+    const result = await pruneChainDetail(
+      {
+        METAGRAPH_HEALTH_DB: d1.binding,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_BACKFILL_LANES: "",
+        NEON_SOLE_STORE_TABLES: "",
+      },
+      { waitUntil: () => undefined },
+    );
+    assert.equal(result.neon_pruned, undefined);
+    assert.ok((result.blocks_pruned ?? 0) > 0);
+  });
+
   test("no ctx means no Neon prune, and D1 still runs", async () => {
     // createPgSql returns its connection via waitUntil; without somewhere to
     // park the teardown the connection would leak per tick.

@@ -61,7 +61,7 @@ import {
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
-import { neonBackfillLanes } from "./neon-write.ts";
+import { neonBackfillLanes, neonOwnsTable } from "./neon-write.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -262,9 +262,22 @@ export async function pruneChainDetail(
  * already deleted by the time this runs; the worst case is Neon holding a
  * little extra until the next tick, which the next tick fixes.
  *
- * Gated on `neonBackfillLanes`: a table nothing reconciles has no Neon rows to
- * prune, and issuing the DELETE anyway would be a connection per tick for
- * nothing.
+ * THE GATE ASKS WHETHER NEON HOLDS THESE ROWS, not whether something is
+ * reconciling them (#10084). It was `neonBackfillLanes` alone, which was wrong
+ * in both directions:
+ *
+ *   * On the main Worker, where this actually runs, NEON_BACKFILL_LANES was
+ *     undefined -- `vars` are per-config -- so the set was empty and this
+ *     returned before opening a connection, every tick, forever. Neon was
+ *     measured holding 1,499 blocks BELOW D1's floor and growing.
+ *   * #10078 established that a table LEAVES the backfill lanes exactly when
+ *     Neon becomes its sole store. So the old gate would have switched the
+ *     prune off at the precise moment Neon held the only copy -- a second,
+ *     worse no-op waiting at the end of the migration.
+ *
+ * Reconciled OR solely owned both mean "Neon has rows here", which is the only
+ * question a prune needs answered. A table that is neither still costs nothing:
+ * the connection is skipped rather than opened for a DELETE matching nothing.
  */
 async function pruneChainDetailNeon(
   env: unknown,
@@ -281,7 +294,9 @@ async function pruneChainDetailNeon(
   // dropped -- a join across the seam would then find a block header with no
   // events, which reads as corruption rather than as retention.
   const lanes = neonBackfillLanes(bag);
-  if (!PRUNE_TABLES.every((table) => lanes.has(table))) return {};
+  const neonHolds = (table: string) =>
+    lanes.has(table) || neonOwnsTable(bag, table);
+  if (!PRUNE_TABLES.every(neonHolds)) return {};
   try {
     const sql = injected ?? createPgSql(hyperdrive!, ctx!);
     for (const table of PRUNE_TABLES) {

@@ -57,6 +57,34 @@
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
+    // ---------------------------------------------------------------------
+    // The D1->Neon migration flags. IDENTICAL to wrangler.data.jsonc's, and a
+    // test (tests/neon-flag-config-parity.test.ts) fails CI if they drift.
+    //
+    // WHY THIS WORKER CARRIES THEM AT ALL (#10084). `vars` are PER-CONFIG, and
+    // two Neon-gated paths run on THIS Worker rather than the data Worker:
+    //
+    //   src/chain-detail-prune.ts   the Neon half of the chain_detail prune
+    //   src/health-prober.ts        the observation family's Neon writer
+    //
+    // With the flags declared only next door, both gates read `undefined` and
+    // answered "no" permanently -- silently, because both are written to skip
+    // rather than fail. The prune never ran once: Neon was measured holding
+    // 1,499 blocks BELOW D1's floor and growing, while `chain_detail_chain_events`
+    // reached 628,615 rows against D1's 326,918. And #10071's observation writer
+    // could never activate, so adding those tables to NEON_SOLE_STORE_TABLES --
+    // the documented way to flip them -- would have been a no-op while the flag
+    // claimed otherwise.
+    //
+    // Same shape as #9466's trace rate (set in one wrangler file, unset in the
+    // others) and #10038's dispatcher (a fully-declared cutover that did
+    // nothing). Duplication is the cost of per-config vars; the parity test is
+    // what keeps it from becoming drift.
+    // ---------------------------------------------------------------------
+    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
+    "NEON_BACKFILL_LANES": "subnet_snapshots,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index,blocks_head,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events",
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily",
     // Staging drift tripwire (types-epic B, #7860): when "true", the routes
     // schemas-src/ covers (subnets, subnet-detail, health, economics,
     // subnet-stake-quote) parse their own outgoing envelope against the Zod
