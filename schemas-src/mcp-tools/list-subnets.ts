@@ -218,6 +218,24 @@ export const ListSubnetsInputSchema = z
         "Inclusive upper bound on subnet tempo; rows above it are excluded.",
       )
       .meta({ examples: [360] }),
+    // #10014: the two simplest filters the subnets collection declares, absent
+    // while thirty others were present. `min_netuid`/`max_netuid` below give a
+    // RANGE; neither expresses "these three subnets".
+    netuid: netuidSchema()
+      .optional()
+      .describe("Restrict to exactly this subnet.")
+      .meta({ examples: [64] }),
+    // A CSV membership filter on the route (csv_filters: { netuids: "netuid" }),
+    // so a STRING on the wire -- "1,7,64" -- not an array. Without it, asking
+    // for three subnets is three calls or a full scan.
+    netuids: z
+      .string()
+      .regex(/^\d+(,\d+)*$/)
+      .optional()
+      .describe(
+        "Restrict to this comma-separated list of subnet ids (`1,7,64`). One request instead of one per subnet.",
+      )
+      .meta({ examples: ["1,7,64"] }),
     min_netuid: z
       .int()
       .min(0)

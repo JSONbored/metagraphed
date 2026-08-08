@@ -9688,6 +9688,34 @@ describe("list_subnets", () => {
         },
       });
 
+    test("netuid and netuids narrow the registry (#10014)", async () => {
+      // min_netuid/max_netuid gave a RANGE; neither expressed "these three
+      // subnets", so asking for 1, 7 and 64 was three calls or a full scan.
+      // Assertions check the ROWS -- this tool filters with its own functions,
+      // not the shared engine, so a schema field alone would be accepted and
+      // silently dropped.
+      const ids = async (args: Row) =>
+        (
+          (await callTool("list_subnets", args, { deps })).body.result
+            .structuredContent.subnets as Row[]
+        ).map((r: Row) => r.netuid);
+
+      const all = await ids({});
+      assert.ok(
+        all.length >= 2,
+        "fixture must have rows for this to prove anything",
+      );
+      assert.deepEqual(await ids({ netuid: 7 }), [7]);
+      assert.deepEqual(await ids({ netuids: "0,7" }), [0, 7]);
+      // Whitespace and a trailing separator are tolerated the way a CSV param is.
+      assert.deepEqual(await ids({ netuids: " 7 , 0 " }), [0, 7]);
+      // Both given: they intersect rather than either winning.
+      assert.deepEqual(await ids({ netuid: 7, netuids: "0,7" }), [7]);
+      assert.deepEqual(await ids({ netuid: 7, netuids: "0" }), []);
+      // The compatibility floor.
+      assert.deepEqual(await ids({}), all);
+    });
+
     test("an out-of-enum inclusion errors instead of returning an empty page", async () => {
       const res = await callTool(
         "list_subnets",
@@ -14184,6 +14212,49 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.health_source, "unavailable");
     assert.equal(out.global.surface_count, 0);
     assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_network_health narrows by netuid and status (#10014)", async () => {
+    // This took NO arguments at all and returned every subnet's health row.
+    const kv = {
+      generated_at: "2026-06-11T00:00:00.000Z",
+      last_run_at: FRESH_RUN,
+      health_source: "live-cron-prober",
+      summary: {
+        surface_count: 3,
+        status_counts: { ok: 1, degraded: 0, failed: 2, unknown: 0 },
+      },
+      subnets: [
+        { netuid: 1, status: "ok", surface_count: 1, ok_count: 1 },
+        { netuid: 2, status: "failed", surface_count: 1, ok_count: 0 },
+        { netuid: 3, status: "failed", surface_count: 1, ok_count: 0 },
+      ],
+    };
+    const ids = async (args: Row) => {
+      const res = await callTool("get_network_health", args, {
+        deps: makeDeps({}, { "health:current": kv }),
+      });
+      assert.equal(res.body.result.isError, false, JSON.stringify(args));
+      return (res.body.result.structuredContent.subnets as Row[]).map(
+        (r: Row) => r.netuid,
+      );
+    };
+    // No early-out on an empty result: a test that returns when the fixture
+    // produced nothing asserts nothing, and would keep passing if the filter
+    // silently dropped every row. Fail loudly instead.
+    const all = await ids({});
+    assert.deepEqual(all, [1, 2, 3], "the KV overlay must reach the tool");
+    assert.deepEqual(await ids({ status: "failed" }), [2, 3]);
+    assert.deepEqual(await ids({ netuid: 2 }), [2]);
+  });
+
+  test("get_network_health refuses a status the health model does not define", async () => {
+    const res = await callTool("get_network_health", { status: "exploded" });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
   });
 
   test("get_network_health overlays the live KV rollup", async () => {
