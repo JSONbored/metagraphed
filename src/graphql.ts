@@ -1918,7 +1918,12 @@ function validatorDetailNode(data: Row, hotkey: string) {
 // Non-Null-field error.
 function accountSummaryNode(data: Row, ss58: string) {
   return {
+    schema_version: data.schema_version ?? 1,
     ss58: data.ss58 ?? ss58,
+    // The entity labels the artifact carries (name/category/url/source_urls).
+    // Enumerating the return shape dropped them, so GraphQL could not tell a
+    // client that a coldkey is a known exchange while REST could.
+    labels: data.labels ?? null,
     event_count: data.event_count ?? 0,
     subnet_count: data.subnet_count ?? 0,
     event_scan_capped: data.event_scan_capped === true,
@@ -2624,6 +2629,7 @@ const rootValue = {
         buildSubnetDeregistrations(null, netuid, { window: windowParam }),
       );
     return {
+      events: data.events ?? null,
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       window: data.window ?? windowParam,
@@ -3891,6 +3897,9 @@ const rootValue = {
       )) as Row | null) ??
       buildSubnetWeightSetters([], null, netuid, { window: windowParam });
     return {
+      tempo: data.tempo ?? null,
+      overdue_tempo_multiple: data.overdue_tempo_multiple ?? null,
+      overdue_setter_count: data.overdue_setter_count ?? null,
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       window: data.window ?? windowParam,
@@ -5209,6 +5218,7 @@ const rootValue = {
         ),
       }));
     return {
+      min_incident_samples: data.min_incident_samples ?? null,
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       window: data.window ?? label,
@@ -5731,6 +5741,8 @@ const rootValue = {
       )) as Row | null) ??
       buildRuntimeVersionHistory([]);
     return {
+      coverage_complete: data.coverage_complete ?? null,
+      coverage_gaps: data.coverage_gaps ?? null,
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
       transition_count: data.transition_count ?? 0,
@@ -5754,6 +5766,7 @@ const rootValue = {
       ((await loadBlockColdTier(context.env, ref)) as Row | null) ??
       buildBlock(undefined, ref);
     return {
+      schema_version: data.schema_version ?? null,
       ref: data.ref ?? ref,
       block: data.block ?? null,
       prev_block_number: data.prev_block_number ?? null,
@@ -6080,6 +6093,10 @@ const rootValue = {
         offset: offset ?? undefined,
       });
     return {
+      concentration_complete: data.concentration_complete ?? null,
+      top_nominator_share: data.top_nominator_share ?? null,
+      top5_nominator_share: data.top5_nominator_share ?? null,
+      nominator_gini: data.nominator_gini ?? null,
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
       window: data.window ?? requestedWindow,
@@ -6149,6 +6166,11 @@ const rootValue = {
         netuid: netuid ?? null,
       });
     return {
+      take_u16: data.take_u16 ?? null,
+      take_last_changed_date: data.take_last_changed_date ?? null,
+      next_take_change_eligible_date:
+        data.next_take_change_eligible_date ?? null,
+      take_change_observable: data.take_change_observable ?? null,
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
       window: data.window ?? label,
@@ -6480,6 +6502,14 @@ const rootValue = {
       position_count: data.position_count ?? 0,
       total_stake_alpha: data.total_stake_alpha ?? 0,
       positions: data.positions || [],
+      // The caveat that makes the zero readable. unavailableAccountPositions
+      // sets this (`positions_unpriceable` / `tier_unavailable` /
+      // `snapshot_predates_stake_activity`), and enumerating the return shape
+      // dropped it -- so GraphQL served `position_count: 0` with nothing to
+      // distinguish "holds nothing" from "we could not price what it holds".
+      // REST and MCP both carry it (#9803); this is the same fix for the third
+      // surface.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -9353,6 +9383,7 @@ const rootValue = {
       `/api/v1/subnets/${netuid}/conviction`,
     );
     return {
+      field_sources: data?.field_sources ?? null,
       schema_version: data?.schema_version ?? 1,
       netuid,
       queried_at_block: data?.queried_at_block ?? null,
@@ -9379,6 +9410,8 @@ const rootValue = {
       `/api/v1/subnets/${netuid}/lease/history`,
     );
     return {
+      event_pallet: data?.event_pallet ?? null,
+      event_kinds: data?.event_kinds ?? null,
       schema_version: data?.schema_version ?? 1,
       netuid,
       count: data?.count ?? 0,

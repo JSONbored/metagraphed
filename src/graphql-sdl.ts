@@ -1183,6 +1183,17 @@ export const SDL = /* GraphQL */ `
     alpha_out_pool: Float
     owner_coldkey: String
     owner_hotkey: String
+    alpha_in_emission: Float
+    alpha_out_emission: Float
+    block: Int
+    emission_enabled: Boolean
+    excess_tao: Float
+    first_emission_block: Int
+    miner_burned_fraction: Float
+    subtoken_enabled: Boolean
+    moving_price_pinned: Float
+    registration_allowed_pinned: Boolean
+    tao_in_emission_tao: Float
   }
 
   type EconomicsTrends {
@@ -1218,6 +1229,8 @@ export const SDL = /* GraphQL */ `
     verification: EmissionPipelineVerification!
     "Per-field { kind, storage } map: every value is labelled measured (with the storage item it came from) or reconstructed (our arithmetic). ADR 0023 decision 5."
     field_sources: JSON!
+    matched_subnet_count: Int
+    returned_subnet_count: Int
   }
 
   "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360."
@@ -1559,6 +1572,10 @@ export const SDL = /* GraphQL */ `
     window_registrations: Int!
     "Of those, the ones with no observed previous holder."
     unattributed_registrations: Int!
+    """
+    True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least \`unattributed_registrations\`. Treat the value as 'at least this many', never as a total.
+    """
+    is_lower_bound: Boolean
   }
 
   type ChainAxonRemovals {
@@ -1656,6 +1673,7 @@ export const SDL = /* GraphQL */ `
     deregistrations: Int!
     "Null when distinct_deregistered_hotkeys is 0 (no defined intensity without hotkeys)."
     deregistrations_per_hotkey: Float
+    tenure: DeregistrationTenure
   }
 
   "Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard."
@@ -1676,6 +1694,7 @@ export const SDL = /* GraphQL */ `
     distinct_deregistered_hotkeys: Int!
     deregistrations: Int!
     deregistrations_per_hotkey: Float
+    tenure: DeregistrationTenure
   }
 
   type ChainPrometheus {
@@ -2425,6 +2444,8 @@ export const SDL = /* GraphQL */ `
     artifacts: JSON
     subnets: JSON
     coverage_delta: JSON
+    contract_version: String
+    schema_version: Int
   }
 
   type Contracts {
@@ -2454,6 +2475,16 @@ export const SDL = /* GraphQL */ `
     artifacts: JSON
     coverage: JSON
     artifact_budget_summary: JSON
+    notes: JSON
+    full_artifact_count: Int
+    full_artifact_size_bytes: Int
+    storage_tier_counts: JSON
+    storage_tier_size_bytes: JSON
+    artifact_budgets: [BuildArtifactBudget!]
+    candidate_count: Int
+    endpoint_count: Int
+    profile_count: Int
+    public_contract: BuildPublicContract
   }
 
   "One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled."
@@ -2490,6 +2521,8 @@ export const SDL = /* GraphQL */ `
     "Components with data. Zero means the poller hasn't written anything yet."
     measured_component_count: Int!
     observed_at: String
+    lanes: [SelfHealthLane!]
+    stale_lane_count: Int
   }
 
   type HealthHistory {
@@ -2863,6 +2896,7 @@ export const SDL = /* GraphQL */ `
     deregistrations_per_hotkey: Float
     derivation: DeregistrationDerivation
     degraded: DegradedInfo
+    events: [SubnetDeregistrationEvent!]
   }
 
   "One TAO/USD reading."
@@ -3317,6 +3351,9 @@ export const SDL = /* GraphQL */ `
     weight_sets: Int!
     setter_count: Int!
     setters: [SubnetWeightSetter!]!
+    tempo: Int
+    overdue_tempo_multiple: Int
+    overdue_setter_count: Int
   }
 
   "One validator's weight-setting activity within one subnet over the lookback window."
@@ -3328,6 +3365,12 @@ export const SDL = /* GraphQL */ `
     share: Float
     first_set_at: String
     last_set_at: String
+    seconds_since_last_set: Int
+    tempos_since_last_set: Float
+    """
+    Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time').
+    """
+    overdue: Boolean
   }
 
   "One UID's emission-per-stake yield within a subnet's current metagraph snapshot."
@@ -3338,6 +3381,7 @@ export const SDL = /* GraphQL */ `
     stake_tao: Float
     emission_tao: Float
     yield: Float
+    vs_median: String
   }
 
   type SubnetYield {
@@ -3385,6 +3429,10 @@ export const SDL = /* GraphQL */ `
     "Total distinct nominating coldkeys in the window, before limit/offset paging."
     nominator_count: Int!
     nominators: [Nominator!]!
+    concentration_complete: Boolean
+    top_nominator_share: Float
+    top5_nominator_share: Float
+    nominator_gini: Float
   }
 
   "One nominating coldkey's staking activity toward a validator within the window."
@@ -3612,6 +3660,11 @@ export const SDL = /* GraphQL */ `
     health_source: String
     pool_eligible: Boolean
     user_reported: Boolean
+    incident_count: Int
+    downtime_ms: Int
+    transient_failure_count: Int
+    transient_failed_samples: Int
+    incidents: [EndpointIncidentWindow!]
   }
 
   "One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope."
@@ -3623,6 +3676,7 @@ export const SDL = /* GraphQL */ `
     source: String
     "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows)."
     surfaces: JSON!
+    min_incident_samples: Int
   }
 
   type SearchDocumentList {
@@ -3785,6 +3839,10 @@ export const SDL = /* GraphQL */ `
     stake_threshold_units: Float
     tao_weight: Float
     root_tao_to_clear_threshold: Float
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor."
@@ -3811,6 +3869,10 @@ export const SDL = /* GraphQL */ `
     window: String!
     "Newest first."
     points: [ValidatorEconomicsHistoryPoint!]!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   type SubnetValidatorEconomics {
@@ -3846,6 +3908,10 @@ export const SDL = /* GraphQL */ `
     model_agreement: ValidatorPermitModelAgreement
     "Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'."
     degraded_reason: String
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -4117,6 +4183,10 @@ export const SDL = /* GraphQL */ `
     king: JSON
     count: Int!
     leaderboard: [JSON!]!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history."
@@ -4125,6 +4195,8 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     count: Int!
     lease_events: [JSON!]!
+    event_pallet: String
+    event_kinds: [String!]
   }
 
   "Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease."
@@ -4134,6 +4206,10 @@ export const SDL = /* GraphQL */ `
     leased: Boolean
     lease: JSON
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance."
@@ -4142,6 +4218,10 @@ export const SDL = /* GraphQL */ `
     ss58: String!
     balance_tao: Float
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "Per-account RootClaimTypeEnum (#7229): Swap / Keep / KeepSubnets."
@@ -4171,6 +4251,10 @@ export const SDL = /* GraphQL */ `
     claim_type: RootClaimType
     hotkeys: [RootClaimHotkey!]
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children."
@@ -4179,6 +4263,10 @@ export const SDL = /* GraphQL */ `
     account: String!
     subnets: [AccountChildSubnet!]
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "One subnet's child-hotkey delegation entries in an account's live children graph."
@@ -4200,6 +4288,10 @@ export const SDL = /* GraphQL */ `
     account: String!
     subnets: [AccountParentSubnet!]
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "One subnet's parent-hotkey delegation entries in an account's live parents graph."
@@ -4259,6 +4351,10 @@ export const SDL = /* GraphQL */ `
     h160: String!
     ss58: String
     queried_at: String!
+    """
+    Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
+    """
+    field_sources: JSON
   }
 
   "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary."
@@ -4285,6 +4381,8 @@ export const SDL = /* GraphQL */ `
     current_spec_version: Int
     coverage_from_block: Int
     coverage_from_at: String
+    coverage_complete: Boolean
+    coverage_gaps: [RuntimeCoverageGap!]
   }
 
   "One runtime spec-version's first-seen block in the transition timeline."
@@ -4366,6 +4464,7 @@ export const SDL = /* GraphQL */ `
     prev_block_number: Int
     "Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve."
     next_block_number: Int
+    schema_version: Int
   }
 
   type ValidatorList {
@@ -4414,6 +4513,7 @@ export const SDL = /* GraphQL */ `
     block_number: Int
     "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet."
     subnets: [ValidatorSubnet!]!
+    schema_version: Int
   }
 
   "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history."
@@ -4425,6 +4525,13 @@ export const SDL = /* GraphQL */ `
     netuid: Int
     point_count: Int!
     points: [ValidatorHistoryPoint!]!
+    take_u16: Int
+    take_last_changed_date: String
+    """
+    take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'.
+    """
+    next_take_change_eligible_date: String
+    take_change_observable: Boolean
   }
 
   "One day's rollup for a validator hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too."
@@ -4448,6 +4555,8 @@ export const SDL = /* GraphQL */ `
     "Whether the permit was held that day. Scoped queries report a lost permit rather than dropping the day."
     validator_permit: Boolean
     rewards_per_1000_alpha: Float
+    stake_share: Float
+    dividend_efficiency: Float
   }
 
   "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot."
@@ -4485,6 +4594,7 @@ export const SDL = /* GraphQL */ `
     axon: String
     "Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture."
     take: Float
+    featured: Boolean
   }
 
   "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history."
@@ -4519,6 +4629,9 @@ export const SDL = /* GraphQL */ `
     is_immunity_period: Boolean
     axon: String
     take: Float
+    immunity_expires_at_block: Int
+    immunity_expires_at: String
+    featured: Boolean
   }
 
   type ValidatorSubnet {
@@ -4527,6 +4640,19 @@ export const SDL = /* GraphQL */ `
     stake_tao: Float
     emission_tao: Float
     validator_trust: Float
+    hotkey: String
+    coldkey: String
+    active: Boolean
+    validator_permit: Boolean
+    rank: Float
+    trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean
+    axon: String
+    take: Float
   }
 
   "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey."
@@ -4591,6 +4717,8 @@ export const SDL = /* GraphQL */ `
     registrations: [AccountRegistration!]!
     recent_events: [AccountEvent!]!
     activity: AccountActivity!
+    schema_version: Int
+    labels: [AccountLabel!]
   }
 
   type AccountEventKind {
@@ -4845,6 +4973,8 @@ export const SDL = /* GraphQL */ `
     alpha_amount: Float
     observed_at: String
     extrinsic_index: Int
+    price_at_tx: Float
+    price_basis: String
   }
 
   "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent."
@@ -4952,6 +5082,7 @@ export const SDL = /* GraphQL */ `
     category: String
     notes: String
     source_urls: [String!]!
+    url: String
   }
 
   "One SubnetOwnerChanged transfer tying this coldkey to a subnet, either as the gaining or losing side, newest first."
@@ -5077,6 +5208,7 @@ export const SDL = /* GraphQL */ `
     "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure."
     total_stake_alpha: Float!
     positions: [NominatorPosition!]!
+    degraded: AccountPositionsDegraded
   }
 
   "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid."
@@ -5142,5 +5274,83 @@ export const SDL = /* GraphQL */ `
     netuid: Int
     "account_events only"
     amount_tao: Float
+  }
+
+  type SubnetDeregistrationEvent {
+    uid: Int!
+    hotkey: String!
+    replaced_by_hotkey: String!
+    block_number: Int!
+    observed_at: String!
+    tenure_blocks: Int!
+  }
+
+  type BuildArtifactBudget {
+    path: String!
+    size_bytes: Int!
+    warn_bytes: Int!
+    fail_bytes: Int!
+    status: String!
+  }
+
+  type BuildPublicContract {
+    version: String!
+    url: String!
+  }
+
+  type SelfHealthLane {
+    lane: String!
+    verdict: String!
+    age_ms: Int!
+    detail: String!
+    checked_at: String!
+  }
+
+  type RuntimeCoverageGap {
+    after_spec_version: Int!
+    before_spec_version: Int!
+    after_block: Int!
+    before_block: Int!
+    block_span: Int!
+  }
+
+  type AccountLabel {
+    name: String
+    category: String
+    notes: String
+    url: String
+    source_urls: [String!]
+  }
+
+  type AccountPositionsDegraded {
+    """
+    \`tier_unavailable\`: every tier declined, so this zero is a read failure. \`snapshot_predates_stake_activity\`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so \`positions: 0\` is a claim the ledger is not entitled to make. \`positions_unpriceable\`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from \`positions\` and from \`total_stake_alpha\` rather than reported with a fabricated zero, so the total understates the real holding.
+    """
+    reason: String!
+    """
+    The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for.
+    """
+    snapshot_captured_at: String!
+    """
+    The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero.
+    """
+    latest_stake_event_at: String!
+  }
+
+  type EndpointIncidentWindow {
+    started_at: Int!
+    ended_at: Int!
+    duration_ms: Int!
+    failed_samples: Int!
+  }
+
+  type DeregistrationTenure {
+    sample_count: Int!
+    median_blocks: Int!
+    p10_blocks: Int!
+    p90_blocks: Int!
+    min_blocks: Int!
+    max_blocks: Int!
+    censored: Boolean!
   }
 `;

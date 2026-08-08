@@ -24430,3 +24430,275 @@ describe("graphql — event-stream honesty (#9307)", () => {
     },
   );
 });
+
+// Every field src/graphql.ts started forwarding for #10214, driven through the
+// resolver with the artifact CARRYING it. The cold-store tests above already
+// cover the absent side of each `??`; without these the populated side is a
+// line the suite never runs, so a forwarding bug would ship green.
+describe("graphql — component fields the resolvers used to drop (#10214)", () => {
+  const api = (payload: Row, extra: Row = {}) =>
+    ({
+      DATA_API: { fetch: async () => Response.json(payload) },
+      ...extra,
+    }) as unknown as Env;
+  const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
+  const events = { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" };
+  const blocks = { METAGRAPH_BLOCKS_SOURCE: "postgres" };
+  const health = { METAGRAPH_HEALTH_SOURCE: "postgres" };
+  const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
+
+  test("subnet_conviction forwards field_sources", async () => {
+    const { body } = await gql(
+      "{ subnet_conviction(netuid: 4) { field_sources } }",
+      api({ schema_version: 1, netuid: 4, field_sources: { king: "chain" } }),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_conviction.field_sources, {
+      king: "chain",
+    });
+  });
+
+  test("subnet_lease_history forwards event_pallet and event_kinds", async () => {
+    const { body } = await gql(
+      "{ subnet_lease_history(netuid: 4) { event_pallet event_kinds } }",
+      api({
+        schema_version: 1,
+        netuid: 4,
+        event_pallet: "SubtensorModule",
+        event_kinds: ["LeaseCreated"],
+      }),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      body.data.subnet_lease_history.event_pallet,
+      "SubtensorModule",
+    );
+    assert.deepEqual(body.data.subnet_lease_history.event_kinds, [
+      "LeaseCreated",
+    ]);
+  });
+
+  test("runtime forwards the coverage completeness marker and its gaps", async () => {
+    const { body } = await gql(
+      `{ runtime {
+          coverage_complete
+          coverage_gaps { after_spec_version before_spec_version after_block before_block block_span }
+        } }`,
+      api(
+        {
+          schema_version: 1,
+          transitions: [],
+          transition_count: 0,
+          coverage_complete: false,
+          coverage_gaps: [
+            {
+              after_spec_version: 200,
+              before_spec_version: 205,
+              after_block: 100,
+              before_block: 900,
+              block_span: 800,
+            },
+          ],
+        },
+        blocks,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.runtime.coverage_complete, false);
+    assert.equal(body.data.runtime.coverage_gaps[0].block_span, 800);
+  });
+
+  test("subnet_weight_setters forwards tempo and the overdue counters", async () => {
+    const { body } = await gql(
+      "{ subnet_weight_setters(netuid: 5) { tempo overdue_tempo_multiple overdue_setter_count } }",
+      api(
+        {
+          schema_version: 1,
+          netuid: 5,
+          window: "7d",
+          setters: [],
+          tempo: 360,
+          overdue_tempo_multiple: 3,
+          overdue_setter_count: 2,
+        },
+        events,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_weight_setters, {
+      tempo: 360,
+      overdue_tempo_multiple: 3,
+      overdue_setter_count: 2,
+    });
+  });
+
+  test("subnet_health_incidents forwards min_incident_samples", async () => {
+    const { body } = await gql(
+      "{ subnet_health_incidents(netuid: 5) { min_incident_samples } }",
+      api(
+        {
+          schema_version: 1,
+          netuid: 5,
+          incidents: [],
+          min_incident_samples: 3,
+        },
+        health,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_health_incidents.min_incident_samples, 3);
+  });
+
+  test("subnet_deregistrations forwards the per-UID events", async () => {
+    const { body } = await gql(
+      `{ subnet_deregistrations(netuid: 5) {
+          events { uid hotkey replaced_by_hotkey block_number observed_at tenure_blocks }
+        } }`,
+      api(
+        {
+          schema_version: 1,
+          netuid: 5,
+          events: [
+            {
+              uid: 3,
+              hotkey: "5Gone",
+              replaced_by_hotkey: "5New",
+              block_number: 900,
+              observed_at: "2026-07-01T00:00:00.000Z",
+              tenure_blocks: 120,
+            },
+          ],
+        },
+        events,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    const [event] = body.data.subnet_deregistrations.events;
+    assert.equal(event.uid, 3);
+    assert.equal(event.tenure_blocks, 120);
+  });
+
+  test("validator_nominators forwards the concentration marker and its shares", async () => {
+    const { body } = await gql(
+      `{ validator_nominators(hotkey: "5Validator") {
+          concentration_complete nominator_gini top_nominator_share top5_nominator_share
+        } }`,
+      // This tier answers in the REST `{ data, generatedAt }` envelope, unlike
+      // the flat bodies the resolvers above read.
+      api(
+        {
+          data: {
+            schema_version: 1,
+            hotkey: "5Validator",
+            nominators: [],
+            concentration_complete: false,
+            nominator_gini: 0.42,
+            top_nominator_share: 0.3,
+            top5_nominator_share: 0.6,
+          },
+          generatedAt: "2026-07-01T00:00:00.000Z",
+        },
+        events,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator_nominators, {
+      concentration_complete: false,
+      nominator_gini: 0.42,
+      top_nominator_share: 0.3,
+      top5_nominator_share: 0.6,
+    });
+  });
+
+  test("validator_history forwards the take fields", async () => {
+    const { body } = await gql(
+      `{ validator_history(hotkey: "5Validator") {
+          take_u16 take_last_changed_date next_take_change_eligible_date take_change_observable
+        } }`,
+      api(
+        {
+          schema_version: 1,
+          hotkey: "5Validator",
+          window: "90d",
+          point_count: 0,
+          points: [],
+          take_u16: 11796,
+          take_last_changed_date: "2026-06-01",
+          next_take_change_eligible_date: "2026-07-01",
+          take_change_observable: true,
+        },
+        neurons,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.validator_history, {
+      take_u16: 11796,
+      take_last_changed_date: "2026-06-01",
+      next_take_change_eligible_date: "2026-07-01",
+      take_change_observable: true,
+    });
+  });
+
+  test("account_positions forwards the degraded marker behind a zero", async () => {
+    const { body } = await gql(
+      `{ account_positions(ss58: "${SS58}") {
+          position_count degraded { reason snapshot_captured_at latest_stake_event_at }
+        } }`,
+      api(
+        {
+          schema_version: 1,
+          ss58: SS58,
+          position_count: 0,
+          total_stake_alpha: 0,
+          positions: [],
+          degraded: {
+            reason: "positions_unpriceable",
+            snapshot_captured_at: "2026-07-01T00:00:00.000Z",
+            latest_stake_event_at: "2026-07-02T00:00:00.000Z",
+          },
+        },
+        neurons,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    // The whole point: a zero a client can tell apart from "holds nothing".
+    assert.equal(body.data.account_positions.position_count, 0);
+    assert.equal(
+      body.data.account_positions.degraded.reason,
+      "positions_unpriceable",
+    );
+  });
+
+  test("account forwards schema_version and the entity labels", async () => {
+    const { body } = await gql(
+      `{ account(ss58: "${SS58}") {
+          schema_version labels { name category url source_urls }
+        } }`,
+      api(
+        {
+          schema_version: 1,
+          ss58: SS58,
+          event_count: 0,
+          labels: [
+            {
+              name: "Example Exchange",
+              category: "exchange",
+              notes: null,
+              url: "https://example.com",
+              source_urls: ["https://example.com/proof"],
+            },
+          ],
+        },
+        events,
+      ),
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.account.schema_version, 1);
+    assert.deepEqual(body.data.account.labels[0], {
+      name: "Example Exchange",
+      category: "exchange",
+      url: "https://example.com",
+      source_urls: ["https://example.com/proof"],
+    });
+  });
+});
