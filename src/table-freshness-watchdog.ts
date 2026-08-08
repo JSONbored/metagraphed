@@ -62,31 +62,31 @@ export interface FreshnessExpectation {
 export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // --- live capture: minutes old in steady state -------------------------
   chain_detail_blocks: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "firehose poller, continuous",
   },
   chain_detail_extrinsics: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "firehose poller, continuous",
   },
   chain_detail_chain_events: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "firehose poller, continuous",
   },
   chain_detail_account_events: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "firehose poller, continuous",
   },
   blocks_head: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "head tracker",
@@ -98,13 +98,21 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "RAW_CAPTURE_CRON every 5 min",
   },
   raw_capture_state_v2: {
-    column: "updated_at",
+    // EXCLUDED because the table does not exist in production. It is declared
+    // in migrations/d1/0013_raw_capture_network.sql and was never applied (17
+    // migrations later), which #9867 tracks. Sweeping it made its whole batch
+    // throw, and at FRESHNESS_BATCH = 4 that blinded three healthy tables with
+    // it. Left declared rather than deleted so the map still accounts for
+    // every table migrations/d1 names -- the invariant
+    // tests/table-freshness-watchdog.test.ts asserts.
+    column: "",
     kind: "ms",
     maxAgeMs: null,
-    reason: "successor table, not yet cut over",
+    reason:
+      "declared in migrations/d1/0013 but never applied to production (#9867)",
   },
   tao_usd_index: {
-    column: "captured_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: 2 * HOUR,
     reason: "TAO_USD_INDEX_CRON every minute",
@@ -224,7 +232,7 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "surface prober",
   },
   surface_status: {
-    column: "checked_at",
+    column: "updated_at",
     kind: "ms",
     maxAgeMs: 4 * HOUR,
     reason: "written with surface_checks",
@@ -291,21 +299,21 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // GitHub Actions lane -- and suppressing it here to keep the lane green
   // would be the exact thing a watchdog must never do.
   subnets: {
-    column: "captured_at",
+    column: "updated_at",
     kind: "ms",
     maxAgeMs: 48 * HOUR,
     reason: "registry sync on merge",
     knownIssue: "#9779",
   },
   surfaces: {
-    column: "captured_at",
+    column: "updated_at",
     kind: "ms",
     maxAgeMs: 48 * HOUR,
     reason: "registry sync on merge",
     knownIssue: "#9779",
   },
   providers: {
-    column: "captured_at",
+    column: "updated_at",
     kind: "ms",
     maxAgeMs: 48 * HOUR,
     reason: "registry sync on merge",
@@ -375,7 +383,7 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     reason: "no timestamp column",
   },
   emission_flow_watch: {
-    column: "updated_at",
+    column: "observed_at",
     kind: "ms",
     maxAgeMs: null,
     reason: "a watch list, edited by hand",
@@ -522,13 +530,9 @@ export async function runTableFreshnessWatchdog(
     .sort();
 
   const newest = new Map<string, number>();
-  let batches = 0;
-  let failed = 0;
-  for (let i = 0; i < tables.length; i += FRESHNESS_BATCH) {
-    const batch = tables.slice(i, i + FRESHNESS_BATCH);
-    batches += 1;
+  const readBatch = async (group: string[]): Promise<boolean> => {
     try {
-      const result = await db?.prepare(freshnessSql(batch, spec)).all();
+      const result = await db?.prepare(freshnessSql(group, spec)).all();
       if (!result) throw new Error("no result");
       for (const [table, at] of parseFreshnessRows(
         result.results ?? [],
@@ -536,12 +540,32 @@ export async function runTableFreshnessWatchdog(
       )) {
         newest.set(table, at);
       }
+      return true;
     } catch {
-      failed += 1;
+      return false;
+    }
+  };
+
+  // Tables the sweep could not read, BY NAME. #9866 counted failed BATCHES,
+  // which was both imprecise (one bad table condemned four) and unactionable
+  // ("7 of 12 batches unreadable" names nothing to go and fix).
+  const unreadable: string[] = [];
+  for (let i = 0; i < tables.length; i += FRESHNESS_BATCH) {
+    const batch = tables.slice(i, i + FRESHNESS_BATCH);
+    if (await readBatch(batch)) continue;
+    // ONE bad table used to cost its whole batch. The sweep is a single UNION
+    // per batch, so a table that does not exist (or whose column does not)
+    // makes the statement throw and takes its neighbours with it -- which is
+    // how 12 bad entries blinded 7 of 12 batches, 58% of the estate. Retrying
+    // the batch one table at a time costs at most FRESHNESS_BATCH extra round
+    // trips on a path that should be empty, and localises the loss to the
+    // table actually at fault.
+    for (const table of batch) {
+      if (!(await readBatch([table]))) unreadable.push(table);
     }
   }
 
-  if (batches > 0 && failed === batches) {
+  if (tables.length > 0 && unreadable.length === tables.length) {
     await recordLaneVerdict(laneDb, {
       lane: TABLE_FRESHNESS_LANE,
       verdict: "unknown",
@@ -553,13 +577,41 @@ export async function runTableFreshnessWatchdog(
   }
 
   const stale = staleTables(newest, now(), spec);
+  // #9866: an unreadable table must reach the VERDICT, not just the detail
+  // string. It used to reach only the prose, so a sweep that read 5 of 12
+  // batches still published `ok` -- "every table is within its expected age |
+  // 7 of 12 batches unreadable" -- and lane-alarm keys on the verdict, so
+  // nothing fired. 58% of the estate was unchecked and the lane called it
+  // healthy, including the frozen registry cluster this watchdog was built
+  // (#9786) to catch.
+  //
+  // Three outcomes, in priority order:
+  //   stale   - we found a real breach. That is a finding, and it outranks an
+  //             incomplete sweep: something IS wrong and the detail says what.
+  //   unknown - nothing measured looks stale, but the sweep did not establish
+  //             that every table is fresh -- either because a table could not
+  //             be read, or because NOTHING was read (D1 can answer without a
+  //             `results` key at all, which the `?? []` absorbs without
+  //             throwing; absorbing the crash must not also manufacture a
+  //             green).
+  //   ok      - a complete sweep, over at least one table, with nothing stale.
+  //             The only state that has earned the word.
+  const measuredNothing = tables.length > 0 && newest.size === 0;
+  const verdict =
+    stale.length > 0
+      ? "stale"
+      : unreadable.length > 0 || measuredNothing
+        ? "unknown"
+        : ("ok" as const);
   await recordLaneVerdict(laneDb, {
     lane: TABLE_FRESHNESS_LANE,
-    verdict: stale.length === 0 ? "ok" : "stale",
+    verdict,
     age_ms: stale.length === 0 ? null : stale[0].ageMs,
     detail:
       describeStaleTables(stale) +
-      (failed > 0 ? ` | ${failed} of ${batches} batches unreadable` : ""),
+      (unreadable.length > 0
+        ? ` | ${unreadable.length} unreadable: ${unreadable.slice(0, 6).join(", ")}`
+        : ""),
     checked_at: now(),
   });
   return { attempted: true, stale, checked: newest.size };
