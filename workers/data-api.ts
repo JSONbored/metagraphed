@@ -8270,20 +8270,29 @@ export default {
             return result;
           },
           "account-balances": async (rows, pass) => {
-            const result = await writeAccountBalancesToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeAccountBalancesToD1
-              >[0],
-              rows,
-              pass,
-            );
-            // THE LANE'S OTHER WRITER, mirrored here as well as on the
-            // HTTP path.
+            // The ONLY writer for this lane -- the HTTP route enqueues and
+            // never writes inline, so there is no second path to keep in step.
+            const neonOwns = neonOwnsLedger(env, "account-balances");
+            const result = neonOwns
+              ? { statements: 0 }
+              : await writeAccountBalancesToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeAccountBalancesToD1
+                  >[0],
+                  rows,
+                  pass,
+                );
+            // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 takes it and
+            // the mirror did not, so D1 got a completeness tally and Neon got
+            // none -- account_balances_passes is empty there, and this lane was
+            // about to become the only writer of it.
             await mirrorLedgerToNeon(
               env as unknown as Record<string, unknown>,
               ctx,
               "account-balances",
               rows,
+              {},
+              pass,
             );
             return result;
           }, // Redoes both derivations from THIS message's rows, which is sound

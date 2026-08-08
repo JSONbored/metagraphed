@@ -330,3 +330,25 @@ test("the UNFILTERED form is left alone -- it has its type context", () => {
   assert.doesNotMatch(sql, /::/);
   assert.match(sql, /VALUES \(\$1/);
 });
+
+// --- account-balances now declares a pass table (#10124) --------------------
+test("account-balances writes its tally, like the other three lanes", async () => {
+  // It did not, and nothing failed: writeAccountBalancesToD1 takes the pass and
+  // writes D1's tally itself, while mirrorLedgerToNeon skips any lane absent
+  // from PASS_TABLES -- silently, because a lane with no pass table is a
+  // legitimate state. Neon's account_balances_passes sat at ZERO rows while
+  // D1's filled normally, and this lane was about to become its only writer.
+  const sql = fakeSql();
+  await mirrorLedgerToNeon(
+    { NEON_DUAL_WRITE_LANES: "account-balances" },
+    { waitUntil: () => undefined },
+    "account-balances",
+    [{ ss58: "5A", free: 1, reserved: 0, captured_at: 9 }],
+    { sql, laneHealthDb: null },
+    { expectedRows: 1, receivedRows: 1, capturedAt: 9, nowMs: NOW },
+  );
+  assert.ok(
+    sql.calls.some((c) => /INSERT INTO account_balances_passes/.test(c.text)),
+    `no tally written; statements were: ${sql.calls.map((c) => c.text).join(" | ")}`,
+  );
+});

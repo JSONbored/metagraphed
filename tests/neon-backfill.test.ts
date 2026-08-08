@@ -417,10 +417,17 @@ describe("the deployed wiring", () => {
     // "the mirror covers it" is a claim about the PRODUCER, not the table
     // shape, and the two producers behave differently -- measured in D1 on
     // 2026-08-08 rather than assumed.
-    const named =
-      /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1]?.split(",") ??
-      [];
-    assert.ok(named.length > 0, "no backfill lanes named");
+    const named = (
+      /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
+    )
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    // NO FLOOR. An EMPTY list is the migration's end state, not a
+    // misconfiguration: every table is either solely Neon's or gone, and there
+    // is nothing left to reconcile. Asserting `length > 0` made the last flip
+    // fail with `" has no plan"` -- an empty string from splitting "" -- which
+    // reads as a missing plan rather than as an empty lane list.
 
     // Mirror lanes are hyphenated; the tables they write are underscored.
     const mirrored = new Set(
