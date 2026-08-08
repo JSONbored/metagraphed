@@ -32,7 +32,11 @@
 // ux_surface_failure_daily_key is already `(day, netuid, kind, classification)
 // NULLS NOT DISTINCT`, the native form of the expression-index trick D1 needed
 // because SQLite treats NULLs as distinct in a unique constraint.
-import type { PassTallySql } from "./pass-completeness.ts";
+/** The runner shape createPgSql hands out. Declared here rather than imported
+ * so this module depends on the SHAPE and not on another lane's file. */
+export interface ObservationsSql {
+  unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
 
 type Row = Record<string, unknown>;
 
@@ -88,7 +92,7 @@ const LATENCY_COLUMNS = [
 ].join(",\n       ");
 
 async function attempt(
-  sql: PassTallySql,
+  sql: ObservationsSql,
   run: () => Promise<unknown>,
   label: string,
 ): Promise<ObservationWrite> {
@@ -129,7 +133,7 @@ async function attempt(
  * authoritative whenever it is non-null and only "we do not know" arrives null.
  */
 export async function persistProbesToNeon(
-  sql: PassTallySql,
+  sql: ObservationsSql,
   probed: Row[],
   runAt: number,
 ): Promise<ObservationWrite> {
@@ -212,7 +216,7 @@ export async function persistProbesToNeon(
  * the way D1 needed `ifnull(netuid, -1)` to arrange.
  */
 export async function rollupFailureReasonsToNeon(
-  sql: PassTallySql,
+  sql: ObservationsSql,
   days: { date: string; start: number; end: number }[],
   runAt: number,
 ): Promise<ObservationWrite> {
@@ -247,7 +251,7 @@ export async function rollupFailureReasonsToNeon(
  * one failure in ten thousand cannot round to a clean 100%.
  */
 export async function rollupUptimeDailyToNeon(
-  sql: PassTallySql,
+  sql: ObservationsSql,
   days: { date: string; start: number; end: number }[],
   runAt: number,
 ): Promise<ObservationWrite> {
@@ -309,14 +313,134 @@ export async function rollupUptimeDailyToNeon(
 /** The raw-window prune. Runs ONLY after the day rollup reported success --
  * the caller owns that ordering, as it always has. */
 export async function pruneChecksNeon(
-  sql: PassTallySql,
+  sql: ObservationsSql,
   cutoff: number,
 ): Promise<ObservationWrite> {
   return attempt(
     sql,
-    () => sql.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [
-      cutoff,
-    ]),
+    () =>
+      sql.unsafe(`DELETE FROM surface_checks WHERE checked_at < $1`, [cutoff]),
     "pruneChecksNeon",
+  );
+}
+
+/** The completeness/economics trajectory upsert: one row per (netuid, day).
+ *
+ * The only member of this family that could have moved on its own -- a plain
+ * row upsert on the primary key, which writeRowsToNeon already covers. It rides
+ * here because it shares a module and a producer with the other four, not
+ * because it shares their constraint. `emission_enabled` and `subtoken_enabled`
+ * are 0/1 with a CHECK in D1 and real BOOLEAN in Neon. */
+export async function upsertSubnetSnapshotsToNeon(
+  sql: ObservationsSql,
+  rows: Row[],
+): Promise<ObservationWrite> {
+  if (!rows.length) return { ok: false, reason: "no_rows" };
+  const toBool = (v: unknown) => (v == null ? null : Boolean(v));
+  return attempt(
+    sql,
+    async () => {
+      for (const row of rows) {
+        await sql.unsafe(
+          `INSERT INTO subnet_snapshots
+             (netuid, snapshot_date, completeness_score, surface_count,
+              endpoint_count, monitored_count, candidate_count, captured_at,
+              validator_count, miner_count, total_stake_tao, alpha_price_tao,
+              emission_share, tao_in_pool_tao, alpha_in_pool, alpha_out_pool,
+              subnet_volume_tao, tao_in_emission_tao, excess_tao,
+              alpha_in_emission, alpha_out_emission, miner_burned_fraction,
+              emission_enabled, subtoken_enabled, first_emission_block,
+              pipeline_block, pipeline_block_hash)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
+                   $18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+           ON CONFLICT (netuid, snapshot_date) DO UPDATE SET
+             completeness_score=excluded.completeness_score,
+             surface_count=excluded.surface_count,
+             endpoint_count=excluded.endpoint_count,
+             monitored_count=excluded.monitored_count,
+             candidate_count=excluded.candidate_count,
+             captured_at=excluded.captured_at,
+             validator_count=excluded.validator_count,
+             miner_count=excluded.miner_count,
+             total_stake_tao=excluded.total_stake_tao,
+             alpha_price_tao=excluded.alpha_price_tao,
+             emission_share=excluded.emission_share,
+             tao_in_pool_tao=excluded.tao_in_pool_tao,
+             alpha_in_pool=excluded.alpha_in_pool,
+             alpha_out_pool=excluded.alpha_out_pool,
+             subnet_volume_tao=excluded.subnet_volume_tao,
+             tao_in_emission_tao=excluded.tao_in_emission_tao,
+             excess_tao=excluded.excess_tao,
+             alpha_in_emission=excluded.alpha_in_emission,
+             alpha_out_emission=excluded.alpha_out_emission,
+             miner_burned_fraction=excluded.miner_burned_fraction,
+             emission_enabled=excluded.emission_enabled,
+             subtoken_enabled=excluded.subtoken_enabled,
+             first_emission_block=excluded.first_emission_block,
+             pipeline_block=excluded.pipeline_block,
+             pipeline_block_hash=excluded.pipeline_block_hash`,
+          [
+            row.netuid,
+            row.snapshot_date,
+            row.completeness_score ?? null,
+            row.surface_count ?? null,
+            row.endpoint_count ?? null,
+            row.monitored_count ?? null,
+            row.candidate_count ?? null,
+            row.captured_at ?? null,
+            row.validator_count ?? null,
+            row.miner_count ?? null,
+            row.total_stake_tao ?? null,
+            row.alpha_price_tao ?? null,
+            row.emission_share ?? null,
+            row.tao_in_pool_tao ?? null,
+            row.alpha_in_pool ?? null,
+            row.alpha_out_pool ?? null,
+            row.subnet_volume_tao ?? null,
+            row.tao_in_emission_tao ?? null,
+            row.excess_tao ?? null,
+            row.alpha_in_emission ?? null,
+            row.alpha_out_emission ?? null,
+            row.miner_burned_fraction ?? null,
+            toBool(row.emission_enabled),
+            toBool(row.subtoken_enabled),
+            row.first_emission_block ?? null,
+            row.pipeline_block ?? null,
+            row.pipeline_block_hash ?? null,
+          ],
+        );
+      }
+    },
+    "upsertSubnetSnapshotsToNeon",
+  );
+}
+
+/** The five tables this family writes, as one list, so the sole-store gate is
+ * all-or-nothing over the unit that actually moves. Two of the writes
+ * aggregate INSIDE the store, so a half-listed group would leave a rollup
+ * reading a D1 that nothing fills. */
+export const OBSERVATION_TABLES = [
+  "surface_checks",
+  "surface_status",
+  "surface_uptime_daily",
+  "surface_failure_daily",
+  "subnet_snapshots",
+] as const;
+
+/** True when Neon solely owns every observation table AND Hyperdrive is bound.
+ * Skipping the D1 write with nowhere to put the rows would drop a probe sweep
+ * silently, and a probe not stored is gone. */
+export function neonOwnsObservations(
+  env: Record<string, unknown> | null | undefined,
+  neonOwnsTable: (
+    env: Record<string, unknown> | null | undefined,
+    table: string,
+  ) => boolean,
+): boolean {
+  const hyperdrive = env?.HYPERDRIVE as
+    { connectionString?: string } | undefined;
+  return (
+    Boolean(hyperdrive?.connectionString) &&
+    OBSERVATION_TABLES.every((table) => neonOwnsTable(env, table))
   );
 }
