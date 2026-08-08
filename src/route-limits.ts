@@ -263,6 +263,16 @@ export const MCP_LIST_LIMIT_DEFAULT = 20;
  * Vectorize itself caps `topK` at this value.
  */
 export const SEMANTIC_LIMIT_DEFAULT = 10;
+/**
+ * The scopes `/api/v1/search/semantic?type=` accepts.
+ *
+ * Here rather than in src/ai-search.ts because schemas-src/route-queries.ts
+ * has to state it in the contract, and this module is the zero-import leaf
+ * both sides already read (#9127). ai-search.ts re-exports it, so the handler
+ * and the published enum cannot drift.
+ */
+export const SEMANTIC_TYPES = ["subnet", "surface", "provider"] as const;
+
 export const SEMANTIC_LIMIT_MAX = 20;
 /** Rejected above this with a 400, not truncated -- an embedded query that was
  * silently cut would rank against text the caller never sent. */
@@ -311,6 +321,23 @@ export const CHAIN_EVENTS_LIMIT_MAX = 100;
  */
 export const CHAIN_CALL_MODULE_MAX_LENGTH = 100;
 export const CHAIN_EVENT_NAME_MAX_LENGTH = 64;
+
+/**
+ * The window labels GET /api/v1/health/trends derives.
+ *
+ * Here rather than in schemas-src/routes/health-surfaces.ts because src/
+ * modules need it too and nothing under src/ may import schemas-src/routes/ --
+ * that edge failed the metagraphed-data-api Workers Build twice on #10121, and
+ * again on #10065 when src/graphql.ts reached for this constant. This module
+ * is the zero-import leaf both sides already read (#9127); health-surfaces.ts
+ * re-exports it, so the published vocabulary has one owner either way.
+ *
+ * `workers/config.ts`'s HEALTH_TREND_WINDOWS maps each label to its day count
+ * and is the runtime's copy; the two are checked against each other by
+ * tests/route-limit-contract-parity.test.ts rather than one importing the
+ * other, because schemas-src must not depend on the Worker's config module.
+ */
+export const HEALTH_TREND_WINDOW_VALUES = ["7d", "30d"] as const;
 
 /**
  * `/api/v1/health/trends` -- the all-subnet trend matrix (#10089).

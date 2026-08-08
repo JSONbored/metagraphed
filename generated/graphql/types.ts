@@ -3384,6 +3384,7 @@ export type QueryBlocksArgs = {
 export type QueryCandidatesArgs = {
   confidence?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3558,10 +3559,25 @@ export type QueryCompare_ValidatorsArgs = {
 };
 
 
+export type QueryCoverage_DepthArgs = {
+  agent_status?: InputMaybe<Scalars['String']['input']>;
+  blocker_level?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+  tier?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryCurationArgs = {
   coverage_level?: InputMaybe<Scalars['String']['input']>;
   curation_level?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3575,7 +3591,7 @@ export type QueryDomain_SummaryArgs = {
 
 
 export type QueryEconomicsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3597,7 +3613,11 @@ export type QueryEmission_ChangesArgs = {
 
 
 export type QueryEmission_PipelineArgs = {
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3721,6 +3741,7 @@ export type QueryGapsArgs = {
 
 export type QueryGlobal_IncidentsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3758,8 +3779,16 @@ export type QueryHealth_HistoryArgs = {
 };
 
 
+export type QueryHealth_TrendsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryIncidentsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3818,7 +3847,8 @@ export type QueryProviderArgs = {
 
 
 export type QueryProvider_EndpointsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -3962,7 +3992,7 @@ export type QueryReview_Profile_CompletenessArgs = {
 
 
 export type QueryRpc_EndpointsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
   fields?: InputMaybe<Array<Scalars['String']['input']>>;
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
@@ -4009,6 +4039,7 @@ export type QuerySaved_QueryArgs = {
 
 export type QuerySearchArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4020,6 +4051,7 @@ export type QuerySearchArgs = {
 
 export type QuerySearch_IndexArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4136,6 +4168,7 @@ export type QuerySubnet_Event_SummaryArgs = {
 export type QuerySubnet_EventsArgs = {
   block_end?: InputMaybe<Scalars['Int']['input']>;
   block_start?: InputMaybe<Scalars['Int']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
@@ -4248,6 +4281,7 @@ export type QuerySubnet_Lease_HistoryArgs = {
 
 
 export type QuerySubnet_MetagraphArgs = {
+  fields?: InputMaybe<Scalars['String']['input']>;
   netuid: Scalars['Int']['input'];
   validator_permit?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -4470,18 +4504,23 @@ export type QuerySudo_KeyArgs = {
 
 
 export type QuerySurfacesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
+  auth_required?: InputMaybe<Scalars['Boolean']['input']>;
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
+  public_safe?: InputMaybe<Scalars['Boolean']['input']>;
+  rate_limited?: InputMaybe<Scalars['Boolean']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryTao_UsdArgs = {
+  include_points?: InputMaybe<Scalars['Boolean']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -4514,6 +4553,7 @@ export type QueryValidator_HistoryArgs = {
 
 
 export type QueryValidator_NominatorsArgs = {
+  basis?: InputMaybe<Scalars['String']['input']>;
   coldkey?: InputMaybe<Scalars['String']['input']>;
   hotkey: Scalars['String']['input'];
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -9286,7 +9326,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   compare_validators?: Resolver<ResolversTypes['ValidatorComparison'], ParentType, ContextType, RequireFields<QueryCompare_ValidatorsArgs, 'hotkeys'>>;
   contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType>;
   coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCoverage_DepthArgs>>;
   curation?: Resolver<ResolversTypes['CurationList'], ParentType, ContextType, Partial<QueryCurationArgs>>;
   domain_summary?: Resolver<ResolversTypes['DomainSummary'], ParentType, ContextType, RequireFields<QueryDomain_SummaryArgs, 'tag'>>;
   domains?: Resolver<ResolversTypes['DomainOverview'], ParentType, ContextType>;
@@ -9311,7 +9351,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   governance_config_changes?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryGovernance_Config_ChangesArgs>>;
   health?: Resolver<Maybe<ResolversTypes['GlobalHealth']>, ParentType, ContextType>;
   health_history?: Resolver<ResolversTypes['HealthHistory'], ParentType, ContextType, RequireFields<QueryHealth_HistoryArgs, 'date'>>;
-  health_trends?: Resolver<ResolversTypes['HealthTrends'], ParentType, ContextType>;
+  health_trends?: Resolver<ResolversTypes['HealthTrends'], ParentType, ContextType, Partial<QueryHealth_TrendsArgs>>;
   incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryIncidentsArgs>>;
   indexer_lag?: Resolver<ResolversTypes['IndexerLag'], ParentType, ContextType>;
   lineage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;

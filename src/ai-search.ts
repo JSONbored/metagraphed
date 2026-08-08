@@ -17,6 +17,7 @@ import {
   SEMANTIC_LIMIT_DEFAULT,
   SEMANTIC_LIMIT_MAX,
   SEMANTIC_QUERY_MAX_LENGTH,
+  SEMANTIC_TYPES,
 } from "./route-limits.ts";
 import {
   recordAiDegradedEvent,
@@ -105,7 +106,10 @@ export const SEMANTIC_DEFAULT_LIMIT = SEMANTIC_LIMIT_DEFAULT;
 export const SEMANTIC_MAX_LIMIT = SEMANTIC_LIMIT_MAX;
 // Record kinds the registry embeds; the semantic + ask paths can scope to a
 // subset. Single source of truth for the tool schemas and the validator.
-export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
+// The scope vocabulary now lives in the zero-import leaf src/route-limits.ts,
+// so schemas-src/route-queries.ts can publish it without importing this module
+// (and its AI/Vectorize graph) into the contract layer. Re-exported unchanged.
+export { SEMANTIC_TYPES };
 // `returnMetadata: "all"` caps Vectorize at topK 20. A scoped query over-fetches
 // to this cap, then post-filters and slices, so `limit` holds after filtering.
 const FILTERED_RETRIEVE_TOPK = SEMANTIC_MAX_LIMIT;
@@ -563,7 +567,7 @@ export function normalizeSemanticTypes(type: unknown): string[] | null {
   const allow: string[] = [];
   for (const raw of list) {
     const value = typeof raw === "string" ? raw.trim() : "";
-    if (!SEMANTIC_TYPES.includes(value)) {
+    if (!SEMANTIC_TYPES.includes(value as (typeof SEMANTIC_TYPES)[number])) {
       throw aiInputError(
         `Unknown type \`${String(raw)}\`. Valid types: ${SEMANTIC_TYPES.join(", ")}.`,
       );

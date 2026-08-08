@@ -22,6 +22,29 @@ import {
   validateDeclaredQueryParams,
 } from "../workers/request-handlers/analytics.ts";
 import { API_ROUTES } from "../src/contracts.ts";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { handleRequest } from "../workers/api.ts";
+
+/**
+ * Path-parameter fixtures, so a template can be resolved the way a real
+ * pathname is. `compileRoutePattern`'s character classes are strict -- an ss58
+ * will not match a `{netuid}` slot -- so these have to be the real shapes.
+ */
+const PATH_FIXTURES: Record<string, string> = {
+  "{netuid}": "1",
+  "{ss58}": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+  "{hotkey}": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+  "{ref}": "1000000",
+  "{uid}": "0",
+  "{slug}": "academia",
+  "{date}": "2026-08-01",
+  "{tag}": "inference",
+  "{surface_id}": "sn-1-apex-healthcheck",
+  "{hash}": `0x${"0".repeat(64)}`,
+  "{h160}": `0x${"0".repeat(40)}`,
+  "{id}": "00000000-0000-0000-0000-000000000000",
+  "{crowdloan_id}": "0",
+};
 
 function urlFor(path: string, search = ""): URL {
   return new URL(`https://api.metagraph.sh${path}${search}`);
@@ -45,7 +68,6 @@ describe("declared query parameters are the allow-list (#9149)", () => {
   test("a typo'd filter name is rejected, naming the parameter", () => {
     const error = validateDeclaredQueryParams(
       urlFor("/api/v1/chain-events", "?palet=Balances"),
-      "/api/v1/chain-events",
     );
     assert.ok(error, "an unknown parameter must be rejected, not ignored");
     assert.equal(error.parameter, "palet");
@@ -57,7 +79,6 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     // caller sees Balances events and believes they are Transfers.
     const error = validateDeclaredQueryParams(
       urlFor("/api/v1/chain-events", "?pallet=Balances&methd=Transfer"),
-      "/api/v1/chain-events",
     );
     assert.ok(error, "a dropped second filter must not pass silently");
     assert.equal(error.parameter, "methd");
@@ -71,7 +92,6 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     for (const name of declared) {
       const error = validateDeclaredQueryParams(
         urlFor("/api/v1/chain-events", `?${name}=1`),
-        "/api/v1/chain-events",
       );
       assert.equal(
         error,
@@ -91,7 +111,6 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     assert.equal(
       validateDeclaredQueryParams(
         urlFor("/api/v1/chain-events/stats", "?blocks=500&format=csv"),
-        "/api/v1/chain-events/stats",
       ),
       null,
       "format must stay accepted where its no-op is deliberate",
@@ -100,16 +119,18 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     // still caught.
     const error = validateDeclaredQueryParams(
       urlFor("/api/v1/chain-events/stats", "?blocks=500&format=csv&blcks=9"),
-      "/api/v1/chain-events/stats",
     );
     assert.ok(error, "the exemption must not disable checking of other params");
     assert.equal(error.parameter, "blcks");
   });
 
-  test("a route declaring no query params is left alone", () => {
-    // 44 param-less detail routes accept unknown params today. Treating
-    // "declares nothing" as "allows nothing" would start 400ing cache-busting
-    // params on all of them for no gain -- there is no filter to typo.
+  test("a route that declares nothing accepts nothing but format", () => {
+    // This flipped with #10065. `declaredQueryParams` used to answer `null`
+    // for a param-less route -- "no opinion" -- so the check passed anything.
+    // "This route takes no query parameters" is a statement the contract
+    // makes, and 15 handlers were separately enforcing it with a hand-written
+    // `validateQueryParams(url, [])`. Deriving it means the two cannot
+    // disagree; `null` is now reserved for a path that matches no route.
     const paramless = (
       API_ROUTES as unknown as {
         path: string;
@@ -118,15 +139,20 @@ describe("declared query parameters are the allow-list (#9149)", () => {
       }[]
     ).find(
       (route) =>
-        route.method === "GET" && !(route.query_parameters ?? []).length,
+        route.method === "GET" &&
+        !(route.query_parameters ?? []).length &&
+        !route.path.includes("{"),
     );
     assert.ok(paramless, "expected at least one param-less GET route");
-    assert.equal(declaredQueryParams(paramless.path), null);
+    assert.deepEqual(declaredQueryParams(paramless.path), []);
+    const rejected = validateDeclaredQueryParams(
+      urlFor(paramless.path, "?anything=1"),
+    );
+    assert.ok(rejected, `${paramless.path} must reject an undeclared param`);
+    assert.equal(rejected.parameter, "anything");
+    // `format` stays accepted API-wide -- see GLOBALLY_ACCEPTED_PARAMS.
     assert.equal(
-      validateDeclaredQueryParams(
-        urlFor(paramless.path, "?anything=1"),
-        paramless.path,
-      ),
+      validateDeclaredQueryParams(urlFor(paramless.path, "?format=csv")),
       null,
     );
   });
@@ -137,6 +163,10 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     // be reached by the route genuinely having none, not by a failed match
     // that would quietly disable validation everywhere.
     assert.equal(declaredQueryParams("/api/v1/does-not-exist"), null);
+    assert.equal(
+      validateDeclaredQueryParams(urlFor("/api/v1/does-not-exist", "?x=1")),
+      null,
+    );
     const declared = declaredQueryParams("/api/v1/chain-events");
     assert.ok(
       declared && declared.length >= 8,
@@ -144,38 +174,86 @@ describe("declared query parameters are the allow-list (#9149)", () => {
     );
   });
 
-  test("the derived allow-list resolves for every route that declares params", () => {
-    // Scope, stated honestly: this proves the SHARED validator would reject an
-    // unknown parameter for every declaring route -- i.e. the derivation
-    // resolves and is not failing open on any path shape. It does NOT prove
-    // each route calls it: 136 routes reach the same rule through
-    // validateEntityQuery's hand-written arrays, and only the chain-events
-    // proxy calls validateDeclaredQueryParams. Proving the wiring per route
-    // needs a live dispatch with bindings; the empirical check is the probe in
-    // #9149 (136 of 138 rejected before this change, 138 after).
-    //
-    // Still worth asserting: a path shape the lookup cannot resolve -- a
-    // template, a trailing slash -- would silently disable validation, and
-    // that is the failure this catches for route 137.
+  test("every GET route rejects an undeclared parameter", () => {
+    // #9149 built the derived check and wired it at ONE call site; 119
+    // handlers went on passing hand-written arrays, and this test said so in
+    // its own comment -- "it does NOT prove each route calls it". #10065
+    // deleted the arrays and moved the check into handleRequest, so the
+    // wiring is a property of the router rather than of 119 opt-ins, and this
+    // can assert the real thing: a CONCRETE pathname, resolved the way a
+    // request is, for every route.
     const unprotected: string[] = [];
+    let checked = 0;
     for (const route of API_ROUTES as unknown as {
       path: string;
       method: string;
-      query_parameters?: { name: string }[];
     }[]) {
       if (route.method !== "GET") continue;
-      if (!(route.query_parameters ?? []).length) continue;
+      let path = route.path;
+      for (const [token, value] of Object.entries(PATH_FIXTURES)) {
+        path = path.split(token).join(value);
+      }
+      if (/\{[a-z_0-9]+\}/.test(path)) {
+        unprotected.push(`${route.path} (no fixture for its path parameter)`);
+        continue;
+      }
+      checked += 1;
       const error = validateDeclaredQueryParams(
-        urlFor(route.path, "?__definitely_not_a_param=1"),
-        route.path,
+        urlFor(path, "?__definitely_not_a_param=1"),
       );
       if (!error) unprotected.push(route.path);
     }
     assert.deepEqual(
       unprotected,
       [],
-      "these declare filters but would accept an unknown parameter, so a " +
-        `typo returns unfiltered data: ${unprotected.join(", ")}`,
+      "these would accept an unknown parameter, so a typo returns unfiltered " +
+        `data: ${unprotected.join(", ")}`,
     );
+    assert.ok(checked > 195, `only ${checked} routes were reachable`);
   });
+
+  test("every GET route rejects an undeclared parameter THROUGH THE ROUTER", async () => {
+    // The check above proves the derived rule; this proves the WIRING, which
+    // is the half #9149 could not assert and said so. A full dispatch through
+    // `handleRequest` + `createLocalArtifactEnv()` -- the same in-process seam
+    // the CSV-parity gate uses -- so a route reaches its 400 the way a real
+    // request would, not because a helper was called in a unit test.
+    //
+    // This replaces 55 per-handler "rejects an unsupported query param" tests.
+    // They asserted the same property one handler at a time while the rule
+    // lived in 119 hand-written arrays; with one enforcement point, asserting
+    // it once for every route is both stronger and honest about where it
+    // lives.
+    const env = await createLocalArtifactEnv();
+    const ctx = { waitUntil() {}, passThroughOnException() {} };
+    const accepted: string[] = [];
+    let dispatched = 0;
+    for (const route of API_ROUTES as unknown as {
+      path: string;
+      method: string;
+    }[]) {
+      if (route.method !== "GET") continue;
+      let path = route.path;
+      for (const [token, value] of Object.entries(PATH_FIXTURES)) {
+        path = path.split(token).join(value);
+      }
+      if (/\{[a-z_0-9]+\}/.test(path)) continue;
+      dispatched += 1;
+      const response = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh${path}?__definitely_not_a_param=1`,
+        ),
+        env as never,
+        ctx as never,
+      );
+      if (response.status !== 400)
+        accepted.push(`${route.path} -> ${response.status}`);
+    }
+    assert.deepEqual(
+      accepted,
+      [],
+      `these accepted an undeclared parameter: ${accepted.join(", ")}`,
+    );
+    assert.ok(dispatched > 195, `only ${dispatched} routes dispatched`);
+  }, 120_000);
 });

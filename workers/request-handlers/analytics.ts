@@ -43,7 +43,7 @@ import { HEALTH_TREND_WINDOW_VALUES } from "../../schemas-src/routes/health-surf
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
-import { API_ROUTES } from "../../src/contracts.ts";
+import { API_ROUTES, contractPathForPathname } from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
@@ -64,7 +64,6 @@ import {
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
-  listQueryParamNames,
   paginationLinkHeader,
   type Pagination,
   type QueryError,
@@ -221,13 +220,12 @@ export function configureAnalytics(deps: {
 
 /**
  * The declared query-parameter names for a route path, straight off the
- * contract (#9149).
+ * contract (#9149, completed by #10065).
  *
- * The 33 handlers that call `validateQueryParams` pass a hand-written array,
- * which is a second copy of a list the contract already publishes -- the same
- * "one fact, several declarations" shape as #9127 and #9131. Deriving it means
- * a parameter added to `API_ROUTES` is accepted the day it lands, and one
- * removed stops being accepted, with no array to keep in step.
+ * Returns `[]` for a route that declares no query parameters — "this route
+ * accepts none" is a statement the contract makes, not an absence of one — and
+ * `null` only when the path matches no route at all, where this module has no
+ * opinion to enforce.
  */
 export function declaredQueryParams(routePath: string): string[] | null {
   const route = (
@@ -237,17 +235,10 @@ export function declaredQueryParams(routePath: string): string[] | null {
       query_parameters?: { name: string }[];
     }[]
   ).find((entry) => entry.path === routePath && entry.method === "GET");
-  if (!route?.query_parameters?.length) return null;
-  return route.query_parameters.map((parameter) => parameter.name);
+  if (!route) return null;
+  return (route.query_parameters ?? []).map((parameter) => parameter.name);
 }
 
-/**
- * Reject a request carrying a parameter the route does not declare.
- *
- * Returns null when the route declares no query parameters at all -- there is
- * nothing to typo, and treating "declares nothing" as "allows nothing" would
- * start 400ing cache-busting params on 44 param-less detail routes for no gain.
- */
 /**
  * Parameters accepted on every route regardless of what it declares.
  *
@@ -260,16 +251,40 @@ export function declaredQueryParams(routePath: string): string[] | null {
  * FILTER, and format is not one.
  *
  * A declared judgement rather than a derived fact, so it is deliberately a set
- * of exactly one: anything added here stops being typo-checked everywhere.
+ * of exactly one: anything added here stops being typo-checked everywhere. It
+ * is a RULE, not a per-route list -- it does not grow when a route is added.
  */
 const GLOBALLY_ACCEPTED_PARAMS = ["format"];
 
-export function validateDeclaredQueryParams(
-  url: URL,
-  routePath: string,
-): QueryError | null {
+/**
+ * Reject a request carrying a parameter its route does not declare.
+ *
+ * THE query-parameter allowlist for the whole API. #9149 built this and wired
+ * it at one call site; 119 handlers went on passing a hand-written array to
+ * `validateQueryParams` — a fifth statement of the query contract, after the
+ * Zod schema, openapi.json, the MCP tool input and the GraphQL argument list.
+ *
+ * A fifth copy drifts like any other, and it did. Sweeping all 202 GET routes
+ * through the real router found three parameters a handler accepted and
+ * honoured that the contract never published:
+ *
+ *   /api/v1/validators/{hotkey}/history   netuid  (echoed back as data.netuid)
+ *   /api/v1/accounts/{ss58}/history       cursor  (forwarded to the cold tier)
+ *   /api/v1/subnets/{netuid}/events       cursor
+ *
+ * Undiscoverable by construction: the published contract said passing them was
+ * an error. All three are declared now, and deriving the allowlist means the
+ * next one cannot happen — a parameter is accepted exactly when it is
+ * published, in one direction, from one place.
+ *
+ * The route is resolved from the pathname through `contractPathForPathname`,
+ * so a handler needs to know nothing about its own contract entry.
+ */
+export function validateDeclaredQueryParams(url: URL): QueryError | null {
+  const routePath = contractPathForPathname(url.pathname);
+  if (routePath === null) return null;
   const allowed = declaredQueryParams(routePath);
-  if (!allowed) return null;
+  if (allowed === null) return null;
   return validateQueryParams(url, [...allowed, ...GLOBALLY_ACCEPTED_PARAMS]);
 }
 
@@ -336,11 +351,8 @@ function canonicalAnalyticsCacheRoute(
 // ParamError-style returns elsewhere (workers/request-params.ts).
 type WindowResult = { label: string; days: number } | { error: QueryError };
 
-function analyticsWindow(url: URL, extraParams: string[] = []): WindowResult {
-  const validationError = validateQueryParams(url, [
-    ANALYTICS_WINDOW_PARAM,
-    ...extraParams,
-  ]);
+function analyticsWindow(url: URL): WindowResult {
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return { error: validationError };
 
   const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
@@ -367,7 +379,7 @@ function analyticsWindow(url: URL, extraParams: string[] = []): WindowResult {
 // explicit ?window=7d request both resolve to the same edge-cache entry — mirrors
 // canonicalEconomicsTrendsCachePath in analytics-routes.ts.
 export function canonicalHealthWindowCachePath(url: URL): string {
-  const validationError = validateQueryParams(url, [ANALYTICS_WINDOW_PARAM]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return `${url.pathname}${url.search}`;
@@ -794,7 +806,7 @@ export async function handleHealthTrends(
   // Reject unsupported query params (400) like every sibling analytics route
   // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
   // route takes no params and returns all configured windows.
-  const validationError = validateQueryParams(url, []);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
     // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
@@ -1079,14 +1091,13 @@ export async function resolveGlobalIncidentsForFeed(
 // The list-query params GET /api/v1/incidents accepts on top of its own `window`
 // scope (#6571): limit/cursor/sort/order + the netuid filter, so a caller can page
 // a 30-day incident list the way the sibling endpoint-incidents route already can.
-const GLOBAL_INCIDENTS_LIST_PARAMS = listQueryParamNames("incidents");
 
 export async function handleGlobalIncidents(
   request: Request,
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, GLOBAL_INCIDENTS_LIST_PARAMS);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) {
     return analyticsQueryError(windowResult.error);
   }
@@ -1320,7 +1331,7 @@ export async function handleChainActivity(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label, days: windowDays } = windowResult;
   const formatError = validateFormatParam(url);
@@ -1403,12 +1414,7 @@ export async function handleChainCalls(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, [
-    "group_by",
-    "limit",
-    "call_module",
-    "format",
-  ]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -1518,12 +1524,7 @@ export async function handleChainSigners(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, [
-    "limit",
-    "call_module",
-    "sort",
-    "format",
-  ]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -1621,7 +1622,7 @@ export async function handleChainTransfers(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -1727,7 +1728,7 @@ export async function handleChainTransferPairs(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "sort", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
@@ -1831,7 +1832,7 @@ export async function handleChainStakeFlow(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -1942,7 +1943,7 @@ export async function handleChainAlphaVolume(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["limit", "format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
@@ -2033,7 +2034,7 @@ export async function handleChainWeights(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2121,7 +2122,7 @@ export async function handleChainWeightSetters(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2203,7 +2204,7 @@ export async function handleChainServing(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2291,7 +2292,7 @@ export async function handleChainPrometheus(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2371,7 +2372,7 @@ export async function handleChainAxonRemovals(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2452,7 +2453,7 @@ export async function handleChainRegistrations(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2550,7 +2551,7 @@ export async function handleChainDeregistrations(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2649,7 +2650,7 @@ export async function handleChainStakeMoves(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2742,7 +2743,7 @@ export async function handleChainStakeTransfers(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const formatError = validateFormatParam(url);
@@ -2832,7 +2833,7 @@ export async function handleChainFees(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url, ["limit", "call_module", "format"]);
+  const windowResult = analyticsWindow(url);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label, days: windowDays } = windowResult;
   const formatError = validateFormatParam(url);

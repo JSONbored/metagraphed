@@ -1245,9 +1245,30 @@ describe("AI routes through the Worker dispatch", () => {
     assert.ok(body.data.results.length > 0);
   });
 
-  test("enabled semantic threads a repeatable ?type= scope", async () => {
+  test("a repeated ?type= is rejected rather than silently halved", async () => {
+    // This asserted 200-with-only-subnet-results until #10065: the second
+    // value was DROPPED, so `?type=subnet&type=provider` answered a narrower
+    // question than the one asked and said nothing about it. The same silent-
+    // wrong-answer class as the typo'd filter #9149 exists to stop.
+    //
+    // `type` is now published (it was honoured and undeclared -- the handler
+    // has always filtered on it and rejects an unknown value by name), and a
+    // duplicate is an ambiguous request, which the derived allowlist answers
+    // with a 400 naming the parameter.
     const res = await handleRequest(
       new Request(`${SEMANTIC_URL}?q=images&type=subnet&type=provider`),
+      aiWorkerEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json();
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /may only be provided once/);
+  });
+
+  test("enabled semantic threads a single ?type= scope", async () => {
+    const res = await handleRequest(
+      new Request(`${SEMANTIC_URL}?q=images&type=subnet`),
       aiWorkerEnv() as unknown as Env,
       {},
     );

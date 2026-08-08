@@ -801,18 +801,6 @@ describe("handleSubnetMetagraph", () => {
     assert.equal(res.status, 200);
   });
 
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetMetagraph(
-      req(`/api/v1/subnets/${NETUID}/metagraph`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/metagraph?bogus=1`),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.error.code, "invalid_query");
-    assert.match(body.error.message, /bogus/);
-  });
-
   test("returns schema-stable empty payload on cold/unbound D1", async () => {
     const body = await assertColdSchema(
       handleSubnetMetagraph,
@@ -925,17 +913,6 @@ describe("handleSubnetMetagraph", () => {
 });
 
 describe("handleSubnetYield", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetYield(
-      req(`/api/v1/subnets/${NETUID}/yield`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield?bogus=1`),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.error.code, "invalid_query");
-  });
-
   test("returns schema-stable empty payload on cold/unbound D1", async () => {
     const body = await assertColdSchema(
       handleSubnetYield,
@@ -959,20 +936,6 @@ describe("handleSubnetYield", () => {
 });
 
 describe("handleNeuron", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const body = await errorJson(
-      await handleNeuron(
-        req(`/api/v1/subnets/${NETUID}/neurons/${UID}`),
-        emptyEnv() as unknown as Env,
-        NETUID,
-        UID,
-        url(`/api/v1/subnets/${NETUID}/neurons/${UID}?bogus=1`),
-      ),
-    );
-    assert.equal(body.error.code, "invalid_query");
-    assert.match(body.error.message, /bogus/);
-  });
-
   test("rejects an unsupported fields= name with 400 (#9082)", async () => {
     const body = await errorJson(
       await handleNeuron(
@@ -1050,16 +1013,6 @@ describe("handleSubnetValidators", () => {
     );
     assert.deepEqual(body.data.validators, [{ hotkey: SS58 }]);
     assert.deepEqual(body.meta.projection, { fields: ["hotkey"] });
-  });
-
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetValidators(
-      req(`/api/v1/subnets/${NETUID}/validators`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/validators?limit=10`),
-    );
-    await errorJson(res);
   });
 
   test("returns schema-stable empty validators on cold D1", async () => {
@@ -1151,14 +1104,6 @@ describe("handleGlobalValidators", () => {
   // ever runs, so the router never reaches this guard with an invalid query.
   // It stays as defense in depth for any direct/non-cached caller, so cover it
   // directly here rather than only through the edge-cache route.
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleGlobalValidators(
-      req("/api/v1/validators"),
-      emptyEnv() as unknown as Env,
-      url("/api/v1/validators?bogus=1"),
-    );
-    await errorJson(res);
-  });
 
   test("returns schema-stable empty leaderboard on cold D1", async () => {
     const body = await assertColdSchema(
@@ -1271,15 +1216,6 @@ describe("handleGlobalValidators", () => {
 });
 
 describe("canonicalGlobalValidatorsCachePath", () => {
-  test("returns a response short-circuit for an unsupported query param", () => {
-    const result = canonicalGlobalValidatorsCachePath(
-      url("/api/v1/validators?bogus=1"),
-    );
-    assert.equal(result.cachePathAndSearch, undefined);
-    assert.ok(result.response instanceof Response);
-    assert.equal(result.response.status, 400);
-  });
-
   test("returns a response short-circuit for an unsupported sort value", () => {
     const result = canonicalGlobalValidatorsCachePath(
       url("/api/v1/validators?sort=bogus"),
@@ -1328,17 +1264,6 @@ describe("canonicalGlobalValidatorsCachePath", () => {
 });
 
 describe("handleNeuronHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleNeuronHistory(
-      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      UID,
-      url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an invalid window param with 400", async () => {
     const res = await handleNeuronHistory(
       req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
@@ -1369,16 +1294,6 @@ describe("handleNeuronHistory", () => {
 });
 
 describe("handleSubnetHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetHistory(
-      req(`/api/v1/subnets/${NETUID}/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/history?offset=0`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty series on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetHistory,
@@ -1454,16 +1369,6 @@ describe("handleSubnetHistory", () => {
 });
 
 describe("handleSubnetIdentityHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetIdentityHistory(
-      req(`/api/v1/subnets/${NETUID}/identity-history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/identity-history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty entries on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetIdentityHistory,
@@ -1508,16 +1413,6 @@ describe("handleSubnetIdentityHistory", () => {
 });
 
 describe("handleSubnetHyperparams", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetHyperparams(
-      req(`/api/v1/subnets/${NETUID}/hyperparameters`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/hyperparameters?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   // D1 retirement: subnet_hyperparams's D1 write/read path is retired
   // (workers/request-handlers/entities.ts's handleSubnetHyperparams no
   // longer queries D1 at all), so this is now "Postgres unconfigured" rather
@@ -1537,16 +1432,6 @@ describe("handleSubnetHyperparams", () => {
 });
 
 describe("handleSubnetHyperparamsHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetHyperparamsHistory(
-      req(`/api/v1/subnets/${NETUID}/hyperparameters/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/hyperparameters/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   // D1 retirement: same as handleSubnetHyperparams above -- no D1 fallback
   // left to query, so this is "Postgres unconfigured" rather than "D1 cold".
   test("returns schema-stable empty entries when Postgres is unconfigured", async () => {
@@ -1564,16 +1449,6 @@ describe("handleSubnetHyperparamsHistory", () => {
 });
 
 describe("handleSubnetPerformance", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetPerformance(
-      req(`/api/v1/subnets/${NETUID}/performance`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/performance?window=7d`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable null blocks on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetPerformance,
@@ -1590,16 +1465,6 @@ describe("handleSubnetPerformance", () => {
 });
 
 describe("handleSubnetConcentration", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetConcentration(
-      req(`/api/v1/subnets/${NETUID}/concentration`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/concentration?window=7d`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable null blocks on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetConcentration,
@@ -1621,7 +1486,6 @@ describe("handleSubnetConcentration", () => {
       req(`/api/v1/subnets/${NETUID}/concentration`),
       dbThrows("no such column: validator_permit") as unknown as Env,
       NETUID,
-      url(`/api/v1/subnets/${NETUID}/concentration`),
     );
     assert.equal(res.status, 200);
     const body = await jsonBody(res);
@@ -1636,16 +1500,6 @@ describe("handleSubnetConcentration", () => {
 });
 
 describe("handleSubnetConcentrationHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetConcentrationHistory(
-      req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/concentration/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetConcentrationHistory(
       req(`/api/v1/subnets/${NETUID}/concentration/history`),
@@ -1689,16 +1543,6 @@ describe("handleSubnetConcentrationHistory", () => {
 });
 
 describe("handleSubnetPerformanceHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetPerformanceHistory(
-      req(`/api/v1/subnets/${NETUID}/performance/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/performance/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetPerformanceHistory(
       req(`/api/v1/subnets/${NETUID}/performance/history`),
@@ -1742,16 +1586,6 @@ describe("handleSubnetPerformanceHistory", () => {
 });
 
 describe("handleSubnetYieldHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an out-of-range window with 400", async () => {
     const res = await handleSubnetYieldHistory(
       req(`/api/v1/subnets/${NETUID}/yield/history`),
@@ -1795,16 +1629,6 @@ describe("handleSubnetYieldHistory", () => {
 });
 
 describe("handleSubnetTurnover", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetTurnover(
-      req(`/api/v1/subnets/${NETUID}/turnover`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/turnover?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty turnover on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetTurnover,
@@ -1991,16 +1815,6 @@ describe("handleSubnetTurnover", () => {
 });
 
 describe("handleSubnetWeights", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetWeights(
-      req(`/api/v1/subnets/${NETUID}/weights`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/weights?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetWeights(
       req(`/api/v1/subnets/${NETUID}/weights`),
@@ -2065,16 +1879,6 @@ describe("handleSubnetWeights", () => {
 });
 
 describe("handleSubnetServing", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetServing(
-      req(`/api/v1/subnets/${NETUID}/serving`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/serving?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetServing(
       req(`/api/v1/subnets/${NETUID}/serving`),
@@ -2139,16 +1943,6 @@ describe("handleSubnetServing", () => {
 });
 
 describe("handleSubnetPrometheus", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetPrometheus(
-      req(`/api/v1/subnets/${NETUID}/prometheus`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/prometheus?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetPrometheus(
       req(`/api/v1/subnets/${NETUID}/prometheus`),
@@ -2215,16 +2009,6 @@ describe("handleSubnetPrometheus", () => {
 });
 
 describe("handleSubnetStakeMoves", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetStakeMoves(
-      req(`/api/v1/subnets/${NETUID}/stake-moves`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-moves?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetStakeMoves(
       req(`/api/v1/subnets/${NETUID}/stake-moves`),
@@ -2293,16 +2077,6 @@ describe("handleSubnetStakeMoves", () => {
 });
 
 describe("handleSubnetStakeTransfers", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetStakeTransfers(
-      req(`/api/v1/subnets/${NETUID}/stake-transfers`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-transfers?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetStakeTransfers(
       req(`/api/v1/subnets/${NETUID}/stake-transfers`),
@@ -2371,16 +2145,6 @@ describe("handleSubnetStakeTransfers", () => {
 });
 
 describe("handleSubnetRegistrations", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetRegistrations(
-      req(`/api/v1/subnets/${NETUID}/registrations`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/registrations?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetRegistrations(
       req(`/api/v1/subnets/${NETUID}/registrations`),
@@ -2449,16 +2213,6 @@ describe("handleSubnetRegistrations", () => {
 });
 
 describe("handleSubnetAxonRemovals", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetAxonRemovals(
-      req(`/api/v1/subnets/${NETUID}/axon-removals`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/axon-removals?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetAxonRemovals(
       req(`/api/v1/subnets/${NETUID}/axon-removals`),
@@ -2527,16 +2281,6 @@ describe("handleSubnetAxonRemovals", () => {
 });
 
 describe("handleSubnetDeregistrations", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetDeregistrations(
-      req(`/api/v1/subnets/${NETUID}/deregistrations`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/deregistrations?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetDeregistrations(
       req(`/api/v1/subnets/${NETUID}/deregistrations`),
@@ -2629,16 +2373,6 @@ describe("handleSubnetDeregistrations", () => {
 });
 
 describe("handleSubnetStakeFlow", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetStakeFlow(
-      req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-flow?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an out-of-retention window with 400", async () => {
     const res = await handleSubnetStakeFlow(
       req(`/api/v1/subnets/${NETUID}/stake-flow`),
@@ -2762,16 +2496,6 @@ describe("handleSubnetStakeFlow", () => {
 });
 
 describe("handleSubnetMovers", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    await errorJson(
-      await handleSubnetMovers(
-        req("/api/v1/subnets/movers"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/subnets/movers?bogus=1"),
-      ),
-    );
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const body = await errorJson(
       await handleSubnetMovers(
@@ -3364,16 +3088,6 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
 });
 
 describe("handleAccountEvents", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects a non-integer block_start with 400", async () => {
     const res = await handleAccountEvents(
       req(`/api/v1/accounts/${SS58}/events`),
@@ -3472,16 +3186,6 @@ describe("handleAccountEvents", () => {
 });
 
 describe("handleAccountHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountHistory(
-      req(`/api/v1/accounts/${SS58}/history`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects malformed from/to dates with 400", async () => {
     const res = await handleAccountHistory(
       req(`/api/v1/accounts/${SS58}/history`),
@@ -3563,16 +3267,6 @@ describe("handleAccountHistory", () => {
 });
 
 describe("handleAccountExtrinsics", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountExtrinsics(
-      req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/extrinsics?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty extrinsics on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountExtrinsics,
@@ -3627,16 +3321,6 @@ describe("handleAccountExtrinsics", () => {
 });
 
 describe("handleAccountTransfers", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported direction enum value with 400", async () => {
     const res = await handleAccountTransfers(
       req(`/api/v1/accounts/${SS58}/transfers`),
@@ -3701,16 +3385,6 @@ describe("handleAccountTransfers", () => {
 });
 
 describe("handleAccountCounterparties", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountCounterparties(
-      req(`/api/v1/accounts/${SS58}/counterparties`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/counterparties?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects malformed and out-of-range limits before D1 work", async () => {
     for (const limit of ["random_nonce", "Infinity", "0", "101", "10.5"]) {
       const captures = { sql: [], params: [] };
@@ -3909,16 +3583,6 @@ describe("handleAccountCounterparties relationship drilldown", () => {
 });
 
 describe("handleAccountStakeFlow", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountStakeFlow(
-      req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-flow?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleAccountStakeFlow(
       req(`/api/v1/accounts/${SS58}/stake-flow`),
@@ -3966,16 +3630,6 @@ describe("handleAccountStakeFlow", () => {
 });
 
 describe("handleAccountStakeMoves", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountStakeMoves(
-      req(`/api/v1/accounts/${SS58}/stake-moves`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-moves?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleAccountStakeMoves(
       req(`/api/v1/accounts/${SS58}/stake-moves`),
@@ -4026,16 +3680,6 @@ describe("handleAccountSubnets", () => {
 });
 
 describe("handleSubnetEvents", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleSubnetEvents,
@@ -4102,16 +3746,6 @@ describe("handleSubnetEvents", () => {
 });
 
 describe("handleSubnetEventSummary", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleSubnetEventSummary(
-      req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/event-summary?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("rejects an unsupported window with 400", async () => {
     const res = await handleSubnetEventSummary(
       req(`/api/v1/subnets/${NETUID}/event-summary`),
@@ -4271,16 +3905,6 @@ function accountIdentityRow(overrides = {}) {
 }
 
 describe("handleAccountIdentity", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountIdentity(
-      req(`/api/v1/accounts/${SS58}/identity`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/identity?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("has_identity is false on cold D1 (schema-stable, never 404)", async () => {
     const body = await assertColdSchema(
       handleAccountIdentity,
@@ -4311,7 +3935,6 @@ describe("handleAccountIdentity", () => {
         req(`/api/v1/accounts/${SS58}/identity`),
         env as unknown as Env,
         SS58,
-        url(`/api/v1/accounts/${SS58}/identity`),
       ),
     );
     assert.equal(body.data.has_identity, true);
@@ -4320,16 +3943,6 @@ describe("handleAccountIdentity", () => {
 });
 
 describe("handleAccountIdentityHistory", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleAccountIdentityHistory(
-      req(`/api/v1/accounts/${SS58}/identity-history`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/identity-history?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty entries on cold D1", async () => {
     const body = await assertColdSchema(
       handleAccountIdentityHistory,
@@ -4380,15 +3993,6 @@ describe("handleAccountIdentityHistory", () => {
 });
 
 describe("handleBlocks", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleBlocks(
-      req("/api/v1/blocks"),
-      emptyEnv() as unknown as Env,
-      url("/api/v1/blocks?bogus=1"),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty feed on cold D1", async () => {
     const body = await assertColdSchema(
       handleBlocks,
@@ -4539,16 +4143,6 @@ describe("handleBlock", () => {
 });
 
 describe("handleBlockExtrinsics", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleBlockExtrinsics(
-      req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-      emptyEnv() as unknown as Env,
-      String(BLOCK_NUM),
-      url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty extrinsics on cold D1", async () => {
     const body = await assertColdSchema(
       handleBlockExtrinsics,
@@ -4592,16 +4186,6 @@ describe("handleBlockExtrinsics", () => {
 });
 
 describe("handleBlockEvents", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleBlockEvents(
-      req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-      emptyEnv() as unknown as Env,
-      String(BLOCK_NUM),
-      url(`/api/v1/blocks/${BLOCK_NUM}/events?bogus=1`),
-    );
-    await errorJson(res);
-  });
-
   test("returns schema-stable empty events on cold D1", async () => {
     const body = await assertColdSchema(
       handleBlockEvents,
@@ -4690,15 +4274,6 @@ describe("handleExtrinsics", () => {
       url(path),
     );
     assert.equal(res.status, 200);
-  });
-
-  test("rejects an unsupported query param with 400", async () => {
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      emptyEnv() as unknown as Env,
-      url("/api/v1/extrinsics?bogus=1"),
-    );
-    await errorJson(res);
   });
 
   test("returns schema-stable empty feed on cold D1", async () => {
@@ -5157,12 +4732,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
     const body = await json(
-      await handleSubnetHyperparams(
-        req(path),
-        env as unknown as Env,
-        NETUID,
-        url(path),
-      ),
+      await handleSubnetHyperparams(req(path), env as unknown as Env, NETUID),
     );
     assert.equal(body.data.hyperparameters.tempo, 999);
     assert.deepEqual(captures.sql, []);
@@ -5178,12 +4748,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/subnets/${NETUID}/hyperparameters`;
     const body = await json(
-      await handleSubnetHyperparams(
-        req(path),
-        env as unknown as Env,
-        NETUID,
-        url(path),
-      ),
+      await handleSubnetHyperparams(req(path), env as unknown as Env, NETUID),
     );
     assert.equal(body.data.hyperparameters, null);
     assert.equal(body.data.captured_at, null);
@@ -5256,12 +4821,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     const path = `/api/v1/accounts/${SS58}/identity`;
     const body = await json(
-      await handleAccountIdentity(
-        req(path),
-        env as unknown as Env,
-        SS58,
-        url(path),
-      ),
+      await handleAccountIdentity(req(path), env as unknown as Env, SS58),
     );
     assert.equal(body.data.name, "Postgres Team");
     assert.deepEqual(captures.sql, []);
@@ -5277,12 +4837,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     };
     const path = `/api/v1/accounts/${SS58}/identity`;
     const body = await json(
-      await handleAccountIdentity(
-        req(path),
-        env as unknown as Env,
-        SS58,
-        url(path),
-      ),
+      await handleAccountIdentity(req(path), env as unknown as Env, SS58),
     );
     assert.equal(body.data.has_identity, false);
     assert.equal(body.data.name, null);
@@ -6201,15 +5756,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       );
       assert.equal(res.status, 400);
     });
-
-    test("an unknown query param is still rejected (format is the only one)", async () => {
-      const res = await handleRuntime(
-        req("/api/v1/runtime?limit=5"),
-        pgEnv(ROWS) as unknown as Env,
-        url("/api/v1/runtime?limit=5"),
-      );
-      assert.equal(res.status, 400);
-    });
   });
 
   // #4832 Tier 1b: the remaining account_events-derived handlers with no
@@ -6249,7 +5795,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/subnets/${NETUID}/volume`),
         env as unknown as Env,
         NETUID,
-        url(`/api/v1/subnets/${NETUID}/volume`),
       ),
     );
     assert.equal(body.data.marker, "pg");
@@ -6351,7 +5896,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/subnets/${NETUID}/concentration`),
         env as unknown as Env,
         NETUID,
-        url(`/api/v1/subnets/${NETUID}/concentration`),
       ),
     );
     assert.equal(body.data.marker, "pg");
@@ -6370,7 +5914,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         req(`/api/v1/subnets/${NETUID}/performance`),
         env as unknown as Env,
         NETUID,
-        url(`/api/v1/subnets/${NETUID}/performance`),
       ),
     );
     assert.equal(body.data.marker, "pg");
@@ -6406,7 +5949,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleChainConcentration(
         req("/api/v1/chain/concentration"),
         env as unknown as Env,
-        url("/api/v1/chain/concentration"),
       ),
     );
     assert.equal(body.data.marker, "pg");
@@ -6428,40 +5970,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
-  });
-
-  test("handleChainConcentrationSubnets: rejects a bad parameter WITHOUT reading the tier", async () => {
-    // The read is ~30,000 rows. A caller who typed `lens=vibes` must not pay
-    // for it, so the rejection has to land before the proxy -- asserted by the
-    // tier never being called, not just by the status code.
-    for (const [qs, parameter] of [
-      ["?lens=vibes", "lens"],
-      ["?sort=whatever", "sort"],
-      ["?order=sideways", "order"],
-      ["?limit=0", "limit"],
-      ["?limit=99999", "limit"],
-      ["?nope=1", "nope"],
-    ] as const) {
-      const { env } = dbWith({ neurons: [neuronRow()] });
-      let tierCalls = 0;
-      env.METAGRAPH_NEURONS_SOURCE = "postgres";
-      env.DATA_API = {
-        fetch: async () => {
-          tierCalls += 1;
-          return Response.json({ schema_version: 1 });
-        },
-      };
-      const response = await handleChainConcentrationSubnets(
-        req(`/api/v1/chain/concentration/subnets${qs}`),
-        env as unknown as Env,
-        url(`/api/v1/chain/concentration/subnets${qs}`),
-      );
-      assert.equal(response.status, 400, `${qs} should have been rejected`);
-      assert.equal(tierCalls, 0, `${qs} reached the tier before validating`);
-      const body = (await response.json()) as Row;
-      assert.equal((body.error as Row).code, "invalid_query");
-      assert.equal((body.meta as Row).parameter, parameter);
-    }
   });
 
   test("handleChainConcentrationSubnets: a cold tier echoes the CALLER's query back", async () => {
@@ -6496,7 +6004,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleChainPerformance(
         req("/api/v1/chain/performance"),
         env as unknown as Env,
-        url("/api/v1/chain/performance"),
       ),
     );
     assert.equal(body.data.marker, "pg");
@@ -6510,11 +6017,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
     const body = await json(
-      await handleChainYield(
-        req("/api/v1/chain/yield"),
-        env as unknown as Env,
-        url("/api/v1/chain/yield"),
-      ),
+      await handleChainYield(req("/api/v1/chain/yield"), env as unknown as Env),
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
@@ -6527,11 +6030,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
     };
     const body = await json(
-      await handleSelfHealth(
-        req("/api/v1/self-health"),
-        env as unknown as Env,
-        url("/api/v1/self-health"),
-      ),
+      await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
@@ -6570,11 +6069,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       }),
     };
     const body = await json(
-      await handleSelfHealth(
-        req("/api/v1/self-health"),
-        env as unknown as Env,
-        url("/api/v1/self-health"),
-      ),
+      await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );
     assert.equal(body.data.marker, "pg");
     // Stale first: the row an operator acts on leads.
@@ -6590,11 +6085,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     // real production state and must not read as "every lane is fine" OR as an error.
     const { env } = dbWith({ neurons: [] });
     const body = await json(
-      await handleSelfHealth(
-        req("/api/v1/self-health"),
-        env as unknown as Env,
-        url("/api/v1/self-health"),
-      ),
+      await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );
     assert.deepEqual(body.data.lanes, []);
     assert.equal(body.data.stale_lane_count, 0);
@@ -6607,7 +6098,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const res = await handleSelfHealth(
       req("/api/v1/self-health"),
       env as unknown as Env,
-      url("/api/v1/self-health"),
     );
     assert.equal(res.status, 200);
     const body = await json(res);
@@ -6620,16 +6110,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       ),
       true,
     );
-  });
-
-  test("handleSelfHealth: rejects an unknown query param", async () => {
-    const { env } = dbWith({ neurons: [] });
-    const res = await handleSelfHealth(
-      req("/api/v1/self-health?bogus=1"),
-      env as unknown as Env,
-      url("/api/v1/self-health?bogus=1"),
-    );
-    assert.equal(res.status, 400);
   });
 
   test("handleAccountPortfolio: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -6723,15 +6203,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // reaching this handler) so handleTopHoldersList's own defensive
   // parsed.error guard -- the same defense-in-depth shape as every other
   // handler in this file -- is exercised too.
-  test("handleTopHoldersList: rejects an unsupported query param with 400", async () => {
-    const res = await handleTopHoldersList(
-      req("/api/v1/accounts/top-holders?bogus=1"),
-      emptyEnv() as unknown as Env,
-      url("/api/v1/accounts/top-holders?bogus=1"),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.error.code, "invalid_query");
-  });
 
   test("handleTopHoldersList: flag=postgres uses Postgres data, D1 never queried", async () => {
     const { env, captures } = dbWith({});
@@ -7275,157 +6746,6 @@ describe("schema-stable cold-store matrix (#1900)", () => {
       const body = await jsonBody(res);
       assert.equal(body.ok, true);
       assertData(body.data);
-    });
-  }
-});
-
-describe("query-param guard matrix (#1900)", () => {
-  const unsupportedCases = [
-    {
-      name: "handleSubnetMetagraph",
-      run: () =>
-        handleSubnetMetagraph(
-          req(`/api/v1/subnets/${NETUID}/metagraph`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/metagraph?foo=bar`),
-        ),
-    },
-    {
-      name: "handleSubnetValidators",
-      run: () =>
-        handleSubnetValidators(
-          req(`/api/v1/subnets/${NETUID}/validators`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/validators?foo=bar`),
-        ),
-    },
-    {
-      name: "handleNeuronHistory",
-      run: () =>
-        handleNeuronHistory(
-          req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          UID,
-          url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?foo=bar`),
-        ),
-    },
-    {
-      name: "handleSubnetHistory",
-      run: () =>
-        handleSubnetHistory(
-          req(`/api/v1/subnets/${NETUID}/history`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/history?foo=bar`),
-        ),
-    },
-    {
-      name: "handleSubnetIdentityHistory",
-      run: () =>
-        handleSubnetIdentityHistory(
-          req(`/api/v1/subnets/${NETUID}/identity-history`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/identity-history?foo=bar`),
-        ),
-    },
-    {
-      name: "handleAccountEvents",
-      run: () =>
-        handleAccountEvents(
-          req(`/api/v1/accounts/${SS58}/events`),
-          emptyEnv() as unknown as Env,
-          SS58,
-          url(`/api/v1/accounts/${SS58}/events?foo=bar`),
-        ),
-    },
-    {
-      name: "handleAccountHistory",
-      run: () =>
-        handleAccountHistory(
-          req(`/api/v1/accounts/${SS58}/history`),
-          emptyEnv() as unknown as Env,
-          SS58,
-          url(`/api/v1/accounts/${SS58}/history?foo=bar`),
-        ),
-    },
-    {
-      name: "handleAccountExtrinsics",
-      run: () =>
-        handleAccountExtrinsics(
-          req(`/api/v1/accounts/${SS58}/extrinsics`),
-          emptyEnv() as unknown as Env,
-          SS58,
-          url(`/api/v1/accounts/${SS58}/extrinsics?foo=bar`),
-        ),
-    },
-    {
-      name: "handleAccountTransfers",
-      run: () =>
-        handleAccountTransfers(
-          req(`/api/v1/accounts/${SS58}/transfers`),
-          emptyEnv() as unknown as Env,
-          SS58,
-          url(`/api/v1/accounts/${SS58}/transfers?foo=bar`),
-        ),
-    },
-    {
-      name: "handleSubnetEvents",
-      run: () =>
-        handleSubnetEvents(
-          req(`/api/v1/subnets/${NETUID}/events`),
-          emptyEnv() as unknown as Env,
-          NETUID,
-          url(`/api/v1/subnets/${NETUID}/events?foo=bar`),
-        ),
-    },
-    {
-      name: "handleBlocks",
-      run: () =>
-        handleBlocks(
-          req("/api/v1/blocks"),
-          emptyEnv() as unknown as Env,
-          url("/api/v1/blocks?foo=bar"),
-        ),
-    },
-    {
-      name: "handleBlockExtrinsics",
-      run: () =>
-        handleBlockExtrinsics(
-          req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
-          emptyEnv() as unknown as Env,
-          String(BLOCK_NUM),
-          url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics?foo=bar`),
-        ),
-    },
-    {
-      name: "handleBlockEvents",
-      run: () =>
-        handleBlockEvents(
-          req(`/api/v1/blocks/${BLOCK_NUM}/events`),
-          emptyEnv() as unknown as Env,
-          String(BLOCK_NUM),
-          url(`/api/v1/blocks/${BLOCK_NUM}/events?foo=bar`),
-        ),
-    },
-    {
-      name: "handleExtrinsics",
-      run: () =>
-        handleExtrinsics(
-          req("/api/v1/extrinsics"),
-          emptyEnv() as unknown as Env,
-          url("/api/v1/extrinsics?foo=bar"),
-        ),
-    },
-  ];
-
-  for (const { name, run } of unsupportedCases) {
-    test(`${name} → 400 on unsupported query param`, async () => {
-      const body = await errorJson(await run());
-      assert.equal(body.error.code, "invalid_query");
     });
   }
 });

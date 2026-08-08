@@ -2835,7 +2835,7 @@ export async function handleChainEventsFamily(
     );
   }
 
-  const unknownParam = validateDeclaredQueryParams(url, url.pathname);
+  const unknownParam = validateDeclaredQueryParams(url);
   // Same error builder the other 136 routes use, so the body, code and
   // `parameter` field are identical rather than merely similar.
   if (unknownParam) return analyticsQueryError(unknownParam);
@@ -4170,6 +4170,25 @@ export async function handleRequest(
     );
   }
 
+  // THE query-parameter allowlist, for every GET route, derived from the
+  // contract (#10065). One check here replaces 119 hand-written arrays spread
+  // across the handler modules -- see validateDeclaredQueryParams for what
+  // that fifth copy of the query contract had already drifted into.
+  //
+  // Here rather than in the handlers because the question is answered from the
+  // pathname alone: a handler does not need to know its own contract entry to
+  // have its parameters checked, and one call site cannot be half-adopted the
+  // way 119 could. GET only -- the contract's query_parameters are the GET
+  // operation's, and a POST route reusing a GET path would otherwise be handed
+  // the wrong list.
+  if (
+    (request.method === "GET" || request.method === "HEAD") &&
+    (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/"))
+  ) {
+    const undeclared = validateDeclaredQueryParams(url);
+    if (undeclared) return analyticsQueryError(undeclared);
+  }
+
   // Multi-network addressing: an explicit /{network}/ prefix (mainnet/testnet/
   // local + finney/test aliases) routes through the network-aware artifact
   // handler. Bare paths fall through to the full dispatch below unchanged, so
@@ -4998,12 +5017,7 @@ export async function handleRequest(
       // Per-UID range read over the neurons tier — edge-cache busts on the
       // shared health-cron stamp like every sibling Postgres-tier route.
       return withEdgeCache(request, ctx, env, "subnet-concentration", () =>
-        handleSubnetConcentration(
-          request,
-          env,
-          Number(concentrationMatch[1]),
-          resolved.url,
-        ),
+        handleSubnetConcentration(request, env, Number(concentrationMatch[1])),
       );
     }
     const turnoverMatch = SUBNET_TURNOVER_PATH_PATTERN.exec(
@@ -5056,12 +5070,7 @@ export async function handleRequest(
       // deterministic per request (no query params), edge-cache like the
       // sibling analytics routes.
       return withEdgeCache(request, ctx, env, "subnet-alpha-volume", () =>
-        handleSubnetAlphaVolume(
-          request,
-          env,
-          Number(alphaVolumeMatch[1]),
-          resolved.url,
-        ),
+        handleSubnetAlphaVolume(request, env, Number(alphaVolumeMatch[1])),
       );
     }
     const ohlcMatch = SUBNET_OHLC_PATH_PATTERN.exec(resolved.url.pathname);
@@ -5136,7 +5145,6 @@ export async function handleRequest(
             request,
             env,
             Number(validatorEconomicsMatch[1]),
-            resolved.url,
           ),
       );
     }
@@ -5361,12 +5369,7 @@ export async function handleRequest(
     );
     if (performanceMatch) {
       return withEdgeCache(request, ctx, env, "subnet-performance", () =>
-        handleSubnetPerformance(
-          request,
-          env,
-          Number(performanceMatch[1]),
-          resolved.url,
-        ),
+        handleSubnetPerformance(request, env, Number(performanceMatch[1])),
       );
     }
     // Stake sitting on a currently-zero-dividends hotkey (#6789) — per-UID
@@ -5378,12 +5381,7 @@ export async function handleRequest(
     );
     if (idleStakeMatch) {
       return withEdgeCache(request, ctx, env, "subnet-idle-stake", () =>
-        handleSubnetIdleStake(
-          request,
-          env,
-          Number(idleStakeMatch[1]),
-          resolved.url,
-        ),
+        handleSubnetIdleStake(request, env, Number(idleStakeMatch[1])),
       );
     }
     // Per-UID metagraph (#1304/#1305): computed live from the neurons D1 tier.
@@ -5538,12 +5536,7 @@ export async function handleRequest(
     if (hyperparamsMatch) {
       // Single PK-by-netuid D1 lookup, same cost class as handleNeuron —
       // dispatch directly, no edge-cache wrapper.
-      return handleSubnetHyperparams(
-        request,
-        env,
-        Number(hyperparamsMatch[1]),
-        resolved.url,
-      );
+      return handleSubnetHyperparams(request, env, Number(hyperparamsMatch[1]));
     }
     const validatorsMatch = SUBNET_VALIDATORS_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -5698,12 +5691,7 @@ export async function handleRequest(
       resolved.url.pathname,
     );
     if (accountIdentityMatch) {
-      return handleAccountIdentity(
-        request,
-        env,
-        accountIdentityMatch[1],
-        resolved.url,
-      );
+      return handleAccountIdentity(request, env, accountIdentityMatch[1]);
     }
     const accountExtrinsicsMatch = ACCOUNT_EXTRINSICS_PATH_PATTERN.exec(
       resolved.url.pathname,
@@ -5899,7 +5887,7 @@ export async function handleRequest(
     // (like the per-subnet concentration route, but network-scoped).
     if (resolved.url.pathname === "/api/v1/chain/concentration") {
       return withEdgeCache(request, ctx, env, "chain-concentration", () =>
-        handleChainConcentration(request, env, resolved.url),
+        handleChainConcentration(request, env),
       );
     }
     // GET /api/v1/chain/concentration/subnets (#9717): the same neurons read as
@@ -5921,7 +5909,7 @@ export async function handleRequest(
     // sibling Postgres-tier route (like chain/concentration, but the reward-flow lens).
     if (resolved.url.pathname === "/api/v1/chain/performance") {
       return withEdgeCache(request, ctx, env, "chain-performance", () =>
-        handleChainPerformance(request, env, resolved.url),
+        handleChainPerformance(request, env),
       );
     }
     // GET /api/v1/chain/idle-stake (#6789): network-wide idle-stake rollup —
@@ -5929,7 +5917,7 @@ export async function handleRequest(
     // Postgres-tier route (like chain/performance, but the idle-delegation lens).
     if (resolved.url.pathname === "/api/v1/chain/idle-stake") {
       return withEdgeCache(request, ctx, env, "chain-idle-stake", () =>
-        handleChainIdleStake(request, env, resolved.url),
+        handleChainIdleStake(request, env),
       );
     }
     // GET /api/v1/chain/identity-history: network-wide recent subnet-identity-change
@@ -5955,7 +5943,7 @@ export async function handleRequest(
     // the cache window, so a reader always sees a recent-but-cheap answer.
     if (resolved.url.pathname === "/api/v1/self-health") {
       return withEdgeCache(request, ctx, env, "self-health", () =>
-        handleSelfHealth(request, env, resolved.url),
+        handleSelfHealth(request, env),
       );
     }
     // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
@@ -5963,7 +5951,7 @@ export async function handleRequest(
     // Postgres-tier route (like chain/performance, but the emission/stake return-rate lens).
     if (resolved.url.pathname === "/api/v1/chain/yield") {
       return withEdgeCache(request, ctx, env, "chain-yield", () =>
-        handleChainYield(request, env, resolved.url),
+        handleChainYield(request, env),
       );
     }
     // GET /api/v1/chain/turnover: network-wide validator-set churn across all subnets,

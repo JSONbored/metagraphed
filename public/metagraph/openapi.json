@@ -63699,6 +63699,15 @@
             }
           },
           {
+            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
             "in": "query",
             "name": "format",
@@ -83964,6 +83973,19 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "subnet",
+                "surface",
+                "provider"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -86689,6 +86711,15 @@
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -93868,6 +93899,17 @@
                 "all"
               ],
               "type": "string"
+            }
+          },
+          {
+            "description": "Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's.",
+            "in": "query",
+            "name": "netuid",
+            "required": false,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
             }
           }
         ],

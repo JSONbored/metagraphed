@@ -21,7 +21,7 @@ import {
   analyticsMeta,
   analyticsQueryError,
   markPostgresTierFallbackResponse,
-  validateQueryParams,
+  validateDeclaredQueryParams,
 } from "./analytics.ts";
 import {
   parseLimitParam,
@@ -266,8 +266,6 @@ export async function handleTrajectory(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["format"]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, flipped to
@@ -329,8 +327,6 @@ export async function handleEconomicsTrends(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["window", "format"]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const windowResult = parseHistoryWindow(url.searchParams.get("window")) as
@@ -388,12 +384,6 @@ export async function handleUptime(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, [
-    "window",
-    "min_samples",
-    "format",
-  ]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateFormatParam(url);
   if (formatError) return analyticsQueryError(formatError);
   const windowParam = url.searchParams.get("window") || "90d";
@@ -475,11 +465,7 @@ export function canonicalUptimeCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateQueryParams(url, [
-    "window",
-    "min_samples",
-    "format",
-  ]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateFormatParam(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -512,7 +498,7 @@ export function canonicalEconomicsTrendsCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateQueryParams(url, ["window", "format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateFormatParam(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -531,7 +517,7 @@ export function canonicalTrajectoryCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateQueryParams(url, ["format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateFormatParam(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -542,7 +528,7 @@ export function canonicalTrajectoryCachePath(
 // ?limit=20 request both resolve to the same edge-cache entry — mirrors
 // canonicalCompareCachePath and canonicalUptimeCachePath.
 export function canonicalLeaderboardsCachePath(url: URL): string {
-  const validationError = validateQueryParams(url, ["board", "limit"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const limitResult = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
   if ("error" in limitResult) {
@@ -690,8 +676,6 @@ export async function handleLeaderboards(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["board", "limit"]);
-  if (validationError) return analyticsQueryError(validationError);
   const requestedBoard = url.searchParams.get("board");
   if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
     return errorResponse(
@@ -730,7 +714,7 @@ export async function handleLeaderboards(
 }
 
 export function canonicalCompareCachePath(url: URL): string | null {
-  if (validateQueryParams(url, ["netuids", "dimensions"])) return null;
+  if (validateDeclaredQueryParams(url)) return null;
   const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
   if (!requestedNetuids) return null;
   const dimensions = parseCompareDimensions(url.searchParams.get("dimensions"));
@@ -863,9 +847,6 @@ export async function handleCompare(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["netuids", "dimensions"]);
-  if (validationError) return analyticsQueryError(validationError);
-
   const netuidsRaw = url.searchParams.get("netuids");
   const requestedNetuids = parseCompareNetuids(netuidsRaw);
   if (!requestedNetuids) {
@@ -1008,10 +989,6 @@ export async function handleDomains(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  const url = new URL(request.url);
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
-
   const { subnetRows, economicsRows, capturedAt } =
     await domainSummaryInputs(env);
   const data = buildDomainOverview(
@@ -1046,9 +1023,6 @@ export async function handleDomainSummary(
   env: Env,
   tag: string,
 ): Promise<Response> {
-  const url = new URL(request.url);
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   if (!DOMAIN_TAGS.includes(tag)) {
     return errorResponse(
       "invalid_request",
@@ -1106,9 +1080,6 @@ export async function handleCompareValidators(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["hotkeys", "netuid"]);
-  if (validationError) return analyticsQueryError(validationError);
-
   const hotkeysRaw = url.searchParams.get("hotkeys");
   const hotkeys = parseCompareHotkeys(hotkeysRaw);
   if (!hotkeys) {
@@ -1182,14 +1153,6 @@ export async function handleEmissionPipeline(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, [
-    "netuid",
-    "sort",
-    "order",
-    "limit",
-    "fields",
-  ]);
-  if (validationError) return analyticsQueryError(validationError);
   const netuidResult = parseNetuidParam(url.searchParams.get("netuid"));
   if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
 

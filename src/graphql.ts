@@ -339,13 +339,24 @@ import {
   loadFailureReasons,
   FAILURE_REASONS_WINDOWS,
 } from "./failure-reasons.ts";
-import { DEFAULT_FAILURE_REASONS_WINDOW } from "./route-limits.ts";
+import {
+  DEFAULT_FAILURE_REASONS_WINDOW,
+  EMISSION_PIPELINE_LIMIT_MAX,
+  BULK_HEALTH_TRENDS_LIMIT_MAX,
+  HEALTH_TREND_WINDOW_VALUES,
+} from "./route-limits.ts";
 import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
   TAO_USD_WINDOWS,
 } from "./tao-usd-series.ts";
+import {
+  NOMINATOR_BASES,
+  DEFAULT_NOMINATOR_BASIS,
+  loadNominatorPositions,
+  buildNominatorPositions,
+} from "./validator-nominator-positions.ts";
 import {
   buildSurfaceHistory,
   loadSurfaceHistory,
@@ -567,6 +578,8 @@ import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
   projectEmissionPipeline,
+  parseEmissionPipelineNarrowing,
+  narrowEmissionPipeline,
 } from "./emission-pipeline-surface.ts";
 import {
   DEFAULT_MOVERS_SORT,
@@ -814,6 +827,9 @@ import type {
   QuerySubnet_EndpointsArgs,
   QuerySubnet_Event_SummaryArgs,
   QuerySubnet_EventsArgs,
+  QueryTao_UsdArgs,
+  QueryCoverage_DepthArgs,
+  QueryHealth_TrendsArgs,
   QuerySubnet_EvidenceArgs,
   QuerySubnet_GapsArgs,
   QuerySubnet_HealthArgs,
@@ -2315,7 +2331,7 @@ const rootValue = {
   // reuses exactly what REST/MCP already call, so the three surfaces can't
   // drift.
   async subnet_metagraph(
-    { netuid, validator_permit }: QuerySubnet_MetagraphArgs,
+    { netuid, validator_permit, fields }: QuerySubnet_MetagraphArgs,
     context: GqlContext,
   ) {
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetMetagraph
@@ -2323,6 +2339,9 @@ const rootValue = {
     // neurons is a schema-stable empty metagraph, never a GraphQL error.
     const params = new URLSearchParams();
     if (validator_permit) params.set("validator_permit", "true");
+    // #10065: the payload is opaque JSON, so the selection set cannot narrow
+    // it and `fields` is the only projection a caller has.
+    if (fields != null && fields !== "") params.set("fields", fields);
     return (
       ((await tryPostgresTier(
         context.env,
@@ -2832,7 +2851,10 @@ const rootValue = {
     };
   },
 
-  async tao_usd({ window }: { window?: string | null }, context: GqlContext) {
+  async tao_usd(
+    { window, include_points }: QueryTao_UsdArgs,
+    context: GqlContext,
+  ) {
     // #9609. Same loader REST and MCP use -- see chain_holders above for why a
     // resolver-local query is the thing this surface has historically got wrong.
     const label = window ?? DEFAULT_TAO_USD_WINDOW;
@@ -2847,7 +2869,15 @@ const rootValue = {
       >[0],
       { windowHours: TAO_USD_WINDOWS[label] },
     );
-    return buildTaoUsdSeries(rows, { window: label });
+    // #10065: the same opt-out REST and MCP take. REST defaults to sending the
+    // points and MCP to omitting them (the 143 KB asymmetry #9720 records);
+    // GraphQL follows REST, because a caller who does not want the points can
+    // already leave them out of the selection set -- the argument exists so the
+    // SERVER can skip building them, not so the client can hide them.
+    return buildTaoUsdSeries(rows, {
+      window: label,
+      includePoints: include_points ?? true,
+    });
   },
 
   async subnet_surface_history(
@@ -3656,6 +3686,7 @@ const rootValue = {
       block_end,
       limit,
       offset,
+      cursor,
     }: QuerySubnet_EventsArgs,
     context: GqlContext,
   ) {
@@ -3676,6 +3707,10 @@ const rootValue = {
     if (kind != null) params.set("kind", kind);
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
+    // #10065: the keyset cursor the route has always accepted, forwarded the
+    // same way the sibling account_events field forwards its own -- an opaque
+    // token handed back verbatim, not a number to construct.
+    if (cursor != null && cursor !== "") params.set("cursor", cursor);
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) handleSubnetEvents and
     // the get_subnet_events MCP tool use. The events list passes through whole;
     // graphql's default resolver reads each AccountEvent field, matching
@@ -4337,7 +4372,7 @@ const rootValue = {
   },
 
   async incidents(
-    { window, netuid, sort, order, limit, cursor }: QueryIncidentsArgs,
+    { window, netuid, fields, sort, order, limit, cursor }: QueryIncidentsArgs,
     context: GqlContext,
   ) {
     // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
@@ -4388,6 +4423,10 @@ const rootValue = {
     const queryUrl = new URL("https://graphql.internal/incidents");
     for (const [name, value] of [
       ["netuid", netuid],
+      // #10065: the rows are opaque JSON here, so a selection set cannot
+      // project them and `fields` is the caller's only narrowing. Validated by
+      // the shared engine, the same one REST and MCP run.
+      ["fields", fields],
       ["sort", sort],
       ["order", order],
       ["limit", limit],
@@ -4545,10 +4584,44 @@ const rootValue = {
     return loadArtifact(context, "/metagraph/schemas/index.json");
   },
 
-  async coverage_depth(_args: unknown, context: GqlContext) {
-    // Raw passthrough of the /api/v1/coverage-depth artifact (the same one the
-    // list_enrichment_targets MCP tool shapes); degrades to null when cold.
-    return loadArtifact(context, "/metagraph/coverage-depth.json");
+  // #10065: /api/v1/coverage-depth publishes ten query parameters and this
+  // field took NONE of them -- a raw passthrough of the whole artifact, with
+  // nothing to filter, project or page by. `coverage-depth` is a declared
+  // query collection (API_QUERY_COLLECTIONS), so the shared applyQueryFilters
+  // engine already knows its filters, sorts and projection; running that same
+  // engine here is parity by construction rather than a GraphQL-only
+  // reimplementation -- the shape `economics` and `incidents` already use.
+  // Still degrades to null when the artifact is cold.
+  async coverage_depth(args: QueryCoverage_DepthArgs, context: GqlContext) {
+    const data = await loadArtifact(context, "/metagraph/coverage-depth.json");
+    if (!data) return data;
+    const queryUrl = new URL("https://graphql.internal/coverage-depth");
+    for (const [name, value] of [
+      ["netuid", args?.netuid],
+      ["tier", args?.tier],
+      ["agent_status", args?.agent_status],
+      ["blocker_level", args?.blocker_level],
+      ["q", args?.q],
+      ["fields", args?.fields],
+      ["sort", args?.sort],
+      ["order", args?.order],
+      ["limit", args?.limit],
+      ["cursor", args?.cursor],
+    ] as const) {
+      if (value != null) queryUrl.searchParams.set(name, String(value));
+    }
+    const transformed = applyQueryFilters(
+      data as Row,
+      queryUrl,
+      "coverage-depth",
+      [],
+    );
+    if (transformed.error) {
+      throw new GraphQLError(transformed.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return transformed.data;
   },
 
   async subnet_volume({ netuid }: QuerySubnet_VolumeArgs, context: GqlContext) {
@@ -5863,6 +5936,7 @@ const rootValue = {
     {
       hotkey,
       window,
+      basis,
       sort,
       coldkey,
       limit,
@@ -5874,6 +5948,42 @@ const rootValue = {
     // an unsupported value is a GraphQL BAD_USER_INPUT error, not a silently
     // substituted default. `sort` is optional: omitted resolves to
     // DEFAULT_NOMINATOR_SORT inside the builder, so only a SUPPLIED bad value errors.
+    // #10065: the same two questions the REST route answers. `positions` is a
+    // current-holdings snapshot off the position ledger and `flow` a windowed
+    // aggregation, so window/sort mean nothing under `positions` -- accepting
+    // them silently would imply the basis honoured them, which is the exact
+    // condition handleValidatorNominators rejects with.
+    const requestedBasis = basis ?? DEFAULT_NOMINATOR_BASIS;
+    if (!NOMINATOR_BASES.includes(requestedBasis as "flow" | "positions")) {
+      throw new GraphQLError(
+        `basis must be one of ${NOMINATOR_BASES.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (requestedBasis === "positions") {
+      for (const [name, value] of [
+        ["window", window],
+        ["sort", sort],
+      ] as const) {
+        if (value != null) {
+          throw new GraphQLError(
+            `"${name}" applies to basis=flow only; the positions basis is a ` +
+              "current-holdings snapshot, not a windowed aggregation.",
+            { extensions: { code: "BAD_USER_INPUT" } },
+          );
+        }
+      }
+      const positions = await loadNominatorPositions(
+        context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadNominatorPositions
+        >[0],
+        hotkey,
+      );
+      return buildNominatorPositions(positions, hotkey, {
+        limit: limit ?? GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+        offset: offset ?? 0,
+      });
+    }
     const requestedWindow = window ?? DEFAULT_NOMINATOR_WINDOW;
     if (!Object.hasOwn(NOMINATOR_WINDOWS, requestedWindow)) {
       throw new GraphQLError(
@@ -7406,7 +7516,7 @@ const rootValue = {
   // capture's chain_state is what makes every reconstructed share checkable at
   // all, so an absent one has no honest body — only an error.
   async emission_pipeline(
-    { netuid }: QueryEmission_PipelineArgs,
+    { netuid, fields, sort, order, limit }: QueryEmission_PipelineArgs,
     context: GqlContext,
   ) {
     const economics = await loadEconomics(context);
@@ -7421,7 +7531,32 @@ const rootValue = {
         },
       });
     }
-    return data;
+    // #10065: the same narrowing handleEmissionPipeline applies, through the
+    // same helper. `fields` is validated against the DECOMPOSED rows, so it
+    // has to run AFTER the projection -- the reason REST does two passes, and
+    // the reason this cannot fold into projectEmissionPipeline.
+    const narrowingParams = new URLSearchParams();
+    for (const [name, value] of [
+      ["fields", fields],
+      ["sort", sort],
+      ["order", order],
+      ["limit", limit],
+    ] as const) {
+      if (value != null) narrowingParams.set(name, String(value));
+    }
+    const narrowing = parseEmissionPipelineNarrowing(
+      narrowingParams,
+      data.subnets as unknown as Parameters<
+        typeof parseEmissionPipelineNarrowing
+      >[1],
+      { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
+    );
+    if ("error" in narrowing) {
+      throw new GraphQLError(narrowing.error.message, {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return narrowEmissionPipeline(data, narrowing);
   },
 
   async subnet_movers(
@@ -8573,15 +8708,51 @@ const rootValue = {
     };
   },
 
-  async health_trends(_args: unknown, context: GqlContext) {
+  async health_trends(
+    { window, limit, offset }: QueryHealth_TrendsArgs,
+    context: GqlContext,
+  ) {
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadBulkHealthTrends
     // fallback contract REST's handleBulkHealthTrends and the get_health_trends
     // MCP tool share -- a cold store yields both windows zeroed, never a
     // GraphQL error.
+    //
+    // #10065: the three narrowing parameters #9989 gave the route. This field
+    // took none of them, so a GraphQL caller always got every window for every
+    // surface. Validated the same way the sibling fields validate an enum --
+    // a supplied bad window is BAD_USER_INPUT, not a silently full result.
+    if (
+      window != null &&
+      !HEALTH_TREND_WINDOW_VALUES.includes(window as "7d" | "30d")
+    ) {
+      throw new GraphQLError(
+        `window must be one of ${HEALTH_TREND_WINDOW_VALUES.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (limit != null && (limit < 1 || limit > BULK_HEALTH_TRENDS_LIMIT_MAX)) {
+      throw new GraphQLError(
+        `limit must be between 1 and ${BULK_HEALTH_TRENDS_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (offset != null && offset < 0) {
+      throw new GraphQLError("offset must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const trendsParams = new URLSearchParams();
+    for (const [name, value] of [
+      ["window", window],
+      ["limit", limit],
+      ["offset", offset],
+    ] as const) {
+      if (value != null) trendsParams.set(name, String(value));
+    }
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/health/trends"),
+        postgresTierRequest(context, "/api/v1/health/trends", trendsParams),
         "METAGRAPH_HEALTH_SOURCE",
       )) as Row | null) ??
       (
@@ -8591,6 +8762,9 @@ const rootValue = {
             context.env as unknown as Record<string, unknown>,
             context.ctx,
           ),
+          window: window ?? null,
+          limit: limit ?? null,
+          offset: offset ?? 0,
         })
       ).data;
     return {

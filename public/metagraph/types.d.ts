@@ -19407,6 +19407,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
@@ -37011,6 +37013,7 @@ export interface operations {
                 q?: string;
                 /** @description Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
                 limit?: number;
+                type?: "subnet" | "surface" | "provider";
             };
             header?: never;
             path?: never;
@@ -39505,6 +39508,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
@@ -46647,6 +46652,8 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
+                netuid?: number;
             };
             header?: never;
             path: {

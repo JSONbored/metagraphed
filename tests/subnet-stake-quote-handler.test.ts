@@ -125,14 +125,6 @@ describe("handleSubnetStakeQuote (#5235)", () => {
     assert.equal(json.error.code, "insufficient_liquidity");
   });
 
-  test("unknown query param → 400", async () => {
-    const { status } = await call(
-      liveEconomicsEnv(),
-      `/api/v1/subnets/${NETUID}/stake-quote?amount=1&foo=bar`,
-    );
-    assert.equal(status, 400);
-  });
-
   test("bad direction → 400 invalid_direction", async () => {
     const { status, json } = await call(
       {},

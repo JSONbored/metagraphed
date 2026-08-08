@@ -6003,8 +6003,75 @@ export function compileRoutePattern(pathTemplate: string) {
     .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)")
     .replace(/__METAGRAPH_TAG__/g, "(?<tag>[a-z-]+)")
     .replace(/__METAGRAPH_H160__/g, "(?<h160>0x[0-9a-fA-F]{40})")
-    .replace(/__METAGRAPH_ID__/g, "(?<id>[A-Za-z0-9][A-Za-z0-9:._-]*)");
+    .replace(/__METAGRAPH_ID__/g, "(?<id>[A-Za-z0-9][A-Za-z0-9:._-]*)")
+    // `{network}` on the /api/v1/{network}/… twins. The alternation is
+    // NETWORK_ALIASES itself rather than a `[^/]+` catch-all, so a twin
+    // template cannot swallow a sibling literal segment.
+    .replace(
+      /__METAGRAPH_NETWORK__/g,
+      `(?<network>${NETWORK_ALIASES.join("|")})`,
+    );
   return new RegExp(`^${pattern}\\/?$`);
+}
+
+/**
+ * The contract path template a concrete request pathname resolves to, or null
+ * when no route matches (#10065).
+ *
+ * Derived from `API_ROUTES` through `compileRoutePattern`, so it is the same
+ * statement the OpenAPI artifact is built from rather than a second table.
+ * The handlers use it to look their own declared query parameters up, which is
+ * what lets 119 hand-written allowlist arrays go away.
+ *
+ * Specificity: a fully literal template wins over a parameterised one, so
+ * `/api/v1/subnets/movers` resolves to itself and not to
+ * `/api/v1/subnets/{netuid}`. Ties break on the number of path parameters,
+ * fewest first — `compileRoutePattern`'s character classes already keep an
+ * ss58 out of a `{netuid}` slot, so this only has to settle overlap between
+ * templates that could both legitimately match.
+ */
+const ROUTE_PATTERNS = (() => {
+  const paths = new Set<string>();
+  for (const route of API_ROUTES as unknown as {
+    path: string;
+    method: string;
+  }[]) {
+    if (route.method !== "GET") continue;
+    paths.add(route.path);
+    // The /{network}/ twins are not their own API_ROUTES entries -- they are
+    // generated from the base template, the same way buildOpenApiArtifact
+    // emits them. Deriving them here keeps the two in step by construction.
+    const twin = networkVariantPath(route.path);
+    if (twin) paths.add(twin);
+  }
+  return [...paths]
+    .map((path) => ({
+      path,
+      parameters: (path.match(/\{[a-z_0-9]+\}/g) ?? []).length,
+      pattern: compileRoutePattern(
+        path.replace(/\{network\}/g, "__METAGRAPH_NETWORK__"),
+      ),
+    }))
+    .sort((a, b) => a.parameters - b.parameters);
+})();
+
+/**
+ * The contract path a request pathname resolves to, with any `/{network}/`
+ * prefix stripped back to the base template.
+ *
+ * A twin serves the same payload from a different store, so it declares the
+ * same query parameters; callers asking "what may this request carry" want the
+ * base template's answer.
+ */
+export function contractPathForPathname(pathname: string): string | null {
+  for (const route of ROUTE_PATTERNS) {
+    if (route.pattern.test(pathname)) {
+      return route.path.startsWith("/api/v1/{network}/")
+        ? `/api/v1/${route.path.slice("/api/v1/{network}/".length)}`
+        : route.path;
+    }
+  }
+  return null;
 }
 
 function artifact(
