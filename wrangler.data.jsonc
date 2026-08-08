@@ -248,7 +248,23 @@
     // Setting this flag before that parser existed would have turned
     // created_at, units_spent, request_count, github_user_id and every other
     // *_at column into strings on the wire, with nothing failing anywhere.
-    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions",
+    //
+    // THE FIRST PRODUCER LANE (#10037). Everything above is written by a
+    // request handler; these three are written by a producer, and they are the
+    // first lane whose D1 write stops entirely.
+    //
+    // Earned on parity held ACROSS TICKS, not on one snapshot. Sampled twice
+    // ~20 minutes apart on 2026-08-08, spanning a producer pass: neurons
+    // 30,118/30,118 both times, neuron_daily 877,039/877,039 both times, and
+    // account_position_daily moving 864,953 -> 864,983 on BOTH sides together.
+    // A mirror that keeps pace THROUGH a pass is the evidence that matters; a
+    // single equal count only says the last backfill finished.
+    //
+    // What changes: handleNeuronsSync skips the D1 write outright rather than
+    // writing and ignoring it, and the Neon write becomes authoritative -- any
+    // table's failure is now the request's failure. A pass that did not reach
+    // the store did not happen.
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
