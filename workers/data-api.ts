@@ -378,6 +378,7 @@ import {
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import { mirrorChainDetailToNeon } from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
   SUBNET_HYPERPARAMS_NEON_LANE,
@@ -908,7 +909,11 @@ function chainDetailSyncAuth(request: Request, env: Env): Response | null {
   return null;
 }
 
-async function handleChainDetailSync(request: Request, env: Env) {
+async function handleChainDetailSync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
 
@@ -994,6 +999,14 @@ async function handleChainDetailSync(request: Request, env: Env) {
       >[0],
       batch.rows,
     ));
+    // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
+    // other and mirrors too -- #9728 is the precedent for why covering one of
+    // two is worse than covering neither: the row count looks nearly right.
+    await mirrorChainDetailToNeon(
+      env as unknown as Record<string, unknown>,
+      ctx,
+      batch.rows as unknown as Parameters<typeof mirrorChainDetailToNeon>[2],
+    );
   } catch (err) {
     console.error("data-api chain-detail-sync D1 write failed:", err);
     await captureDataApiError(err, "chain-detail-sync-d1", env);
@@ -7284,7 +7297,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/chain-detail-sync"
     ) {
-      return handleChainDetailSync(request, env);
+      return handleChainDetailSync(request, env, ctx);
     }
     if (
       request.method === "GET" &&
@@ -7920,18 +7933,28 @@ export default {
     // hand-off rather than four writes.
     const familyWriters: SyncBatchFamilyWriters = env.METAGRAPH_HEALTH_DB
       ? {
-          "chain-detail": (families) =>
-            writeChainDetailToD1(
+          "chain-detail": async (families) => {
+            const rows = {
+              blockRows: families.blockRows ?? [],
+              extrinsicRows: families.extrinsicRows ?? [],
+              chainEventRows: families.chainEventRows ?? [],
+              accountEventRows: families.accountEventRows ?? [],
+            };
+            const result = await writeChainDetailToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeChainDetailToD1
               >[0],
-              {
-                blockRows: families.blockRows ?? [],
-                extrinsicRows: families.extrinsicRows ?? [],
-                chainEventRows: families.chainEventRows ?? [],
-                accountEventRows: families.accountEventRows ?? [],
-              } as Parameters<typeof writeChainDetailToD1>[1],
-            ),
+              rows as Parameters<typeof writeChainDetailToD1>[1],
+            );
+            // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
+            // path.
+            await mirrorChainDetailToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              rows,
+            );
+            return result;
+          },
         }
       : {};
     const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB

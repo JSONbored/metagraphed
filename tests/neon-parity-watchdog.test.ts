@@ -566,11 +566,26 @@ describe("the deployed wiring", () => {
   test("every mirrored or backfilled table is watched", () => {
     // The gap this lane exists to close: a table written to both stores with
     // nothing comparing them. Anything named in either flag must be here.
+    // A LANE IS NOT ALWAYS A TABLE. Most mirror lanes are named after the one
+    // table they write, so hyphen-to-underscore resolves them -- but a lane
+    // that writes a FAMILY is not, and `chain-detail` would resolve to
+    // `chain_detail`, which does not exist. Munging the name was only ever a
+    // shortcut for the common case; the lanes that write several tables
+    // declare them, so ask the declaration first and fall back to the shortcut.
+    const LANE_TABLES: Readonly<Record<string, readonly string[]>> = {
+      "chain-detail": [
+        "chain_detail_blocks",
+        "chain_detail_extrinsics",
+        "chain_detail_chain_events",
+        "chain_detail_account_events",
+      ],
+    };
     const named = (re: RegExp) =>
       (re.exec(wrangler)?.[1] ?? "")
         .split(",")
-        .map((s) => s.trim().replace(/-/g, "_"))
-        .filter(Boolean);
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")]);
     const watched = new Set<string>(PARITY_TABLES);
     for (const t of [
       ...named(/"NEON_DUAL_WRITE_LANES":\s*"([^"]*)"/),
