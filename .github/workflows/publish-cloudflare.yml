@@ -98,6 +98,47 @@ jobs:
           echo "METAGRAPH_RUN_ID=$published_at" >> "$GITHUB_ENV"
           echo "metagraph_run_id=$published_at" >> "$GITHUB_OUTPUT"
 
+      # The alpha-price history the economics bake reads lives in Neon
+      # (subnet_snapshots). Resolved from NEON_API_KEY rather than stored as a
+      # second secret that can drift from the project -- the same shape
+      # neon-migrate.yml uses, and the same reasoning.
+      #
+      # SOFT, unlike neon-migrate's: that workflow exits 1 without a URI because
+      # a migration runner that "succeeds" with no database is how a schema
+      # silently stops being applied. This one must not fail a publish it has no
+      # business failing -- loadAlphaPriceHistoryByNetuid bakes null change
+      # fields without a DATABASE_URL, which is schema-stable, and a warning
+      # here is the signal. `|| true` on the curls keeps a Neon blip from
+      # taking down the publish.
+      #
+      # The URI carries a password: it is masked into GITHUB_ENV. Never echo it,
+      # and never add a step that dumps the environment.
+      - name: Resolve Neon connection string for the economics bake
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -uo pipefail
+          if [ -z "${NEON_API_KEY:-}" ] || [ -z "${PROJECT_ID:-}" ]; then
+            echo "::warning::no Neon credentials; economics bakes with null alpha_price_change_* fields"
+            exit 0
+          fi
+          branch="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID/branches" \
+            | jq -r '.branches[] | select(.default == true) | .id')" || true
+          uri=""
+          if [ -n "${branch:-}" ] && [ "$branch" != "null" ]; then
+            uri="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/$PROJECT_ID/connection_uri?database_name=neondb&role_name=neondb_owner&branch_id=$branch" \
+              | jq -r '.uri')" || true
+          fi
+          if [ -z "${uri:-}" ] || [ "$uri" = "null" ]; then
+            echo "::warning::could not resolve a Neon connection URI; economics bakes with null alpha_price_change_* fields"
+            exit 0
+          fi
+          echo "::add-mask::$uri"
+          echo "DATABASE_URL=$uri" >> "$GITHUB_ENV"
+
       - name: Prepare reviewed publish artifacts
         run: npm run build
         env:
