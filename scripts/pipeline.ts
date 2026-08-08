@@ -124,6 +124,7 @@ function checkCommands(): Step[] {
     step("validate:schema-opacity"),
     step("validate:schema-vocabularies"),
     step("validate:module-state-resets"),
+    step("validate:pg-json-binds"),
     step("validate:private-boundary"),
     step("test"),
   ];
@@ -211,6 +212,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:schema-opacity"),
     step("validate:schema-vocabularies"),
     step("validate:module-state-resets"),
+    step("validate:pg-json-binds"),
     step("validate:private-boundary"),
     step("test"),
   ];
