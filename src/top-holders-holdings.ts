@@ -52,6 +52,7 @@
 // src/hotkey-alpha-completeness.ts for why a row count cannot answer this and
 // the producers declare their pass sizes instead.
 
+import { observationsReadDb } from "./observations-read-runner.ts";
 import {
   latestCompleteAccountBalancesPass,
   mayRankAccountBalances,
@@ -239,9 +240,16 @@ function holding(value: unknown): number | null {
 export async function topHoldersHoldings(
   env: Env | null | undefined,
   cap: number = TOP_HOLDERS_HOLDINGS_ROW_CAP,
+  // Threaded so this can follow subnet_snapshots to Neon (#10086). Without it
+  // the selector correctly declines -- createPgSql returns its connection via
+  // waitUntil, and leaking one per artifact build would be worse than reading
+  // the store this lane has always read.
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null,
 ): Promise<HoldingsLeg | null> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = observationsReadDb(
+    env as unknown as Record<string, unknown>,
+    ctx,
+  ) as D1Like | undefined;
   if (!db?.prepare) return null;
 
   // The two readers describe the same binding with different minimal shapes --
