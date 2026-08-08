@@ -65,8 +65,43 @@ describe("pgObservationsReadDb", () => {
       all?: () => Promise<unknown>;
     };
     assert.equal(typeof prepared.all, "function");
-    assert.deepEqual(await prepared.all!(), [{ netuid: 1 }]);
+    // `{ results }` -- the envelope readStore's handle answers with, and the
+    // one D1 itself had. NOT the bare array this adapter used to return: the
+    // readers that unwrap the result themselves guard on
+    // `Array.isArray(res?.results)`, and `.results` on an array is undefined,
+    // so a read that SUCCEEDED took the failure branch.
+    assert.deepEqual(await prepared.all!(), { results: [{ netuid: 1 }] });
     assert.deepEqual(seen, [[]]);
+  });
+
+  test("first() returns one row, and null when there are none", async () => {
+    // The other half of the same divergence: this adapter had no `first()` at
+    // all, so a caller that used one got "not a function" -- caught by the
+    // try/catch these readers wrap their query in and reported as a decline
+    // rather than as a broken read. That is what sent
+    // src/validator-nominator-counts-staleness-watchdog.ts to readStore.
+    const db = pgObservationsReadDb({
+      unsafe: async () => [{ captured_at: 7 }, { captured_at: 6 }],
+    }) as unknown as {
+      prepare(sql: string): {
+        first(): Promise<unknown>;
+        bind(...values: unknown[]): { first(): Promise<unknown> };
+      };
+    };
+    // Both call shapes, because D1 had both and this codebase uses both.
+    assert.deepEqual(await db.prepare("SELECT 1").first(), { captured_at: 7 });
+    assert.deepEqual(await db.prepare("SELECT 1").bind(1).first(), {
+      captured_at: 7,
+    });
+
+    const empty = pgObservationsReadDb({
+      unsafe: async () => [],
+    }) as unknown as { prepare(sql: string): { first(): Promise<unknown> } };
+    assert.equal(
+      await empty.prepare("SELECT 1").first(),
+      null,
+      "no rows is null, not undefined -- D1's own contract",
+    );
   });
 
   test("a rejected read degrades to zero rows rather than throwing", async () => {
