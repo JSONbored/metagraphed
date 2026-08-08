@@ -2228,8 +2228,9 @@ async function dispatchScheduled(
     // sibling lane's failure can silence is an alarm that reports "healthy"
     // for exactly the reason it should be shouting.
     const rpcUsageStaleness = await runRpcUsageStalenessWatchdog(env);
-    const uptimeRollup = await rollupDailyUptime(env);
+    const uptimeRollup = await rollupDailyUptime(env, { ctx });
     const snapshotPromise = writeSubnetSnapshot(env, {
+      ctx,
       readArtifact: readArtifact as unknown as (
         env: Env,
         path: string,
@@ -2252,6 +2253,7 @@ async function dispatchScheduled(
       // this tick (see pruneHealthHistory's pruneD1Checks comment) -- the
       // combined `rolled` only proves SOME store aggregated the day.
       pruneHealthHistory(env, {
+        ctx,
         pruneD1Checks:
           (uptimeRollup as { d1_rolled?: boolean }).d1_rolled === true,
       }).catch(() => ({ pruned: false })),

@@ -31,6 +31,17 @@ import {
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 import { OPERATIONAL_SURFACES_R2_KEY } from "./operational-surfaces-sync.ts";
 import {
+  neonOwnsObservations,
+  persistProbesToNeon,
+  pruneChecksNeon,
+  rollupFailureReasonsToNeon,
+  rollupUptimeDailyToNeon,
+  upsertSubnetSnapshotsToNeon,
+  type ObservationsSql,
+} from "./observations-neon.ts";
+import { neonOwnsTable } from "./neon-write.ts";
+import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
+import {
   persistProbesToD1,
   pruneChecksD1,
   rollupFailureReasonsToD1,
@@ -503,10 +514,33 @@ interface RunHealthProberOverrides {
   probeDeadlineMs?: (surface: ProbeSurface) => number;
 }
 
+/**
+ * The Postgres runner for the observation family, or null to stay on D1.
+ *
+ * ALL FIVE TABLES OR NONE (#10069). Two of this family's writes aggregate
+ * INSIDE the store, so a half-listed group would leave a rollup selecting from
+ * a D1 surface_checks that nothing fills any more -- and that failure is a
+ * schema-stable empty, not an error.
+ *
+ * `ctx` is a precondition, not a nicety: createPgSql hands the connection back
+ * to Hyperdrive through ctx.waitUntil, and without one every sweep would leak a
+ * connection. Absent ctx therefore keeps the whole family on D1 rather than
+ * writing to Neon by another route.
+ */
+function observationsRunner(
+  env: Env,
+  ctx?: ExecutionContext,
+): ObservationsSql | null {
+  if (!ctx) return null;
+  const bag = env as unknown as Record<string, unknown>;
+  if (!neonOwnsObservations(bag, neonOwnsTable)) return null;
+  return createPgSql(env.HYPERDRIVE as unknown as HyperdriveLike, ctx);
+}
+
 // Run one full probe sweep and persist results. Returns a small summary object.
 export async function runHealthProber(
   env: Env,
-  _ctx: ExecutionContext,
+  ctx: ExecutionContext,
   overrides: RunHealthProberOverrides = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
@@ -691,12 +725,21 @@ export async function runHealthProber(
   // was retired with the box (#9193) and its endpoint has answered 503 ever
   // since; the call stayed behind and fired every sweep for nothing.
   // the copy that keeps accumulating; nothing about this sweep changes.
-  await persistProbesToD1(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-    probed as unknown as Record<string, unknown>[],
-    runAt,
-    env,
-  );
+  const probeSql = observationsRunner(env, ctx);
+  if (probeSql) {
+    await persistProbesToNeon(
+      probeSql,
+      probed as unknown as Record<string, unknown>[],
+      runAt,
+    );
+  } else {
+    await persistProbesToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+      probed as unknown as Record<string, unknown>[],
+      runAt,
+      env,
+    );
+  }
 
   const counts = emptyStatusCounts();
   for (const row of probed)
@@ -882,7 +925,7 @@ function utcDayBounds(ms: number): {
 // data-api.ts's handleHealthUptimeRollupSync, keeps this idempotent).
 export async function rollupDailyUptime(
   env: Env,
-  overrides: { now?: () => number } = {},
+  overrides: { now?: () => number; ctx?: ExecutionContext } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const runAt = now();
@@ -894,24 +937,38 @@ export async function rollupDailyUptime(
   // rolled-before-prune contract is satisfied when EITHER store rolled: each
   // prune below is likewise per-store, and blocking D1's prune on a dead
   // Postgres (or vice versa) would freeze the surviving store's retention.
-  const d1Rollup = await rollupUptimeDailyToD1(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-    days,
-    runAt,
-    env,
-  );
+  // Both rollups take the same store as the raw checks they read: they are
+  // INSERT ... SELECT FROM surface_checks, so aggregating in the store that no
+  // longer receives probes would roll up an empty window and report success.
+  const rollupSql = observationsRunner(env, overrides.ctx);
+  const d1Rollup = rollupSql
+    ? await rollupUptimeDailyToNeon(rollupSql, days, runAt).then((r) => ({
+        rolled: r.ok,
+        ...(r.reason ? { error: r.reason } : {}),
+      }))
+    : await rollupUptimeDailyToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+        days,
+        runAt,
+        env,
+      );
   // #9622: the reason rollup runs beside the uptime one and is folded into
   // `d1_rolled` below, which is what gates the raw prune. Reporting the day as
   // rolled while only the uptime half landed would let pruneHealthHistory
   // delete the raw checks whose classifications never made it anywhere durable
   // -- the exact orphaning `d1_rolled` was introduced to prevent, one table
   // over.
-  const d1Failures = await rollupFailureReasonsToD1(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-    days,
-    runAt,
-    env,
-  );
+  const d1Failures = rollupSql
+    ? await rollupFailureReasonsToNeon(rollupSql, days, runAt).then((r) => ({
+        rolled: r.ok,
+        ...(r.reason ? { error: r.reason } : {}),
+      }))
+    : await rollupFailureReasonsToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+        days,
+        runAt,
+        env,
+      );
   // The failure reason used to come from the Postgres mirror, which has
   // returned 503 since #9193 -- so `result.synced` was always false and this
   // guard had already reduced to "did D1 roll". Now it says so, and reports
@@ -947,16 +1004,25 @@ export async function pruneHealthHistory(
     // and deleting D1's raw window without D1's aggregate would silently
     // orphan the one store that survives the box.
     pruneD1Checks?: boolean;
+    ctx?: ExecutionContext;
   } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
   if (overrides.pruneD1Checks === true) {
-    await pruneChecksD1(
-      env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-      cutoff,
-      env,
-    );
+    // The prune follows the rows: deleting D1's raw window while Neon holds
+    // the checks would drop nothing that matters, but deleting Neon's while D1
+    // holds them would orphan the aggregate the gate above just wrote.
+    const pruneSql = observationsRunner(env, overrides.ctx);
+    if (pruneSql) {
+      await pruneChecksNeon(pruneSql, cutoff);
+    } else {
+      await pruneChecksD1(
+        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+        cutoff,
+        env,
+      );
+    }
   }
   return { pruned: true, cutoff };
 }
@@ -1029,7 +1095,9 @@ export async function writeSubnetSnapshotRows(
     chainState,
     date,
     capturedAt,
+    ctx,
   }: {
+    ctx?: ExecutionContext;
     profiles?: Row[];
     economicsByNetuid?: Map<unknown, Row>;
     /**
@@ -1101,11 +1169,18 @@ export async function writeSubnetSnapshotRows(
       };
     });
   if (!rows.length) return { synced: false, reason: "no_rows" };
-  return upsertSubnetSnapshotsToD1(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-    rows as unknown as Record<string, unknown>[],
-    env,
-  ).then((result) =>
+  const snapshotSql = observationsRunner(env, ctx);
+  const write = snapshotSql
+    ? upsertSubnetSnapshotsToNeon(
+        snapshotSql,
+        rows as unknown as Record<string, unknown>[],
+      ).then((r) => ({ ok: r.ok, reason: r.reason }))
+    : upsertSubnetSnapshotsToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+        rows as unknown as Record<string, unknown>[],
+        env,
+      );
+  return write.then((result) =>
     // The D1 write's own verdict is now the lane's verdict, rather than being
     // discarded in favour of a second store's. upsertSubnetSnapshotsToD1 never
     // throws and reports its own reason, so a genuine write failure still
@@ -1124,6 +1199,9 @@ interface WriteSubnetSnapshotOverrides {
    * D1 and a real PostHog token. */
   laneHealthDb?: LaneHealthDb;
   recordExceptionEvent?: typeof recordExceptionEvent;
+  /** Needed to reach Neon: createPgSql returns the pooled connection through
+   * ctx.waitUntil, so without one this lane stays on D1. */
+  ctx?: ExecutionContext;
 }
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
@@ -1249,6 +1327,7 @@ export async function writeSubnetSnapshot(
     chainState: ((economicsResult?.data as Row)?.chain_state as Row) ?? null,
     date,
     capturedAt,
+    ctx: overrides.ctx,
   });
   const rows = profiles.filter((profile) =>
     Number.isInteger(profile.netuid),
