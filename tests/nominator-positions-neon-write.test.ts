@@ -288,7 +288,7 @@ test("the outcome carries the pass result", async () => {
     {
       rows,
       coldkeyMaxCapturedAt: new Map(),
-      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1 },
+      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1, nowMs: NOW },
     },
     { sql, laneHealthDb: null },
   );
@@ -306,7 +306,7 @@ test("a withheld tally is reported as failed, not as absent", async () => {
     {
       rows,
       coldkeyMaxCapturedAt: new Map([["ck", 1]]),
-      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1 },
+      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1, nowMs: NOW },
     },
     { sql, laneHealthDb: null },
   );
