@@ -13240,6 +13240,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -13251,7 +13253,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -13305,6 +13307,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BlockEventsArtifact"];
                     };
+                    /**
+                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index,price_at_tx,price_basis
+                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,440,2026-07-03T00:00:00.000Z,2,0.028409091,trade_exact
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -13359,6 +13366,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -13370,7 +13379,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -13434,6 +13443,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BlockExtrinsicsArtifact"];
                     };
+                    /**
+                     * @example extrinsic_id,block_number,signer,call_module,call_function,success
+                     *     1000000-4,1000000,5Signer_sample,SubtensorModule,set_weights,true
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -19393,6 +19407,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -19402,7 +19418,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -19455,6 +19471,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AccountHistoryArtifact"];
                     };
+                    /**
+                     * @example day,netuid,event_count,event_kinds,first_block,last_block
+                     *     2026-08-07,0,4,StakeRemoved;StakeAdded,8788696,8791411
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -22612,6 +22633,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -22621,7 +22644,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -22675,6 +22698,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BlockEventsArtifact"];
                     };
+                    /**
+                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index,price_at_tx,price_basis
+                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,440,2026-07-03T00:00:00.000Z,2,0.028409091,trade_exact
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -22729,6 +22757,8 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -22738,7 +22768,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -22802,6 +22832,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["BlockExtrinsicsArtifact"];
                     };
+                    /**
+                     * @example extrinsic_id,block_number,signer,call_module,call_function,success
+                     *     1000000-4,1000000,5Signer_sample,SubtensorModule,set_weights,true
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -44481,6 +44516,8 @@ export interface operations {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `90d`, `1y`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "90d" | "1y";
                 min_samples?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -44490,7 +44527,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -44564,6 +44601,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["UptimeArtifact"];
                     };
+                    /**
+                     * @example surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50,p95,p99,status
+                     *     sn-1-apex-healthcheck,2026-07-21,17,1,632,17,668,691,702,ok
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -46733,6 +46775,8 @@ export interface operations {
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
                 coldkey?: string;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
             };
             header?: never;
             path: {
@@ -46742,7 +46786,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];
@@ -46806,6 +46850,11 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorNominatorsArtifact"];
                     };
+                    /**
+                     * @example coldkey,staked_tao,unstaked_tao,net_staked_tao,gross_staked_tao,event_count,last_observed_at
+                     *     ck_sample,4,0,4,4,1,2026-08-07T21:17:12.000Z
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

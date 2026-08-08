@@ -50,6 +50,37 @@ export const ROUTE_CSV_EXAMPLES: Record<string, string> = {
   ].join("\r\n"),
   "subnet-events": EVENTS_CSV_EXAMPLE,
   "account-events": EVENTS_CSV_EXAMPLE,
+  // #10090: the block-level event feed serializes the SAME formatChainEvent row
+  // shape as the two feeds above, so it shares their example rather than
+  // carrying a third copy of the same header. It has served this CSV since it
+  // was written; it just never published `format`, so nothing generated from
+  // openapi.json could discover the export.
+  "block-events": EVENTS_CSV_EXAMPLE,
+  "block-extrinsics": [
+    "extrinsic_id,block_number,signer,call_module,call_function,success",
+    "1000000-4,1000000,5Signer_sample,SubtensorModule,set_weights,true",
+  ].join("\r\n"),
+  // The DAILY rollup, not the raw events: one row per (day, netuid) with the
+  // kinds seen that day joined by `;`, which is why event_kinds is a single
+  // column rather than one per kind.
+  "account-history": [
+    "day,netuid,event_count,event_kinds,first_block,last_block",
+    "2026-08-07,0,4,StakeRemoved;StakeAdded,8788696,8791411",
+  ].join("\r\n"),
+  // One row per (surface, day). uptime_ratio is 0..1, and the latency columns
+  // are success-only -- latency_sample_count is their denominator, which is why
+  // it rides alongside `samples` rather than being derivable from it.
+  "subnet-uptime": [
+    "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50,p95,p99,status",
+    "sn-1-apex-healthcheck,2026-07-21,17,1,632,17,668,691,702,ok",
+  ].join("\r\n"),
+  // VALIDATOR_NOMINATOR_CSV_COLUMNS (workers/request-handlers/entities.ts). The
+  // internal `last_observed_ms` sort key is dropped before the response, so it
+  // is deliberately absent here too.
+  "validator-nominators": [
+    "coldkey,staked_tao,unstaked_tao,net_staked_tao,gross_staked_tao,event_count,last_observed_at",
+    "ck_sample,4,0,4,4,1,2026-08-07T21:17:12.000Z",
+  ].join("\r\n"),
   // The Postgres all-events feed: flat scalar columns of each raw pallet.method
   // event (the nested `args` object is omitted from the CSV projection).
   "chain-events-feed": [

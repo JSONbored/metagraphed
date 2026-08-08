@@ -7631,6 +7631,17 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -8266,6 +8277,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -9651,6 +9673,17 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -9685,6 +9718,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]
@@ -11303,6 +11347,17 @@
           "schema": {
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
           }
         }
       ]

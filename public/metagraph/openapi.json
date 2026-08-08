@@ -448,6 +448,9 @@
           "schema_version": 1
         }
       },
+      "AccountHistoryCsv": {
+        "value": "day,netuid,event_count,event_kinds,first_block,last_block\r\n2026-08-07,0,4,StakeRemoved;StakeAdded,8788696,8791411"
+      },
       "AccountIdentityArtifactResponse": {
         "value": {
           "data": {
@@ -1938,6 +1941,9 @@
           "ok": true,
           "schema_version": 1
         }
+      },
+      "BlockExtrinsicsCsv": {
+        "value": "extrinsic_id,block_number,signer,call_module,call_function,success\r\n1000000-4,1000000,5Signer_sample,SubtensorModule,set_weights,true"
       },
       "BlocksFeedArtifactResponse": {
         "value": {
@@ -11481,6 +11487,9 @@
           "schema_version": 1
         }
       },
+      "SubnetUptimeCsv": {
+        "value": "surface_id,day,samples,uptime_ratio,avg_latency_ms,latency_sample_count,p50,p95,p99,status\r\nsn-1-apex-healthcheck,2026-07-21,17,1,632,17,668,691,702,ok"
+      },
       "SubnetValidatorEconomicsArtifactResponse": {
         "value": {
           "data": {
@@ -12440,6 +12449,9 @@
           "ok": true,
           "schema_version": 1
         }
+      },
+      "ValidatorNominatorsCsv": {
+        "value": "coldkey,staked_tao,unstaked_tao,net_staked_tao,gross_staked_tao,event_count,last_observed_at\r\nck_sample,4,0,4,4,1,2026-08-07T21:17:12.000Z"
       },
       "WebhookSubscriptionArtifactResponse": {
         "value": {
@@ -56750,6 +56762,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -56776,9 +56801,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "AccountEventsCsv": {
+                    "$ref": "#/components/examples/AccountEventsCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -56896,6 +56931,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -56922,9 +56970,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "BlockExtrinsicsCsv": {
+                    "$ref": "#/components/examples/BlockExtrinsicsCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -63631,6 +63689,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -63657,9 +63728,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "AccountHistoryCsv": {
+                    "$ref": "#/components/examples/AccountHistoryCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -66840,6 +66921,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -66866,9 +66960,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "AccountEventsCsv": {
+                    "$ref": "#/components/examples/AccountEventsCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -66970,6 +67074,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -66996,9 +67113,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "BlockExtrinsicsCsv": {
+                    "$ref": "#/components/examples/BlockExtrinsicsCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -91466,6 +91593,19 @@
               "minimum": 0,
               "type": "integer"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -91492,9 +91632,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "SubnetUptimeCsv": {
+                    "$ref": "#/components/examples/SubnetUptimeCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"
@@ -93874,6 +94024,19 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -93900,9 +94063,19 @@
                     }
                   ]
                 }
+              },
+              "text/csv": {
+                "examples": {
+                  "ValidatorNominatorsCsv": {
+                    "$ref": "#/components/examples/ValidatorNominatorsCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
               }
             },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
             "headers": {
               "cache-control": {
                 "$ref": "#/components/headers/CacheControl"

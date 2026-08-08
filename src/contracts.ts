@@ -3387,7 +3387,7 @@ export const API_ROUTES = [
     "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them.",
     "short",
     ["validators", "analytics"],
-    [
+    csvRouteQuery([
       {
         name: "basis",
         schema: { type: "string", enum: ["flow", "positions"] },
@@ -3406,7 +3406,7 @@ export const API_ROUTES = [
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
       { name: "coldkey", schema: { type: "string" } },
-    ],
+    ]),
     [{ name: "hotkey", schema: { type: "string" } }],
   ),
   route(
@@ -3657,13 +3657,13 @@ export const API_ROUTES = [
     "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
     "short",
     ["accounts", "analytics"],
-    [
+    csvRouteQuery([
       { name: "netuid", schema: parameterSchema(netuidSchema()) },
       { name: "from", schema: { type: "string", format: "date" } },
       { name: "to", schema: { type: "string", format: "date" } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -4447,10 +4447,10 @@ export const API_ROUTES = [
     "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
     "short",
     ["blocks", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -4461,10 +4461,10 @@ export const API_ROUTES = [
     "Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown.",
     "short",
     ["blocks", "analytics"],
-    [
+    csvRouteQuery([
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
       { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -5081,10 +5081,10 @@ export const API_ROUTES = [
     "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
     "short",
     ["health", "subnets", "analytics"],
-    [
+    csvRouteQuery([
       { name: "window", schema: { type: "string", enum: ["90d", "1y"] } },
       { name: "min_samples", schema: { type: "integer", minimum: 0 } },
-    ],
+    ]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
