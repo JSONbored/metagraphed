@@ -3463,7 +3463,9 @@ describe("handleAccountHistory", () => {
   test("rejects malformed netuid filters with 400", async () => {
     // 9007199254740993 = Number.MAX_SAFE_INTEGER + 2: passes /^\d+$/ but loses
     // precision under Number(), so the safe-integer guard rejects it.
-    for (const netuid of ["abc", "-1", "7.5", "", "9007199254740993"]) {
+    // 70000 is past the u16 ceiling (#10075): a value no subnet can carry used
+    // to come back 200 with an empty result, which reads as "no activity".
+    for (const netuid of ["abc", "-1", "7.5", "9007199254740993", "70000"]) {
       const res = await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
         emptyEnv() as unknown as Env,
@@ -3474,6 +3476,21 @@ describe("handleAccountHistory", () => {
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, "netuid");
     }
+  });
+
+  // A BLANK `?netuid=` is unscoped, not malformed (#10075). This route used to
+  // be the only one of the four netuid-filtered feeds that rejected it: its
+  // siblings all run parseNonNegativeIntParam, whose documented contract is
+  // "absent/blank -> no filter". One mistake answered two different ways across
+  // four routes is the defect, so they agree now.
+  test("a blank netuid filters nothing rather than 400ing", async () => {
+    const res = await handleAccountHistory(
+      req(`/api/v1/accounts/${SS58}/history`),
+      emptyEnv() as unknown as Env,
+      SS58,
+      url(`/api/v1/accounts/${SS58}/history?netuid=`),
+    );
+    assert.equal(res.status, 200);
   });
 
   test("returns schema-stable empty days on cold D1", async () => {

@@ -158,6 +158,42 @@ export function parseNonNegativeIntParam(
   return { value };
 }
 
+/**
+ * The largest netuid the chain can express. `netuid` is a u16, so 65536 does
+ * not name a subnet that has not been registered yet — it names nothing, ever.
+ */
+export const MAX_U16_NETUID = 65535;
+
+/**
+ * Validate an optional `netuid` query filter (#10075).
+ *
+ * `parseNonNegativeIntParam` already rejects a negative or non-numeric value.
+ * The ceiling is what nothing checked: `?netuid=70000` came back 200 with an
+ * empty result, which is indistinguishable from "that subnet exists and matches
+ * nothing" for a value no subnet could ever carry. The published schema says
+ * `maximum: 65535` (#10073), and a published bound the handler does not enforce
+ * is a contract lie, not a nicety — same rule as #9916 for page sizes.
+ *
+ * The list-collection routes get this from `validateListQuery`, which reads the
+ * bound off the published schema. These are the routes that do not run through
+ * it and so need it stated.
+ */
+export function parseNetuidParam(
+  raw: string | null,
+): { value: number | null } | ParamError {
+  const parsed = parseNonNegativeIntParam(raw, "netuid");
+  if ("error" in parsed) return parsed;
+  if (parsed.value !== null && parsed.value > MAX_U16_NETUID) {
+    return {
+      error: {
+        parameter: "netuid",
+        message: `netuid must be an integer between 0 and ${MAX_U16_NETUID}.`,
+      },
+    };
+  }
+  return parsed;
+}
+
 export function parseDateRange(
   url: URL,
 ): { from: string | null; to: string | null } | ParamError {

@@ -37,6 +37,7 @@ import {
   FEED_PAGINATION,
   parseDateRange,
   parseLimitParam,
+  parseNetuidParam,
   parseNonNegativeIntParam,
   parsePagination,
 } from "../request-params.ts";
@@ -4900,10 +4901,7 @@ export async function handleAccountEvents(
     "block_end",
   );
   if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
-  const netuid = parseNonNegativeIntParam(
-    url.searchParams.get("netuid"),
-    "netuid",
-  );
+  const netuid = parseNetuidParam(url.searchParams.get("netuid"));
   if ("error" in netuid) return analyticsQueryError(netuid.error);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
@@ -5006,16 +5004,9 @@ export async function handleAccountHistory(
   const page = parsePagination(url, FEED_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
   const { limit, offset } = page;
+  const netuidParsed = parseNetuidParam(url.searchParams.get("netuid"));
+  if ("error" in netuidParsed) return analyticsQueryError(netuidParsed.error);
   const netuid = url.searchParams.get("netuid");
-  if (
-    netuid != null &&
-    (!/^\d+$/.test(netuid) || !Number.isSafeInteger(Number(netuid)))
-  ) {
-    return analyticsQueryError({
-      parameter: "netuid",
-      message: "netuid must be a non-negative integer.",
-    });
-  }
   // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
   // D1 so callers cannot force a scan to prove an impossible empty page.
   if (from && to && from > to) {

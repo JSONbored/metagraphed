@@ -202,11 +202,15 @@ export const FILTER_TEXT_MAX_LENGTH = 100;
 /**
  * A free-text search query. Substring/keyword, not a query language — worth
  * saying, because an agent that assumes operators will silently get no match.
+ *
+ * `max` defaults to the list collections' ceiling; a route with its own takes
+ * it from `src/route-limits.ts`, the same shape as `limitSchema`. Semantic
+ * search embeds the query rather than scanning with it, so it affords far more.
  */
-export const querySchema = () =>
+export const querySchema = (max: number = SEARCH_TEXT_MAX_LENGTH) =>
   z
     .string()
-    .max(SEARCH_TEXT_MAX_LENGTH)
+    .max(max)
     .describe(
       "Free-text search terms, matched as case-insensitive substrings. " +
         "Not a query language: operators, quotes and wildcards are matched literally.",

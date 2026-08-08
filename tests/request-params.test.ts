@@ -12,6 +12,8 @@ import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
   DEFAULT_LIMIT,
+  MAX_U16_NETUID,
+  parseNetuidParam,
   FEED_PAGINATION,
   MAX_LIMIT,
   MAX_OFFSET,
@@ -350,5 +352,59 @@ describe("parseNonNegativeIntParam", () => {
   test("returns a parsed value for a valid non-negative integer", () => {
     assert.deepEqual(parseNonNegativeIntParam("0", "offset"), { value: 0 });
     assert.deepEqual(parseNonNegativeIntParam("42", "offset"), { value: 42 });
+  });
+});
+
+// A published bound the handler does not enforce is a contract lie (#10075).
+//
+// `netuid` is a u16, and openapi.json says `maximum: 65535` on every route that
+// takes one. Four routes -- the two account feeds, chain/emission-pipeline and
+// compare/validators -- answered `?netuid=70000` with 200 and an empty result,
+// which is indistinguishable from "that subnet exists and matches nothing" for
+// a value no subnet could ever carry. Same rule as #9916 for page sizes: an
+// out-of-range value is rejected, never answered.
+describe("parseNetuidParam enforces the u16 bound the contract publishes", () => {
+  test("absent or blank is unscoped, not an error", () => {
+    assert.deepEqual(parseNetuidParam(null), { value: null });
+    assert.deepEqual(parseNetuidParam(""), { value: null });
+  });
+
+  test("a netuid inside the range parses", () => {
+    assert.deepEqual(parseNetuidParam("0"), { value: 0 });
+    assert.deepEqual(parseNetuidParam("64"), { value: 64 });
+  });
+
+  test("the ceiling is inclusive", () => {
+    assert.deepEqual(parseNetuidParam(String(MAX_U16_NETUID)), {
+      value: MAX_U16_NETUID,
+    });
+  });
+
+  test("one past the ceiling is rejected, and says the range", () => {
+    assert.deepEqual(parseNetuidParam(String(MAX_U16_NETUID + 1)), {
+      error: {
+        parameter: "netuid",
+        message: "netuid must be an integer between 0 and 65535.",
+      },
+    });
+    assert.deepEqual(parseNetuidParam("70000"), {
+      error: {
+        parameter: "netuid",
+        message: "netuid must be an integer between 0 and 65535.",
+      },
+    });
+  });
+
+  test("a negative or non-numeric value keeps the shared message", () => {
+    // parseNonNegativeIntParam rejects these first, so the ceiling check never
+    // sees them and the caller gets the message it always got.
+    for (const raw of ["-1", "abc", "1.5", "99999999999999999999"]) {
+      assert.deepEqual(parseNetuidParam(raw), {
+        error: {
+          parameter: "netuid",
+          message: "netuid must be a non-negative integer.",
+        },
+      });
+    }
   });
 });
