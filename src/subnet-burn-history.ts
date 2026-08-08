@@ -123,11 +123,24 @@ export async function captureSubnetBurnHistory(
   }
 
   try {
-    // INSERT OR REPLACE, not INSERT: a retried tick at the same millisecond must be
-    // idempotent rather than a primary-key error that fails the whole batch.
+    // ON CONFLICT DO UPDATE, not INSERT OR REPLACE (#10172).
+    //
+    // Both spellings are idempotent, and idempotence is the requirement: a
+    // retried tick at the same millisecond must not be a primary-key error
+    // that fails the whole batch. But `INSERT OR REPLACE` is SQLite's, and
+    // POSTGRES REJECTS IT OUTRIGHT as a syntax error -- so the moment
+    // subnet_burn_history became sole-store on Neon and producerStore started
+    // handing this lane a Postgres runner, every write in this batch failed.
+    //
+    // It failed silently, which is the part that cost five hours: the catch
+    // below turns it into `{ ok: false, reason }`, the cron dispatch ignores
+    // the return, and this lane had no lane_health verdict. `ON CONFLICT ...
+    // DO UPDATE` is understood by BOTH engines (SQLite has supported it since
+    // 3.24), so one statement serves whichever store owns the table.
     const insert = db.prepare(
-      `INSERT OR REPLACE INTO ${SUBNET_BURN_HISTORY_TABLE}` +
-        ` (netuid, observed_at, burn_tao) VALUES (?, ?, ?)`,
+      `INSERT INTO ${SUBNET_BURN_HISTORY_TABLE}` +
+        ` (netuid, observed_at, burn_tao) VALUES (?, ?, ?)` +
+        ` ON CONFLICT (netuid, observed_at) DO UPDATE SET burn_tao = EXCLUDED.burn_tao`,
     );
     await db.batch(
       rows.map((r) => insert.bind(r.netuid, observedAt, r.burn_tao)),
