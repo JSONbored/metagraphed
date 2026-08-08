@@ -46,26 +46,54 @@ export interface ReadRunnerSql {
 }
 
 /**
- * Present a Postgres runner as the D1 read surface the loaders expect.
+ * Present a Postgres runner as the D1-shaped read surface the loaders expect.
  *
- * `d1All` accepts either a bare array or `{ results }`, and `unsafe` resolves
- * to the array, so no row-shape translation is needed on the way back either.
+ * SHAPE-IDENTICAL TO `readStore`'s handle (src/read-store.ts), deliberately.
+ * Two adapters in this tree present Postgres as a D1-shaped reader, and they
+ * disagreed about what a prepared statement offers. This one answered
+ * `prepare(text) -> { bind, all }` with the rows as a BARE ARRAY; readStore
+ * answers `{ bind, all, first }` with `{ results }`, which is the shape D1
+ * itself had and therefore the shape the call sites were written against.
+ *
+ * Neither difference is caught by a type -- every consumer reaches these
+ * through a structural interface or a cast -- and both fail SILENTLY:
+ *
+ *   A caller doing `.first()` gets "not a function". That lands in the
+ *   try/catch these readers wrap their query in, so it is reported as a
+ *   decline rather than as a broken read: see the note in
+ *   src/validator-nominator-counts-staleness-watchdog.ts, which hit exactly
+ *   this and had to move to readStore.
+ *
+ *   A caller guarding on `Array.isArray(res?.results)` reads `undefined` off
+ *   an array and takes its own failure branch on a read that SUCCEEDED --
+ *   the guard src/top-holders-holdings.ts and src/chain-holders.ts both use.
+ *
+ * `d1All` accepts a bare array or `{ results }`, so the loaders that go through
+ * it never saw the difference; it is the readers that unwrap the result
+ * themselves that it reaches. With D1 gone (#10181) there is no second store to
+ * absorb the mismatch, so the two adapters agreeing is the whole safety margin.
  */
 export function pgObservationsReadDb(sql: ReadRunnerSql): ObservationsReadDb {
+  const rows = async (text: string, values: unknown[]) =>
+    ((await sql.unsafe(text, values)) ?? []) as unknown[];
+  const ops = (text: string, values: unknown[]) => ({
+    async all() {
+      return { results: await rows(text, values) };
+    },
+    async first() {
+      return (await rows(text, values))[0] ?? null;
+    },
+  });
   return {
     prepare(text: string) {
       return {
-        bind(...values: unknown[]) {
-          return {
-            all: () => sql.unsafe(text, values),
-          };
-        },
-        // BOTH SHAPES, because D1 has both and this codebase uses both.
+        bind: (...values: unknown[]) => ops(text, values),
+        // BOTH SHAPES, because D1 had both and this codebase uses both.
         // src/top-holders-holdings.ts calls `prepare(sql).all?.()` with no
         // bind at all -- its statement carries no parameters -- and an adapter
         // offering only the bind path would throw there rather than fall back,
         // turning a store swap into a route outage.
-        all: () => sql.unsafe(text, []),
+        ...ops(text, []),
       };
     },
   };
