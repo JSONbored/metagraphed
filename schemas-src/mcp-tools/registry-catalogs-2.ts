@@ -21,6 +21,7 @@ import {
   idFilterSchema,
   McpListArtifactStamp,
   McpListPageFields,
+  RPC_POOL_KIND_VALUES,
   fieldsSchema,
   kindSchema,
   limitSchema,
@@ -171,7 +172,11 @@ export type ListRpcEndpointsOutput = z.infer<
 export const ListRpcPoolsInputSchema = z
   .object({
     id: idFilterSchema().optional(),
-    kind: kindSchema(ENDPOINT_LAYER_VALUES).optional(),
+    // POOL kinds, not endpoint LAYERS. This read ENDPOINT_LAYER_VALUES
+    // (`bittensor-base`, `subnet-app`, …) -- a different vocabulary entirely,
+    // so all four advertised values were rejected by the route and none of the
+    // three it accepts was advertised (#10118).
+    kind: kindSchema(RPC_POOL_KIND_VALUES).optional(),
     min_eligible_count: z
       .number()
       .optional()

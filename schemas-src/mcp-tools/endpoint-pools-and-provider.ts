@@ -14,6 +14,7 @@ import { z } from "zod";
 import {
   McpListArtifactStamp,
   McpListPageFields,
+  RPC_POOL_KIND_VALUES,
   fieldsSchema,
   idFilterSchema,
   kindSchema,
@@ -40,7 +41,10 @@ import { ENDPOINT_POOL_SORT_VALUES, ENDPOINT_SORT_VALUES } from "./shared.ts";
 export const ListEndpointPoolsInputSchema = z
   .object({
     id: idFilterSchema().optional(),
-    kind: kindSchema(ENDPOINT_LAYER_VALUES).optional(),
+    // POOL kinds, not endpoint LAYERS -- the same confusion list_rpc_pools
+    // carried (#10118). Verified against production: all four layer values
+    // are rejected here and none of the three that work was advertised.
+    kind: kindSchema(RPC_POOL_KIND_VALUES).optional(),
     min_eligible_count: z
       .number()
       .optional()
