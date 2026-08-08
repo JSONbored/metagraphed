@@ -56,6 +56,15 @@ interface LedgerPlan {
    * filters too -- a mirror that stores MORE than its source is a mirror in
    * name only (#9832). */
   filter?: string;
+  /**
+   * Target types for the columns the FILTERED form selects (#10121).
+   *
+   * Only the filtered form needs them: `FROM (VALUES ...) AS src (...)` is a
+   * standalone relation whose columns have no declared types, so every untyped
+   * parameter falls back to TEXT and the insert fails against any non-text
+   * column. The unfiltered form takes its types from the target columns.
+   */
+  columnTypes?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -106,6 +115,14 @@ export const LEDGER_MIRROR_PLANS: Readonly<Record<string, LedgerPlan>> = {
     filter:
       "EXISTS (SELECT 1 FROM nominator_positions np" +
       " WHERE np.hotkey = src.hotkey AND np.netuid = src.netuid::int)",
+    // EVERY non-text column, not just the one the error happened to name.
+    // Postgres reports the FIRST mismatch, so fixing them one error at a time
+    // is three deploys; hotkey is text on both sides and needs no cast.
+    columnTypes: {
+      netuid: "int",
+      total_alpha: "double precision",
+      captured_at: "bigint",
+    },
   },
   "validator-nominator-counts": {
     table: "validator_nominator_counts",
@@ -173,6 +190,7 @@ export async function mirrorLedgerToNeon(
     plan.conflict,
     `${plan.table}.captured_at < EXCLUDED.captured_at`,
     plan.filter,
+    plan.columnTypes,
   );
   await recordNeonWriteVerdict(laneDb, lane, result, now());
 

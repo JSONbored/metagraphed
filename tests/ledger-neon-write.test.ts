@@ -6,6 +6,7 @@
 // primary key, the out-of-order guard, and a typo'd lane name costing nothing.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { buildPgUpsert } from "../src/neon-write.ts";
 import {
   LEDGER_MIRROR_PLANS,
   mirrorLedgerToNeon,
@@ -270,4 +271,62 @@ describe("the hotkey-alpha filter (#9832)", () => {
       );
     }
   });
+});
+
+// --- the FILTERED form has no type context (#10121) -------------------------
+//
+// `INSERT INTO t (a, b) VALUES ($1, $2)` gives Postgres the target columns as
+// type context, so every parameter is inferred and nothing has to be declared.
+// Wrapping the same list in `FROM (VALUES ...) AS src (a, b)` removes that
+// entirely: `src` is a standalone relation whose columns have no declared
+// types, so every untyped parameter falls back to TEXT.
+//
+// Reproduced against production Neon before the fix and after:
+//   old form -> column "netuid" is of type integer but expression is of type text
+//   new form -> runs, 0 rows (the EXISTS filter rejects the probe hotkey)
+test("the filtered SELECT list casts every non-text column", () => {
+  const plan = LEDGER_MIRROR_PLANS["hotkey-alpha"];
+  const sql = buildPgUpsert(
+    plan.table,
+    plan.columns,
+    plan.conflict,
+    1,
+    undefined,
+    plan.filter,
+    plan.columnTypes,
+  );
+  assert.match(sql, /SELECT src\.hotkey, src\.netuid::int/);
+  assert.match(sql, /src\.total_alpha::double precision/);
+  assert.match(sql, /src\.captured_at::bigint/);
+  // hotkey is text on both sides -- casting it would be noise, not safety.
+  assert.doesNotMatch(sql, /src\.hotkey::/);
+});
+
+test("EVERY non-text column is declared, not just the one Postgres named", () => {
+  // Postgres reports the FIRST mismatch only, so fixing them one error at a
+  // time is one deploy per column. This pins that the plan covers the whole
+  // set, derived from the live Neon schema rather than from the error text.
+  const plan = LEDGER_MIRROR_PLANS["hotkey-alpha"];
+  assert.deepEqual(Object.keys(plan.columnTypes ?? {}).sort(), [
+    "captured_at",
+    "netuid",
+    "total_alpha",
+  ]);
+});
+
+test("the UNFILTERED form is left alone -- it has its type context", () => {
+  // account-balances has no filter, so its parameters are inferred from the
+  // target columns. Adding casts there would be cargo-culted noise.
+  const plan = LEDGER_MIRROR_PLANS["account-balances"];
+  const sql = buildPgUpsert(
+    plan.table,
+    plan.columns,
+    plan.conflict,
+    1,
+    undefined,
+    plan.filter,
+    plan.columnTypes,
+  );
+  assert.doesNotMatch(sql, /::/);
+  assert.match(sql, /VALUES \(\$1/);
 });
