@@ -60429,6 +60429,7 @@
             "name": "call_module",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -74913,6 +74914,7 @@
             "name": "call_module",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -94022,6 +94024,7 @@
             "name": "coldkey",
             "required": false,
             "schema": {
+              "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
               "type": "string"
             }
           },

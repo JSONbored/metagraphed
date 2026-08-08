@@ -7636,6 +7636,7 @@
         {
           "name": "coldkey",
           "schema": {
+            "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
             "type": "string"
           }
         },
@@ -9925,6 +9926,7 @@
         {
           "name": "call_module",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },

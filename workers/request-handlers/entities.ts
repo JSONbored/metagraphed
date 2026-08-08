@@ -59,8 +59,10 @@ import { validateResponseTripwire } from "../../src/response-validation-tripwire
 import {
   analyticsQueryError,
   markPostgresTierFallbackResponse,
+  validateMaxLength,
   validateQueryParams,
 } from "./analytics.ts";
+import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../../src/route-limits.ts";
 import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
 import {
@@ -7138,6 +7140,15 @@ export async function handleExtrinsics(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  // The same cap the three chain-analytics feeds apply to `call_module`
+  // (#10096). This route took the identical filter with no bound at all, so a
+  // 150-character value was a 400 on /chain/calls and a 200 here.
+  const callModuleError = validateMaxLength(
+    url,
+    "call_module",
+    CHAIN_CALL_MODULE_MAX_LENGTH,
+  );
+  if (callModuleError) return analyticsQueryError(callModuleError);
   const page = parsePagination(url, BLOCK_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
   const { limit, offset } = page;

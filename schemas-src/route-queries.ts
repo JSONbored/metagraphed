@@ -60,8 +60,10 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+  CHAIN_CALL_MODULE_MAX_LENGTH,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
   CHAIN_EVENTS_LIMIT_MAX,
+  CHAIN_EVENT_NAME_MAX_LENGTH,
   CHAIN_HOLDERS_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   CHAIN_TURNOVER_LIMIT_MAX,
@@ -116,6 +118,7 @@ import {
   orderSchema,
   querySchema,
   sortSchema,
+  ss58Schema,
   windowSchema,
 } from "./query-params.ts";
 
@@ -413,11 +416,18 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     ] as const).optional(),
     limit: limitSchema(NOMINATOR_LIMIT_MAX).optional(),
     offset: uncappedOffsetSchema().optional(),
-    // DIVERGENCE: an SS58 address published as a bare string, while
-    // `ss58Schema()` carries the 47-48 base58 pattern the same value gets on
-    // 26 other parameters. A typo'd address reads as "this nominator has no
-    // stake" instead of as a malformed key.
-    coldkey: z.string().optional(),
+    // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
+    // verified live -- and the contract simply did not say so, while
+    // ss58Schema() carries the same 47-48 base58 pattern on 26 other
+    // parameters (#10096). Publishing it costs no behaviour change and lets a
+    // generated client catch a typo before the request.
+    //
+    // NOT done for `author` on /blocks or `signer` on /extrinsics: both answer
+    // 200 to a malformed address and filter to nothing, so publishing the
+    // pattern there would claim validation the server does not perform --
+    // the #10073 mistake inverted. Making THEM reject is a behaviour change
+    // and needs its own decision.
+    coldkey: ss58Schema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/validators/{hotkey}/history": z.object({
@@ -633,8 +643,8 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     format: formatSchema().optional(),
   }),
   "/api/v1/chain-events": z.object({
-    pallet: z.string().max(64).optional(),
-    method: z.string().max(64).optional(),
+    pallet: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
+    method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
     block: blockBoundSchema("first").optional(),
     extrinsic: z.int().min(0).optional(),
     cursor: z
@@ -662,10 +672,11 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     // DIVERGENCE: see `coldkey` on /validators/{hotkey}/nominators -- an SS58
     // published without the shared pattern.
     signer: z.string().optional(),
-    // DIVERGENCE: `call_module` is capped at 100 characters on the three
-    // chain-analytics feeds and uncapped here, for one filter matched the same
-    // way against the same column.
-    call_module: z.string().optional(),
+    // The same cap its three sibling feeds enforce (#10096). This took the
+    // identical filter with no bound at all, so a 150-character value was a
+    // 400 on /chain/calls and a 200 here -- handleExtrinsics now applies
+    // validateMaxLength, so the number is published because it is enforced.
+    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     call_function: z.string().optional(),
     call_hash: z
       .string()
@@ -715,14 +726,14 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     window: windowSchema(["7d", "30d"] as const).optional(),
     group_by: z.enum(["module", "module_function"] as const).optional(),
     limit: limitSchema(CHAIN_CALLS_LIMIT_MAX).optional(),
-    call_module: z.string().max(100).optional(),
+    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/signers": z.object({
     window: windowSchema(["7d", "30d"] as const).optional(),
     sort: sortSchema(["tx_count", "total_fee_tao"] as const).optional(),
     limit: limitSchema(CHAIN_SIGNERS_LIMIT_MAX).optional(),
-    call_module: z.string().max(100).optional(),
+    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/transfers": z.object({
@@ -793,7 +804,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   "/api/v1/chain/fees": z.object({
     window: windowSchema(["7d", "30d"] as const).optional(),
     limit: limitSchema(CHAIN_FEES_LIMIT_MAX).optional(),
-    call_module: z.string().max(100).optional(),
+    call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/concentration/subnets": z.object({

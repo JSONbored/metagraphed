@@ -4,6 +4,7 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../src/route-limits.ts";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, test } from "vitest";
 import {
@@ -4626,6 +4627,38 @@ describe("handleBlockEvents", () => {
 });
 
 describe("handleExtrinsics", () => {
+  test("rejects an over-length call_module, like its three sibling feeds", async () => {
+    // #10096: /chain/calls, /chain/fees and /chain/signers have always
+    // rejected a call_module over CHAIN_CALL_MODULE_MAX_LENGTH; this route
+    // took the identical filter with no bound, so one value was a 400 on
+    // three doors and a 200 on the fourth. Length taken from the constant, so
+    // raising the cap moves the test with it rather than leaving it asserting
+    // a number nobody enforces any more.
+    const long = "A".repeat(CHAIN_CALL_MODULE_MAX_LENGTH + 1);
+    const path = `/api/v1/extrinsics?call_module=${long}`;
+    const res = await handleExtrinsics(
+      req(path),
+      emptyEnv() as unknown as Env,
+      url(path),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "call_module");
+  });
+
+  test("accepts a call_module at exactly the cap", async () => {
+    // The other side: the bound is inclusive, so the published `maxLength` is
+    // a value a caller may actually send.
+    const atCap = "A".repeat(CHAIN_CALL_MODULE_MAX_LENGTH);
+    const path = `/api/v1/extrinsics?call_module=${atCap}`;
+    const res = await handleExtrinsics(
+      req(path),
+      emptyEnv() as unknown as Env,
+      url(path),
+    );
+    assert.equal(res.status, 200);
+  });
+
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleExtrinsics(
       req("/api/v1/extrinsics"),
