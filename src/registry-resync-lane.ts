@@ -46,6 +46,7 @@ import {
   isRegistryPath,
   type ResolvedRegistryFile,
   type Row,
+  summaryCounts,
 } from "./registry-sync-payload.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
@@ -172,11 +173,8 @@ export function resyncDetail(result: RegistryResyncResult): string {
       : `${result.reason}`;
   }
   if (result.reason && result.files === undefined) return result.reason;
-  const w = result.written ?? {};
   const position = `${result.offset ?? 0}/${result.total ?? 0}`;
-  const counts =
-    `${result.files ?? 0} file(s): ${w.subnets_written ?? 0} subnet(s), ` +
-    `${w.surfaces_written ?? 0} surface(s), ${w.surfaces_deleted ?? 0} deleted`;
+  const counts = `${result.files ?? 0} file(s): ${summaryCounts(result.written)}`;
   return result.complete
     ? `pass complete at ${position} -- ${counts}`
     : `${position} -- ${counts}`;

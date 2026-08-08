@@ -26,6 +26,7 @@ import {
   buildRegistrySyncPayload,
   isEmptyPayload,
   isRegistryPath,
+  summaryCounts,
   type ResolvedRegistryFile,
   type Row,
 } from "./registry-sync-payload.ts";
@@ -162,11 +163,12 @@ function laneDetail(result: RegistrySyncLaneResult): string {
       : `${result.reason}`;
   }
   if (result.reason) return result.reason;
-  const w = result.written ?? {};
-  return (
-    `${result.files ?? 0} file(s): ${w.subnets_written ?? 0} subnet(s), ` +
-    `${w.surfaces_written ?? 0} surface(s), ${w.surfaces_deleted ?? 0} deleted`
-  );
+  // Every count the route returned. The hand-picked three this replaced named
+  // `subnets_written`, `surfaces_written` and `surfaces_deleted` and omitted
+  // `providers_written`, so a merge touching only registry/providers/* reported
+  // "0 subnet(s), 0 surface(s)" over a pass that had written all of them
+  // (caught on the resync lane's first real pass, #10236).
+  return `${result.files ?? 0} file(s): ${summaryCounts(result.written)}`;
 }
 
 async function runRegistrySyncTick(

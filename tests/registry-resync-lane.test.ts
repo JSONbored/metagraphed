@@ -358,6 +358,66 @@ describe("failures do not advance the pass", () => {
 });
 
 describe("the verdict carries counts", () => {
+  test("a providers-only page reports the providers it wrote", () => {
+    // THE FIRST REAL PASS. Paths sort alphabetically, so page one is 100 of the
+    // 136 registry/providers/* files. The verdict read
+    //   ok :: 100/266 -- 100 file(s): 0 subnet(s), 0 surface(s), 0 deleted
+    // while providers.updated_at moved from 160.7h stale to 3.5 minutes. The
+    // lane had done its job and its own report said it had written nothing,
+    // because the detail named three of RegistrySyncSummary's five fields.
+    //
+    // The earlier version of the test below could not catch that: it compared a
+    // "wrote something" case against a "wrote nothing" case using the SAME
+    // hand-picked field list the code used, so an omitted field was invisible
+    // to both.
+    const detail = resyncDetail({
+      ok: true,
+      files: 100,
+      offset: 100,
+      total: 266,
+      written: {
+        providers_written: 100,
+        subnets_written: 0,
+        surfaces_written: 0,
+        surfaces_deleted: 0,
+        subnets_deleted: 0,
+      },
+    });
+    assert.match(detail, /providers_written=100/);
+    assert.doesNotMatch(
+      detail,
+      /^(?!.*providers_written).*$/,
+      "the count that moved must appear",
+    );
+  });
+
+  test("every numeric count the route returns is reported", () => {
+    // Enumerated from the RESPONSE, so a count added to the sync route shows up
+    // without anyone remembering to add it here.
+    const detail = resyncDetail({
+      ok: true,
+      files: 1,
+      offset: 1,
+      total: 1,
+      written: { a_written: 1, b_written: 2, c_deleted: 3, note: "ignored" },
+    });
+    for (const key of ["a_written=1", "b_written=2", "c_deleted=3"]) {
+      assert.match(detail, new RegExp(key));
+    }
+    assert.doesNotMatch(detail, /note/, "non-numeric fields are not counts");
+  });
+
+  test("a response with no counts says so rather than implying zero", () => {
+    const detail = resyncDetail({
+      ok: true,
+      files: 40,
+      offset: 40,
+      total: 266,
+      written: {},
+    });
+    assert.match(detail, /no counts returned/);
+  });
+
   test("a pass that wrote nothing does not read like one that wrote everything", () => {
     const wrote = resyncDetail({
       ok: true,
@@ -375,13 +435,13 @@ describe("the verdict carries counts", () => {
       files: 0,
       offset: 100,
       total: 265,
-      written: {},
+      written: { subnets_written: 0, surfaces_written: 0, surfaces_deleted: 0 },
     });
     assert.notEqual(wrote, nothing);
     assert.match(wrote, /100\/265/);
-    assert.match(wrote, /340 surface/);
+    assert.match(wrote, /surfaces_written=340/);
     assert.match(nothing, /0 file\(s\)/);
-    assert.match(nothing, /0 surface/);
+    assert.match(nothing, /surfaces_written=0/);
   });
 
   test("completion says so, and says where it finished", () => {
