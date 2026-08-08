@@ -425,6 +425,7 @@ import {
 } from "../src/chain-detail-staleness-watchdog.ts";
 import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
+import { runDailySeriesCoverageWatchdog } from "../src/daily-series-coverage-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
@@ -502,6 +503,7 @@ import {
   PROJECTION_STALENESS_WATCHDOG_CRON,
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
+  DAILY_SERIES_COVERAGE_CRON,
   REGISTRY_RESYNC_CRON,
   REGISTRY_SYNC_CRON,
   CHAIN_CONCENTRATION_ROLLUP_CRON,
@@ -2130,6 +2132,7 @@ function cronLabel(cron: string): string {
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === REGISTRY_SYNC_CRON) return "registry-sync";
   if (cron === REGISTRY_RESYNC_CRON) return "registry-resync";
+  if (cron === DAILY_SERIES_COVERAGE_CRON) return "daily-series-coverage";
   if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON)
     return "chain-concentration-rollup";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
@@ -2544,6 +2547,16 @@ async function dispatchScheduled(
     // `ok` on every tick, because "no registry files changed" was true for the
     // window it looks at and the gap was outside it.
     return runRegistryResyncLane(env);
+  }
+  if (cron === DAILY_SERIES_COVERAGE_CRON) {
+    // #9781: 2026-08-06 is missing entirely from neuron_daily and
+    // account_position_daily, and nothing noticed, because every watchdog here
+    // asks how old the NEWEST row is -- a question structurally blind to a hole
+    // in the middle. neuron_daily is the history source and only ~26 days deep,
+    // so a missed day ages out of any recomputable window and becomes permanent.
+    return runDailySeriesCoverageWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
   }
   if (cron === CHAIN_DETAIL_PRUNE_CRON) {
     // #9208 retention. Returns a summary rather than throwing so the #8998
