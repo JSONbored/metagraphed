@@ -366,12 +366,6 @@ import {
   NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
-import {
-  neuronSnapshotDate,
-  neuronSnapshotWrite,
-  writeNeuronDailyBackfillToD1,
-  writeNeuronSnapshotToD1,
-} from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import {
   chainDetailTables,
@@ -392,27 +386,16 @@ import {
   LEDGER_MIRROR_PLANS,
   mirrorLedgerToNeon,
 } from "../src/ledger-neon-write.ts";
+import {
+  neuronSnapshotDate,
+  neuronSnapshotWrite,
+} from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
-import {
-  writeAccountIdentityToD1,
-  writeSubnetHyperparamsToD1,
-} from "../src/hyperparams-identity-d1-write.ts";
 
-import {
-  
-  writeAccountBalancesToD1,
-  type AccountBalancesPass,
-} from "../src/account-balances-d1-write.ts";
-import {
-  
-  writeHotkeyAlphaToD1,
-  type HotkeyAlphaPass,
-} from "../src/hotkey-alpha-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
-import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
   parseChainDetailSync,
@@ -479,6 +462,10 @@ import {
   verifyWalletChallenge,
   WATCH_TOKEN_TTL_SECONDS,
 } from "../src/wallet-auth.ts";
+import {
+  ACCOUNT_BALANCE_INSERT_COLUMNS,
+  HOTKEY_ALPHA_INSERT_COLUMNS,
+} from "../src/ledger-neon-write.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -790,20 +777,6 @@ async function handleNeuronsSync(
   // left un-pruned.
   // 0 when Neon owns the tables and the D1 write is skipped entirely.
   let d1Statements = 0;
-  if (!neonOwns) {
-    try {
-      ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeNeuronSnapshotToD1
-        >[0],
-        { rows, dailyRows, positionRows, netuidMaxCapturedAt, pass },
-      ));
-    } catch (err) {
-      console.error("data-api neurons-sync D1 write failed:", err);
-      await captureDataApiError(err, "neurons-sync-d1", env);
-      return writeJson({ error: "d1 write failed" }, 502);
-    }
-  }
 
   // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
   // returns, never instead of it and never in front of it.
@@ -996,14 +969,6 @@ async function handleChainDetailSync(
   let neon: Awaited<ReturnType<typeof mirrorChainDetailToNeon>>;
   const neonOwns = neonOwnsChainDetail(env);
   try {
-    if (!neonOwns) {
-      ({ statements } = await writeChainDetailToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeChainDetailToD1
-        >[0],
-        batch.rows,
-      ));
-    }
     // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
     // other and mirrors too -- #9728 is the precedent for why covering one of
     // two is worse than covering neither: the row count looks nearly right.
@@ -1214,20 +1179,6 @@ async function handleNeuronDailyBackfill(
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
   let d1Statements = 0;
-  if (!neonOwns) {
-    try {
-      ({ statements: d1Statements } = await writeNeuronDailyBackfillToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeNeuronDailyBackfillToD1
-        >[0],
-        { dailyRows, positionRows },
-      ));
-    } catch (err) {
-      console.error("data-api neuron-daily-backfill D1 write failed:", err);
-      await captureDataApiError(err, "neuron-daily-backfill-d1", env);
-      return writeJson({ error: "d1 write failed" }, 502);
-    }
-  }
 
   // THE SECOND WRITER, mirrored too (#9717).
   //
@@ -1559,14 +1510,6 @@ async function handleSubnetHyperparamsSync(
     const historyRows = diffHyperparamsHistory(hashedRows, latestByNetuid, now);
     neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeSubnetHyperparamsToD1
-        >[0],
-        { rows, netuids, historyRows },
-      ));
-    }
   } catch (err) {
     console.error("data-api subnet-hyperparams-sync D1 write failed:", err);
     await captureDataApiError(err, "subnet-hyperparams-sync-d1", env);
@@ -1836,14 +1779,6 @@ async function handleAccountIdentitySync(
     const historyRows = diffIdentityHistory(hashedRows, latestByAccount, now);
     neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeAccountIdentityToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeAccountIdentityToD1
-        >[0],
-        { rows, historyRows },
-      ));
-    }
   } catch (err) {
     console.error("data-api account-identity-sync D1 write failed:", err);
     await captureDataApiError(err, "account-identity-sync-d1", env);
@@ -2893,15 +2828,6 @@ async function handleHotkeyAlphaSync(
 
   let d1Statements = 0;
   try {
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeHotkeyAlphaToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeHotkeyAlphaToD1
-        >[0],
-        rows,
-        pass,
-      ));
-    }
   } catch (err) {
     console.error("data-api hotkey-alpha-sync D1 write failed:", err);
     await captureDataApiError(err, "hotkey-alpha-sync-d1", env);
@@ -8227,14 +8153,7 @@ export default {
               chainEventRows: families.chainEventRows ?? [],
               accountEventRows: families.accountEventRows ?? [],
             };
-            const result = neonOwnsChainDetail(env)
-              ? { statements: 0 }
-              : await writeChainDetailToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeChainDetailToD1
-                  >[0],
-                  rows as Parameters<typeof writeChainDetailToD1>[1],
-                );
+            const result = { statements: 0 };
             // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
             // path.
             await mirrorChainDetailToNeon(
@@ -8250,15 +8169,7 @@ export default {
       ? {
           "hotkey-alpha": async (rows, pass) => {
             const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeHotkeyAlphaToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeHotkeyAlphaToD1
-                  >[0],
-                  rows,
-                  pass,
-                );
+            const result = { statements: 0 };
             // THE LANE'S OTHER WRITER, and the pass rides along here too.
             const neon = await mirrorLedgerToNeon(
               env as unknown as Record<string, unknown>,
@@ -8322,15 +8233,7 @@ export default {
             // The ONLY writer for this lane -- the HTTP route enqueues and
             // never writes inline, so there is no second path to keep in step.
             const neonOwns = neonOwnsLedger(env, "account-balances");
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeAccountBalancesToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeAccountBalancesToD1
-                  >[0],
-                  rows,
-                  pass,
-                );
+            const result = { statements: 0 };
             // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 takes it and
             // the mirror did not, so D1 got a completeness tally and Neon got
             // none -- account_balances_passes is empty there, and this lane was
@@ -8358,14 +8261,7 @@ export default {
             // reads.
             const neonOwns = neonOwnsNeuronsSnapshot(env);
             const write = neuronSnapshotWrite(rows, Date.now());
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeNeuronSnapshotToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeNeuronSnapshotToD1
-                  >[0],
-                  { ...write, pass },
-                );
+            const result = { statements: 0 };
             const neon = await mirrorNeuronSnapshotToNeon(
               env as unknown as Record<string, unknown>,
               ctx,

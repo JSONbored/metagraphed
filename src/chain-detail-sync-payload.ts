@@ -22,8 +22,6 @@
 // accepts null for exactly those fields and rejects it everywhere else, rather
 // than accepting null anywhere and letting the read path guess.
 
-import { CHAIN_EVENT_PHASES } from "./chain-detail-d1-write.ts";
-
 type Row = Record<string, unknown>;
 
 /** ~662 KiB for the producer's 2-block batch, measured; 16 MiB is generous

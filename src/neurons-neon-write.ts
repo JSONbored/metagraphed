@@ -32,10 +32,6 @@ import {
   writeRowsToNeon,
   type NeonWriteResult,
 } from "./neon-write.ts";
-import {
-  ACCOUNT_POSITION_DAILY_COLUMNS,
-  NEURON_DAILY_COLUMNS,
-} from "./neurons-d1-write.ts";
 import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
 import {
   createPgSql,
@@ -47,6 +43,53 @@ import {
   writePassTallyToNeon,
   type PassTallyInput,
 } from "./pass-completeness.ts";
+
+// ---------------------------------------------------------------------------
+// Moved here when D1 was deleted (#10170). These describe the TABLE -- its
+// column list, its conflict key, its derivations -- not the store that used to
+// hold it, and this module is now the only writer.
+// ---------------------------------------------------------------------------
+
+export const NEURON_DAILY_COLUMNS = [
+  ...NEURON_INSERT_COLUMNS,
+  "snapshot_date",
+  "updated_at",
+];
+
+export const ACCOUNT_POSITION_DAILY_COLUMNS = [
+  "account",
+  "netuid",
+  "snapshot_date",
+  "uid",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "incentive",
+  "dividends",
+  "stake_tao",
+  "emission_tao",
+  "captured_at",
+  "updated_at",
+];
+
+export function neuronSnapshotDate(capturedAtMs: number): string {
+  return new Date(capturedAtMs).toISOString().slice(0, 10);
+}
+
+export function neuronSnapshotWrite(
+  rows: Row[],
+  nowMs: number,
+): NeuronSnapshotWrite {
+  const dailyRows = neuronDailyRows(rows, nowMs);
+  return {
+    rows,
+    dailyRows,
+    positionRows: neuronPositionRows(dailyRows),
+    netuidMaxCapturedAt: netuidMaxCapturedAt(rows),
+  };
+}
 
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const NEURONS_NEON_LANE = "neurons";
@@ -210,51 +253,4 @@ export async function mirrorNeuronSnapshotToNeon(
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
   return { attempted: true, results };
-}
-
-// ---------------------------------------------------------------------------
-// Moved here when D1 was deleted (#10170). These describe the TABLE -- its
-// column list, its conflict key, its derivations -- not the store that used to
-// hold it, and this module is now the only writer.
-// ---------------------------------------------------------------------------
-
-export const NEURON_DAILY_COLUMNS = [
-  ...NEURON_INSERT_COLUMNS,
-  "snapshot_date",
-  "updated_at",
-];
-
-export const ACCOUNT_POSITION_DAILY_COLUMNS = [
-  "account",
-  "netuid",
-  "snapshot_date",
-  "uid",
-  "coldkey",
-  "active",
-  "validator_permit",
-  "rank",
-  "trust",
-  "incentive",
-  "dividends",
-  "stake_tao",
-  "emission_tao",
-  "captured_at",
-  "updated_at",
-];
-
-export function neuronSnapshotDate(capturedAtMs: number): string {
-  return new Date(capturedAtMs).toISOString().slice(0, 10);
-}
-
-export function neuronSnapshotWrite(
-  rows: Row[],
-  nowMs: number,
-): NeuronSnapshotWrite {
-  const dailyRows = neuronDailyRows(rows, nowMs);
-  return {
-    rows,
-    dailyRows,
-    positionRows: neuronPositionRows(dailyRows),
-    netuidMaxCapturedAt: netuidMaxCapturedAt(rows),
-  };
 }
