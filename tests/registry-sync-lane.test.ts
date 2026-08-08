@@ -9,7 +9,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
-import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
+import {
+  REGISTRY_SYNC_LANE,
+  runRegistrySyncLane,
+} from "../src/registry-sync-lane.ts";
 import {
   buildRegistrySyncPayload,
   isEmptyPayload,
@@ -336,6 +339,105 @@ describe("the cursor", () => {
       });
       assert.equal(r.ok, false);
       assert.equal(store.read(), "base1");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("the lane records a durable verdict", () => {
+  /** A lane_health double that captures what was written. */
+  function laneDb() {
+    const rows: Record<string, unknown>[] = [];
+    return {
+      rows,
+      db: {
+        prepare: (_sql: string) => ({
+          bind: (...v: unknown[]) => {
+            rows.push({ v });
+            return { run: async () => ({}) };
+          },
+        }),
+      } as never,
+    };
+  }
+
+  test("a tick that could not run is stale, not silent", async () => {
+    // The failure mode this exists for. The lane it replaces reported nothing
+    // at all, which is why nobody noticed surface_history had frozen: an
+    // outcome that lives only in a returned object is an outcome nothing
+    // watches.
+    const sink = laneDb();
+    const r = await runRegistrySyncLane(
+      {},
+      { kv: kv(), registrySyncApi: OK_API, laneHealthDb: sink.db },
+    );
+    assert.equal(r.ok, false);
+    // Asserted on CONTENT, not on a row count: recordLaneVerdict also prunes
+    // the retention window, so it binds more than once per verdict.
+    const written = JSON.stringify(sink.rows);
+    assert.ok(written.includes(REGISTRY_SYNC_LANE));
+    assert.ok(
+      written.includes("stale"),
+      "a tick that could not run must record stale",
+    );
+  });
+
+  test('"no new commits" is ok — the lane did its job by looking', async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ sha: "same" }))) as typeof fetch;
+    try {
+      const sink = laneDb();
+      const r = await runRegistrySyncLane(
+        { REGISTRY_SYNC_SECRET: "s" },
+        { kv: kv("same"), registrySyncApi: OK_API, laneHealthDb: sink.db },
+      );
+      assert.equal(r.ok, true);
+      const written = JSON.stringify(sink.rows);
+      assert.ok(written.includes(REGISTRY_SYNC_LANE));
+      assert.ok(written.includes("no new commits"));
+      // Emphatically NOT stale: an idle tick is the common case, and a lane
+      // that cried stale four times an hour would train everyone to ignore it.
+      assert.ok(!written.includes("stale"));
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("a rejected sync records the reason, not just a boolean", async () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/commits/main"))
+        return new Response(JSON.stringify({ sha: "h" }));
+      if (url.includes("/compare/"))
+        return new Response(
+          JSON.stringify({ files: [{ filename: "registry/subnets/a.json" }] }),
+        );
+      return new Response(
+        JSON.stringify({
+          content: btoa(
+            JSON.stringify({ netuid: 1, slug: "a", name: "A", surfaces: [] }),
+          ),
+        }),
+      );
+    }) as typeof fetch;
+    try {
+      const sink = laneDb();
+      await runRegistrySyncLane(
+        { REGISTRY_SYNC_SECRET: "s" },
+        {
+          kv: kv("base"),
+          registrySyncApi: {
+            fetch: async () => new Response("no", { status: 502 }),
+          },
+          laneHealthDb: sink.db,
+        },
+      );
+      const written = JSON.stringify(sink.rows);
+      assert.ok(written.includes("rejected"));
+      assert.ok(written.includes("502"), "the status belongs in the detail");
     } finally {
       globalThis.fetch = original;
     }
