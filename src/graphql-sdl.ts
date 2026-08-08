@@ -3604,8 +3604,8 @@ export const SDL = /* GraphQL */ `
     "Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens."
     total_stake_tao: Float!
     total_emission_share: Float!
-    "Within-domain emission HHI; null when the domain has no members."
-    emission_concentration: Float
+    "Within-domain emission concentration scorecard; null when the domain has no members. Declared Float until #9889 — the route has served the full 12-key scorecard for long enough that the scalar coerced to null on every domain, which this type's own comment then read as 'no members'."
+    emission_concentration: ConcentrationMetrics
   }
 
   "The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains."
