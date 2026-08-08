@@ -67,7 +67,7 @@ const CURATED_VIEW =
  * too, rather than adding a capability.
  */
 const RENAMED_ON_THE_MCP_SIDE =
-  "RENAMED -- the tool and the route call the same parameter different things (#10018)";
+  "a compatibility ALIAS the route does not publish; the tool also accepts the route's canonical name (#10018)";
 
 /** A header on the route, an argument on the tool. */
 const REQUEST_HEADER =
@@ -153,17 +153,15 @@ for (const [key, reason] of Object.entries({
   "list_subnets.not_curation_level": MCP_NATIVE,
   "list_subnets.min_netuid": MCP_NATIVE,
   "list_subnets.max_netuid": MCP_NATIVE,
-  // --- renames (#10018) ----------------------------------------------------
-  // search_subnets/semantic_search call the route's `q` "query"; list_subnets
-  // calls `min_integration_readiness` "min_readiness".
+  // --- aliases kept for compatibility (#10018 fixed the renames) -----------
+  // These three tools now accept the ROUTE's published name, so the
+  // divergence is gone. What remains is the shorter name each shipped with,
+  // kept so existing callers are unaffected -- an alias the route does not
+  // publish, which is a different (and benign) thing from a rename.
   "search_subnets.query": RENAMED_ON_THE_MCP_SIDE,
-  "search_subnets.q": RENAMED_ON_THE_MCP_SIDE,
   "semantic_search.query": RENAMED_ON_THE_MCP_SIDE,
-  "semantic_search.q": RENAMED_ON_THE_MCP_SIDE,
   "list_subnets.min_readiness": RENAMED_ON_THE_MCP_SIDE,
   "list_subnets.max_readiness": RENAMED_ON_THE_MCP_SIDE,
-  "list_subnets.min_integration_readiness": RENAMED_ON_THE_MCP_SIDE,
-  "list_subnets.max_integration_readiness": RENAMED_ON_THE_MCP_SIDE,
   // --- headers -------------------------------------------------------------
   "get_alert_trigger.owner_token": REQUEST_HEADER,
   // --- standing debt -------------------------------------------------------

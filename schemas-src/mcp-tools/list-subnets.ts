@@ -90,13 +90,35 @@ export const ListSubnetsInputSchema = z
         "EXCLUDE rows with this curation level. Applied after any positive `curation_level` filter, so the two can be combined.",
       )
       .meta({ examples: [CurationLevelSchema.options[0]] }),
+    // The route's published names (#10018) -- GET /api/v1/subnets documents
+    // these, so an agent reading our OpenAPI sends them. Canonical.
+    min_integration_readiness: z
+      .int()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe(
+        "Inclusive lower bound on integration-readiness score; rows below it are excluded. The name GET /api/v1/subnets publishes.",
+      )
+      .meta({ examples: [50] }),
+    max_integration_readiness: z
+      .int()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe(
+        "Inclusive upper bound on integration-readiness score; rows above it are excluded. The name GET /api/v1/subnets publishes.",
+      )
+      .meta({ examples: [90] }),
+    // The shorter names this tool shipped with, kept so existing callers are
+    // unaffected. Same field, same semantics.
     min_readiness: z
       .int()
       .min(0)
       .max(100)
       .optional()
       .describe(
-        "Inclusive lower bound on readiness score; rows below it are excluded.",
+        "Alias for `min_integration_readiness`, the name this tool shipped with.",
       )
       .meta({ examples: [50] }),
     max_readiness: z
