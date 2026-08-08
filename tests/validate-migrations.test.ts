@@ -1,6 +1,6 @@
 // Tests for scripts/validate-migrations.ts's sequence rule.
 //
-// The rule guards migrations/d1, and `0001` is legal there. It was NOT legal under
+// The rule guards tests/fixtures/sqlite-schema, and `0001` is legal there. It was NOT legal under
 // Postgres: the live schema_migrations table recorded 0001-0044, so a file numbered
 // below that was silently skipped by the migration runner — CI green, PR merged, table
 // never created, surfacing later as a production 502 (#5348/#5353, three incidents).

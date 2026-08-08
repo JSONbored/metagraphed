@@ -34,7 +34,7 @@ vi.mock("pg", () => pg.module);
 const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0009_hyperparams_identity.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql"),
   "utf8",
 );
 

@@ -122,7 +122,7 @@
     // word, like SYNC_QUEUE_LANES.
     "METAGRAPH_AI_GATEWAY": "default",
     // Raw chain capture (#9111): ON. Opt-in by construction so a deploy can
-    // never start capturing before migrations/d1/0006_raw_capture.sql exists
+    // never start capturing before tests/fixtures/sqlite-schema/0006_raw_capture.sql exists
     // -- that table holds the watermark the whole no-gap guarantee rests on.
     // Applied to the production D1 before this flip. Flip to anything but
     // "true" to stop the lane; the watermark persists, so re-enabling resumes
@@ -424,7 +424,7 @@
     // widened to NUMERIC (#4843) before this flip.
     //
     // FLIPPED to "d1" with the box wipe: the family lives on D1 now
-    // (migrations/d1/0009), and like METAGRAPH_NEURONS_SOURCE above the
+    // (tests/fixtures/sqlite-schema/0009), and like METAGRAPH_NEURONS_SOURCE above the
     // dispatcher lives in DATA_API ahead of its Hyperdrive gate, so this
     // flag must still FORWARD there -- see DATA_API_D1_FLAGS in
     // workers/postgres-tier.ts. "retired" would make the D1 tables
@@ -444,7 +444,7 @@
     // latest-only upsert and the history hash (#4849) before this flip.
     //
     // FLIPPED to "d1" with the box wipe, same shape and same reasoning as
-    // METAGRAPH_SUBNET_HYPERPARAMS_SOURCE above (migrations/d1/0009 +
+    // METAGRAPH_SUBNET_HYPERPARAMS_SOURCE above (tests/fixtures/sqlite-schema/0009 +
     // DATA_API_D1_FLAGS forward + cold-tier 503 fallback while D1 is empty
     // -- note this family's sync is DAILY, so the cold window can last up to
     // a day unless the refresh workflow is dispatched manually post-deploy).

@@ -35,31 +35,31 @@ vi.mock("pg", () => pg.module);
 const { default: worker } = await import("../workers/data-api.ts");
 
 const NEURONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0007_neurons.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0007_neurons.sql"),
   "utf8",
 );
 const NEURONS_READ_INDEXES = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0008_neurons_read_indexes.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0008_neurons_read_indexes.sql"),
   "utf8",
 );
 // subnet_snapshots (the alpha-price join target) lives in the observations
 // migration -- load it too, exactly as the real database carries both.
 const OBSERVATIONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0002_observations.sql"),
   "utf8",
 );
 // validator_nominator_counts (the nominator_count join target, #9146) -- the
 // same reason as subnet_snapshots above: the real database carries it, and the
 // leaderboard's read joins against it.
 const NOMINATOR_COUNTS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0012_validator_nominator_counts.sql"),
   "utf8",
 );
 // subnet_hyperparams -- the tempo join target apy_estimate needs (#9342). Same
 // reason as the two above: the real database carries it and the leaderboard's
 // read joins against it.
 const HYPERPARAMS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0009_hyperparams_identity.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql"),
   "utf8",
 );
 // neurons_passes (#9812) -- the completeness contract this lane gained after
@@ -68,7 +68,7 @@ const HYPERPARAMS_SCHEMA = fs.readFileSync(
 // alongside the rows it describes, so a suite without it would exercise a
 // write path that cannot exist in production.
 const NEURONS_PASSES_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0030_neurons_passes.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0030_neurons_passes.sql"),
   "utf8",
 );
 

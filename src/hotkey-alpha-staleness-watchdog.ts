@@ -24,7 +24,7 @@
 // here. Both points hold for this ledger unchanged:
 //
 //   - A whole-table `COUNT(*)` floor goes blind the moment one complete pass
-//     lands. This writer never prunes either (migrations/d1/0019 says why: the
+//     lands. This writer never prunes either (tests/fixtures/sqlite-schema/0019 says why: the
 //     producer skips a genuine zero pool, so absence carries no meaning), so a
 //     later pass that dies partway upserts some rows to a new stamp and leaves
 //     the rest at the old one -- the row count never drops.
@@ -100,7 +100,7 @@ export const HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO = 0.8;
  * How far back from the newest stamp still counts as "the newest pass".
  *
  * SIX HOURS. The producer stamps a pass ONCE at scan start and repeats that
- * stamp across every chunk (migrations/d1/0021_hotkey_alpha_passes.sql), so
+ * stamp across every chunk (tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql), so
  * today a pass is a single `captured_at` and this window is pure headroom
  * against that changing. It is bounded above by the 24 h poll interval -- two
  * consecutive passes must never merge into one coverage count, or a truncated

@@ -117,7 +117,7 @@ export const ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS = 12 * 60 * 60 * 1000;
  * How many accounts a COMPLETE pass is expected to write.
  *
  * The producer walks System::Account -- 542,618 entries at its own last live
- * measurement (2026-07-19), per migrations/d1/0017_account_balances.sql -- and
+ * measurement (2026-07-19), per tests/fixtures/sqlite-schema/0017_account_balances.sql -- and
  * SKIPS every account whose free and reserved are both zero, so a full pass
  * lands the nonzero-balance subset of that, ~306,000 accounts (2026-08-05).
  *

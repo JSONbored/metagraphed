@@ -21,13 +21,13 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA =
   fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0011_nominator_positions.sql"),
     "utf8",
   ) +
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0029_nominator_positions_passes.sql",
+      "tests/fixtures/sqlite-schema/0029_nominator_positions_passes.sql",
     ),
     "utf8",
   );

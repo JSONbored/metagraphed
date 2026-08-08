@@ -2,7 +2,7 @@
 // persistence half of the emission-gate sampling lane. Auth/caps/shape checks
 // mirror tests/chain-firehose-routes.test.ts's boundary coverage for api.ts's
 // other secret-gated internal route; the diff-then-append behaviour executes
-// against a REAL SQLite database built from migrations/d1/0005_emission_gate.sql
+// against a REAL SQLite database built from tests/fixtures/sqlite-schema/0005_emission_gate.sql
 // (same rationale as tests/observations-d1-sqlite.test.ts: a fake records SQL
 // but never parses it, and the riskiest constructs here -- the ROW_NUMBER()
 // window reads that replace postgres's DISTINCT ON, and the two-arm shape
@@ -31,7 +31,7 @@ vi.mock("pg", () => pg.module);
 import { handleRequest } from "../workers/api.ts";
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0005_emission_gate.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0005_emission_gate.sql"),
   "utf8",
 );
 

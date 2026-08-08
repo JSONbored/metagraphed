@@ -26,14 +26,14 @@ const SCHEMA =
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0012_validator_nominator_counts.sql",
+      "tests/fixtures/sqlite-schema/0012_validator_nominator_counts.sql",
     ),
     "utf8",
   ) +
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0029_nominator_positions_passes.sql",
+      "tests/fixtures/sqlite-schema/0029_nominator_positions_passes.sql",
     ),
     "utf8",
   );

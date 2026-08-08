@@ -9,7 +9,7 @@
 // isn't tied to a git commit the way this script's trigger is. Together they
 // make the registry database the single, always-fresh mirror of every
 // subnet/provider/surface fact, human-authored or machine-discovered (see
-// migrations/d1/0001_registry.sql for why these live in one table set).
+// tests/fixtures/sqlite-schema/0001_registry.sql for why these live in one table set).
 //
 // The filename still says "postgres" deliberately: this script's contract is
 // an HTTPS POST to the registry-sync Worker, which did not change when the

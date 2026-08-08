@@ -3271,7 +3271,7 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     const { DatabaseSync } = await import("node:sqlite");
     const fs = await import("node:fs");
     const db = new DatabaseSync(":memory:");
-    db.exec(fs.readFileSync("migrations/d1/0005_emission_gate.sql", "utf8"));
+    db.exec(fs.readFileSync("tests/fixtures/sqlite-schema/0005_emission_gate.sql", "utf8"));
     // The sqlite fixture stands BEHIND the pg double rather than being handed
     // to the handler: producerStore builds its own `createPgD1` handle from
     // env.HYPERDRIVE, so there is nothing to inject. sqliteBackedPg translates

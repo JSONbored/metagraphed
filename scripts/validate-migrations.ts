@@ -16,7 +16,7 @@ import { repoRoot } from "./lib.ts";
 // merged, table never created, discovered later as a runtime error (#5348/#5353; a
 // missing table 502'd an entire epic).
 //
-// Postgres is gone (#9426) and that table went with it. migrations/d1 is applied by
+// Postgres is gone (#9426) and that table went with it. migrations/neon is applied by
 // wrangler, which consults no version table, so there is no watermark to sit above and
 // the sequence legitimately begins at 0001.
 //
@@ -71,11 +71,13 @@ export function migrationSequenceErrors(files: readonly string[]): string[] {
 
 // Only run when invoked directly, not when imported for the helper above.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  // migrations/d1, not migrations/. Postgres is gone (#9426) and its migrations went
-  // with it, but this guarantee matters MORE on D1: those migrations are applied BY
-  // HAND, so a duplicate prefix is not caught by an apply step that would have
-  // noticed. The rule and the failure mode are identical -- only the directory moved.
-  const migrationsRoot = path.join(repoRoot, "migrations", "d1");
+  // migrations/neon. This directory has moved twice -- Postgres (#9426), then D1
+  // (#9787) -- and the guarantee has outlived both, because the failure mode is a
+  // property of how migrations are APPLIED here, not of which engine runs them:
+  // they go on BY HAND, so a duplicate or skipped prefix is not caught by an apply
+  // step that would otherwise have noticed. The rule is unchanged; only the
+  // directory moved, again.
+  const migrationsRoot = path.join(repoRoot, "migrations", "neon");
   const files = (await fs.readdir(migrationsRoot)).filter((name) =>
     name.endsWith(".sql"),
   );

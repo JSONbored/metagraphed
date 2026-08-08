@@ -56,7 +56,7 @@ export interface FreshnessExpectation {
 }
 
 /**
- * Every table in migrations/d1, and what its freshness means.
+ * Every table in tests/fixtures/sqlite-schema, and what its freshness means.
  *
  * Thresholds are set from MEASURED cadence (2026-08-07 sweep) with headroom,
  * not from what the producer claims. A threshold under one producer interval
@@ -102,17 +102,17 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   },
   raw_capture_state_v2: {
     // EXCLUDED because the table does not exist in production. It is declared
-    // in migrations/d1/0013_raw_capture_network.sql and was never applied (17
+    // in tests/fixtures/sqlite-schema/0013_raw_capture_network.sql and was never applied (17
     // migrations later), which #9867 tracks. Sweeping it made its whole batch
     // throw, and at FRESHNESS_BATCH = 4 that blinded three healthy tables with
     // it. Left declared rather than deleted so the map still accounts for
-    // every table migrations/d1 names -- the invariant
+    // every table tests/fixtures/sqlite-schema names -- the invariant
     // tests/table-freshness-watchdog.test.ts asserts.
     column: "",
     kind: "ms",
     maxAgeMs: null,
     reason:
-      "declared in migrations/d1/0013 but never applied to production (#9867)",
+      "declared in tests/fixtures/sqlite-schema/0013 but never applied to production (#9867)",
   },
   tao_usd_index: {
     column: "observed_at",

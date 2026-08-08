@@ -221,9 +221,9 @@ describe("passTallyStatement", () => {
     //
     // `latestCompletePass` declines on a missing table rather than throwing,
     // which is right for a reader and is exactly why nothing else would notice.
-    const migrations = readdirSync("migrations/d1")
+    const migrations = readdirSync("tests/fixtures/sqlite-schema")
       .filter((f) => f.endsWith(".sql"))
-      .map((f) => readFileSync(`migrations/d1/${f}`, "utf8"))
+      .map((f) => readFileSync(`tests/fixtures/sqlite-schema/${f}`, "utf8"))
       .join("\n");
     for (const [lane, table] of Object.entries(PASS_TABLES)) {
       assert.match(

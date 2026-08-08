@@ -3684,7 +3684,7 @@ async function handlePollerLaneHealthSyncProxy(request: Request, env: Env) {
 // with api.ts's own errorResponse envelope, like the other secret-gated route
 // that lives in this Worker (handleChainFirehoseIngest). Direct D1
 // (METAGRAPH_HEALTH_DB), not the DATA_API service binding: these tables live
-// in the same D1 database as the observation tables (migrations/d1/
+// in the same D1 database as the observation tables (tests/fixtures/sqlite-schema/
 // 0005_emission_gate.sql), not in the chain-indexer Postgres.
 const EMISSION_GATE_SYNC_TOKEN_HEADER = "x-emission-gate-sync-token";
 // One observation is ~130 [netuid, boolean] pairs + ~130 EMA entries + four

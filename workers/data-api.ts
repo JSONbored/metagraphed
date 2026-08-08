@@ -11,7 +11,7 @@
 // make truthy any more, so none of it could run.
 //
 // What is left is the D1 surface: the neurons / subnet-hyperparams /
-// account-identity read families (migrations/d1/0007 + 0009), the user-state
+// account-identity read families (tests/fixtures/sqlite-schema/0007 + 0009), the user-state
 // routes (accounts, API keys, usage accounting, alert triggers, push
 // subscriptions), the internal sync WRITE routes that land in D1, and the
 // TAO/USD index cron. Routes whose store is gone still answer exactly what
@@ -595,7 +595,7 @@ function stripClientSnapshotDate(row: Row) {
   return rest;
 }
 
-// --- Neurons-family READS on D1 (box decommission; migrations/d1/0007) ------
+// --- Neurons-family READS on D1 (box decommission; tests/fixtures/sqlite-schema/0007) ------
 //
 async function handleNeuronsSync(
   request: Request,
@@ -1735,7 +1735,7 @@ async function handleAccountIdentitySync(
 //
 // RESTORED ON D1 (#9146). Retired by #9193 when the Postgres table it wrote
 // was destroyed with the box; this is the same route against
-// migrations/d1/0011_validator_nominator_counts.sql instead.
+// tests/fixtures/sqlite-schema/0011_validator_nominator_counts.sql instead.
 //
 // The write path into validator_nominator_counts -- simpler than
 // account-identity-sync above: latest-only, no history table (a nominator
@@ -2616,7 +2616,7 @@ async function handleHotkeyAlphaSync(
   // complete pool ledger from a partial one -- absence in `hotkey_alpha` is
   // ambiguous by design (a genuine zero pool is skipped, not written), so no
   // count over the table can recover completeness. See
-  // migrations/d1/0021_hotkey_alpha_passes.sql.
+  // tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql.
   const declaredTotal = Array.isArray(parsed) ? undefined : parsed?.pass_total;
   if (
     declaredTotal !== undefined &&
@@ -2923,7 +2923,7 @@ function numberOrNull(v: unknown) {
 //
 // The user-state tables (accounts, API keys, usage accounting, alert
 // triggers, push subscriptions, TAO/USD index) live on the bounded D1
-// database (migrations/d1/0004_user_state.sql), not the chain-data Postgres
+// database (tests/fixtures/sqlite-schema/0004_user_state.sql), not the chain-data Postgres
 // tier -- they are the box's last functional tenants and D1 is exactly their
 // lane (small, transactional, user/config state). The runner below is a
 // tagged-template shim over D1's prepare/bind/all so the ~40 existing call
@@ -5655,7 +5655,7 @@ async function handleAccountKeysRoute(
   );
 }
 
-// --- Neurons-family D1 read routes (box decommission; migrations/d1/0007) --
+// --- Neurons-family D1 read routes (box decommission; tests/fixtures/sqlite-schema/0007) --
 //
 // The D1 twins of every neurons/neuron_daily/account_position_daily read the
 // deleted Postgres dispatcher served, matched whenever METAGRAPH_NEURONS_SOURCE
@@ -5698,7 +5698,7 @@ async function handleAccountKeysRoute(
 // indistinguishable from "no data yet" -- so nothing but a row-count baseline
 // caught them.
 //
-// Cross-tier joins: subnet_snapshots has a live D1 home (migrations/d1/
+// Cross-tier joins: subnet_snapshots has a live D1 home (tests/fixtures/sqlite-schema/
 // 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
 // The remaining enrichment side tables (featured_validators, account_identity)
 // have NO D1 home yet -- their families are frozen or port separately -- so the
@@ -5707,7 +5707,7 @@ async function handleAccountKeysRoute(
 // can only ever throw. Wire the real reads in when those tables land on D1.
 //
 // subnet_hyperparams' TEMPO no longer belongs to that list either (#9342). It
-// landed on D1 in migrations/d1/0009 and is populated for every subnet, but both
+// landed on D1 in tests/fixtures/sqlite-schema/0009 and is populated for every subnet, but both
 // validator handlers kept passing `tempoByNetuid: new Map()` -- the placeholder
 // this comment told them to pass. An empty map means every lookup misses, and
 // accumulateApyRow skips a membership whose tempo is unresolved, so apy_estimate
@@ -5716,7 +5716,7 @@ async function handleAccountKeysRoute(
 // exactly like a real absence, which is why it survived this long.
 //
 // validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
-// in migrations/d1/0012, so the real read is wired below and this tier answers
+// in tests/fixtures/sqlite-schema/0012, so the real read is wired below and this tier answers
 // nominator_count itself -- completely, since #9334 reads absence from a fresh
 // scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
 // the gap in the meantime (#9146) is gone with #9337: it could only ever fire
@@ -5820,7 +5820,7 @@ async function loadAlphaPricesByNetuidD1(
 }
 
 // hotkey -> nominator_count for every permitted validator, from the D1 table
-// migrations/d1/0012 created (#9146).
+// tests/fixtures/sqlite-schema/0012 created (#9146).
 //
 // CORRELATED SUBQUERY, NOT AN IN LIST, and that is load-bearing rather than
 // stylistic: the leaderboard covers ~1,031 hotkeys and the Workers D1 binding
@@ -7111,7 +7111,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
 }
 
 // --- Hyperparams + account-identity D1 read routes (box decommission;
-// migrations/d1/0009_hyperparams_identity.sql) ------------------------------
+// tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql) ------------------------------
 //
 // The D1 twins of the four family reads the deleted Postgres dispatcher
 // served -- the same contract as matchNeuronsD1Route above, switched
@@ -7638,7 +7638,7 @@ async function dispatchDataApiRequest(
     }
 
     // Hyperparams + account-identity reads on D1 (box decommission,
-    // migrations/d1/0009) -- the same shape as the neurons block above, with
+    // tests/fixtures/sqlite-schema/0009) -- the same shape as the neurons block above, with
     // the per-family flag check folded into the matcher (each family switches
     // independently). Same catch envelope: log + masked-route capture + an
     // opaque 502 that never leaks DB detail.

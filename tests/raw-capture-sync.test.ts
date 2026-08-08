@@ -53,7 +53,7 @@ import {
  */
 const MIGRATIONS = ["0006_raw_capture.sql", "0013_raw_capture_network.sql"].map(
   (name) =>
-    fs.readFileSync(path.join(process.cwd(), "migrations/d1", name), "utf8"),
+    fs.readFileSync(path.join(process.cwd(), "tests/fixtures/sqlite-schema", name), "utf8"),
 );
 
 function applyMigrations(target: InstanceType<typeof DatabaseSync>) {

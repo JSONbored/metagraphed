@@ -38,7 +38,7 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 // surface_status lives in the observations migration, alongside surface_checks.
 const OBSERVATIONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0002_observations.sql"),
   "utf8",
 );
 

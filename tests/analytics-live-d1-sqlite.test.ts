@@ -1,5 +1,5 @@
 // Executes the resurrected D1 read loaders in src/analytics-live.ts against a
-// REAL SQLite database built from migrations/d1/0002_observations.sql — same
+// REAL SQLite database built from tests/fixtures/sqlite-schema/0002_observations.sql — same
 // rationale as tests/observations-d1-sqlite.test.ts (the write half): a fake
 // records SQL but never parses it, and the riskiest constructs here (the rank
 // CTE, the gap-island window functions, the HAVING-bound min_samples floor)
@@ -25,7 +25,7 @@ import {
 import { loadEconomicsTrends } from "../src/economics-trends.ts";
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
+  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0002_observations.sql"),
   "utf8",
 );
 
