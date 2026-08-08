@@ -422,11 +422,18 @@ describe("the Neon read cutover (metagraphed-infra#336)", () => {
         "chain_detail_account_events",
       ],
     };
+    // A sole-store table has no mirror by design: Neon IS the store, so the
+    // writer targets it directly and there is nothing to copy. See the fuller
+    // note on the same derivation in tests/neon-read-routes.test.ts.
+    const soleStore = (
+      /"NEON_SOLE_STORE_TABLES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
+    ).split(",");
     const written = new Set(
       [...writes, ...backfills]
         .map((lane) => lane.trim())
         .filter(Boolean)
-        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")]),
+        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")])
+        .concat(soleStore.map((table) => table.trim()).filter(Boolean)),
     );
     for (const lane of named) {
       assert.ok(
