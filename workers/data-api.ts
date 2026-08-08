@@ -772,6 +772,10 @@ async function handleNeuronsSync(
       positionRows,
       // The tally follows the rows into the store that holds them (#10056).
       pass,
+      // The deregistration prune's cutoffs (#10184). Derived by the SAME
+      // function that produced dailyRows/positionRows above, so the writer and
+      // the prune cannot disagree about where the floor is.
+      netuidMaxCapturedAt,
     },
   );
 

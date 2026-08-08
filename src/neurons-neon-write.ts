@@ -209,15 +209,30 @@ export const NEURON_MIRROR_PLANS: Readonly<Record<string, MirrorPlan>> = {
     // rows with older ones -- silently, since both writes succeed.
     guard: "neurons.captured_at < EXCLUDED.captured_at",
   },
+  // THE DAILY TABLES CARRY THE GUARD TOO (#10184), and the reasoning that said
+  // they did not need one was half right.
+  //
+  // It went: these are keyed by snapshot_date, so a late arrival lands on its
+  // own day and cannot collide with a fresher row. That holds ACROSS days and
+  // fails WITHIN one -- handleNeuronDailyBackfill replays past snapshot_dates,
+  // and a replay whose range overlaps TODAY shares today's snapshot_date while
+  // carrying an older captured_at. Without the guard it wins, and the route's
+  // own header promises the opposite: "a backfill re-POST can never clobber a
+  // fresher row".
+  //
+  // D1's buildJsonUpsert appended `captured_at <= excluded.captured_at` to
+  // every one of the three unconditionally. This restores that.
   neuron_daily: {
     table: "neuron_daily",
     columns: NEURON_DAILY_COLUMNS,
     conflict: ["netuid", "uid", "snapshot_date"],
+    guard: "neuron_daily.captured_at < EXCLUDED.captured_at",
   },
   account_position_daily: {
     table: "account_position_daily",
     columns: ACCOUNT_POSITION_DAILY_COLUMNS,
     conflict: ["account", "netuid", "snapshot_date"],
+    guard: "account_position_daily.captured_at < EXCLUDED.captured_at",
   },
 };
 
@@ -234,6 +249,61 @@ export interface NeuronMirrorInput {
    * enforced below instead, by writing the tally ONLY after every table
    * succeeded. */
   pass?: PassTallyInput | null;
+  /**
+   * Per-netuid max `captured_at`, which the prune below deletes beneath.
+   *
+   * Optional because the backfill route legitimately has none: it walks PAST
+   * snapshot_dates and must never touch `neurons`, so it passes `rows: []` and
+   * omits this. Absent means "do not prune", never "prune everything".
+   */
+  netuidMaxCapturedAt?: Map<number, number> | null;
+}
+
+/**
+ * Delete each netuid's rows older than that netuid's newest capture.
+ *
+ * ONE STATEMENT for the whole map rather than one per netuid: a full pass
+ * covers ~129 subnets, and 129 round trips on a Hyperdrive connection is the
+ * kind of cost that turns a prune into a timeout. The pairs travel as two
+ * parallel arrays and are joined with `unnest`, so nothing is interpolated into
+ * the text and the parameter count is 2 regardless of how many netuids there
+ * are.
+ *
+ * Never throws -- it reports like every other write here, because a failed
+ * prune must not fail a pass whose rows landed.
+ */
+export async function pruneNeuronsToCapture(
+  sql: { unsafe(text: string, values?: unknown[]): Promise<unknown> },
+  cutoffs: ReadonlyMap<number, number>,
+): Promise<NeonWriteResult> {
+  const netuids: number[] = [];
+  const capturedAt: number[] = [];
+  for (const [netuid, at] of cutoffs) {
+    // Re-checked here rather than trusted: a NaN cutoff would delete every row
+    // for that netuid, which is the one outcome this function must not have.
+    if (!Number.isFinite(netuid) || !Number.isFinite(at)) continue;
+    netuids.push(netuid);
+    capturedAt.push(at);
+  }
+  if (netuids.length === 0) {
+    return { ok: true, rows: 0, statements: 0 };
+  }
+  try {
+    await sql.unsafe(
+      "DELETE FROM neurons n USING unnest($1::int[], $2::bigint[])" +
+        " AS cutoff(netuid, captured_at)" +
+        " WHERE n.netuid = cutoff.netuid AND n.captured_at < cutoff.captured_at",
+      [netuids, capturedAt],
+    );
+    return { ok: true, rows: 0, statements: 1 };
+  } catch (error) {
+    return {
+      ok: false,
+      rows: 0,
+      statements: 1,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export interface NeuronMirrorOutcome {
@@ -241,6 +311,10 @@ export interface NeuronMirrorOutcome {
    * from a failed attempt: "we did not try" is not "we tried and it broke". */
   attempted: boolean;
   results: Record<string, NeonWriteResult>;
+  /** The deregistration prune, kept OUT of `results` on purpose -- see the
+   * write path. Absent when there were no cutoffs to prune on, or when a table
+   * failed and the prune was withheld. */
+  prune?: NeonWriteResult;
 }
 
 export interface NeuronMirrorDeps {
@@ -308,6 +382,47 @@ export async function mirrorNeuronSnapshotToNeon(
     await recordNeonWriteVerdict(laneDb, name, result, now());
   }
 
+  // THE DEREGISTRATION PRUNE (#10184). D1's writer ran this and the Neon mirror
+  // never did, so a UID that leaves a subnet stayed in `neurons` forever.
+  //
+  // PER NETUID, never one batch-wide cutoff. A global max would let one
+  // netuid's later capture delete rows this same write just upserted for a
+  // different, earlier-captured netuid -- its own fresh rows would satisfy
+  // `captured_at < max`. netuidMaxCapturedAt is computed from the posted rows
+  // for exactly this reason, and computed ONCE so the writer and the prune
+  // cannot disagree about the cutoff.
+  //
+  // AFTER the upserts, never before: the rows this pass carries have to be in
+  // before anything is deleted beneath them, or a failure between the two
+  // leaves the netuid short.
+  //
+  // ONLY when every table landed. A prune on top of a failed upsert deletes the
+  // old rows without the new ones replacing them, which turns a retryable write
+  // failure into missing data. Skipping costs one tick of stale UIDs; the next
+  // pass prunes them.
+  //
+  // Benign today and permanent tomorrow, which is why it is worth restoring
+  // now: every pass currently rewrites every UID under one shared captured_at,
+  // so Neon holds 0 stale rows (verified 2026-08-08). It stops being benign the
+  // first time a subnet shrinks its UID count or is deregistered.
+  //
+  // REPORTED BESIDE `results`, NEVER INSIDE IT. The callers fold over
+  // `results` to decide whether the request failed, so putting the prune there
+  // would 502 a pass whose rows all landed -- and the producer would re-send a
+  // snapshot that is already stored. The rows are the valuable half; stale UIDs
+  // cost one tick. Its own lane verdict is how it stays visible.
+  const cutoffs = input.netuidMaxCapturedAt;
+  let prune: NeonWriteResult | undefined;
+  if (cutoffs?.size && Object.values(results).every((r) => r.ok)) {
+    prune = await pruneNeuronsToCapture(sql, cutoffs);
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${NEURONS_NEON_LANE}-prune`,
+      prune,
+      now(),
+    );
+  }
+
   // THE TALLY GOES LAST, AND ONLY IF EVERY TABLE LANDED (#10056).
   //
   // This is the Postgres form of the ordering src/neurons-d1-write.ts gets for
@@ -338,5 +453,5 @@ export async function mirrorNeuronSnapshotToNeon(
     );
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
-  return { attempted: true, results };
+  return { attempted: true, results, ...(prune ? { prune } : {}) };
 }

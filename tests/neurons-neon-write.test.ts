@@ -28,6 +28,7 @@ import {
   mirrorNeuronSnapshotToNeon,
   NEURON_MIRROR_PLANS,
   NEURONS_NEON_LANE,
+  pruneNeuronsToCapture,
 } from "../src/neurons-neon-write.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -101,16 +102,25 @@ describe("NEURON_MIRROR_PLANS", () => {
     ]);
   });
 
-  test("only `neurons` carries the out-of-order guard", () => {
-    // It is the one table a retried chunk can regress: the daily tables are
-    // keyed by snapshot_date, so a late arrival lands on its own day rather
-    // than overwriting a newer one.
-    assert.match(
-      String(NEURON_MIRROR_PLANS.neurons.guard),
-      /captured_at < EXCLUDED\.captured_at/,
-    );
-    assert.equal(NEURON_MIRROR_PLANS.neuron_daily.guard, undefined);
-    assert.equal(NEURON_MIRROR_PLANS.account_position_daily.guard, undefined);
+  test("all three carry the out-of-order guard", () => {
+    // THE REASONING THAT EXEMPTED THE DAILY TABLES WAS HALF RIGHT (#10184).
+    //
+    // It went: they are keyed by snapshot_date, so a late arrival lands on its
+    // own day rather than overwriting a newer one. True ACROSS days, false
+    // WITHIN one -- handleNeuronDailyBackfill replays past snapshot_dates, and
+    // a replay overlapping TODAY shares today's snapshot_date while carrying an
+    // older captured_at. Without the guard it wins, and that route's own header
+    // promises "a backfill re-POST can never clobber a fresher row".
+    //
+    // D1's buildJsonUpsert appended the guard to all three unconditionally, so
+    // this is a restoration rather than a new rule.
+    for (const plan of Object.values(NEURON_MIRROR_PLANS)) {
+      assert.match(
+        String(plan.guard),
+        new RegExp(`^${plan.table}\\.captured_at < EXCLUDED\\.captured_at$`),
+        `${plan.table} has no out-of-order guard`,
+      );
+    }
   });
 });
 
@@ -294,5 +304,209 @@ describe("mirrorNeuronSnapshotToNeon", () => {
     );
     assert.equal(out.attempted, true);
     assert.equal(out.results.neurons.ok, true);
+  });
+});
+
+// THE DEREGISTRATION PRUNE (#10184). D1's writer deleted each netuid's rows
+// beneath that netuid's newest capture, and the Neon mirror never did -- so a
+// UID that leaves a subnet stayed in `neurons` forever.
+//
+// Benign at the time it was restored: every pass rewrites every UID under one
+// shared captured_at, so Neon held 0 stale rows (verified against production
+// 2026-08-08). It stops being benign the first time a subnet shrinks its UID
+// count or is deregistered, and by then D1 is gone and there is no second copy
+// to notice against.
+describe("pruneNeuronsToCapture", () => {
+  test("one statement for the whole map, with the pairs as parallel arrays", async () => {
+    // NOT one statement per netuid: a full pass covers ~129 subnets, and 129
+    // round trips on a Hyperdrive connection is how a prune becomes a timeout.
+    // The parameter count stays 2 no matter how many netuids there are, and
+    // nothing is interpolated into the text.
+    const sql = fakeSql();
+    const result = await pruneNeuronsToCapture(
+      sql,
+      new Map([
+        [1, 1_786_000_000_000],
+        [64, 1_786_000_000_500],
+      ]),
+    );
+    assert.deepEqual(result, { ok: true, rows: 0, statements: 1 });
+    assert.equal(sql.calls.length, 1);
+    assert.match(sql.calls[0]!.text, /DELETE FROM neurons n USING unnest/);
+    assert.match(sql.calls[0]!.text, /n\.captured_at < cutoff\.captured_at/);
+    assert.deepEqual(sql.calls[0]!.values, [
+      [1, 64],
+      [1_786_000_000_000, 1_786_000_000_500],
+    ]);
+  });
+
+  test("PER NETUID, so one subnet's later capture cannot delete another's fresh rows", async () => {
+    // The failure a single batch-wide cutoff produces: netuid 64's newer
+    // capture would satisfy `captured_at < max` for netuid 1's rows, which this
+    // same write just landed. The pairing is what prevents it, so the pairing
+    // is what is asserted.
+    const sql = fakeSql();
+    await pruneNeuronsToCapture(
+      sql,
+      new Map([
+        [1, 1_000],
+        [64, 9_999],
+      ]),
+    );
+    const [netuids, cutoffs] = sql.calls[0]!.values as [number[], number[]];
+    assert.equal(netuids.indexOf(1), cutoffs.indexOf(1_000));
+    assert.equal(netuids.indexOf(64), cutoffs.indexOf(9_999));
+  });
+
+  test("an unusable netuid or cutoff is SKIPPED, never widened to everything", async () => {
+    // A NaN cutoff in the statement would delete every row for that netuid --
+    // the one outcome this function must not have. Skipping the pair leaves
+    // that subnet unpruned for a tick, which the next pass fixes.
+    const sql = fakeSql();
+    await pruneNeuronsToCapture(
+      sql,
+      new Map([
+        [1, Number.NaN],
+        [Number.NaN, 1_000],
+        [64, 1_786_000_000_500],
+      ]),
+    );
+    assert.deepEqual(sql.calls[0]!.values, [[64], [1_786_000_000_500]]);
+  });
+
+  test("an empty map issues no statement at all", async () => {
+    const sql = fakeSql();
+    const result = await pruneNeuronsToCapture(sql, new Map());
+    assert.deepEqual(result, { ok: true, rows: 0, statements: 0 });
+    assert.equal(sql.calls.length, 0);
+  });
+
+  test("a failure is reported, never thrown", async () => {
+    // A failed prune must not fail a pass whose rows landed: the rows are the
+    // valuable half, and stale UIDs cost one tick.
+    const sql = {
+      async unsafe() {
+        throw new Error("deadlock detected");
+      },
+    };
+    const result = await pruneNeuronsToCapture(sql, new Map([[1, 1_000]]));
+    assert.equal(result.ok, false);
+    assert.match(String(result.reason), /deadlock detected/);
+  });
+});
+
+describe("the mirror's prune ordering", () => {
+  test("prunes AFTER the upserts, and only when every table landed", async () => {
+    const sql = fakeSql();
+    const spy = laneSpy();
+    await mirrorNeuronSnapshotToNeon(
+      { ...pgMockEnv() },
+      { waitUntil: () => undefined },
+      {
+        rows: [{ netuid: 1, uid: 0, captured_at: 1_000 }],
+        dailyRows: [],
+        positionRows: [],
+        netuidMaxCapturedAt: new Map([[1, 1_000]]),
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    const texts = sql.calls.map((c) => c.text);
+    const upsert = texts.findIndex((t) => t.includes("INTO neurons "));
+    const prune = texts.findIndex((t) => t.includes("DELETE FROM neurons"));
+    assert.ok(upsert >= 0, "no upsert was issued");
+    assert.ok(prune > upsert, "the prune ran before the rows it deletes under");
+  });
+
+  test("a failed upsert withholds the prune", async () => {
+    // A prune on top of a failed upsert deletes the old rows without the new
+    // ones replacing them -- it turns a retryable write failure into missing
+    // data.
+    const sql = fakeSql("neurons");
+    const spy = laneSpy();
+    await mirrorNeuronSnapshotToNeon(
+      { ...pgMockEnv() },
+      { waitUntil: () => undefined },
+      {
+        rows: [{ netuid: 1, uid: 0, captured_at: 1_000 }],
+        dailyRows: [],
+        positionRows: [],
+        netuidMaxCapturedAt: new Map([[1, 1_000]]),
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(
+      sql.calls.some((c) => c.text.includes("DELETE FROM neurons")),
+      false,
+      "pruned on top of a failed upsert",
+    );
+  });
+
+  test("a failed prune does NOT fail the pass", async () => {
+    // THE BUG THIS PINS, caught by tests/data-api-neurons-d1 rather than by
+    // review: the prune result was first reported INSIDE `results`, and every
+    // caller folds over `results` to decide whether the request failed. A
+    // transient prune failure would therefore 502 a pass whose rows all landed,
+    // and the producer would re-send a snapshot that is already stored.
+    //
+    // The rows are the valuable half. Stale UIDs cost one tick; a rejected pass
+    // costs the pass.
+    const sql = {
+      calls: [] as { text: string }[],
+      async unsafe(text: string) {
+        sql.calls.push({ text });
+        if (text.startsWith("DELETE")) throw new Error("deadlock detected");
+        return [];
+      },
+    };
+    const spy = laneSpy();
+    const outcome = await mirrorNeuronSnapshotToNeon(
+      { ...pgMockEnv() },
+      { waitUntil: () => undefined },
+      {
+        rows: [{ netuid: 1, uid: 0, captured_at: 1_000 }],
+        dailyRows: [],
+        positionRows: [],
+        netuidMaxCapturedAt: new Map([[1, 1_000]]),
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(
+      Object.values(outcome.results).every((r) => r.ok),
+      true,
+      "the failed prune leaked into results and would fail the request",
+    );
+    // Still visible, on its own: reported beside results and recorded as its
+    // own lane verdict, so it cannot fail silently either.
+    assert.equal(outcome.prune?.ok, false);
+    assert.ok(
+      spy.rows.some(
+        (r) =>
+          r.lane === `neon:${NEURONS_NEON_LANE}-prune` && r.verdict !== "ok",
+      ),
+      "no lane verdict recorded for the failed prune",
+    );
+  });
+
+  test("no cutoffs means no prune -- the backfill route passes none", async () => {
+    // handleNeuronDailyBackfill walks PAST snapshot_dates and must never touch
+    // `neurons`. Absent cutoffs must read as "do not prune", never as "prune
+    // everything".
+    const sql = fakeSql();
+    const spy = laneSpy();
+    await mirrorNeuronSnapshotToNeon(
+      { ...pgMockEnv() },
+      { waitUntil: () => undefined },
+      {
+        rows: [],
+        dailyRows: [{ netuid: 1, uid: 0, snapshot_date: "2026-01-01" }],
+        positionRows: [],
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(
+      sql.calls.some((c) => c.text.includes("DELETE FROM neurons")),
+      false,
+      "a backfill pruned the latest-only table",
+    );
   });
 });
