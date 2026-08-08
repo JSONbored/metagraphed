@@ -39,6 +39,7 @@ import {
   upsertSubnetSnapshotsToNeon,
   type ObservationsSql,
 } from "./observations-neon.ts";
+import { observationsReadDb } from "./observations-read-runner.ts";
 import { neonOwnsTable } from "./neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
 import {
@@ -70,7 +71,6 @@ import {
   type EndpointReliability,
 } from "./endpoint-reliability.ts";
 import { emptyStatusCounts } from "./endpoint-score.ts";
-import type { ObservationsReadDb } from "./analytics-live.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
@@ -710,8 +710,11 @@ export async function runHealthProber(
   // the pool by ~9x on real traffic. This ranks on 30 days of observed behaviour from a
   // rollup we already keep. A failed read yields {} and the comparator falls back to
   // the single-probe latency it used before.
+  // Whichever store owns the family (#10086) -- the rollup this ranks on is
+  // written by the same sweep, so reading it from the other store would rank on
+  // whatever that store last happened to hold.
   const reliability = await loadEndpointReliability(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsReadDb,
+    observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     runAt,
   );
   const nextCurrent = await persistToKv(kv, probed, runAt, reliability);

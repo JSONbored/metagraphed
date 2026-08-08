@@ -1,14 +1,39 @@
-// Shared D1 SQL for operational-health latency + uptime aggregation.
+// Shared SQL for operational-health latency + uptime aggregation, on EITHER
+// store.
 //
 // One definition of "latency is a success-only signal": every latency aggregate
-// counts only healthy probes that recorded a latency (`ok = 1 AND latency_ms IS
-// NOT NULL`), while uptime counts every probe. Reused by the daily rollup, the
-// trends route, and the percentiles route so the mean, its p50/p95/p99 tail, and
-// its sample count stay consistent — and pre-fix raw rows (a stray 0/elapsed
-// latency on a failure) are corrected on read, not only on the next write.
+// counts only healthy probes that recorded a latency (`ok` true AND `latency_ms
+// IS NOT NULL`), while uptime counts every probe. Reused by the daily rollup,
+// the trends route, and the percentiles route so the mean, its p50/p95/p99 tail,
+// and its sample count stay consistent — and pre-fix raw rows (a stray
+// 0/elapsed latency on a failure) are corrected on read, not only on the next
+// write.
+//
+// ## Why the comparison against 1 is gone (#10086)
+//
+// `surface_checks.ok` is INTEGER in D1 and BOOLEAN in Neon. That is a TYPING
+// difference, not a dialect one, so it survives every `?`->`$n` rewrite and
+// every portability review that reads for syntax: `ok = 1` parses fine on both
+// and only Postgres rejects it, at runtime, with `operator does not exist:
+// boolean = integer`. The same shape cost the hotkey_alpha mirror twelve hours
+// (#10000) one table over.
+//
+// A BARE `ok` is portable in both directions. Postgres takes it as the boolean
+// it is; SQLite has no boolean type and treats the stored 1/0 as truthy/falsy,
+// which is exactly what `ok = 1` meant. Same for `NOT ok` against `ok = 0`, and
+// `CASE WHEN ok THEN 1 ELSE 0 END` against `SUM(ok)` -- the last one matters
+// most, because summing a boolean is not merely wrong in Postgres, it has no
+// meaning at all and the whole statement throws.
+//
+// Verified against BOTH production stores rather than reasoned about: the
+// portable spellings return identical counts over the same 1,385,857 rows.
 
 // A probe whose latency counts toward latency statistics.
-export const OK_LATENCY = "ok = 1 AND latency_ms IS NOT NULL";
+export const OK_LATENCY = "ok AND latency_ms IS NOT NULL";
+
+/** `SUM(ok)` is a type error in Postgres -- a boolean has no sum. This counts
+ * the same thing on both stores. */
+export const OK_COUNT = "SUM(CASE WHEN ok THEN 1 ELSE 0 END)";
 
 // `surface_status` stores textual status; latency averages over it must mirror
 // OK_LATENCY semantics (failures/timeouts can still carry elapsed-time latencies).

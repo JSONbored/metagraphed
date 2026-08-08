@@ -32,6 +32,13 @@
 // ux_surface_failure_daily_key is already `(day, netuid, kind, classification)
 // NULLS NOT DISTINCT`, the native form of the expression-index trick D1 needed
 // because SQLite treats NULLs as distinct in a unique constraint.
+// OK_LATENCY is shared with the D1 readers rather than restated here (#10086).
+// It used to be defined twice -- `ok AND ...` in this file, `ok = 1 AND ...` in
+// health-sql.ts -- which is precisely how the two stores drifted apart without
+// anything failing: each spelling was correct for the store its own file
+// targeted, and neither could run against the other.
+import { OK_LATENCY } from "./health-sql.ts";
+
 /** The runner shape createPgSql hands out. Declared here rather than imported
  * so this module depends on the SHAPE and not on another lane's file. */
 export interface ObservationsSql {
@@ -44,10 +51,6 @@ export interface ObservationWrite {
   ok: boolean;
   reason?: string;
 }
-
-/** A probe whose latency counts. `ok` is a real boolean here, so it stands on
- * its own -- `ok = 1` is the D1 spelling and a type error in Postgres. */
-const OK_LATENCY = "ok AND latency_ms IS NOT NULL";
 
 /**
  * The ranked CTE, Postgres form.
