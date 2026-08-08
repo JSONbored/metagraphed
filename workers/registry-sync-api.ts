@@ -36,7 +36,10 @@ import {
 } from "../src/tracing.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
-import { applyRegistrySyncToNeon } from "../src/registry-sync-neon.ts";
+import {
+  applyRegistrySyncToNeon,
+  type RegistrySyncNeonDeps,
+} from "../src/registry-sync-neon.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
@@ -83,320 +86,12 @@ interface SurfaceSyncRow {
   source_commit?: string;
 }
 
-// Epoch-milliseconds "now", matching the INTEGER convention the D1 schema uses
-// for every timestamp column (migrations/d1/0001_registry.sql translation 4).
-// Postgres' now() returned a timestamptz; there is no such type here.
-const NOW_MS = "(unixepoch() * 1000)";
-
 export interface RegistrySyncSummary {
   providers_written: number;
   subnets_written: number;
   surfaces_written: number;
   surfaces_deleted: number;
   subnets_deleted: number;
-}
-
-interface D1Like {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all(): Promise<{ results?: unknown[] }>;
-    };
-  };
-  batch(statements: unknown[]): Promise<unknown>;
-}
-
-interface SurfaceRow {
-  id?: unknown;
-  subnet_netuid?: unknown;
-  overlay?: unknown;
-}
-
-function bound(db: D1Like, sql: string, values: unknown[]) {
-  return db.prepare(sql).bind(...values);
-}
-
-async function readRows(
-  db: D1Like,
-  sql: string,
-  values: unknown[],
-): Promise<SurfaceRow[]> {
-  const { results } = await bound(db, sql, values).all();
-  return (results as SurfaceRow[]) ?? [];
-}
-
-// One history row per surface that a prune/delete removed. Split out because
-// both the prune path and the delete-subnets path need exactly this, and the
-// original Postgres version duplicated it via DELETE ... RETURNING.
-function historyForDeleted(
-  db: D1Like,
-  rows: SurfaceRow[],
-  sourceCommit: string,
-) {
-  return rows.map((row) =>
-    bound(
-      db,
-      `INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit, recorded_at)
-       VALUES (?, ?, 'delete', ?, ?, ${NOW_MS})`,
-      [
-        row.id ?? null,
-        row.subnet_netuid ?? null,
-        typeof row.overlay === "string"
-          ? row.overlay
-          : JSON.stringify(row.overlay ?? {}),
-        sourceCommit,
-      ],
-    ),
-  );
-}
-
-/**
- * Apply one sync payload to D1.
- *
- * TWO PHASES, AND WHY. Postgres gave this an interactive transaction
- * (`sql.begin`), so it could DELETE ... RETURNING and then write a history row
- * per returned id inside one atomic unit. D1 has no interactive transactions --
- * `batch()` is a transaction, but it is a fixed list of statements decided
- * before any of them runs. So the reads move to phase 1 and every write lands in
- * a single phase-2 batch.
- *
- * The cost is a TOCTOU window between the two phases, and it is stated here
- * rather than hidden: a surface deleted by a concurrent call between phases
- * would produce a history row for a row that is already gone. That is acceptable
- * for THIS path specifically -- it is CI-only, rate-limited to 30/60s, and in
- * practice serialized by the workflows that call it -- and it is strictly better
- * than the alternative of writing history outside a transaction entirely.
- *
- * Atomicity of the writes themselves is preserved: one batch, all-or-nothing,
- * so a mid-batch failure can no longer leave a partial sync the way the
- * pre-transaction version could.
- */
-export async function applyRegistrySyncToD1(
-  db: D1Like,
-  payload: {
-    providers: ProviderSyncRow[];
-    subnets: SubnetSyncRow[];
-    surfaces: SurfaceSyncRow[];
-    pruneSurfaces: PruneSurfacesRow[];
-    deleteSubnets: DeleteSubnetRow[];
-  },
-): Promise<RegistrySyncSummary> {
-  const summary: RegistrySyncSummary = {
-    providers_written: 0,
-    subnets_written: 0,
-    surfaces_written: 0,
-    surfaces_deleted: 0,
-    subnets_deleted: 0,
-  };
-  const writes: unknown[] = [];
-
-  for (const p of payload.providers) {
-    if (!p.id || !p.overlay || !p.source_commit) continue;
-    writes.push(
-      bound(
-        db,
-        `INSERT INTO providers (id, overlay, source_commit, updated_at)
-         VALUES (?, ?, ?, ${NOW_MS})
-         ON CONFLICT (id) DO UPDATE SET
-           overlay = excluded.overlay,
-           source_commit = excluded.source_commit,
-           updated_at = ${NOW_MS}
-         -- SQLite's IS NOT is exactly Postgres' IS DISTINCT FROM (NULL-safe),
-         -- so the "only touch the row when the overlay actually changed"
-         -- semantics carry over verbatim.
-         WHERE providers.overlay IS NOT excluded.overlay`,
-        [p.id, JSON.stringify(p.overlay), p.source_commit],
-      ),
-    );
-    summary.providers_written += 1;
-  }
-
-  const writtenSubnetNetuids = new Set<unknown>();
-  for (const s of payload.subnets) {
-    if (
-      !Number.isInteger(s.netuid) ||
-      !s.slug ||
-      !s.name ||
-      !s.overlay ||
-      !s.source_commit
-    )
-      continue;
-    writes.push(
-      bound(
-        db,
-        `INSERT INTO subnets (netuid, slug, name, source, overlay, source_commit, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ${NOW_MS})
-         ON CONFLICT (netuid) DO UPDATE SET
-           slug = excluded.slug,
-           name = excluded.name,
-           source = excluded.source,
-           overlay = excluded.overlay,
-           source_commit = excluded.source_commit,
-           updated_at = ${NOW_MS}`,
-        [
-          s.netuid as number,
-          s.slug,
-          s.name,
-          s.source || "community",
-          JSON.stringify(s.overlay),
-          s.source_commit,
-        ],
-      ),
-    );
-    summary.subnets_written += 1;
-    writtenSubnetNetuids.add(s.netuid);
-  }
-
-  for (const prune of payload.pruneSurfaces) {
-    if (
-      !Number.isInteger(prune.subnet_netuid) ||
-      !Array.isArray(prune.current_surfaces) ||
-      !prune.source_commit
-    )
-      continue;
-    const keep = prune.current_surfaces
-      .filter((s) => s?.kind && s?.url)
-      .map((s) => ({ k: s.kind, u: s.url }));
-    // json_each over ONE bound JSON array rather than 2 placeholders per kept
-    // surface. The Postgres version built a VALUES join with positional binds,
-    // which here would mean thousands of parameters for a large subnet and run
-    // into SQLite's variable ceiling. This also keeps the statement text
-    // constant, so D1 can reuse the prepared plan.
-    const scopeToCommunity = prune.authority_scope === "community" ? 1 : 0;
-    const doomed = await readRows(
-      db,
-      `SELECT id, subnet_netuid, overlay FROM surfaces
-       WHERE subnet_netuid = ?
-         AND (? = 0 OR authority = 'community')
-         AND NOT EXISTS (
-           SELECT 1 FROM json_each(?) AS keep
-           WHERE json_extract(keep.value, '$.k') = surfaces.kind
-             AND json_extract(keep.value, '$.u') = surfaces.url
-         )`,
-      [prune.subnet_netuid as number, scopeToCommunity, JSON.stringify(keep)],
-    );
-    if (!doomed.length) continue;
-    // Delete by the exact ids just read, not by re-running the predicate: the
-    // history rows below describe THESE rows, and re-evaluating the predicate
-    // inside the batch could delete a different set than the one being recorded.
-    writes.push(
-      bound(
-        db,
-        `DELETE FROM surfaces WHERE id IN (SELECT value FROM json_each(?))`,
-        [JSON.stringify(doomed.map((r) => r.id))],
-      ),
-      ...historyForDeleted(db, doomed, prune.source_commit),
-    );
-    summary.surfaces_deleted += doomed.length;
-  }
-
-  for (const deletion of payload.deleteSubnets) {
-    if (!Number.isInteger(deletion.netuid) || !deletion.source_commit) continue;
-    if (writtenSubnetNetuids.has(deletion.netuid)) continue;
-    const doomed = await readRows(
-      db,
-      `SELECT id, subnet_netuid, overlay FROM surfaces WHERE subnet_netuid = ?`,
-      [deletion.netuid as number],
-    );
-    writes.push(
-      bound(db, `DELETE FROM surfaces WHERE subnet_netuid = ?`, [
-        deletion.netuid as number,
-      ]),
-      ...historyForDeleted(db, doomed, deletion.source_commit),
-      bound(db, `DELETE FROM subnets WHERE netuid = ?`, [
-        deletion.netuid as number,
-      ]),
-    );
-    summary.surfaces_deleted += doomed.length;
-    summary.subnets_deleted += 1;
-  }
-
-  for (const surf of payload.surfaces) {
-    if (
-      !Number.isInteger(surf.subnet_netuid) ||
-      !surf.surface_key ||
-      !surf.kind ||
-      !surf.url ||
-      !surf.overlay ||
-      !surf.source_commit
-    )
-      continue;
-    const overlay = JSON.stringify(surf.overlay);
-    // Postgres answered "was this an insert or an update?" with
-    // `RETURNING (xmax = 0)`, which reads MVCC internals SQLite does not have.
-    // Asking directly is both portable and clearer -- and it subsumes the old
-    // `WHERE ... IS DISTINCT FROM` guard, because an unchanged overlay is now
-    // skipped here instead of being sent and silently no-op'd.
-    const [existing] = await readRows(
-      db,
-      `SELECT id, overlay FROM surfaces WHERE subnet_netuid = ? AND kind = ? AND url = ?`,
-      [surf.subnet_netuid as number, surf.kind, surf.url],
-    );
-    if (existing && existing.overlay === overlay) continue;
-    const action = existing ? "update" : "insert";
-    // HOISTED, and that is the point rather than tidiness. The D1 schema
-    // deliberately has NO default for surfaces.id (a fabricated surrogate is
-    // worse than a failed insert), so the caller supplies it -- and the audit
-    // row below has to name the SAME surface. Computing the expression twice
-    // would mint a second UUID on every insert and record history against a
-    // surface that does not exist.
-    const surfaceId = (existing?.id as string) ?? crypto.randomUUID();
-    writes.push(
-      bound(
-        db,
-        `INSERT INTO surfaces (
-           id, subnet_netuid, provider_id, surface_key, kind, url,
-           authority, review_state, probe_eligible, public_safe,
-           overlay, source_commit, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${NOW_MS})
-         ON CONFLICT (subnet_netuid, kind, url) DO UPDATE SET
-           provider_id = excluded.provider_id,
-           surface_key = excluded.surface_key,
-           authority = excluded.authority,
-           review_state = excluded.review_state,
-           probe_eligible = excluded.probe_eligible,
-           public_safe = excluded.public_safe,
-           overlay = excluded.overlay,
-           source_commit = excluded.source_commit,
-           updated_at = ${NOW_MS}`,
-        [
-          surfaceId,
-          surf.subnet_netuid as number,
-          surf.provider_id ?? null,
-          surf.surface_key,
-          surf.kind,
-          surf.url,
-          surf.authority || "community",
-          surf.review_state || "community-submitted",
-          // Booleans are 0/1 with a CHECK constraint in the D1 schema.
-          surf.probe_eligible ? 1 : 0,
-          surf.public_safe === false ? 0 : 1,
-          overlay,
-          surf.source_commit,
-        ],
-      ),
-      bound(
-        db,
-        // #9612: surface_id was omitted from this column list entirely, so
-        // every insert and update wrote a NULL -- 8,831 of the table's 8,892
-        // rows, measured 2026-08-06. Only the delete path recorded it. An audit
-        // trail that cannot say WHICH surface changed is not one, and the id
-        // was in scope the whole time.
-        `INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit, recorded_at)
-         VALUES (?, ?, ?, ?, ?, ${NOW_MS})`,
-        [
-          surfaceId,
-          surf.subnet_netuid as number,
-          action,
-          overlay,
-          surf.source_commit,
-        ],
-      ),
-    );
-    summary.surfaces_written += 1;
-  }
-
-  if (writes.length) await db.batch(writes);
-  return summary;
 }
 
 function json(
@@ -426,6 +121,21 @@ function isValidRow(row: unknown): row is Record<string, unknown> {
 // top-level catch for the write-failure path without this. Same gap, same
 // fix, as workers/api.ts's captureAiRouteError / workers/data-api.ts's
 // captureDataApiError.
+/**
+ * The writer's dependencies, overridable for tests (#10101).
+ *
+ * The handler's payload handling -- required-field validation, the prune's
+ * authority scoping, the defaults -- is store-independent and was covered by
+ * twelve tests that drove it through a fake D1. Deleting the D1 writer took
+ * their seam with it, and re-pointing them at a real connection string turned
+ * them into DNS lookups.
+ *
+ * Mirrors configureAnalytics' shape rather than inventing one: a module-level
+ * object the suite swaps a clientFactory into, so those twelve keep asserting
+ * the payload rules without a database of either kind.
+ */
+export const registrySyncDeps: RegistrySyncNeonDeps = {};
+
 async function captureRegistrySyncError(error: unknown, env: Env) {
   await recordExceptionEvent(env, {
     error,
@@ -476,8 +186,11 @@ async function dispatchRegistrySyncRequest(
         );
       }
     }
-    // Either store will do, but one of them has to be there.
-    if (!env.HYPERDRIVE?.connectionString && !env.REGISTRY_DB) {
+    // Neon is the registry's only store (#10101). The D1 fallback is gone
+    // along with the binding: while both existed, an unbound Hyperdrive
+    // silently wrote the D1 copy instead of failing, so a misconfiguration
+    // looked like a successful sync into a database nothing reads.
+    if (!env.HYPERDRIVE?.connectionString) {
       return json({ error: "registry database binding unavailable" }, 503);
     }
 
@@ -565,20 +278,12 @@ async function dispatchRegistrySyncRequest(
         pruneSurfaces,
         deleteSubnets,
       };
-      const summary = env.HYPERDRIVE?.connectionString
-        ? await applyRegistrySyncToNeon(
-            env.HYPERDRIVE.connectionString,
-            payload,
-          )
-        : await applyRegistrySyncToD1(
-            env.REGISTRY_DB as unknown as D1Like,
-            payload,
-          );
-      return json({
-        ok: true,
-        store: env.HYPERDRIVE ? "neon" : "d1",
-        ...summary,
-      });
+      const summary = await applyRegistrySyncToNeon(
+        env.HYPERDRIVE.connectionString,
+        payload,
+        registrySyncDeps,
+      );
+      return json({ ok: true, store: "neon", ...summary });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
       await captureRegistrySyncError(err, env);

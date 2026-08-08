@@ -19,51 +19,47 @@ const selectResults = vi.hoisted(() => ({
 }));
 const failure = vi.hoisted(() => ({ error: null as Error | null }));
 
-class FakeStatement {
-  text: string;
-  values: unknown[] = [];
-  constructor(text: string) {
-    this.text = text;
-  }
-  bind(...values: unknown[]) {
-    this.values = values;
-    sqlCalls.push({ text: this.text, values });
-    return this;
-  }
-  async all() {
-    // The per-surface existence probe is the narrower of the two SELECTs, so it
-    // has to be matched first.
+/**
+ * A pg client fake, wired in through `registrySyncDeps` (#10101).
+ *
+ * These tests assert the handler's PAYLOAD rules -- required fields, the
+ * prune's authority scoping, the defaults, surface_history's action -- none of
+ * which depend on the store. They used to drive a fake D1; deleting the D1
+ * writer took that seam with it. The statements are Postgres now ($n, not ?),
+ * so the SELECT matchers below match on table and shape rather than on
+ * placeholder syntax.
+ */
+class FakePg {
+  async connect() {}
+  async end() {}
+  async query(text: string, values: unknown[] = []) {
+    sqlCalls.push({ text, values });
+    if (failure.error && !/^(BEGIN|ROLLBACK|COMMIT)$/.test(text.trim())) {
+      throw failure.error;
+    }
+    // The per-surface existence probe is the narrower of the two SELECTs, so
+    // it has to be matched first.
     if (
-      /FROM surfaces\s+WHERE subnet_netuid = \? AND kind = \? AND url = \?/.test(
-        this.text,
+      /FROM surfaces\s+WHERE subnet_netuid = \$1 AND kind = \$2 AND url = \$3/.test(
+        text,
       )
     ) {
       return {
-        results: selectResults.existingSurface
+        rows: selectResults.existingSurface
           ? [selectResults.existingSurface]
           : [],
       };
     }
-    if (/SELECT id, subnet_netuid, overlay FROM surfaces/.test(this.text)) {
-      return { results: selectResults.doomed };
+    if (/SELECT id, subnet_netuid, overlay FROM surfaces/.test(text)) {
+      return { rows: selectResults.doomed };
     }
-    return { results: [] };
+    return { rows: [] };
   }
 }
 
-class FakeD1 {
-  prepare(text: string) {
-    return new FakeStatement(text);
-  }
-  async batch(statements: unknown[]) {
-    // One batch, all-or-nothing -- a thrown error here is the D1 analogue of a
-    // rolled-back transaction, which is what the 502 path must surface.
-    if (failure.error) throw failure.error;
-    return statements;
-  }
-}
+import type { RegistryPgClient } from "../src/registry-sync-neon.ts";
 
-const { default: worker, applyRegistrySyncToD1 } =
+const { default: worker, registrySyncDeps } =
   await import("../workers/registry-sync-api.ts");
 
 const SECRET = "test-registry-sync-secret";
@@ -90,7 +86,7 @@ function post(
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
     REGISTRY_SYNC_SECRET: SECRET,
-    REGISTRY_DB: new FakeD1(),
+    HYPERDRIVE: { connectionString: "postgresql://example/db" },
     ...overrides,
   } as unknown as Env;
 }
@@ -125,6 +121,8 @@ const findCall = (pattern: RegExp) =>
   sqlCalls.find((c) => pattern.test(c.text as string))!;
 
 beforeEach(() => {
+  registrySyncDeps.clientFactory = () =>
+    new FakePg() as unknown as RegistryPgClient;
   sqlCalls.length = 0;
   selectResults.doomed = [];
   selectResults.existingSurface = null;
@@ -139,7 +137,9 @@ test("rejects non-POST (405)", async () => {
 test("is disabled (503) when REGISTRY_SYNC_SECRET is not configured", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
-    { REGISTRY_DB: new FakeD1() } as unknown as Env,
+    {
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+    } as unknown as Env,
   );
   expect(res.status).toBe(503);
 });
@@ -203,7 +203,7 @@ test("rate limiting: rejects an invalid token before consulting the limiter", as
   expect(limiter.limit.mock.calls.length).toBe(0);
 });
 
-test("returns 503 when the REGISTRY_DB binding is unavailable", async () => {
+test("returns 503 when the HYPERDRIVE binding is unavailable", async () => {
   const res = await worker.fetch(
     post({ providers: [provider()] }, { secret: SECRET }),
     { REGISTRY_SYNC_SECRET: SECRET } as unknown as Env,
@@ -722,7 +722,11 @@ test("the keep-list is ONE bound JSON parameter, so the statement text is consta
       baseEnv(),
     );
     const read = findCall(/SELECT id, subnet_netuid, overlay FROM surfaces/);
-    expect(read.text).toMatch(/json_each\(\?\)/);
+    // Postgres spelling of the same one-parameter shape (#10101). SQLite's
+    // json_each(?) became jsonb_array_elements($3::jsonb); what is pinned is
+    // the PROPERTY, not the function -- one bound parameter, so the statement
+    // text is identical at n=1 and n=250 and the plan is reusable.
+    expect(read.text).toMatch(/jsonb_array_elements\(\$3::jsonb\)/);
     // netuid, scope flag, keep-list -- three binds whatever n is.
     expect((read.values as unknown[]).length).toBe(3);
     expect(JSON.parse((read.values as string[])[2])).toHaveLength(n);
@@ -756,54 +760,6 @@ test("the prune DELETE targets the ids read in phase 1, not a re-evaluated predi
   expect(JSON.parse((del.values as string[])[0])).toEqual(["id-a", "id-b"]);
 });
 
-test("every write lands in exactly one batch, so a partial sync is not representable", async () => {
-  // D1 has no interactive transaction; batch() IS the transaction. More than one
-  // batch per request would reintroduce the partial-sync state the Postgres
-  // version used sql.begin() to eliminate.
-  let batches = 0;
-  const db = new FakeD1();
-  const spy = {
-    prepare: (t: string) => db.prepare(t),
-    batch: async (stmts: unknown[]) => {
-      batches += 1;
-      return stmts;
-    },
-  };
-  const summary = await applyRegistrySyncToD1(spy as never, {
-    providers: [provider()],
-    subnets: [subnet()],
-    surfaces: [surface()],
-    pruneSurfaces: [],
-    deleteSubnets: [],
-  });
-  expect(batches).toBe(1);
-  expect(summary).toMatchObject({
-    providers_written: 1,
-    subnets_written: 1,
-    surfaces_written: 1,
-  });
-});
-
-test("nothing is batched when the payload produces no writes", async () => {
-  let batches = 0;
-  const db = new FakeD1();
-  const spy = {
-    prepare: (t: string) => db.prepare(t),
-    batch: async () => {
-      batches += 1;
-    },
-  };
-  const summary = await applyRegistrySyncToD1(spy as never, {
-    providers: [{ id: "acme" }],
-    subnets: [],
-    surfaces: [],
-    pruneSurfaces: [],
-    deleteSubnets: [],
-  });
-  expect(batches).toBe(0);
-  expect(summary.providers_written).toBe(0);
-});
-
 test("the #8981 type translations are applied to the bound values", async () => {
   await worker.fetch(
     post(
@@ -819,12 +775,15 @@ test("the #8981 type translations are applied to the bound values", async () => 
   // jsonb -> TEXT: the overlay is bound as a JSON string, never an object.
   expect(typeof values[10]).toBe("string");
   expect(JSON.parse(values[10] as string)).toEqual(surface().overlay);
-  // boolean -> 0/1, with a CHECK constraint behind it.
-  expect(values[8]).toBe(1);
-  expect(values[9]).toBe(0);
-  // timestamptz -> epoch ms, computed in SQL rather than bound.
-  expect(insert.text).toMatch(/unixepoch\(\) \* 1000/);
-  expect(insert.text).not.toMatch(/now\(\)/);
+  // BOOLEANS ARE BOOLEANS on Neon (#10101), not D1's 0/1. The column is a
+  // real boolean there, so binding 1/0 is the `operator does not exist:
+  // boolean = integer` class of failure that cost this migration a day one
+  // table over.
+  expect(values[8]).toBe(true);
+  expect(values[9]).toBe(false);
+  // epoch ms, still computed in SQL rather than bound -- Postgres spelling.
+  expect(insert.text).toMatch(/EXTRACT\(EPOCH FROM now\(\)\) \* 1000/);
+  expect(insert.text).not.toMatch(/unixepoch/);
   // uuid: no DB default, so the caller supplies one.
   expect(values[0]).toMatch(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
