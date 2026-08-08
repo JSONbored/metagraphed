@@ -1376,7 +1376,7 @@ describe("invalid query handling", () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
-    assert.equal(body.error.message, "format must be json or csv.");
+    assert.equal(body.error.message, "format must be one of: json, csv.");
     assert.equal(body.meta.parameter, "format");
   });
 

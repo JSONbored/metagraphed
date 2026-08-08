@@ -4,6 +4,7 @@
 // without routing through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { handleRequest } from "../workers/api.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   configureAnalytics,
@@ -17,8 +18,6 @@ import {
   handleChainCalls,
   handleChainSigners,
   handleChainFees,
-  validateQueryParams,
-  analyticsWindow,
   markPostgresTierFallbackResponse,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
@@ -41,8 +40,7 @@ import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import {
-  ANALYTICS_WINDOW_PARAM,
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
   DAY_MS,
 } from "../workers/config.ts";
@@ -125,6 +123,22 @@ function req(path: string, init: RequestInit = {}): Request {
 
 function url(path: string): URL {
   return new URL(`https://api.metagraph.sh${path}`);
+}
+
+/**
+ * Drive a path the way a request arrives.
+ *
+ * Query-parameter validation is the ROUTER's, once, against the route's own
+ * Zod schema (#10218) -- so a handler called directly no longer refuses a bad
+ * value, and asserting that it does would assert a property the surface does
+ * not have. These tests want to know what a CALLER gets, which is unchanged.
+ */
+function viaRouter(path: string) {
+  return handleRequest(
+    new Request(`https://api.metagraph.sh${path}`),
+    {} as never,
+    {} as never,
+  );
 }
 
 async function json(res: Response): Promise<Row> {
@@ -353,76 +367,6 @@ afterEach(() => {
 });
 
 // ---- A) Pure helper tests ---------------------------------------------------
-
-describe("validateQueryParams", () => {
-  test("returns null when no query params and none allowed", () => {
-    assert.equal(validateQueryParams(url("/x"), []), null);
-  });
-
-  test("returns null when only allowed params are present once", () => {
-    const u = url("/x?window=7d");
-    assert.equal(validateQueryParams(u, ["window"]), null);
-  });
-
-  test("returns null when multiple distinct allowed params appear once each", () => {
-    const u = url("/x?window=7d&foo=bar");
-    assert.equal(validateQueryParams(u, ["window", "foo"]), null);
-  });
-
-  test("rejects an unsupported query param", () => {
-    const u = url("/x?bogus=1");
-    const err = validateQueryParams(u, [])!;
-    assert.equal(err.parameter, "bogus");
-    assert.match(err.message, /not supported/);
-  });
-
-  test("rejects the first unsupported param when several are present", () => {
-    const u = url("/x?alpha=1&beta=2");
-    const err = validateQueryParams(u, ["window"])!;
-    assert.equal(err.parameter, "alpha");
-  });
-
-  test("rejects a duplicate allowed param", () => {
-    const u = url("/x?window=7d&window=30d");
-    const err = validateQueryParams(u, ["window"])!;
-    assert.equal(err.parameter, "window");
-    assert.match(err.message, /only be provided once/);
-  });
-
-  test("rejects duplicate unsupported params on the first occurrence in iteration", () => {
-    const u = url("/x?foo=1&foo=2");
-    const err = validateQueryParams(u, [])!;
-    assert.equal(err.parameter, "foo");
-  });
-
-  test("allows empty-string values for allowed params", () => {
-    const u = url("/x?window=");
-    assert.equal(validateQueryParams(u, ["window"]), null);
-  });
-
-  test("rejects params not in the allow-list even when value is empty", () => {
-    const u = url("/x?cursor=");
-    const err = validateQueryParams(u, ["window"])!;
-    assert.equal(err.parameter, "cursor");
-  });
-
-  test("handles params with special characters in the key", () => {
-    const u = url("/x?weird%5Bkey%5D=1");
-    const err = validateQueryParams(u, [])!;
-    assert.equal(err.parameter, "weird[key]");
-  });
-
-  test("accepts window-only allow-list for percentiles-style routes", () => {
-    const u = url(`/x?${ANALYTICS_WINDOW_PARAM}=30d`);
-    assert.equal(validateQueryParams(u, [ANALYTICS_WINDOW_PARAM]), null);
-  });
-
-  test("rejects netuid query param on routes that take none", () => {
-    const u = url("/x?netuid=7");
-    const err = validateQueryParams(u, [])!;
-    assert.equal(err.parameter, "netuid");
-  });
-});
 
 // #6356: end-to-end proof through the handlers themselves -- a bare request and
 // an explicit request for the handler's own documented default must land on ONE
@@ -687,71 +631,6 @@ describe("canonicalHealthWindowCachePath", () => {
   });
 });
 
-describe("analyticsWindow", () => {
-  test("defaults to 7d when window param is absent", () => {
-    const out = analyticsWindow(url("/x")) as unknown as Row;
-    assert.equal(out.label, "7d");
-    assert.equal(out.days, ANALYTICS_WINDOWS["7d"]);
-    assert.equal(out.error, undefined);
-  });
-
-  test("accepts explicit 7d window", () => {
-    const out = analyticsWindow(url("/x?window=7d")) as unknown as Row;
-    assert.equal(out.label, "7d");
-    assert.equal(out.days, 7);
-  });
-
-  test("accepts explicit 30d window", () => {
-    const out = analyticsWindow(url("/x?window=30d")) as unknown as Row;
-    assert.equal(out.label, "30d");
-    assert.equal(out.days, 30);
-  });
-
-  test("rejects an invalid window value", () => {
-    const out = analyticsWindow(url("/x?window=bogus")) as unknown as Row;
-    assert.ok(out.error);
-    assert.equal(out.error.parameter, ANALYTICS_WINDOW_PARAM);
-    assert.match(out.error.message, /not a valid window/);
-    assert.match(out.error.message, /7d/);
-    assert.match(out.error.message, /30d/);
-  });
-
-  test("rejects empty window string as invalid", () => {
-    const out = analyticsWindow(url("/x?window=")) as unknown as Row;
-    assert.ok(out.error);
-    assert.equal(out.error.parameter, ANALYTICS_WINDOW_PARAM);
-  });
-
-  test("rejects numeric window without suffix", () => {
-    const out = analyticsWindow(url("/x?window=7")) as unknown as Row;
-    assert.ok(out.error);
-  });
-
-  test("rejects 90d window (not in ANALYTICS_WINDOWS)", () => {
-    const out = analyticsWindow(url("/x?window=90d")) as unknown as Row;
-    assert.ok(out.error);
-    assert.match(out.error.message, /90d/);
-  });
-
-  test("rejects case-sensitive window labels", () => {
-    const out = analyticsWindow(url("/x?window=7D")) as unknown as Row;
-    assert.ok(out.error);
-  });
-
-  test("returns days matching the configured ANALYTICS_WINDOWS map", () => {
-    for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
-      const out = analyticsWindow(url(`/x?window=${label}`)) as unknown as Row;
-      assert.equal(out.label, label);
-      assert.equal(out.days, days);
-    }
-  });
-
-  test("does not include error field on success", () => {
-    const out = analyticsWindow(url("/x?window=30d")) as unknown as Row;
-    assert.equal(out.error, undefined);
-  });
-});
-
 describe("analyticsQueryError", () => {
   test("returns 400 invalid_query with parameter detail", async () => {
     const res = analyticsQueryError({
@@ -772,11 +651,11 @@ describe("analyticsQueryError", () => {
     assert.equal(res.headers.get("x-metagraph-error-code"), "invalid_query");
   });
 
-  test("wraps validateQueryParams output for unsupported param", async () => {
-    const validationError = validateQueryParams(url("/x?cursor=abc"), [
-      ANALYTICS_WINDOW_PARAM,
-    ]);
-    const res = analyticsQueryError(validationError!);
+  test("names the offending parameter in meta", async () => {
+    const res = analyticsQueryError({
+      parameter: "cursor",
+      message: "cursor is not supported for this route.",
+    });
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "cursor");
   });
@@ -1086,11 +965,7 @@ describe("handleBulkHealthTrends", () => {
   });
 
   test("rejects a window the route does not derive", async () => {
-    const res = await handleBulkHealthTrends(
-      req("/api/v1/health/trends?window=90d"),
-      emptyEnv(),
-      url("/api/v1/health/trends?window=90d"),
-    );
+    const res = await viaRouter("/api/v1/health/trends?window=90d");
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
@@ -1214,12 +1089,7 @@ describe("handleHealthTrends", () => {
 
   test("rejects unsupported query params with 400", async () => {
     for (const qs of ["?window=7d", "?foo=bar", "?limit=1"]) {
-      const res = await handleHealthTrends(
-        req(`${trendsPath}${qs}`),
-        emptyEnv(),
-        NETUID,
-        url(`${trendsPath}${qs}`),
-      );
+      const res = await viaRouter(`${trendsPath}${qs}`);
       await errorJson(res);
     }
   });
@@ -1292,23 +1162,13 @@ describe("handleHealthPercentiles", () => {
   const base = `/api/v1/subnets/${NETUID}/health/percentiles`;
 
   test("rejects invalid window with 400", async () => {
-    const res = await handleHealthPercentiles(
-      req(`${base}?window=bogus`),
-      emptyEnv(),
-      NETUID,
-      url(`${base}?window=bogus`),
-    );
+    const res = await viaRouter(`${base}?window=bogus`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
   });
 
   test("rejects unsupported params alongside window", async () => {
-    const res = await handleHealthPercentiles(
-      req(`${base}?window=7d&sort=p95`),
-      emptyEnv(),
-      NETUID,
-      url(`${base}?window=7d&sort=p95`),
-    );
+    const res = await viaRouter(`${base}?window=7d&sort=p95`);
     await errorJson(res);
   });
 
@@ -1374,7 +1234,7 @@ describe("handleHealthPercentiles", () => {
     globalWithCaches.caches = undefined;
     const { env } = dbWith();
     env.__healthMeta = { last_run_at: LAST_RUN_AT };
-    for (const label of Object.keys(ANALYTICS_WINDOWS)) {
+    for (const label of Object.keys(ANALYTICS_WINDOW_DAYS)) {
       const body = await json(
         await handleHealthPercentiles(
           req(`${base}?window=${label}`),
@@ -1418,22 +1278,12 @@ describe("handleHealthIncidents", () => {
   const base = `/api/v1/subnets/${NETUID}/health/incidents`;
 
   test("rejects invalid window", async () => {
-    const res = await handleHealthIncidents(
-      req(`${base}?window=invalid`),
-      emptyEnv(),
-      NETUID,
-      url(`${base}?window=invalid`),
-    );
+    const res = await viaRouter(`${base}?window=invalid`);
     await errorJson(res);
   });
 
   test("rejects duplicate window param", async () => {
-    const res = await handleHealthIncidents(
-      req(`${base}?window=7d&window=30d`),
-      emptyEnv(),
-      NETUID,
-      url(`${base}?window=7d&window=30d`),
-    );
+    const res = await viaRouter(`${base}?window=7d&window=30d`);
     await errorJson(res);
   });
 
@@ -1517,11 +1367,7 @@ describe("handleGlobalIncidents", () => {
   const base = "/api/v1/incidents";
 
   test("rejects invalid window with analyticsQueryError shape", async () => {
-    const res = await handleGlobalIncidents(
-      req(`${base}?window=not-a-window`),
-      emptyEnv(),
-      url(`${base}?window=not-a-window`),
-    );
+    const res = await viaRouter(`${base}?window=not-a-window`);
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
@@ -1889,7 +1735,7 @@ describe("chain analytics ?format=csv export", () => {
 
     test(`${name} rejects a ?format value outside the json|csv enum`, async () => {
       const p = `${path}?window=7d&format=xml`;
-      const res = await handler(req(p), emptyEnv(), url(p));
+      const res = await viaRouter(p);
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, "format");

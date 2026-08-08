@@ -5,7 +5,7 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
   buildEconomicsTrends,
-  HISTORY_WINDOWS,
+  HISTORY_WINDOW_DAYS,
   MAX_HISTORY_POINTS,
 } from "../src/neuron-history.ts";
 import { buildConcentrationHistory } from "../src/concentration.ts";
@@ -80,7 +80,7 @@ describe("parseHistoryWindow", () => {
     );
   });
   test("every window is bounded under MAX_HISTORY_POINTS", () => {
-    for (const days of Object.values(HISTORY_WINDOWS)) {
+    for (const days of Object.values(HISTORY_WINDOW_DAYS)) {
       if (days != null) assert.ok(days <= MAX_HISTORY_POINTS);
     }
   });
@@ -560,7 +560,7 @@ describe("history endpoints (via the Worker dispatch)", () => {
     assert.equal(body.error.code, "invalid_query");
     assert.equal(
       body.error.message,
-      '"400d" is not a supported window. Supported: 7d, 30d, 90d, 1y, all.',
+      "window must be one of: 7d, 30d, 90d, 1y, all.",
     );
     assert.equal(body.meta.parameter, "window");
   });

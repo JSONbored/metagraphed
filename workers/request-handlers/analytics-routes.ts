@@ -10,7 +10,6 @@
 // (`readHealthMetaKv`, `readEconomicsCurrentKv`) stay in api.ts and are
 // injected once at module-init so this file never imports api.ts back.
 
-import { UPTIME_WINDOWS } from "../config.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
@@ -21,17 +20,17 @@ import {
   analyticsMeta,
   analyticsQueryError,
   markPostgresTierFallbackResponse,
-  validateDeclaredQueryParams,
 } from "./analytics.ts";
 import {
-  parseLimitParam,
-  parseNetuidParam,
-  parseNonNegativeIntParam,
-} from "../request-params.ts";
+  historyWindow,
+  parseRouteQuery,
+  routeQuery,
+  uptimeWindow,
+} from "../../src/route-query.ts";
 import {
-  parseHistoryWindow,
-  unsupportedWindowMessage,
-} from "../../src/neuron-history.ts";
+  EMISSION_PIPELINE_LIMIT_MAX,
+  LEADERBOARDS_LIMIT_DEFAULT,
+} from "../../src/route-limits.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
@@ -41,7 +40,6 @@ import {
   projectEmissionPipeline,
   resolveEmissionPipelineEconomics,
 } from "../../src/emission-pipeline-surface.ts";
-import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
 import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
 import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
@@ -66,7 +64,6 @@ import {
   formatLeaderboards,
   formatTrajectory,
   formatUptime,
-  LEADERBOARD_BOARDS,
   resolveLiveEconomics,
   withSpotPrice,
 } from "../../src/health-serving.ts";
@@ -97,8 +94,6 @@ let readEconomicsCurrentKv: EconomicsCurrentKvReader = () => {
   throw new Error("analytics routes used before configureAnalyticsRoutes()");
 };
 /* v8 ignore stop */
-
-const RESPONSE_FORMATS = ["json", "csv"];
 
 const ECONOMICS_TRENDS_CSV_COLUMNS = [
   "snapshot_date",
@@ -166,19 +161,6 @@ function uptimeCsvRows(surfaces: unknown): Array<Record<string, unknown>> {
         }),
       ),
   );
-}
-
-function validateFormatParam(
-  url: URL,
-): { parameter: string; message: string } | null {
-  const raw = url.searchParams.get("format");
-  if (raw === null && !url.searchParams.has("format")) return null;
-  const normalized = String(raw || "").toLowerCase();
-  if (RESPONSE_FORMATS.includes(normalized)) return null;
-  return {
-    parameter: "format",
-    message: `format must be one of: ${RESPONSE_FORMATS.join(", ")}.`,
-  };
 }
 
 function economicsTrendsCacheVariant(
@@ -266,8 +248,6 @@ export async function handleTrajectory(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, flipped to
   // "postgres" in wrangler.jsonc (D1 retirement, 2026-07-16). D1 fully
   // eliminated (2026-07-17): a tier miss now always falls through to the
@@ -327,13 +307,7 @@ export async function handleEconomicsTrends(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const windowResult = parseHistoryWindow(url.searchParams.get("window")) as
-    | { label: string; days: number }
-    | { error: { parameter: string; message: string } };
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label, days } = windowResult;
+  const { label, days } = historyWindow(url);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
   // and same flip as handleTrajectory above. D1 reads resurrected 2026-08-02.
   let isFallback = false;
@@ -384,24 +358,11 @@ export async function handleUptime(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const windowParam = url.searchParams.get("window") || "90d";
-  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, UPTIME_WINDOWS),
-    });
-  }
+  const { label: windowParam } = uptimeWindow(url);
   // Optional low-sample noise floor: drop day rows whose aggregated probe count
   // is below the threshold (a HAVING bound param), so sparse days (including
   // the SUM(samples)=0 'unknown' rows) can be excluded from availability charts.
-  const minSamplesResult = parseNonNegativeIntParam(
-    url.searchParams.get("min_samples"),
-    "min_samples",
-  );
-  if ("error" in minSamplesResult)
-    return analyticsQueryError(minSamplesResult.error);
+  const { min_samples: minSamples } = routeQuery(url);
   // #4832 gap-closure follow-up: reuses METAGRAPH_HEALTH_SOURCE (same table
   // as the bulk-trends/trends/percentiles/incidents routes in analytics.ts,
   // flipped to "postgres" in wrangler.jsonc -- see that flag's own header
@@ -424,7 +385,7 @@ export async function handleUptime(
     data = (await loadSubnetUptime(netuid, {
       window: windowParam,
       observedAt: healthMeta?.last_run_at || null,
-      minSamples: minSamplesResult.value ?? null,
+      minSamples: (minSamples as number | undefined) ?? null,
       db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
       typeof formatUptime
@@ -465,25 +426,15 @@ export function canonicalUptimeCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const formatError = validateFormatParam(url);
-  if (formatError) return `${url.pathname}${url.search}`;
-  const windowParam = url.searchParams.get("window") || "90d";
-  if (!Object.hasOwn(UPTIME_WINDOWS, windowParam))
-    return `${url.pathname}${url.search}`;
+  const parsed = parseRouteQuery(url);
+  if ("error" in parsed) return `${url.pathname}${url.search}`;
+  const params = [`window=${encodeURIComponent(uptimeWindow(url).label)}`];
   // min_samples is a HAVING row-filter that changes the response (handleUptime
   // drops day rows below the threshold), so it MUST be part of the cache key.
   // Omitting it collides ?min_samples=100 (few rows) with ?min_samples=0 (all
   // rows) on one edge-cache entry, serving whichever was cached first for both.
-  const minSamplesResult = parseNonNegativeIntParam(
-    url.searchParams.get("min_samples"),
-    "min_samples",
-  );
-  if ("error" in minSamplesResult) return `${url.pathname}${url.search}`;
-  const params = [`window=${encodeURIComponent(windowParam)}`];
-  if (minSamplesResult.value !== null)
-    params.push(`min_samples=${minSamplesResult.value}`);
+  if (parsed.query.min_samples !== undefined)
+    params.push(`min_samples=${parsed.query.min_samples}`);
   return uptimeCacheVariant(
     url,
     request,
@@ -498,16 +449,11 @@ export function canonicalEconomicsTrendsCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const formatError = validateFormatParam(url);
-  if (formatError) return `${url.pathname}${url.search}`;
-  const windowResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in windowResult) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   return economicsTrendsCacheVariant(
     url,
     request,
-    `${url.pathname}?window=${encodeURIComponent(windowResult.label)}`,
+    `${url.pathname}?window=${encodeURIComponent(historyWindow(url).label)}`,
   );
 }
 
@@ -517,10 +463,7 @@ export function canonicalTrajectoryCachePath(
   url: URL,
   request: Request | null = null,
 ): string {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const formatError = validateFormatParam(url);
-  if (formatError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   return trajectoryCacheVariant(url, request, url.pathname);
 }
 
@@ -528,19 +471,11 @@ export function canonicalTrajectoryCachePath(
 // ?limit=20 request both resolve to the same edge-cache entry — mirrors
 // canonicalCompareCachePath and canonicalUptimeCachePath.
 export function canonicalLeaderboardsCachePath(url: URL): string {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const limitResult = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
-  if ("error" in limitResult) {
-    return `${url.pathname}${url.search}`;
-  }
-  const board = url.searchParams.get("board");
-  if (board && !LEADERBOARD_BOARDS.includes(board)) {
-    return `${url.pathname}${url.search}`;
-  }
-  const cap = limitResult.limit;
-  const params = [`limit=${cap}`];
-  if (board) params.unshift(`board=${encodeURIComponent(board)}`);
+  const parsed = parseRouteQuery(url);
+  if ("error" in parsed) return `${url.pathname}${url.search}`;
+  const { limit = LEADERBOARDS_LIMIT_DEFAULT, board } = parsed.query;
+  const params = [`limit=${limit}`];
+  if (board) params.unshift(`board=${encodeURIComponent(String(board))}`);
   return `${url.pathname}?${params.join("&")}`;
 }
 
@@ -675,22 +610,10 @@ export async function handleLeaderboards(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const requestedBoard = url.searchParams.get("board");
-  if (requestedBoard && !LEADERBOARD_BOARDS.includes(requestedBoard)) {
-    return errorResponse(
-      "invalid_query",
-      `Unknown board "${requestedBoard}". Valid boards: ${LEADERBOARD_BOARDS.join(", ")}.`,
-      400,
-    );
-  }
-  const limitResult = parseLimitParam(url, { defaultLimit: 20, maxLimit: 100 });
-  if ("error" in limitResult) {
-    return errorResponse("invalid_query", limitResult.error.message, 400);
-  }
-
+  const { board, limit = LEADERBOARDS_LIMIT_DEFAULT } = routeQuery(url);
   const { data, isFallback } = await composeLeaderboardsData(env, {
-    board: requestedBoard || null,
-    limit: limitResult.limit,
+    board: (board as string | undefined) ?? null,
+    limit,
   });
   const response = await envelopeResponse(
     request,
@@ -713,7 +636,7 @@ export async function handleLeaderboards(
 }
 
 export function canonicalCompareCachePath(url: URL): string | null {
-  if (validateDeclaredQueryParams(url)) return null;
+  if ("error" in parseRouteQuery(url)) return null;
   const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
   if (!requestedNetuids) return null;
   const dimensions = parseCompareDimensions(url.searchParams.get("dimensions"));
@@ -1090,8 +1013,7 @@ export async function handleCompareValidators(
     );
   }
 
-  const netuidResult = parseNetuidParam(url.searchParams.get("netuid"));
-  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
+  const { netuid: requestedNetuid = null } = routeQuery(url);
 
   // Sequential, not parallel -- matches compare_validators' own fan-out
   // pattern exactly (N individual get_validator_detail-shaped loads), rather
@@ -1118,7 +1040,7 @@ export async function handleCompareValidators(
   }
 
   const data = composeValidatorComparison(details, {
-    netuid: netuidResult.value,
+    netuid: requestedNetuid,
   } as unknown as Parameters<typeof composeValidatorComparison>[1]);
   return envelopeResponse(
     request,
@@ -1152,8 +1074,7 @@ export async function handleEmissionPipeline(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const netuidResult = parseNetuidParam(url.searchParams.get("netuid"));
-  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
+  const { netuid: requestedNetuid = null } = routeQuery(url);
 
   const economics = await resolveEmissionPipelineEconomics({
     env,
@@ -1170,7 +1091,7 @@ export async function handleEmissionPipeline(
   // against the DECOMPOSED rows, so parse it after the projection has produced
   // them, then re-project with the narrowing applied. Two passes over 129 rows
   // is not worth a bespoke path.
-  const surface = projectEmissionPipeline(economics, netuidResult.value);
+  const surface = projectEmissionPipeline(economics, requestedNetuid);
   if (!surface) {
     return errorResponse(
       EMISSION_PIPELINE_UNAVAILABLE_CODE,

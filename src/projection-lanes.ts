@@ -38,7 +38,7 @@ import {
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "./chain-transfers-artifact.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
 import { STAKE_FLOW_WINDOWS } from "./stake-flow.ts";
-import { ANALYTICS_WINDOWS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS } from "../workers/config.ts";
 import {
   CHAIN_STAKE_MOVES_WINDOWS,
   STAKE_MOVED_EVENT_KIND,
@@ -376,7 +376,7 @@ async function computeChainActivity(
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
-  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const [baseSql, signersSql, blocksSql, freshSql] = chainActivityWindowSql(
       generatedAt - days * DAY_MS,
       network,
@@ -450,7 +450,7 @@ async function computeChainCalls(
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
-  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const [freshSql, moduleSql, moduleFunctionSql, totalSql] =
       chainCallsWindowSql(generatedAt - days * DAY_MS, network);
     const fresh = await laneQuery(env, freshSql!);
@@ -534,7 +534,7 @@ async function computeChainFees(
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
-  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const cutoff = generatedAt - days * DAY_MS;
     const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff, network);
     const daily = await laneQuery(env, dailySql!);
@@ -626,7 +626,7 @@ async function computeChainSigners(
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
-  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOW_DAYS)) {
     const [freshSql, txCountSql, feeSql] = chainSignersWindowSql(
       generatedAt - days * DAY_MS,
       network,

@@ -3121,10 +3121,7 @@ describe("worker /api/v1/subnets/{netuid}/uptime route", () => {
       assert.equal(res.status, 400);
       const body = await res.json();
       assert.equal(body.error.code, "invalid_query");
-      assert.equal(
-        body.error.message,
-        `"${windowParam}" is not a supported window. Supported: 90d, 1y.`,
-      );
+      assert.equal(body.error.message, "window must be one of: 90d, 1y.");
       assert.equal(body.meta.parameter, "window");
     }
   });

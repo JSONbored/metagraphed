@@ -22,7 +22,7 @@ export const STAKE_ADDED_KIND = "StakeAdded";
 export const STAKE_REMOVED_KIND = "StakeRemoved";
 
 // Supported flow windows (label -> days), the same set the concentration/history
-// route exposes. Mirrors the UPTIME_WINDOWS lookup pattern; an unsupported label is
+// route exposes. Mirrors the UPTIME_WINDOW_DAYS lookup pattern; an unsupported label is
 // rejected by the handler with a 400.
 export const STAKE_FLOW_WINDOWS: Record<string, number> = {
   "7d": 7,

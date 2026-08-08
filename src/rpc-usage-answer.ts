@@ -44,7 +44,7 @@
 // uncached request -- the cold query must know where the hot store starts
 // before it can be bounded, so the two cannot be issued in parallel without
 // risking a double count.
-import { ANALYTICS_WINDOWS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS } from "../workers/config.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   epochMs,
@@ -313,7 +313,7 @@ export async function answerRpcUsage(
     floor = loadRpcUsage,
   }: AnswerRpcUsageOptions = {},
 ): Promise<Row> {
-  const label = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const label = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window) ? window : "7d";
 
   const hot = await hotTier(env, { window: label });
 

@@ -4,7 +4,7 @@
 // hand-edited SubnetHistoryArtifact component it replaces. `window` stays
 // a bare nullable string (no enum) matching the original exactly: although
 // parseHistoryWindow() always resolves a concrete label from
-// HISTORY_WINDOWS ("7d"/"30d"/"90d"/"1y"/"all") before this is built, adding
+// HISTORY_WINDOW_DAYS ("7d"/"30d"/"90d"/"1y"/"all") before this is built, adding
 // an enum here would be a real (if inert) tightening the issue's wire-
 // compatibility constraint doesn't require -- left loose on purpose.
 import { z } from "zod";

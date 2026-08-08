@@ -3,6 +3,7 @@
 // proxy guard rails without routing through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { mockEnv } from "./row-type.ts";
@@ -53,6 +54,22 @@ function req(path: string, init?: RequestInit) {
 
 function url(path: string) {
   return new URL(`https://api.metagraph.sh${path}`);
+}
+
+/**
+ * Drive a path the way a request arrives.
+ *
+ * Query-parameter validation is the ROUTER's, once, against the route's own
+ * Zod schema (#10218) -- so a handler called directly no longer refuses a bad
+ * value, and asserting that it does would assert a property the surface does
+ * not have. These tests want to know what a CALLER gets, which is unchanged.
+ */
+function viaRouter(path: string) {
+  return handleRequest(
+    new Request(`https://api.metagraph.sh${path}`),
+    {} as never,
+    {} as never,
+  );
 }
 
 async function json(res: Response, status = 200) {
@@ -151,11 +168,7 @@ describe("handleRpcUsage", () => {
   });
 
   test("rejects unknown window values", async () => {
-    const res = await handleRpcUsage(
-      req("/api/v1/rpc/usage?window=90d"),
-      mockEnv(),
-      url("/api/v1/rpc/usage?window=90d"),
-    );
+    const res = await viaRouter("/api/v1/rpc/usage?window=90d");
     const body = await errorJson(res, 400);
     assert.equal(body.meta.parameter, "window");
   });

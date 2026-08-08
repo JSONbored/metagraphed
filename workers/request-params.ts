@@ -118,153 +118,26 @@ export function clampOffset(raw: string | number | null | undefined): number {
   return clampInt(raw, 0, 0, MAX_OFFSET);
 }
 
-// Parse the shared pagination triplet from a request URL: a VALIDATED `limit`, a
-// clamped `offset`, and the raw opaque keyset `cursor` (or null) for the caller to
-// decode at its own arity. `options` is a page-size profile ({ defaultLimit,
-// maxLimit }), e.g. FEED_PAGINATION or BLOCK_PAGINATION. Returns a ParamError for
-// the caller to surface as a 400 when `limit` is out of range.
-//
-// `limit` is validated, not clamped (#9916). It used to be clamped, which
-// meant a route declaring `maximum: 100` answered `limit=500` with 100 rows,
-// HTTP 200, no error and no header. That is data truncation presented as a
-// complete answer: a client asking for 500 and receiving 100 has every reason
-// to conclude the result set is exhausted and stop paginating. The 80 routes on
-// parseLimitParam already rejected the identical violation, so the surface gave
-// four different answers to one mistake, two of them silent.
-//
-// It shares parseLimitParam's rule rather than restating it, so there is one
-// definition of a valid limit and one message. `limit=0` falls out of the same
-// check: it is not a positive integer, and the three different things routes
-// used to do with it (1 row, the route default, or a 400) were all guesses at
-// an intent no caller had.
-//
-// `offset` is still clamped: unlike a short page, a clamped offset cannot be
-// mistaken for the end of a result set, and MAX_OFFSET is a deep-paging guard
-// rather than a per-route declared bound.
-export function parsePagination(
-  url: URL,
-  options: PaginationProfile = {},
-): { limit: number; offset: number; cursor: string | null } | ParamError {
-  // No `defaultLimit` passed down: parseLimitParam then returns `undefined` for
-  // an absent limit and the fallback is resolved once, here. Resolving it in
-  // both places instead would make this `??` chain unreachable.
-  const parsed = parseLimitParam(url, { maxLimit: options.maxLimit });
-  if ("error" in parsed) return parsed;
-  return {
-    limit: parsed.limit ?? options.defaultLimit ?? DEFAULT_LIMIT,
-    offset: clampOffset(url.searchParams.get("offset")),
-    cursor: url.searchParams.get("cursor"),
-  };
-}
-
-// Validate + resolve a `limit` for the analytics routes that REJECT an
-// out-of-range value with a 400 rather than silently clamping it. An absent limit
-// falls back to defaultLimit; a present limit must be a positive integer (no
-// leading zero) of at most maxLimit, else an { error } descriptor is returned for
-// the caller to surface via its query-error helper. Returns { limit } on success.
-export function parseLimitParam(
-  url: URL,
-  { defaultLimit, maxLimit = MAX_LIMIT }: PaginationProfile = {},
-): { limit: number | undefined } | ParamError {
-  const raw = url.searchParams.get("limit");
-  if (raw === null) return { limit: defaultLimit };
-  if (!/^[1-9]\d*$/.test(raw) || Number(raw) > maxLimit) {
-    return {
-      error: {
-        parameter: "limit",
-        message: `limit must be an integer between ${MIN_LIMIT} and ${maxLimit}.`,
-      },
-    };
-  }
-  return { limit: Number(raw) };
-}
+/**
+ * `parsePagination`, `parseLimitParam`, `parseNonNegativeIntParam`,
+ * `parseNetuidParam` and `parseDateRange` lived here until #10218.
+ *
+ * Each restated, in TypeScript, a bound the route already publishes in Zod --
+ * and only ran where a handler remembered to call it, which is how
+ * `?offset=notanumber` answered 200 from row 0 on ten routes while
+ * `?limit=notanumber` on the same request 400'd. The router now parses every
+ * GET's query against the route's own schema before dispatch
+ * (`src/route-query.ts`), so the bound is enforced once, from the declaration
+ * that publishes it, on every route rather than on the ones that opted in.
+ *
+ * What survives here is deliberately NOT validation: `clampLimit`,
+ * `clampToolLimit` and `clampRowLimit` are row-shaping rules applied BEHIND a
+ * boundary that has already validated, off plain values that never came from a
+ * URL. `DAY_PATTERN` survives as the MCP handler guards' shared shape, which is
+ * where MCP's enforcement deliberately lives (#8942).
+ */
 
 // A bare, anchored YYYY-MM-DD calendar date — the shape the date-bounded feeds use
 // for their TEXT `day` columns (lexicographic = chronological). Format-only: it
 // does not range-check the month/day fields.
 export const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-// Validate optional YYYY-MM-DD `from`/`to` bounds on a request URL. An absent or
-// blank bound means "no bound" (normalized to null); a present-but-malformed bound
-// returns { error } with the shared message. On success returns { from, to } ready
-// to bind into a `day >= ?` / `day <= ?` range.
-// Validate an optional non-negative integer query value. Absent/blank → { value:
-// null }; present-but-non-numeric → { error } for the caller to surface as 400.
-export function parseNonNegativeIntParam(
-  raw: string | null,
-  parameter: string,
-): { value: number | null } | ParamError {
-  if (raw === null || raw === "") return { value: null };
-  if (!/^\d+$/.test(raw)) {
-    return {
-      error: {
-        parameter,
-        message: `${parameter} must be a non-negative integer.`,
-      },
-    };
-  }
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value)) {
-    return {
-      error: {
-        parameter,
-        message: `${parameter} must be a non-negative integer.`,
-      },
-    };
-  }
-  return { value };
-}
-
-/**
- * The largest netuid the chain can express. `netuid` is a u16, so 65536 does
- * not name a subnet that has not been registered yet — it names nothing, ever.
- */
-export const MAX_U16_NETUID = 65535;
-
-/**
- * Validate an optional `netuid` query filter (#10075).
- *
- * `parseNonNegativeIntParam` already rejects a negative or non-numeric value.
- * The ceiling is what nothing checked: `?netuid=70000` came back 200 with an
- * empty result, which is indistinguishable from "that subnet exists and matches
- * nothing" for a value no subnet could ever carry. The published schema says
- * `maximum: 65535` (#10073), and a published bound the handler does not enforce
- * is a contract lie, not a nicety — same rule as #9916 for page sizes.
- *
- * The list-collection routes get this from `validateListQuery`, which reads the
- * bound off the published schema. These are the routes that do not run through
- * it and so need it stated.
- */
-export function parseNetuidParam(
-  raw: string | null,
-): { value: number | null } | ParamError {
-  const parsed = parseNonNegativeIntParam(raw, "netuid");
-  if ("error" in parsed) return parsed;
-  if (parsed.value !== null && parsed.value > MAX_U16_NETUID) {
-    return {
-      error: {
-        parameter: "netuid",
-        message: `netuid must be an integer between 0 and ${MAX_U16_NETUID}.`,
-      },
-    };
-  }
-  return parsed;
-}
-
-export function parseDateRange(
-  url: URL,
-): { from: string | null; to: string | null } | ParamError {
-  const from = url.searchParams.get("from");
-  const to = url.searchParams.get("to");
-  if (from && !DAY_PATTERN.test(from)) {
-    return {
-      error: { parameter: "from", message: "from must be a YYYY-MM-DD date." },
-    };
-  }
-  if (to && !DAY_PATTERN.test(to)) {
-    return {
-      error: { parameter: "to", message: "to must be a YYYY-MM-DD date." },
-    };
-  }
-  return { from: from || null, to: to || null };
-}

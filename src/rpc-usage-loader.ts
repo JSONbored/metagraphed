@@ -8,7 +8,7 @@
 // while two live stores held the data, reporting zero requests in seven days
 // to callers who could not tell that apart from an idle proxy.
 
-import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 
 export async function loadRpcUsage({
@@ -17,7 +17,9 @@ export async function loadRpcUsage({
 }: { window?: string; observedAt?: unknown } = {}): Promise<
   Record<string, unknown>
 > {
-  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+    ? window
+    : "7d";
   const bucketConfig = (
     RPC_USAGE_BUCKETS as Record<string, { granularity: string }>
   )[windowLabel];

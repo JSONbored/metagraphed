@@ -62,7 +62,6 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
-  validateListQueryParams,
 } from "./list-query.ts";
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
@@ -125,9 +124,9 @@ import {
   handleHealthPercentiles,
   handleHealthTrends,
   resolveGlobalIncidentsForFeed,
-  validateDeclaredQueryParams,
   withEdgeCache,
 } from "./request-handlers/analytics.ts";
+import { parseRouteQuery } from "../src/route-query.ts";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -387,15 +386,12 @@ import {
 import { tryPostgresTier } from "./postgres-tier.ts";
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
-  CHAIN_EVENTS_LIMIT_DEFAULT,
-  CHAIN_EVENTS_LIMIT_MAX,
   type ColdTierAnswer,
   chainEventsQueryFromUrl,
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
   hotTierBlockChainEvents,
 } from "../src/chain-events-degraded.ts";
-import { parseLimitParam } from "./request-params.ts";
 import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
@@ -2912,10 +2908,13 @@ export async function handleChainEventsFamily(
     );
   }
 
-  const unknownParam = validateDeclaredQueryParams(url);
+  // The same parse the router runs, reached again here because a
+  // /{network}/-prefixed request arrives on a rewritten URL. Memoized per URL
+  // instance, so the bare form pays for it once.
+  const parsedQuery = parseRouteQuery(url);
   // Same error builder the other 136 routes use, so the body, code and
   // `parameter` field are identical rather than merely similar.
-  if (unknownParam) return analyticsQueryError(unknownParam);
+  if ("error" in parsedQuery) return analyticsQueryError(parsedQuery.error);
   // A DECLARED parameter whose value the tier cannot express is still the
   // caller's error, and the reader cannot report it as one -- it returns null
   // for an unusable filter and for an unreachable door alike, so degrading here
@@ -2923,20 +2922,6 @@ export async function handleChainEventsFamily(
   // raises the same condition as `invalid_params` and GraphQL as
   // BAD_USER_INPUT, off this one shared check.
   if (url.pathname === "/api/v1/chain-events") {
-    // #10174: `limit` is checked with the SAME parser the other 81 routes
-    // publishing a ceiling use, so the 400 body is byte-identical rather than
-    // merely similar. This feed used to be the one REST route that silently
-    // clamped -- `?limit=99999` answered 200 with 100 events, and
-    // `?limit=notanumber` answered 200 with the default -- while the shared
-    // `limit` description told callers REST never clamps. A caller who asked
-    // for 5,000 rows and got 100 had no signal they had been capped, which is
-    // exactly the "a short page means the feed is exhausted" property the
-    // rejecting routes buy.
-    const limitResult = parseLimitParam(url, {
-      defaultLimit: CHAIN_EVENTS_LIMIT_DEFAULT,
-      maxLimit: CHAIN_EVENTS_LIMIT_MAX,
-    });
-    if ("error" in limitResult) return analyticsQueryError(limitResult.error);
     const badValue = chainEventsQueryError(chainEventsQueryFromUrl(url));
     if (badValue) {
       return analyticsQueryError({
@@ -4296,10 +4281,14 @@ export async function handleRequest(
     );
   }
 
-  // THE query-parameter allowlist, for every GET route, derived from the
-  // contract (#10065). One check here replaces 119 hand-written arrays spread
-  // across the handler modules -- see validateDeclaredQueryParams for what
-  // that fifth copy of the query contract had already drifted into.
+  // THE query-parameter check, for every GET route, derived from the route's
+  // own Zod schema (#10065 for the names, #10218 for the values).
+  //
+  // One parse here replaces 119 hand-written name arrays AND the five
+  // hand-rolled value parsers the handlers called between them -- see
+  // `workers/route-query.ts` for what those copies of the query contract had
+  // drifted into. A handler downstream reads the already-parsed values through
+  // `routeQuery(url)`; nothing re-derives them from the query string.
   //
   // Here rather than in the handlers because the question is answered from the
   // pathname alone: a handler does not need to know its own contract entry to
@@ -4311,8 +4300,8 @@ export async function handleRequest(
     (request.method === "GET" || request.method === "HEAD") &&
     (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/"))
   ) {
-    const undeclared = validateDeclaredQueryParams(url);
-    if (undeclared) return analyticsQueryError(undeclared);
+    const parsedQuery = parseRouteQuery(url);
+    if ("error" in parsedQuery) return analyticsQueryError(parsedQuery.error);
   }
 
   // Multi-network addressing: an explicit /{network}/ prefix (mainnet/testnet/
@@ -7482,18 +7471,6 @@ async function handleApiRequest(
     return errorResponse("not_found", "No API route matched this path.", 404);
   }
   const artifactPath = artifactPathForNetwork(matched.artifactPath, network);
-  const queryError = validateListQueryParams(
-    url,
-    matched.queryCollection as string,
-    matched.queryFilterNames,
-    { csvResponse: matched.csvResponse === true },
-  );
-  if (queryError) {
-    return errorResponse("invalid_query", queryError.message, 400, {
-      artifact_path: artifactPath,
-      parameter: queryError.parameter,
-    });
-  }
   const wantsCsv = matched.csvResponse === true && csvRequested(url, request);
   // Edge-cache idempotent GETs for pure static-artifact routes (mirrors the
   // RPC-proxy Cache API pattern). Live-overlay routes are excluded by route id,

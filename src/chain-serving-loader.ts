@@ -11,7 +11,7 @@
 // deliberately answers with a schema-stable card rather than an error, and
 // that decision belongs at the call site, not here.
 import {
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
 import {
@@ -60,12 +60,12 @@ export async function loadChainServingColdTier(
     query?: typeof r2SqlQuery;
   },
 ): Promise<ReturnType<typeof buildChainServing> | null> {
-  const label = Object.hasOwn(ANALYTICS_WINDOWS, window)
+  const label = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
     ? window
     : DEFAULT_ANALYTICS_WINDOW;
   const rowLimit = limit ?? CHAIN_SERVING_LIMIT_DEFAULT;
   const rollup = await loadChainEventRollup(env, CHAIN_SERVING_ROLLUP, {
-    windowDays: ANALYTICS_WINDOWS[label],
+    windowDays: ANALYTICS_WINDOW_DAYS[label],
     limit: rowLimit,
     // Passed straight through: a destructuring default applies to an explicit
     // undefined, so the rollup reader falls back to the real r2SqlQuery

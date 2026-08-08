@@ -10,7 +10,7 @@
 // get_chain_transfers tool for the call site.
 
 // Supported windows (label -> days), the same set + default the sibling /chain/* analytics
-// use (workers/config.ts ANALYTICS_WINDOWS / DEFAULT_ANALYTICS_WINDOW).
+// use (workers/config.ts ANALYTICS_WINDOW_DAYS / DEFAULT_ANALYTICS_WINDOW).
 export const CHAIN_TRANSFER_WINDOWS = { "7d": 7, "30d": 30 };
 export const DEFAULT_CHAIN_TRANSFER_WINDOW = "7d";
 export const CHAIN_TRANSFER_LIMIT_DEFAULT = 25;

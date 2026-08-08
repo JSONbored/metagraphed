@@ -63664,6 +63664,7 @@
             "required": false,
             "schema": {
               "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
               "type": "string"
             }
           },
@@ -63673,6 +63674,7 @@
             "required": false,
             "schema": {
               "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
               "type": "string"
             }
           },
@@ -75246,6 +75248,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75273,6 +75276,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75342,6 +75346,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75369,6 +75374,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75428,6 +75434,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75455,6 +75462,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75514,6 +75522,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75541,6 +75550,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75600,6 +75610,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75627,6 +75638,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75696,6 +75708,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75723,6 +75736,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75782,6 +75796,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75809,6 +75824,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75868,6 +75884,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75895,6 +75912,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -75954,6 +75972,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -75981,6 +76000,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76050,6 +76070,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76077,6 +76098,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76136,6 +76158,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76163,6 +76186,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76222,6 +76246,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76249,6 +76274,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76318,6 +76344,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76345,6 +76372,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76424,6 +76452,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76451,6 +76480,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76520,6 +76550,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76547,6 +76578,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76616,6 +76648,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76643,6 +76676,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76702,6 +76736,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76729,6 +76764,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76798,6 +76834,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76825,6 +76862,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76884,6 +76922,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76911,6 +76950,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -76970,6 +77010,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -76997,6 +77038,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -77056,6 +77098,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -77083,6 +77126,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -77094,6 +77138,7 @@
             "name": "ids",
             "required": false,
             "schema": {
+              "maxLength": 2500,
               "type": "string"
             }
           }
@@ -77161,6 +77206,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -77188,6 +77234,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -77199,6 +77246,7 @@
             "name": "ids",
             "required": false,
             "schema": {
+              "maxLength": 2500,
               "type": "string"
             }
           }
@@ -77256,6 +77304,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -77283,6 +77332,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -77294,6 +77344,7 @@
             "name": "ids",
             "required": false,
             "schema": {
+              "maxLength": 2500,
               "type": "string"
             }
           }
@@ -77351,6 +77402,7 @@
             "name": "tag",
             "required": false,
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -77378,6 +77430,7 @@
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -77389,6 +77442,7 @@
             "name": "ids",
             "required": false,
             "schema": {
+              "maxLength": 2500,
               "type": "string"
             }
           }
@@ -88875,7 +88929,8 @@
             "required": false,
             "schema": {
               "enum": [
-                "true"
+                "true",
+                "false"
               ],
               "type": "string"
             }
@@ -91509,7 +91564,8 @@
             "required": false,
             "schema": {
               "enum": [
-                "true"
+                "true",
+                "false"
               ],
               "type": "string"
             }

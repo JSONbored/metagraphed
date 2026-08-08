@@ -21,7 +21,7 @@
 // them. `mcp-tools/shared.ts` re-exports every symbol, so the ~100 existing
 // import sites keep working unchanged.
 import { z } from "zod";
-import { MAX_OFFSET } from "../workers/request-params.ts";
+import { DAY_PATTERN, MAX_OFFSET } from "../workers/request-params.ts";
 
 /**
  * A subnet id. Bounded because it genuinely is: `netuid` is a u16 on chain, and
@@ -389,12 +389,18 @@ export const fieldsSchema = () =>
  * `fields` and is not worth reintroducing for a bound whose only job is to
  * compare lexicographically against a TEXT `day` column.
  *
- * `format: date` rather than a pattern, so a generated client gets a date
- * picker and the shape stays exactly what the handler enforces.
+ * `format: date` for the date picker, and `DAY_PATTERN` for the enforcement --
+ * the SAME regex the handlers checked by hand until #10218 moved the check to
+ * the schema. A published format nothing enforces is the contract lie that
+ * move exists to remove, and the pattern is the shape the server actually
+ * accepts rather than a stricter one: `z.iso.date()` would also reject
+ * 2026-02-30, which this route answers with an empty range because the bound
+ * is compared lexicographically against a TEXT `day` column.
  */
 export const daySchema = (edge: "first" | "last") =>
   z
     .string()
+    .regex(DAY_PATTERN)
     .meta({ format: "date", examples: ["2026-08-01"] })
     .describe(
       `Inclusive ${edge} day of the range to read, as YYYY-MM-DD. ` +

@@ -13,6 +13,7 @@ import {
   windowSchema,
 } from "../schemas-src/query-params.ts";
 import {
+  FEED_QUERY_SCHEMAS,
   NO_QUERY_PARAMETERS,
   ROUTE_QUERY_SCHEMAS,
 } from "../schemas-src/route-queries.ts";
@@ -27,6 +28,7 @@ export { QUERY_ENUMS };
 // every `z.int()` are not an MCP concern, and both published surfaces drop them.
 import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
 import { artifactStorageTierForPath } from "./artifact-storage.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import { ROUTE_CSV_EXAMPLES } from "./csv-route-examples.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { sampleFromSchema } from "./openapi-sample.ts";
@@ -56,6 +58,7 @@ import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
   EMISSION_PIPELINE_LIMIT_MAX,
+  FEED_LIMIT_MAX,
 } from "./route-limits.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "./emission-pipeline-surface.ts";
 import {
@@ -208,7 +211,13 @@ export const LIST_QUERY_ROUTE_EXTRAS: Record<
 > = {
   // The incidents feed is scoped by a trailing window on top of the
   // collection's filters.
-  "/api/v1/incidents": { window: windowSchema(["7d", "30d"]) },
+  //
+  // `.optional()` because the route publishes `required: false` and the
+  // handler defaults it -- this was the one route whose Zod object claimed a
+  // parameter was mandatory, which nothing noticed while the object was only
+  // read for its `properties` (#10218 parses with it, where a bare request
+  // would have 400'd).
+  "/api/v1/incidents": { window: windowSchema(["7d", "30d"]).optional() },
 };
 
 export const API_QUERY_COLLECTIONS = {
@@ -4727,30 +4736,42 @@ export const FEED_CONTENT_TYPES_BY_FORMAT = {
   json: "application/feed+json",
 } as const;
 
-/** Query parameters every feed family accepts. */
+/**
+ * Query parameters every feed family accepts, emitted from the same Zod object
+ * the router parses with (#10218).
+ *
+ * These were the last raw-JSON-Schema parameter declarations on the surface --
+ * the second vocabulary #10073 deleted everywhere else, surviving because the
+ * feed table is its own array and nothing swept it. The consequence was
+ * measurable: all 24 published feed paths declared `limit` maximum 50 and
+ * nothing enforced it, so `?limit=51` answered 200 with a full page.
+ *
+ * The PROSE stays here, per parameter, for the same reason it does on every
+ * other route -- it names what the items are, which the vocabulary cannot.
+ */
 const FEED_COMMON_PARAMETERS = [
   {
     name: "tag",
     description:
       "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
-    schema: { type: "string" },
+    schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.tag),
   },
   {
     name: "since",
     description:
       "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
-    schema: { type: "string" },
+    schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.since),
   },
   {
     name: "until",
     description:
       "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
-    schema: { type: "string" },
+    schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.until),
   },
   {
     name: "limit",
-    description: "Maximum items to return (1-50). Defaults to 50.",
-    schema: { type: "integer", minimum: 1, maximum: 50 },
+    description: `Maximum items to return (1-${FEED_LIMIT_MAX}). Defaults to ${FEED_LIMIT_MAX}.`,
+    schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.limit),
   },
 ];
 
@@ -4820,7 +4841,7 @@ export const FEED_ROUTES = [
           name: "ids",
           description:
             "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
-          schema: { type: "string" },
+          schema: parameterSchema(FEED_QUERY_SCHEMAS.ids),
         },
       ],
     },
@@ -6457,6 +6478,288 @@ export function querySchemaForRoute(entry: {
   return NO_QUERY_PARAMETERS.includes(entry.path)
     ? z.object({}).strict()
     : null;
+}
+
+/**
+ * The GET route a request pathname resolves to, or null.
+ *
+ * A map rather than the linear `.find()` three call sites were each doing:
+ * this is on the request path for every GET, and `API_ROUTES` is ~250 entries.
+ */
+const GET_ROUTES_BY_PATH: ReadonlyMap<string, ApiRouteEntry> = new Map(
+  (API_ROUTES as unknown as ApiRouteEntry[])
+    .filter((entry) => entry.method === "GET")
+    .map((entry) => [entry.path, entry]),
+);
+
+interface ApiRouteEntry {
+  path: string;
+  method: string;
+  query_collection?: string | null;
+  query_filter_names?: string[];
+  csv_response?: boolean;
+  query_parameters?: { name: string }[];
+}
+
+export function getRouteForPathname(pathname: string): ApiRouteEntry | null {
+  // The contract path itself first, so a caller that already HAS one -- a
+  // GraphQL resolver naming the route its field mirrors -- resolves. Matching
+  // it as a request pathname would fail: `{netuid}` is a template token, and
+  // the compiled patterns only accept the concrete segment it stands for.
+  const declared = GET_ROUTES_BY_PATH.get(pathname);
+  if (declared) return declared;
+  const routePath = contractPathForPathname(pathname);
+  if (routePath === null) return null;
+  return GET_ROUTES_BY_PATH.get(routePath) ?? null;
+}
+
+/**
+ * A route's query schema in BOTH the form it publishes and the form a URL can
+ * carry (#10218) -- the pair the REST boundary parses with.
+ *
+ * `plain` is what the contract says: `limit` is an integer, `netuid` is a u16.
+ * `wire` is the same schema re-typed for the encoding a query string actually
+ * uses, where every value is a string. The schema declares the TYPE; the
+ * boundary declares the ENCODING. Coercing in the shared vocabulary instead
+ * would loosen MCP -- which is handed real JSON numbers and must keep
+ * rejecting `limit: "20"` as a type error -- to fix REST.
+ *
+ * Both are returned together because the boundary needs both: `wire` decides
+ * whether the request is valid, and `plain` is what a rejection message is
+ * derived from (the bound a caller violated is only legible in the published
+ * form).
+ */
+export interface RouteQuerySchemas {
+  plain: z.ZodObject;
+  wire: z.ZodObject;
+}
+
+const routeQuerySchemas = new Map<string, RouteQuerySchemas | null>();
+
+// A pure derivation of the module's own literals, so nothing a test does can
+// poison it -- registered because the gate computes the mutable set rather than
+// trusting that judgement, which is the point of computing it.
+registerModuleStateReset("src/contracts.ts", () => {
+  routeQuerySchemas.clear();
+});
+
+/**
+ * The feed paths, and the schema each one parses with.
+ *
+ * `FEED_ROUTES` is its own table, so `contractPathForPathname` -- which reads
+ * `API_ROUTES` -- has never resolved a feed path, and the boundary would have
+ * skipped all 24 of them (#10218). Each family contributes four published
+ * paths: the bare one plus the three serialization suffixes, which are the
+ * same route with the format chosen in the URL instead of the Accept header.
+ */
+const FEED_QUERY_PATTERNS: ReadonlyArray<{
+  pattern: RegExp;
+  schema: z.ZodObject;
+}> = FEED_ROUTES.flatMap((entry) => {
+  const shape: Record<string, z.ZodType> = {
+    ...FEED_QUERY_SCHEMAS.common.shape,
+  };
+  for (const parameter of entry.query_parameters) {
+    if (parameter.name === "ids") shape.ids = FEED_QUERY_SCHEMAS.ids;
+  }
+  // The subnet feed echoes its path segment as a filter, the same way the
+  // per-subnet REST routes do.
+  if (entry.path.includes("{netuid}")) shape.netuid = FEED_QUERY_SCHEMAS.netuid;
+  const schema = z.object(shape);
+  return ["", ".rss", ".atom", ".json"].map((suffix) => ({
+    pattern: compileRoutePattern(`${entry.path}${suffix}`),
+    schema,
+  }));
+});
+
+function feedQuerySchemaForPathname(pathname: string): z.ZodObject | null {
+  for (const feed of FEED_QUERY_PATTERNS) {
+    if (feed.pattern.test(pathname)) return feed.schema;
+  }
+  return null;
+}
+
+export function routeQuerySchemasForPathname(
+  pathname: string,
+): RouteQuerySchemas | null {
+  const entry = getRouteForPathname(pathname);
+  if (!entry) {
+    const feed = feedQuerySchemaForPathname(pathname);
+    if (!feed) return null;
+    const cached = routeQuerySchemas.get(pathname);
+    if (cached !== undefined) return cached;
+    const schemas = { plain: feed, wire: wireSchema(feed) };
+    routeQuerySchemas.set(pathname, schemas);
+    return schemas;
+  }
+  const cached = routeQuerySchemas.get(entry.path);
+  if (cached !== undefined) return cached;
+  const plain = querySchemaForRoute(entry);
+  const schemas = plain ? { plain, wire: wireSchema(plain) } : null;
+  // Built once per route: the shape never changes at runtime, and this sits on
+  // the request path for every GET.
+  routeQuerySchemas.set(entry.path, schemas);
+  return schemas;
+}
+
+/**
+ * The same pair for a COLLECTION rather than a route.
+ *
+ * The list engine is reached through two doors: a REST pathname, which
+ * `routeQuerySchemasForPathname` resolves, and an MCP tool, which hands it a
+ * collection name and a `URLSearchParams` it built itself. MCP's enforcement
+ * deliberately lives in the handler (#8942), and for the ~40 list-backed tools
+ * the handler IS the list engine -- so it needs the same check, keyed the way
+ * it knows the collection.
+ */
+export function collectionQuerySchemas(
+  collection: string,
+  filterNames: string[] = [],
+  { csvResponse = false }: { csvResponse?: boolean } = {},
+): RouteQuerySchemas | null {
+  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
+  if (!config) return null;
+  const key = `${collection}|${filterNames.join(",")}|${csvResponse}`;
+  const cached = routeQuerySchemas.get(key);
+  if (cached !== undefined) return cached;
+  const kept = new Set(filterNames);
+  const plain = listQuerySchema(collection, {
+    exclude:
+      filterNames.length > 0
+        ? Object.keys(config.filter_schemas as Row).filter(
+            (name) => !kept.has(name),
+          )
+        : [],
+    csvResponse,
+  });
+  const schemas = { plain, wire: wireSchema(plain) };
+  routeQuerySchemas.set(key, schemas);
+  return schemas;
+}
+
+/**
+ * `format` is accepted on every route whether or not it declares one.
+ *
+ * The one API-wide parameter whose no-op is DELIBERATE and tested:
+ * /api/v1/chain-events/stats is an aggregate with no top-level row array, so
+ * `?format=csv` deliberately falls through to the JSON envelope rather than
+ * producing a bogus export. Rejecting it would break that contract to guard
+ * against a typo that cannot silently change any result -- the harm this
+ * boundary exists to prevent is a dropped FILTER, and `format` is not one.
+ *
+ * Untyped on the routes that do not declare it, deliberately: those routes
+ * ignore the value entirely, so constraining it would start rejecting requests
+ * whose outcome it cannot change. The 85 routes that DO declare it get the
+ * published `json|csv` enum from their own schema, and this never sees them.
+ */
+const GLOBALLY_ACCEPTED_PARAM = "format";
+
+/** Owned end-to-end by `src/field-projection.ts` -- see `wireSchema`. */
+const PROJECTION_PARAM = "fields";
+
+function wireSchema(schema: z.ZodObject): z.ZodObject {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [name, field] of Object.entries(schema.shape)) {
+    // `fields` is checked against the ROWS, not against the schema:
+    // `parseProjection` names the field that does not exist on this route's
+    // rows, which the published pattern cannot know and a pattern violation
+    // fails anyway. One owner, and it is the one with the better answer.
+    shape[name] =
+      name === PROJECTION_PARAM
+        ? z.string().optional()
+        : wireField(field as z.ZodType);
+  }
+  if (!shape[GLOBALLY_ACCEPTED_PARAM]) {
+    shape[GLOBALLY_ACCEPTED_PARAM] = z.string().optional();
+  }
+  return z.object(shape).strict();
+}
+
+/**
+ * The type a field declares, with `optional`/`default`/`nullable` unwrapped.
+ *
+ * Read off Zod's own `def`, not by serializing each field to JSON Schema:
+ * `z.toJSONSchema` per field is far more work and a second representation to
+ * keep honest, and this runs for every parameter of every route.
+ */
+function declaredBaseType(field: z.ZodType): string | undefined {
+  let current = field as unknown as {
+    def?: { type?: string; innerType?: unknown };
+  };
+  for (let hops = 0; hops < 10 && current?.def?.innerType; hops += 1) {
+    current = current.def.innerType as typeof current;
+  }
+  return current?.def?.type;
+}
+
+/**
+ * Re-type one field for the string form a URL carries.
+ *
+ * Derived from the field's own Zod type rather than from a list of parameter
+ * names, so a parameter is covered the moment it is declared. The emitted JSON
+ * Schema is unaffected -- only `plain` is ever published -- and a coerced
+ * number and a plain one serialize identically anyway.
+ *
+ * An EMPTY value is dropped rather than coerced. `Number("")` is 0, so
+ * `?netuid=` would parse as subnet 0 and `?offset=` as row 0, turning "the
+ * caller sent no value" into a specific answer they never asked for. Measured
+ * before this guard existed: 152 parameters did exactly that. Undefined
+ * instead lets `.optional()` / `.default()` decide, which is what an absent
+ * parameter already means.
+ */
+/**
+ * A query-string enum matches case-insensitively (#2073, moved here by #10218).
+ *
+ * The vocabularies are all lowercase, and an agent that sends `?status=Active`
+ * is not making the mistake this boundary exists to catch -- the MCP tool for
+ * the same route lowercases its arguments, so rejecting here would make one
+ * surface stricter than the other for a value both understand. It applied to
+ * the 34 collection routes only, because that is where the check happened to
+ * live; deriving it from the field's TYPE applies the one rule everywhere an
+ * enum is declared.
+ *
+ * Only a value that is not already a member is lowercased, so an exact match
+ * is never rewritten and a non-member still fails against the published enum.
+ */
+function caseInsensitiveEnum(field: z.ZodType): z.ZodType {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    if (field.safeParse(value).success) return value;
+    const lowered = value.toLowerCase();
+    return field.safeParse(lowered).success ? lowered : value;
+  }, field);
+}
+
+function wireField(field: z.ZodType): z.ZodType {
+  const declared = declaredBaseType(field);
+  if (declared === "enum") return caseInsensitiveEnum(field);
+  switch (declared) {
+    case "number":
+    case "bigint":
+      return z.preprocess(
+        (value) =>
+          typeof value === "string"
+            ? value.trim() === ""
+              ? undefined
+              : Number(value)
+            : value,
+        field,
+      );
+    case "boolean":
+      return z.preprocess(
+        (value) =>
+          value === "true"
+            ? true
+            : value === "false"
+              ? false
+              : value === ""
+                ? undefined
+                : value,
+        field,
+      );
+    default:
+      return field;
+  }
 }
 
 interface ListQuerySchemaOptions {

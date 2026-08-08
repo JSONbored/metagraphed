@@ -85,7 +85,7 @@ import { buildAccountPortfolio } from "../src/account-portfolio.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
-  HISTORY_WINDOWS,
+  HISTORY_WINDOW_DAYS,
   DEFAULT_HISTORY_WINDOW,
   MAX_HISTORY_POINTS,
   NEURON_DAILY_READ_COLUMNS,
@@ -310,7 +310,7 @@ function windowLabelFor(
 // Resolve a ?window= label to a YYYY-MM-DD cutoff date for a neuron_daily
 // `snapshot_date` (a native DATE column, not an epoch-ms timestamp), matching
 // the D1 loaders' `new Date(Date.now() - days*DAY_MS).toISOString().slice(0,10)`
-// exactly. A `null` day value (e.g. HISTORY_WINDOWS.all) means no lower bound.
+// exactly. A `null` day value (e.g. HISTORY_WINDOW_DAYS.all) means no lower bound.
 function windowCutoffDate(
   url: URL,
   windows: Record<string, number | null>,
@@ -2865,7 +2865,7 @@ function json(data: unknown, status: number = 200) {
 
 // Lookback (days) for each realized-return window (#7228), keyed by the
 // baseline-object field buildGlobalValidators/buildValidatorDetail read
-// (realized_return_1d/1w/1m). Mirrors the neuron_daily HISTORY_WINDOWS map --
+// (realized_return_1d/1w/1m). Mirrors the neuron_daily HISTORY_WINDOW_DAYS map --
 // the rollup's snapshot_date is a native DATE, so each cutoff is computed the
 // same way windowCutoffDate does.
 const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
@@ -6318,7 +6318,7 @@ export function neonServesRoute(
  * EXPORTED FOR ASSERTION, the same reason positionHistoryServedFromNeon is:
  * only two of its four query shapes are reachable from today's routes
  * (`CHAIN_TURNOVER_WINDOWS`/`MOVERS_WINDOWS` are `Record<string, number>`, so a
- * chain-wide call can never carry a null window, while HISTORY_WINDOWS's
+ * chain-wide call can never carry a null window, while HISTORY_WINDOW_DAYS's
  * `all: null` makes the per-netuid one). Leaving the other two untested because
  * no current caller reaches them is how a window function ends up wrong the
  * first time a route needs it -- and annotating them out of coverage would say
@@ -6391,7 +6391,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const uid = Number(neuronHistoryMatch[2]);
       const cutoff = windowCutoffDate(
         url,
-        HISTORY_WINDOWS,
+        HISTORY_WINDOW_DAYS,
         DEFAULT_HISTORY_WINDOW,
       );
       // sql.unsafe, not the tagged form: the tag binds every interpolation as a
@@ -6415,7 +6415,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           );
       return json(
         buildNeuronHistory(rows, netuid, uid, {
-          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
         }),
       );
     };
@@ -6467,7 +6471,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const hotkey = decodeURIComponent(validatorHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
-        HISTORY_WINDOWS,
+        HISTORY_WINDOW_DAYS,
         DEFAULT_HISTORY_WINDOW,
       );
       // #9383: scoped to one subnet, the per-(hotkey, netuid) columns become
@@ -6527,7 +6531,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           buildValidatorHistory(scopedRows, hotkey, {
             window: windowLabelFor(
               url,
-              HISTORY_WINDOWS,
+              HISTORY_WINDOW_DAYS,
               DEFAULT_HISTORY_WINDOW,
             ),
             netuid,
@@ -6555,7 +6559,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
       return json(
         buildValidatorHistory(rows, hotkey, {
-          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
         }),
       );
     };
@@ -6904,7 +6912,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const netuid = Number(positionHistoryMatch[2]);
       const cutoff = windowCutoffDate(
         url,
-        HISTORY_WINDOWS,
+        HISTORY_WINDOW_DAYS,
         DEFAULT_HISTORY_WINDOW,
       );
       const rows = cutoff
@@ -6920,7 +6928,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
       return json(
         buildAccountPositionHistory(rows, ss58, netuid, {
-          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
         }),
       );
     };
@@ -6961,7 +6973,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const netuid = Number(subnetHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
-        HISTORY_WINDOWS,
+        HISTORY_WINDOW_DAYS,
         DEFAULT_HISTORY_WINDOW,
       );
       // validator_permit is already INTEGER 0/1 here, so the Postgres
@@ -6983,7 +6995,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
       return json(
         buildSubnetHistory(rows, netuid, {
-          window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
+          window: windowLabelFor(
+            url,
+            HISTORY_WINDOW_DAYS,
+            DEFAULT_HISTORY_WINDOW,
+          ),
         }),
       );
     };
@@ -7033,10 +7049,10 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const netuid = Number(turnoverMatch[1]);
       const windowParam =
         url.searchParams.get("window") || DEFAULT_HISTORY_WINDOW;
-      const windowLabel = Object.hasOwn(HISTORY_WINDOWS, windowParam)
+      const windowLabel = Object.hasOwn(HISTORY_WINDOW_DAYS, windowParam)
         ? windowParam
         : DEFAULT_HISTORY_WINDOW;
-      const windowDays = HISTORY_WINDOWS[windowLabel];
+      const windowDays = HISTORY_WINDOW_DAYS[windowLabel];
       const includeChanges = url.searchParams.get("changes") === "true";
       const { startDate, endDate } = await neuronDailyWindowBounds(
         sql,

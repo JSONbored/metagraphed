@@ -32,15 +32,7 @@ import {
   type ChainNetworkId,
 } from "../../src/chain-network.ts";
 import { resolveClientIp } from "../config.ts";
-import {
-  BLOCK_PAGINATION,
-  FEED_PAGINATION,
-  parseDateRange,
-  parseLimitParam,
-  parseNetuidParam,
-  parseNonNegativeIntParam,
-  parsePagination,
-} from "../request-params.ts";
+import { BLOCK_PAGINATION, FEED_PAGINATION } from "../request-params.ts";
 
 import {
   errorResponse,
@@ -58,10 +50,14 @@ import { validateResponseTripwire } from "../../src/response-validation-tripwire
 import {
   analyticsQueryError,
   markPostgresTierFallbackResponse,
-  validateMaxLength,
-  validateDeclaredQueryParams,
 } from "./analytics.ts";
-import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../../src/route-limits.ts";
+import {
+  historyWindow,
+  parseRouteQuery,
+  resolvePage,
+  resolveWindow,
+  routeQuery,
+} from "../../src/route-query.ts";
 import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
 import {
@@ -98,19 +94,17 @@ import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-hist
 import {
   buildSubnetYield,
   buildSubnetYieldHistory,
-  parseSubnetYieldHistoryWindow,
+  DEFAULT_YIELD_HISTORY_WINDOW,
+  YIELD_HISTORY_WINDOWS,
 } from "../../src/subnet-yield.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
-  parseHistoryWindow,
-  unsupportedWindowMessage,
 } from "../../src/neuron-history.ts";
 import {
   INGESTED_EVENT_KINDS,
   DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
-  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   SUBNET_EVENT_SUMMARY_WINDOWS,
   buildAccountHistory,
   buildAccountSummary,
@@ -321,7 +315,8 @@ import {
   buildChainConcentration,
   buildConcentrationHistory,
   buildSubnetConcentrationRanking,
-  parseConcentrationHistoryWindow,
+  CONCENTRATION_HISTORY_WINDOWS,
+  DEFAULT_CONCENTRATION_HISTORY_WINDOW,
   parseConcentrationRankingQuery,
 } from "../../src/concentration.ts";
 import {
@@ -338,12 +333,12 @@ import {
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
-  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "../../src/chain-identity-history.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
-  parseSubnetPerformanceHistoryWindow,
+  DEFAULT_PERFORMANCE_HISTORY_WINDOW,
+  PERFORMANCE_HISTORY_WINDOWS,
 } from "../../src/subnet-performance.ts";
 import {
   buildCounterparties,
@@ -1095,8 +1090,7 @@ export async function handleSubnetHyperparamsHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
@@ -1591,14 +1585,11 @@ export async function handleValidatorNominators(
     );
   }
 
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_NOMINATOR_WINDOW;
-  if (!Object.hasOwn(NOMINATOR_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, NOMINATOR_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    NOMINATOR_WINDOWS,
+    DEFAULT_NOMINATOR_WINDOW,
+  );
   const sort = url.searchParams.get("sort");
   if (sort !== null && !NOMINATOR_SORTS.includes(sort)) {
     return analyticsQueryError({
@@ -1688,17 +1679,12 @@ export async function handleValidatorHistory(
   hotkey: string,
   url: URL,
 ) {
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
-  // #9383: `netuid` scopes the series to one subnet and switches the points to the
-  // per-subnet shape. Rejected here rather than coerced, so a typo'd netuid is a 400
-  // instead of a silently unscoped series that looks like an answer.
-  const netuidResult = parseNonNegativeIntParam(
-    url.searchParams.get("netuid"),
-    "netuid",
-  );
-  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
+  const { label } = historyWindow(url);
+  // #9383: `netuid` scopes the series to one subnet and switches the points to
+  // the per-subnet shape. The router rejects a typo'd netuid against the u16
+  // bound the route publishes, so what reaches here is a subnet id or nothing
+  // -- never a silently unscoped series that looks like an answer.
+  const { netuid: requestedNetuid = null } = routeQuery(url);
   const data =
     ((await tryPostgresTier(
       env,
@@ -1707,7 +1693,7 @@ export async function handleValidatorHistory(
     )) as ReturnType<typeof buildValidatorHistory> | null) ??
     buildValidatorHistory([], hotkey, {
       window: label,
-      netuid: netuidResult.value,
+      netuid: requestedNetuid,
     });
   return envelopeResponse(
     request,
@@ -1736,9 +1722,7 @@ export async function handleNeuronHistory(
   uid: number,
   url: URL,
 ) {
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -1774,9 +1758,7 @@ export async function handleSubnetHistory(
   netuid: number,
   url: URL,
 ) {
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -1812,8 +1794,7 @@ export async function handleSubnetIdentityHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
   const identityTier =
     ((await tryPostgresTier(
@@ -2092,12 +2073,7 @@ export async function handleChainIdentityHistory(
   env: Env,
   url: URL,
 ) {
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
-    maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { limit = CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT } = routeQuery(url);
   // D1 retirement: subnet_identity_history's D1 write path is retired
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
@@ -2230,62 +2206,38 @@ export async function handleChainYield(request: Request, env: Env) {
 // and an explicit-default request share one cache slot; an invalid limit falls
 // through to the raw search so the handler surfaces the 400.
 export function canonicalChainIdentityHistoryCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
-    maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return `${url.pathname}${url.search}`;
-  const { limit } = limitResult;
+  const parsed = parseRouteQuery(url);
+  if ("error" in parsed) return `${url.pathname}${url.search}`;
+  const { limit = CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT } = parsed.query;
   return `${url.pathname}?limit=${limit}`;
 }
 
-// Shared helper: build a canonical edge-cache key for any windowed route by
-// normalising the ?window= query parameter through the route-specific parse
-// function, so that an omitted window and an explicit default-value window map
-// to the same cache slot.
-function canonicalWindowedCachePath(
-  url: URL,
-  parseWindow: (
-    raw: string | null,
-  ) =>
-    | { label: string; error?: undefined }
-    | { label?: undefined; error: QueryError },
-) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const labelResult = parseWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return `${url.pathname}${url.search}`;
-  const { label } = labelResult;
+// Shared helper: build a canonical edge-cache key for a windowed route, so an
+// omitted window and an explicit default-value window map to the same cache
+// slot. A request the router will reject keys on its raw search instead, so a
+// 400 is never served from -- or written to -- a valid request's slot.
+function canonicalWindowedCachePath(url: URL) {
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = historyWindow(url);
   return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
 export function canonicalSubnetHistoryCachePath(url: URL) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
-  return canonicalWindowedCachePath(url, parseHistoryWindow);
+  return canonicalWindowedCachePath(url);
 }
 
 export function canonicalValidatorHistoryCachePath(url: URL) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
-  return canonicalWindowedCachePath(url, parseHistoryWindow);
+  return canonicalWindowedCachePath(url);
 }
 
 export function canonicalSubnetConcentrationHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const labelResult = parseConcentrationHistoryWindow(
-    url.searchParams.get("window"),
-  );
-  if ("error" in labelResult) return `${url.pathname}${url.search}`;
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   return csvCacheVariant(
     url,
     request,
@@ -2297,15 +2249,10 @@ export function canonicalSubnetPerformanceHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const labelResult = parseSubnetPerformanceHistoryWindow(
-    url.searchParams.get("window"),
-  );
-  if ("error" in labelResult) return `${url.pathname}${url.search}`;
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   return csvCacheVariant(
     url,
     request,
@@ -2317,15 +2264,10 @@ export function canonicalSubnetYieldHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
-  const labelResult = parseSubnetYieldHistoryWindow(
-    url.searchParams.get("window"),
-  );
-  if ("error" in labelResult) return `${url.pathname}${url.search}`;
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   return csvCacheVariant(
     url,
     request,
@@ -2337,11 +2279,8 @@ export function canonicalSubnetYieldHistoryCachePath(
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
 export function canonicalSubnetTurnoverCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return `${url.pathname}${url.search}`;
-  const { label } = labelResult;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = historyWindow(url);
   const changes = url.searchParams.get("changes");
   if (changes != null && changes !== "true") {
     return `${url.pathname}${url.search}`;
@@ -2354,8 +2293,7 @@ export function canonicalSubnetTurnoverCachePath(url: URL) {
 // STAKE_FLOW_WINDOWS) and ?direction= (all|in|out) change the response; omitted
 // window/direction and their explicit defaults must share one cache slot.
 export function canonicalSubnetStakeFlowCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
   if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
@@ -2378,8 +2316,7 @@ export function canonicalSubnetMoversCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
@@ -2410,8 +2347,7 @@ export function canonicalChainTurnoverCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
@@ -2443,14 +2379,11 @@ export async function handleChainTurnover(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
-  if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, CHAIN_TURNOVER_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    CHAIN_TURNOVER_WINDOWS,
+    DEFAULT_CHAIN_TURNOVER_WINDOW,
+  );
   const limit = parseBoundedIntParam(url, "limit", {
     def: CHAIN_TURNOVER_LIMIT_DEFAULT,
     min: 1,
@@ -2503,8 +2436,7 @@ export function canonicalSubnetMetagraphCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
@@ -2520,8 +2452,7 @@ export function canonicalSubnetValidatorsCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
@@ -2531,8 +2462,7 @@ export function canonicalSubnetYieldCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const undeclared = validateDeclaredQueryParams(url);
-  if (undeclared) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
@@ -2552,11 +2482,11 @@ export async function handleSubnetConcentrationHistory(
 ) {
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const labelResult = parseConcentrationHistoryWindow(
-    url.searchParams.get("window"),
+  const { label } = resolveWindow(
+    url,
+    CONCENTRATION_HISTORY_WINDOWS,
+    DEFAULT_CONCENTRATION_HISTORY_WINDOW,
   );
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -2613,11 +2543,11 @@ export async function handleSubnetPerformanceHistory(
 ) {
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const labelResult = parseSubnetPerformanceHistoryWindow(
-    url.searchParams.get("window"),
+  const { label } = resolveWindow(
+    url,
+    PERFORMANCE_HISTORY_WINDOWS,
+    DEFAULT_PERFORMANCE_HISTORY_WINDOW,
   );
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -2674,11 +2604,11 @@ export async function handleSubnetYieldHistory(
 ) {
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
-  const labelResult = parseSubnetYieldHistoryWindow(
-    url.searchParams.get("window"),
+  const { label } = resolveWindow(
+    url,
+    YIELD_HISTORY_WINDOWS,
+    DEFAULT_YIELD_HISTORY_WINDOW,
   );
-  if (labelResult.error) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -2731,9 +2661,7 @@ export async function handleSubnetTurnover(
   netuid: number,
   url: URL,
 ) {
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   const changes = url.searchParams.get("changes");
   if (changes != null && changes !== "true") {
     return analyticsQueryError({
@@ -2771,8 +2699,7 @@ export async function handleSubnetTurnover(
 // Canonical edge-cache key for the subnet-weights route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightsCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
   if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
@@ -2791,14 +2718,11 @@ export async function handleSubnetWeights(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
-  if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, SUBNET_WEIGHTS_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_WEIGHTS_WINDOWS,
+    DEFAULT_SUBNET_WEIGHTS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -2837,8 +2761,7 @@ export async function handleSubnetWeights(
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes
 // the response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightSettersCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
   if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
@@ -2857,17 +2780,11 @@ export async function handleSubnetWeightSetters(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
-  if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_WEIGHT_SETTERS_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_WEIGHT_SETTERS_WINDOWS,
+    DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -2905,8 +2822,7 @@ export async function handleSubnetWeightSetters(
 // Canonical edge-cache key for the subnet-serving route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetServingCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
   if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
@@ -2925,14 +2841,11 @@ export async function handleSubnetServing(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
-  if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, SUBNET_SERVING_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_SERVING_WINDOWS,
+    DEFAULT_SUBNET_SERVING_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -2972,8 +2885,7 @@ export async function handleSubnetServing(
 // Canonical edge-cache key for the subnet-prometheus route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetPrometheusCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_PROMETHEUS_WINDOW;
   if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, windowParam)) {
@@ -2993,14 +2905,11 @@ export async function handleSubnetPrometheus(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_PROMETHEUS_WINDOW;
-  if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, SUBNET_PROMETHEUS_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_PROMETHEUS_WINDOWS,
+    DEFAULT_SUBNET_PROMETHEUS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3027,8 +2936,7 @@ export async function handleSubnetPrometheus(
 // Canonical edge-cache key for the subnet-stake-moves route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeMovesCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
   if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, windowParam)) {
@@ -3048,17 +2956,11 @@ export async function handleSubnetStakeMoves(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
-  if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_STAKE_MOVES_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_STAKE_MOVES_WINDOWS,
+    DEFAULT_SUBNET_STAKE_MOVES_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3098,8 +3000,7 @@ export async function handleSubnetStakeMoves(
 // Canonical edge-cache key for the subnet-stake-transfers route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeTransfersCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
   if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, windowParam)) {
@@ -3119,17 +3020,11 @@ export async function handleSubnetStakeTransfers(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
-  if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_STAKE_TRANSFERS_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_STAKE_TRANSFERS_WINDOWS,
+    DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3169,8 +3064,7 @@ export async function handleSubnetStakeTransfers(
 // Canonical edge-cache key for the subnet-registrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetRegistrationsCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
   if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, windowParam)) {
@@ -3189,17 +3083,11 @@ export async function handleSubnetRegistrations(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
-  if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_REGISTRATIONS_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_REGISTRATIONS_WINDOWS,
+    DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3239,8 +3127,7 @@ export async function handleSubnetRegistrations(
 // Canonical edge-cache key for the subnet-axon-removals route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetAxonRemovalsCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
   if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
@@ -3259,17 +3146,11 @@ export async function handleSubnetAxonRemovals(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
-  if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_AXON_REMOVALS_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_AXON_REMOVALS_WINDOWS,
+    DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3296,8 +3177,7 @@ export async function handleSubnetAxonRemovals(
 // Canonical edge-cache key for the subnet-deregistrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetDeregistrationsCachePath(url: URL) {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
   if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
@@ -3316,17 +3196,11 @@ export async function handleSubnetDeregistrations(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
-  if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(
-        windowParam,
-        SUBNET_DEREGISTRATIONS_WINDOWS,
-      ),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    SUBNET_DEREGISTRATIONS_WINDOWS,
+    DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
+  );
   const data =
     ((await tryPostgresTier(
       env,
@@ -3372,14 +3246,11 @@ export async function handleSubnetStakeFlow(
   netuid: number,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
-  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    STAKE_FLOW_WINDOWS,
+    DEFAULT_STAKE_FLOW_WINDOW,
+  );
   const direction = url.searchParams.get("direction");
   if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
     return analyticsQueryError({
@@ -4377,13 +4248,11 @@ export async function handleSubnetOhlc(
 export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
-  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, MOVERS_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    MOVERS_WINDOWS,
+    DEFAULT_MOVERS_WINDOW,
+  );
   const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
   if (!MOVERS_SORTS.includes(sortParam)) {
     return analyticsQueryError({
@@ -4480,14 +4349,11 @@ export async function handleAccountStakeFlow(
   ss58: string,
   url: URL,
 ) {
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
-  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: unsupportedWindowMessage(windowParam, STAKE_FLOW_WINDOWS),
-    });
-  }
+  const { label: windowParam } = resolveWindow(
+    url,
+    STAKE_FLOW_WINDOWS,
+    DEFAULT_STAKE_FLOW_WINDOW,
+  );
   // ?direction=all|in|out narrows to inflow/outflow only; omitted sums both.
   // Mirrors the subnet stake-flow route (#2694).
   const direction = url.searchParams.get("direction");
@@ -4569,13 +4435,7 @@ function makeAccountEventHandler({
     ss58: string,
     url: URL,
   ) {
-    const windowParam = url.searchParams.get("window") || defaultWindow;
-    if (!Object.hasOwn(windows, windowParam)) {
-      return analyticsQueryError({
-        parameter: "window",
-        message: unsupportedWindowMessage(windowParam, windows),
-      });
-    }
+    const { label: windowParam } = resolveWindow(url, windows, defaultWindow);
     const { data, generatedAt } =
       ((await tryPostgresTier(
         env,
@@ -4823,18 +4683,6 @@ export async function handleAccountEvents(
   // chain-events feeds. Index-satisfiable via idx_account_events_hotkey and
   // idx_account_events_coldkey (each leads block_number), so a bounded range
   // seeks rather than scans this public, ~60s-cached route.
-  const blockStart = parseNonNegativeIntParam(
-    url.searchParams.get("block_start"),
-    "block_start",
-  );
-  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
-  const blockEnd = parseNonNegativeIntParam(
-    url.searchParams.get("block_end"),
-    "block_end",
-  );
-  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
-  const netuid = parseNetuidParam(url.searchParams.get("netuid"));
-  if ("error" in netuid) return analyticsQueryError(netuid.error);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
@@ -4849,8 +4697,7 @@ export async function handleAccountEvents(
   }
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
@@ -4922,14 +4769,9 @@ export async function handleAccountHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const range = parseDateRange(url);
-  if ("error" in range) return analyticsQueryError(range.error);
-  const { from, to } = range;
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const { from = null, to = null } = routeQuery(url);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
-  const netuidParsed = parseNetuidParam(url.searchParams.get("netuid"));
-  if ("error" in netuidParsed) return analyticsQueryError(netuidParsed.error);
   const netuid = url.searchParams.get("netuid");
   // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
   // D1 so callers cannot force a scan to prove an impossible empty page.
@@ -5035,20 +4877,9 @@ export async function handleAccountExtrinsics(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const blockStart = parseNonNegativeIntParam(
-    url.searchParams.get("block_start"),
-    "block_start",
-  );
-  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
-  const blockEnd = parseNonNegativeIntParam(
-    url.searchParams.get("block_end"),
-    "block_end",
-  );
-  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
@@ -5124,19 +4955,8 @@ export async function handleAccountTransfers(
       message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
     });
   }
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
-  const blockStart = parseNonNegativeIntParam(
-    url.searchParams.get("block_start"),
-    "block_start",
-  );
-  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
-  const blockEnd = parseNonNegativeIntParam(
-    url.searchParams.get("block_end"),
-    "block_end",
-  );
-  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   // Postgres → lakehouse cold tier → schema-stable empty stub.
@@ -5423,9 +5243,7 @@ export async function handleAccountPositionHistory(
   netuid: number,
   url: URL,
 ) {
-  const labelResult = parseHistoryWindow(url.searchParams.get("window"));
-  if ("error" in labelResult) return analyticsQueryError(labelResult.error);
-  const { label } = labelResult;
+  const { label } = historyWindow(url);
   const data =
     ((await tryPostgresTier(
       env,
@@ -5505,8 +5323,7 @@ export async function handleAccountIdentityHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
@@ -5576,21 +5393,11 @@ export async function handleSubnetEvents(
   // Optional block-height range filter, parity with the extrinsics, chain-events
   // and account-events feeds. A bounded range stays index-satisfiable, so it
   // seeks rather than scans this public, ~60s-cached route.
-  const blockStart = parseNonNegativeIntParam(
-    url.searchParams.get("block_start"),
-    "block_start",
-  );
-  if ("error" in blockStart) return analyticsQueryError(blockStart.error);
-  const blockEnd = parseNonNegativeIntParam(
-    url.searchParams.get("block_end"),
-    "block_end",
-  );
-  if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit: parsedLimit, offset: parsedOffset } = page;
+  const { block_start: blockStart, block_end: blockEnd } = routeQuery(url);
   // #9146: this feed has always read empty -- data-api never registered
   // /api/v1/subnets/:netuid/events, so the tier call below has never had a
   // handler to reach, even while the box was alive. Live proof of the gap:
@@ -5616,8 +5423,8 @@ export async function handleSubnetEvents(
     offset: parsedOffset,
     cursor: url.searchParams.get("cursor"),
     kind,
-    blockStart: blockStart.value,
-    blockEnd: blockEnd.value,
+    blockStart,
+    blockEnd,
   })) as unknown as ReturnType<typeof buildSubnetEvents>;
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -5652,24 +5459,13 @@ export async function handleSubnetEventSummary(
   netuid: number,
   url: URL,
 ) {
-  const windowLabel =
-    url.searchParams.get("window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
-  if (
-    !Object.prototype.hasOwnProperty.call(
-      SUBNET_EVENT_SUMMARY_WINDOWS,
-      windowLabel,
-    )
-  ) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: `window must be one of ${Object.keys(SUBNET_EVENT_SUMMARY_WINDOWS).join(", ")}.`,
-    });
-  }
-  const parsedLimit = parseLimitParam(url, {
-    defaultLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
-    maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-  });
-  if ("error" in parsedLimit) return analyticsQueryError(parsedLimit.error);
+  const { label: windowLabel } = resolveWindow(
+    url,
+    SUBNET_EVENT_SUMMARY_WINDOWS,
+    DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW,
+  );
+  const { limit: recentLimit = SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT } =
+    routeQuery(url);
   const data =
     ((await tryPostgresTier(
       env,
@@ -5681,11 +5477,11 @@ export async function handleSubnetEventSummary(
     // get it too rather than being wired one surface at a time.
     (await loadSubnetEventSummaryColdTier(env, Number(netuid), {
       window: windowLabel,
-      limit: parsedLimit.limit,
+      limit: recentLimit,
     })) ??
     buildSubnetEventSummary([], [], Number(netuid), {
       window: windowLabel,
-      limit: parsedLimit.limit,
+      limit: recentLimit,
     });
   return envelopeResponse(
     request,
@@ -6621,25 +6417,8 @@ export async function handleBlocks(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, BLOCK_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, BLOCK_PAGINATION);
   const { limit, offset } = page;
-  const sp = url.searchParams;
-  // Reject non-integer numeric filters with 400 (mirrors handleExtrinsics / #2274).
-  for (const param of [
-    "block_start",
-    "block_end",
-    "from",
-    "to",
-    "min_extrinsics",
-    "min_events",
-    "spec_version",
-  ]) {
-    const raw = sp.get(param);
-    if (raw === null) continue;
-    const parsed = parseNonNegativeIntParam(raw, param);
-    if ("error" in parsed) return analyticsQueryError(parsed.error);
-  }
   // When the Postgres tier misses (the self-hosted box is gone), the cold tier
   // answers from the two sources that outlive it: the R2 lakehouse for
   // verified history, and D1's blocks_head for everything the head poller has
@@ -6819,8 +6598,7 @@ export async function handleBlockExtrinsics(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, BLOCK_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, BLOCK_PAGINATION);
   const { limit, offset } = page;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
@@ -6894,8 +6672,7 @@ export async function handleBlockEvents(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, FEED_PAGINATION);
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
@@ -6959,7 +6736,6 @@ export async function handleBlockEvents(
 // A 0x-prefixed 64-hex-char hash — the same shape as extrinsic_hash (#2063),
 // reused here for call_hash (#4322). No `%`/`_` can appear in a valid match,
 // so it's also safe to interpolate into a LIKE pattern below.
-const CALL_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
 export async function handleExtrinsics(
   request: Request,
@@ -6973,37 +6749,16 @@ export async function handleExtrinsics(
   // The same cap the three chain-analytics feeds apply to `call_module`
   // (#10096). This route took the identical filter with no bound at all, so a
   // 150-character value was a 400 on /chain/calls and a 200 here.
-  const callModuleError = validateMaxLength(
-    url,
-    "call_module",
-    CHAIN_CALL_MODULE_MAX_LENGTH,
-  );
-  if (callModuleError) return analyticsQueryError(callModuleError);
-  const page = parsePagination(url, BLOCK_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, BLOCK_PAGINATION);
   const { limit, offset } = page;
-  const sp = url.searchParams;
-  for (const param of ["block", "block_start", "block_end", "from", "to"]) {
-    const raw = sp.get(param);
-    if (raw === null) continue;
-    const parsed = parseNonNegativeIntParam(raw, param);
-    if ("error" in parsed) return analyticsQueryError(parsed.error);
-  }
-  const successRaw = sp.get("success");
-  if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
-    return analyticsQueryError({
-      parameter: "success",
-      message: "success must be one of: true, false.",
-    });
-  }
-  const callHashRaw = sp.get("call_hash");
-  if (callHashRaw !== null && !CALL_HASH_RE.test(callHashRaw)) {
-    return analyticsQueryError({
-      parameter: "call_hash",
-      message: "call_hash must be a 0x-prefixed 64-character hex string.",
-    });
-  }
-  const callModule = sp.get("call_module") || undefined;
+  const query = routeQuery(url);
+  const successRaw = (query.success as string | undefined) ?? null;
+  const callHashRaw = (query.call_hash as string | undefined) ?? null;
+  const callModule = (query.call_module as string | undefined) || undefined;
+  // NOT a bound the contract publishes: `call_hash` is only selective within a
+  // module, so the pair is required together. A cross-field rule has no JSON
+  // Schema form, which is why this one guard survives where the per-parameter
+  // ones did not.
   if (callHashRaw !== null && !callModule) {
     return analyticsQueryError({
       parameter: "call_module",
@@ -7032,16 +6787,16 @@ export async function handleExtrinsics(
             // tier does not receive is a filter it silently ignores, which is
             // the one failure mode worse than declining. The tier validates
             // each one and declines the whole query on anything unsafe.
-            cursor: sp.get("cursor"),
-            signer: sp.get("signer"),
+            cursor: page.cursor,
+            signer: (query.signer as string | undefined) ?? null,
             module: callModule,
-            callFunction: sp.get("call_function"),
+            callFunction: (query.call_function as string | undefined) ?? null,
             success: successRaw === null ? null : successRaw === "true",
-            block: sp.get("block"),
-            blockStart: sp.get("block_start"),
-            blockEnd: sp.get("block_end"),
-            from: sp.get("from"),
-            to: sp.get("to"),
+            block: query.block ?? null,
+            blockStart: query.block_start ?? null,
+            blockEnd: query.block_end ?? null,
+            from: query.from ?? null,
+            to: query.to ?? null,
           },
           network,
         )
@@ -7083,23 +6838,10 @@ export async function handleExtrinsics(
 export async function handleSudo(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, BLOCK_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, BLOCK_PAGINATION);
   const { limit, offset } = page;
-  const sp = url.searchParams;
-  for (const param of ["block", "block_start", "block_end", "from", "to"]) {
-    const raw = sp.get(param);
-    if (raw === null) continue;
-    const parsed = parseNonNegativeIntParam(raw, param);
-    if ("error" in parsed) return analyticsQueryError(parsed.error);
-  }
-  const successRaw = sp.get("success");
-  if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
-    return analyticsQueryError({
-      parameter: "success",
-      message: "success must be one of: true, false.",
-    });
-  }
+  const query = routeQuery(url);
+  const successRaw = (query.success as string | undefined) ?? null;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -7115,14 +6857,14 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       limit,
       offset,
       module: "Sudo",
-      cursor: sp.get("cursor"),
-      callFunction: sp.get("call_function"),
+      cursor: page.cursor,
+      callFunction: (query.call_function as string | undefined) ?? null,
       success: successRaw === null ? null : successRaw === "true",
-      block: sp.get("block"),
-      blockStart: sp.get("block_start"),
-      blockEnd: sp.get("block_end"),
-      from: sp.get("from"),
-      to: sp.get("to"),
+      block: query.block ?? null,
+      blockStart: query.block_start ?? null,
+      blockEnd: query.block_end ?? null,
+      from: query.from ?? null,
+      to: query.to ?? null,
     })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
@@ -7164,23 +6906,10 @@ export async function handleGovernanceConfigChanges(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, BLOCK_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
+  const page = resolvePage(url, BLOCK_PAGINATION);
   const { limit, offset } = page;
-  const sp = url.searchParams;
-  for (const param of ["block", "block_start", "block_end", "from", "to"]) {
-    const raw = sp.get(param);
-    if (raw === null) continue;
-    const parsed = parseNonNegativeIntParam(raw, param);
-    if ("error" in parsed) return analyticsQueryError(parsed.error);
-  }
-  const successRaw = sp.get("success");
-  if (successRaw !== null && successRaw !== "true" && successRaw !== "false") {
-    return analyticsQueryError({
-      parameter: "success",
-      message: "success must be one of: true, false.",
-    });
-  }
+  const query = routeQuery(url);
+  const successRaw = (query.success as string | undefined) ?? null;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const data =
@@ -7196,14 +6925,14 @@ export async function handleGovernanceConfigChanges(
       limit,
       offset,
       module: "AdminUtils",
-      cursor: sp.get("cursor"),
-      callFunction: sp.get("call_function"),
+      cursor: page.cursor,
+      callFunction: (query.call_function as string | undefined) ?? null,
       success: successRaw === null ? null : successRaw === "true",
-      block: sp.get("block"),
-      blockStart: sp.get("block_start"),
-      blockEnd: sp.get("block_end"),
-      from: sp.get("from"),
-      to: sp.get("to"),
+      block: query.block ?? null,
+      blockStart: query.block_start ?? null,
+      blockEnd: query.block_end ?? null,
+      from: query.from ?? null,
+      to: query.to ?? null,
     })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {

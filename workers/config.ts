@@ -4,6 +4,20 @@
 // the entry file owning every constant. Import-free by design: this module must
 // stay a leaf so api.ts and any future request-handler module can depend on it
 // without cycles.
+//
+// The one import is `src/route-limits.ts`, which is itself import-free — the
+// leaf that owns every per-route bound, including the window families these
+// three names re-export (#10218). Re-exported rather than moved so the ~20
+// existing import sites keep working, the same arrangement the per-route page
+// ceilings already use.
+export {
+  ANALYTICS_WINDOW_DAYS,
+  ANALYTICS_WINDOWS,
+  DEFAULT_ANALYTICS_WINDOW,
+  DEFAULT_UPTIME_WINDOW,
+  UPTIME_WINDOW_DAYS,
+  UPTIME_WINDOWS,
+} from "../src/route-limits.ts";
 
 // Cron schedule strings (must match wrangler.jsonc `triggers.crons`). The hourly
 // trigger prunes the D1 time-series; every other trigger runs the 15-minute
@@ -825,11 +839,8 @@ export const EXTRINSIC_DETAIL_PATH_PATTERN =
 // file defer their real validation to the handler rather than the regex.
 export const DOMAIN_SUMMARY_PATH_PATTERN =
   /^\/api\/v1\/domains\/([a-z-]+)\/summary$/;
-export const UPTIME_WINDOWS: Record<string, number> = { "90d": 90, "1y": 365 };
 export const MAX_UPTIME_ROWS = 10000;
 export const MAX_BULK_TREND_ROWS = 10000;
-export const ANALYTICS_WINDOWS: Record<string, number> = { "7d": 7, "30d": 30 };
-export const DEFAULT_ANALYTICS_WINDOW = "7d";
 export const ANALYTICS_WINDOW_PARAM = "window";
 export const RPC_USAGE_BUCKETS = {
   "7d": { granularity: "1h", bucketMs: 60 * 60 * 1000, maxBuckets: 7 * 24 },
