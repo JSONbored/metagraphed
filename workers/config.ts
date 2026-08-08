@@ -282,9 +282,30 @@ export const PROJECTION_LANES_CRON = "11,41 * * * *";
 // because its scan is priced very differently from theirs: `GROUP BY coldkey`
 // over the 90-day account_events window scans 1.65 GB (measured against
 // production, 2026-08-05), which is 1.65 GB/day here and would be 79 GB/day on
-// the twice-hourly lane tick. Nothing it feeds moves faster than that: the
+// the twice-hourly lane tick.
+//
+// #9632: HALF THAT JUSTIFICATION IS DEAD, and saying so matters because this
+// comment is what the next person reads before deciding whether the cadence is
+// right. It used to continue "nothing it feeds moves faster than that: the
 // windows are 7/30/90 days, and the sibling holdings columns it sits beside
-// are a fixed 2026-08-02 snapshot. 01:34 UTC puts it ~2.5 h after the
+// are a fixed 2026-08-02 snapshot." The windows part still holds. The second
+// clause does not: #9502 and its follow-ups retired that frozen artifact, so
+// free_tao/delegated_tao/total_tao are composed live from account_balances
+// (~1-4 h) and hotkey_alpha (~20 min). The leaderboard therefore publishes
+// them up to 24 h behind sources that move several times a day -- measured at
+// ~225 TAO off on the top holder, three hours after a complete 364,568-account
+// pass had already landed in D1.
+//
+// The cadence stays daily regardless, because the legs are NOT separable as
+// written: buildTopHoldersFlowRows keeps the top-N per key across the UNION of
+// both legs' sorts, so republishing holdings alone cannot preserve the flow
+// ranking without re-running the 1.65 GB scan. Splitting them is real work and
+// is deliberately deferred: that scan is a lakehouse GROUP BY which becomes an
+// indexed query once account_events is on Neon, removing the cost that forced
+// the daily bound. Doing it now would be building machinery to throw away at
+// cutover.
+//
+// 01:34 UTC puts it ~2.5 h after the
 // nominator-positions producer's nightly pass (last two writes 22:27 and
 // 23:10 UTC) and on a minute no other cron in this file uses -- dispatch keys
 // on the LITERAL cron string, so this must be unique here as well as matching
