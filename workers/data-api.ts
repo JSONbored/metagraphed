@@ -378,6 +378,12 @@ import {
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import {
+  ACCOUNT_IDENTITY_NEON_LANE,
+  SUBNET_HYPERPARAMS_NEON_LANE,
+  failedTables,
+  mirrorFamilyToNeon,
+} from "../src/hyperparams-identity-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
@@ -1323,7 +1329,11 @@ function diffHyperparamsHistory(
   return changedRows;
 }
 
-async function handleSubnetHyperparamsSync(request: Request, env: Env) {
+async function handleSubnetHyperparamsSync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
     return writeJson(
       {
@@ -1420,6 +1430,10 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
   // D1 first, and it must succeed: it is where this family lives now.
   let d1Statements: number;
   let d1HistoryAppended: number;
+  // Hoisted so the Neon write below sees the SAME diff D1 was given -- one
+  // derivation, two stores, so the two histories cannot disagree about which
+  // revisions exist.
+  let neonHistoryRows: Row[];
   try {
     const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
     // Latest hash per netuid -- group-wise MAX(id) join, the SQLite spelling
@@ -1436,6 +1450,7 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
       latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
     );
     const historyRows = diffHyperparamsHistory(hashedRows, latestByNetuid, now);
+    neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
     ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
       env.METAGRAPH_HEALTH_DB as unknown as Parameters<
@@ -1449,13 +1464,29 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // #9193: same deletion as handleNeuronsSync above -- the D1 write IS the sync.
+  // THE NEON WRITE (#10046). Runs AFTER the D1 write returns, never instead
+  // of it and never in front of it -- the same ordering handleNeuronsSync
+  // uses, and for the same reason: while D1 serves the reads, a Neon failure
+  // must cost a lane verdict and not the pass.
+  //
+  // This family had NO Neon writer at all until now. Its parity came from the
+  // reconciler, which is why it could not invert on parity alone: a code path
+  // that has never run is not evidence, however equal the row counts look.
+  const neon = await mirrorFamilyToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    SUBNET_HYPERPARAMS_NEON_LANE,
+    { rows, historyRows: neonHistoryRows },
+  );
+
   return writeJson({
     ok: true,
     subnet_hyperparams_written: rows.length,
     history_appended: d1HistoryAppended,
-    stores: ["d1"],
+    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
+    neon: neon.attempted ? neon.results : undefined,
+    neon_failed: neon.attempted ? failedTables(neon) : undefined,
   });
 }
 
@@ -1545,7 +1576,11 @@ function diffIdentityHistory(
   return changedRows;
 }
 
-async function handleAccountIdentitySync(request: Request, env: Env) {
+async function handleAccountIdentitySync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
     return writeJson(
       { error: "account-identity sync is not provisioned on this deployment" },
@@ -1638,6 +1673,10 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
 
   let d1Statements: number;
   let d1HistoryAppended: number;
+  // Hoisted so the Neon write sees the SAME diff D1 was given -- one
+  // derivation, two stores, so the two histories cannot disagree about which
+  // revisions exist.
+  let neonHistoryRows: Row[];
   try {
     const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
     // Latest hash per account -- group-wise MAX(id) join, the SQLite
@@ -1653,6 +1692,7 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
       latest.map((row) => [row.account, row.identity_hash]),
     );
     const historyRows = diffIdentityHistory(hashedRows, latestByAccount, now);
+    neonHistoryRows = historyRows as Row[];
     d1HistoryAppended = historyRows.length;
     ({ statements: d1Statements } = await writeAccountIdentityToD1(
       env.METAGRAPH_HEALTH_DB as unknown as Parameters<
@@ -1666,13 +1706,25 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // #9193: same deletion as handleNeuronsSync above -- the D1 write IS the sync.
+  // THE NEON WRITE (#10046). After the D1 write, never instead of it: while
+  // D1 serves the reads a Neon failure costs a lane verdict, not the pass.
+  // This family had no Neon writer at all until now -- its parity came from
+  // the reconciler, and a code path that has never run is not evidence.
+  const neon = await mirrorFamilyToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    ACCOUNT_IDENTITY_NEON_LANE,
+    { rows, historyRows: neonHistoryRows },
+  );
+
   return writeJson({
     ok: true,
     account_identity_written: rows.length,
     history_appended: d1HistoryAppended,
-    stores: ["d1"],
+    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
+    neon: neon.attempted ? neon.results : undefined,
+    neon_failed: neon.attempted ? failedTables(neon) : undefined,
   });
 }
 
@@ -7236,13 +7288,13 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/subnet-hyperparams-sync"
     ) {
-      return handleSubnetHyperparamsSync(request, env);
+      return handleSubnetHyperparamsSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/account-identity-sync"
     ) {
-      return handleAccountIdentitySync(request, env);
+      return handleAccountIdentitySync(request, env, ctx);
     }
     if (
       request.method === "POST" &&

@@ -131,7 +131,7 @@
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
-    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts",
+    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity",
     // THE CUTOVER (metagraphed-infra#336). `GET /api/v1/accounts/{ss58}/
     // subnets/{netuid}/history` now reads Neon.
     //
