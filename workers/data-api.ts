@@ -1945,6 +1945,9 @@ async function handleValidatorNominatorCountsSync(
     ctx,
     "validator-nominator-counts",
     rows,
+    {},
+    // The tally follows the rows into whichever store holds them (#10056).
+    pass,
   );
 
   return writeJson({
@@ -2182,7 +2185,7 @@ async function handleNominatorPositionsSync(
   await mirrorNominatorPositionsToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
-    { rows, coldkeyMaxCapturedAt: cutoffs },
+    { rows, coldkeyMaxCapturedAt: cutoffs, pass },
   );
 
   return writeJson({
@@ -7973,7 +7976,7 @@ export default {
             await mirrorNominatorPositionsToNeon(
               env as unknown as Record<string, unknown>,
               ctx,
-              { rows, coldkeyMaxCapturedAt: cutoffs },
+              { rows, coldkeyMaxCapturedAt: cutoffs, pass },
             );
             return result;
           },
@@ -8020,6 +8023,8 @@ export default {
               ctx,
               "validator-nominator-counts",
               rows,
+              {},
+              pass,
             );
             return result;
           },

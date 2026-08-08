@@ -25,6 +25,10 @@
 // tick -- never delete a position without having written its replacement first.
 
 import {
+  writePassTallyToNeon,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
+import {
   neonDualWriteEnabled,
   pruneKeysInNeon,
   recordNeonWriteVerdict,
@@ -73,7 +77,13 @@ export interface NominatorPositionsMirrorDeps {
 export async function mirrorNominatorPositionsToNeon(
   env: Record<string, unknown> | null | undefined,
   ctx: WaitUntilLike | null | undefined,
-  input: { rows: Row[]; coldkeyMaxCapturedAt: ReadonlyMap<string, number> },
+  input: {
+    rows: Row[];
+    coldkeyMaxCapturedAt: ReadonlyMap<string, number>;
+    /** This chunk's completeness tally (#10056). Written last, and only when
+     * both the upsert and the prune succeeded -- see below. */
+    pass?: PassTallyInput | null;
+  },
   deps: NominatorPositionsMirrorDeps = {},
 ): Promise<NominatorPositionsMirrorOutcome> {
   if (!neonDualWriteEnabled(env, NOMINATOR_POSITIONS_NEON_LANE)) {
@@ -140,5 +150,30 @@ export async function mirrorNominatorPositionsToNeon(
     prune,
     now(),
   );
+
+  // AFTER THE PRUNE, not just after the upsert. This lane's pass is only
+  // whole once the stale rows are gone: a tally written between the two would
+  // declare a complete pass over a table that still holds superseded
+  // positions, which is the state the prune exists to end.
+  if (input.pass) {
+    const tally = prune.ok
+      ? await writePassTallyToNeon(
+          sql,
+          NOMINATOR_POSITIONS_NEON_LANE,
+          input.pass,
+        )
+      : { ok: false, reason: "prune did not land; tally withheld" };
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${NOMINATOR_POSITIONS_NEON_LANE}-pass`,
+      {
+        ok: tally.ok,
+        rows: tally.ok ? 1 : 0,
+        statements: 1,
+        ...(tally.reason ? { reason: tally.reason } : {}),
+      },
+      now(),
+    );
+  }
   return { attempted: true, write, prune };
 }
