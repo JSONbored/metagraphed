@@ -1,44 +1,63 @@
-// The alpha-price history loader reads D1 over the HTTP door, because the
-// Postgres it used to read was destroyed with the box. What these tests pin is
-// the failure contract: this loader is ALLOWED to return null (the bake then
-// emits null change fields, which is schema-stable), so every path that cannot
-// produce real history must return null rather than an empty map -- an empty
-// map is a confident "no price moved", and it is indistinguishable downstream
-// from the truth. That confusion is exactly what served null change fields on
-// /api/v1/economics for a day after the wipe.
+// The alpha-price history loader reads Neon over a plain `pg` connection. What
+// these tests pin is the FAILURE CONTRACT: this loader is allowed to return
+// null (the bake then emits null change fields, which is schema-stable), so
+// every path that cannot produce real history must return null rather than an
+// empty map -- an empty map is a confident "no price moved", and it is
+// indistinguishable downstream from the truth.
+//
+// That confusion has already happened twice. It served null change fields on
+// /api/v1/economics for a day after the box wipe, when the loader was still
+// asking a destroyed Postgres; and it would have repeated verbatim on the day
+// D1 was dropped, when the HTTP door starts answering 404 for a database that
+// no longer exists. Both times the loader "failed gracefully" and the graceful
+// failure was indistinguishable from an honest answer.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   ALPHA_PRICE_HISTORY_LOOKBACK_DAYS,
-  SUBNET_SNAPSHOTS_D1_DATABASE_ID,
   alphaPriceHistoryQuery,
   loadAlphaPriceHistoryByNetuid,
+  type PgLike,
 } from "../scripts/lib/load-alpha-price-history.ts";
 
-const CREDS = {
-  CLOUDFLARE_ACCOUNT_ID: "acct",
-  CLOUDFLARE_API_TOKEN: "token",
-};
+const CREDS = { DATABASE_URL: "postgresql://example/db" };
 
-/** A D1 HTTP door that answers with `body`, recording what it was asked. */
-function d1Fetch(
-  body: unknown,
-  init: { ok?: boolean; status?: number } = {},
-): { impl: typeof fetch; calls: { url: string; init: RequestInit }[] } {
-  const calls: { url: string; init: RequestInit }[] = [];
-  const impl = (async (url: string, requestInit: RequestInit) => {
-    calls.push({ url, init: requestInit });
+/**
+ * A `pg` client that answers with `rows`, recording what it was asked and
+ * whether it was closed.
+ *
+ * `closed` is asserted rather than incidental: a publish run is short-lived,
+ * but a socket left open holds the job open behind it.
+ */
+function pgClient(
+  rows: unknown,
+  opts: { failOn?: "connect" | "query" } = {},
+): {
+  factory: (connectionString: string) => PgLike;
+  calls: { connectionString: string; sql: string[] };
+  state: { closed: boolean };
+} {
+  const calls = { connectionString: "", sql: [] as string[] };
+  const state = { closed: false };
+  const factory = (connectionString: string): PgLike => {
+    calls.connectionString = connectionString;
     return {
-      ok: init.ok ?? true,
-      status: init.status ?? 200,
-      json: async () => body,
-    } as unknown as Response;
-  }) as unknown as typeof fetch;
-  return { impl, calls };
-}
-
-function okBody(rows: Record<string, unknown>[]) {
-  return { success: true, result: [{ results: rows }] };
+      async connect() {
+        if (opts.failOn === "connect") throw new Error("ECONNREFUSED");
+      },
+      async end() {
+        state.closed = true;
+      },
+      async query(text: string) {
+        calls.sql.push(text);
+        if (opts.failOn === "query") {
+          throw new Error('relation "subnet_snapshots" does not exist');
+        }
+        return rows as { rows?: unknown[] } | undefined;
+      },
+    };
+  };
+  return { factory, calls, state };
 }
 
 describe("alphaPriceHistoryQuery", () => {
@@ -78,15 +97,15 @@ describe("alphaPriceHistoryQuery", () => {
 });
 
 describe("loadAlphaPriceHistoryByNetuid", () => {
-  test("indexes the D1 rows by netuid", async () => {
-    const { impl, calls } = d1Fetch(
-      okBody([
+  test("indexes the rows by netuid, and closes the connection", async () => {
+    const { factory, calls, state } = pgClient({
+      rows: [
         { netuid: 1, snapshot_date: "2026-08-01", alpha_price_tao: 0.5 },
         { netuid: 1, snapshot_date: "2026-08-02", alpha_price_tao: 0.6 },
         { netuid: 2, snapshot_date: "2026-08-02", alpha_price_tao: 0.1 },
-      ]),
-    );
-    const history = await loadAlphaPriceHistoryByNetuid(CREDS, impl);
+      ],
+    });
+    const history = await loadAlphaPriceHistoryByNetuid(CREDS, factory);
     assert.ok(history);
     assert.equal(history.size, 2);
     assert.deepEqual(history.get(1), [
@@ -95,87 +114,57 @@ describe("loadAlphaPriceHistoryByNetuid", () => {
       { snapshot_date: "2026-08-01", alpha_price_tao: 0.5, captured_at: null },
       { snapshot_date: "2026-08-02", alpha_price_tao: 0.6, captured_at: null },
     ]);
-    // The bounded D1 database, and the token as the only credential.
-    assert.ok(calls[0].url.includes(SUBNET_SNAPSHOTS_D1_DATABASE_ID));
-    assert.ok(calls[0].url.includes("/accounts/acct/d1/database/"));
-    assert.equal(
-      (calls[0].init.headers as Record<string, string>).Authorization,
-      "Bearer token",
-    );
-  });
-
-  test("an explicit database id overrides the default", async () => {
-    const { impl, calls } = d1Fetch(okBody([]));
-    await loadAlphaPriceHistoryByNetuid(
-      { ...CREDS, METAGRAPH_D1_DATABASE_ID: "other-db" },
-      impl,
-    );
-    assert.ok(calls[0].url.includes("/d1/database/other-db/query"));
+    assert.equal(calls.connectionString, "postgresql://example/db");
+    assert.equal(calls.sql.length, 1);
+    assert.equal(calls.sql[0], alphaPriceHistoryQuery());
+    assert.equal(state.closed, true, "the connection was left open");
   });
 
   test("an empty result set is a real answer, not a failure", async () => {
-    const { impl } = d1Fetch(okBody([]));
-    const history = await loadAlphaPriceHistoryByNetuid(CREDS, impl);
+    const { factory } = pgClient({ rows: [] });
+    const history = await loadAlphaPriceHistoryByNetuid(CREDS, factory);
     assert.ok(history);
     assert.equal(history.size, 0);
   });
 
-  test("missing credentials return null without touching the network", async () => {
-    let called = false;
-    const impl = (async () => {
-      called = true;
-      return {} as unknown as Response;
-    }) as unknown as typeof fetch;
-    assert.equal(await loadAlphaPriceHistoryByNetuid({}, impl), null);
-    assert.equal(
-      await loadAlphaPriceHistoryByNetuid(
-        { CLOUDFLARE_ACCOUNT_ID: "acct" },
-        impl,
-      ),
-      null,
-    );
-    assert.equal(
-      await loadAlphaPriceHistoryByNetuid(
-        { CLOUDFLARE_API_TOKEN: "token" },
-        impl,
-      ),
-      null,
-    );
-    assert.equal(called, false);
+  test("no DATABASE_URL returns null without opening a connection", async () => {
+    let opened = false;
+    const factory = () => {
+      opened = true;
+      return {} as PgLike;
+    };
+    assert.equal(await loadAlphaPriceHistoryByNetuid({}, factory), null);
+    assert.equal(opened, false);
   });
 
-  test("an HTTP failure, an error envelope, and a shapeless body all decline", async () => {
-    const http = d1Fetch(okBody([]), { ok: false, status: 500 });
-    assert.equal(await loadAlphaPriceHistoryByNetuid(CREDS, http.impl), null);
-
-    const errored = d1Fetch({
-      success: false,
-      errors: [{ message: "no such table: subnet_snapshots" }],
-    });
+  test("a failed connect and a failed query both decline, and still close", async () => {
+    // The two shapes the drop will actually produce: the host is gone, or the
+    // relation is. Neither may bake a confident "no price moved".
+    const refused = pgClient({ rows: [] }, { failOn: "connect" });
     assert.equal(
-      await loadAlphaPriceHistoryByNetuid(CREDS, errored.impl),
+      await loadAlphaPriceHistoryByNetuid(CREDS, refused.factory),
       null,
     );
+    assert.equal(refused.state.closed, true);
 
-    // A body we do not understand must NOT read as "no history": an empty map
-    // would bake confident nulls from a response we failed to parse.
-    const shapeless = d1Fetch({ success: true, result: [] });
+    const missing = pgClient({ rows: [] }, { failOn: "query" });
     assert.equal(
-      await loadAlphaPriceHistoryByNetuid(CREDS, shapeless.impl),
+      await loadAlphaPriceHistoryByNetuid(CREDS, missing.factory),
       null,
     );
-
-    const errorless = d1Fetch({ success: false });
-    assert.equal(
-      await loadAlphaPriceHistoryByNetuid(CREDS, errorless.impl),
-      null,
-    );
+    assert.equal(missing.state.closed, true);
   });
 
-  test("a thrown transport error declines instead of propagating", async () => {
-    const impl = (async () => {
-      throw new Error("socket hang up");
-    }) as unknown as typeof fetch;
-    assert.equal(await loadAlphaPriceHistoryByNetuid(CREDS, impl), null);
+  test("a response with no rows array declines rather than reading as empty", async () => {
+    // An empty map would bake confident nulls from a response we failed to
+    // parse -- the distinction this whole file exists for.
+    for (const shape of [{}, { rows: null }, { rows: "nope" }, undefined]) {
+      const { factory } = pgClient(shape);
+      assert.equal(
+        await loadAlphaPriceHistoryByNetuid(CREDS, factory),
+        null,
+        `shape ${JSON.stringify(shape)} should decline`,
+      );
+    }
   });
 });
