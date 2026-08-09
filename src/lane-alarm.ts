@@ -190,6 +190,84 @@ export const LANE_CADENCE_SQL =
   "SELECT lane, COUNT(*) AS n, MIN(checked_at) AS first, MAX(checked_at) AS last " +
   "FROM lane_health WHERE checked_at > ? GROUP BY lane";
 
+/**
+ * The LONGEST gap between consecutive rows, per lane (#10333).
+ *
+ * A DIFFERENT QUESTION FROM `laneCadenceMs`, which is why it is a second query
+ * rather than a tweak to the first. The mean answers "how often does this lane
+ * usually speak" and feeds the alarm; this answers "how long has it gone quiet
+ * before while still being healthy", which is the only thing a silence bound
+ * can honestly be built from.
+ *
+ * The mean cannot do it, for two structural reasons rather than incidental
+ * ones:
+ *
+ *   - CONTAINER REBOOTS FIRE EVERY LANE'S FIRST TICK IMMEDIATELY (see
+ *     src/producer-cadence.ts), so every slow lane's sample carries a cluster
+ *     of near-zero gaps that drags the mean far under the real interval.
+ *   - A MIRROR LANE WRITES MANY ROWS PER PASS. `neon:account-balances` logged
+ *     6,268 rows in seven days against a six-hour producer, so "gap between
+ *     rows" is not "gap between passes" there at all, and the mean AND the
+ *     median both collapse toward zero.
+ *
+ * Measured over seven days, in minutes, against each lane's declared cadence:
+ *
+ *     lane                    rows  declared   mean  median   MAX
+ *     hotkey-alpha              15      1440    286      76   973
+ *     account-identity          18      1440    235      48   970
+ *     neon:account-balances   6268       360      1       0   359
+ *     metagraph                353        15     16      15    46
+ *
+ * The max is the only column that survives all of them. It reads UNDER the
+ * declared cadence for the 24-hour lanes because seven days holds few passes,
+ * and that is fine: the bound is three intervals, so 973 becomes 2,919 minutes
+ * against a 1,440-minute cycle.
+ *
+ * A single long outage in the sample inflates this and makes the bound lax.
+ * That is the SAFE direction -- a bound that is too loose misses a dead lane
+ * for one extra cycle, while one that is too tight invents alarms on lanes
+ * that are working, which is the #9301 failure the whole lane-alarm design is
+ * shaped around.
+ */
+export const LANE_MAX_GAP_SQL =
+  "SELECT lane, COUNT(*) AS n, MAX(gap) AS max_gap FROM (" +
+  "SELECT lane, checked_at - LAG(checked_at) OVER " +
+  "(PARTITION BY lane ORDER BY checked_at) AS gap " +
+  "FROM lane_health WHERE checked_at > ?" +
+  ") g WHERE gap IS NOT NULL GROUP BY lane";
+
+/**
+ * Longest observed gap per lane, or null where there is too little history.
+ *
+ * Declines to `{}` on any failure, exactly as loadLaneCadence does: without a
+ * sample there is no bound that is not a guess, and withLaneHealth leaves every
+ * verdict alone when it gets none.
+ */
+export async function loadLaneMaxGap(
+  db: D1Like | null | undefined,
+  sinceMs: number,
+): Promise<Record<string, number | null>> {
+  if (!db?.prepare) return {};
+  try {
+    const result = await db.prepare(LANE_MAX_GAP_SQL).bind(sinceMs).all?.();
+    const rows = (result?.results ?? []) as Record<string, unknown>[];
+    const out: Record<string, number | null> = {};
+    for (const row of rows) {
+      const lane = row.lane == null ? "" : String(row.lane);
+      if (!lane) continue;
+      // The same sample floor the mean uses. `n` here counts GAPS, one fewer
+      // than rows, so a lane with exactly the minimum rows still qualifies.
+      const n = toInt(row.n);
+      const gap = toInt(row.max_gap);
+      out[lane] =
+        n + 1 >= LANE_ALARM_MIN_CADENCE_SAMPLES && gap > 0 ? gap : null;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 /** Mean gap between ticks, or null when there is not enough history to say. */
 export function laneCadenceMs(sample: {
   n: number;

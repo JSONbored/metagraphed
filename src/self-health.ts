@@ -19,6 +19,7 @@
 /** The components the poller writes. Order is display order. */
 import type { LaneHealthRecord } from "./lane-health.ts";
 import { laneSilenceThresholdMs } from "./lane-alarm.ts";
+import { laneSilenceCadenceMs } from "./producer-cadence.ts";
 
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
 export type SelfHealthComponent = (typeof SELF_HEALTH_COMPONENTS)[number];
@@ -321,7 +322,12 @@ export function withLaneHealth(
   const { cadences, nowMs = Date.now() } = options;
   const lanes: SelfHealthLaneView[] = Object.values(laneRows)
     .map((row) => {
-      const cadence = cadences?.[row.lane];
+      // The lane's own observed maximum gap, floored by its producer's
+      // declared cadence where one exists (#10333). Neither alone is enough:
+      // observation drifts to zero for a mirror that writes many rows per
+      // pass, and a declaration alone cannot notice a lane whose real interval
+      // has moved away from the configured one.
+      const cadence = laneSilenceCadenceMs(row.lane, cadences?.[row.lane]);
       const quietFor = nowMs - row.checked_at;
       const silent =
         typeof cadence === "number" &&

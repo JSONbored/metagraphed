@@ -267,7 +267,7 @@ import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "../../src/lane-health.ts";
 import { withLaneHealth } from "../../src/self-health.ts";
 import {
-  loadLaneCadence,
+  loadLaneMaxGap,
   LANE_ALARM_CADENCE_WINDOW_MS,
 } from "../../src/lane-alarm.ts";
 import { loadTopHoldersFlowTier } from "../../src/top-holders-flow-tier.ts";
@@ -2060,14 +2060,14 @@ export async function handleSelfHealth(
       typeof loadLatestLaneHealth
     >[0],
   );
-  // The cadence sample the silence bound needs (#10232). One extra GROUP BY
-  // over the same table the read above already touched, and it is what stops a
-  // dead lane serving its last verdict forever. loadLaneCadence declines to a
-  // {} on any failure, and withLaneHealth then leaves every verdict alone --
-  // so a cadence read that fails costs today's behaviour, never a false alarm.
-  const cadences = await loadLaneCadence(
+  // The sample the silence bound needs (#10232), as the LONGEST observed gap
+  // rather than the mean (#10333). One extra GROUP BY over the table the read
+  // above already touched. loadLaneMaxGap declines to a {} on any failure, and
+  // withLaneHealth then leaves every verdict alone -- so a failed read costs
+  // today's behaviour, never a false alarm.
+  const cadences = await loadLaneMaxGap(
     laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
-      typeof loadLaneCadence
+      typeof loadLaneMaxGap
     >[0],
     Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
   );
