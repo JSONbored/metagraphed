@@ -5,6 +5,7 @@
 // api-coverage.test.ts.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { handleRequest } from "../workers/api.ts";
 import { handleSubnetStakeQuote } from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
@@ -125,13 +126,23 @@ describe("handleSubnetStakeQuote (#5235)", () => {
     assert.equal(json.error.code, "insufficient_liquidity");
   });
 
-  test("bad direction → 400 invalid_direction", async () => {
-    const { status, json } = await call(
-      {},
-      `/api/v1/subnets/${NETUID}/stake-quote?amount=1&direction=swap`,
+  test("bad direction → 400 from the router's published enum", async () => {
+    // `invalid_direction` was computeStakeQuote's own code, reached because the
+    // handler forwarded whatever string arrived. The router parses `direction`
+    // against the route's published enum first (#10060), so a caller now gets
+    // the same 400 with the surface's uniform `invalid_query` code and the
+    // parameter named -- and the builder's guard is unreachable from REST.
+    const res = await handleRequest(
+      new Request(
+        `https://api.metagraph.sh/api/v1/subnets/${NETUID}/stake-quote?amount=1&direction=swap`,
+      ),
+      {} as never,
+      {} as never,
     );
-    assert.equal(status, 400);
-    assert.equal(json.error.code, "invalid_direction");
+    assert.equal(res.status, 400);
+    const json = (await res.json()) as Row;
+    assert.equal(json.error.code, "invalid_query");
+    assert.equal(json.meta.parameter, "direction");
   });
 
   test("zero amount → 400 invalid_amount", async () => {

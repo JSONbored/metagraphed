@@ -56564,6 +56564,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -56655,6 +56656,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -57066,6 +57068,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -57077,6 +57080,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -57237,6 +57241,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -57248,6 +57253,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -57574,6 +57580,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -57841,6 +57848,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -57854,6 +57862,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58006,6 +58015,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58262,6 +58272,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -58308,6 +58319,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58448,6 +58460,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -58473,6 +58486,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58613,6 +58627,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -58647,6 +58662,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58787,6 +58803,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -58812,6 +58829,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -58952,6 +58970,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -58964,6 +58983,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "tx_count",
               "enum": [
                 "tx_count",
                 "total_fee_tao"
@@ -58998,6 +59018,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -59138,6 +59159,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -59163,6 +59185,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -59303,6 +59326,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -59328,6 +59352,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -59468,6 +59493,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -59493,6 +59519,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -59633,6 +59660,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -59657,6 +59685,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "volume",
               "enum": [
                 "volume",
                 "count"
@@ -59670,6 +59699,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -59810,6 +59840,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -59835,6 +59866,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -60442,6 +60474,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -60717,6 +60750,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -60829,6 +60863,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -61872,6 +61907,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -62613,6 +62649,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "total_stake",
               "enum": [
                 "total_stake",
                 "total_emission",
@@ -62643,6 +62680,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -62880,6 +62918,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -63240,6 +63279,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -63370,6 +63410,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -63647,6 +63688,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -63667,6 +63709,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -63827,6 +63870,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -63847,6 +63891,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -64020,6 +64065,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -64040,6 +64086,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -64288,6 +64335,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -64308,6 +64356,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -64760,6 +64809,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -64881,6 +64931,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -65110,6 +65161,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -65231,6 +65283,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -65365,6 +65418,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -65602,6 +65656,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -65769,6 +65824,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -65789,6 +65845,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -65919,6 +65976,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -66030,6 +66088,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "total_tao",
               "enum": [
                 "total_tao",
                 "free_tao",
@@ -66059,6 +66118,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -66816,6 +66876,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -66907,6 +66968,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -67270,6 +67332,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -67281,6 +67344,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -67425,6 +67489,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -67436,6 +67501,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -67901,6 +67967,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -68091,6 +68158,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -68326,6 +68394,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -68339,6 +68408,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -68475,6 +68545,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -68599,6 +68670,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -68624,6 +68696,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -68845,6 +68918,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -68891,6 +68965,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -69113,6 +69188,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -69239,6 +69315,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "nakamoto_coefficient",
               "enum": [
                 "nakamoto_coefficient",
                 "gini",
@@ -69255,6 +69332,7 @@
             "name": "order",
             "required": false,
             "schema": {
+              "default": "desc",
               "enum": [
                 "asc",
                 "desc"
@@ -69380,6 +69458,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -69405,6 +69484,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -69694,6 +69774,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -69728,6 +69809,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -69974,6 +70056,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "top1_share",
               "enum": [
                 "top1_share",
                 "top5_share",
@@ -70505,6 +70588,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -70530,6 +70614,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -70652,6 +70737,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -70677,6 +70763,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -70801,6 +70888,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -70826,6 +70914,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -70948,6 +71037,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -70960,6 +71050,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "tx_count",
               "enum": [
                 "tx_count",
                 "total_fee_tao"
@@ -70994,6 +71085,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71118,6 +71210,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -71143,6 +71236,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71267,6 +71361,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -71292,6 +71387,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71416,6 +71512,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -71441,6 +71538,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71565,6 +71663,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "all",
               "enum": [
                 "7d",
                 "30d",
@@ -71593,6 +71692,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71715,6 +71815,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -71739,6 +71840,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "volume",
               "enum": [
                 "volume",
                 "count"
@@ -71752,6 +71854,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -71876,6 +71979,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -71901,6 +72005,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -72025,6 +72130,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -72051,6 +72157,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -72173,6 +72280,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -72198,6 +72306,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -72320,6 +72429,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -72345,6 +72455,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -73224,6 +73335,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -74083,6 +74195,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -74206,6 +74319,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -74222,6 +74336,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -74998,6 +75113,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -75406,6 +75522,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -75518,6 +75635,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -78516,6 +78634,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -78601,6 +78720,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -78912,6 +79032,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -79320,6 +79441,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "minimum": 0,
               "type": "integer"
             }
@@ -79429,6 +79551,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -79907,6 +80030,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "24h",
               "enum": [
                 "1h",
                 "24h",
@@ -80375,6 +80499,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -80594,6 +80719,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -81019,6 +81145,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -81534,6 +81661,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -82164,6 +82292,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -82785,6 +82914,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -83066,6 +83196,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -83695,6 +83826,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -83808,6 +83940,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -85317,6 +85450,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -85558,6 +85692,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -85790,6 +85925,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "24h",
                 "7d",
@@ -86045,6 +86181,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -86284,6 +86421,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -86298,6 +86436,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -86537,6 +86676,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -86659,6 +86799,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -86967,6 +87108,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -87098,6 +87240,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -87270,6 +87413,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -87290,6 +87434,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -87710,6 +87855,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -88084,6 +88230,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -88206,6 +88353,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -88436,6 +88584,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -88800,6 +88949,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -88820,6 +88970,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -88963,6 +89114,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -88983,6 +89135,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -89452,6 +89605,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -89463,6 +89617,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -89594,8 +89749,7 @@
             "required": false,
             "schema": {
               "enum": [
-                "true",
-                "false"
+                "true"
               ],
               "type": "string"
             }
@@ -89616,6 +89770,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -89883,6 +90038,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -90006,6 +90162,7 @@
             "name": "interval",
             "required": false,
             "schema": {
+              "default": "1h",
               "enum": [
                 "1h",
                 "1d"
@@ -90018,6 +90175,7 @@
             "name": "days",
             "required": false,
             "schema": {
+              "default": 90,
               "maximum": 365,
               "minimum": 1,
               "type": "integer"
@@ -90462,6 +90620,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -90476,6 +90635,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -90715,6 +90875,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -90946,6 +91107,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -91067,6 +91229,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -91188,6 +91351,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -91323,6 +91487,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -91452,6 +91617,7 @@
             "name": "direction",
             "required": false,
             "schema": {
+              "default": "stake",
               "enum": [
                 "stake",
                 "unstake"
@@ -91573,6 +91739,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -91952,6 +92119,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -92083,6 +92251,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -92214,6 +92383,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -92350,6 +92520,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "90d",
               "enum": [
                 "90d",
                 "1y"
@@ -92372,6 +92543,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -92613,6 +92785,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -92746,6 +92919,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -92985,6 +93159,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -93106,6 +93281,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "7d",
               "enum": [
                 "7d",
                 "30d"
@@ -93227,6 +93403,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -93358,6 +93535,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -93372,6 +93550,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -93494,6 +93673,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -93507,6 +93687,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "stake",
               "enum": [
                 "stake",
                 "emission",
@@ -93534,6 +93715,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -93668,6 +93850,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "maximum": 1000000,
               "minimum": 0,
               "type": "integer"
@@ -93753,6 +93936,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -94123,6 +94307,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -94349,6 +94534,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "subnet_count",
               "enum": [
                 "avg_validator_trust",
                 "max_validator_trust",
@@ -94379,6 +94565,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -94616,6 +94803,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -94749,6 +94937,7 @@
             "name": "basis",
             "required": false,
             "schema": {
+              "default": "flow",
               "enum": [
                 "flow",
                 "positions"
@@ -94762,6 +94951,7 @@
             "name": "window",
             "required": false,
             "schema": {
+              "default": "30d",
               "enum": [
                 "7d",
                 "30d",
@@ -94775,6 +94965,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "net_staked",
               "enum": [
                 "net_staked",
                 "gross_staked",
@@ -94801,6 +94992,7 @@
             "name": "offset",
             "required": false,
             "schema": {
+              "default": 0,
               "minimum": 0,
               "type": "integer"
             }
@@ -94820,6 +95012,7 @@
             "name": "format",
             "required": false,
             "schema": {
+              "default": "json",
               "enum": [
                 "json",
                 "csv"
@@ -94941,6 +95134,7 @@
             "name": "sort",
             "required": false,
             "schema": {
+              "default": "earning_floor_cost_tao",
               "enum": [
                 "earning_floor_cost_tao",
                 "permit_floor_cost_tao",

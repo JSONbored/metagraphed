@@ -113,7 +113,10 @@ export const offsetSchema = () =>
       `Rows to skip before the first returned row (0-${MAX_OFFSET}). ` +
         "Defaults to 0; a non-numeric value resolves to 0 and the response reports it.",
     )
-    .meta({ examples: [0, 100] });
+    // The default is PUBLISHED, not just described (#10060): the sentence above
+    // has always said 0 and no machine-readable form of it existed, so a
+    // generated client could not fill the parameter in.
+    .meta({ default: 0, examples: [0, 100] });
 
 /**
  * An SS58 address. The pattern is the one 26 tool modules each declared
@@ -138,14 +141,19 @@ export const ss58Schema = () =>
  * Sort direction. 31 of the 32 `order` parameters are this exact pair and mean
  * the same thing on every one of them.
  */
-export const orderSchema = () =>
+export const orderSchema = (fallback?: "asc" | "desc") =>
   z
     .enum(["asc", "desc"])
     .describe(
       "Sort direction for the chosen sort key: `asc` smallest-first, " +
-        "`desc` largest-first.",
+        "`desc` largest-first." +
+        (fallback === undefined ? "" : ` Defaults to ${fallback}.`),
     )
-    .meta({ examples: ["desc"] });
+    .meta(
+      fallback === undefined
+        ? { examples: ["desc"] }
+        : { default: fallback, examples: [fallback] },
+    );
 
 // --- Descriptions for families whose VALUES are per-tool ---------------------
 //
@@ -163,15 +171,21 @@ export const orderSchema = () =>
  */
 export const windowSchema = <T extends readonly [string, ...string[]]>(
   values: T,
+  fallback?: T[number],
 ) =>
   z
     .enum(values)
     .describe(
       "Trailing time window to aggregate over, ending at the latest data " +
         "point rather than a calendar boundary. Options are per-tool; see this " +
-        "parameter's enum.",
+        "parameter's enum." +
+        (fallback === undefined ? "" : ` Defaults to ${fallback}.`),
     )
-    .meta({ examples: [values[0]] });
+    .meta(
+      fallback === undefined
+        ? { examples: [values[0]] }
+        : { default: fallback, examples: [fallback] },
+    );
 
 /**
  * Which side of a two-sided flow to count. Values are per-route -- the transfer
@@ -193,15 +207,21 @@ export const windowSchema = <T extends readonly [string, ...string[]]>(
  */
 export const directionSchema = <T extends readonly [string, ...string[]]>(
   values: T,
+  fallback?: T[number],
 ) =>
   z
     .enum(values)
     .describe(
       "Which side of the flow to count, relative to the account or subnet " +
         "this route is scoped to. Omit to count both. Options are per-route; " +
-        "see this parameter's enum.",
+        "see this parameter's enum." +
+        (fallback === undefined ? "" : ` Defaults to ${fallback}.`),
     )
-    .meta({ examples: [values[0]] });
+    .meta(
+      fallback === undefined
+        ? { examples: [values[0]] }
+        : { default: fallback, examples: [fallback] },
+    );
 
 /**
  * Which side of a stake quote to price.
@@ -218,19 +238,26 @@ export const stakeActionSchema = () =>
       "Which side of the trade to price: `stake` buys alpha with TAO, " +
         "`unstake` sells alpha for TAO. Omit for `stake`.",
     )
-    .meta({ examples: ["stake"] });
+    // The sentence said `stake` and the schema did not (#10060).
+    .meta({ default: "stake", examples: ["stake"] });
 
 /** Which column the result is ranked by. Values are per-tool. */
 export const sortSchema = <T extends readonly [string, ...string[]]>(
   values: T,
+  fallback?: T[number],
 ) =>
   z
     .enum(values)
     .describe(
       "Column to rank the result by; pair with `order` for direction. " +
-        "Options are per-tool; see this parameter's enum.",
+        "Options are per-tool; see this parameter's enum." +
+        (fallback === undefined ? "" : ` Defaults to ${fallback}.`),
     )
-    .meta({ examples: [values[0]] });
+    .meta(
+      fallback === undefined
+        ? { examples: [values[0]] }
+        : { default: fallback, examples: [fallback] },
+    );
 
 /**
  * A block height bound. Inclusive on both ends, which is the one thing a
@@ -425,7 +452,9 @@ export const formatSchema = () =>
       "Response format override. `csv` downloads the route's rows as " +
         "text/csv; `json` is the default and keeps the response envelope.",
     )
-    .meta({ examples: ["csv"] });
+    // Same as `offset` above: the sentence said `json` and the schema did not
+    // (#10060).
+    .meta({ default: "json", examples: ["csv"] });
 
 /**
  * RPC POOL kinds -- what a pool of endpoints is FOR.

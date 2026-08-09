@@ -92,8 +92,20 @@ describe("the published parameters are built from one vocabulary (#10073)", () =
     const schemas = parametersNamed("order");
     assert.ok(schemas.length > 0, "no route publishes `order`");
     for (const schema of schemas) {
-      assert.deepEqual(schema, published(orderSchema()));
+      // A route's own `default` is a per-route FACT, not a second declaration
+      // of the vocabulary (#10060) -- the same split `limit` has, where the
+      // ceiling is shared and the default is the route's. The constraints are
+      // what must be identical, so they are what is compared, and the default
+      // is checked against the enum it has to come from.
+      const { default: fallback, ...constraints } = schema;
+      assert.deepEqual(constraints, published(orderSchema()));
       assert.equal(schema.type, "string");
+      if (fallback !== undefined) {
+        assert.ok(
+          (schema.enum as string[]).includes(fallback as string),
+          `order default ${String(fallback)} is not one of its own values`,
+        );
+      }
     }
   });
 

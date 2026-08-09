@@ -127,7 +127,7 @@ import {
   resolveGlobalIncidentsForFeed,
   withEdgeCache,
 } from "./request-handlers/analytics.ts";
-import { parseRouteQuery } from "../src/route-query.ts";
+import { parseRouteQuery, routeQuery, routeText } from "../src/route-query.ts";
 import {
   handleSubnetMetagraph,
   handleNeuron,
@@ -4687,25 +4687,21 @@ export async function handleRequest(
         resolveFeedFormat(url.pathname, request.headers.get("accept")),
       )}`,
     ];
-    const tag = url.searchParams.get("tag");
-    if (tag != null) feedCacheParams.push(`tag=${encodeURIComponent(tag)}`);
-    const since = url.searchParams.get("since");
-    if (since != null) {
-      feedCacheParams.push(`since=${encodeURIComponent(since)}`);
-    }
-    const until = url.searchParams.get("until");
-    if (until != null) {
-      feedCacheParams.push(`until=${encodeURIComponent(until)}`);
-    }
-    const limit = url.searchParams.get("limit");
-    if (limit != null) {
-      feedCacheParams.push(`limit=${encodeURIComponent(limit)}`);
+    // The PARSED values, not the raw strings: the router has already checked
+    // them against the feed schema, and `?limit=020` and `?limit=20` are one
+    // request that must not become two cache entries (#10060).
+    const feed = routeQuery(url);
+    for (const name of ["tag", "since", "until", "limit"] as const) {
+      const value = feed[name];
+      if (value !== undefined) {
+        feedCacheParams.push(`${name}=${encodeURIComponent(String(value))}`);
+      }
     }
     // #8376: the watch feed's entire identity is its `ids` set -- omitting
     // this would let two different watchlists share one cached response
     // (the edge cache key is this composed query string, not the raw request
     // URL), silently serving one visitor's watched entities to another.
-    const ids = url.searchParams.get("ids");
+    const ids = routeText(url, "ids");
     if (ids != null) feedCacheParams.push(`ids=${encodeURIComponent(ids)}`);
     const feedCachePath = `${url.pathname}?${feedCacheParams.join("&")}`;
     const feedRequest =
@@ -6058,7 +6054,13 @@ export async function handleRequest(
         request,
         ctx,
         env,
-        `chain-concentration-subnets:${resolved.url.searchParams.get("lens") || ""}:${resolved.url.searchParams.get("sort") || ""}:${resolved.url.searchParams.get("order") || ""}:${resolved.url.searchParams.get("limit") || ""}`,
+        [
+          "chain-concentration-subnets",
+          routeText(resolved.url, "lens") ?? "",
+          routeText(resolved.url, "sort") ?? "",
+          routeText(resolved.url, "order") ?? "",
+          routeQuery(resolved.url).limit ?? "",
+        ].join(":"),
         () => handleChainConcentrationSubnets(request, env, resolved.url),
       );
     }
@@ -6516,7 +6518,7 @@ async function dispatchLiveChainRoute(
     return envelopeResponse(
       request,
       {
-        data: buildSearchResolve(url.searchParams.get("q")),
+        data: buildSearchResolve(routeText(url, "q")),
         meta: { contract_version: contractVersion(env) },
       },
       "short",
@@ -8605,8 +8607,8 @@ async function handleSemanticSearchRequest(
     // kinds. getAll returns [] when absent, which normalizeSemanticTypes reads as
     // "no scope", so an empty list is equivalent to omitting the param.
     const types = url.searchParams.getAll("type");
-    const data = await semanticSearch(env, url.searchParams.get("q"), {
-      limit: url.searchParams.get("limit"),
+    const data = await semanticSearch(env, routeText(url, "q"), {
+      limit: routeQuery(url).limit,
       type: types.length ? types : undefined,
     });
     return dataResponse(env, data, 200, { source: "ai-live" });

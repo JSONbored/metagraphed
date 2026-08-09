@@ -217,7 +217,9 @@ export const LIST_QUERY_ROUTE_EXTRAS: Record<
   // parameter was mandatory, which nothing noticed while the object was only
   // read for its `properties` (#10218 parses with it, where a bare request
   // would have 400'd).
-  "/api/v1/incidents": { window: windowSchema(["7d", "30d"]).optional() },
+  "/api/v1/incidents": {
+    window: windowSchema(["7d", "30d"], "7d").optional(),
+  },
 };
 
 export const API_QUERY_COLLECTIONS = {
@@ -6470,7 +6472,11 @@ export function listQuerySchema(
     shape.sort = sortSchema(sortFields as [string, ...string[]]).optional();
   }
   shape.order = orderSchema().optional();
-  if (csvResponse) shape.format = z.enum(["json", "csv"]).optional();
+  // formatSchema()'s twin for the collection routes, and it carries the same
+  // published default (#10060): omitting `format` keeps the JSON envelope.
+  if (csvResponse) {
+    shape.format = z.enum(["json", "csv"]).meta({ default: "json" }).optional();
+  }
 
   return z.object(shape).strict();
 }

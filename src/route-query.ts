@@ -197,32 +197,74 @@ export function validateRouteArgs(
  * `routeQuery(url).limit` directly, because `undefined` is the answer there and
  * substituting a number would truncate them.
  */
-export function pageLimit(url: URL): number {
-  const asked = routeQuery(url).limit;
-  if (asked !== undefined) return asked;
-  const fallback = publishedLimitDefault(url.pathname);
+export const pageLimit = (url: URL): number => routeValue<number>(url, "limit");
+
+/**
+ * The value this request resolved to for one parameter: what the caller sent,
+ * or the default the route PUBLISHES (#10060).
+ *
+ * The general form of `pageLimit` above, and for the same reason. A handler
+ * writing `url.searchParams.get("window") || DEFAULT_X_WINDOW` states a fact
+ * the contract also states, in a place the contract cannot see -- and 986 of
+ * the 1,076 published query parameters carried no `default` while the handlers
+ * behind them applied 60-odd of them. This reads the published one back, so
+ * there is one number and a caller can see it.
+ *
+ * Throws where the route publishes no default for the parameter. That is a
+ * developer-config error rather than a request a caller can make: a parameter
+ * whose absence means "no filter" has no default to read, and its handler asks
+ * `routeQuery(url)` directly, where `undefined` is the answer.
+ */
+export function routeValue<T>(url: URL, parameter: string): T {
+  const asked = routeQuery(url)[parameter];
+  if (asked !== undefined) return asked as T;
+  const fallback = publishedDefault(url.pathname, parameter);
   if (fallback === undefined) {
-    throw new Error(`No published limit default for ${url.pathname}`);
+    throw new Error(`No published ${parameter} default for ${url.pathname}`);
   }
-  return fallback;
+  return fallback as T;
 }
 
 /**
- * What `limitSchema(max, fallback)` recorded, read back off the published
- * field.
+ * A parsed STRING parameter, or null where the caller sent none (#10060).
+ *
+ * The shape the loaders take, which is why it exists: they were handed
+ * `url.searchParams.get("kind")` and typed `string | null`, so reading the
+ * parsed object instead needed something that keeps that signature rather than
+ * the index signature's `unknown`.
+ *
+ * A type TEST, not a cast. The value came out of a Zod parse against the
+ * published schema, so its runtime type is whatever the contract declares --
+ * and if a caller reaches for the wrong accessor, the answer is `null` rather
+ * than a number wearing a string's type.
+ */
+export function routeText(url: URL, parameter: string): string | null {
+  const value = routeQuery(url)[parameter];
+  return typeof value === "string" ? value : null;
+}
+
+/** The same, for a parameter the contract declares as a number. */
+export function routeInt(url: URL, parameter: string): number | null {
+  const value = routeQuery(url)[parameter];
+  return typeof value === "number" ? value : null;
+}
+
+/**
+ * What the schema builder recorded with `.meta({ default })`, read back off the
+ * published field.
  *
  * `.meta()` does not see through `.optional()`, and every query parameter is
- * optional, so the wrapper comes off first -- and stays off for the routes
- * that declare no `limit` at all, where there is nothing to unwrap. This is the
- * same metadata object `z.toJSONSchema` turns into the published `default`
- * keyword, so the contract and the runtime cannot be reading different numbers.
+ * optional, so the wrapper comes off first -- and stays off for a route that
+ * declares no such parameter at all, where there is nothing to unwrap. This is
+ * the same metadata object `z.toJSONSchema` turns into the published `default`
+ * keyword, so the contract and the runtime cannot be reading different values.
  */
-function publishedLimitDefault(pathname: string): number | undefined {
-  const field = routeQuerySchemasForPathname(pathname)?.plain.shape.limit as
-    z.ZodType | undefined;
+function publishedDefault(pathname: string, parameter: string): unknown {
+  const field = routeQuerySchemasForPathname(pathname)?.plain.shape[
+    parameter
+  ] as z.ZodType | undefined;
   const inner = field instanceof z.ZodOptional ? field.unwrap() : field;
-  const declared = (inner as z.ZodType | undefined)?.meta()?.default;
-  return typeof declared === "number" ? declared : undefined;
+  return (inner as z.ZodType | undefined)?.meta()?.default;
 }
 
 /**

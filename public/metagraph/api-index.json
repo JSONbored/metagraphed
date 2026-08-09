@@ -2646,6 +2646,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -2822,6 +2823,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3043,6 +3045,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3191,6 +3194,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3388,6 +3392,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3576,6 +3581,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3729,6 +3735,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3873,6 +3880,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -3983,6 +3991,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -4188,6 +4197,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -4343,6 +4353,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -4465,6 +4476,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -4670,6 +4682,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -4684,6 +4697,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -5099,6 +5113,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -5224,6 +5239,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -5392,6 +5408,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -5563,6 +5580,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -5812,6 +5830,7 @@
           "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -6648,6 +6667,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "minimum": 0,
             "type": "integer"
           }
@@ -6688,6 +6708,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -6715,6 +6736,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -6743,6 +6765,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -6818,6 +6841,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -6830,6 +6854,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -6857,6 +6882,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -6869,6 +6895,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -6896,6 +6923,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -6936,6 +6964,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -6963,6 +6992,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -6990,6 +7020,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7017,6 +7048,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7044,6 +7076,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7071,6 +7104,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7098,6 +7132,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7125,6 +7160,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7152,6 +7188,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -7179,6 +7216,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -7234,6 +7272,7 @@
         {
           "name": "interval",
           "schema": {
+            "default": "1h",
             "enum": [
               "1h",
               "1d"
@@ -7244,6 +7283,7 @@
         {
           "name": "days",
           "schema": {
+            "default": 90,
             "maximum": 365,
             "minimum": 1,
             "type": "integer"
@@ -7276,6 +7316,7 @@
         {
           "name": "direction",
           "schema": {
+            "default": "stake",
             "enum": [
               "stake",
               "unstake"
@@ -7319,6 +7360,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -7347,6 +7389,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "earning_floor_cost_tao",
             "enum": [
               "earning_floor_cost_tao",
               "permit_floor_cost_tao",
@@ -7406,6 +7449,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -7417,6 +7461,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "stake",
             "enum": [
               "stake",
               "emission",
@@ -7439,6 +7484,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7466,6 +7512,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "subnet_count",
             "enum": [
               "avg_validator_trust",
               "max_validator_trust",
@@ -7491,6 +7538,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7518,6 +7566,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "total_stake",
             "enum": [
               "total_stake",
               "total_emission",
@@ -7543,6 +7592,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7570,6 +7620,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "total_tao",
             "enum": [
               "total_tao",
               "free_tao",
@@ -7594,6 +7645,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7637,6 +7689,7 @@
         {
           "name": "basis",
           "schema": {
+            "default": "flow",
             "enum": [
               "flow",
               "positions"
@@ -7647,6 +7700,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -7658,6 +7712,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "net_staked",
             "enum": [
               "net_staked",
               "gross_staked",
@@ -7678,6 +7733,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "minimum": 0,
             "type": "integer"
           }
@@ -7693,6 +7749,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7720,6 +7777,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -7759,8 +7817,7 @@
           "name": "validator_permit",
           "schema": {
             "enum": [
-              "true",
-              "false"
+              "true"
             ],
             "type": "string"
           }
@@ -7776,6 +7833,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7852,6 +7910,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -7867,6 +7926,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7903,6 +7963,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -7912,6 +7973,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7939,6 +8001,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "all",
             "enum": [
               "7d",
               "30d",
@@ -7962,6 +8025,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -7997,6 +8061,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8025,6 +8090,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8052,6 +8118,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8064,6 +8131,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8120,6 +8188,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8135,6 +8204,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8162,6 +8232,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8199,6 +8270,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8229,6 +8301,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8268,6 +8341,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8283,6 +8357,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8379,6 +8454,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8394,6 +8470,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8454,6 +8531,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8469,6 +8547,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8519,6 +8598,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8534,6 +8614,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8595,6 +8676,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -8610,6 +8692,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8656,6 +8739,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -8683,6 +8767,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8722,6 +8807,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8750,6 +8836,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8778,6 +8865,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8806,6 +8894,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8834,6 +8923,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8862,6 +8952,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -8889,6 +8980,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -8965,6 +9057,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -9020,6 +9113,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -9035,6 +9129,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -9176,6 +9271,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "24h",
             "enum": [
               "1h",
               "24h",
@@ -9287,6 +9383,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "24h",
               "7d",
@@ -9405,6 +9502,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "top1_share",
             "enum": [
               "top1_share",
               "top5_share",
@@ -9445,6 +9543,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -9530,6 +9629,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -9558,6 +9658,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -9723,6 +9824,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -9793,6 +9895,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -9870,6 +9973,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -9879,6 +9983,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -9918,6 +10023,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -9927,6 +10033,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10011,6 +10118,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10097,6 +10205,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -10184,6 +10293,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10239,6 +10349,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -10305,6 +10416,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10341,6 +10453,7 @@
         {
           "name": "offset",
           "schema": {
+            "default": 0,
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
@@ -10407,6 +10520,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10454,6 +10568,7 @@
           "description": "Response format override. Use `csv` to download the transition timeline as text/csv; `json` (default) keeps the response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10484,6 +10599,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10495,6 +10611,7 @@
           "description": "Response format override. Use `csv` to download the daily activity series as text/csv; `json` (default) keeps the response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10525,6 +10642,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10562,6 +10680,7 @@
           "description": "Response format override. Use `csv` to download the call-mix rows as text/csv; `json` (default) keeps the response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10592,6 +10711,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10602,6 +10722,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "tx_count",
             "enum": [
               "tx_count",
               "total_fee_tao"
@@ -10629,6 +10750,7 @@
           "description": "Response format override. Use `csv` to download the signer leaderboard as text/csv; `json` (default) keeps the response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10659,6 +10781,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10679,6 +10802,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10709,6 +10833,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10728,6 +10853,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "volume",
             "enum": [
               "volume",
               "count"
@@ -10739,6 +10865,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10769,6 +10896,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10789,6 +10917,7 @@
           "description": "Response format override. Use `csv` to download the per-subnet capital-flow leaderboard as text/csv; `json` (default) keeps the response envelope (which also carries the network rollup + net-flow distribution).",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10829,6 +10958,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10856,6 +10986,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10876,6 +11007,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10903,6 +11035,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10923,6 +11056,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10950,6 +11084,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -10970,6 +11105,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -10997,6 +11133,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11017,6 +11154,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11044,6 +11182,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11064,6 +11203,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11094,6 +11234,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11114,6 +11255,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11144,6 +11286,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11164,6 +11307,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11194,6 +11338,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11214,6 +11359,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11244,6 +11390,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11264,6 +11411,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11294,6 +11442,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -11321,6 +11470,7 @@
           "description": "Response format override. Use `csv` to download the daily fee series as text/csv; `json` (default) keeps the response envelope (which also carries top_fee_payers).",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11377,6 +11527,7 @@
         {
           "name": "sort",
           "schema": {
+            "default": "nakamoto_coefficient",
             "enum": [
               "nakamoto_coefficient",
               "gini",
@@ -11391,6 +11542,7 @@
         {
           "name": "order",
           "schema": {
+            "default": "desc",
             "enum": [
               "asc",
               "desc"
@@ -11517,6 +11669,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "30d",
             "enum": [
               "7d",
               "30d",
@@ -11538,6 +11691,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11565,6 +11719,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "90d",
             "enum": [
               "90d",
               "1y"
@@ -11583,6 +11738,7 @@
           "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
+            "default": "json",
             "enum": [
               "json",
               "csv"
@@ -11752,6 +11908,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"
@@ -12586,6 +12743,7 @@
         {
           "name": "window",
           "schema": {
+            "default": "7d",
             "enum": [
               "7d",
               "30d"

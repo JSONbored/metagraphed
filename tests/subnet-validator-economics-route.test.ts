@@ -16,9 +16,7 @@ import {
   buildSubnetValidatorEconomicsPayload,
   buildValidatorEconomicsRankingPayload,
   handleSubnetValidatorEconomics,
-  handleValidatorEconomicsRanking,
   buildSubnetValidatorEconomicsHistoryPayload,
-  handleSubnetValidatorEconomicsHistory,
 } from "../workers/request-handlers/entities.ts";
 import { handleRequest } from "../workers/api.ts";
 
@@ -774,16 +772,15 @@ describe("buildValidatorEconomicsRankingPayload", () => {
 });
 
 describe("handleValidatorEconomicsRanking", () => {
-  const call = (qs: string, env: unknown) => {
-    const url = new URL(
-      "https://api.metagraph.sh/api/v1/validators/economics" + qs,
-    );
-    return handleValidatorEconomicsRanking(
-      new Request(url.toString()),
+  // Through the ROUTER: the published bounds are enforced there now (#10060),
+  // so a direct handler call would assert a rejection the surface performs one
+  // layer up. Same env, same request, same answer a caller gets.
+  const call = (qs: string, env: unknown) =>
+    handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/validators/economics" + qs),
       env as never,
-      url,
+      {} as never,
     );
-  };
   const env = { METAGRAPH_ARCHIVE: { get: async () => null } } as never;
 
   test("rejects an unsupported sort by name", async () => {
@@ -791,11 +788,15 @@ describe("handleValidatorEconomicsRanking", () => {
     assert.equal(res.status, 400);
     const body = (await res.json()) as Row;
     // The message names the supported set, so a caller can correct the request
-    // without reading the docs.
+    // without reading the docs. It no longer echoes the rejected value back:
+    // the router derives the sentence from the published enum (#10218) rather
+    // than interpolating whatever arrived, which is one fewer place a caller's
+    // string is reflected and one fewer copy of the vocabulary.
     assert.match(
       String((body.error as Row).message),
-      /nonsense.*earning_floor_cost_tao/s,
+      /^sort must be one of: earning_floor_cost_tao,/,
     );
+    assert.equal((body.meta as Row).parameter, "sort");
   });
 
   test("rejects a limit above the published ceiling", async () => {
@@ -1093,15 +1094,12 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
 });
 
 describe("handleSubnetValidatorEconomicsHistory", () => {
-  const call = (path: string, env: unknown) => {
-    const url = new URL("https://api.metagraph.sh" + path);
-    return handleSubnetValidatorEconomicsHistory(
-      new Request(url.toString()),
+  const call = (path: string, env: unknown) =>
+    handleRequest(
+      new Request("https://api.metagraph.sh" + path),
       env as never,
-      Number(url.pathname.split("/")[4]),
-      url,
+      {} as never,
     );
-  };
   const env = {} as never;
 
   test("rejects an unsupported window by name", async () => {

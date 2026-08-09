@@ -92,22 +92,50 @@ function canonical(value: unknown): string {
 
 /**
  * The builder's CONSTRAINTS as a published parameter carries them: no
- * `$schema` (per-document metadata), and no `description`/`examples` (the
+ * `$schema` (per-document metadata), no `description`/`examples` (the
  * builder's MCP-audience prose, which the REST surface replaces with its own
- * from SHARED_QUERY_PARAMETER_DESCRIPTIONS).
+ * from SHARED_QUERY_PARAMETER_DESCRIPTIONS), and no `default`.
+ *
+ * `default` is the one keyword that is legitimately PER ROUTE (#10060): the
+ * vocabulary owns what values are allowed, and each route owns which one it
+ * applies when the caller says nothing. `?order` is `asc|desc` everywhere and
+ * exactly one route resolves an omitted one to `desc`; that is not two
+ * vocabularies. What must not vary is the option set, and that is what is
+ * compared -- with `defaultIsInVocabulary` checking, separately, that a
+ * route's default is one of the values the vocabulary allows.
  */
 function publishedForm(schema: z.ZodType): string {
-  const emitted = z.toJSONSchema(schema, {
-    target: "draft-2020-12",
-    io: "input",
-  }) as Row;
   const {
     $schema: _schema,
     description: _description,
     examples: _examples,
+    default: _default,
     ...rest
-  } = emitted;
+  } = z.toJSONSchema(schema, {
+    target: "draft-2020-12",
+    io: "input",
+  }) as Row;
   return canonical(stripSentinelIntegerBounds(rest));
+}
+
+/** A route's `default`, if it publishes one, must be a value it allows. */
+function defaultIsInVocabulary(parameter: Row): boolean {
+  const schema = (parameter.schema ?? {}) as Row;
+  if (schema.default === undefined) return true;
+  const values = schema.enum as unknown[] | undefined;
+  if (Array.isArray(values)) return values.includes(schema.default);
+  if (typeof schema.default === "number") {
+    const { minimum, maximum } = schema as { minimum?: number; maximum?: number };
+    if (typeof minimum === "number" && schema.default < minimum) return false;
+    if (typeof maximum === "number" && schema.default > maximum) return false;
+  }
+  return true;
+}
+
+/** The emitted parameter's constraints, with `default` set aside the same way. */
+function publishedConstraints(schema: Row): string {
+  const { default: _default, ...rest } = schema ?? {};
+  return canonical(rest);
 }
 
 const expected = new Map(
@@ -136,18 +164,27 @@ for (const [route, operations] of Object.entries(
       const want = expected.get(name);
       if (want === undefined) continue;
       compared += 1;
-      if (canonical(parameter.schema) === want) {
+      const key = `${route} ?${name}`;
+      if (!defaultIsInVocabulary(parameter)) {
+        errors.push(
+          `${key} publishes a default of ` +
+            `${JSON.stringify((parameter.schema as Row).default)}, which is ` +
+            "not a value the parameter accepts -- a caller following the " +
+            "contract would send something the route rejects.",
+        );
+        continue;
+      }
+      if (publishedConstraints(parameter.schema as Row) === want) {
         aligned += 1;
         continue;
       }
-      const key = `${route} ?${name}`;
       if (DECLARED[key]) {
         used.add(key);
         continue;
       }
       errors.push(
-        `${key} publishes ${canonical(parameter.schema)}, but the vocabulary ` +
-          `defines ${want}.\n` +
+        `${key} publishes ${publishedConstraints(parameter.schema as Row)}, ` +
+          `but the vocabulary defines ${want}.\n` +
           `  Build it from ${name}Schema() in schemas-src/query-params.ts, or ` +
           `add "${key}" to DECLARED with the reason it differs.`,
       );
