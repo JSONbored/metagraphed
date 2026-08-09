@@ -58,6 +58,7 @@ import {
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
 } from "../postgres-tier.ts";
+import { currentR2SqlFailureGeneration } from "../../src/r2-sql.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
 import {} from "../../src/route-limits.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
@@ -338,6 +339,111 @@ function markPostgresTierFallbackResponse(response: Response): Response {
   return marked;
 }
 
+/**
+ * Every "this answer was not measured" counter, read as one value (#10270).
+ *
+ * There are three of them and they lived in three modules, so each place that
+ * wanted to know whether an answer was real had to remember the full list.
+ * `withEdgeCache` remembered two; the r2-sql one it never knew about at all,
+ * even though `src/r2-sql.ts` declares its counter with "same contract as the
+ * Postgres tier's fallback generation: a caller can snapshot this before a
+ * read and compare after". Nothing outside its own test file ever did --
+ * measured repo-wide, `currentR2SqlFailureGeneration` had zero production
+ * readers -- which is why `/accounts/{ss58}/counterparties` could answer
+ * `counterparty_count: 0, transfers_scanned: 0` with `ok: true` and no header
+ * while the lakehouse was rate-limited. That route's Postgres rung is
+ * `"retired"` in wrangler.jsonc, so the r2-sql read IS the tier; a signal
+ * nobody reads is the same as no signal.
+ */
+export interface DegradedSnapshot {
+  postgresTier: number;
+  r2Sql: number;
+  unmeasured: number;
+}
+
+export function degradedSnapshot(): DegradedSnapshot {
+  return {
+    postgresTier: currentPostgresTierFallbackGeneration(),
+    r2Sql: currentR2SqlFailureGeneration(),
+    unmeasured: unmeasuredGeneration,
+  };
+}
+
+/**
+ * What moved since `before`, split by how long it will stay true.
+ *
+ * TRANSIENT is a tier that failed or backed off -- a DATA_API subrequest that
+ * did not land, an r2-sql timeout, the account rate-limit breaker declining to
+ * ask. It will likely succeed on the next request, so the answer is labelled
+ * AND barred from the edge cache; persisting it would prolong the outage
+ * (#1760).
+ *
+ * UNMEASURED is a stable decline: a projection this route never precomputes,
+ * an artifact that is absent. Still labelled -- a caller must not read those
+ * zeros as measured -- but cacheable for the whole TTL, because it will answer
+ * the same way for the whole TTL (#10189).
+ */
+export function degradedSince(before: DegradedSnapshot): {
+  transient: boolean;
+  unmeasured: boolean;
+} {
+  const now = degradedSnapshot();
+  return {
+    transient:
+      now.postgresTier !== before.postgresTier || now.r2Sql !== before.r2Sql,
+    unmeasured: now.unmeasured !== before.unmeasured,
+  };
+}
+
+/**
+ * Label a response whose data tier declined while it was being served.
+ *
+ * Called from the router (`workers/api.ts`), which is the ONE point every
+ * route passes -- the same argument #9110 made for labelling inside
+ * `withEdgeCache` rather than in each handler, applied to the 71 tier-reading
+ * handlers in `workers/request-handlers/entities.ts` that #9110 never covered
+ * because not one of them uses `withEdgeCache`.
+ *
+ * HEADER ONLY, no cache-control rewrite. These routes have no server-side
+ * cache to poison -- measured live 2026-08-09, an api.metagraph.sh response
+ * carries no `cf-cache-status` at all, so the Workers Cache API inside
+ * `withEdgeCache` is the only cache in play and it makes its own decision from
+ * the same snapshot. Rewriting `cache-control` here would instead make every
+ * response in an isolate uncacheable for the length of an r2-sql cooldown,
+ * which is load amplification aimed at the exact condition the breaker exists
+ * to relieve.
+ *
+ * A 304 is skipped: the caller already holds the body its ETag names, and
+ * there is nothing in a 304 to mislabel. A response that already carries the
+ * header is left alone rather than re-set, so a handler that classified its
+ * own degradation keeps its own wording.
+ *
+ * IN PLACE, returning nothing, which is a deliberate difference from
+ * `withDegradedHeader`'s copy-on-immutable fallback. The one response class
+ * with immutable headers is a body read back out of the edge cache, and
+ * `withEdgeCache` only ever stored a MEASURED answer there -- so a throw here
+ * means a concurrent request degraded while this one was served from cache,
+ * and relabelling a known-good cached body on that evidence would be the false
+ * positive rather than the catch. Swallowing it is the correct answer, not the
+ * convenient one. Mutating also keeps the router's return type exactly what
+ * the dispatch inferred, so the label costs no signature change at ~40 return
+ * sites.
+ */
+export function labelDegradedResponse(
+  response: Response,
+  before: DegradedSnapshot,
+): void {
+  if (response.status !== 200) return;
+  if (response.headers.has(DEGRADED_HEADER)) return;
+  const moved = degradedSince(before);
+  if (!moved.transient && !moved.unmeasured) return;
+  try {
+    response.headers.set(DEGRADED_HEADER, DEGRADED_TIER_UNAVAILABLE);
+  } catch {
+    // An immutable-headers response: see above.
+  }
+}
+
 async function analyticsMeta(
   env: Env,
   artifactPath: string,
@@ -468,8 +574,7 @@ export async function withEdgeCache(
         : hit;
     }
   }
-  const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
-  const unmeasuredBefore = unmeasuredGeneration;
+  const before = degradedSnapshot();
   const built = await buildResponse(cacheRequest);
   // #9110: the generation counter already told us the tier degraded while this
   // request was being served -- it is what suppresses caching two lines down.
@@ -486,19 +591,24 @@ export async function withEdgeCache(
   // this one too. That is the same trade the cache-suppression below already
   // makes, and it errs the safe way: a false "degraded" makes good data look
   // suspect, where the bug it replaces made missing data look measured.
+  //
+  // #10270: the r2-sql counter joined the two this used to read by name. It
+  // was declared for exactly this comparison and had no reader -- see
+  // `degradedSnapshot`. The suppression below is what it was declared FOR: an
+  // r2-sql decline is a 60s account-wide breaker, and caching its empty answer
+  // for the full TTL outlives the condition that produced it.
+  const moved = degradedSince(before);
   const degraded =
-    POSTGRES_TIER_FALLBACK_RESPONSES.has(built) ||
-    currentPostgresTierFallbackGeneration() !== pgFallbackGeneration;
+    POSTGRES_TIER_FALLBACK_RESPONSES.has(built) || moved.transient;
   // #10189: an unmeasured answer is labelled but NOT made uncacheable. See
   // `unmeasured` above for why the two signals have to be separate -- a
   // projection decline is stable for the whole TTL, where a tier failure is
   // transient and caching it would prolong the outage.
-  const unmeasuredAnswer = unmeasuredGeneration !== unmeasuredBefore;
   const labelled = built.status === 200 && !built.headers.has(DEGRADED_HEADER);
   let response = built;
   if (labelled && degraded) {
     response = markPostgresTierFallbackResponse(built);
-  } else if (labelled && unmeasuredAnswer) {
+  } else if (labelled && moved.unmeasured) {
     response = withDegradedHeader(built);
   }
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
@@ -508,7 +618,7 @@ export async function withEdgeCache(
     cacheKey &&
     response.status === 200 &&
     !POSTGRES_TIER_FALLBACK_RESPONSES.has(response) &&
-    currentPostgresTierFallbackGeneration() === pgFallbackGeneration
+    !moved.transient
   ) {
     ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   }
