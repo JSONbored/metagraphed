@@ -306,7 +306,24 @@ export function emitTypes(): EmittedTypes {
       return GraphQLString;
     }
 
-    if (node.type === "integer") return GraphQLInt;
+    // An INSTANT is a Float, not an Int. GraphQL's Int is 32-bit and every
+    // epoch-millisecond value overflows it -- 1786228205841 against a ceiling
+    // of 2147483647 -- so a non-null one nulls its whole parent list on every
+    // request. The hand-written SDL did exactly that on
+    // `EndpointIncidentWindow.started_at`/`ended_at`, unnoticed until #10215
+    // executed the fields; this is the rule that stops the generated SDL
+    // reintroducing it.
+    //
+    // Keyed on the NAME because the type cannot tell: `z.int()` stamps the JS
+    // safe-integer ceiling on every integer, count and instant alike, so
+    // "maximum exceeds Int32" is true of all of them. `_at` on an integer
+    // means an epoch value on this surface -- verified: the two that exist are
+    // the two that were broken. A DURATION (`duration_ms`, `age_ms`) is a span
+    // rather than an instant and stays an Int unless it is separately declared
+    // beyond the range.
+    if (node.type === "integer") {
+      return /_at$/.test(fallbackName) ? GraphQLFloat : GraphQLInt;
+    }
     if (node.type === "number") return GraphQLFloat;
     if (node.type === "boolean") return GraphQLBoolean;
     if (node.type === "string") return GraphQLString;

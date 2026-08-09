@@ -1,0 +1,69 @@
+name: Check GraphQL conformance
+
+# Does the GraphQL surface ANSWER? (#10215)
+#
+# MCP has check-mcp-conformance.yml, REST has check-response-conformance.yml.
+# GraphQL had neither: everything asserted about its 194 Query fields was
+# static -- the SDL compared to openapi.json offline -- and nothing had ever
+# executed a query against production and looked at the answer.
+#
+# A static gate cannot see a field that resolves to null, a field that answers a
+# confident zero, or a resolver that throws. All three are valid shapes.
+# DomainSummary.emission_concentration was the first: declared Float against a
+# 12-key object, so graphql-js coerced it to null on all 14 domains, and the
+# SDL's own comment defined that null as "the domain has no members". It was
+# found by reading, not by running. #10246 was the second: chain_transfers
+# reported 0 while its REST twin reported 2,859,197 in the same second.
+#
+# Out of band rather than in CI, for the same reason its two siblings are: it
+# needs production data, and a check that cannot run on a pull request should
+# not pretend to.
+on:
+  schedule:
+    # Daily, offset from check-mcp-conformance's 07:17 and
+    # check-response-conformance's 06:41 so the three are not sweeping the same
+    # Worker at once.
+    - cron: "53 7 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-graphql-conformance
+  cancel-in-progress: false
+
+jobs:
+  conformance:
+    name: Execute every Query field against production
+    runs-on: ubuntu-latest
+    # 192 fields at ~0.9s spacing plus a REST read for each of the ~184 that
+    # name the route they mirror is ~6 minutes; the ceiling leaves room for
+    # rate-limit backoff without letting a hung fetch hold a runner all day.
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Execute every Query field against production
+        run: |
+          node scripts/check-graphql-conformance.ts | tee graphql-conformance.log
+          {
+            echo '## GraphQL conformance'
+            echo '```'
+            cat graphql-conformance.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
