@@ -87,6 +87,7 @@ import { buildChainTransferPairs } from "../../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import { buildChainServing } from "../../src/chain-serving.ts";
 import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
+import { loadChainPrometheusColdTier } from "../../src/chain-prometheus-loader.ts";
 import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
 import { buildChainRegistrations } from "../../src/chain-registrations.ts";
 import { buildChainDeregistrations } from "../../src/chain-deregistrations.ts";
@@ -2166,6 +2167,14 @@ export async function handleChainPrometheus(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainPrometheus> | null) ??
+        // The rung this route never had (#10248). Its axon twin has read the
+        // lakehouse rollup here since #9216; prometheus fell straight from a
+        // tier that always misses to the empty stub, so it published a
+        // confident zero no amount of curation could have fixed.
+        (await loadChainPrometheusColdTier(
+          env as unknown as Parameters<typeof loadChainPrometheusColdTier>[0],
+          { window: label, limit },
+        )) ??
         buildChainPrometheus([], {
           window: label,
           limit,

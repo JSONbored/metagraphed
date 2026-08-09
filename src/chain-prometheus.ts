@@ -155,9 +155,19 @@ export function buildChainPrometheus(
     window,
     limit = CHAIN_PROMETHEUS_LIMIT_DEFAULT,
     networkDistinct,
+    subnetCount,
   }: {
     window?: string | null;
     limit?: number;
+    /**
+     * How many subnets the WINDOW covers, from the loader's own count.
+     *
+     * `subnets.length` is the RETURNED PAGE, so without this a `limit` of 20
+     * publishes `subnet_count: 20` for a window covering 128 -- a truncation
+     * reported as a measurement. Mirrors buildChainServing's parameter of the
+     * same name; the two cards are twins and had drifted on exactly this.
+     */
+    subnetCount?: number | null;
     networkDistinct?: {
       distinct_exporters?: unknown;
       newest_observed?: unknown;
@@ -243,7 +253,7 @@ export function buildChainPrometheus(
     schema_version: 1,
     window: window ?? null,
     observed_at: observedAt,
-    subnet_count: subnets.length,
+    subnet_count: subnetCount ?? subnets.length,
     network,
     // Distribution of per-subnet re-announcement intensity over EVERY subnet (not just the
     // returned page), so the spread is network-wide even when `limit` truncates the leaderboard.

@@ -61,6 +61,17 @@ export const CHAIN_SERVING_ROLLUP: ChainEventRollupSpec = {
   distinctColumn: "hotkey",
 };
 
+// PrometheusServed is AxonServed's twin -- the pallet emits both as
+// (netuid, hotkey) from the same serving.rs -- so it rolls up identically.
+// It had no spec at all, which is why /chain/prometheus had no cold-tier rung
+// to fall to and answered a permanent zero beside a live axon card (#10248).
+export const CHAIN_PROMETHEUS_ROLLUP: ChainEventRollupSpec = {
+  eventKind: "PrometheusServed",
+  countField: "announcements",
+  distinctField: "distinct_exporters",
+  distinctColumn: "hotkey",
+};
+
 export const CHAIN_WEIGHTS_ROLLUP: ChainEventRollupSpec = {
   eventKind: "WeightsSet",
   countField: "weight_sets",

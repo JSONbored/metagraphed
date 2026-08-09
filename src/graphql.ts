@@ -566,6 +566,7 @@ import {
 } from "../workers/config.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadChainPrometheusColdTier } from "./chain-prometheus-loader.ts";
 import {
   accountSummaryGapMessage,
   answerAccountSummary,
@@ -8301,6 +8302,15 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/prometheus", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      // The same lakehouse rung REST and MCP now use (#10248). Wiring one
+      // surface and not the others is exactly the drift chain-serving-loader.ts
+      // was extracted to stop.
+      ((await loadChainPrometheusColdTier(
+        context.env as unknown as Parameters<
+          typeof loadChainPrometheusColdTier
+        >[0],
+        { window: requestedWindow, limit: safeLimit },
       )) as Row | null) ??
       buildChainPrometheus([], { window: requestedWindow, limit: safeLimit });
     return {
