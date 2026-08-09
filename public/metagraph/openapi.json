@@ -13404,7 +13404,7 @@
       },
       "AccountEntitiesArtifact": {
         "additionalProperties": {},
-        "description": "One coldkey's community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
+        "description": "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
         "properties": {
           "labels": {
             "items": {
@@ -13480,7 +13480,7 @@
           "ownership_ties": {
             "items": {
               "additionalProperties": {},
-              "description": "One SubnetOwnerChanged transfer tying this coldkey to a subnet, either as the gaining or losing side, newest first.",
+              "description": "One SubnetOwnerChanged transfer tying this `coldkey` to a subnet, either as the gaining or losing side, newest first.",
               "properties": {
                 "block_number": {
                   "anyOf": [
@@ -16563,7 +16563,7 @@
       },
       "AccountWeightSettersArtifact": {
         "additionalProperties": false,
-        "description": "One account's (validator hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
+        "description": "One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
         "properties": {
           "address": {
             "type": "string"
@@ -24009,7 +24009,7 @@
           },
           "network": {
             "additionalProperties": false,
-            "description": "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a coldkey once even when it moves on several subnets.",
+            "description": "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets.",
             "properties": {
               "distinct_movers": {
                 "maximum": 9007199254740991,
@@ -24192,7 +24192,7 @@
           },
           "network": {
             "additionalProperties": false,
-            "description": "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin coldkey once even when it transfers out of several subnets.",
+            "description": "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets.",
             "properties": {
               "distinct_senders": {
                 "maximum": 9007199254740991,
@@ -26107,7 +26107,7 @@
                   "anyOf": [
                     {
                       "additionalProperties": false,
-                      "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey.",
+                      "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a `coldkey`.",
                       "properties": {
                         "additional": {
                           "anyOf": [
@@ -26214,7 +26214,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape."
+                  "description": "The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape."
                 },
                 "hotkey": {
                   "type": "string"
@@ -32725,7 +32725,7 @@
                   "anyOf": [
                     {
                       "additionalProperties": false,
-                      "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey.",
+                      "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a `coldkey`.",
                       "properties": {
                         "additional": {
                           "anyOf": [
@@ -46081,7 +46081,7 @@
       },
       "SubnetHolder": {
         "additionalProperties": false,
-        "description": "One coldkey's holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet.",
+        "description": "One `coldkey`'s holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet.",
         "properties": {
           "alpha": {
             "description": "ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO.",
@@ -46102,7 +46102,7 @@
                 "type": "null"
               }
             ],
-            "description": "Distinct hotkeys this coldkey holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses."
+            "description": "Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses."
           },
           "share_of_total": {
             "anyOf": [
@@ -54752,7 +54752,7 @@
             "anyOf": [
               {
                 "additionalProperties": false,
-                "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey.",
+                "description": "Self-reported on-chain identity (SubtensorModule::set_identity) for a `coldkey`.",
                 "properties": {
                   "additional": {
                     "anyOf": [
@@ -55495,7 +55495,7 @@
           "points": {
             "items": {
               "additionalProperties": false,
-              "description": "One day's rollup for a validator hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too.",
+              "description": "One day's rollup for a validator's hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too.",
               "properties": {
                 "consensus": {
                   "anyOf": [
@@ -55783,7 +55783,7 @@
           "nominators": {
             "items": {
               "additionalProperties": false,
-              "description": "One nominating coldkey's staking activity toward a validator within the window.",
+              "description": "One nominating `coldkey`'s staking activity toward a validator within the window.",
               "properties": {
                 "coldkey": {
                   "type": "string"
@@ -55807,7 +55807,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "Most recent StakeAdded/StakeRemoved time for this coldkey; null when unstamped."
+                  "description": "Most recent StakeAdded/StakeRemoved time for this `coldkey`; null when unstamped."
                 },
                 "net_staked_tao": {
                   "description": "staked_tao - unstaked_tao.",

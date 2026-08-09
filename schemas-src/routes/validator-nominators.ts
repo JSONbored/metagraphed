@@ -38,12 +38,12 @@ const ValidatorNominatorEntrySchema = z
       .string()
       .nullable()
       .describe(
-        "Most recent StakeAdded/StakeRemoved time for this coldkey; null when unstamped.",
+        "Most recent StakeAdded/StakeRemoved time for this `coldkey`; null when unstamped.",
       ),
   })
   .strict()
   .describe(
-    "One nominating coldkey's staking activity toward a validator within the window.",
+    "One nominating `coldkey`'s staking activity toward a validator within the window.",
   );
 
 export const ValidatorNominatorsArtifactSchema = z

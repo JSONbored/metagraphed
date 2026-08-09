@@ -40,12 +40,12 @@ export const SubnetHolderSchema = z
       .min(0)
       .nullable()
       .describe(
-        "Distinct hotkeys this coldkey holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses.",
+        "Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses.",
       ),
   })
   .strict()
   .describe(
-    "One coldkey's holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet.",
+    "One `coldkey`'s holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet.",
   );
 
 export const SubnetHoldersConcentrationSchema = z

@@ -310,7 +310,7 @@ export const ChainStakeMovesArtifactSchema = z
       })
       .strict()
       .describe(
-        "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a coldkey once even when it moves on several subnets.",
+        "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets.",
       ),
     intensity_distribution: IntensityDistributionSchema.nullable(),
     subnets: z.array(
@@ -356,7 +356,7 @@ export const ChainStakeTransfersArtifactSchema = z
       })
       .strict()
       .describe(
-        "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin coldkey once even when it transfers out of several subnets.",
+        "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets.",
       ),
     intensity_distribution: IntensityDistributionSchema.nullable(),
     subnets: z.array(

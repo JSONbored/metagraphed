@@ -65,7 +65,7 @@ const ValidatorHistoryPointSchema = z
   })
   .strict()
   .describe(
-    "One day's rollup for a validator hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too.",
+    "One day's rollup for a validator's hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too.",
   );
 
 export const ValidatorHistoryArtifactSchema = z

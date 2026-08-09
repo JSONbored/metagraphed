@@ -148,7 +148,7 @@ export const AccountWeightSettersArtifactSchema = z
   })
   .strict()
   .describe(
-    "One account's (validator hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
+    "One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
   );
 export type AccountWeightSettersArtifact = z.infer<
   typeof AccountWeightSettersArtifactSchema

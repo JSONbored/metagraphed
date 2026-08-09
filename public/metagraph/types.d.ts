@@ -4964,7 +4964,7 @@ export interface components {
             total_deregistrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
-        /** @description One coldkey's community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
+        /** @description One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
         AccountEntitiesArtifact: {
             labels: ({
                 category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
@@ -5476,7 +5476,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One account's (validator hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters. */
+        /** @description One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters. */
         AccountWeightSettersArtifact: {
             address: string;
             /** @description Herfindahl-Hirschman index of weight-sets across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no weight-sets. */
@@ -6843,7 +6843,7 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a coldkey once even when it moves on several subnets. */
+            /** @description Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets. */
             network: {
                 distinct_movers: number;
                 movements: number;
@@ -6873,7 +6873,7 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @description Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin coldkey once even when it transfers out of several subnets. */
+            /** @description Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets. */
             network: {
                 distinct_senders: number;
                 transfers: number;
@@ -7198,7 +7198,7 @@ export interface components {
                 apy_estimate_eligible_subnet_count: number;
                 avg_validator_trust: number | null;
                 coldkey: string | null;
-                /** @description The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape. */
+                /** @description The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape. */
                 coldkey_identity: {
                     additional: string | null;
                     captured_at: string | null;
@@ -11014,12 +11014,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description One coldkey's holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet. */
+        /** @description One `coldkey`'s holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet. */
         SubnetHolder: {
             /** @description ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO. */
             alpha: number;
             coldkey: string;
-            /** @description Distinct hotkeys this coldkey holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
+            /** @description Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
             hotkey_count: number | null;
             /** @description This holder's alpha over the subnet's FULL measured total, so it means the same thing at limit 5 and limit 100. Null when the total is zero. */
             share_of_total: number | null;
@@ -12668,7 +12668,7 @@ export interface components {
                 event_count: number;
                 /** @description staked_tao + unstaked_tao (total churn, regardless of direction). */
                 gross_staked_tao: number;
-                /** @description Most recent StakeAdded/StakeRemoved time for this coldkey; null when unstamped. */
+                /** @description Most recent StakeAdded/StakeRemoved time for this `coldkey`; null when unstamped. */
                 last_observed_at: string | null;
                 /** @description staked_tao - unstaked_tao. */
                 net_staked_tao: number;

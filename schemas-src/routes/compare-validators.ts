@@ -15,7 +15,7 @@ export const CompareValidatorEntrySchema = z
     hotkey: z.string(),
     coldkey: z.string().nullable(),
     coldkey_identity: ColdkeyIdentitySchema.nullable().describe(
-      "The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape.",
+      "The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape.",
     ),
     take: z.number().nullable(),
     apy_estimate: z.number().min(0).nullable(),

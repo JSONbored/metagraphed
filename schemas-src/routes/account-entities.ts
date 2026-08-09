@@ -56,13 +56,13 @@ export const AccountEntitiesArtifactSchema = z
         })
         .passthrough()
         .describe(
-          "One SubnetOwnerChanged transfer tying this coldkey to a subnet, either as the gaining or losing side, newest first.",
+          "One SubnetOwnerChanged transfer tying this `coldkey` to a subnet, either as the gaining or losing side, newest first.",
         ),
     ),
   })
   .passthrough()
   .describe(
-    "One coldkey's community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
+    "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
   );
 export type AccountEntitiesArtifact = z.infer<
   typeof AccountEntitiesArtifactSchema
