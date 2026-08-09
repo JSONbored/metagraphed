@@ -45,6 +45,11 @@ import { RPC_USAGE_DATASET } from "./rpc-usage-capture.ts";
  * real detection lands 2-3 hours after a writer stops, against the day-plus
  * this outage actually ran for.
  */
+// NOT DERIVED FROM THE PRODUCER'S CADENCE, deliberately -- see
+// src/producer-cadence.ts. The 2h is a MEASURED traffic floor (103
+// consecutive hours, quietest 600 requests) plus one tick of the HOURLY
+// WATCHDOG cron -- a different clock from the producer's. Left explicit so the
+// exception is recorded rather than inferred.
 export const RPC_USAGE_STALENESS_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
 /** How far back the freshness query looks. Bounded so a lane that has been
