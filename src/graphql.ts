@@ -268,6 +268,10 @@ import {
 import { loadGlobalIncidentsLedger } from "../workers/request-handlers/analytics.ts";
 import { validateRouteArgs } from "./route-query.ts";
 import {
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+} from "./route-limits.ts";
+import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
   FEED_PAGINATION,
@@ -2818,10 +2822,17 @@ const rootValue = {
     { limit }: QueryChain_Identity_HistoryArgs,
     context: GqlContext,
   ) {
-    // Same FEED_PAGINATION clamp REST applies. This chain-wide feed is
-    // limit-only (no offset/cursor) -- the network view returns the most-recent
-    // changes across every subnet in one pass.
-    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    // The ROUTE's page size, not the generic feed profile. This resolver
+    // clamped against FEED_PAGINATION -- default 100, cap 1000 -- while
+    // /api/v1/chain/identity-history publishes 50/200, so the two surfaces
+    // answered the same question with different pages: 100 changes across 88
+    // subnets over GraphQL against 50 across 45 over REST, in the same second
+    // (#10215). This feed is limit-only (no offset/cursor); the network view
+    // returns the most-recent changes across every subnet in one pass.
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+      maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+    });
     const params = new URLSearchParams();
     params.set("limit", String(safeLimit));
     // D1 retirement: subnet_identity_history's D1 write path is retired

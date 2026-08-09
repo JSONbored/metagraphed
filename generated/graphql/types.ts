@@ -2248,12 +2248,24 @@ export type EndpointIncident = {
   user_reported?: Maybe<Scalars['Boolean']['output']>;
 };
 
+/**
+ * One reconstructed outage window.
+ *
+ * `started_at` and `ended_at` are epoch MILLISECONDS, which is why they are
+ * Float and not Int: GraphQL's Int is 32-bit and every real value overflows it
+ * (1786228205841 against a ceiling of 2147483647). Every incident window on
+ * `incidents`, `global_incidents` and `subnet_health_incidents` therefore
+ * errored, and because both fields are non-null the error propagated up and
+ * nulled the surrounding list -- on every request, since the surface shipped.
+ * Nothing had executed these fields (#10215). `duration_ms` is a span rather
+ * than an instant and stays an Int.
+ */
 export type EndpointIncidentWindow = {
   __typename?: 'EndpointIncidentWindow';
   duration_ms: Scalars['Int']['output'];
-  ended_at: Scalars['Int']['output'];
+  ended_at: Scalars['Float']['output'];
   failed_samples: Scalars['Int']['output'];
-  started_at: Scalars['Int']['output'];
+  started_at: Scalars['Float']['output'];
 };
 
 export type EndpointList = {
@@ -5006,11 +5018,26 @@ export type SelfHealthDay = {
   uptime_ratio: Scalars['Float']['output'];
 };
 
+/**
+ * One ingest lane's staleness verdict.
+ *
+ * Three of these five were declared non-null against a Zod schema that says
+ * otherwise, and production proved it: `self_health` returned
+ * `Cannot return null for non-nullable field SelfHealthLane.detail` and nulled
+ * the whole `lanes` list. `age_ms` and `checked_at` are null for the same
+ * reason -- the watchdog could not measure the lane, which is the "we did not
+ * measure" this type exists to distinguish from "the lane is fine" (#10215).
+ *
+ * `age_ms` is a Float because it is a duration in MILLISECONDS: a lane stale
+ * for more than 24.8 days exceeds GraphQL's 32-bit Int, and the answer to
+ * "how far behind is this lane" must not stop being representable exactly when
+ * it starts to matter.
+ */
 export type SelfHealthLane = {
   __typename?: 'SelfHealthLane';
-  age_ms: Scalars['Int']['output'];
-  checked_at: Scalars['String']['output'];
-  detail: Scalars['String']['output'];
+  age_ms?: Maybe<Scalars['Float']['output']>;
+  checked_at?: Maybe<Scalars['String']['output']>;
+  detail?: Maybe<Scalars['String']['output']>;
   lane: Scalars['String']['output'];
   verdict: Scalars['String']['output'];
 };
@@ -9038,9 +9065,9 @@ export type EndpointIncidentResolvers<ContextType = GqlContext, ParentType exten
 
 export type EndpointIncidentWindowResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointIncidentWindow'] = ResolversParentTypes['EndpointIncidentWindow']> = ResolversObject<{
   duration_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  ended_at?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ended_at?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   failed_samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  started_at?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  started_at?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type EndpointListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointList'] = ResolversParentTypes['EndpointList']> = ResolversObject<{
@@ -10004,9 +10031,9 @@ export type SelfHealthDayResolvers<ContextType = GqlContext, ParentType extends 
 }>;
 
 export type SelfHealthLaneResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SelfHealthLane'] = ResolversParentTypes['SelfHealthLane']> = ResolversObject<{
-  age_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  checked_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  detail?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  age_ms?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  checked_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  detail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   lane?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   verdict?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;

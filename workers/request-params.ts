@@ -4,11 +4,11 @@
 // `cursor` with its own inline `clampInt(...)` calls and literal bounds, so the
 // caps drifted between handlers (and a fix in one route never reached the others).
 // This module is the single place those rules live: the absolute bounds are named
-// constants, the per-route page-size pairs are named profiles, and `parsePagination`
-// returns the same `{ limit, offset, cursor }` shape for every handler -- or a
-// ParamError, since an out-of-range `limit` is rejected rather than clamped (#9916). The raw
-// `clampLimit`/`clampOffset` primitives let the shared D1 loaders + MCP tools clamp
-// identically off plain values (they never see a URL).
+// constants and the per-route page-size pairs are named profiles. The URL
+// parsers that used to live here went with #10218 -- see the note below the
+// profiles -- leaving the `clampLimit`/`clampOffset` primitives, which let the
+// shared D1 loaders and MCP tools clamp identically off plain values (they
+// never see a URL).
 //
 // Import-free apart from `clampInt`, so it stays a leaf the request handlers and
 // the src/* loaders can both depend on without a cycle.

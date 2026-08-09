@@ -322,7 +322,8 @@ function filterRows(
 // Inclusive numeric range filter: for each configured field F, `?min_F=` keeps
 // rows where row[F] >= n and `?max_F=` keeps rows where row[F] <= n. A row whose
 // F is absent / non-numeric can't satisfy a bound, so it is excluded once any
-// bound on F is set. Validation (validateListQuery) has already confirmed every
+// bound on F is set. Validation (the router's single parse, #10218) has
+// already confirmed every
 // present min_/max_ param is a finite number, so Number() here is safe.
 /**
  * `?min_F=9&max_F=2` -- a range that can match nothing, on purpose or by typo.

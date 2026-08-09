@@ -5298,12 +5298,27 @@ export const SDL = /* GraphQL */ `
     url: String!
   }
 
+  """
+  One ingest lane's staleness verdict.
+
+  Three of these five were declared non-null against a Zod schema that says
+  otherwise, and production proved it: \`self_health\` returned
+  \`Cannot return null for non-nullable field SelfHealthLane.detail\` and nulled
+  the whole \`lanes\` list. \`age_ms\` and \`checked_at\` are null for the same
+  reason -- the watchdog could not measure the lane, which is the "we did not
+  measure" this type exists to distinguish from "the lane is fine" (#10215).
+
+  \`age_ms\` is a Float because it is a duration in MILLISECONDS: a lane stale
+  for more than 24.8 days exceeds GraphQL's 32-bit Int, and the answer to
+  "how far behind is this lane" must not stop being representable exactly when
+  it starts to matter.
+  """
   type SelfHealthLane {
     lane: String!
     verdict: String!
-    age_ms: Int!
-    detail: String!
-    checked_at: String!
+    age_ms: Float
+    detail: String
+    checked_at: String
   }
 
   type RuntimeCoverageGap {
@@ -5337,9 +5352,21 @@ export const SDL = /* GraphQL */ `
     latest_stake_event_at: String!
   }
 
+  """
+  One reconstructed outage window.
+
+  \`started_at\` and \`ended_at\` are epoch MILLISECONDS, which is why they are
+  Float and not Int: GraphQL's Int is 32-bit and every real value overflows it
+  (1786228205841 against a ceiling of 2147483647). Every incident window on
+  \`incidents\`, \`global_incidents\` and \`subnet_health_incidents\` therefore
+  errored, and because both fields are non-null the error propagated up and
+  nulled the surrounding list -- on every request, since the surface shipped.
+  Nothing had executed these fields (#10215). \`duration_ms\` is a span rather
+  than an instant and stays an Int.
+  """
   type EndpointIncidentWindow {
-    started_at: Int!
-    ended_at: Int!
+    started_at: Float!
+    ended_at: Float!
     duration_ms: Int!
     failed_samples: Int!
   }
