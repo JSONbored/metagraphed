@@ -3663,8 +3663,23 @@ async function rankSubnetsForTask(
   return { mode: "keyword", ranked };
 }
 
-function validateToolArguments(tool: Row, args: Row) {
-  if (args === undefined || args === null) return {};
+/**
+ * The arguments a handler actually receives, from the ones a caller sent.
+ *
+ * EXPORTED for `tests/mcp-published-default.test.ts`, which drives all 230
+ * tools through it. This is the one place every `tools/call` passes on its way
+ * to a handler -- intent stripped, `limit` clamped to the published ceiling,
+ * omitted arguments filled from the published defaults -- so a gate that runs
+ * here covers every tool at once, where a gate per handler covers whichever
+ * ones somebody remembered.
+ */
+export function validateToolArguments(tool: Row, args: Row) {
+  // `arguments` absent entirely is the same request as `arguments: {}` -- the
+  // caller supplied nothing either way, so it must resolve to the same defaults
+  // rather than to a bare {}. Returning early here is how the omitted-argument
+  // path skipped them (#10306).
+  if (args === undefined || args === null)
+    return applyPublishedDefaults(tool, {});
   if (
     typeof args !== "object" ||
     Array.isArray(args) ||
@@ -3684,7 +3699,56 @@ function validateToolArguments(tool: Row, args: Row) {
   // merely a courtesy: several handlers forward their whole argument object
   // into a query builder or an upstream call, where an unexpected key becomes
   // a filter, a cache-key difference, or a 400 from someone else's API.
-  return clampPublishedLimit(tool, splitMcpIntent(args).rest);
+  return applyPublishedDefaults(
+    tool,
+    clampPublishedLimit(tool, splitMcpIntent(args).rest),
+  );
+}
+
+/**
+ * Fill every omitted argument the tool PUBLISHES a default for (#10306).
+ *
+ * A tool that advertises `"default": 100` and then serves nothing is lying to
+ * its caller, and two tools were:
+ *
+ *   get_subnet_identity_history   publishes 100   served entry_count 0
+ *   get_chain_subnet_lifecycle    publishes  50   served 100
+ *
+ * The first is a confident zero in the #9803 sense -- `entry_count: 0` with no
+ * degraded marker reads as "this subnet has never changed its identity", and
+ * SN64 changed it on 2026-07-11. Passing `limit` explicitly returned the row,
+ * so the handler was fine and nothing was applying the default.
+ *
+ * WHY HERE. #10096 made the published `default` the single source for REST:
+ * `limitSchema(max, fallback)` records it in `.meta({default})` and
+ * `routeValue(url, name)` reads it back, so a handler cannot restate it. MCP
+ * dispatch does no schema validation -- a settled decision (#8942) and not
+ * revisited here -- and therefore never consulted that default, leaving each
+ * handler to apply its own or none. 137 of 230 tools publish at least one
+ * default; the two above are just where the divergence was visible.
+ *
+ * Reading the TOOL'S OWN inputSchema, not the route's, because the tool is what
+ * the caller was promised. Several tools deliberately publish a narrower page
+ * than their route (#9701, sized to a context window), and honouring the route
+ * there would serve a page the tool never advertised.
+ *
+ * This is not validation. It supplies a value the caller was already told they
+ * would get for omitting the argument -- the same thing `pageLimit` does on the
+ * REST side, at the one place every tools/call passes through rather than in
+ * the 230 handlers behind it.
+ */
+function applyPublishedDefaults(tool: Row, args: Row): Row {
+  const properties = tool.inputSchema?.properties as
+    Record<string, Row> | undefined;
+  if (!properties) return args;
+  let filled: Row | null = null;
+  for (const [name, schema] of Object.entries(properties)) {
+    if (schema?.default === undefined) continue;
+    if (args[name] !== undefined) continue;
+    filled ??= { ...args };
+    filled[name] = schema.default;
+  }
+  return filled ?? args;
 }
 
 /**
