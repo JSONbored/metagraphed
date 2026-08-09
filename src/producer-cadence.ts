@@ -69,6 +69,17 @@ export const PRODUCER_CADENCE_SECS = {
   metagraph: 900,
   /** The top-holders flow materialization, rebuilt daily. */
   top_holders_flow: 86_400,
+  /**
+   * ACCOUNT_IDENTITY_POLL_SECS. Twenty-four hours, and its absence from this
+   * table is what let `TABLE_FRESHNESS` bound the table it writes at TWELVE --
+   * half a tick, so a healthy lane read `stale` for the back half of every
+   * cycle (#10329). Measured 2026-08-09: `account_identity` 21.6h old, the
+   * lane's own verdict for that pass `ok | 129 scanned, 456 written`.
+   */
+  account_identity: 86_400,
+  /** SUBNET_HYPERPARAMS_POLL_SECS. Hourly, the fastest of the poller's
+   * non-firehose lanes; observed writing at :05 every hour. */
+  subnet_hyperparams: 3_600,
 } as const;
 
 export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;

@@ -34,6 +34,7 @@ import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
 import { neonOwnsTable } from "./neon-write.ts";
+import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 
 /** This watchdog's own lane. */
 export const TABLE_FRESHNESS_LANE = "table-freshness";
@@ -50,6 +51,22 @@ export interface FreshnessExpectation {
   maxAgeMs: number | null;
   /** Why that number, or why null. Read by whoever gets the alarm. */
   reason: string;
+  /**
+   * The producer whose cadence this bound is derived from, when it is.
+   *
+   * DECLARED so the relationship can be CHECKED. `maxAgeMs` alone cannot be
+   * audited -- 12 hours is either generous or guaranteed-to-alarm depending
+   * entirely on a number that used to live only in prose, and #10329 is the
+   * case where it was the second one. With the producer named,
+   * tests/table-freshness-cadence.test.ts can assert every derived bound
+   * clears one full tick, which is the rule this map's own header states.
+   *
+   * Absent for the crons and the measured bounds -- `chain-detail` is sized
+   * against a DOWNSTREAM consumer's lag and `rpc-usage` against a traffic
+   * floor, so naming a producer there would assert a derivation that does not
+   * exist.
+   */
+  producer?: ProducerLane;
   /** An open issue explaining a table that is ALREADY breaching, so the alarm
    * points somewhere instead of merely being loud. */
   knownIssue?: string;
@@ -128,31 +145,46 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   },
 
   // --- the metagraph family: 15-minute producer --------------------------
+  //
+  // TICKS, NOT HOURS, for every poller-backed bound below (#10329). The rule
+  // this map states two paragraphs up -- "a threshold under one producer
+  // interval alarms forever" -- can only be checked against the interval, and
+  // the interval lived in `metagraphed-infra` and reached this file as prose.
+  // `account_identity` is what that cost: bounded at 12h against an 86,400s
+  // producer, so a working lane read `stale` for half of every cycle.
+  //
+  // `missedTicksMs` reads src/producer-cadence.ts, the same table the two
+  // staleness watchdogs already derive from, so the multiple is arithmetic a
+  // reader can verify and a cadence change moves every bound with it.
   neurons: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 2 * HOUR,
-    reason: "metagraph sync every 15 min",
+    maxAgeMs: missedTicksMs("metagraph", 8),
+    reason: "8 ticks of METAGRAPH_POLL_SECS (15 min)",
+    producer: "metagraph",
   },
   // Added by 0030 after this map was written -- the same coverage test that
   // caught 0029's two tables caught this one, which is what it is for.
   neurons_passes: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 2 * HOUR,
+    maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "written with neurons",
+    producer: "metagraph",
   },
   neuron_daily: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 2 * HOUR,
+    maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "derived from the same sync",
+    producer: "metagraph",
   },
   account_position_daily: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 2 * HOUR,
+    maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "derived from the same sync",
+    producer: "metagraph",
   },
   subnet_snapshots: {
     column: "captured_at",
@@ -160,43 +192,66 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: 4 * HOUR,
     reason: "health prober",
   },
+  // Twelve ticks is LOOSE, and stays that way on purpose: loose is the safe
+  // direction here, this lane carries its own `subnet-hyperparams` verdict,
+  // and #10232 now catches a silent lane by its own cadence regardless.
+  // Tightening it is a judgement about how fast a dead hyperparams lane must
+  // be noticed -- a separate question from fixing a false alarm.
   subnet_hyperparams: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 12 * HOUR,
-    reason: "hyperparams sync",
+    maxAgeMs: missedTicksMs("subnet_hyperparams", 12),
+    reason: "12 ticks of SUBNET_HYPERPARAMS_POLL_SECS (1h)",
+    producer: "subnet_hyperparams",
   },
+  // THE FIX. This read 12 hours against an 86,400s producer -- half a tick --
+  // so `table-freshness` reported `stale` for the back half of every cycle on
+  // a lane whose own verdict for the same pass was `ok | 129 scanned, 456
+  // written, 0 error(s)`. 2.5 ticks is what its 24-hour sibling hotkey_alpha
+  // already uses, so the two lanes on one cadence now share one ratio.
   account_identity: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 12 * HOUR,
-    reason: "identity sync",
+    maxAgeMs: missedTicksMs("account_identity", 2.5),
+    reason: "2.5 ticks of ACCOUNT_IDENTITY_POLL_SECS (24h)",
+    producer: "account_identity",
   },
 
-  // --- slow ledgers: 12h/30h/48h producers, measured 4.9-5.2h old ---------
+  // --- slow ledgers -------------------------------------------------------
+  //
+  // The header this replaced said "12h/30h/48h producers". NONE of those three
+  // numbers is a cadence this poller has: account_balances is 21,600s (6h),
+  // the nominator pair 86,400s (24h), hotkey_alpha 86,400s (24h). Every bound
+  // still landed somewhere safe, but the stated basis for each was a producer
+  // that does not exist -- and prose is what the next bound gets sized
+  // against, which is exactly how account_identity got its.
   account_balances: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 24 * HOUR,
-    reason: "12h producer; matches ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS x2",
+    maxAgeMs: missedTicksMs("account_balances", 4),
+    reason: "4 ticks of ACCOUNT_BALANCES_POLL_SECS (6h)",
+    producer: "account_balances",
   },
   account_balances_passes: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 24 * HOUR,
+    maxAgeMs: missedTicksMs("account_balances", 4),
     reason: "written with account_balances",
+    producer: "account_balances",
   },
   hotkey_alpha: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 60 * HOUR,
-    reason: "48h producer; HOTKEY_ALPHA_STALENESS_THRESHOLD_MS is 48h",
+    maxAgeMs: missedTicksMs("hotkey_alpha", 2.5),
+    reason: "2.5 ticks of HOTKEY_ALPHA_POLL_SECS (24h)",
+    producer: "hotkey_alpha",
   },
   hotkey_alpha_passes: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 60 * HOUR,
+    maxAgeMs: missedTicksMs("hotkey_alpha", 2.5),
     reason: "written with hotkey_alpha",
+    producer: "hotkey_alpha",
   },
   // Added by 0029 while this map was being written -- which is the coverage
   // test doing its job: a new table arrived and was unwatched until named.
@@ -205,26 +260,30 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   nominator_positions_passes: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 36 * HOUR,
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
     reason: "written with nominator_positions",
+    producer: "validator_nominators",
   },
   validator_nominator_counts_passes: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 36 * HOUR,
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
     reason: "written with validator_nominator_counts",
+    producer: "validator_nominators",
   },
   nominator_positions: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 36 * HOUR,
-    reason: "30h producer",
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
+    reason: "1.5 ticks of VALIDATOR_NOMINATORS_POLL_SECS (24h)",
+    producer: "validator_nominators",
   },
   validator_nominator_counts: {
     column: "captured_at",
     kind: "ms",
-    maxAgeMs: 36 * HOUR,
+    maxAgeMs: missedTicksMs("validator_nominators", 1.5),
     reason: "written with nominator_positions",
+    producer: "validator_nominators",
   },
 
   // --- probe/rollup lanes -------------------------------------------------
