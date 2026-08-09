@@ -124,6 +124,19 @@ export const ECONOMICS_FIELD_SOURCES = {
     storage: "SubtensorModule.SubnetMovingPrice",
     read_at: "chain_state.block",
   },
+  // Read in the same pinned sweep for the deregistration order (#10285), so
+  // an immunity verdict is computed against the block the registration height
+  // was read at rather than against a later tip.
+  registered_at_block: {
+    kind: "measured",
+    storage: "SubtensorModule.NetworkRegisteredAt",
+    read_at: "chain_state.block",
+  },
+  subnet_mechanism: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetMechanism",
+    read_at: "chain_state.block",
+  },
   registration_allowed_pinned: {
     kind: "measured",
     storage: "SubtensorModule.NetworkRegistrationAllowed",
@@ -217,6 +230,8 @@ export const ECONOMICS_FIELD_SOURCES_LIVE_KV = {
   alpha_in_emission: pinned("SubtensorModule.SubnetAlphaInEmission"),
   alpha_out_emission: pinned("SubtensorModule.SubnetAlphaOutEmission"),
   moving_price_pinned: pinned("SubtensorModule.SubnetMovingPrice"),
+  registered_at_block: pinned("SubtensorModule.NetworkRegisteredAt"),
+  subnet_mechanism: pinned("SubtensorModule.SubnetMechanism"),
   registration_allowed_pinned: pinned(
     "SubtensorModule.NetworkRegistrationAllowed",
   ),

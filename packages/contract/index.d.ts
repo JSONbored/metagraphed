@@ -1728,6 +1728,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/deregistration-ranking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it. `Subtensor::get_network_to_prune()` skips root, skips every subnet still inside `NetworkRegisteredAt + NetworkImmunityPeriod`, compares `get_moving_alpha_price`, and breaks a tie on the EARLIER registration. TWO THINGS MAKE THIS NOT A PRICE SORT. First, immunity: measured at block 8,808,300, sixteen of 128 subnets were inside their window, and a price-only order puts netuid 86 at position one — it reads a moving price of exactly 0 but cannot be deregistered at all, while the chain's answer is netuid 70. Second, `get_moving_alpha_price` substitutes a FLAT 1.0 for a Stable subnet (`SubnetMechanism` 0) instead of reading `SubnetMovingPrice`, which moves it from the top of a price order to near the bottom; every mainnet subnet reads mechanism 1 today, so the clause is invisible until one sudo call makes it decisive. `ranked` holds only prunable subnets, rank 1 first. `immune` holds the protected ones ordered by how soon protection lapses — the order in which they join the ranking — carrying `immune_until_block` and `blocks_until_prunable`; ordering them by price would imply a pruning position they do not have. Each entry publishes `comparison_price` (what the pallet compares) beside `moving_price` (the raw read), so the Stable substitution is visible. Served live (no static file); 503 when the capture carries no pinned block or no immunity period, because an ordering computed without the immunity window is not an approximation — it is a different ordering that looks the same and would be believed. */
+        get: operations["deregistrationRanking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/deregistrations": {
         parameters: {
             query?: never;
@@ -7616,6 +7633,8 @@ export interface components {
                 emission_gate_bar: number | null;
                 /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
                 emission_gate_exponent: number | null;
+                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
+                network_immunity_period?: number | null;
                 total_issuance_tao: number;
             };
             contract_version?: string;
@@ -7669,12 +7688,16 @@ export interface components {
                 open_slots?: number | null;
                 owner_coldkey: string | null;
                 owner_hotkey: string | null;
+                /** @description SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one. */
+                registered_at_block?: number | null;
                 registration_allowed: boolean;
                 registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
                 /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
                 spot_price_tao?: number | null;
+                /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
+                subnet_mechanism?: number | null;
                 subnet_volume_tao: number | null;
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
@@ -7779,6 +7802,8 @@ export interface components {
                 emission_gate_bar: number | null;
                 /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
                 emission_gate_exponent: number | null;
+                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
+                network_immunity_period?: number | null;
                 total_issuance_tao: number;
             };
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -10651,6 +10676,61 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        SubnetDeregistrationRankingArtifact: {
+            /** @description The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
+            chain_state: {
+                block: number;
+                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
+                block_hash: string;
+                emission_bar_quantile: number | null;
+                /** @description theta. Null when the bar is unset, which disables the gate outright. */
+                emission_gate_bar: number | null;
+                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
+                emission_gate_exponent: number | null;
+                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
+                network_immunity_period?: number | null;
+                total_issuance_tao: number;
+            };
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            immune: {
+                blocks_until_prunable: number;
+                comparison_price: number;
+                immune: boolean;
+                immune_until_block: number | null;
+                moving_price: number | null;
+                netuid: number;
+                rank: number | null;
+                registered_at_block: number;
+                subnet_mechanism: number;
+            }[];
+            immune_count: number;
+            network_immunity_period: number;
+            next_to_deregister: number | null;
+            ranked: {
+                blocks_until_prunable: number;
+                comparison_price: number;
+                immune: boolean;
+                immune_until_block: number | null;
+                moving_price: number | null;
+                netuid: number;
+                rank: number | null;
+                registered_at_block: number;
+                subnet_mechanism: number;
+            }[];
+            ranked_count: number;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
         SubnetDeregistrationsArtifact: {
             /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
@@ -10820,12 +10900,16 @@ export interface components {
                 open_slots?: number | null;
                 owner_coldkey: string | null;
                 owner_hotkey: string | null;
+                /** @description SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one. */
+                registered_at_block?: number | null;
                 registration_allowed: boolean;
                 registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
                 /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
                 spot_price_tao?: number | null;
+                /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
+                subnet_mechanism?: number | null;
                 subnet_volume_tao: number | null;
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
@@ -16740,6 +16824,7 @@ export interface operations {
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
+                     *           "network_immunity_period": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
@@ -17995,11 +18080,13 @@ export interface operations {
                      *           "open_slots": 1,
                      *           "owner_coldkey": "example",
                      *           "owner_hotkey": "example",
+                     *           "registered_at_block": 5000000,
                      *           "registration_allowed": false,
                      *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "spot_price_tao": 0.5,
+                     *           "subnet_mechanism": 1,
                      *           "subnet_volume_tao": 0.5,
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
@@ -25321,6 +25408,150 @@ export interface operations {
             };
         };
     };
+    deregistrationRanking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "chain_state": {
+                     *           "block": 5000000,
+                     *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "emission_bar_quantile": 0.5,
+                     *           "emission_gate_bar": 0.5,
+                     *           "emission_gate_exponent": 1,
+                     *           "network_immunity_period": 1,
+                     *           "total_issuance_tao": 0.5
+                     *         },
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "immune": [
+                     *           {
+                     *             "blocks_until_prunable": 5000000,
+                     *             "comparison_price": 0.5,
+                     *             "immune": false,
+                     *             "immune_until_block": 5000000,
+                     *             "moving_price": 0.5,
+                     *             "netuid": 7,
+                     *             "rank": 1,
+                     *             "registered_at_block": 5000000,
+                     *             "subnet_mechanism": 1
+                     *           }
+                     *         ],
+                     *         "immune_count": 1,
+                     *         "network_immunity_period": 1,
+                     *         "next_to_deregister": 1,
+                     *         "ranked": [
+                     *           {
+                     *             "blocks_until_prunable": 5000000,
+                     *             "comparison_price": 0.5,
+                     *             "immune": false,
+                     *             "immune_until_block": 5000000,
+                     *             "moving_price": 0.5,
+                     *             "netuid": 7,
+                     *             "rank": 1,
+                     *             "registered_at_block": 5000000,
+                     *             "subnet_mechanism": 1
+                     *           }
+                     *         ],
+                     *         "ranked_count": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetDeregistrationRankingArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainDeregistrations: {
         parameters: {
             query?: {
@@ -25522,6 +25753,7 @@ export interface operations {
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
+                     *           "network_immunity_period": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "field_sources": {
@@ -30027,6 +30259,7 @@ export interface operations {
                      *           "emission_bar_quantile": 0.5,
                      *           "emission_gate_bar": 0.5,
                      *           "emission_gate_exponent": 1,
+                     *           "network_immunity_period": 1,
                      *           "total_issuance_tao": 0.5
                      *         },
                      *         "contract_version": "2026-06-29.1",
@@ -38488,11 +38721,13 @@ export interface operations {
                      *           "open_slots": 1,
                      *           "owner_coldkey": "example",
                      *           "owner_hotkey": "example",
+                     *           "registered_at_block": 5000000,
                      *           "registration_allowed": false,
                      *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
                      *           "spot_price_tao": 0.5,
+                     *           "subnet_mechanism": 1,
                      *           "subnet_volume_tao": 0.5,
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,

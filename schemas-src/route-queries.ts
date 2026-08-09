@@ -250,6 +250,11 @@ const unboundedOffsetSchema = () => z.int().min(0).meta({ default: 0 });
  */
 export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1",
+  // #10285. Declaring nothing here is NOT the same as taking no parameters:
+  // querySchemaForRoute returns null for a route absent from this list, and a
+  // null schema means the router validates nothing at all -- so the route
+  // would silently ACCEPT any query string instead of rejecting it.
+  "/api/v1/chain/deregistration-ranking",
   "/api/v1/subnets/{netuid}",
   "/api/v1/subnets/{netuid}/profile",
   "/api/v1/subnets/{netuid}/overview",

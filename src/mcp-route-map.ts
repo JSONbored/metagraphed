@@ -85,6 +85,9 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   get_subnet_trajectory: { route: "/api/v1/subnets/{netuid}/trajectory" },
   get_economics_trends: { route: "/api/v1/economics/trends" },
   get_emission_pipeline: { route: "/api/v1/chain/emission-pipeline" },
+  get_deregistration_ranking: {
+    route: "/api/v1/chain/deregistration-ranking",
+  },
   get_subnet_concentration: { route: "/api/v1/subnets/{netuid}/concentration" },
   get_subnet_performance: { route: "/api/v1/subnets/{netuid}/performance" },
   get_subnet_idle_stake: { route: "/api/v1/subnets/{netuid}/idle-stake" },

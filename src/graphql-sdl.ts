@@ -1196,6 +1196,10 @@ export const SDL = /* GraphQL */ `
     miner_burned_fraction: Float
     subtoken_enabled: Boolean
     moving_price_pinned: Float
+    "SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, the immunity clock's start and the pruning order's tie-break (#10285)."
+    registered_at_block: Int
+    "0 (Stable) or 1 (Dynamic). A Stable subnet's pruning price is a flat 1.0 rather than its moving price, which moves it from the top of a price order to the bottom."
+    subnet_mechanism: Int
     registration_allowed_pinned: Boolean
     tao_in_emission_tao: Float
   }
@@ -1248,6 +1252,8 @@ export const SDL = /* GraphQL */ `
     emission_bar_quantile: Float
     "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
     emission_gate_exponent: Int
+    "Blocks of protection after registration, before a subnet can be deregistered (#10285). Null on a blob captured before this read existed."
+    network_immunity_period: Int
   }
 
   "One subnet's path through stages 0-8. Every share is a fraction of block emission, null where stage 0 excluded the subnet from the distribution entirely."

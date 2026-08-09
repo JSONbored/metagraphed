@@ -279,6 +279,37 @@ export const SubnetEconomicsSchema = z
     // subnet a share of exactly 0.
     moving_price_pinned: z.number().nullable().optional(),
     registration_allowed_pinned: z.boolean().nullable().optional(),
+    // The two per-subnet inputs to the chain's own deregistration order
+    // (#10285), read in this same pinned sweep so an immunity verdict is
+    // computed against the block the registration height was read at.
+    //
+    // `registered_at_block` is SubtensorModule.NetworkRegisteredAt -- the
+    // SUBNET's registration height, not a neuron's. The registry index carries
+    // a field of the same name that is a publish cycle behind this one.
+    //
+    // `subnet_mechanism` is 0 (Stable) or 1 (Dynamic), and is not cosmetic:
+    // `get_moving_alpha_price` substitutes a flat 1.0 for a Stable subnet
+    // instead of reading its moving price, which moves it from the top of a
+    // price order to the bottom.
+    //
+    // Optional, because the R2 fallback tier still holds blobs captured before
+    // these reads existed and they are legitimately servable.
+    registered_at_block: z
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe(
+        "SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one.",
+      ),
+    subnet_mechanism: z
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe(
+        "SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom.",
+      ),
     // Stage 8: TAO injected into this subnet's own pool. Its sum with
     // excess_tao across subnets equals the issuance-derived block emission.
     //
@@ -347,6 +378,22 @@ export const ChainStateSchema = z
       .nullable()
       .describe(
         "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet.",
+      ),
+    // How long after registration a subnet cannot be deregistered, in blocks
+    // (#10285). Network-wide, so it sits with the other chain scalars rather
+    // than on each subnet row.
+    //
+    // OPTIONAL, not merely nullable: the R2 fallback tier still holds blobs
+    // captured before this read existed, and they are valid artifacts that a
+    // request can legitimately be served from. Nullable alone would reject
+    // them at the schema and turn a working fallback into an outage.
+    network_immunity_period: z
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe(
+        "SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed.",
       ),
   })
   .strict()

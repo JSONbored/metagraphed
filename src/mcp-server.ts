@@ -191,6 +191,10 @@ import {
   GetEmissionPipelineOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
 import {
+  GetDeregistrationRankingInputSchema,
+  GetDeregistrationRankingOutputSchema,
+} from "../schemas-src/mcp-tools/get-deregistration-ranking.ts";
+import {
   MCP_PROTOCOL_ROUTE_PREFIX,
   admitMcpRefusalCapture,
   isUsageTelemetryConfigured,
@@ -1170,6 +1174,11 @@ import {
   loadEconomicsTrends,
   parseEconomicsTrendsWindow,
 } from "./economics-trends.ts";
+import {
+  DEREGISTRATION_UNAVAILABLE_CODE,
+  DEREGISTRATION_UNAVAILABLE_MESSAGE,
+  projectDeregistrationRanking,
+} from "./subnet-deregistration-ranking.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
@@ -5728,6 +5737,58 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         windowDays: days,
         db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
       });
+      return data;
+    },
+  },
+  {
+    name: "get_deregistration_ranking",
+    title: "Get the chain's subnet deregistration order",
+    description:
+      "Fetch the order in which the chain would deregister subnets to make " +
+      "room for a new registration -- 'how close is this subnet to being " +
+      "pruned', answered with the pallet's own rule. The network sits at " +
+      "SubnetLimit, so every new subnet registration evicts one. " +
+      "DO NOT ANSWER THIS BY SORTING moving_price. " +
+      "`Subtensor::get_network_to_prune()` skips root, skips every subnet " +
+      "still inside NetworkRegisteredAt + NetworkImmunityPeriod, compares " +
+      "`get_moving_alpha_price` -- which substitutes a FLAT 1.0 for a Stable " +
+      "(SubnetMechanism 0) subnet instead of reading SubnetMovingPrice -- and " +
+      "breaks a price tie on the EARLIER registration. Measured at block " +
+      "8,808,300, a price-only sort names netuid 86, which reads a moving " +
+      "price of exactly 0 but is inside its immunity window and CANNOT BE " +
+      "PRUNED AT ALL, while the chain's answer is netuid 70; 16 of 128 " +
+      "subnets were immune. " +
+      "`ranked` holds prunable subnets only, rank 1 first -- that is the one " +
+      "the chain takes next. `immune` holds the protected ones, ordered by " +
+      "how soon protection lapses (the order in which they JOIN the ranking), " +
+      "each with `immune_until_block` and `blocks_until_prunable`; their " +
+      "`rank` is null because 'cannot be pruned' is not 'pruned last'. Every " +
+      "entry carries `comparison_price` (what the pallet compares) beside " +
+      "`moving_price` (the raw read), so the Stable substitution is visible. " +
+      "Errors rather than returning a body when the capture carries no " +
+      "pinned block or no immunity period, because an ordering computed " +
+      "without the immunity window is not an approximation -- it is a " +
+      "different ordering that looks identical. " +
+      "Mirrors GET /api/v1/chain/deregistration-ranking.",
+    inputSchema: inputJsonSchema(GetDeregistrationRankingInputSchema),
+    async handler(_args: unknown, ctx: McpCtx) {
+      // The same economics tier and the same projection REST uses --
+      // src/subnet-deregistration-ranking.ts is the shared seam, so this
+      // handler owns nothing but MCP's own error idiom.
+      const economics = await resolveEmissionPipelineEconomics({
+        env: ctx.env,
+        readHealthKv: ctx.readHealthKv,
+        contractVersion: mcpContractVersion(ctx),
+        readArtifact: () =>
+          loadOptionalArtifact(ctx, "/metagraph/economics.json"),
+      });
+      const data = projectDeregistrationRanking(economics);
+      if (!data) {
+        throw toolError(
+          DEREGISTRATION_UNAVAILABLE_CODE,
+          DEREGISTRATION_UNAVAILABLE_MESSAGE,
+        );
+      }
       return data;
     },
   },
@@ -13872,6 +13933,9 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_subnet_trajectory: outputJsonSchema(GetSubnetTrajectoryOutputSchema),
   get_economics_trends: outputJsonSchema(GetEconomicsTrendsOutputSchema),
   get_emission_pipeline: outputJsonSchema(GetEmissionPipelineOutputSchema),
+  get_deregistration_ranking: outputJsonSchema(
+    GetDeregistrationRankingOutputSchema,
+  ),
   get_subnet_concentration: outputJsonSchema(
     GetSubnetConcentrationOutputSchema,
   ),

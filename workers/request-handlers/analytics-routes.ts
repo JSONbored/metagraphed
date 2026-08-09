@@ -39,6 +39,11 @@ import {
   projectEmissionPipeline,
   resolveEmissionPipelineEconomics,
 } from "../../src/emission-pipeline-surface.ts";
+import {
+  DEREGISTRATION_UNAVAILABLE_CODE,
+  DEREGISTRATION_UNAVAILABLE_MESSAGE,
+  projectDeregistrationRanking,
+} from "../../src/subnet-deregistration-ranking.ts";
 import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
 import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
@@ -1110,6 +1115,50 @@ export async function handleEmissionPipeline(
   );
   if ("error" in narrowing) return analyticsQueryError(narrowing.error);
   const data = narrowEmissionPipeline(surface, narrowing);
+
+  return await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await analyticsMeta(env, "/metagraph/economics.json", null),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/deregistration-ranking (#10285) — the pallet's pruning order.
+//
+// The rule and the projection both live in src/subnet-deregistration-ranking.ts
+// so the REST route, the GraphQL field and the MCP tool cannot drift; all that
+// is left here is REST's own idiom: the 503 and the envelope.
+//
+// It resolves the SAME economics blob /chain/emission-pipeline does, because
+// the pruning inputs are captured in that sweep and pinned to one block —
+// immunity judged against a different height than the registration heights
+// were read at is how a subnet lands on the wrong side of its own window.
+export async function handleDeregistrationRanking(
+  request: Request,
+  env: Env,
+  _url: URL,
+): Promise<Response> {
+  const economics = await resolveEmissionPipelineEconomics({
+    env,
+    readHealthKv: economicsCurrentKvReader(),
+    contractVersion: contractVersion(env),
+    readArtifact: async () => {
+      const artifact = await readArtifact(env, "/metagraph/economics.json");
+      return artifact.ok ? artifact.data : null;
+    },
+  });
+
+  const data = projectDeregistrationRanking(economics);
+  if (!data) {
+    return errorResponse(
+      DEREGISTRATION_UNAVAILABLE_CODE,
+      DEREGISTRATION_UNAVAILABLE_MESSAGE,
+      503,
+    );
+  }
 
   return await envelopeResponse(
     request,

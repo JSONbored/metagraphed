@@ -109,6 +109,28 @@ export const ECONOMICS_STORAGE_MAPS = {
   registration_cost: "01be1755d08418802946bca51b686325",
   /** SubtensorModule.SubnetMovingPrice -- fixed point, see decodeMovingPrice. */
   moving_price: "1abf1b0f4fd14f7b72ee50f9d91d5915",
+  /**
+   * SubtensorModule.SubnetMechanism -- u16. 0 is Stable, 1 is Dynamic.
+   *
+   * Read for the deregistration order (#10285), where it is not cosmetic:
+   * `get_moving_alpha_price` returns a FLAT 1.0 for mechanism 0 rather than
+   * the subnet's `moving_price`, so a Stable subnet sorts at the top of the
+   * price order instead of the bottom. Every subnet on mainnet reads 1 today,
+   * which is exactly why it has to be read rather than assumed -- the
+   * assumption is invisible until one sudo call falsifies it.
+   */
+  subnet_mechanism: "306afce653cf1dfd6333a3c30d8d347e",
+  /**
+   * SubtensorModule.NetworkRegisteredAt -- u64 block height.
+   *
+   * The subnet's own registration height, which is both the immunity clock's
+   * start and the pruning order's tie-break. The registry index carries a
+   * `registered_at_block` too, but it is a publish-cycle behind this sweep
+   * (see the `block` note below), and an immunity verdict computed from a
+   * height read at a different block than the tip it is compared against is
+   * exactly the kind of mixed-instant answer the pinning here exists to stop.
+   */
+  network_registered_at: "271d29b9b717ce3d8c571f1cbc180fa2",
   /** SubtensorModule.NetworkRegistrationAllowed -- bool, absent is FALSE. */
   registration_allowed: "d5fe74da02c7b4bbb340fb368eee3e77",
   /** SubtensorModule.MinerBurned -- U96F32 FRACTION, never rao. */
@@ -141,6 +163,15 @@ export const ECONOMICS_STORAGE_VALUES = {
   emission_bar_quantile: "a772007dde2ed63e0f21b5f9d7f16650",
   /** SubtensorModule.EmissionGateExponent -- U64F64; UNSET is not zero. */
   emission_gate_exponent: "88c70e8dd0cf4af3aeb977ba2eee1df4",
+  /**
+   * SubtensorModule.NetworkImmunityPeriod -- u64 blocks.
+   *
+   * How long after registration a subnet cannot be deregistered. Network-wide,
+   * so it belongs with the other chain_state scalars rather than on each row.
+   * Read 864,000 (~120 days) at block 8,808,300; the pallet's own mock carries
+   * 1,296,000, so this is read rather than constant-folded.
+   */
+  network_immunity_period: "be4bea261cfe8a2b911e689c943bbd43",
 } as const;
 
 type MapName = keyof typeof ECONOMICS_STORAGE_MAPS;
@@ -385,6 +416,17 @@ export function buildSubnetEconomics(
     registration_allowed_pinned: registrationAllowed,
     subtoken_enabled: decodeOptionalBool(get("subtoken_enabled"), false),
     tao_in_emission_tao: decodeRaoTao(get("tao_in_emission"), true),
+    // --- deregistration-order inputs (#10285) ---------------------------
+    // Both default rather than null: the pallet reads these maps with
+    // ValueQuery, so an absent key IS the default there, and publishing null
+    // would make a subnet the ordering can rank look like one it cannot.
+    // `DefaultZeroU16` for the mechanism, and a registration height of 0 for
+    // a subnet that predates the map -- which is never immune, and sorts
+    // first on the tie-break, exactly as the pallet would treat it.
+    subnet_mechanism: decodeLeUintNumber(get("subnet_mechanism"), 2) ?? 0,
+    registered_at_block: Number(
+      decodeLeU64(get("network_registered_at")) ?? 0n,
+    ),
   };
 }
 
@@ -524,6 +566,9 @@ export async function refreshLiveEconomics(
     const gateBar = decodeLeU128(values.emission_gate_bar);
     const quantile = decodeLeU128(values.emission_bar_quantile);
     const exponent = decodeLeU128(values.emission_gate_exponent);
+    const immunityPeriodRaw = decodeLeU64(values.network_immunity_period);
+    const immunityPeriod =
+      immunityPeriodRaw === null ? null : Number(immunityPeriodRaw);
     const economics = buildEconomicsArtifact({
       subnets: pinnedSubnets,
       economicsByNetuid,
@@ -557,6 +602,11 @@ export async function refreshLiveEconomics(
               // expects rather than as its raw 128-bit word.
               emission_gate_exponent:
                 exponent === null ? null : u64f64U128ToFloat(exponent),
+              // Null, never a fallback constant. The deregistration order
+              // (#10285) declines rather than guessing an immunity window: a
+              // wrong window silently moves subnets between "prunable" and
+              // "immune", and the ordering would still look plausible.
+              network_immunity_period: immunityPeriod,
             },
     });
     // Match build-artifacts + refresh-economics: resolveLiveEconomics rejects

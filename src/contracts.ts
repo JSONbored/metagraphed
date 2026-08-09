@@ -1009,6 +1009,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "deregistration-ranking",
+    "/metagraph/chain/deregistration-ranking.json",
+    "The order in which the chain would deregister subnets to make room for a new registration (#10285), served live at /api/v1/chain/deregistration-ranking (no static file). THIS IS THE PALLET'S OWN RULE, NOT A PRICE SORT: `Subtensor::get_network_to_prune()` skips root, skips every subnet still inside NetworkRegisteredAt + NetworkImmunityPeriod, compares `get_moving_alpha_price` -- which substitutes a FLAT 1.0 for a Stable (SubnetMechanism 0) subnet rather than reading SubnetMovingPrice -- and breaks a price tie on the EARLIER registration. Ordering by moving_price alone gets position one wrong: measured at block 8,808,300 a price-only sort names netuid 86, which sits at price 0 but is inside its immunity window and cannot be pruned at all, while the chain's answer is netuid 70. `ranked` carries only prunable subnets, rank 1 first; `immune` carries the protected ones ordered by how soon they lose protection -- the order in which they JOIN the ranking -- each with immune_until_block and blocks_until_prunable. `comparison_price` is what the pallet compares and `moving_price` the raw read beside it, so the Stable substitution is visible rather than inferred. Returns 503 rather than a body when the capture carries no pinned block or no immunity period, because an ordering computed without the immunity window is not approximate -- it is a different ordering that looks identical.",
+    "SubnetDeregistrationRankingArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "economics-trends",
     "/metagraph/economics/trends.json",
     "Network-wide economics time series (#1307) aggregated per UTC day across all subnets from the daily subnet_snapshots D1 rollup (the same source the per-subnet trajectory reads), served live at /api/v1/economics/trends; pass ?format=csv to download the per-day series as CSV (no static file).",
@@ -2580,6 +2587,17 @@ export const API_ROUTES = [
         { name: "fields", schema: fieldListSchema },
       ],
     },
+    [],
+  ),
+  route(
+    "deregistration-ranking",
+    "GET",
+    "/api/v1/chain/deregistration-ranking",
+    "/metagraph/chain/deregistration-ranking.json",
+    "Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it. `Subtensor::get_network_to_prune()` skips root, skips every subnet still inside `NetworkRegisteredAt + NetworkImmunityPeriod`, compares `get_moving_alpha_price`, and breaks a tie on the EARLIER registration. TWO THINGS MAKE THIS NOT A PRICE SORT. First, immunity: measured at block 8,808,300, sixteen of 128 subnets were inside their window, and a price-only order puts netuid 86 at position one — it reads a moving price of exactly 0 but cannot be deregistered at all, while the chain's answer is netuid 70. Second, `get_moving_alpha_price` substitutes a FLAT 1.0 for a Stable subnet (`SubnetMechanism` 0) instead of reading `SubnetMovingPrice`, which moves it from the top of a price order to near the bottom; every mainnet subnet reads mechanism 1 today, so the clause is invisible until one sudo call makes it decisive. `ranked` holds only prunable subnets, rank 1 first. `immune` holds the protected ones ordered by how soon protection lapses — the order in which they join the ranking — carrying `immune_until_block` and `blocks_until_prunable`; ordering them by price would imply a pruning position they do not have. Each entry publishes `comparison_price` (what the pallet compares) beside `moving_price` (the raw read), so the Stable substitution is visible. Served live (no static file); 503 when the capture carries no pinned block or no immunity period, because an ordering computed without the immunity window is not an approximation — it is a different ordering that looks the same and would be believed.",
+    "short",
+    ["subnets", "analytics"],
+    [],
     [],
   ),
   route(
@@ -5154,6 +5172,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/coverage-depth",
   "/api/v1/surfaces/{surface_id}/verify",
   "/api/v1/chain/emission-pipeline",
+  // Same economics blob as its sibling above, built from the mainnet registry
+  // index and carrying no network dimension (#10285).
+  "/api/v1/chain/deregistration-ranking",
   "/api/v1/registry/summary",
   "/api/v1/lineage",
   "/api/v1/fixtures",
