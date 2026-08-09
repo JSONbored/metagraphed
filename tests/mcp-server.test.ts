@@ -113,6 +113,26 @@ import { assertValid } from "./helpers/assert-valid.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
+/**
+ * The default one served tool publishes for one argument (#10306).
+ *
+ * Read from `listToolDefinitions()` rather than written into the assertion, so
+ * a test about "the tool forwards what it advertises" cannot pass while the two
+ * disagree -- which is the whole shape of the bug it guards. Throws for an
+ * argument with no published default: that is the test naming a parameter the
+ * tool does not default, not a value of undefined.
+ */
+function publishedDefaultOf(tool: string, argument: string): unknown {
+  const served = (listToolDefinitions() as Row[]).find(
+    (candidate) => candidate.name === tool,
+  );
+  const schema = served?.inputSchema?.properties?.[argument] as Row | undefined;
+  if (schema?.default === undefined) {
+    throw new Error(`${tool} publishes no default for ${argument}`);
+  }
+  return schema.default;
+}
+
 // Fresh prober run time for live KV fixtures — resolveLiveHealth rejects a
 // health:current whose last_run_at is older than the 25-min freshness window.
 const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
@@ -12712,7 +12732,13 @@ describe("MCP economics + metagraph data tools", () => {
       assert.equal(seenUrl!.searchParams.get("limit"), "25");
     });
 
-    test("flag=postgres omits the limit param when not supplied", async () => {
+    // Was "omits the limit param when not supplied", which pinned the #10306
+    // bug: the tool published a `limit` default and forwarded nothing, so the
+    // page a caller got was whatever the route re-derived rather than the one
+    // the tool advertised. The expected value is READ from the served schema
+    // rather than written here, so this cannot drift from what the tool
+    // publishes.
+    test("flag=postgres forwards the limit default the tool publishes", async () => {
       let seenUrl: URL | undefined;
       const env = {
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
@@ -12730,7 +12756,10 @@ describe("MCP economics + metagraph data tools", () => {
       };
       await callTool("get_chain_identity_history", {}, { env });
       assert.equal(seenUrl!.pathname, "/api/v1/chain/identity-history");
-      assert.equal(seenUrl!.searchParams.has("limit"), false);
+      assert.equal(
+        seenUrl!.searchParams.get("limit"),
+        String(publishedDefaultOf("get_chain_identity_history", "limit")),
+      );
     });
   });
 
@@ -18668,7 +18697,15 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
       assert.equal(seenUrl!.searchParams.get("cursor"), "abc");
     });
 
-    test("flag=postgres omits pagination params when not supplied", async () => {
+    // THE tool #10306 was filed for. This test used to assert
+    // `searchParams.has("limit") === false`, which is precisely the defect:
+    // the tool advertised "1-1000, default 100", forwarded no limit, and the
+    // read came back empty -- `entry_count: 0` for a subnet that had changed
+    // its identity, with no degraded marker to say otherwise.
+    //
+    // `cursor` still has no default and must stay absent, which is what keeps
+    // this from being a blanket "everything is forwarded now" assertion.
+    test("flag=postgres forwards the pagination defaults the tool publishes", async () => {
       let seenUrl: URL | undefined;
       const env = {
         METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
@@ -18686,8 +18723,14 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
       };
       await callTool("get_subnet_identity_history", { netuid: 86 }, { env });
       assert.equal(seenUrl!.pathname, "/api/v1/subnets/86/identity-history");
-      assert.equal(seenUrl!.searchParams.has("limit"), false);
-      assert.equal(seenUrl!.searchParams.has("offset"), false);
+      assert.equal(
+        seenUrl!.searchParams.get("limit"),
+        String(publishedDefaultOf("get_subnet_identity_history", "limit")),
+      );
+      assert.equal(
+        seenUrl!.searchParams.get("offset"),
+        String(publishedDefaultOf("get_subnet_identity_history", "offset")),
+      );
       assert.equal(seenUrl!.searchParams.has("cursor"), false);
     });
   });
@@ -24137,7 +24180,12 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
     {
       tool: "get_account_history",
       args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
-      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history",
+      // `?limit=100&offset=0` since #10306 -- the tool's own published
+      // defaults, forwarded rather than left for the route to re-derive. The
+      // sibling `get_account_events` case above already carried them because
+      // its handler passed them through by hand; this one did not, which is
+      // the inconsistency the dispatcher-level fill removes.
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/history?limit=100&offset=0",
     },
     {
       tool: "get_account_history",
@@ -24173,7 +24221,7 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
     {
       tool: "get_account_counterparties",
       args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
-      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties",
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?limit=20",
     },
     {
       tool: "get_account_counterparties",
@@ -24189,7 +24237,12 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
         ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
         counterparty: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
       },
-      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?counterparty=5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      // `&limit=20` is the tool's own published default, forwarded explicitly
+      // since #10306 rather than left off for the route to re-derive. The route
+      // resolves the same 20 through `pageLimit`, so the ANSWER is unchanged --
+      // what changed is that the page size is now stated by the surface that
+      // advertised it instead of being reapplied downstream.
+      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/counterparties?counterparty=5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty&limit=20",
     },
     {
       tool: "get_account_counterparties",
@@ -25377,15 +25430,22 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
       args: { netuid: 7, window: "30d" },
       path: "/api/v1/subnets/7/health/incidents?window=30d",
     },
+    // `&limit=20` is #10306, and here it is a BEHAVIOUR change rather than a
+    // restatement: `/api/v1/incidents` publishes no `limit` default, so
+    // forwarding nothing returned every matching row while the tool's own
+    // schema said "Defaults to 20 when omitted". The tool now serves the 20 it
+    // advertises. Same class as the two tools #10306 was filed for -- a
+    // published default that nothing applied -- found by this suite rather
+    // than by the cross-surface sweep.
     {
       tool: "get_global_incidents",
       args: {},
-      path: "/api/v1/incidents?window=7d",
+      path: "/api/v1/incidents?window=7d&limit=20",
     },
     {
       tool: "get_global_incidents",
       args: { window: "30d" },
-      path: "/api/v1/incidents?window=30d",
+      path: "/api/v1/incidents?window=30d&limit=20",
     },
     {
       tool: "get_subnet_uptime",

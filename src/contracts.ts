@@ -3418,7 +3418,13 @@ export const API_ROUTES = [
           minimum: 1,
           maximum: 100,
           description:
-            "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
+            // The "(default 50)" this used to claim for drilldown mode was
+            // stale: the handler reads ONE `pageLimit(url)` and passes it to
+            // both branches, so both resolve the single published default. A
+            // second default stated only in prose is exactly what #10060 set
+            // out to remove -- and it is what made #10306's fix look like a
+            // narrowing here when it is not.
+            "Max counterparties to return in list mode, or max transfer evidence rows in relationship drilldown mode when ?counterparty is present. One page size for both modes.",
         },
       },
     ]),
