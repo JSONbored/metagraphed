@@ -5,6 +5,7 @@
 // CoverageArtifact/CoverageDepthArtifact(+Row/QueueEntry) components they
 // replace.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import {
   ArtifactBaseSchema,
   CountMapSchema,
@@ -99,14 +100,7 @@ export const CoverageResponseSchema = successEnvelopeSchema(
 // #8074) -- symbolic in the hand-written original (mcp-server.ts's own
 // COVERAGE_DEPTH_TIERS/COVERAGE_DEPTH_SEVERITIES constants), cross-checked
 // against the actual runtime source at the time of writing.
-export const COVERAGE_DEPTH_TIERS = [
-  "agent-ready",
-  "machine-usable",
-  "candidate-review",
-  "needs-evidence",
-  "hard-blocked",
-  "missing-interface",
-] as const;
+export const COVERAGE_DEPTH_TIERS = QUERY_ENUMS.coverageDepthTier;
 export const COVERAGE_DEPTH_SEVERITIES = [
   "hard",
   "missing-data",

@@ -28,7 +28,10 @@ export function globalIncidentsMcpError(
 function optionalEnum(
   args: Record<string, unknown> | null | undefined,
   key: string,
-  allowed: string[],
+  // `readonly` since QUERY_ENUMS became `as const` (#10060) -- the vocabularies
+  // are frozen tuples now so a consumer can hand one to `z.enum()` rather than
+  // writing the values out again.
+  allowed: readonly string[],
 ): string | null {
   const value = args?.[key];
   if (value === undefined || value === null || value === "") return null;

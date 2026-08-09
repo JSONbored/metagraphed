@@ -20,6 +20,7 @@
 // now publishes.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   SubnetAxonRemovalsArtifactSchema,
   SubnetDeregistrationsArtifactSchema,
@@ -30,8 +31,14 @@ import { SubnetPrometheusArtifactSchema } from "../routes/subnet-prometheus.ts";
 import { SubnetStakeMovesArtifactSchema } from "../routes/subnet-stake-moves.ts";
 import { SubnetStakeTransfersArtifactSchema } from "../routes/subnet-stake-transfers.ts";
 
+// The ROUTE's field, not a local copy of its enum (#10060). These seven tools
+// mirror /api/v1/subnets/{netuid}/{serving,registrations,…}, which publish the
+// window they apply for an omitted one; a local `z.enum([...])` carries the
+// values and drops the default, so `tools/list` said nothing about what an
+// agent gets for omitting it while openapi.json did.
+const ActivityWindowSchema =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/serving"].shape.window;
 const ACTIVITY_WINDOWS = ["7d", "30d"] as const;
-const ActivityWindowSchema = z.enum(ACTIVITY_WINDOWS).optional();
 
 const ActivityInputSchema = z
   .object({

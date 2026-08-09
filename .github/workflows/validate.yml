@@ -498,6 +498,9 @@ jobs:
       - name: Validate the MCP input parity
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:mcp-input-parity
+      - name: Validate every tool/route difference is declared
+        if: env.DOCS_ONLY != 'true'
+        run: npm run validate:tool-route-divergence
       - name: Validate the query-parameter vocabulary
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:query-vocabulary

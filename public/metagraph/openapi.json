@@ -6776,14 +6776,14 @@
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
             "provider": {
-              "authority": "official",
+              "authority": "community",
               "cluster_id": "example",
               "contact_url": "https://api.metagraph.sh/example",
               "docs_url": "https://api.metagraph.sh/example",
               "endpoint_count": 1,
               "github_url": "https://api.metagraph.sh/example",
               "id": "example-subnet",
-              "kind": "subnet-team",
+              "kind": "data-provider",
               "logo_url": "https://api.metagraph.sh/example",
               "name": "Example Subnet",
               "netuids": [
@@ -6914,9 +6914,9 @@
             "notes": "Example description.",
             "providers": [
               {
-                "authority": "official",
+                "authority": "community",
                 "id": "example-subnet",
-                "kind": "subnet-team",
+                "kind": "data-provider",
                 "name": "Example Subnet",
                 "schema_version": 1,
                 "website_url": "https://api.metagraph.sh/example"
@@ -8255,12 +8255,12 @@
             "notes": "Example description.",
             "providers": [
               {
-                "authority": "official",
+                "authority": "community",
                 "candidate_count": 1,
                 "classifications": {},
                 "endpoint_count": 1,
                 "id": "example",
-                "kind": "subnet-team",
+                "kind": "data-provider",
                 "name": "Example Subnet",
                 "rpc_endpoint_count": 1,
                 "status": "ok",
@@ -9040,7 +9040,7 @@
             "surfaces": [
               {
                 "auth_required": true,
-                "authority": "official",
+                "authority": "community",
                 "id": "example",
                 "kind": "archive",
                 "netuid": 7,
@@ -9052,7 +9052,7 @@
             "verified_surfaces": [
               {
                 "auth_required": true,
-                "authority": "official",
+                "authority": "community",
                 "id": "example",
                 "kind": "archive",
                 "netuid": 7,
@@ -10790,7 +10790,7 @@
             "surfaces": [
               {
                 "auth_required": true,
-                "authority": "official",
+                "authority": "community",
                 "id": "example",
                 "kind": "archive",
                 "netuid": 7,
@@ -11424,7 +11424,7 @@
             "surfaces": [
               {
                 "auth_required": true,
-                "authority": "official",
+                "authority": "community",
                 "id": "example",
                 "kind": "archive",
                 "netuid": 7,
@@ -12010,7 +12010,7 @@
             "surfaces": [
               {
                 "auth_required": true,
-                "authority": "official",
+                "authority": "community",
                 "id": "example",
                 "kind": "archive",
                 "netuid": 7,
@@ -18474,9 +18474,9 @@
       },
       "Authority": {
         "enum": [
+          "community",
           "official",
           "provider-claimed",
-          "community",
           "registry-observed"
         ],
         "type": "string"
@@ -29790,9 +29790,9 @@
       "EndpointLayer": {
         "enum": [
           "bittensor-base",
-          "subnet-app",
           "data-provider",
-          "docs-provider"
+          "docs-provider",
+          "subnet-app"
         ],
         "type": "string"
       },
@@ -36379,11 +36379,11 @@
       },
       "ProviderKind": {
         "enum": [
-          "subnet-team",
-          "infrastructure-provider",
           "data-provider",
           "docs-provider",
-          "registry"
+          "infrastructure-provider",
+          "registry",
+          "subnet-team"
         ],
         "type": "string"
       },
@@ -53224,19 +53224,19 @@
       "SurfaceKind": {
         "enum": [
           "archive",
+          "dashboard",
+          "data-artifact",
+          "docs",
+          "example",
+          "openapi",
+          "repo-registry",
+          "sdk",
+          "source-repo",
+          "sse",
+          "subnet-api",
           "subtensor-rpc",
           "subtensor-wss",
-          "subnet-api",
-          "openapi",
-          "sse",
-          "sdk",
-          "example",
-          "website",
-          "source-repo",
-          "dashboard",
-          "repo-registry",
-          "docs",
-          "data-artifact"
+          "website"
         ],
         "type": "string"
       },

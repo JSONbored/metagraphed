@@ -9,6 +9,7 @@
 // for the fuller rationale, first established in the pilot batch). These
 // two helpers are the Zod equivalent of that same shallow-on-purpose shape.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 
 // The query-parameter vocabulary now lives in schemas-src/query-params.ts so the
@@ -60,19 +61,7 @@ export const HEALTH_SURFACE_SORT_VALUES = [
 ] as const;
 
 /** Shared across MCP tools that have no single route owner (#9799). */
-export const HEALTH_CLASSIFICATION_VALUES = [
-  "auth-required",
-  "content-mismatch",
-  "dead",
-  "live",
-  "rate-limited",
-  "redirected",
-  "timeout",
-  "transient",
-  "unsupported",
-  "unsafe",
-  "wrong-chain",
-] as const;
+export const HEALTH_CLASSIFICATION_VALUES = QUERY_ENUMS.healthClassification;
 
 /** Shared across MCP tools that have no single route owner (#9799). */
 /**

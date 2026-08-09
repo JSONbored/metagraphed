@@ -5855,7 +5855,7 @@ export interface components {
             question: string;
         };
         /** @enum {string} */
-        Authority: "official" | "provider-claimed" | "community" | "registry-observed";
+        Authority: "community" | "official" | "provider-claimed" | "registry-observed";
         /** @enum {string} */
         BittensorNetwork: "finney" | "test" | "local";
         BlockChainEventsArtifact: {
@@ -7683,7 +7683,7 @@ export interface components {
             [key: string]: unknown;
         };
         /** @enum {string} */
-        EndpointLayer: "bittensor-base" | "subnet-app" | "data-provider" | "docs-provider";
+        EndpointLayer: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
         EndpointMonitoringPolicy: {
             enabled: boolean;
             expect: string | null;
@@ -8905,7 +8905,7 @@ export interface components {
             [key: string]: unknown;
         };
         /** @enum {string} */
-        ProviderKind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
+        ProviderKind: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
         ProvidersArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -11858,7 +11858,7 @@ export interface components {
             url: string | null;
         };
         /** @enum {string} */
-        SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
+        SurfaceKind: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
         SurfacesArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -17621,7 +17621,7 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -17633,7 +17633,7 @@ export interface operations {
                      *         "verified_surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -34324,9 +34324,9 @@ export interface operations {
                      *         "notes": "Example description.",
                      *         "providers": [
                      *           {
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example-subnet",
-                     *             "kind": "subnet-team",
+                     *             "kind": "data-provider",
                      *             "name": "Example Subnet",
                      *             "schema_version": 1,
                      *             "website_url": "https://api.metagraph.sh/example"
@@ -34452,14 +34452,14 @@ export interface operations {
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "provider": {
-                     *           "authority": "official",
+                     *           "authority": "community",
                      *           "cluster_id": "example",
                      *           "contact_url": "https://api.metagraph.sh/example",
                      *           "docs_url": "https://api.metagraph.sh/example",
                      *           "endpoint_count": 1,
                      *           "github_url": "https://api.metagraph.sh/example",
                      *           "id": "example-subnet",
-                     *           "kind": "subnet-team",
+                     *           "kind": "data-provider",
                      *           "logo_url": "https://api.metagraph.sh/example",
                      *           "name": "Example Subnet",
                      *           "netuids": [
@@ -37484,12 +37484,12 @@ export interface operations {
                      *         "notes": "Example description.",
                      *         "providers": [
                      *           {
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "candidate_count": 1,
                      *             "classifications": {},
                      *             "endpoint_count": 1,
                      *             "id": "example",
-                     *             "kind": "subnet-team",
+                     *             "kind": "data-provider",
                      *             "name": "Example Subnet",
                      *             "rpc_endpoint_count": 1,
                      *             "status": "ok",
@@ -38114,7 +38114,7 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -38126,7 +38126,7 @@ export interface operations {
                      *         "verified_surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -43335,7 +43335,7 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -44484,7 +44484,7 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,
@@ -46446,7 +46446,7 @@ export interface operations {
                      *         "surfaces": [
                      *           {
                      *             "auth_required": true,
-                     *             "authority": "official",
+                     *             "authority": "community",
                      *             "id": "example",
                      *             "kind": "archive",
                      *             "netuid": 7,

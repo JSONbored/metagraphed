@@ -31,7 +31,11 @@ export const GetSubnetStakeQuoteInputSchema = z
         "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
       )
       .meta({ examples: [10] }),
-    direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
+    // `stake` when omitted -- the route publishes it and the handler
+    // applies it, so the tool states it too (#10060).
+    direction: kindSchema(STAKE_QUOTE_DIRECTIONS)
+      .meta({ default: "stake" })
+      .optional(),
   })
   .strict();
 export type GetSubnetStakeQuoteInput = z.infer<

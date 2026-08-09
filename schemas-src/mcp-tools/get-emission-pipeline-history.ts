@@ -2,7 +2,10 @@
 // over time, mirroring GET /api/v1/subnets/{netuid}/emission-pipeline/history.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
-import { PIPELINE_HISTORY_WINDOWS } from "../../src/route-limits.ts";
+import {
+  DEFAULT_PIPELINE_HISTORY_WINDOW,
+  PIPELINE_HISTORY_WINDOWS,
+} from "../../src/route-limits.ts";
 
 export const GetPipelineHistoryInputSchema = z
   .object({
@@ -13,7 +16,11 @@ export const GetPipelineHistoryInputSchema = z
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
       )
-      .meta({ examples: [PIPELINE_HISTORY_WINDOWS[0]] }),
+      // The route publishes which window an omitted one resolves to (#10060).
+      .meta({
+        default: DEFAULT_PIPELINE_HISTORY_WINDOW,
+        examples: [DEFAULT_PIPELINE_HISTORY_WINDOW],
+      }),
   })
   .strict();
 export type GetPipelineHistoryInput = z.infer<

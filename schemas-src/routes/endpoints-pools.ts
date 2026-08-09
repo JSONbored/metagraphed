@@ -38,6 +38,7 @@
 // NOT in LIVE_OVERLAY_ROUTE_IDS and gets no live overlay at all -- fully
 // static, edge-cache eligible (verified via workers/api.ts).
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { HealthStatusSchema } from "../shared.ts";
 import {
@@ -54,11 +55,8 @@ import {
 } from "./providers-rpc.ts";
 
 /** This route's own vocabulary, owned here so its MCP tools import rather than restate it (#9799). */
-export const ENDPOINT_INCIDENT_SEVERITY_VALUES = [
-  "critical",
-  "warning",
-  "info",
-] as const;
+export const ENDPOINT_INCIDENT_SEVERITY_VALUES =
+  QUERY_ENUMS.endpointIncidentSeverity;
 
 // ---- GET /api/v1/surfaces -> SurfacesArtifact ----
 

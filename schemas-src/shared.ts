@@ -9,6 +9,7 @@
 // from src/contracts.ts, the canonical JSON-Schema contract), cross-checked
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
+import { QUERY_ENUMS } from "./query-enums.ts";
 
 /** One vocabulary, owned by the leaf module so routes AND tools can import it
  * without the cycle that owning it on a route would create (#9799). */
@@ -33,21 +34,11 @@ export const IDENTITY_LEVEL_VALUES = [
 
 /** One vocabulary, owned by the leaf module so routes AND tools can import it
  * without the cycle that owning it on a route would create (#9799). */
-export const PROFILE_LEVEL_VALUES = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
+export const PROFILE_LEVEL_VALUES = QUERY_ENUMS.profileLevel;
 
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
-export const COVERAGE_LEVEL_VALUES = [
-  "native-only",
-  "manifested",
-  "probed",
-] as const;
+export const COVERAGE_LEVEL_VALUES = QUERY_ENUMS.coverageLevel;
 export const CoverageLevelSchema = z.enum(COVERAGE_LEVEL_VALUES);
 export type CoverageLevel = z.infer<typeof CoverageLevelSchema>;
 
@@ -72,14 +63,7 @@ export type McpNetwork = z.infer<typeof McpNetworkSchema>;
 
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
-export const CURATION_LEVEL_VALUES = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+export const CURATION_LEVEL_VALUES = QUERY_ENUMS.curationLevel;
 export const CurationLevelSchema = z.enum(CURATION_LEVEL_VALUES);
 export type CurationLevel = z.infer<typeof CurationLevelSchema>;
 
@@ -97,12 +81,7 @@ export type BittensorNetwork = z.infer<typeof BittensorNetworkSchema>;
 
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
-export const HEALTH_STATUS_VALUES = [
-  "ok",
-  "degraded",
-  "failed",
-  "unknown",
-] as const;
+export const HEALTH_STATUS_VALUES = QUERY_ENUMS.healthStatus;
 export const HealthStatusSchema = z.enum(HEALTH_STATUS_VALUES);
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 
