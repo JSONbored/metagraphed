@@ -30,6 +30,7 @@
 // This is the same distinction #10236's registry resync had to make between an
 // empty listing and an unreachable one -- absence is only meaningful when you
 // know you looked properly.
+import { SUBNET_LIFECYCLE_EVENTS } from "../schemas-src/routes/subnet-lifecycle.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -45,7 +46,10 @@ import {
 
 export const SUBNET_LIFECYCLE_LANE = "subnet-lifecycle";
 
-export type SubnetLifecycleEventName = "registered" | "deregistered";
+/** The event vocabulary is declared once, in the schema that publishes it.
+ * Restating the union here would be a second source for a closed set -- the
+ * class `validate:schema-vocabularies` exists to catch. */
+export type SubnetLifecycleEventName = (typeof SUBNET_LIFECYCLE_EVENTS)[number];
 
 export interface SubnetLifecycleEvent {
   netuid: number;

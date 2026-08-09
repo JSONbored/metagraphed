@@ -2000,6 +2000,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/subnet-lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet's registrations and deregistrations across the network (#10263), newest first, from the subnet_lifecycle Neon table. ?window=7d|30d|90d|1y|all (default all — a subnet changes state a handful of times in its lifetime, so a short window is almost always empty). ?limit (<=1000). Pass ?format=csv to download the page as CSV. */
+        get: operations["chainSubnetLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/transfer-pairs": {
         parameters: {
             query?: never;
@@ -4070,6 +4087,23 @@ export interface paths {
         };
         /** Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case. */
         get: operations["subnetLeaseHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table. Entries where predates_capture is true are older than detection and carry a null block_number — that is a real answer, not a missing one. ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV. */
+        get: operations["subnetLifecycle"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6708,6 +6742,26 @@ export interface components {
                 transfers_per_sender: number | null;
             }[];
             window: ("7d" | "30d") | null;
+        };
+        ChainSubnetLifecycleArtifact: {
+            entries: ({
+                block_number: number | null;
+                /** @enum {string} */
+                event: "registered" | "deregistered";
+                netuid: number;
+                observed_at: string;
+                predates_capture: boolean;
+            } & {
+                [key: string]: unknown;
+            })[];
+            entry_count: number;
+            limit?: number | null;
+            next_cursor?: string | null;
+            offset?: number | null;
+            schema_version: number;
+            subnet_count: number;
+        } & {
+            [key: string]: unknown;
         };
         ChainTransferPairsArtifact: {
             observed_at: string | null;
@@ -10833,6 +10887,26 @@ export interface components {
                 observed_at?: string | null;
             }[];
             netuid: number;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        SubnetLifecycleArtifact: {
+            entries: ({
+                block_number: number | null;
+                /** @enum {string} */
+                event: "registered" | "deregistered";
+                netuid: number;
+                observed_at: string;
+                predates_capture: boolean;
+            } & {
+                [key: string]: unknown;
+            })[];
+            entry_count: number;
+            limit?: number | null;
+            netuid: number;
+            next_cursor?: string | null;
+            offset?: number | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
@@ -26929,6 +27003,131 @@ export interface operations {
             };
         };
     };
+    chainSubnetLifecycle: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d" | "1y" | "all";
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). */
+                limit?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "entries": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event": "registered",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "predates_capture": false
+                     *           }
+                     *         ],
+                     *         "entry_count": 1,
+                     *         "limit": 1,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainSubnetLifecycleArtifact"];
+                    };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainTransferPairs: {
         parameters: {
             query?: {
@@ -41419,6 +41618,133 @@ export interface operations {
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetLeaseHistoryArtifact"];
                     };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetLifecycle: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). */
+                limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "entries": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "event": "registered",
+                     *             "netuid": 7,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "predates_capture": false
+                     *           }
+                     *         ],
+                     *         "entry_count": 1,
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "next_cursor": "example",
+                     *         "offset": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetLifecycleArtifact"];
+                    };
+                    /**
+                     * @example netuid,name
+                     *     7,Allways
+                     */
+                    "text/csv": string;
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

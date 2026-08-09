@@ -74,6 +74,10 @@ export const SDL = /* GraphQL */ `
       offset: Int
       cursor: String
     ): SubnetHyperparamsHistory!
+    "When one subnet was registered or deregistered, newest first. Entries with predates_capture=true are older than detection and carry a null block_number -- a real answer, not a missing one. A subnet with no recorded transition resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/lifecycle."
+    subnet_lifecycle(netuid: Int!, limit: Int, offset: Int): SubnetLifecycle!
+    "Every subnet's registrations and deregistrations across the network, newest first. window is 7d|30d|90d|1y|all and defaults to all, because a subnet changes state a handful of times in its lifetime. Mirrors GET /api/v1/chain/subnet-lifecycle."
+    chain_subnet_lifecycle(window: String, limit: Int): ChainSubnetLifecycle!
     "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
@@ -2873,6 +2877,36 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     hyperparameters: Hyperparameters
     hyperparams_hash: String
+  }
+
+  type SubnetLifecycle {
+    schema_version: Int!
+    netuid: Int!
+    entry_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    entries: [SubnetLifecycleEntry!]!
+  }
+
+  type ChainSubnetLifecycle {
+    schema_version: Int!
+    entry_count: Int!
+    "Distinct subnets appearing in this page -- context for entry_count."
+    subnet_count: Int!
+    limit: Int
+    offset: Int
+    next_cursor: String
+    entries: [SubnetLifecycleEntry!]!
+  }
+
+  "One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap."
+  type SubnetLifecycleEntry {
+    netuid: Int!
+    event: String!
+    block_number: Int
+    observed_at: String
+    predates_capture: Boolean!
   }
 
   type SubnetRegistrations {

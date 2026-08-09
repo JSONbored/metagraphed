@@ -603,6 +603,12 @@ import {
   GetSubnetHyperparamsHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-hyperparams.ts";
 import {
+  GetChainSubnetLifecycleInputSchema,
+  GetChainSubnetLifecycleOutputSchema,
+  GetSubnetLifecycleInputSchema,
+  GetSubnetLifecycleOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-lifecycle.ts";
+import {
   GetSubnetVolumeInputSchema,
   GetSubnetVolumeOutputSchema,
   GetSubnetOhlcInputSchema,
@@ -1548,6 +1554,14 @@ import {
 } from "./surface-history.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
+import {
+  buildChainSubnetLifecycle,
+  buildSubnetLifecycle,
+  CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+  DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+  loadChainSubnetLifecycle,
+  loadSubnetLifecycle,
+} from "./subnet-lifecycle-read.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
 import {
   buildSubnetOhlc,
@@ -8307,6 +8321,67 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_lifecycle",
+    title: "Get when a subnet was registered or deregistered",
+    description:
+      "Fetch one subnet's append-only registration/deregistration timeline, " +
+      "newest first. Entries with predates_capture=true are older than " +
+      "detection and carry a null block_number \u2014 that is a real answer, " +
+      "not a missing one. Page with limit (1-1000, default 100) / offset. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/lifecycle.",
+    inputSchema: inputJsonSchema(GetSubnetLifecycleInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetLifecycleInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // CLAMPS where the REST route 400s -- the per-surface split, deliberate.
+      const limit = clampToolLimit(args?.limit, 100, 1000);
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      const rows = await loadSubnetLifecycle(ctx.env, netuid, {
+        limit,
+        offset,
+      });
+      return buildSubnetLifecycle(rows, netuid, { limit, offset });
+    },
+  },
+  {
+    name: "get_chain_subnet_lifecycle",
+    title: "Get every subnet's registrations and deregistrations",
+    description:
+      "Fetch the network-wide subnet registration/deregistration feed, " +
+      "newest first. window=7d|30d|90d|1y|all defaults to all, because a " +
+      "subnet changes state a handful of times in its lifetime and a short " +
+      "window is almost always empty. Page with limit (1-1000, default 100). " +
+      "Mirrors GET /api/v1/chain/subnet-lifecycle.",
+    inputSchema: inputJsonSchema(GetChainSubnetLifecycleInputSchema),
+    async handler(
+      args: z.infer<typeof GetChainSubnetLifecycleInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // The shared parser, with this route's own default passed explicitly.
+      // An unsupported window ERRORS rather than falling back: silently
+      // answering for a different period than the caller asked for is worse
+      // than refusing, because the answer looks valid.
+      const parsed = parseHistoryWindow(
+        optionalString(args, "window") ?? DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+      );
+      if ("error" in parsed) throw new Error(parsed.error.message);
+      const { days } = parsed;
+      const limit = clampToolLimit(
+        args?.limit,
+        100,
+        CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+      );
+      const rows = await loadChainSubnetLifecycle(ctx.env, {
+        limit,
+        offset: 0,
+        sinceMs: days === null ? null : Date.now() - days * 86_400_000,
+      });
+      return buildChainSubnetLifecycle(rows, { limit, offset: null });
+    },
+  },
+  {
     name: "get_subnet_volume",
     title: "Get a subnet's rolling 24h alpha volume",
     description:
@@ -13880,6 +13955,10 @@ const TOOL_OUTPUT_SCHEMAS = {
     GetSubnetIdentityHistoryOutputSchema,
   ),
   get_subnet_hyperparams: outputJsonSchema(GetSubnetHyperparamsOutputSchema),
+  get_subnet_lifecycle: outputJsonSchema(GetSubnetLifecycleOutputSchema),
+  get_chain_subnet_lifecycle: outputJsonSchema(
+    GetChainSubnetLifecycleOutputSchema,
+  ),
   get_subnet_hyperparams_history: outputJsonSchema(
     GetSubnetHyperparamsHistoryOutputSchema,
   ),

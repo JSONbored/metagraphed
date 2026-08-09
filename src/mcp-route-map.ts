@@ -168,6 +168,8 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   get_subnet_hyperparams_history: {
     route: "/api/v1/subnets/{netuid}/hyperparameters/history",
   },
+  get_subnet_lifecycle: { route: "/api/v1/subnets/{netuid}/lifecycle" },
+  get_chain_subnet_lifecycle: { route: "/api/v1/chain/subnet-lifecycle" },
   get_subnet_volume: { route: "/api/v1/subnets/{netuid}/volume" },
   get_subnet_ohlc: { route: "/api/v1/subnets/{netuid}/ohlc" },
   get_subnet_ownership_history: {

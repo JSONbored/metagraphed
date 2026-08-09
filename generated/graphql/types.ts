@@ -1663,6 +1663,18 @@ export type ChainStakeTransfersSubnet = {
   transfers_per_sender?: Maybe<Scalars['Float']['output']>;
 };
 
+export type ChainSubnetLifecycle = {
+  __typename?: 'ChainSubnetLifecycle';
+  entries: Array<SubnetLifecycleEntry>;
+  entry_count: Scalars['Int']['output'];
+  limit?: Maybe<Scalars['Int']['output']>;
+  next_cursor?: Maybe<Scalars['String']['output']>;
+  offset?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+  /** Distinct subnets appearing in this page -- context for entry_count. */
+  subnet_count: Scalars['Int']['output'];
+};
+
 /** One directed sender -> receiver corridor on the transfer-pairs leaderboard. */
 export type ChainTransferPair = {
   __typename?: 'ChainTransferPair';
@@ -2985,6 +2997,8 @@ export type Query = {
   chain_stake_moves: ChainStakeMoves;
   /** Network-wide stake-transfer (between-coldkeys) leaderboard over a 7d/30d window (default 7d): subnets ranked by StakeTransferred events with each's distinct-sender count and transfers-per-sender intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. StakeTransferred relocates ownership on the same hotkey -- not net capital or re-delegation churn. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/stake-transfers. */
   chain_stake_transfers: ChainStakeTransfers;
+  /** Every subnet's registrations and deregistrations across the network, newest first. window is 7d|30d|90d|1y|all and defaults to all, because a subnet changes state a handful of times in its lifetime. Mirrors GET /api/v1/chain/subnet-lifecycle. */
+  chain_subnet_lifecycle: ChainSubnetLifecycle;
   /** Network-wide directed native-TAO transfer-corridor leaderboard over a 7d/30d window (default 7d): top sender->receiver pairs ranked by volume (default) or transfer count, each with volume, count, and last block/time, plus a network rollup (total volume, transfer count, unique corridors, top-corridor share). Self-transfers and malformed rows are excluded. limit caps the corridors (default 25, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/transfer-pairs. */
   chain_transfer_pairs: ChainTransferPairs;
   /** Network-wide native-TAO transfer analytics over a 7d/30d window (default 7d): total Balances.Transfer volume and count, distinct senders/receivers, top senders and receivers ranked by volume, and the top senders' share of total volume. limit caps each leaderboard (default 25, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/transfers. */
@@ -3176,6 +3190,8 @@ export type Query = {
   subnet_lease?: Maybe<SubnetLease>;
   /** Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717), decoded from the account_events stream. Companion to subnet_lease (that's the current state; this is the event log). A subnet that has never been leased returns an empty list. Reaches the Postgres-only all-events tier directly; an out-of-range netuid or an unavailable tier is a GraphQL error, never a silent empty list. Mirrors GET /api/v1/subnets/{netuid}/lease/history. */
   subnet_lease_history: SubnetLeaseHistory;
+  /** When one subnet was registered or deregistered, newest first. Entries with predates_capture=true are older than detection and carry a null block_number -- a real answer, not a missing one. A subnet with no recorded transition resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/lifecycle. */
+  subnet_lifecycle: SubnetLifecycle;
   /** One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph. */
   subnet_metagraph?: Maybe<Scalars['JSON']['output']>;
   /** Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers. */
@@ -3612,6 +3628,12 @@ export type QueryChain_Stake_MovesArgs = {
 
 
 export type QueryChain_Stake_TransfersArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryChain_Subnet_LifecycleArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -4378,6 +4400,13 @@ export type QuerySubnet_LeaseArgs = {
 
 export type QuerySubnet_Lease_HistoryArgs = {
   netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_LifecycleArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+  offset?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -5525,6 +5554,27 @@ export type SubnetLeaseHistory = {
   lease_events: Array<Scalars['JSON']['output']>;
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+};
+
+export type SubnetLifecycle = {
+  __typename?: 'SubnetLifecycle';
+  entries: Array<SubnetLifecycleEntry>;
+  entry_count: Scalars['Int']['output'];
+  limit?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  next_cursor?: Maybe<Scalars['String']['output']>;
+  offset?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+};
+
+/** One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap. */
+export type SubnetLifecycleEntry = {
+  __typename?: 'SubnetLifecycleEntry';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  event: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  predates_capture: Scalars['Boolean']['output'];
 };
 
 export type SubnetList = {
@@ -6682,6 +6732,7 @@ export type ResolversTypes = ResolversObject<{
   ChainStakeTransfersIntensityDistribution: ResolverTypeWrapper<ChainStakeTransfersIntensityDistribution>;
   ChainStakeTransfersNetwork: ResolverTypeWrapper<ChainStakeTransfersNetwork>;
   ChainStakeTransfersSubnet: ResolverTypeWrapper<ChainStakeTransfersSubnet>;
+  ChainSubnetLifecycle: ResolverTypeWrapper<ChainSubnetLifecycle>;
   ChainTransferPair: ResolverTypeWrapper<ChainTransferPair>;
   ChainTransferPairs: ResolverTypeWrapper<ChainTransferPairs>;
   ChainTransferParty: ResolverTypeWrapper<ChainTransferParty>;
@@ -6834,6 +6885,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetIdleStake: ResolverTypeWrapper<SubnetIdleStake>;
   SubnetLease: ResolverTypeWrapper<SubnetLease>;
   SubnetLeaseHistory: ResolverTypeWrapper<SubnetLeaseHistory>;
+  SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
+  SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
   SubnetMover: ResolverTypeWrapper<SubnetMover>;
   SubnetMovers: ResolverTypeWrapper<SubnetMovers>;
@@ -7037,6 +7090,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainStakeTransfersIntensityDistribution: ChainStakeTransfersIntensityDistribution;
   ChainStakeTransfersNetwork: ChainStakeTransfersNetwork;
   ChainStakeTransfersSubnet: ChainStakeTransfersSubnet;
+  ChainSubnetLifecycle: ChainSubnetLifecycle;
   ChainTransferPair: ChainTransferPair;
   ChainTransferPairs: ChainTransferPairs;
   ChainTransferParty: ChainTransferParty;
@@ -7188,6 +7242,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetIdleStake: SubnetIdleStake;
   SubnetLease: SubnetLease;
   SubnetLeaseHistory: SubnetLeaseHistory;
+  SubnetLifecycle: SubnetLifecycle;
+  SubnetLifecycleEntry: SubnetLifecycleEntry;
   SubnetList: SubnetList;
   SubnetMover: SubnetMover;
   SubnetMovers: SubnetMovers;
@@ -8564,6 +8620,16 @@ export type ChainStakeTransfersSubnetResolvers<ContextType = GqlContext, ParentT
   transfers_per_sender?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
+export type ChainSubnetLifecycleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainSubnetLifecycle'] = ResolversParentTypes['ChainSubnetLifecycle']> = ResolversObject<{
+  entries?: Resolver<Array<ResolversTypes['SubnetLifecycleEntry']>, ParentType, ContextType>;
+  entry_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  offset?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type ChainTransferPairResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTransferPair'] = ResolversParentTypes['ChainTransferPair']> = ResolversObject<{
   from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   last_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -9606,6 +9672,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_stake_flow?: Resolver<ResolversTypes['ChainStakeFlow'], ParentType, ContextType, Partial<QueryChain_Stake_FlowArgs>>;
   chain_stake_moves?: Resolver<ResolversTypes['ChainStakeMoves'], ParentType, ContextType, Partial<QueryChain_Stake_MovesArgs>>;
   chain_stake_transfers?: Resolver<ResolversTypes['ChainStakeTransfers'], ParentType, ContextType, Partial<QueryChain_Stake_TransfersArgs>>;
+  chain_subnet_lifecycle?: Resolver<ResolversTypes['ChainSubnetLifecycle'], ParentType, ContextType, Partial<QueryChain_Subnet_LifecycleArgs>>;
   chain_transfer_pairs?: Resolver<ResolversTypes['ChainTransferPairs'], ParentType, ContextType, Partial<QueryChain_Transfer_PairsArgs>>;
   chain_transfers?: Resolver<ResolversTypes['ChainTransfers'], ParentType, ContextType, Partial<QueryChain_TransfersArgs>>;
   chain_turnover?: Resolver<ResolversTypes['ChainTurnover'], ParentType, ContextType, Partial<QueryChain_TurnoverArgs>>;
@@ -9702,6 +9769,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_idle_stake?: Resolver<ResolversTypes['SubnetIdleStake'], ParentType, ContextType, RequireFields<QuerySubnet_Idle_StakeArgs, 'netuid'>>;
   subnet_lease?: Resolver<Maybe<ResolversTypes['SubnetLease']>, ParentType, ContextType, RequireFields<QuerySubnet_LeaseArgs, 'netuid'>>;
   subnet_lease_history?: Resolver<ResolversTypes['SubnetLeaseHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Lease_HistoryArgs, 'netuid'>>;
+  subnet_lifecycle?: Resolver<ResolversTypes['SubnetLifecycle'], ParentType, ContextType, RequireFields<QuerySubnet_LifecycleArgs, 'netuid'>>;
   subnet_metagraph?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_MetagraphArgs, 'netuid'>>;
   subnet_movers?: Resolver<ResolversTypes['SubnetMovers'], ParentType, ContextType, Partial<QuerySubnet_MoversArgs>>;
   subnet_ohlc?: Resolver<ResolversTypes['SubnetOhlc'], ParentType, ContextType, RequireFields<QuerySubnet_OhlcArgs, 'netuid'>>;
@@ -10391,6 +10459,24 @@ export type SubnetLeaseHistoryResolvers<ContextType = GqlContext, ParentType ext
   lease_events?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetLifecycleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLifecycle'] = ResolversParentTypes['SubnetLifecycle']> = ResolversObject<{
+  entries?: Resolver<Array<ResolversTypes['SubnetLifecycleEntry']>, ParentType, ContextType>;
+  entry_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  offset?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetLifecycleEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLifecycleEntry'] = ResolversParentTypes['SubnetLifecycleEntry']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  event?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  predates_capture?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
 export type SubnetListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetList'] = ResolversParentTypes['SubnetList']> = ResolversObject<{
@@ -11278,6 +11364,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainStakeTransfersIntensityDistribution?: ChainStakeTransfersIntensityDistributionResolvers<ContextType>;
   ChainStakeTransfersNetwork?: ChainStakeTransfersNetworkResolvers<ContextType>;
   ChainStakeTransfersSubnet?: ChainStakeTransfersSubnetResolvers<ContextType>;
+  ChainSubnetLifecycle?: ChainSubnetLifecycleResolvers<ContextType>;
   ChainTransferPair?: ChainTransferPairResolvers<ContextType>;
   ChainTransferPairs?: ChainTransferPairsResolvers<ContextType>;
   ChainTransferParty?: ChainTransferPartyResolvers<ContextType>;
@@ -11426,6 +11513,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetIdleStake?: SubnetIdleStakeResolvers<ContextType>;
   SubnetLease?: SubnetLeaseResolvers<ContextType>;
   SubnetLeaseHistory?: SubnetLeaseHistoryResolvers<ContextType>;
+  SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
+  SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;
   SubnetMover?: SubnetMoverResolvers<ContextType>;
   SubnetMovers?: SubnetMoversResolvers<ContextType>;

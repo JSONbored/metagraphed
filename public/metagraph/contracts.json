@@ -1016,6 +1016,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Append-only registration/deregistration timeline for one subnet (#10263), served live from the subnet_lifecycle Neon table at /api/v1/subnets/{netuid}/lifecycle; pass ?format=csv to download the page as CSV (no static file). Entries carry predates_capture=true where the transition is older than detection, in which case block_number is null rather than 0.",
+      "id": "subnet-lifecycle",
+      "path": "/metagraph/subnets/{netuid}/lifecycle.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLifecycleArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Network-wide registration/deregistration feed across every subnet (#10263), newest first, served live from the subnet_lifecycle Neon table at /api/v1/chain/subnet-lifecycle; pass ?format=csv to download the page as CSV (no static file).",
+      "id": "chain-subnet-lifecycle",
+      "path": "/metagraph/chain/subnet-lifecycle.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainSubnetLifecycleArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Validators (validator_permit) of one subnet ranked by stake, served live from the neurons D1 tier at /api/v1/subnets/{netuid}/validators (no static file).",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
@@ -2756,7 +2778,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 161,
+    "mainnet_only_route_count": 163,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

@@ -2091,6 +2091,20 @@ const HARNESS_SERVES_NO_ROWS =
 // harness structurally cannot.
 const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   [
+    "get_subnet_lifecycle",
+    // subnet_lifecycle is written by the detection folded into the
+    // neurons-staleness tick, which needs a live neurons pass -- the harness
+    // has no copy of either. The table is also genuinely empty in production
+    // until #10265's flag fix deploys, so even a live sweep would see no rows
+    // today; the daily check-mcp-conformance run against production is what
+    // will exercise the item shape once it fills.
+    "the harness has no neurons pass, so no lifecycle diff exists to detect",
+  ],
+  [
+    "get_chain_subnet_lifecycle",
+    "same table as get_subnet_lifecycle -- no harness copy, empty until #10265 deploys",
+  ],
+  [
     "get_network_health",
     "the harness's health artifact carries no per-subnet rows",
   ],

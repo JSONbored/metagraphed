@@ -833,6 +833,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-lifecycle",
+      "path": "/metagraph/subnets/{netuid}/lifecycle.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetLifecycleArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-subnet-lifecycle",
+      "path": "/metagraph/chain/subnet-lifecycle.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainSubnetLifecycleArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-validators",
       "path": "/metagraph/subnets/{netuid}/validators.json",
       "retirement": null,
@@ -2321,7 +2339,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 161,
+    "mainnet_only_route_count": 163,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7836,6 +7854,99 @@
           "name": "cursor",
           "schema": {
             "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/lifecycle.json",
+      "cache": "short",
+      "description": "Fetch when one subnet was registered or deregistered (#10263): an append-only timeline, newest first, from the subnet_lifecycle Neon table. Entries where predates_capture is true are older than detection and carry a null block_number — that is a real answer, not a missing one. ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV.",
+      "id": "subnet-lifecycle",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/lifecycle",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "format",
+          "schema": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "type": "string"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/subnet-lifecycle.json",
+      "cache": "short",
+      "description": "Fetch every subnet's registrations and deregistrations across the network (#10263), newest first, from the subnet_lifecycle Neon table. ?window=7d|30d|90d|1y|all (default all — a subnet changes state a handful of times in its lifetime, so a short window is almost always empty). ?limit (<=1000). Pass ?format=csv to download the page as CSV.",
+      "id": "chain-subnet-lifecycle",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/subnet-lifecycle",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "1y",
+              "all"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
           }
         },
         {
