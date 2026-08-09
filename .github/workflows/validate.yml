@@ -391,6 +391,7 @@ jobs:
           npm run validate:graphql-types-drift
           npm run validate:worker-types-parity
           npm run validate:graphql-route-parity
+          npm run validate:graphql-hand-written-checks
           npm run validate:graphql-component-parity
           npm run validate:published-names
           npm run validate:graphql-tier-parity

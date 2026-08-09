@@ -381,7 +381,9 @@ describe("subnet_surface_history over GraphQL and MCP", () => {
     assert.equal((card.changes as Row[])[0].action, "delete");
   });
 
-  test("GraphQL validates the limit rather than clamping", async () => {
+  // CLAMPS since #10316, matching the MCP tool below rather than diverging
+  // from it -- the two now answer the same page for the same argument.
+  test("GraphQL clamps an over-max limit to the published ceiling", async () => {
     const res = await handleGraphQLRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "POST",
@@ -392,8 +394,9 @@ describe("subnet_surface_history over GraphQL and MCP", () => {
       }),
       env(),
     );
-    const errors = ((await res.json()) as Row).errors as Row[];
-    assert.equal((errors[0].extensions as Row)?.code, "BAD_USER_INPUT");
+    const body = (await res.json()) as Row;
+    assert.equal(body.errors, undefined);
+    assert.equal((body.data as Row)?.subnet_surface_history?.netuid, NETUID);
   });
 
   test("the MCP tool serves it and clamps its limit", async () => {

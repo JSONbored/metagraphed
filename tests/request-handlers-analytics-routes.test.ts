@@ -375,7 +375,7 @@ describe("handleEconomicsTrends", () => {
     assert.equal(body.meta.parameter, "window");
     assert.equal(
       body.error.message,
-      "window must be one of: 7d, 30d, 90d, 1y, all.",
+      'window must be one of: 7d, 30d, 90d, 1y, all. Received: "99d".',
     );
   });
 
@@ -642,7 +642,10 @@ describe("handleUptime", () => {
     const res = await viaRouter(`/api/v1/subnets/${NETUID}/uptime?window=30d`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
-    assert.equal(body.error.message, "window must be one of: 90d, 1y.");
+    assert.equal(
+      body.error.message,
+      'window must be one of: 90d, 1y. Received: "30d".',
+    );
   });
 
   // formatUptime's own row-grouping/rollup logic (per-surface aggregation,

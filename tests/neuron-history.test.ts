@@ -560,7 +560,7 @@ describe("history endpoints (via the Worker dispatch)", () => {
     assert.equal(body.error.code, "invalid_query");
     assert.equal(
       body.error.message,
-      "window must be one of: 7d, 30d, 90d, 1y, all.",
+      'window must be one of: 7d, 30d, 90d, 1y, all. Received: "400d".',
     );
     assert.equal(body.meta.parameter, "window");
   });

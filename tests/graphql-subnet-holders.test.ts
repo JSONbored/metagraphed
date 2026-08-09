@@ -227,23 +227,22 @@ describe("subnet_holders declines rather than answering zero", () => {
   });
 });
 
-describe("subnet_holders validates its limit rather than clamping", () => {
-  // REST returns 400 on an over-ceiling limit. A GraphQL field that silently
-  // substituted a different number would answer a question nobody asked.
-  test.each([0, -1, SUBNET_HOLDERS_LIMIT_MAX + 1])(
-    "limit %i is a BAD_USER_INPUT error",
-    async (limit) => {
-      const body = await gql(FULL_QUERY(NETUID, limit));
-      const errors = body.errors as Row[];
-      assert.equal(Array.isArray(errors), true);
-      assert.match(String(errors[0].message), /limit must be an integer/);
-      assert.equal(
-        (errors[0].extensions as Row)?.code,
-        "BAD_USER_INPUT",
-        "the code is what a client branches on",
-      );
-    },
-  );
+describe("subnet_holders clamps its limit into the published range", () => {
+  // REST returns 400 on an over-ceiling limit and this surface clamps -- the
+  // split #10174 settled per surface, extended to GraphQL by #10316 because it
+  // was doing BOTH depending on which field you asked. Clamping is the
+  // forgiving direction, and the answer reports the limit actually applied, so
+  // a caller can still tell what they got.
+  test.each([
+    [0, 1],
+    [-1, 1],
+    [SUBNET_HOLDERS_LIMIT_MAX + 1, SUBNET_HOLDERS_LIMIT_MAX],
+  ])("limit %i is served as %i", async (limit, applied) => {
+    fiveHolders();
+    const body = await gql(FULL_QUERY(NETUID, limit));
+    assert.equal(body.errors, undefined);
+    assert.equal((body.data as Row).subnet_holders?.limit, applied);
+  });
 
   test("the ceiling itself is accepted", async () => {
     fiveHolders();

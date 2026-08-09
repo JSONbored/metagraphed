@@ -37,6 +37,12 @@ import {
   routeQuerySchemasForPathname,
   type RouteQuerySchemas,
 } from "./contracts.ts";
+import {
+  isDeclaredDivergence,
+  toRouteShape,
+  type RouteShape,
+} from "../schemas-src/graphql/argument-divergences.ts";
+import { SERVING_BOUND } from "../schemas-src/query-params.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 import {
   ANALYTICS_WINDOW_DAYS,
@@ -171,7 +177,10 @@ export function validateRouteArgs(
   if (parsed.success) return null;
   const issue = parsed.error.issues[0];
   const parameter = String(issue?.path[0] ?? "");
-  return { parameter, message: messageFor(parameter, schemas, issue) };
+  return {
+    parameter,
+    message: messageFor(parameter, schemas, issue, supplied[parameter]),
+  };
 }
 
 /**
@@ -215,6 +224,197 @@ export function parseRouteArgs<T = Record<string, unknown>>(
     if (fallback !== undefined) withDefaults[name] = fallback;
   }
   return withDefaults as T;
+}
+
+/**
+ * The ceiling one route publishes for one parameter, or undefined for none.
+ *
+ * Read off `plain` for the same reason `messageFor` does: the wire form wraps a
+ * numeric field in its string-decoding step, and the number a caller is bound
+ * by is the one in the published schema.
+ */
+export function publishedCeiling(
+  routePath: string,
+  parameter: string,
+): number | undefined {
+  const schemas = routeQuerySchemasForPathname(routePath);
+  const field = schemas?.plain.shape[parameter] as z.ZodType | undefined;
+  if (!field) return undefined;
+  const maximum = publishedShape(field).maximum;
+  // `z.int()` publishes the JS safe-integer range on every integer, so a
+  // parameter with no ceiling of its own still reports 2^53-1. That is the
+  // representation of "any integer", not a bound anybody chose (#10218).
+  return maximum === Number.MAX_SAFE_INTEGER ? undefined : maximum;
+}
+
+/**
+ * Is this parameter's bound a serving POLICY, which bends, or a validity
+ * constraint, which does not?
+ *
+ * Read from the published schema rather than from a list of names here. The
+ * distinction is declared once, on the builder that creates the bound
+ * (`limitSchema`, `offsetSchema`, and the one window that is hand-built), and
+ * `SERVING_BOUND` carries it all the way into `openapi.json` -- so a caller can
+ * see which of a route's bounds bend, and a window parameter written next month
+ * answers the question by being built the same way rather than by someone
+ * remembering to add it here.
+ *
+ * A name list would have been shorter and would have been wrong within a
+ * release: `limit` and `offset` were the obvious two, and `chain-events/stats`
+ * publishes `blocks`, a window size whose ceiling behaves identically and whose
+ * clamping is pinned by a test.
+ */
+function isServingBound(field: z.ZodType | undefined): boolean {
+  return unwrapOptional(field)?.meta()?.[SERVING_BOUND] === true;
+}
+
+/**
+ * The schema behind `.optional()`, where a builder's `.meta()` actually lives.
+ *
+ * Every route field is optional, and `.optional()` does not inherit the inner
+ * schema's metadata -- the same unwrap `parseRouteArgs` does to read a published
+ * default, and for the same reason.
+ */
+function unwrapOptional(field: z.ZodType | undefined): z.ZodType | undefined {
+  if (!field) return undefined;
+  return field instanceof z.ZodOptional ? (field.unwrap() as z.ZodType) : field;
+}
+
+/**
+ * Which spelling the route wants for this parameter.
+ *
+ * A published `["true","false"]` enum is the query-string spelling of a
+ * boolean; a published string with a delimited pattern is the query-string
+ * spelling of a list. Anything else already matches what GraphQL sends.
+ */
+function routeShapeOf(field: z.ZodType | undefined): RouteShape {
+  const inner = unwrapOptional(field);
+  if (!inner) return "as-is";
+  const json = publishedShape(inner);
+  if (Array.isArray(json.enum)) {
+    // EVERY value being a boolean word, not exactly two of them.
+    // `/subnets/{netuid}/metagraph` publishes `validator_permit` as `["true"]`
+    // alone -- absent means "both", so "false" would be a third answer rather
+    // than the other half of a pair. It is still the query-string spelling of
+    // a boolean, and requiring arity 2 read it as an ordinary enum and rejected
+    // the SDL's `Boolean`.
+    return json.enum.every((value) => value === "true" || value === "false")
+      ? "string-enum"
+      : "as-is";
+  }
+  return json.type === "string" ? "delimited-string" : "as-is";
+}
+
+/**
+ * A page or window value brought inside the range the route publishes.
+ *
+ * ── The decision this encodes ──────────────────────────────────────────────
+ *
+ * #10174 settled clamp-versus-reject for REST (rejects) and MCP (clamps), one
+ * predictable sentence per surface. GraphQL was never settled and was split
+ * down the middle: twelve fields clamped and five rejected, both pinned by
+ * `tests/graphql.test.ts`, so a caller could not predict which they would get
+ * -- exactly the state #10174 found the other two surfaces in.
+ *
+ * GRAPHQL CLAMPS, for the two reasons #10174 used:
+ *
+ *   It is the FORGIVING direction. Flipping the twelve clamping fields to
+ *   rejecting breaks every live caller that passes a large page; flipping the
+ *   five rejecting fields to clamping breaks nobody, because an error becomes
+ *   an answer. #10174 chose the same way for MCP and said so.
+ *
+ *   It matches the surface it most resembles. Like MCP and unlike REST, a
+ *   GraphQL caller gets HTTP 200 whatever happens and has to read the body to
+ *   learn anything, so a rejection is far less visible here than the 400 REST
+ *   returns -- and the response already reports the limit actually applied.
+ *
+ * Both ends, because the twelve include below-range clamping (`limit: 0` up to
+ * 1, a negative `offset` up to 0) and those callers are as live as the others.
+ */
+function clampToPublished(field: z.ZodType, value: unknown): unknown {
+  if (typeof value !== "number" || !Number.isInteger(value)) return value;
+  const json = publishedShape(field);
+  const { minimum } = json;
+  // `z.int()` publishes the JS safe-integer range on every integer, so a
+  // parameter with no ceiling of its own still reports 2^53-1 -- not a bound
+  // anybody chose, and not one to clamp against (#10218).
+  const maximum =
+    json.maximum === Number.MAX_SAFE_INTEGER ? undefined : json.maximum;
+  if (typeof maximum === "number" && value > maximum) return maximum;
+  if (typeof minimum === "number" && value < minimum) return minimum;
+  return value;
+}
+
+/**
+ * Everything the route's schema says about a field's arguments, EXCEPT the page
+ * bounds (#10316).
+ *
+ * ── Why the parse cannot simply be `validateRouteArgs` ─────────────────────
+ *
+ * Running the route's whole object over GraphQL's arguments looks like the
+ * obvious move, and it silently changes published behaviour. #10174 settled
+ * clamp-versus-reject for REST (rejects) and MCP (clamps) -- one predictable
+ * sentence per surface. GraphQL was never settled, and it is split down the
+ * middle: `tests/graphql.test.ts` pins TWELVE fields that clamp
+ * (`chain_prometheus(limit: 99999)` forwards `limit=100`) and FIVE that reject
+ * (`subnet_movers` answers BAD_USER_INPUT above `MOVERS_LIMIT_MAX`). Both are
+ * published behaviour today, and a parse that enforced the schema's bound would
+ * flip all twelve to rejecting without anybody deciding that.
+ *
+ * That decision is the #10174 this surface never had, and it is deliberately
+ * NOT taken here -- one behaviour change made on purpose beats seventeen made
+ * by a refactor. Until it is, the parse leaves `limit` and `offset` to the
+ * resolver, which is the only part of the 250 hand-written checks this cannot
+ * yet delete.
+ *
+ * Everything else -- enums, patterns, formats, lengths, `netuid`'s range -- is
+ * vocabulary and shape, identical on every surface, and is enforced here.
+ *
+ * ── What each step is for ──────────────────────────────────────────────────
+ *
+ * DECLARED DIVERGENCES are skipped, because ten of GraphQL's arguments are
+ * legitimately not the route's (`endpoints.cursor` is an opaque keyset where
+ * REST takes an integer offset) and `validate:graphql-route-parity` has already
+ * verified each against production.
+ *
+ * SHAPES are converted first: a GraphQL Boolean against a published
+ * `["true","false"]` string enum, and a list against a comma-joined string, are
+ * the same value spelled the way each type system can hold it.
+ *
+ * DEFAULTS are applied last, from `.meta({default})`, so a resolver never
+ * restates one.
+ */
+export interface RouteArgs<T> {
+  /** Parsed arguments with published defaults applied, or null on rejection. */
+  value: T | null;
+  /** The vocabulary/shape violation, if any. Serving bounds never report one. */
+  error: QueryError | null;
+  /** Arguments the parse resolved by clamping, so a caller's value is not kept. */
+  clamped: ReadonlySet<string>;
+}
+
+export function resolveRouteArgs<T = Record<string, unknown>>(
+  routePath: string,
+  field: string,
+  args: Record<string, unknown>,
+): RouteArgs<T> {
+  const schemas = routeQuerySchemasForPathname(routePath);
+  const owned: Record<string, unknown> = {};
+  const clamped = new Set<string>();
+  for (const [name, value] of Object.entries(args)) {
+    if (value === null || value === undefined) continue;
+    if (isDeclaredDivergence(field, name)) continue;
+    const declared = schemas?.plain.shape[name] as z.ZodType | undefined;
+    if (declared && isServingBound(declared)) {
+      owned[name] = clampToPublished(declared, value);
+      clamped.add(name);
+    } else {
+      owned[name] = toRouteShape(value, routeShapeOf(declared));
+    }
+  }
+  const error = validateRouteArgs(routePath, owned);
+  if (error) return { value: null, error, clamped };
+  return { value: parseRouteArgs<T>(routePath, owned), error: null, clamped };
 }
 
 /**
@@ -464,13 +664,19 @@ function firstViolation(
   for (const key of params.keys()) {
     const issue = issues.get(key);
     if (issue)
-      return { parameter: key, message: messageFor(key, schemas, issue) };
+      return {
+        parameter: key,
+        message: messageFor(key, schemas, issue, params.get(key)),
+      };
   }
   /* v8 ignore next 3 -- every issue path is a key that came from the URL, so
      the loop above always finds one; this is the type system's exit, not a
      reachable branch. */
   const [parameter, issue] = [...issues][0] ?? ["", undefined];
-  return { parameter, message: messageFor(parameter, schemas, issue) };
+  return {
+    parameter,
+    message: messageFor(parameter, schemas, issue, params.get(parameter)),
+  };
 }
 
 /**
@@ -485,15 +691,47 @@ function firstViolation(
  * Read off `plain`, never `wire`: the wire form wraps a numeric field in the
  * string-decoding step, and a caller needs to be told the integer range they
  * missed, not that a decode produced NaN.
+ *
+ * The RECEIVED value is echoed after the bound (#10316). It is the one part of
+ * the sentence that is not a copy of anything the contract publishes -- it is
+ * the caller's own input -- so it cannot drift, and without it the two surfaces
+ * could not be unified: GraphQL's 250 hand-written checks name the offending
+ * value (`"99d" is not a supported window`) and its tests assert that they do,
+ * while REST's derived message named only the bound. Adding it here gives both
+ * surfaces the better sentence rather than making one of them worse.
  */
 function messageFor(
   parameter: string,
   schemas: RouteQuerySchemas,
   issue: z.core.$ZodIssue | undefined,
+  received?: unknown,
 ): string {
   const field = schemas.plain.shape[parameter] as z.ZodType | undefined;
-  const json = field ? publishedShape(field) : {};
+  const bound = boundFor(parameter, field ? publishedShape(field) : {}, issue);
+  return received === undefined || received === null
+    ? bound
+    : `${bound} Received: ${quoteReceived(received)}.`;
+}
 
+/**
+ * The caller's value, quoted and bounded in length.
+ *
+ * TRUNCATED because the value is untrusted and unbounded -- a 767-character
+ * `netuids` string echoed whole turns one bad request into an error body
+ * nobody reads, and a `maxLength` violation is exactly the case where the input
+ * is too long by construction.
+ */
+function quoteReceived(received: unknown): string {
+  const text = typeof received === "string" ? received : String(received);
+  return JSON.stringify(text.length > 40 ? `${text.slice(0, 40)}...` : text);
+}
+
+/** The published bound, as a sentence. */
+function boundFor(
+  parameter: string,
+  json: PublishedShape,
+  issue: z.core.$ZodIssue | undefined,
+): string {
   if (Array.isArray(json.enum)) {
     return `${parameter} must be one of: ${json.enum.join(", ")}.`;
   }
