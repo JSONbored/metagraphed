@@ -56,7 +56,10 @@ import {
   parseRouteQuery,
   resolvePage,
   resolveWindow,
+  routeInt,
   routeQuery,
+  routeText,
+  routeValue,
 } from "../../src/route-query.ts";
 import type { QueryError } from "../list-query.ts";
 import { projectionMeta } from "../../src/field-projection.ts";
@@ -70,25 +73,9 @@ import {
   buildValidatorDetail,
   NO_ALPHA_PRICES,
   overlayFeaturedValidators,
-  GLOBAL_VALIDATOR_SORTS,
-  DEFAULT_GLOBAL_VALIDATOR_SORT,
-  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-  GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/metagraph-neurons.ts";
-import {
-  buildAccountsList,
-  ACCOUNTS_LIST_SORTS,
-  DEFAULT_ACCOUNTS_LIST_SORT,
-  ACCOUNTS_LIST_LIMIT_DEFAULT,
-  ACCOUNTS_LIST_LIMIT_MAX,
-} from "../../src/accounts-list.ts";
-import {
-  buildTopHoldersList,
-  TOP_HOLDERS_SORTS,
-  DEFAULT_TOP_HOLDERS_SORT,
-  TOP_HOLDERS_LIMIT_DEFAULT,
-  TOP_HOLDERS_LIMIT_MAX,
-} from "../../src/top-holders.ts";
+import { buildAccountsList } from "../../src/accounts-list.ts";
+import { buildTopHoldersList } from "../../src/top-holders.ts";
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
@@ -157,87 +144,63 @@ import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadChainBurn } from "../../src/chain-burn.ts";
 import {
   BURN_HISTORY_WINDOWS,
-  DEFAULT_BURN_HISTORY_WINDOW,
   buildSubnetBurnHistory,
   loadSubnetBurnHistory,
 } from "../../src/subnet-burn-history.ts";
 import {
   buildSubnetHolders,
   loadSubnetHolders,
-  SUBNET_HOLDERS_LIMIT_DEFAULT,
-  SUBNET_HOLDERS_LIMIT_MAX,
 } from "../../src/subnet-holders.ts";
 import {
   buildChainHolders,
   loadChainHolders,
-  CHAIN_HOLDERS_LIMIT_DEFAULT,
-  CHAIN_HOLDERS_LIMIT_MAX,
   CHAIN_HOLDERS_SORTS,
-  DEFAULT_CHAIN_HOLDERS_SORT,
 } from "../../src/chain-holders.ts";
 import { buildIndexerLag, loadIndexerLag } from "../../src/indexer-lag.ts";
 import {
   buildChainConcentrationHistory,
   declineChainConcentrationHistory,
   loadChainConcentrationHistory,
-  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
 } from "../../src/chain-concentration-history.ts";
-import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "../../src/route-limits.ts";
 import {
   buildPipelineHistory,
   declinePipelineHistory,
   loadPipelineHistory,
-  PIPELINE_HISTORY_WINDOWS,
 } from "../../src/emission-pipeline-history.ts";
-import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "../../src/route-limits.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
-  EMISSION_CHANGES_LIMIT_DEFAULT,
-  EMISSION_CHANGES_LIMIT_MAX,
 } from "../../src/emission-gate-changes.ts";
 import {
   buildNominatorPositions,
   loadNominatorPositions,
-  NOMINATOR_BASES,
-  DEFAULT_NOMINATOR_BASIS,
 } from "../../src/validator-nominator-positions.ts";
 import {
   buildFailureReasons,
   declineFailureReasons,
   loadFailureReasons,
-  FAILURE_REASONS_WINDOWS,
 } from "../../src/failure-reasons.ts";
-import { DEFAULT_FAILURE_REASONS_WINDOW } from "../../src/route-limits.ts";
 import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
-  DEFAULT_TAO_USD_WINDOW,
   TAO_USD_WINDOWS,
 } from "../../src/tao-usd-series.ts";
 import {
   buildSurfaceHistory,
   loadSurfaceHistory,
-  SURFACE_HISTORY_LIMIT_DEFAULT,
-  SURFACE_HISTORY_LIMIT_MAX,
 } from "../../src/surface-history.ts";
 import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
-  DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
   VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
   VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
   groupNeuronsByNetuid,
   rankValidatorEconomics,
-  VALIDATOR_ECONOMICS_SORTS,
   type ValidatorEconomicsRow,
   type ValidatorNeuron,
 } from "../../src/validator-economics.ts";
-import {
-  VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
-  VALIDATOR_ECONOMICS_LIMIT_MAX,
-} from "../../src/route-limits.ts";
+import {} from "../../src/route-limits.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import {
   isCrowdloanId,
@@ -405,17 +368,10 @@ import {
   buildStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
-  STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.ts";
 import { buildAlphaVolume } from "../../src/alpha-volume.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "../../src/subnet-alpha-volume-artifact.ts";
-import {
-  buildSubnetOhlc,
-  OHLC_INTERVALS,
-  OHLC_INTERVAL_DEFAULT,
-  DEFAULT_OHLC_WINDOW_DAYS,
-  MAX_OHLC_WINDOW_DAYS,
-} from "../../src/subnet-ohlc.ts";
+import { buildSubnetOhlc } from "../../src/subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
@@ -426,7 +382,6 @@ import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
   DEFAULT_NOMINATOR_WINDOW,
-  NOMINATOR_SORTS,
 } from "../../src/validator-nominators.ts";
 import { buildValidatorHistory } from "../../src/validator-history.ts";
 import {
@@ -468,17 +423,11 @@ import {
   buildMovers,
   MOVERS_WINDOWS,
   DEFAULT_MOVERS_WINDOW,
-  MOVERS_SORTS,
-  DEFAULT_MOVERS_SORT,
-  MOVERS_LIMIT_DEFAULT,
-  MOVERS_LIMIT_MAX,
 } from "../../src/movers.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_WINDOWS,
   DEFAULT_CHAIN_TURNOVER_WINDOW,
-  CHAIN_TURNOVER_LIMIT_DEFAULT,
-  CHAIN_TURNOVER_LIMIT_MAX,
 } from "../../src/chain-turnover.ts";
 import { buildSubnetIdentityHistory } from "../../src/subnet-identity-history.ts";
 import { readStore, type ReadStoreDb } from "../../src/read-store.ts";
@@ -817,34 +766,6 @@ function csvCacheVariant(
   const separator = canonicalPath.includes("?") ? "&" : "?";
   return `${canonicalPath}${separator}format=csv`;
 }
-
-function parseBoundedIntParam(
-  url: URL,
-  parameter: string,
-  { def, min, max }: { def: number; min: number; max: number },
-): { value: number } | { error: QueryError } {
-  const raw = url.searchParams.get(parameter);
-  if (raw == null || raw === "") return { value: def };
-  if (!/^\d+$/.test(raw)) {
-    return {
-      error: {
-        parameter,
-        message: `${parameter} must be an integer from ${min} to ${max}.`,
-      },
-    };
-  }
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < min || value > max) {
-    return {
-      error: {
-        parameter,
-        message: `${parameter} must be an integer from ${min} to ${max}.`,
-      },
-    };
-  }
-  return { value };
-}
-
 /**
  * A strict boolean query parameter (#9720).
  *
@@ -900,23 +821,6 @@ export async function handleSubnetMetagraph(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  // #10096: the published enum is ["true"] -- a PRESENCE flag, because the
-  // only thing this filter can do is narrow to permitted neurons. It was not
-  // enforced, and the failure was silent in the worst direction: `?validator
-  // _permit=false` returned all 256 rows, which a caller asking for
-  // non-permitted neurons reads as "none of them hold a permit". Measured on
-  // SN1: no filter 256, `=true` 10, `=false` 256, `=bogus` 256.
-  //
-  // Rejected now, exactly as ?changes= is on /subnets/{netuid}/turnover, which
-  // publishes the identical one-value enum for the identical reason. A caller
-  // who wants the complement omits the parameter and filters the rows.
-  const permit = url.searchParams.get("validator_permit");
-  if (permit != null && permit !== "true") {
-    return analyticsQueryError({
-      parameter: "validator_permit",
-      message: `"${permit}" is not a valid validator_permit flag. Supported: true.`,
-    });
-  }
   // #9082. Parsed before the tier read so an unsupported field costs a 400
   // rather than a full 256-row fetch the caller never sees.
   const projection = parseNeuronFields(url.searchParams, "neurons");
@@ -925,8 +829,9 @@ export async function handleSubnetMetagraph(
   // table is dropped in production, so a D1 query here would always miss.
   // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
   // not a live D1 query) rather than querying a table that no longer exists.
-  // validator_permit is still validated above and forwarded to Postgres via
-  // the proxied request (tryPostgresTier passes the request through unchanged).
+  // validator_permit is validated by the router against the route's published
+  // one-value enum (#10060) and forwarded to Postgres via the proxied request
+  // (tryPostgresTier passes the request through unchanged).
   const data =
     ((await tryPostgresTier(
       env,
@@ -1115,7 +1020,7 @@ export async function handleSubnetHyperparamsHistory(
     (await loadSubnetHyperparamsHistoryColdTier(env, netuid, {
       limit,
       offset,
-      cursor: url.searchParams.get("cursor"),
+      cursor: routeText(url, "cursor"),
     })) ??
     buildSubnetHyperparamsHistory([], netuid, {
       limit,
@@ -1260,26 +1165,10 @@ function parseGlobalValidatorsQuery(
   const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
-  const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
-  if (!GLOBAL_VALIDATOR_SORTS.includes(sort)) {
-    return {
-      error: {
-        parameter: "sort",
-        message: `"${sort}" is not a supported sort. Supported: ${GLOBAL_VALIDATOR_SORTS.join(
-          ", ",
-        )}.`,
-      },
-    };
-  }
+  const sort = routeValue<string>(url, "sort");
+  const limit = pageLimit(url);
 
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-    min: 1,
-    max: GLOBAL_VALIDATOR_LIMIT_MAX,
-  });
-  if ("error" in limit) return { error: limit.error };
-
-  return { sort, limit: limit.value };
+  return { sort, limit: limit };
 }
 
 export function canonicalGlobalValidatorsCachePath(
@@ -1362,26 +1251,10 @@ function parseAccountsListQuery(
   const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
-  const sort = url.searchParams.get("sort") || DEFAULT_ACCOUNTS_LIST_SORT;
-  if (!ACCOUNTS_LIST_SORTS.includes(sort)) {
-    return {
-      error: {
-        parameter: "sort",
-        message: `"${sort}" is not a supported sort. Supported: ${ACCOUNTS_LIST_SORTS.join(
-          ", ",
-        )}.`,
-      },
-    };
-  }
+  const sort = routeValue<string>(url, "sort");
+  const limit = pageLimit(url);
 
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: ACCOUNTS_LIST_LIMIT_DEFAULT,
-    min: 1,
-    max: ACCOUNTS_LIST_LIMIT_MAX,
-  });
-  if ("error" in limit) return { error: limit.error };
-
-  return { sort, limit: limit.value };
+  return { sort, limit: limit };
 }
 
 export function canonicalAccountsListCachePath(
@@ -1451,26 +1324,10 @@ function parseTopHoldersQuery(
   const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
-  const sort = url.searchParams.get("sort") || DEFAULT_TOP_HOLDERS_SORT;
-  if (!TOP_HOLDERS_SORTS.includes(sort)) {
-    return {
-      error: {
-        parameter: "sort",
-        message: `"${sort}" is not a supported sort. Supported: ${TOP_HOLDERS_SORTS.join(
-          ", ",
-        )}.`,
-      },
-    };
-  }
+  const sort = routeValue<string>(url, "sort");
+  const limit = pageLimit(url);
 
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: TOP_HOLDERS_LIMIT_DEFAULT,
-    min: 1,
-    max: TOP_HOLDERS_LIMIT_MAX,
-  });
-  if ("error" in limit) return { error: limit.error };
-
-  return { sort, limit: limit.value };
+  return { sort, limit: limit };
 }
 
 export function canonicalTopHoldersCachePath(
@@ -1597,15 +1454,7 @@ export async function handleValidatorNominators(
   // a window cannot. Different units over different time semantics, so the
   // default must not move -- it would silently change what every existing
   // caller's numbers mean.
-  const basisParam = url.searchParams.get("basis") ?? DEFAULT_NOMINATOR_BASIS;
-  if (
-    !NOMINATOR_BASES.includes(basisParam as (typeof NOMINATOR_BASES)[number])
-  ) {
-    return analyticsQueryError({
-      parameter: "basis",
-      message: `basis must be one of ${NOMINATOR_BASES.join(", ")}.`,
-    });
-  }
+  const basisParam = routeValue<string>(url, "basis");
   if (basisParam === "positions") {
     // window and sort belong to the flow aggregation and mean nothing here.
     // Accepting them silently would imply this basis honoured them.
@@ -1617,20 +1466,8 @@ export async function handleValidatorNominators(
         });
       }
     }
-    const positionsLimit = parseBoundedIntParam(url, "limit", {
-      def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-      min: 1,
-      max: GLOBAL_VALIDATOR_LIMIT_MAX,
-    });
-    if ("error" in positionsLimit)
-      return analyticsQueryError(positionsLimit.error);
-    const positionsOffset = parseBoundedIntParam(url, "offset", {
-      def: 0,
-      min: 0,
-      max: Number.MAX_SAFE_INTEGER,
-    });
-    if ("error" in positionsOffset)
-      return analyticsQueryError(positionsOffset.error);
+    const positionsLimit = pageLimit(url);
+    const positionsOffset = routeInt(url, "offset") ?? 0;
     const read = await loadNominatorPositions(
       readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
         typeof loadNominatorPositions
@@ -1638,8 +1475,8 @@ export async function handleValidatorNominators(
       hotkey,
     );
     const positionsData = buildNominatorPositions(read, hotkey, {
-      limit: positionsLimit.value,
-      offset: positionsOffset.value,
+      limit: positionsLimit,
+      offset: positionsOffset,
     });
     return envelopeResponse(
       request,
@@ -1653,26 +1490,10 @@ export async function handleValidatorNominators(
     NOMINATOR_WINDOWS,
     DEFAULT_NOMINATOR_WINDOW,
   );
-  const sort = url.searchParams.get("sort");
-  if (sort !== null && !NOMINATOR_SORTS.includes(sort)) {
-    return analyticsQueryError({
-      parameter: "sort",
-      message: `"${sort}" is not a supported sort. Supported: ${NOMINATOR_SORTS.join(", ")}.`,
-    });
-  }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
-    min: 1,
-    max: GLOBAL_VALIDATOR_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
-  const offset = parseBoundedIntParam(url, "offset", {
-    def: 0,
-    min: 0,
-    max: Number.MAX_SAFE_INTEGER,
-  });
-  if ("error" in offset) return analyticsQueryError(offset.error);
-  const coldkeyParam = url.searchParams.get("coldkey");
+  const sort = routeText(url, "sort");
+  const limit = pageLimit(url);
+  const offset = routeInt(url, "offset") ?? 0;
+  const coldkeyParam = routeText(url, "coldkey");
   if (coldkeyParam !== null && !isFinneySs58Address(coldkeyParam)) {
     return analyticsQueryError({
       parameter: "coldkey",
@@ -1692,15 +1513,15 @@ export async function handleValidatorNominators(
     (await loadValidatorNominatorsColdTier(env, hotkey, {
       window: windowParam,
       sort,
-      limit: limit.value,
-      offset: offset.value,
+      limit: limit,
+      offset: offset,
       coldkey: coldkeyParam,
     })) ?? {
       data: buildValidatorNominators([], hotkey, {
         window: windowParam,
         sort: sort ?? undefined,
-        limit: limit.value,
-        offset: offset.value,
+        limit: limit,
+        offset: offset,
       }),
       generatedAt: null,
     };
@@ -1871,7 +1692,7 @@ export async function handleSubnetIdentityHistory(
   const data = (await answerSubnetIdentityHistory(env, netuid, identityTier, {
     limit,
     offset,
-    cursor: url.searchParams.get("cursor"),
+    cursor: routeText(url, "cursor"),
   })) as unknown as ReturnType<typeof buildSubnetIdentityHistory>;
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
@@ -2343,7 +2164,7 @@ export function canonicalSubnetYieldHistoryCachePath(
 export function canonicalSubnetTurnoverCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const { label } = historyWindow(url);
-  const changes = url.searchParams.get("changes");
+  const changes = routeText(url, "changes");
   if (changes != null && changes !== "true") {
     return `${url.pathname}${url.search}`;
   }
@@ -2356,15 +2177,8 @@ export function canonicalSubnetTurnoverCachePath(url: URL) {
 // window/direction and their explicit defaults must share one cache slot.
 export function canonicalSubnetStakeFlowCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
-  if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
-  const direction = url.searchParams.get("direction");
-  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
+  const direction = routeText(url, "direction");
   let path = `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
   if (direction === "in" || direction === "out") {
     path += `&direction=${encodeURIComponent(direction)}`;
@@ -2381,24 +2195,13 @@ export function canonicalSubnetMoversCachePath(
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
-  const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
-  if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
-  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
-  if (!MOVERS_SORTS.includes(sortParam)) {
-    return `${url.pathname}${url.search}`;
-  }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: MOVERS_LIMIT_DEFAULT,
-    min: 1,
-    max: MOVERS_LIMIT_MAX,
-  });
-  if ("error" in limit) return `${url.pathname}${url.search}`;
+  const windowParam = routeValue<string>(url, "window");
+  const sortParam = routeValue<string>(url, "sort");
+  const limit = pageLimit(url);
   return csvCacheVariant(
     url,
     request,
-    `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit.value}`,
+    `${url.pathname}?window=${windowParam}&sort=${sortParam}&limit=${limit}`,
   );
 }
 
@@ -2412,22 +2215,13 @@ export function canonicalChainTurnoverCachePath(
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
-  if (!Object.hasOwn(CHAIN_TURNOVER_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: CHAIN_TURNOVER_LIMIT_DEFAULT,
-    min: 1,
-    max: CHAIN_TURNOVER_LIMIT_MAX,
-  });
-  if ("error" in limit) return `${url.pathname}${url.search}`;
+  const windowParam = routeValue<string>(url, "window");
+  const limit = pageLimit(url);
   // CSV and JSON responses must not share one edge-cache entry.
   return csvCacheVariant(
     url,
     request,
-    `${url.pathname}?window=${windowParam}&limit=${limit.value}`,
+    `${url.pathname}?window=${windowParam}&limit=${limit}`,
   );
 }
 
@@ -2446,12 +2240,7 @@ export async function handleChainTurnover(
     CHAIN_TURNOVER_WINDOWS,
     DEFAULT_CHAIN_TURNOVER_WINDOW,
   );
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: CHAIN_TURNOVER_LIMIT_DEFAULT,
-    min: 1,
-    max: CHAIN_TURNOVER_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const limit = pageLimit(url);
   const data =
     ((await tryPostgresTier(
       env,
@@ -2462,7 +2251,7 @@ export async function handleChainTurnover(
       window: windowParam,
       startDate: null,
       endDate: null,
-      limit: limit.value,
+      limit: limit,
     });
   // CSV exports the row-shaped per-subnet churn leaderboard; the network rollup +
   // stability distribution stay JSON-only (mirrors the chain-analytics exports).
@@ -2501,7 +2290,7 @@ export function canonicalSubnetMetagraphCachePath(
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
   const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
-  const validatorsOnly = url.searchParams.get("validator_permit") === "true";
+  const validatorsOnly = routeText(url, "validator_permit") === "true";
   const canonicalPath = validatorsOnly
     ? `${url.pathname}?validator_permit=true`
     : url.pathname;
@@ -2724,7 +2513,7 @@ export async function handleSubnetTurnover(
   url: URL,
 ) {
   const { label } = historyWindow(url);
-  const changes = url.searchParams.get("changes");
+  const changes = routeText(url, "changes");
   if (changes != null && changes !== "true") {
     return analyticsQueryError({
       parameter: "changes",
@@ -2762,11 +2551,7 @@ export async function handleSubnetTurnover(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
-  if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -2824,11 +2609,7 @@ export async function handleSubnetWeights(
 // the response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightSettersCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
-  if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -2885,11 +2666,7 @@ export async function handleSubnetWeightSetters(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetServingCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
-  if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -2948,11 +2725,7 @@ export async function handleSubnetServing(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetPrometheusCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_PROMETHEUS_WINDOW;
-  if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -2999,11 +2772,7 @@ export async function handleSubnetPrometheus(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeMovesCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
-  if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -3063,11 +2832,7 @@ export async function handleSubnetStakeMoves(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeTransfersCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
-  if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -3127,11 +2892,7 @@ export async function handleSubnetStakeTransfers(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetRegistrationsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
-  if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -3190,11 +2951,7 @@ export async function handleSubnetRegistrations(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetAxonRemovalsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
-  if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -3240,11 +2997,7 @@ export async function handleSubnetAxonRemovals(
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetDeregistrationsCachePath(url: URL) {
   if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
-  const windowParam =
-    url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
-  if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
-    return `${url.pathname}${url.search}`;
-  }
+  const windowParam = routeValue<string>(url, "window");
   return `${url.pathname}?window=${encodeURIComponent(windowParam)}`;
 }
 
@@ -3313,13 +3066,7 @@ export async function handleSubnetStakeFlow(
     STAKE_FLOW_WINDOWS,
     DEFAULT_STAKE_FLOW_WINDOW,
   );
-  const direction = url.searchParams.get("direction");
-  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
-    return analyticsQueryError({
-      parameter: "direction",
-      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
-    });
-  }
+  const direction = routeText(url, "direction");
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss
   // (#6016/#6017). Postgres → schema-stable empty stub.
@@ -3441,10 +3188,12 @@ export async function handleSubnetStakeQuote(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  // A missing/empty `amount` coerces to 0, which computeStakeQuote rejects as
-  // invalid_amount just like a non-numeric value — no separate null check.
-  const amount = Number(url.searchParams.get("amount"));
-  const direction = url.searchParams.get("direction") ?? "stake";
+  // A missing `amount` reads as 0, which computeStakeQuote rejects as
+  // invalid_amount just like a non-numeric value — no separate null check. A
+  // non-numeric one never reaches here: the router rejects it against the
+  // published `number` first.
+  const amount = (routeQuery(url).amount as number | undefined) ?? 0;
+  const direction = routeValue<string>(url, "direction");
   const { row, generatedAt } = await resolveSubnetEconomicsRow(env, netuid);
   const result = computeStakeQuote({
     netuid: Number(netuid),
@@ -3904,15 +3653,7 @@ export async function handleSubnetValidatorEconomicsHistory(
       400,
     );
   }
-  const windowLabel =
-    url.searchParams.get("window") ||
-    DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
-  if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: `window must be one of: ${Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS).join(", ")}`,
-    });
-  }
+  const windowLabel = routeValue<string>(url, "window");
   const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
     env,
     netuid,
@@ -4138,25 +3879,11 @@ export async function handleValidatorEconomicsRanking(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const sortParam = url.searchParams.get("sort");
-  if (sortParam && !VALIDATOR_ECONOMICS_SORTS.includes(sortParam as never)) {
-    return analyticsQueryError({
-      parameter: "sort",
-      message: `"${sortParam}" is not a supported sort. Supported: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
-    });
-  }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
-    min: 1,
-    max: VALIDATOR_ECONOMICS_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
-  const offset = parseBoundedIntParam(url, "offset", {
-    def: 0,
-    min: 0,
-    max: VALIDATOR_ECONOMICS_LIMIT_MAX,
-  });
-  if ("error" in offset) return analyticsQueryError(offset.error);
+  // The enum is published and the router parses against it (#10060), so the
+  // hand-rolled membership test that used to stand here is gone.
+  const sortParam = routeText(url, "sort");
+  const limit = pageLimit(url);
+  const offset = routeInt(url, "offset") ?? 0;
 
   // A tri-state flag: absent means "both", which is not the same as false.
   const flag = (name: string) => {
@@ -4169,8 +3896,8 @@ export async function handleValidatorEconomicsRanking(
     env,
     {
       sort: sortParam ?? undefined,
-      limit: limit.value,
-      offset: offset.value,
+      limit: limit,
+      offset: offset,
       emissionGateOpen: flag("emission_gate_open"),
       capBinding: flag("cap_binding"),
     },
@@ -4253,20 +3980,8 @@ export async function handleSubnetOhlc(
   netuid: number,
   url: URL,
 ) {
-  const intervalParam = url.searchParams.get("interval");
-  if (intervalParam !== null && !Object.hasOwn(OHLC_INTERVALS, intervalParam)) {
-    return analyticsQueryError({
-      parameter: "interval",
-      message: `"${intervalParam}" is not a valid interval. Supported: ${Object.keys(OHLC_INTERVALS).join(", ")}.`,
-    });
-  }
-  const interval = intervalParam || OHLC_INTERVAL_DEFAULT;
-  const daysResult = parseBoundedIntParam(url, "days", {
-    def: DEFAULT_OHLC_WINDOW_DAYS,
-    min: 1,
-    max: MAX_OHLC_WINDOW_DAYS,
-  });
-  if ("error" in daysResult) return analyticsQueryError(daysResult.error);
+  const interval = routeValue<string>(url, "interval");
+  const daysResult = routeValue<number>(url, "days");
   const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
@@ -4282,7 +3997,7 @@ export async function handleSubnetOhlc(
     // the forwarded URL.
     (await loadSubnetOhlcColdTier(env, netuid, {
       interval,
-      days: daysResult.value,
+      days: daysResult,
     })) ?? {
       data: buildSubnetOhlc([], Number(netuid), { interval }),
       generatedAt: null,
@@ -4315,21 +4030,8 @@ export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
     MOVERS_WINDOWS,
     DEFAULT_MOVERS_WINDOW,
   );
-  const sortParam = url.searchParams.get("sort") || DEFAULT_MOVERS_SORT;
-  if (!MOVERS_SORTS.includes(sortParam)) {
-    return analyticsQueryError({
-      parameter: "sort",
-      message: `"${sortParam}" is not a supported sort. Supported: ${MOVERS_SORTS.join(
-        ", ",
-      )}.`,
-    });
-  }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: MOVERS_LIMIT_DEFAULT,
-    min: 1,
-    max: MOVERS_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const sortParam = routeValue<string>(url, "sort");
+  const limit = pageLimit(url);
   const data =
     ((await tryPostgresTier(
       env,
@@ -4341,7 +4043,7 @@ export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
       startDate: null,
       endDate: null,
       sort: sortParam,
-      limit: limit.value,
+      limit: limit,
     });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -4418,13 +4120,7 @@ export async function handleAccountStakeFlow(
   );
   // ?direction=all|in|out narrows to inflow/outflow only; omitted sums both.
   // Mirrors the subnet stake-flow route (#2694).
-  const direction = url.searchParams.get("direction");
-  if (direction !== null && !STAKE_FLOW_DIRECTIONS.includes(direction)) {
-    return analyticsQueryError({
-      parameter: "direction",
-      message: `"${direction}" is not a valid direction. Supported: ${STAKE_FLOW_DIRECTIONS.join(", ")}.`,
-    });
-  }
+  const direction = routeText(url, "direction");
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss
   // (#6016/#6017). Postgres → lakehouse cold tier → schema-stable empty stub.
@@ -4745,7 +4441,7 @@ export async function handleAccountEvents(
   // chain-events feeds. Index-satisfiable via idx_account_events_hotkey and
   // idx_account_events_coldkey (each leads block_number), so a bounded range
   // seeks rather than scans this public, ~60s-cached route.
-  const kind = url.searchParams.get("kind");
+  const kind = routeText(url, "kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
   // etc.). A typo/nonexistent kind otherwise matches nothing and forces a full
@@ -4773,11 +4469,11 @@ export async function handleAccountEvents(
       {
         limit: parsedLimit,
         offset: parsedOffset,
-        cursor: url.searchParams.get("cursor"),
-        kind: url.searchParams.get("kind"),
-        netuid: url.searchParams.get("netuid"),
-        blockStart: url.searchParams.get("block_start"),
-        blockEnd: url.searchParams.get("block_end"),
+        cursor: routeText(url, "cursor"),
+        kind: routeText(url, "kind"),
+        netuid: routeInt(url, "netuid"),
+        blockStart: routeInt(url, "block_start"),
+        blockEnd: routeInt(url, "block_end"),
       },
       network,
     )) ??
@@ -4834,7 +4530,7 @@ export async function handleAccountHistory(
   const { from = null, to = null } = routeQuery(url);
   const page = resolvePage(url);
   const { limit, offset } = page;
-  const netuid = url.searchParams.get("netuid");
+  const netuid = routeInt(url, "netuid");
   // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
   // D1 so callers cannot force a scan to prove an impossible empty page.
   if (from && to && from > to) {
@@ -4896,7 +4592,7 @@ export async function handleAccountHistory(
       netuid,
       from,
       to,
-      cursor: url.searchParams.get("cursor"),
+      cursor: routeText(url, "cursor"),
     })) ??
     buildAccountHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV export mirrors handleAccountEvents/Extrinsics/Transfers: the rows are
@@ -4952,9 +4648,9 @@ export async function handleAccountExtrinsics(
     (await loadAccountExtrinsicsColdTier(env, ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
-      cursor: url.searchParams.get("cursor"),
-      blockStart: url.searchParams.get("block_start"),
-      blockEnd: url.searchParams.get("block_end"),
+      cursor: routeText(url, "cursor"),
+      blockStart: routeInt(url, "block_start"),
+      blockEnd: routeInt(url, "block_end"),
     })) ??
     buildAccountExtrinsics([], ss58, {
       limit: parsedLimit,
@@ -5005,7 +4701,7 @@ export async function handleAccountTransfers(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const direction = url.searchParams.get("direction");
+  const direction = routeText(url, "direction");
   if (
     direction !== null &&
     direction !== "all" &&
@@ -5031,10 +4727,10 @@ export async function handleAccountTransfers(
     (await loadAccountTransfersColdTier(env, ss58, {
       limit,
       offset,
-      cursor: url.searchParams.get("cursor"),
+      cursor: routeText(url, "cursor"),
       direction,
-      blockStart: url.searchParams.get("block_start"),
-      blockEnd: url.searchParams.get("block_end"),
+      blockStart: routeInt(url, "block_start"),
+      blockEnd: routeInt(url, "block_end"),
     })) ??
     buildAccountTransfers([], ss58, {
       limit,
@@ -5080,14 +4776,9 @@ export async function handleAccountCounterparties(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const counterparty = url.searchParams.get("counterparty");
-  const parsedLimit = parseBoundedIntParam(url, "limit", {
-    def: counterparty == null ? 20 : 50,
-    min: 1,
-    max: 100,
-  });
-  if ("error" in parsedLimit) return analyticsQueryError(parsedLimit.error);
-  const limit = parsedLimit.value;
+  const counterparty = routeText(url, "counterparty");
+  const parsedLimit = pageLimit(url);
+  const limit = parsedLimit;
   if (counterparty != null) {
     // CSV export only covers the list-mode leaderboard below -- the
     // relationship drilldown returns a single composite object, not rows.
@@ -5398,7 +5089,7 @@ export async function handleAccountIdentityHistory(
     (await loadAccountIdentityHistoryColdTier(env, ss58, {
       limit,
       offset,
-      cursor: url.searchParams.get("cursor"),
+      cursor: routeText(url, "cursor"),
     })) ??
     buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
@@ -5441,7 +5132,7 @@ export async function handleSubnetEvents(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const kind = url.searchParams.get("kind");
+  const kind = routeText(url, "kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
   // (not just INDEXED_EVENT_KINDS, which would wrongly reject Transfer/NetworkAdded
   // etc.). A typo/nonexistent kind otherwise matches nothing and forces a full
@@ -5483,7 +5174,7 @@ export async function handleSubnetEvents(
   const data = (await answerSubnetEvents(env, Number(netuid), tierResult, {
     limit: parsedLimit,
     offset: parsedOffset,
-    cursor: url.searchParams.get("cursor"),
+    cursor: routeText(url, "cursor"),
     kind,
     blockStart,
     blockEnd,
@@ -5863,7 +5554,7 @@ export async function handleSubnetBurnHistory(
       400,
     );
   }
-  const label = url.searchParams.get("window") ?? DEFAULT_BURN_HISTORY_WINDOW;
+  const label = routeValue<string>(url, "window");
   const windowDays = BURN_HISTORY_WINDOWS[label];
   if (windowDays === undefined) {
     return analyticsQueryError({
@@ -5917,21 +5608,16 @@ export async function handleSubnetHolders(
   }
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: SUBNET_HOLDERS_LIMIT_DEFAULT,
-    min: 1,
-    max: SUBNET_HOLDERS_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const limit = pageLimit(url);
 
   const read = await loadSubnetHolders(
     readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
       typeof loadSubnetHolders
     >[0],
     netuid,
-    { limit: limit.value },
+    { limit: limit },
   );
-  const data = buildSubnetHolders(read, netuid, { limit: limit.value });
+  const data = buildSubnetHolders(read, netuid, { limit: limit });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5954,7 +5640,7 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
   // #9701 established for list_candidates).
   const includePoints = parseBooleanParam(url, "include_points", true);
   if ("error" in includePoints) return analyticsQueryError(includePoints.error);
-  const label = url.searchParams.get("window") ?? DEFAULT_TAO_USD_WINDOW;
+  const label = routeValue<string>(url, "window");
   const windowHours = TAO_USD_WINDOWS[label];
   if (windowHours === undefined) {
     return analyticsQueryError({
@@ -5999,23 +5685,18 @@ export async function handleSubnetSurfaceHistory(
   }
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: SURFACE_HISTORY_LIMIT_DEFAULT,
-    min: 1,
-    max: SURFACE_HISTORY_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const limit = pageLimit(url);
 
   const rows = await loadSurfaceHistory(
     readStore(env, SURFACE_HISTORY_TABLES) as never as unknown as Parameters<
       typeof loadSurfaceHistory
     >[0],
     netuid,
-    { limit: limit.value },
+    { limit: limit },
   );
   // A subnet whose surfaces have never changed is an EMPTY trail, not a 404 --
   // stability is the common case and a real answer.
-  const data = buildSurfaceHistory(rows, netuid, { limit: limit.value });
+  const data = buildSurfaceHistory(rows, netuid, { limit: limit });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6035,7 +5716,7 @@ export async function handleEmissionChanges(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const kindParam = url.searchParams.get("kind");
+  const kindParam = routeText(url, "kind");
   if (
     kindParam !== null &&
     !EMISSION_CHANGE_KINDS.includes(
@@ -6047,23 +5728,18 @@ export async function handleEmissionChanges(
       message: `kind must be one of ${EMISSION_CHANGE_KINDS.join(", ")}.`,
     });
   }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: EMISSION_CHANGES_LIMIT_DEFAULT,
-    min: 1,
-    max: EMISSION_CHANGES_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const limit = pageLimit(url);
 
   const rows = await loadEmissionChanges(
     readStore(env, EMISSION_CHANGES_TABLES) as never as unknown as Parameters<
       typeof loadEmissionChanges
     >[0],
-    { limit: limit.value, kind: kindParam ?? undefined },
+    { limit: limit, kind: kindParam ?? undefined },
   );
   // These tables gain a row only when a value MOVED, so an empty feed is the
   // steady state -- never a 404.
   const data = buildEmissionChanges(rows, {
-    limit: limit.value,
+    limit: limit,
     kind: kindParam ?? undefined,
   });
   return envelopeResponse(
@@ -6086,7 +5762,7 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const sort = url.searchParams.get("sort") || DEFAULT_CHAIN_HOLDERS_SORT;
+  const sort = routeValue<string>(url, "sort");
   if (
     !CHAIN_HOLDERS_SORTS.includes(sort as (typeof CHAIN_HOLDERS_SORTS)[number])
   ) {
@@ -6095,19 +5771,14 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
       message: `"${sort}" is not a supported sort. Supported: ${CHAIN_HOLDERS_SORTS.join(", ")}.`,
     });
   }
-  const limit = parseBoundedIntParam(url, "limit", {
-    def: CHAIN_HOLDERS_LIMIT_DEFAULT,
-    min: 1,
-    max: CHAIN_HOLDERS_LIMIT_MAX,
-  });
-  if ("error" in limit) return analyticsQueryError(limit.error);
+  const limit = pageLimit(url);
 
   const read = await loadChainHolders(
     readStore(env, ALPHA_PRICING_TABLES) as never as unknown as Parameters<
       typeof loadChainHolders
     >[0],
   );
-  const data = buildChainHolders(read, { sort, limit: limit.value });
+  const data = buildChainHolders(read, { sort, limit: limit });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6126,15 +5797,8 @@ export async function handleFailureReasons(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const window =
-    url.searchParams.get("window") || DEFAULT_FAILURE_REASONS_WINDOW;
-  if (!FAILURE_REASONS_WINDOWS.includes(window)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: `"${window}" is not a supported window. Supported: ${FAILURE_REASONS_WINDOWS.join(", ")}.`,
-    });
-  }
-  const netuidParam = url.searchParams.get("netuid");
+  const window = routeValue<string>(url, "window");
+  const netuidParam = routeInt(url, "netuid");
   let netuid: number | undefined;
   if (netuidParam !== null) {
     const parsed = Number(netuidParam);
@@ -6146,7 +5810,7 @@ export async function handleFailureReasons(
     }
     netuid = parsed;
   }
-  const kind = url.searchParams.get("kind") ?? undefined;
+  const kind = routeText(url, "kind") ?? undefined;
 
   const rows = await loadFailureReasons(
     readStore(env, FAILURE_REASONS_TABLES) as never as unknown as Parameters<
@@ -6203,16 +5867,7 @@ export async function handleChainConcentrationHistory(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const window =
-    url.searchParams.get("window") ||
-    DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW;
-  if (!CHAIN_CONCENTRATION_HISTORY_WINDOWS.includes(window)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: `"${window}" is not a supported window. Supported: ${CHAIN_CONCENTRATION_HISTORY_WINDOWS.join(", ")}.`,
-    });
-  }
-
+  const window = routeValue<string>(url, "window");
   const rows = await loadChainConcentrationHistory(
     readStore(
       env,
@@ -6247,15 +5902,7 @@ export async function handleSubnetPipelineHistory(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
-  const window =
-    url.searchParams.get("window") || DEFAULT_PIPELINE_HISTORY_WINDOW;
-  if (!PIPELINE_HISTORY_WINDOWS.includes(window)) {
-    return analyticsQueryError({
-      parameter: "window",
-      message: `"${window}" is not a supported window. Supported: ${PIPELINE_HISTORY_WINDOWS.join(", ")}.`,
-    });
-  }
-
+  const window = routeValue<string>(url, "window");
   const rows = await loadPipelineHistory(
     readStore(env, SUBNET_SNAPSHOT_TABLES) as never as unknown as Parameters<
       typeof loadPipelineHistory
@@ -6498,17 +6145,17 @@ export async function handleBlocks(
       {
         limit,
         offset,
-        cursor: url.searchParams.get("cursor"),
-        author: url.searchParams.get("author"),
-        specVersion: url.searchParams.get("spec_version"),
-        blockStart: url.searchParams.get("block_start"),
-        blockEnd: url.searchParams.get("block_end"),
+        cursor: routeText(url, "cursor"),
+        author: routeText(url, "author"),
+        specVersion: routeInt(url, "spec_version"),
+        blockStart: routeInt(url, "block_start"),
+        blockEnd: routeInt(url, "block_end"),
         // from/to are part of this route's contract too -- a filter the tier
         // never receives is a filter it silently ignores.
-        from: url.searchParams.get("from"),
-        to: url.searchParams.get("to"),
-        minExtrinsics: url.searchParams.get("min_extrinsics"),
-        minEvents: url.searchParams.get("min_events"),
+        from: routeText(url, "from"),
+        to: routeText(url, "to"),
+        minExtrinsics: routeInt(url, "min_extrinsics"),
+        minEvents: routeInt(url, "min_events"),
       } as never,
       network,
     )) ??

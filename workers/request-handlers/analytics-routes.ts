@@ -26,6 +26,7 @@ import {
   pageLimit,
   parseRouteQuery,
   routeQuery,
+  routeText,
   uptimeWindow,
 } from "../../src/route-query.ts";
 import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
@@ -636,9 +637,9 @@ export async function handleLeaderboards(
 
 export function canonicalCompareCachePath(url: URL): string | null {
   if ("error" in parseRouteQuery(url)) return null;
-  const requestedNetuids = parseCompareNetuids(url.searchParams.get("netuids"));
+  const requestedNetuids = parseCompareNetuids(routeText(url, "netuids"));
   if (!requestedNetuids) return null;
-  const dimensions = parseCompareDimensions(url.searchParams.get("dimensions"));
+  const dimensions = parseCompareDimensions(routeText(url, "dimensions"));
   if (!dimensions) return null;
   const params = [`netuids=${encodeURIComponent(requestedNetuids.join(","))}`];
   if (dimensions.length !== COMPARE_DIMENSIONS.length) {
@@ -768,7 +769,7 @@ export async function handleCompare(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const netuidsRaw = url.searchParams.get("netuids");
+  const netuidsRaw = routeText(url, "netuids");
   const requestedNetuids = parseCompareNetuids(netuidsRaw);
   if (!requestedNetuids) {
     return errorResponse(
@@ -779,7 +780,7 @@ export async function handleCompare(
     );
   }
 
-  const dimensionsRaw = url.searchParams.get("dimensions");
+  const dimensionsRaw = routeText(url, "dimensions");
   const dimensions = parseCompareDimensions(dimensionsRaw);
   if (!dimensions) {
     const tokens = (dimensionsRaw || "").split(",").map((d) => d.trim());
@@ -1001,7 +1002,7 @@ export async function handleCompareValidators(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const hotkeysRaw = url.searchParams.get("hotkeys");
+  const hotkeysRaw = routeText(url, "hotkeys");
   const hotkeys = parseCompareHotkeys(hotkeysRaw);
   if (!hotkeys) {
     return errorResponse(

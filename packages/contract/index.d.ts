@@ -41795,7 +41795,7 @@ export interface operations {
     subnetMetagraph: {
         parameters: {
             query?: {
-                validator_permit?: "true" | "false";
+                validator_permit?: "true";
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */

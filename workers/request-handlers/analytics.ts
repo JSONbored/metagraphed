@@ -40,6 +40,8 @@ import {
   pageLimit,
   parseRouteQuery,
   routeQuery,
+  routeText,
+  routeValue,
 } from "../../src/route-query.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
@@ -1240,7 +1242,7 @@ export async function handleChainCalls(
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
   const limit = pageLimit(url);
-  const groupBy = url.searchParams.get("group_by") || "module";
+  const groupBy = routeText(url, "group_by") || "module";
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -1268,7 +1270,7 @@ export async function handleChainCalls(
         window: label,
         groupBy,
         limit,
-        callModule: url.searchParams.get("call_module"),
+        callModule: routeText(url, "call_module"),
       });
       if (!data) {
         usedFallback = true;
@@ -1312,7 +1314,7 @@ export async function handleChainCalls(
       window: label,
       group_by: groupBy,
       limit,
-      call_module: url.searchParams.get("call_module"),
+      call_module: routeText(url, "call_module"),
     })}${csv ? "&format=csv" : ""}`,
   );
 }
@@ -1332,7 +1334,7 @@ export async function handleChainSigners(
   // limit/call_module no longer feed a live D1 read (see the retirement note
   // below) but are still shape-validated so the REST contract stays stable.
   const limit = pageLimit(url);
-  const sort = url.searchParams.get("sort") || "tx_count";
+  const sort = routeValue<string>(url, "sort");
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -1358,7 +1360,7 @@ export async function handleChainSigners(
           window: label,
           sort,
           limit,
-          callModule: url.searchParams.get("call_module"),
+          callModule: routeText(url, "call_module"),
         })) ??
         unmeasured(
           buildChainSigners({
@@ -1393,7 +1395,7 @@ export async function handleChainSigners(
     `${canonicalAnalyticsCacheRoute(url, {
       window: label,
       limit,
-      call_module: url.searchParams.get("call_module"),
+      call_module: routeText(url, "call_module"),
       sort,
     })}${csv ? "&format=csv" : ""}`,
   );
@@ -1514,7 +1516,7 @@ export async function handleChainTransferPairs(
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
   const limit = pageLimit(url);
-  const sort = url.searchParams.get("sort") || "volume";
+  const sort = routeValue<string>(url, "sort");
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1687,8 +1689,10 @@ export async function handleChainStakeFlow(
 // do) so a bare request never produces a dangling "&format=csv" with no leading "?".
 function canonicalChainAlphaVolumeCacheRoute(url: URL, csv: boolean): string {
   const search = new URL("https://cache-key.invalid/").searchParams;
-  const limitParam = url.searchParams.get("limit");
-  if (limitParam !== null) search.set("limit", limitParam);
+  // The parsed value, not the raw string: `?limit=020` and `?limit=20` are
+  // one request and must not be two cache entries (#10060).
+  const limitParam = routeQuery(url).limit;
+  if (limitParam !== undefined) search.set("limit", String(limitParam));
   if (csv) search.set("format", "csv");
   const query = search.toString();
   return `${url.pathname}${query ? `?${query}` : ""}`;
@@ -2643,7 +2647,7 @@ export async function handleChainFees(
         await loadChainFeesFromArtifact(env, {
           window: label,
           limit,
-          callModule: url.searchParams.get("call_module"),
+          callModule: routeText(url, "call_module"),
         });
       data ??= unmeasured(
         buildChainFees({
@@ -2679,7 +2683,7 @@ export async function handleChainFees(
     `${canonicalAnalyticsCacheRoute(url, {
       window: label,
       limit,
-      call_module: url.searchParams.get("call_module"),
+      call_module: routeText(url, "call_module"),
     })}${csv ? "&format=csv" : ""}`,
   );
 }

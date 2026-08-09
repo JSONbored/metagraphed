@@ -606,5 +606,23 @@ describe("chain/alpha-volume edge cache", () => {
     const cached = await call();
     assert.equal(cached.status, 200);
     assert.equal((await cached.json()).data.subnet_count, 0);
+
+    // An explicit ?limit gets its own key, built from the PARSED value (#10060)
+    // -- so `?limit=020` and `?limit=20` are one request and one entry rather
+    // than two, which reading the raw string would have made them.
+    const withLimit = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/alpha-volume?limit=020",
+      ),
+      env as unknown as Env,
+      { waitUntil: (promise: Promise<unknown>) => waits.push(promise) },
+    );
+    assert.equal(withLimit.status, 200);
+    await Promise.all(waits);
+    assert.equal(store.size, 2, "the bare and limited requests are two keys");
+    assert.ok(
+      [...store.keys()].some((key) => String(key).includes("limit=20")),
+      `the limited key must carry the parsed 20, got ${[...store.keys()].join(", ")}`,
+    );
   });
 });

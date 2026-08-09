@@ -25,6 +25,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { z } from "zod";
 import { API_ROUTES } from "../src/contracts.ts";
+import { handleRequest } from "../workers/api.ts";
 import {
   canonicalAccountsListCachePath,
   canonicalGlobalValidatorsCachePath,
@@ -235,13 +236,21 @@ describe("a route's published limit ceiling is the one it enforces (#9127)", () 
     }
   });
 
-  test("the handler rejects one past the ceiling", () => {
-    for (const [path, canonical, ceiling] of BEHAVIOURAL) {
-      const result = canonical(
-        new URL(`https://api.metagraph.sh${path}?limit=${ceiling + 1}`),
-      ) as { response?: unknown };
-      assert.ok(
-        result.response !== undefined,
+  test("the surface rejects one past the ceiling", async () => {
+    // Through the ROUTER, not the cache-path helper. The helper used to
+    // re-check the ceiling and hand back its own 400; the router parses the
+    // same request against the same schema before dispatch (#10060), so the
+    // second check is gone and this asks the question where it is now
+    // answered -- which is also where a caller asks it.
+    for (const [path, , ceiling] of BEHAVIOURAL) {
+      const res = await handleRequest(
+        new Request(`https://api.metagraph.sh${path}?limit=${ceiling + 1}`),
+        {} as never,
+        {} as never,
+      );
+      assert.equal(
+        res.status,
+        400,
         `${path} accepted limit=${ceiling + 1}, one past its published ` +
           "maximum -- the ceiling is documented but not enforced",
       );

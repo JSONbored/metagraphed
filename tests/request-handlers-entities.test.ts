@@ -815,13 +815,7 @@ describe("handleSubnetMetagraph", () => {
     // =bogus 256.
     for (const value of ["false", "bogus", "1"]) {
       const path = `/api/v1/subnets/${NETUID}/metagraph?validator_permit=${value}`;
-      const res = await handleSubnetMetagraph(
-        req(path),
-        emptyEnv() as unknown as Env,
-        NETUID,
-        url(path),
-      );
-      const body = await errorJson(res);
+      const body = await errorJson(await viaRouter(path));
       assert.equal(body.error.code, "invalid_query", value);
       assert.equal(body.meta.parameter, "validator_permit", value);
     }
@@ -1255,12 +1249,15 @@ describe("handleGlobalValidators", () => {
 });
 
 describe("canonicalGlobalValidatorsCachePath", () => {
-  test("returns a response short-circuit for an unsupported sort value", () => {
-    const result = canonicalGlobalValidatorsCachePath(
-      url("/api/v1/validators?sort=bogus"),
-    );
-    assert.equal(result.cachePathAndSearch, undefined);
-    assert.equal(result.response!.status, 400);
+  test("an unsupported sort is the router's 400, not a cache key", async () => {
+    // The helper used to re-check the enum and hand back its own 400. The
+    // router parses the same request against the same schema first (#10060),
+    // so the caller-visible answer is unchanged and the second check is gone.
+    const res = await viaRouter("/api/v1/validators?sort=bogus");
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as Row;
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "sort");
   });
 
   test("omitted sort/limit and their explicit defaults produce the same cache key", () => {
@@ -1747,17 +1744,26 @@ describe("handleSubnetTurnover", () => {
   });
 
   describe("canonicalSubnetMetagraphCachePath", () => {
-    test("omitted validator_permit and explicit =false produce the same cache key", () => {
+    test("a rejected validator_permit gets no cache slot of its own", () => {
+      // `=false` used to share the bare path's slot, on the reading that it
+      // meant "unfiltered". The route refuses it (#10060 aligned the published
+      // enum with what #10096 made the server do), so it is a 400 rather than
+      // a second spelling of the same answer -- and the helper falls through
+      // to the raw path+search, which is what it does for every request the
+      // router will refuse.
       const bare = canonicalSubnetMetagraphCachePath(
         new URL("https://api.metagraph.sh/api/v1/subnets/1/metagraph"),
       );
-      const explicitFalse = canonicalSubnetMetagraphCachePath(
+      assert.equal(bare, "/api/v1/subnets/1/metagraph");
+      const rejected = canonicalSubnetMetagraphCachePath(
         new URL(
           "https://api.metagraph.sh/api/v1/subnets/1/metagraph?validator_permit=false",
         ),
       );
-      assert.equal(bare, explicitFalse);
-      assert.equal(bare, "/api/v1/subnets/1/metagraph");
+      assert.equal(
+        rejected,
+        "/api/v1/subnets/1/metagraph?validator_permit=false",
+      );
     });
 
     test("preserves validator_permit=true filter in the cache key", () => {
@@ -2376,11 +2382,8 @@ describe("handleSubnetStakeFlow", () => {
   });
 
   test("rejects an unsupported direction enum value with 400", async () => {
-    const res = await handleSubnetStakeFlow(
-      req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/stake-flow?direction=invalid`,
     );
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
@@ -2497,23 +2500,11 @@ describe("handleSubnetMovers", () => {
   });
 
   test("rejects an unsupported sort with 400", async () => {
-    await errorJson(
-      await handleSubnetMovers(
-        req("/api/v1/subnets/movers"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/subnets/movers?sort=bogus"),
-      ),
-    );
+    await errorJson(await viaRouter("/api/v1/subnets/movers?sort=bogus"));
   });
 
   test("rejects an out-of-range limit with 400", async () => {
-    await errorJson(
-      await handleSubnetMovers(
-        req("/api/v1/subnets/movers"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/subnets/movers?limit=0"),
-      ),
-    );
+    await errorJson(await viaRouter("/api/v1/subnets/movers?limit=0"));
   });
 
   test("returns a schema-stable empty leaderboard on cold D1", async () => {
@@ -3283,11 +3274,8 @@ describe("handleAccountExtrinsics", () => {
 
 describe("handleAccountTransfers", () => {
   test("rejects an unsupported direction enum value with 400", async () => {
-    const res = await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?direction=invalid`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/transfers?direction=invalid`,
     );
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
@@ -3341,23 +3329,20 @@ describe("handleAccountTransfers", () => {
 
 describe("handleAccountCounterparties", () => {
   test("rejects malformed and out-of-range limits before D1 work", async () => {
+    // The message is the router's now, derived from the published bound rather
+    // than typed beside it (#10060) -- same 400, same `parameter`, and still
+    // before any read, because the router answers before dispatch.
     for (const limit of ["random_nonce", "Infinity", "0", "101", "10.5"]) {
-      const captures = { sql: [], params: [] };
-      const { env } = dbWith({ captures, transfers: [transferEventRow()] });
-      const res = await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
-        env as unknown as Env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/counterparties?limit=${limit}`),
+      const res = await viaRouter(
+        `/api/v1/accounts/${SS58}/counterparties?limit=${limit}`,
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
       assert.equal(body.meta.parameter, "limit");
       assert.equal(
         body.error.message,
-        "limit must be an integer from 1 to 100.",
+        "limit must be an integer between 1 and 100.",
       );
-      assert.equal(captures.sql.length, 0);
     }
   });
 
@@ -3476,42 +3461,24 @@ describe("handleAccountCounterparties", () => {
 
 describe("handleAccountCounterparties relationship drilldown", () => {
   test("rejects malformed counterparty and limits before D1 work", async () => {
-    for (const counterparty of ["not-ss58", SS58]) {
-      const captures = { sql: [], params: [] };
-      const { env } = dbWith({ captures });
-      const res = await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties`),
-        env as unknown as Env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${counterparty}`,
-        ),
-      );
-      const body = await errorJson(res);
-      assert.equal(body.error.code, "invalid_query");
-      assert.equal(body.meta.parameter, "counterparty");
-      assert.equal(captures.sql.length, 0);
-    }
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/counterparties?counterparty=not-ss58`,
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "counterparty");
 
     for (const limit of ["random_nonce", "Infinity", "0", "101", "10.5"]) {
-      const captures = { sql: [], params: [] };
-      const { env } = dbWith({ captures });
-      const res = await handleAccountCounterparties(
-        req(`/api/v1/accounts/${SS58}/counterparties`),
-        env as unknown as Env,
-        SS58,
-        url(
-          `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=${limit}`,
-        ),
+      const rejected = await viaRouter(
+        `/api/v1/accounts/${SS58}/counterparties?counterparty=${COUNTERPARTY}&limit=${limit}`,
       );
-      const body = await errorJson(res);
-      assert.equal(body.error.code, "invalid_query");
-      assert.equal(body.meta.parameter, "limit");
+      const rejectedBody = await errorJson(rejected);
+      assert.equal(rejectedBody.error.code, "invalid_query");
+      assert.equal(rejectedBody.meta.parameter, "limit");
       assert.equal(
-        body.error.message,
-        "limit must be an integer from 1 to 100.",
+        rejectedBody.error.message,
+        "limit must be an integer between 1 and 100.",
       );
-      assert.equal(captures.sql.length, 0);
     }
   });
 
@@ -3543,11 +3510,8 @@ describe("handleAccountStakeFlow", () => {
   });
 
   test("rejects an unsupported direction enum value with 400 (#2694 parity)", async () => {
-    const res = await handleAccountStakeFlow(
-      req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-flow?direction=invalid`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/stake-flow?direction=invalid`,
     );
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
