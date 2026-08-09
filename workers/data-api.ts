@@ -125,6 +125,10 @@ import {
   buildSubnetHyperparamsHistory,
 } from "../src/subnet-hyperparams-history.ts";
 import {
+  writeHistoricalHyperparams,
+  type HistoricalHyperparamsRow,
+} from "../src/subnet-hyperparams-backfill.ts";
+import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
   IDENTITY_FIELDS,
   buildAccountIdentity,
@@ -1493,6 +1497,97 @@ async function handleSubnetHyperparamsSync(
     stores: ["neon"],
     neon: neon.results,
   });
+}
+
+// --- POST /api/v1/internal/subnet-hyperparams-backfill (#5597) ------------
+//
+// The HISTORICAL counterpart of subnet-hyperparams-sync above. That route is a
+// forward-only writer and correct as such, but two of its properties make it
+// unusable for a replay: it stamps `observed_at` with `Date.now()` (the payload
+// has no field for it), and it diffs each row against the LATEST recorded hash.
+// A replay needs the block's own timestamp, and needs no diff at all -- the
+// producer already established which blocks changed, by reading the AdminUtils
+// extrinsics out of the lakehouse.
+//
+// SAME SECRET as the sync route, deliberately. The producer is the same poller
+// with the same trust level writing the same family; a second secret would be a
+// second thing to provision and rotate for no boundary that differs.
+const SUBNET_HYPERPARAMS_BACKFILL_MAX_BODY_BYTES = 4_000_000;
+const SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS = 500;
+
+async function handleSubnetHyperparamsBackfill(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const provided =
+    request.headers.get(SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_HYPERPARAMS_SYNC_SECRET)
+  ) {
+    return writeJson(
+      {
+        error: `provide a valid ${SUBNET_HYPERPARAMS_SYNC_TOKEN_HEADER} header`,
+      },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_HYPERPARAMS_BACKFILL_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${SUBNET_HYPERPARAMS_BACKFILL_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : ((parsed as { rows?: unknown })?.rows ?? null);
+  if (!Array.isArray(incoming)) {
+    return writeJson({ error: "expected an array of rows" }, 400);
+  }
+  if (incoming.length > SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_HYPERPARAMS_BACKFILL_MAX_ROWS} rows` },
+      413,
+    );
+  }
+
+  // The same family gate the sync route applies: the table and its history are
+  // one family, and writing history into a store that does not own it would put
+  // rows somewhere nothing reads.
+  if (!neonOwnsFamily(env, SUBNET_HYPERPARAMS_NEON_LANE)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
+  }
+
+  const sql = createPgSql(env.HYPERDRIVE, ctx);
+  try {
+    const result = await writeHistoricalHyperparams(
+      sql,
+      incoming as HistoricalHyperparamsRow[],
+    );
+    // `rejected` is RETURNED, not logged and swallowed: a backfill that
+    // silently drops rows is indistinguishable from one that worked, and the
+    // producer is the only thing positioned to retry them.
+    return writeJson({
+      ok: true,
+      attempted: result.attempted,
+      rejected: result.rejected,
+    });
+  } catch (err) {
+    console.error("data-api subnet-hyperparams-backfill write failed:", err);
+    await captureDataApiError(err, "subnet-hyperparams-backfill", env);
+    return writeJson({ error: "write failed" }, 500);
+  }
 }
 
 // --- POST /api/v1/internal/account-identity-sync (#4832 gap-closure) ------
@@ -7400,6 +7495,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/subnet-hyperparams-sync"
     ) {
       return handleSubnetHyperparamsSync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-hyperparams-backfill"
+    ) {
+      return handleSubnetHyperparamsBackfill(request, env, ctx);
     }
     if (
       request.method === "POST" &&

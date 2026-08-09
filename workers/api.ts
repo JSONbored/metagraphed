@@ -3634,6 +3634,23 @@ async function handleSubnetHyperparamsSyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/subnet-hyperparams-backfill -- the HISTORICAL
+// write path into subnet_hyperparams_history (#5597). Same DATA_API service
+// binding and same secret as the sync route above; what differs is that the
+// producer supplies the block's own observed_at and no diff is performed.
+async function handleSubnetHyperparamsBackfillProxy(
+  request: Request,
+  env: Env,
+) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_hyperparams_backfill_unavailable",
+    notBoundMessage:
+      "The subnet-hyperparams backfill tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-hyperparams backfill tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/account-identity-sync -- the write path into
 // account_identity/account_identity_history (#4832 gap-closure). Same
 // DATA_API service binding as the other internal sync routes above.
@@ -4542,6 +4559,9 @@ export async function handleRequest(
   // The write path into account_identity/account_identity_history (#4832
   // gap-closure) -- refresh-account-identity.yml's sign-and-stage job calls
   // this the same way. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/subnet-hyperparams-backfill") {
+    return handleSubnetHyperparamsBackfillProxy(request, env);
+  }
   if (url.pathname === "/api/v1/internal/account-identity-sync") {
     return handleAccountIdentitySyncProxy(request, env);
   }
