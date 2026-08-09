@@ -18,6 +18,7 @@
 
 /** The components the poller writes. Order is display order. */
 import type { LaneHealthRecord } from "./lane-health.ts";
+import { laneSilenceThresholdMs } from "./lane-alarm.ts";
 
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
 export type SelfHealthComponent = (typeof SELF_HEALTH_COMPONENTS)[number];
@@ -291,15 +292,60 @@ export function buildSelfHealth(
 export function withLaneHealth(
   card: SelfHealth,
   laneRows: Record<string, LaneHealthRecord>,
+  /**
+   * A SILENT lane's last verdict is not a current one (#10232).
+   *
+   * `loadLatestLaneHealth` takes the newest row per lane with no liveness
+   * bound, so a lane that stopped reporting keeps serving whatever it last
+   * said -- forever, and in both directions. A lane whose last word was `ok`
+   * and then died reads healthy while nothing runs; one whose last word was
+   * `stale` reads as an alarm nobody can clear.
+   *
+   * A single cutoff cannot work: cadences here differ by more than 100x
+   * (`chain-detail` every ~30s, `hotkey-alpha` every 24h). One tight enough to
+   * catch a dead 30-second lane marks every 24-hour lane absent between ticks.
+   * So the bound is the lane's OWN observed cadence, reusing the pair the
+   * alarm path already computes -- `laneCadenceMs` (span / n-1) and
+   * `laneSilenceThresholdMs` (3 intervals, floored at 90 min).
+   *
+   * OMITTING `cadences` LEAVES EVERY VERDICT ALONE, deliberately. Without a
+   * sample there is no bound that is not a guess, and a guess here invents
+   * alarms on lanes that are working -- the #9301 failure. A caller that has
+   * not paid for the cadence query gets exactly today's behaviour.
+   */
+  options: {
+    cadences?: Record<string, number | null>;
+    nowMs?: number;
+  } = {},
 ): SelfHealth {
+  const { cadences, nowMs = Date.now() } = options;
   const lanes: SelfHealthLaneView[] = Object.values(laneRows)
-    .map((row) => ({
-      lane: row.lane,
-      verdict: row.verdict,
-      age_ms: row.age_ms,
-      detail: row.detail,
-      checked_at: toIso(row.checked_at),
-    }))
+    .map((row) => {
+      const cadence = cadences?.[row.lane];
+      const quietFor = nowMs - row.checked_at;
+      const silent =
+        typeof cadence === "number" &&
+        cadence > 0 &&
+        row.checked_at > 0 &&
+        quietFor > laneSilenceThresholdMs(cadence);
+      return {
+        lane: row.lane,
+        // `unknown` rather than a new verdict: the union already publishes it
+        // for "a verdict this build cannot interpret", and a lane that has
+        // stopped speaking is the same claim -- we cannot say. It also drops
+        // out of `stale_lane_count` below, which is right: we do not know that
+        // it is BEHIND, only that it is quiet.
+        verdict: silent ? ("unknown" as const) : row.verdict,
+        // The AGE OF THE SILENCE, not the age the dead verdict carried. That
+        // number described whatever the lane was measuring when it last ran
+        // and says nothing about now.
+        age_ms: silent ? quietFor : row.age_ms,
+        detail: silent
+          ? `no verdict for ${Math.round(quietFor / 60_000)}m (cadence ~${Math.round(cadence / 60_000)}m)`
+          : row.detail,
+        checked_at: toIso(row.checked_at),
+      };
+    })
     .sort(
       (a, b) =>
         Number(b.verdict === "stale") - Number(a.verdict === "stale") ||

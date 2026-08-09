@@ -70,6 +70,7 @@ import { createPgSql } from "./pg-sql.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { withLaneHealth, type SelfHealth } from "./self-health.ts";
+import { loadLaneCadence, LANE_ALARM_CADENCE_WINDOW_MS } from "./lane-alarm.ts";
 import {
   GetSelfHealthInputSchema,
   GetSelfHealthOutputSchema,
@@ -212,7 +213,15 @@ export async function loadSelfHealth(
       ctx.env as unknown as Record<string, unknown>,
     ) as unknown as Parameters<typeof loadLatestLaneHealth>[0],
   );
-  return withLaneHealth(card as SelfHealth, lanes);
+  // Same cadence sample the REST twin takes (#10232), so both surfaces judge
+  // a silent lane identically rather than one of them serving a dead verdict.
+  const cadences = await loadLaneCadence(
+    laneHealthStore(
+      ctx.env as unknown as Record<string, unknown>,
+    ) as unknown as Parameters<typeof loadLaneCadence>[0],
+    Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
+  );
+  return withLaneHealth(card as SelfHealth, lanes, { cadences });
 }
 
 export const GET_SELF_HEALTH_INSTRUCTIONS =
