@@ -373,20 +373,6 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
   "list_rpc_endpoints.fields": "SHAPE",
   "list_rpc_endpoints.pool_eligible": "SHAPE",
   "list_subnet_validators.fields": "SHAPE",
-  "list_subnets.max_candidate_count": "SHAPE",
-  "list_subnets.max_integration_readiness": "SHAPE",
-  "list_subnets.max_mechanism_count": "SHAPE",
-  "list_subnets.max_participant_count": "SHAPE",
-  "list_subnets.max_probed_surface_count": "SHAPE",
-  "list_subnets.max_surface_count": "SHAPE",
-  "list_subnets.max_tempo": "SHAPE",
-  "list_subnets.min_candidate_count": "SHAPE",
-  "list_subnets.min_integration_readiness": "SHAPE",
-  "list_subnets.min_mechanism_count": "SHAPE",
-  "list_subnets.min_participant_count": "SHAPE",
-  "list_subnets.min_probed_surface_count": "SHAPE",
-  "list_subnets.min_surface_count": "SHAPE",
-  "list_subnets.min_tempo": "SHAPE",
 
   // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool
   // (4/5, #10064), never by keeping it.

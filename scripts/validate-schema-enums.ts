@@ -110,7 +110,9 @@ console.log("Schema enum validation passed.");
 
 function compareComponent(
   componentName: string,
-  queryValues: unknown[],
+  // Readonly since QUERY_ENUMS became `as const` (#10060), which is what lets a
+  // consumer hand a member list to `z.enum()` instead of writing it out again.
+  queryValues: readonly unknown[],
   schemaOnlyValues: Set<unknown> = new Set(),
 ): void {
   const schemaValues = (componentSchemas[componentName]?.enum || []).filter(
@@ -122,7 +124,7 @@ function compareComponent(
 function comparePropertyEnum(
   componentName: string,
   propertyName: string,
-  queryValues: unknown[],
+  queryValues: readonly unknown[],
   schemaOnlyValues: Set<unknown> = new Set(),
 ): void {
   const schemaValues = (
@@ -138,7 +140,7 @@ function comparePropertyEnum(
 function compareSchemaEnum(
   label: string,
   schemaValues: unknown[] = [],
-  queryValues: unknown[] = [],
+  queryValues: readonly unknown[] = [],
 ): void {
   const schemaSet = new Set(schemaValues);
   const querySet = new Set(queryValues);

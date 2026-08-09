@@ -30,7 +30,10 @@ import { GlobalIncidentsArtifactSchema } from "../routes/health-surfaces.ts";
 
 export const GetGlobalIncidentsInputSchema = z
   .object({
-    window: windowSchema(["7d", "30d"]).optional(),
+    // The route publishes which window an omitted one resolves to
+    // (#10060); a local `windowSchema([...])` carries the values and
+    // drops that, so the tool said less than its own route.
+    window: windowSchema(["7d", "30d"], "7d").optional(),
     netuid: API_QUERY_COLLECTIONS.incidents.filter_schemas.netuid.optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.incidents.sort_fields).optional(),
     order: orderSchema().optional(),

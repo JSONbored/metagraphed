@@ -105,18 +105,14 @@ export const ListSubnetsInputSchema = z
     // The route's published names (#10018) -- GET /api/v1/subnets documents
     // these, so an agent reading our OpenAPI sends them. Canonical.
     min_integration_readiness: z
-      .int()
-      .min(0)
-      .max(100)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on integration-readiness score; rows below it are excluded. The name GET /api/v1/subnets publishes.",
       )
       .meta({ examples: [50] }),
     max_integration_readiness: z
-      .int()
-      .min(0)
-      .max(100)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on integration-readiness score; rows above it are excluded. The name GET /api/v1/subnets publishes.",
@@ -125,34 +121,28 @@ export const ListSubnetsInputSchema = z
     // The shorter names this tool shipped with, kept so existing callers are
     // unaffected. Same field, same semantics.
     min_readiness: z
-      .int()
-      .min(0)
-      .max(100)
+      .number()
       .optional()
       .describe(
         "Alias for `min_integration_readiness`, the name this tool shipped with.",
       )
       .meta({ examples: [50] }),
     max_readiness: z
-      .int()
-      .min(0)
-      .max(100)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on readiness score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
     min_surface_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on surface count; rows below it are excluded.",
       )
       .meta({ examples: [1] }),
     max_surface_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on surface count; rows above it are excluded.",
@@ -173,80 +163,70 @@ export const ListSubnetsInputSchema = z
       )
       .meta({ examples: [8783000] }),
     min_candidate_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on candidate surface count; rows below it are excluded.",
       )
       .meta({ examples: [1] }),
     max_candidate_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on candidate surface count; rows above it are excluded.",
       )
       .meta({ examples: [20] }),
     min_mechanism_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on mechanism count; rows below it are excluded.",
       )
       .meta({ examples: [1] }),
     max_mechanism_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on mechanism count; rows above it are excluded.",
       )
       .meta({ examples: [8] }),
     min_participant_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on participant count; rows below it are excluded.",
       )
       .meta({ examples: [1] }),
     max_participant_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on participant count; rows above it are excluded.",
       )
       .meta({ examples: [256] }),
     min_probed_surface_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on probed surface count; rows below it are excluded.",
       )
       .meta({ examples: [1] }),
     max_probed_surface_count: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on probed surface count; rows above it are excluded.",
       )
       .meta({ examples: [20] }),
     min_tempo: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive lower bound on subnet tempo; rows below it are excluded.",
       )
       .meta({ examples: [99] }),
     max_tempo: z
-      .int()
-      .min(0)
+      .number()
       .optional()
       .describe(
         "Inclusive upper bound on subnet tempo; rows above it are excluded.",

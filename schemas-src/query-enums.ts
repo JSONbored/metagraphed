@@ -10,6 +10,12 @@
 //
 // Pure literals, zero imports, so any surface can read them. `contracts.ts`
 // re-exports the symbol, so the 31 existing import sites are unchanged.
+//
+// `as const` so a consumer can hand a member list straight to `z.enum()`
+// (#10060). Without it these are `string[]`, which `z.enum` cannot take, and
+// every consumer that wanted a schema wrote the values out again instead --
+// which is how `surfaceKind` came to exist twice, in two orders, with the
+// routes publishing one and the MCP tools the other.
 
 export const QUERY_ENUMS = {
   candidateState: [
@@ -119,4 +125,4 @@ export const QUERY_ENUMS = {
     "subtensor-wss",
     "website",
   ],
-};
+} as const;

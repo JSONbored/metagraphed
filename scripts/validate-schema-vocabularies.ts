@@ -67,17 +67,41 @@ for (const dir of SCHEMA_DIRS) {
     if (!name.endsWith(".ts")) continue;
     const file = `${dir}/${name}`;
     const source = await fs.readFile(path.join(absolute, name), "utf8");
+    // JSON Schema's own type names. A `type: ["array","string","null"]` union
+    // is not a domain vocabulary with an owner, and the object-property form
+    // below cannot tell it apart from one by shape alone.
+    const JSON_SCHEMA_TYPES = new Set([
+      "array",
+      "boolean",
+      "integer",
+      "null",
+      "number",
+      "object",
+      "string",
+    ]);
     const push = (raw: string) => {
       const values = [...raw.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
       // Two members is a boolean in disguise (asc/desc, in/out) and carries no
       // vocabulary worth owning; three is where a real domain list starts.
-      if (values.length >= 3) sites.push({ file, values });
+      if (values.length < 3) return;
+      if (values.every((value) => JSON_SCHEMA_TYPES.has(value))) return;
+      sites.push({ file, values });
     };
     for (const match of source.matchAll(/z\.enum\(\s*\[([^\]]*)\]\s*\)/g))
       push(match[1]);
     for (const match of source.matchAll(
       /(?:export )?const \w+\s*=\s*\[([^\]]*)\]\s*as const;/g,
     ))
+      push(match[1]);
+    // A vocabulary declared as an OBJECT PROPERTY (#10060). This gate matched
+    // only the two top-level forms above, and `schemas-src/query-enums.ts` --
+    // the file whose entire job is holding vocabularies -- writes every one of
+    // them as `name: [ … ],` inside `QUERY_ENUMS`. So the one place a duplicate
+    // was most likely to be was the one place the gate could not see, and
+    // `surfaceKind` sat there restating `SURFACE_KIND_VALUES` in a different
+    // order: the routes published one and the MCP tools the other, which is 32
+    // of the tool-vs-route enum divergences #10060 was counting.
+    for (const match of source.matchAll(/\b\w+:\s*\[([^\]]*)\][,;]/g))
       push(match[1]);
   }
 }

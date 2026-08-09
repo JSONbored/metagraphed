@@ -12,6 +12,7 @@
 // (+Target/TargetGroup), and ReviewAdapterCandidatesArtifact(+Candidate)
 // components they replace.
 import { z } from "zod";
+import { QUERY_ENUMS } from "../query-enums.ts";
 import {
   ArtifactBaseSchema,
   CountMapSchema,
@@ -343,12 +344,7 @@ export const ReviewEnrichmentTargetsResponseSchema = successEnvelopeSchema(
   ReviewEnrichmentTargetsArtifactSchema,
 );
 
-export const RECOMMENDED_ADAPTER_KINDS = [
-  "custom-adapter",
-  "data-artifact-adapter",
-  "generic-openapi-or-custom",
-  "stream-adapter",
-] as const;
+export const RECOMMENDED_ADAPTER_KINDS = QUERY_ENUMS.recommendedAdapterKind;
 export const ADAPTER_CANDIDATES_SORT_FIELDS = [
   "candidate_api_count",
   "candidate_api_kinds",
