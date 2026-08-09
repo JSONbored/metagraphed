@@ -256,6 +256,7 @@ import type {
   ScoreDistribution,
   SubnetConcentration,
   ConcentrationHistoryPoint,
+  SubnetBurnHistory,
   SubnetConcentrationHistory,
   SubnetPerformance,
   PerformanceHistoryPoint,
@@ -6792,6 +6793,60 @@ function normalizeSubnetConcentrationHistory(
     points,
   };
 }
+
+/**
+ * One registration-cost series.
+ *
+ * Every field the generated artifact declares is required, so the normalizer
+ * supplies a defined value for each rather than widening the type to optional:
+ * a partial wire body is a degraded read, and the tile should render a dash
+ * from a null rather than branch on `undefined` at every use.
+ */
+export function normalizeSubnetBurnHistory(netuid: number, raw: unknown): SubnetBurnHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = Array.isArray(d.points)
+    ? d.points.slice(-MAX_HISTORY_POINTS).flatMap((point) => {
+        const p = isRecord(point) ? point : null;
+        const burn = p ? coerceFiniteNumber(p.burn_tao) : null;
+        const at = p ? coerceString(p.observed_at) : undefined;
+        // A point with no price is not a zero-cost registration -- 0 is a real
+        // burn (netuid 76 reads a true zero), so an unreadable sample is
+        // dropped rather than charted as the cheapest point in the series.
+        return burn != null && at ? [{ burn_tao: burn, observed_at: at }] : [];
+      })
+    : [];
+  return {
+    schema_version: coerceFiniteNumber(d.schema_version) ?? 1,
+    netuid: coerceFiniteNumber(d.netuid) ?? netuid,
+    window: coerceString(d.window) ?? null,
+    point_count: coerceFiniteNumber(d.point_count) ?? points.length,
+    current_burn_tao: coerceFiniteNumber(d.current_burn_tao) ?? null,
+    change_tao: coerceFiniteNumber(d.change_tao) ?? null,
+    change_pct: coerceFiniteNumber(d.change_pct) ?? null,
+    points,
+  };
+}
+
+/** Registration-cost (SubtensorModule.Burn) series for one subnet. */
+export const subnetBurnHistoryQuery = (
+  netuid: number,
+  window: "24h" | "7d" | "30d" | "90d" = "7d",
+) =>
+  queryOptions({
+    queryKey: k("subnet-burn-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetBurnHistory>>(
+        `/api/v1/subnets/${netuid}/burn/history`,
+        { params: { window }, signal },
+      );
+      return {
+        data: normalizeSubnetBurnHistory(netuid, res.data),
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetBurnHistory>;
+    },
+    staleTime: STALE_MED,
+  });
 
 /** Full metagraph snapshot — all neurons with stake/emission/rank/trust/permit. */
 export const subnetMetagraphQuery = (netuid: number) =>
