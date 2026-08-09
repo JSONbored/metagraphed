@@ -112,6 +112,41 @@ function sdlTypeName(node: TypeNode): string {
   return current.name.value;
 }
 
+/**
+ * Does the SDL promise this field is always present?
+ *
+ * A LIST is unwrapped first: `[Thing!]!` and `[Thing!]` differ in whether the
+ * LIST can be null, which is what a caller sees, and that is the promise being
+ * compared. The item's own nullability is the list's business.
+ */
+function sdlIsNonNull(node: TypeNode): boolean {
+  return node.kind === "NonNullType";
+}
+
+function generatedIsNonNull(type: GraphQLOutputType): boolean {
+  return type instanceof GraphQLNonNull;
+}
+
+/** The scalar a field names, or null when it names an object/list/enum. */
+function sdlScalarName(node: TypeNode): string | null {
+  let current = node;
+  while (current.kind !== "NamedType") {
+    if (current.kind === "ListType") return null;
+    current = current.type;
+  }
+  return SCALARS.has(current.name.value) ? current.name.value : null;
+}
+
+function generatedScalarName(type: GraphQLOutputType): string | null {
+  let current: unknown = type;
+  while (current instanceof GraphQLNonNull) current = current.ofType;
+  if (current instanceof GraphQLList) return null;
+  const name = (current as { name?: string })?.name;
+  return name && SCALARS.has(name) ? name : null;
+}
+
+const SCALARS = new Set(["Int", "Float", "String", "Boolean", "ID"]);
+
 function generatedTypeName(type: GraphQLOutputType): string | null {
   let current: unknown = type;
   while (current instanceof GraphQLNonNull || current instanceof GraphQLList)
@@ -206,7 +241,55 @@ export function checkComponentParity(
         continue;
       }
       comparedTypes += 1;
+      // The SDL field nodes, for the two things a name comparison cannot see.
+      const sdlNodes = new Map(
+        (sdlTypes.get(sdlName)!.fields ?? []).map((f) => [f.name.value, f]),
+      );
+      const genFieldMap = generated.get(componentName)!.getFields();
       for (const name of genNames) {
+        const sdlNode = sdlNodes.get(name);
+        const genField = genFieldMap[name];
+        if (sdlNode && genField) {
+          // A field the SDL promises is always present, against a component
+          // that says it may be absent. graphql-js cannot hold the null: it
+          // raises and PROPAGATES, so one nullable value nulls the whole
+          // surrounding list. `SelfHealthLane.detail` did exactly that on
+          // every `self_health` request, and this gate compared only names
+          // (#10215).
+          if (
+            sdlIsNonNull(sdlNode.type) &&
+            !generatedIsNonNull(genField.type) &&
+            !declared[`${sdlName}.${name}`]
+          ) {
+            violations.push(
+              `${sdlName}.${name} -- the SDL declares it non-null, ` +
+                `${componentName} says it is nullable`,
+            );
+          }
+          // NARROWING only. `Int` where the component emits `Float` loses
+          // values -- and GraphQL's Int is 32-bit, so an epoch-millisecond
+          // value declared Int errors on EVERY real value, which is what
+          // `EndpointIncidentWindow.started_at` did on every request since the
+          // surface shipped.
+          //
+          // The other direction is a WIDENING and is left alone: a Float
+          // accepts every integer, and 26 fields declare it deliberately for a
+          // computed value (`mean_ms`, `stability_score`, the percentiles)
+          // whose component happens to hold whole numbers today. Failing those
+          // would be 26 entries of noise around the one shape that breaks.
+          const sdlScalar = sdlScalarName(sdlNode.type);
+          const genScalar = generatedScalarName(genField.type);
+          if (
+            sdlScalar === "Int" &&
+            genScalar === "Float" &&
+            !declared[`${sdlName}.${name}`]
+          ) {
+            violations.push(
+              `${sdlName}.${name} -- the SDL declares ${sdlScalar}, ` +
+                `${componentName} emits ${genScalar}`,
+            );
+          }
+        }
         comparedFields += 1;
         if (sdlFields.has(name)) continue;
         const key = `${sdlName}.${name}`;

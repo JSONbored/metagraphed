@@ -314,15 +314,21 @@ export function emitTypes(): EmittedTypes {
     // executed the fields; this is the rule that stops the generated SDL
     // reintroducing it.
     //
-    // Keyed on the NAME because the type cannot tell: `z.int()` stamps the JS
-    // safe-integer ceiling on every integer, count and instant alike, so
-    // "maximum exceeds Int32" is true of all of them. `_at` on an integer
+    // Keyed on the FIELD NAME because the type cannot tell: `z.int()` stamps
+    // the JS safe-integer ceiling on every integer, count and instant alike,
+    // so "maximum exceeds Int32" is true of all of them. `_at` on an integer
     // means an epoch value on this surface -- verified: the two that exist are
     // the two that were broken. A DURATION (`duration_ms`, `age_ms`) is a span
-    // rather than an instant and stays an Int unless it is separately declared
+    // rather than an instant and stays an Int unless separately declared
     // beyond the range.
+    //
+    // Off `path`, whose last segment IS the field name. #10269 tested
+    // `fallbackName` instead, which is the name a NESTED OBJECT would be given
+    // (`ChainEventsFeedArtifactEventsObservedAt`) and never ends in `_at` --
+    // so the rule shipped inert and the SDL fix in that change was doing all
+    // the work. The gate below is what caught it.
     if (node.type === "integer") {
-      return /_at$/.test(fallbackName) ? GraphQLFloat : GraphQLInt;
+      return /_at$/.test(path) ? GraphQLFloat : GraphQLInt;
     }
     if (node.type === "number") return GraphQLFloat;
     if (node.type === "boolean") return GraphQLBoolean;
