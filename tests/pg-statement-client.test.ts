@@ -81,6 +81,69 @@ describe("the D1 object API", () => {
   });
 });
 
+describe("bind() is immutable, the way D1's is", () => {
+  // The regression this file gained after production lost 34 hours of
+  // subnet_burn_history. `prepare` once + `bind` per row inside one batch is
+  // the documented idiom -- and when bind() mutated a shared statement, every
+  // element of that array was the same object carrying the LAST row's values.
+  // The batch then ran N identical statements, ON CONFLICT DO UPDATE folded
+  // them into one row, and the lane reported `captured 129` throughout.
+  test("prepare once, bind per row -- each statement keeps its OWN values", async () => {
+    const f = fakeClient();
+    const db = make(f);
+    const insert = db.prepare("INSERT INTO t (netuid, v) VALUES (?, ?)");
+    const rows = [
+      { netuid: 1, v: "a" },
+      { netuid: 2, v: "b" },
+      { netuid: 3, v: "c" },
+    ];
+
+    await db.batch(rows.map((r) => insert.bind(r.netuid, r.v)));
+
+    // Three statements, three DIFFERENT parameter sets -- not three copies of
+    // the last one. Asserting the values, not the count: a mutating bind()
+    // still produces three statements, and only the values expose it.
+    const writes = f.log.filter((l) => /INSERT INTO t/.test(l.text));
+    assert.deepEqual(
+      writes.map((w) => w.values),
+      [
+        [1, "a"],
+        [2, "b"],
+        [3, "c"],
+      ],
+    );
+  });
+
+  test("binding does not disturb the statement it was bound from", async () => {
+    const f = fakeClient();
+    const db = make(f);
+    const base = db.prepare("SELECT * FROM t WHERE a = ?");
+    const first = base.bind(1);
+    const second = base.bind(2);
+    await first.all();
+    await second.all();
+    assert.deepEqual(
+      f.log.map((l) => l.values),
+      [[1], [2]],
+    );
+  });
+
+  test("re-binding an already-bound statement is independent too", async () => {
+    // The chainable case: `stmt.bind(a).bind(b)` must not leave `bind(a)`
+    // carrying b, or a caller reusing an intermediate gets the wrong row.
+    const f = fakeClient();
+    const db = make(f);
+    const bound = db.prepare("SELECT * FROM t WHERE a = ?").bind(1);
+    const rebound = bound.bind(2);
+    await bound.all();
+    await rebound.all();
+    assert.deepEqual(
+      f.log.map((l) => l.values),
+      [[1], [2]],
+    );
+  });
+});
+
 describe("batch() is a real transaction", () => {
   test("BEGIN wraps every statement and COMMIT closes it", async () => {
     const f = fakeClient();

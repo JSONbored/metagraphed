@@ -122,6 +122,8 @@ export async function captureSubnetBurnHistory(
     return { ok: false, captured: 0, pruned: false, reason: "empty_read" };
   }
 
+  // Rows the batch reports as actually written; see the note at the assignment.
+  let written: number;
   try {
     // ON CONFLICT DO UPDATE, not INSERT OR REPLACE (#10172).
     //
@@ -142,9 +144,27 @@ export async function captureSubnetBurnHistory(
         ` (netuid, observed_at, burn_tao) VALUES (?, ?, ?)` +
         ` ON CONFLICT (netuid, observed_at) DO UPDATE SET burn_tao = EXCLUDED.burn_tao`,
     );
-    await db.batch(
+    const batched = (await db.batch(
       rows.map((r) => insert.bind(r.netuid, observedAt, r.burn_tao)),
-    );
+    )) as { meta?: { changes?: number } }[] | undefined;
+    // COUNT WHAT LANDED, NOT WHAT WE READ. `rows.length` is the intent, and
+    // reporting it is how this lane spent 34 hours announcing `captured 129`
+    // on ticks that wrote exactly one row (#10304): every statement in the
+    // batch carried the same bound values, ON CONFLICT DO UPDATE folded them
+    // into one row, and nothing downstream could tell.
+    //
+    // Falls back to the intended count when the runner reports no per-statement
+    // `meta.changes` AT ALL. That distinction is the whole guard: an empty or
+    // meta-less result means "this store cannot count its own writes", which
+    // must not read as zero captured -- that would invert the bug into a
+    // permanent false alarm on a lane that is working. Only a runner that
+    // actually reports counts gets believed.
+    const reported = (Array.isArray(batched) ? batched : [])
+      .map((r) => r?.meta?.changes)
+      .filter((n): n is number => typeof n === "number");
+    written = reported.length
+      ? reported.reduce((sum, n) => sum + n, 0)
+      : rows.length;
   } catch (error) {
     return {
       ok: false,
@@ -169,7 +189,7 @@ export async function captureSubnetBurnHistory(
     // Retention is housekeeping; the series is what matters.
   }
 
-  return { ok: true, captured: rows.length, pruned };
+  return { ok: true, captured: written, pruned };
 }
 
 /**
