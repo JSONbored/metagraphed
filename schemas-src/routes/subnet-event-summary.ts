@@ -65,18 +65,41 @@ export const SubnetEventSummaryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int(),
-    window: z.enum(SUBNET_EVENT_SUMMARY_WINDOW_VALUES),
+    window: z
+      .enum(SUBNET_EVENT_SUMMARY_WINDOW_VALUES)
+      .describe("The resolved window label (7d/30d/90d)."),
     observed_at: z.iso.datetime().nullable(),
     total_events: z.int().min(0),
     kind_count: z.int().min(0),
     category_count: z.int().min(0),
     recent_event_count: z.int().min(0),
-    limit: z.int().min(1).max(50),
-    categories: z.array(SubnetEventCategorySummarySchema),
-    event_kinds: z.array(SubnetEventKindSummarySchema),
-    recent_events: z.array(AccountEventSchema),
+    limit: z
+      .int()
+      .min(1)
+      .max(50)
+      .describe(
+        "The resolved recent-event cap actually applied (1-50, default 10).",
+      ),
+    categories: z
+      .array(SubnetEventCategorySummarySchema)
+      .describe(
+        "Per event category: its kind list and rolled-up counts. Opaque JSON passed through verbatim, matching the get_subnet_event_summary MCP/REST shape.",
+      ),
+    event_kinds: z
+      .array(SubnetEventKindSummarySchema)
+      .describe(
+        "Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim.",
+      ),
+    recent_events: z
+      .array(AccountEventSchema)
+      .describe(
+        "The bounded newest-first recent-event list. Opaque JSON passed through verbatim.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope.",
+  );
 export type SubnetEventSummaryArtifact = z.infer<
   typeof SubnetEventSummaryArtifactSchema
 >;

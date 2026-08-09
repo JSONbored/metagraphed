@@ -50,8 +50,20 @@ export const BlockDetailArtifactSchema = z
     schema_version: z.int(),
     ref: z.string().nullable(),
     block: BlockSchema.nullable(),
-    prev_block_number: z.int().min(0).nullable(),
-    next_block_number: z.int().min(0).nullable(),
+    prev_block_number: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "Nearest STORED lower block height for chain-walk nav (detail only); null at the start of the retained window or when the ref didn't resolve.",
+      ),
+    next_block_number: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve.",
+      ),
   })
   .passthrough();
 export type BlockDetailArtifact = z.infer<typeof BlockDetailArtifactSchema>;

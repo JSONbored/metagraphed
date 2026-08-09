@@ -28,7 +28,10 @@ const SubnetYieldNeuronSchema = z
     yield: z.number().nullable(),
     vs_median: z.enum(["above", "below", "at"]).nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One UID's emission-per-stake yield within a subnet's current metagraph snapshot.",
+  );
 
 export const SubnetYieldArtifactSchema = z
   .object({
@@ -74,7 +77,11 @@ export const SubnetYieldHistoryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
-    window: z.string().nullable().optional(),
+    window: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("The resolved window label (7d/30d/90d)."),
     point_count: z.int().min(0),
     points: z.array(SubnetYieldHistoryPointSchema),
   })

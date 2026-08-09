@@ -55,7 +55,10 @@ export const ChainEventsFeedArtifactSchema = z
       .optional(),
     events: z.array(ChainEventSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents.",
+  );
 export type ChainEventsFeedArtifact = z.infer<
   typeof ChainEventsFeedArtifactSchema
 >;
@@ -69,7 +72,10 @@ const ChainEventEntrySchema = z
     method: z.string().nullable(),
     count: z.int().min(0),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One pallet.method group in the chain-activity aggregate, with its event count over the window.",
+  );
 
 export const ChainEventsStatsArtifactSchema = z
   .object({
@@ -77,7 +83,10 @@ export const ChainEventsStatsArtifactSchema = z
     groups: z.int().min(0),
     activity: z.array(ChainEventEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity).",
+  );
 export type ChainEventsStatsArtifact = z.infer<
   typeof ChainEventsStatsArtifactSchema
 >;

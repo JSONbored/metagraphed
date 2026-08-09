@@ -10,7 +10,9 @@ export const SubnetAlphaVolumeArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
-    window: z.enum(["24h"]),
+    window: z
+      .enum(["24h"])
+      .describe("The rolling window label this card covers (24h)."),
     buy_volume_alpha: z.number(),
     sell_volume_alpha: z.number(),
     total_volume_alpha: z.number(),
@@ -20,11 +22,28 @@ export const SubnetAlphaVolumeArtifactSchema = z
     buy_count: z.int().min(0),
     sell_count: z.int().min(0),
     net_volume_alpha: z.number(),
-    sentiment_ratio: z.number().nullable(),
-    sentiment: z.enum(["bullish", "bearish", "neutral"]),
-    vol_mcap_ratio: z.number().nullable(),
+    sentiment_ratio: z
+      .number()
+      .nullable()
+      .describe(
+        "Buy share of total volume (0-1); null when there was no volume.",
+      ),
+    sentiment: z
+      .enum(["bullish", "bearish", "neutral"])
+      .describe(
+        "Bucketed reading of sentiment_ratio (buying/selling/neutral).",
+      ),
+    vol_mcap_ratio: z
+      .number()
+      .nullable()
+      .describe(
+        "Total TAO volume over alpha market cap; null when market cap is unknown.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope.",
+  );
 export type SubnetAlphaVolumeArtifact = z.infer<
   typeof SubnetAlphaVolumeArtifactSchema
 >;

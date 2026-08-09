@@ -15,7 +15,10 @@ export const SubnetIdleStakeArtifactSchema = z
     idle_neuron_count: z.int().min(0),
     idle_stake_alpha: z.number().min(0),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet idle-stake scorecard (#7172). Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/idle-stake.",
+  );
 export type SubnetIdleStakeArtifact = z.infer<
   typeof SubnetIdleStakeArtifactSchema
 >;

@@ -26,19 +26,41 @@ const ValidatorNominatorEntrySchema = z
     coldkey: z.string(),
     staked_tao: z.number().min(0),
     unstaked_tao: z.number().min(0),
-    net_staked_tao: z.number(),
-    gross_staked_tao: z.number().min(0),
+    net_staked_tao: z.number().describe("staked_tao - unstaked_tao."),
+    gross_staked_tao: z
+      .number()
+      .min(0)
+      .describe(
+        "staked_tao + unstaked_tao (total churn, regardless of direction).",
+      ),
     event_count: z.int().min(0),
-    last_observed_at: z.string().nullable(),
+    last_observed_at: z
+      .string()
+      .nullable()
+      .describe(
+        "Most recent StakeAdded/StakeRemoved time for this coldkey; null when unstamped.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One nominating coldkey's staking activity toward a validator within the window.",
+  );
 
 export const ValidatorNominatorsArtifactSchema = z
   .object({
     schema_version: z.int(),
     hotkey: z.string(),
-    window: z.string().nullable(),
-    sort: z.enum(VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES),
+    window: z
+      .string()
+      .nullable()
+      .describe(
+        "The resolved window label; null only if the builder was handed no window.",
+      ),
+    sort: z
+      .enum(VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES)
+      .describe(
+        "The resolved sort actually applied (an omitted sort resolves to net_staked).",
+      ),
     limit: z.int().min(0).max(100),
     offset: z.int().min(0),
     nominator_count: z
@@ -56,7 +78,10 @@ export const ValidatorNominatorsArtifactSchema = z
     nominator_gini: z.number().min(0).max(1).nullable(),
     nominators: z.array(ValidatorNominatorEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope.",
+  );
 export type ValidatorNominatorsArtifact = z.infer<
   typeof ValidatorNominatorsArtifactSchema
 >;

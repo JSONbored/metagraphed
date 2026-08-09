@@ -68,10 +68,21 @@ export const NeuronSchema = z
     is_immunity_period: z.boolean().optional(),
     // registered_at_block+immunity_period; present only while is_immunity_period
     // is true and both inputs are known (#6640) -- omitted, not null, otherwise.
-    immunity_expires_at_block: z.int().optional(),
+    immunity_expires_at_block: z
+      .int()
+      .optional()
+      .describe(
+        "The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640).",
+      ),
     // Wall-clock ETA for immunity_expires_at_block, extrapolated at ~12s/block;
     // only present alongside immunity_expires_at_block.
-    immunity_expires_at: z.string().nullable().optional(),
+    immunity_expires_at: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640).",
+      ),
     axon: z
       .string()
       .nullable()
@@ -88,9 +99,18 @@ export const NeuronSchema = z
     featured: z.boolean().optional(),
     // Validator take/commission (#2548), global per-hotkey. Null if the
     // hotkey had no Delegates entry at capture time.
-    take: z.number().nullable().optional(),
+    take: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One UID's live metagraph state within a subnet (hot/cold keys, scores, stake/emission, axon, take).",
+  );
 
 export const SubnetMetagraphArtifactSchema = z
   .object({
@@ -115,9 +135,14 @@ export const NeuronDetailArtifactSchema = z
     netuid: z.int().min(0),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
-    neuron: NeuronSchema.nullable(),
+    neuron: NeuronSchema.nullable().describe(
+      "The UID's live metagraph row; null when absent from the latest snapshot.",
+    ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot.",
+  );
 export type NeuronDetailArtifact = z.infer<typeof NeuronDetailArtifactSchema>;
 export const NeuronDetailResponseSchema = successEnvelopeSchema(
   NeuronDetailArtifactSchema,
@@ -130,9 +155,16 @@ export const SubnetValidatorsArtifactSchema = z
     validator_count: z.int().min(0),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
-    validators: z.array(NeuronSchema),
+    validators: z
+      .array(NeuronSchema)
+      .describe(
+        "Each permitted validator's live metagraph row -- the same NeuronState shape the neuron field returns.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope.",
+  );
 export type SubnetValidatorsArtifact = z.infer<
   typeof SubnetValidatorsArtifactSchema
 >;
@@ -150,7 +182,10 @@ const NeuronHistoryPointSchema = z
     block_number: z.int().nullable().optional(),
   })
   .extend(NeuronSchema.shape)
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One day's metagraph state for a single UID (NeuronState fields plus snapshot_date/captured_at/block_number).",
+  );
 
 export const NeuronHistoryArtifactSchema = z
   .object({
@@ -161,7 +196,10 @@ export const NeuronHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(NeuronHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
+  );
 export type NeuronHistoryArtifact = z.infer<typeof NeuronHistoryArtifactSchema>;
 export const NeuronHistoryResponseSchema = successEnvelopeSchema(
   NeuronHistoryArtifactSchema,

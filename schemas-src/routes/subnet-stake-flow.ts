@@ -26,7 +26,10 @@ export const SubnetStakeFlowArtifactSchema = z
     stake_events: z.int().min(0),
     unstake_events: z.int().min(0),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-subnet net stake flow (#7172) over a 7d/30d/90d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-flow' data envelope.",
+  );
 export type SubnetStakeFlowArtifact = z.infer<
   typeof SubnetStakeFlowArtifactSchema
 >;

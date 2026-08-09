@@ -58,7 +58,12 @@ export const EmissionGateChangesArtifactSchema = z
     change_count: z.int().min(0),
     /** Entries that are a first observation rather than a change. A reader
      * counting governance events must subtract these. */
-    predates_capture_count: z.int().min(0),
+    predates_capture_count: z
+      .int()
+      .min(0)
+      .describe(
+        "How many returned entries are first observations rather than changes.",
+      ),
     latest_change_at: z.iso.datetime().nullable(),
     changes: z.array(
       z.union([

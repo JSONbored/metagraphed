@@ -7,7 +7,11 @@ import { successEnvelopeSchema } from "../envelope.ts";
 
 const SubnetOhlcCandleSchema = z
   .object({
-    bucket_start: z.int(),
+    bucket_start: z
+      .int()
+      .describe(
+        "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int.",
+      ),
     bucket_start_iso: z.iso.datetime(),
     open: z.number(),
     high: z.number(),
@@ -23,11 +27,20 @@ export const SubnetOhlcArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
-    interval: z.enum(["1h", "1d"]),
+    interval: z
+      .enum(["1h", "1d"])
+      .describe("The resolved bucket interval (1h/1d)."),
     candles: z.array(SubnetOhlcCandleSchema),
-    root_excluded: z.boolean(),
+    root_excluded: z
+      .boolean()
+      .describe(
+        "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope.",
+  );
 export type SubnetOhlcArtifact = z.infer<typeof SubnetOhlcArtifactSchema>;
 export const SubnetOhlcResponseSchema = successEnvelopeSchema(
   SubnetOhlcArtifactSchema,

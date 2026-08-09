@@ -40,9 +40,18 @@ const ChainEventSchema = z
     // #8525: deterministic human-readable action sentence for this event's
     // pallet.method, or null when no template matches -- never a
     // guessed/partial sentence.
-    summary: z.string().nullable().optional(),
+    summary: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525).",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload).",
+  );
 
 export const BlockChainEventsArtifactSchema = z
   .object({

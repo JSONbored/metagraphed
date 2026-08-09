@@ -19,7 +19,10 @@ export const EventStreamDegradedSchema = z
     reason: z.string(),
     detail: z.string().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
+  );
 
 /**
  * How a deregistration feed was derived.
@@ -31,9 +34,20 @@ export const EventStreamDegradedSchema = z
 export const DeregistrationDerivationSchema = z
   .object({
     method: z.string(),
-    lookback_days: z.int().min(0),
-    window_registrations: z.int().min(0),
-    unattributed_registrations: z.int().min(0),
+    lookback_days: z
+      .int()
+      .min(0)
+      .describe(
+        "Days of NeuronRegistered history the derivation had available.",
+      ),
+    window_registrations: z
+      .int()
+      .min(0)
+      .describe("Registrations observed inside the reported window."),
+    unattributed_registrations: z
+      .int()
+      .min(0)
+      .describe("Of those, the ones with no observed previous holder."),
     // #9708: the same fact, machine-readable. The prose above and
     // `unattributed_registrations` have said "lower bound" since #9307, but
     // only to a human reading docs -- the payload published a bare count, and
@@ -54,4 +68,7 @@ export const DeregistrationDerivationSchema = z
       )
       .meta({ examples: [true] }),
   })
-  .strict();
+  .strict()
+  .describe(
+    "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name.",
+  );

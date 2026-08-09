@@ -51,7 +51,12 @@ export const ArtifactBaseSchema = z
   .object({
     contract_version: z.string().optional(),
     generated_at: z.string(),
-    notes: z.union([z.string(), z.array(z.string())]).optional(),
+    notes: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe(
+        "Public-safe notes; may be a string or a string list depending on the adapter.",
+      ),
     schema_version: z.literal(1),
   })
   .passthrough();

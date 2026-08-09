@@ -37,10 +37,16 @@ export const EconomicsSummarySchema = z
   .object({
     registration_open_count: z.int().min(0),
     subnet_count: z.int().min(0),
-    total_alpha_value_tao: RaoPrecisionTaoStringSchema,
+    total_alpha_value_tao: RaoPrecisionTaoStringSchema.describe(
+      "Sum of every non-root subnet's alpha_market_cap_tao -- rao-precision decimal string (#6641).",
+    ),
     total_miners: z.int().min(0),
-    total_network_value_tao: RaoPrecisionTaoStringSchema,
-    total_root_value_tao: RaoPrecisionTaoStringSchema,
+    total_network_value_tao: RaoPrecisionTaoStringSchema.describe(
+      "total_root_value_tao + total_alpha_value_tao -- Backprop's Total Network Value (#6641).",
+    ),
+    total_root_value_tao: RaoPrecisionTaoStringSchema.describe(
+      "Root (netuid 0) TAO-denominated stake -- rao-precision decimal string (#6641).",
+    ),
     total_stake_alpha: RaoPrecisionTaoStringSchema,
     total_validators: z.int().min(0),
     with_economics_count: z.int().min(0),

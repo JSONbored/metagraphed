@@ -37,7 +37,10 @@ export const ColdkeyIdentitySchema = z
     additional: z.string().nullable(),
     captured_at: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Self-reported on-chain identity (SubtensorModule::set_identity) for a coldkey.",
+  );
 
 const GlobalValidatorSubnetSchema = z
   .object({

@@ -24,22 +24,35 @@ const ChainTransferPairSchema = z
     last_block: z.int().min(0).nullable(),
     last_observed_at: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One directed sender -> receiver corridor on the transfer-pairs leaderboard.",
+  );
 
 export const ChainTransferPairsArtifactSchema = z
   .object({
     schema_version: z.int(),
     window: z.string().nullable(),
-    sort: z.enum(["volume", "count"]),
+    sort: z
+      .enum(["volume", "count"])
+      .describe("The rank order actually applied: volume or count."),
     observed_at: z.string().nullable(),
     total_volume_tao: z.number().min(0),
     transfer_count: z.int().min(0),
     unique_pairs: z.int().min(0),
     pair_count: z.int().min(0),
-    top_pair_share: z.number().nullable(),
+    top_pair_share: z
+      .number()
+      .nullable()
+      .describe(
+        "Highest-volume corridor's share of total pairable volume; null when the window has no pairable volume.",
+      ),
     pairs: z.array(ChainTransferPairSchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Network-wide directed native-TAO transfer-corridor leaderboard over a lookback window. Mirrors GET /api/v1/chain/transfer-pairs's data envelope.",
+  );
 export type ChainTransferPairsArtifact = z.infer<
   typeof ChainTransferPairsArtifactSchema
 >;
@@ -53,7 +66,8 @@ const ChainTransferPartySchema = z
     volume_tao: z.number(),
     transfer_count: z.int().min(0),
   })
-  .strict();
+  .strict()
+  .describe("One account on a chain-transfers sender/receiver leaderboard.");
 
 export const ChainTransfersArtifactSchema = z
   .object({
@@ -64,11 +78,19 @@ export const ChainTransfersArtifactSchema = z
     transfer_count: z.int().min(0),
     unique_senders: z.int().min(0),
     unique_receivers: z.int().min(0),
-    top_sender_share: z.number().nullable(),
+    top_sender_share: z
+      .number()
+      .nullable()
+      .describe(
+        "Top senders' combined share of total volume; null when total volume is 0.",
+      ),
     top_senders: z.array(ChainTransferPartySchema),
     top_receivers: z.array(ChainTransferPartySchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Network-wide native-TAO transfer analytics over a lookback window. Mirrors GET /api/v1/chain/transfers's data envelope.",
+  );
 export type ChainTransfersArtifact = z.infer<
   typeof ChainTransfersArtifactSchema
 >;

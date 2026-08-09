@@ -21,14 +21,21 @@ const EconomicsTrendsDaySchema = z
   .object({
     snapshot_date: z.string(),
     subnet_count: z.int().min(0),
-    total_stake_alpha: RaoPrecisionTaoStringSchema.nullable().optional(),
+    total_stake_alpha: RaoPrecisionTaoStringSchema.nullable()
+      .optional()
+      .describe(
+        "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float.",
+      ),
     alpha_price_tao_weighted: z.number().nullable().optional(),
     alpha_price_tao_median: z.number().nullable().optional(),
     validator_count: z.int().nullable().optional(),
     miner_count: z.int().nullable().optional(),
     mean_emission_share: z.number().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One UTC day of network-wide economics aggregated across every subnet with a snapshot that day. Sums are null only when no subnet reported a value that day.",
+  );
 
 export const EconomicsTrendsArtifactSchema = z
   .object({

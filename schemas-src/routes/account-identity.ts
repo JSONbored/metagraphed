@@ -54,9 +54,16 @@ const AccountIdentityHistoryEntrySchema = z
     discord: z.string().max(200).nullable().optional(),
     description: z.string().nullable().optional(),
     additional: z.string().nullable().optional(),
-    identity_hash: z.string(),
+    identity_hash: z
+      .string()
+      .describe(
+        "Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One diff-tracked snapshot of an account's on-chain identity, taken when any tracked field changed since the previous entry.",
+  );
 
 export const AccountIdentityHistoryArtifactSchema = z
   .object({

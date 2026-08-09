@@ -125,10 +125,34 @@ export const SubnetEconomicsSchema = z
     alpha_in_pool: z.number().nullable(),
     alpha_market_cap_tao: z.number().nullable(),
     alpha_out_pool: z.number().nullable(),
-    alpha_price_change_1d: z.number().nullable().optional(),
-    alpha_price_change_1h: z.number().nullable().optional(),
-    alpha_price_change_1m: z.number().nullable().optional(),
-    alpha_price_change_7d: z.number().nullable().optional(),
+    alpha_price_change_1d: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227).",
+      ),
+    alpha_price_change_1h: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227).",
+      ),
+    alpha_price_change_1m: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227).",
+      ),
+    alpha_price_change_7d: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227).",
+      ),
     alpha_price_tao: z
       .number()
       .nullable()
@@ -224,7 +248,12 @@ export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
 export const ChainStateSchema = z
   .object({
     block: z.int().min(0),
-    block_hash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    block_hash: z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{64}$/)
+      .describe(
+        "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
+      ),
     // Block emission is derived from issuance (#8747), never read from the
     // stale `BlockEmission` storage item. Kept at the height so a historical
     // row stays interpretable against the emission in force when captured.
@@ -236,15 +265,28 @@ export const ChainStateSchema = z
     //
     // theta is null when the bar is unset, which disables the gate outright
     // (apply_emission_gate's own `if theta <= zero { return; }`).
-    emission_gate_bar: z.number().nullable(),
+    emission_gate_bar: z
+      .number()
+      .nullable()
+      .describe(
+        "theta. Null when the bar is unset, which disables the gate outright.",
+      ),
     emission_bar_quantile: z.number().nullable(),
     // NULL MEANS THE RUNTIME DEFAULT h = 3, NOT ZERO. h = 0 would make the
     // Hill gate return exactly 0.5 for every subnet, so coercing absent to 0
     // silently replaces the gate with a constant. Left null here and resolved
     // by the consumer against DEFAULT_EMISSION_GATE_EXPONENT.
-    emission_gate_exponent: z.int().nullable(),
+    emission_gate_exponent: z
+      .int()
+      .nullable()
+      .describe(
+        "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360.",
+  );
 export type ChainState = z.infer<typeof ChainStateSchema>;
 
 // Per-field provenance (#9078): every published value labelled `measured` --

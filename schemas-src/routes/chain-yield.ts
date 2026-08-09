@@ -22,6 +22,9 @@ const YieldDistributionSchema = z
     p90: z.number(),
   })
   .passthrough()
+  .describe(
+    "Distribution of the per-neuron emission/stake return rate across the network.",
+  )
   .nullable();
 
 export const ChainYieldArtifactSchema = z
@@ -54,7 +57,10 @@ export const ChainYieldArtifactSchema = z
     miner_yield: z.number().nullable().optional(),
     distribution: YieldDistributionSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield.",
+  );
 export type ChainYieldArtifact = z.infer<typeof ChainYieldArtifactSchema>;
 export const ChainYieldResponseSchema = successEnvelopeSchema(
   ChainYieldArtifactSchema,

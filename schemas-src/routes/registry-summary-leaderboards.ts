@@ -138,7 +138,13 @@ const LeaderboardEntrySchema = z
 export const RegistryLeaderboardsArtifactSchema = z
   .object({
     schema_version: z.int(),
-    board: z.string().nullable().optional(),
+    board: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "The board filter that was applied, or null when every board is returned.",
+      ),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
     // Keyed by board name (LEADERBOARD_BOARDS), which is a typed record. The
@@ -146,9 +152,16 @@ export const RegistryLeaderboardsArtifactSchema = z
     // same three identity fields and then carry the metric that board ranks
     // by, so the union below is a real description rather than a shrug.
     // Modeled from all twelve boards' live rows.
-    boards: z.record(z.string(), z.array(LeaderboardEntrySchema)),
+    boards: z
+      .record(z.string(), z.array(LeaderboardEntrySchema))
+      .describe(
+        "Every board keyed by board name, each an array of ranked subnet entries capped at limit. Opaque JSON like HealthTrends.windows: the keys are dynamic AND hyphenated (fastest-rpc, most-complete, open-slots, …) so they are not expressible as GraphQL field names, and each board carries its own metric columns (healthiest has uptime_ratio/surfaces_ok, fastest-rpc has latency_ms, fastest-growing has completeness_delta, …). Passing it through verbatim keeps the REST/MCP get_registry_leaderboards shape byte-for-byte.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards.",
+  );
 export type RegistryLeaderboardsArtifact = z.infer<
   typeof RegistryLeaderboardsArtifactSchema
 >;

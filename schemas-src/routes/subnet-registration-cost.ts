@@ -19,7 +19,10 @@ export const SubnetBurnArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn.",
+  );
 export type SubnetBurnArtifact = z.infer<typeof SubnetBurnArtifactSchema>;
 export const SubnetBurnResponseSchema = successEnvelopeSchema(
   SubnetBurnArtifactSchema,
@@ -35,7 +38,10 @@ export const SubnetRecycledArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled.",
+  );
 export type SubnetRecycledArtifact = z.infer<
   typeof SubnetRecycledArtifactSchema
 >;

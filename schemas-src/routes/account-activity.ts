@@ -46,7 +46,10 @@ export const AccountServingArtifactSchema = z
           first_served_at: z.string().nullable(),
           last_served_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's slice of an account's axon-serving footprint over the window.",
+        ),
     ),
   })
   .strict();
@@ -64,7 +67,12 @@ export const AccountPrometheusArtifactSchema = z
     window: z.enum(WINDOW_ENUM).nullable(),
     total_announcements: z.int().min(0),
     subnet_count: z.int().min(0),
-    concentration: z.number().nullable(),
+    concentration: z
+      .number()
+      .nullable()
+      .describe(
+        "Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements.",
+      ),
     dominant_netuid: z.int().min(0).nullable(),
     subnets: z.array(
       z
@@ -74,14 +82,20 @@ export const AccountPrometheusArtifactSchema = z
           first_announced_at: z.string().nullable(),
           last_announced_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's Prometheus-announcement activity in an account's footprint, ranked most-active-first.",
+        ),
     ),
     // #9307: the chain emits PrometheusServed and our account_events curation
     // drops all 18,041 of them, so this footprint's zero is "we could not
     // look".
     degraded: EventStreamDegradedSchema.optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus.",
+  );
 export type AccountPrometheusArtifact = z.infer<
   typeof AccountPrometheusArtifactSchema
 >;
@@ -105,9 +119,17 @@ export const AccountStakeMovesArtifactSchema = z
           movements: z.int().min(0),
           first_moved_at: z.string().nullable(),
           last_moved_at: z.string().nullable(),
-          price_tao_at_last_move: z.number().nullable(),
+          price_tao_at_last_move: z
+            .number()
+            .nullable()
+            .describe(
+              "Alpha price (TAO) on the UTC day of this subnet's most recent move; null when that day has no snapshot yet or there was no move.",
+            ),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's slice of an account's stake-movement footprint over the window.",
+        ),
     ),
   })
   .strict();
@@ -134,12 +156,26 @@ export const AccountStakeFlowArtifactSchema = z
     total_unstaked_tao: z.number(),
     net_flow_tao: z.number(),
     gross_flow_tao: z.number(),
-    flow_ratio: z.number().nullable(),
-    direction: z.enum(FLOW_DIRECTION_ENUM),
+    flow_ratio: z
+      .number()
+      .nullable()
+      .describe(
+        "net_flow_tao / gross_flow_tao, [-1, 1]; null when gross_flow_tao is 0 (no flow to rate).",
+      ),
+    direction: z
+      .enum(FLOW_DIRECTION_ENUM)
+      .describe(
+        "accumulating / exiting / churning / idle, derived from flow_ratio.",
+      ),
     stake_events: z.int().min(0),
     unstake_events: z.int().min(0),
     subnet_count: z.int().min(0),
-    concentration: z.number().nullable(),
+    concentration: z
+      .number()
+      .nullable()
+      .describe(
+        "Herfindahl-Hirschman index of gross flow across subnets: 1 = all flow in one subnet, -> 1/n as it spreads evenly; null when there is no flow to concentrate.",
+      ),
     dominant_netuid: z.int().min(0).nullable(),
     subnets: z.array(
       z
@@ -154,10 +190,16 @@ export const AccountStakeFlowArtifactSchema = z
           stake_events: z.int().min(0),
           unstake_events: z.int().min(0),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's stake flow in an account's footprint, ranked most-active-first (highest gross flow).",
+        ),
     ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One account's StakeAdded/StakeRemoved staking-behavior scorecard (#5706) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/stake-flow.",
+  );
 export type AccountStakeFlowArtifact = z.infer<
   typeof AccountStakeFlowArtifactSchema
 >;

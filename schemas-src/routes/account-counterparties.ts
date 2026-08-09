@@ -40,7 +40,10 @@ const CounterpartySchema = z
     transfer_count: z.int().min(0),
     last_block: z.int().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One counterparty the account transacts native TAO with, aggregated over the scanned Transfer set.",
+  );
 
 const CounterpartyTransferSchema = z
   .object({
@@ -50,10 +53,15 @@ const CounterpartyTransferSchema = z
     from: z.string(),
     to: z.string(),
     amount_tao: z.number(),
-    direction: z.enum(["sent", "received"]),
+    direction: z
+      .enum(["sent", "received"])
+      .describe("sent (account = from) or received (account = to)."),
     observed_at: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One direction-aware transfer between the account and the drilled-into counterparty.",
+  );
 
 export const CounterpartyRelationshipSchema = z
   .object({
@@ -66,14 +74,22 @@ export const CounterpartyRelationshipSchema = z
     total_sent_tao: z.number(),
     total_received_tao: z.number(),
     net_tao: z.number(),
-    first_block: z.int().nullable(),
+    first_block: z
+      .int()
+      .nullable()
+      .describe(
+        "Oldest block/timestamp are null when the newest-first scan was truncated (scan_capped).",
+      ),
     last_block: z.int().nullable(),
     first_seen_at: z.string().nullable(),
     last_seen_at: z.string().nullable(),
     limit: z.int().min(1).max(100),
     transfers: z.array(CounterpartyTransferSchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Focused fund-flow summary for one account/counterparty relationship, with the bounded transfer evidence; only present when counterparty was supplied.",
+  );
 
 export const AccountCounterpartiesArtifactSchema = z
   .object({
@@ -85,7 +101,9 @@ export const AccountCounterpartiesArtifactSchema = z
     total_sent_tao: z.number(),
     total_received_tao: z.number(),
     counterparties: z.array(CounterpartySchema),
-    relationship: CounterpartyRelationshipSchema.optional(),
+    relationship: CounterpartyRelationshipSchema.optional().describe(
+      "Present only in relationship (counterparty) mode; null in list mode.",
+    ),
   })
   .passthrough();
 export type AccountCounterpartiesArtifact = z.infer<

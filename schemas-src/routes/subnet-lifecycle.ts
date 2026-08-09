@@ -46,7 +46,10 @@ export const SubnetLifecycleEntrySchema = z
      */
     predates_capture: z.boolean(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap.",
+  );
 export type SubnetLifecycleEntry = z.infer<typeof SubnetLifecycleEntrySchema>;
 
 export const SubnetLifecycleArtifactSchema = z
@@ -80,7 +83,12 @@ export const ChainSubnetLifecycleArtifactSchema = z
     schema_version: z.int(),
     entry_count: z.int().min(0),
     /** Distinct subnets appearing in this page. Context for the count above. */
-    subnet_count: z.int().min(0),
+    subnet_count: z
+      .int()
+      .min(0)
+      .describe(
+        "Distinct subnets appearing in this page -- context for entry_count.",
+      ),
     limit: z.int().min(1).max(1000).nullable().optional(),
     offset: z.int().min(0).nullable().optional(),
     next_cursor: z.string().nullable().optional(),

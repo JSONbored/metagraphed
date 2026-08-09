@@ -30,7 +30,13 @@ const SubnetWeightSetterSchema = z
     hotkey: z.string().nullable(),
     uid: z.int().min(0).nullable(),
     weight_sets: z.int().min(0),
-    share: z.number().min(0).nullable(),
+    share: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "This setter's share of the subnet total weight_sets; null when the subnet total is 0.",
+      ),
     first_set_at: z.string().nullable(),
     last_set_at: z.string().nullable(),
     // #9389. Measured against the window's newest event rather than wall-clock now, so
@@ -45,7 +51,10 @@ const SubnetWeightSetterSchema = z
         "Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time').",
       ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One validator's weight-setting activity within one subnet over the lookback window.",
+  );
 
 export const SubnetWeightSettersArtifactSchema = z
   .object({
@@ -71,7 +80,10 @@ export const SubnetWeightSettersArtifactSchema = z
     overdue_setter_count: z.int().min(0),
     setters: z.array(SubnetWeightSetterSchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters.",
+  );
 export type SubnetWeightSettersArtifact = z.infer<
   typeof SubnetWeightSettersArtifactSchema
 >;

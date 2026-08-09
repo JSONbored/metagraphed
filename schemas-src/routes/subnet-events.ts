@@ -54,7 +54,10 @@ export const SubnetEventsArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope.",
+  );
 export type SubnetEventsArtifact = z.infer<typeof SubnetEventsArtifactSchema>;
 export const SubnetEventsResponseSchema = successEnvelopeSchema(
   SubnetEventsArtifactSchema,

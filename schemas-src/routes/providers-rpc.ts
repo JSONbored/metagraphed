@@ -318,7 +318,9 @@ export const RpcPoolsArtifactSchema = ArtifactBaseSchema.extend({
     .optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),
   pools: z.array(RpcPoolSchema),
-});
+}).describe(
+  "RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay.",
+);
 export type RpcPoolsArtifact = z.infer<typeof RpcPoolsArtifactSchema>;
 
 // Fully live (rpc_proxy_events telemetry), no static file, no ArtifactBase --
@@ -330,19 +332,29 @@ const RpcUsageEndpointRowSchema = z
     provider: z.string().nullable().optional(),
     requests: z.int().min(0),
     ok_requests: z.int().min(0),
-    error_rate: z.number().nullable().optional(),
+    error_rate: z
+      .number()
+      .nullable()
+      .optional()
+      .describe("Null when the endpoint had no requests in the window."),
     avg_latency_ms: z.int().nullable().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe("One endpoint's share of RPC reverse-proxy traffic in the window.");
 
 const RpcUsageNetworkRowSchema = z
   .object({
     network: z.string(),
     requests: z.int().min(0),
     ok_requests: z.int().min(0),
-    error_rate: z.number().nullable().optional(),
+    error_rate: z
+      .number()
+      .nullable()
+      .optional()
+      .describe("Null when the network had no requests in the window."),
   })
-  .passthrough();
+  .passthrough()
+  .describe("One network's share of RPC reverse-proxy traffic in the window.");
 
 const RpcUsageBucketSchema = z
   .object({
@@ -351,7 +363,10 @@ const RpcUsageBucketSchema = z
     errors: z.int().min(0),
     avg_latency_ms: z.int().nullable(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One bounded time bucket of RPC reverse-proxy traffic (bucket_granularity wide).",
+  );
 
 // `window` is what the caller asked for; `coverage` is what the two stores
 // (Analytics Engine live, R2 lakehouse frozen) could actually answer. They
@@ -362,30 +377,71 @@ const RpcUsageCoverageRangeSchema = z
     start: z.int().nullable(),
     end: z.int().nullable(),
   })
-  .passthrough();
+  .passthrough()
+  .describe("An epoch-ms span.");
 
 const RpcUsageCoverageSegmentSchema = z
   .object({
-    source: z.string(),
-    start: z.int().nullable(),
-    end: z.int().nullable(),
+    source: z
+      .string()
+      .describe(
+        "Which store measured it: analytics-engine (live capture) or lakehouse (frozen history).",
+      ),
+    start: z
+      .int()
+      .nullable()
+      .describe(
+        "Epoch ms of this store's oldest measured event in the window.",
+      ),
+    end: z
+      .int()
+      .nullable()
+      .describe(
+        "Epoch ms of this store's newest measured event in the window.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe("One store's contribution to an rpc_usage answer.");
 
 const RpcUsageCoverageSchema = z
   .object({
-    start: z.int().nullable(),
-    end: z.int().nullable(),
-    segments: z.array(RpcUsageCoverageSegmentSchema),
-    latency_percentiles: RpcUsageCoverageRangeSchema.nullable(),
+    start: z
+      .int()
+      .nullable()
+      .describe(
+        "Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured.",
+      ),
+    end: z
+      .int()
+      .nullable()
+      .describe(
+        "Epoch ms of the newest measured event across every contributing store, or null when nothing was measured.",
+      ),
+    segments: z
+      .array(RpcUsageCoverageSegmentSchema)
+      .describe(
+        "One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers.",
+      ),
+    latency_percentiles: RpcUsageCoverageRangeSchema.nullable().describe(
+      "The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function.",
+    ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "The measured span behind an rpc_usage answer. window is what the caller asked for; this is what the stores could answer, and they are not the same whenever a store's retention does not span the window.",
+  );
 
 export const RpcUsageArtifactSchema = z
   .object({
     schema_version: z.int(),
     window: z.string().nullable().optional(),
-    bucket_granularity: z.string().nullable().optional(),
+    bucket_granularity: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "Time-bucket granularity for buckets: 1h for the 7d window, 6h for 30d. Null on a cold store.",
+      ),
     // EPOCH MILLISECONDS, not an ISO string (#9794). Both GET /api/v1/rpc/usage
     // and the get_rpc_usage MCP tool serve a number here -- 1786099339000 --
     // so this route contract has been wrong since it was written, and the
@@ -404,17 +460,33 @@ export const RpcUsageArtifactSchema = z
       )
       .meta({ examples: [1786099339000] }),
     source: z.string(),
-    coverage: RpcUsageCoverageSchema,
+    coverage: RpcUsageCoverageSchema.describe(
+      "What the answer is actually about, as opposed to what window was asked for.",
+    ),
     summary: z
       .object({
         total_requests: z.int().min(0),
         ok_requests: z.int().min(0),
         error_requests: z.int().min(0),
-        error_rate: z.number().nullable().optional(),
+        error_rate: z
+          .number()
+          .nullable()
+          .optional()
+          .describe(
+            "Null when there are no requests in the window (no defined rate).",
+          ),
         failover_requests: z.int().min(0).optional(),
-        failover_rate: z.number().nullable().optional(),
+        failover_rate: z
+          .number()
+          .nullable()
+          .optional()
+          .describe("Null when there are no requests in the window."),
         cache_hits: z.int().min(0).optional(),
-        cache_hit_rate: z.number().nullable().optional(),
+        cache_hit_rate: z
+          .number()
+          .nullable()
+          .optional()
+          .describe("Null when there are no requests in the window."),
         latency_ms: z
           .object({
             p50: z.int().nullable().optional(),
@@ -422,12 +494,29 @@ export const RpcUsageArtifactSchema = z
             avg: z.int().nullable().optional(),
           })
           .passthrough()
+          .describe(
+            "Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store.",
+          )
           .optional(),
       })
-      .passthrough(),
-    endpoints: z.array(RpcUsageEndpointRowSchema),
-    networks: z.array(RpcUsageNetworkRowSchema),
-    buckets: z.array(RpcUsageBucketSchema),
+      .passthrough()
+      .describe("Window-total rollup for RPC reverse-proxy traffic."),
+    endpoints: z
+      .array(RpcUsageEndpointRowSchema)
+      .describe(
+        "Per-endpoint request distribution, ranked by request volume (top 50).",
+      ),
+    networks: z
+      .array(RpcUsageNetworkRowSchema)
+      .describe("Per-network request breakdown, ordered by request volume."),
+    buckets: z
+      .array(RpcUsageBucketSchema)
+      .describe(
+        "Bounded time buckets over the window for heatmaps, oldest-first.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope.",
+  );
 export type RpcUsageArtifact = z.infer<typeof RpcUsageArtifactSchema>;

@@ -24,7 +24,10 @@ export const BlockExtrinsicsArtifactSchema = z
     offset: z.int().nullable(),
     extrinsics: z.array(ExtrinsicSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One block's extrinsics list (#6977). Rows are the opaque JSON extrinsic shape the extrinsics feed uses; block_number is null for an unknown ref.",
+  );
 export type BlockExtrinsicsArtifact = z.infer<
   typeof BlockExtrinsicsArtifactSchema
 >;

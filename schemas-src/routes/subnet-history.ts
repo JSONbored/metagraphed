@@ -27,7 +27,10 @@ const SubnetHistoryPointSchema = z
     total_stake_alpha: z.number().nullable().optional(),
     total_emission_alpha: z.number().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One daily-rollup point on a subnet's history (#7172). Economics fields are null on days captured before those columns existed / when unavailable.",
+  );
 
 export const SubnetHistoryArtifactSchema = z
   .object({
@@ -37,7 +40,10 @@ export const SubnetHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(SubnetHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope.",
+  );
 export type SubnetHistoryArtifact = z.infer<typeof SubnetHistoryArtifactSchema>;
 export const SubnetHistoryResponseSchema = successEnvelopeSchema(
   SubnetHistoryArtifactSchema,

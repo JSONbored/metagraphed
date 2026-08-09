@@ -16,7 +16,10 @@ const RuntimeVersionTransitionSchema = z
     block_number: z.int().min(0),
     observed_at: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One runtime spec-version's first-seen block in the transition timeline.",
+  );
 
 // An interior hole in the timeline: two consecutive recorded transitions too
 // far apart in block distance for any real upgrade cadence to explain, so
@@ -43,7 +46,10 @@ export const RuntimeVersionsArtifactSchema = z
     coverage_complete: z.boolean(),
     coverage_gaps: z.array(RuntimeCoverageGapSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime.",
+  );
 export type RuntimeVersionsArtifact = z.infer<
   typeof RuntimeVersionsArtifactSchema
 >;

@@ -22,7 +22,10 @@ export const SubnetPrometheusArtifactSchema = z
     // drops all 18,041 of them, so this card's zero is "we could not look".
     degraded: EventStreamDegradedSchema.optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus.",
+  );
 export type SubnetPrometheusArtifact = z.infer<
   typeof SubnetPrometheusArtifactSchema
 >;

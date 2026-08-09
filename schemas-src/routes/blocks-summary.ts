@@ -21,6 +21,9 @@ const BlockTimeDistributionSchema = z
     p90_ms: z.int(),
   })
   .strict()
+  .describe(
+    "Inter-block interval distribution in milliseconds, over genuinely consecutive in-window blocks.",
+  )
   .nullable();
 
 export const BlocksSummaryArtifactSchema = z
@@ -41,13 +44,19 @@ export const BlocksSummaryArtifactSchema = z
         max_extrinsics_in_block: z.int().min(0),
       })
       .strict()
+      .describe(
+        "Extrinsic/event throughput across the summarized block window.",
+      )
       .nullable(),
     distinct_authors: z.int().min(0),
     author_concentration: ConcentrationMetricsSchema.nullable(),
     distinct_spec_versions: z.int().min(0),
     latest_spec_version: z.int().min(0).nullable(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary.",
+  );
 export type BlocksSummaryArtifact = z.infer<typeof BlocksSummaryArtifactSchema>;
 export const BlocksSummaryResponseSchema = successEnvelopeSchema(
   BlocksSummaryArtifactSchema,
