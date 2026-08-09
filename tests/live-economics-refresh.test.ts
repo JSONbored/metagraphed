@@ -134,6 +134,9 @@ function defaultChain(): ChainState {
       emission_gate_bar: u128((1n << 64n) / 100n),
       emission_bar_quantile: u128((3n * (1n << 64n)) / 4n),
       emission_gate_exponent: null,
+      // The real mainnet value (#10285), so the deregistration inputs travel
+      // the same decode path in the test that they do in production.
+      network_immunity_period: u64(864_000n),
     },
   };
 }
@@ -614,13 +617,15 @@ describe("refreshLiveEconomics", () => {
       emission_gate_bar: 0.01,
       emission_bar_quantile: 0.75,
       emission_gate_exponent: null,
+      network_immunity_period: 864_000,
     });
 
     // EVERY state read is pinned to the one block hash: the values move every
     // block and theta recomputes on a 360-block boundary, so an unpinned sweep
     // would publish a mix of states that never coexisted.
     const reads = calls.filter((call) => call.method.startsWith("state_"));
-    assert.equal(reads.length, 23);
+    // 23 before #10285 added two netuid maps and one plain value.
+    assert.equal(reads.length, 26);
     for (const call of reads) assert.equal(call.params[1], BLOCK_HASH);
     // The two statements, verbatim, as they reach the store. Pinned as TEXT
     // rather than by count, because the text is the part that has to be right

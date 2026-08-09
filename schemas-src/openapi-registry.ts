@@ -220,6 +220,7 @@ import {
 import { SubnetOverviewArtifactSchema } from "./routes/subnet-overview.ts";
 import { EconomicsTrendsArtifactSchema } from "./routes/economics-trends.ts";
 import { EmissionPipelineArtifactSchema } from "./routes/emission-pipeline.ts";
+import { SubnetDeregistrationRankingArtifactSchema } from "./routes/subnet-deregistration-ranking.ts";
 import {
   AskArtifactSchema,
   AskRequestSchema,
@@ -607,6 +608,11 @@ register(SubnetOverviewArtifactSchema, "SubnetOverviewArtifact");
 // Batch 2 (#8056) additions.
 register(EconomicsTrendsArtifactSchema, "EconomicsTrendsArtifact");
 register(EmissionPipelineArtifactSchema, "EmissionPipelineArtifact");
+// The chain's own subnet pruning order (#10285).
+register(
+  SubnetDeregistrationRankingArtifactSchema,
+  "SubnetDeregistrationRankingArtifact",
+);
 
 // The AI-native layer (#9092): live since ADR 0003 and never registered, so
 // absent from openapi.json and every generated client until now.

@@ -2182,6 +2182,8 @@ export type EmissionPipelineChainState = {
   emission_gate_bar?: Maybe<Scalars['Float']['output']>;
   /** h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
   emission_gate_exponent?: Maybe<Scalars['Int']['output']>;
+  /** Blocks of protection after registration, before a subnet can be deregistered (#10285). Null on a blob captured before this read existed. */
+  network_immunity_period?: Maybe<Scalars['Int']['output']>;
   total_issuance_tao: Scalars['Float']['output'];
 };
 
@@ -5311,12 +5313,16 @@ export type SubnetEconomics = {
   open_slots?: Maybe<Scalars['Int']['output']>;
   owner_coldkey?: Maybe<Scalars['String']['output']>;
   owner_hotkey?: Maybe<Scalars['String']['output']>;
+  /** SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, the immunity clock's start and the pruning order's tie-break (#10285). */
+  registered_at_block?: Maybe<Scalars['Int']['output']>;
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_allowed_pinned?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
   slug?: Maybe<Scalars['String']['output']>;
   /** The AMM spot price in TAO per alpha, derived at serve time from tao_in_pool_tao / alpha_in_pool on this row (#9408). alpha_price_tao is the chain's MOVING average; this is the mark to value a position at. Root (netuid 0) is 1 by definition; null when the reserves cannot support a price. */
   spot_price_tao?: Maybe<Scalars['Float']['output']>;
+  /** 0 (Stable) or 1 (Dynamic). A Stable subnet's pruning price is a flat 1.0 rather than its moving price, which moves it from the top of a price order to the bottom. */
+  subnet_mechanism?: Maybe<Scalars['Int']['output']>;
   subnet_volume_tao?: Maybe<Scalars['Float']['output']>;
   subtoken_enabled?: Maybe<Scalars['Boolean']['output']>;
   tao_in_emission_tao?: Maybe<Scalars['Float']['output']>;
@@ -9062,6 +9068,7 @@ export type EmissionPipelineChainStateResolvers<ContextType = GqlContext, Parent
   emission_bar_quantile?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_gate_bar?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_gate_exponent?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  network_immunity_period?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   total_issuance_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
@@ -10282,11 +10289,13 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   open_slots?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   owner_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   owner_hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_allowed_pinned?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   spot_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  subnet_mechanism?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnet_volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subtoken_enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   tao_in_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;

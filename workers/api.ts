@@ -274,6 +274,7 @@ import {
   handleDomainSummary,
   handleEconomicsTrends,
   handleEmissionPipeline,
+  handleDeregistrationRanking,
   handleLeaderboards,
   handleTrajectory,
   handleUptime,
@@ -6176,6 +6177,12 @@ async function dispatchRequest(
     if (resolved.url.pathname === "/api/v1/chain/emission-pipeline") {
       return handleEmissionPipeline(request, env, resolved.url);
     }
+    // #10285. Same economics blob, same short cache, same reason: the body is
+    // a pure function of (blob, contract version) and the blob's own
+    // chain_state block makes a stale response detectable.
+    if (resolved.url.pathname === "/api/v1/chain/deregistration-ranking") {
+      return handleDeregistrationRanking(request, env, resolved.url);
+    }
     if (resolved.url.pathname === "/api/v1/economics/trends") {
       return withEdgeCache(
         request,
@@ -6301,6 +6308,7 @@ const REGISTRY_ONLY_API_PATHS = new Set([
   // would be served MAINNET rows. Same posture as /api/v1/chain/holders.
   "/api/v1/accounts/top-holders",
   "/api/v1/chain/emission-pipeline",
+  "/api/v1/chain/deregistration-ranking",
 ]);
 
 /** Per-subnet leaves with the same two reasons, matched under any netuid. */

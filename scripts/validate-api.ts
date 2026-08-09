@@ -48,6 +48,11 @@ type Row = Record<string, any>;
 // rather than only its shape.
 const PINNED_BLOCK = 8_740_436;
 const PINNED_ISSUANCE_TAO = 9_500_000;
+/** SubtensorModule.NetworkImmunityPeriod as read from mainnet (#10285). */
+const PINNED_IMMUNITY_PERIOD = 864_000;
+/** Every fifth non-root subnet, so the ranking has immune rows to exclude. */
+const isImmuneFixtureSubnet = (netuid: number) =>
+  netuid !== 0 && netuid % 5 === 0;
 
 function pinEconomicsArtifact(artifact: Row): Row {
   const rows = (artifact.subnets ?? []) as Row[];
@@ -70,6 +75,9 @@ function pinEconomicsArtifact(artifact: Row): Row {
       emission_gate_bar: null,
       emission_bar_quantile: 0.75,
       emission_gate_exponent: null,
+      // The real mainnet value (#10285). Chosen rather than invented so the
+      // fixture exercises the same arithmetic production does.
+      network_immunity_period: PINNED_IMMUNITY_PERIOD,
     },
     subnets: rows.map((row) => {
       const price = isEligible(row) ? row.alpha_price_tao || 0 : 0;
@@ -92,6 +100,15 @@ function pinEconomicsArtifact(artifact: Row): Row {
         excess_tao: excessRao / 1e9,
         alpha_in_emission: 0,
         alpha_out_emission: 1,
+        // Deregistration inputs, arranged so the ranking has all three cases
+        // to sort rather than one: most subnets prunable, every fifth still
+        // immune, and every seventh Stable -- whose comparison price is a flat
+        // 1.0 and therefore sorts BELOW every real alpha price (~0.008), the
+        // opposite of where a moving_price sort would place it.
+        registered_at_block: isImmuneFixtureSubnet(row.netuid as number)
+          ? PINNED_BLOCK - 1_000
+          : (row.netuid as number) * 1_000,
+        subnet_mechanism: (row.netuid as number) % 7 === 3 ? 0 : 1,
       };
     }),
   };
@@ -2156,6 +2173,44 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
         )}`,
       );
       assert.equal(body.data.field_sources.final_share.kind, "reconstructed");
+    },
+  ],
+  [
+    "/api/v1/chain/deregistration-ranking",
+    (body) => {
+      assert.equal(body.data.chain_state.block, PINNED_BLOCK);
+      // The two lists PARTITION the subnets: an immune subnet is not ranked,
+      // and a ranked one is not immune. Asserting only "ranked is an array"
+      // would pass on a body that put every subnet in both.
+      const ranked = body.data.ranked as Row[];
+      const immune = body.data.immune as Row[];
+      assert.equal(Array.isArray(ranked), true);
+      assert.equal(Array.isArray(immune), true);
+      assert.equal(
+        ranked.some((r) => r.immune) || immune.some((r) => !r.immune),
+        false,
+        "ranked and immune must partition: no subnet may appear in both",
+      );
+      // Ranks are 1..n contiguous, and the order is non-decreasing in the
+      // price the PALLET compares -- not in moving_price, which differs on a
+      // Stable subnet.
+      ranked.forEach((row, index) => assert.equal(row.rank, index + 1));
+      for (let i = 1; i < ranked.length; i += 1) {
+        assert.ok(
+          (ranked[i - 1]!.comparison_price as number) <=
+            (ranked[i]!.comparison_price as number),
+          "ranked must be non-decreasing in comparison_price",
+        );
+      }
+      assert.equal(
+        body.data.next_to_deregister,
+        ranked[0]?.netuid ?? null,
+        "next_to_deregister must be rank 1",
+      );
+      assert.equal(
+        body.data.field_sources.comparison_price.kind,
+        "reconstructed",
+      );
     },
   ],
   [

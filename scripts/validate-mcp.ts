@@ -1855,6 +1855,18 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
     "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
   ],
   [
+    "get_deregistration_ranking",
+    // NOT a gap in the tool -- this is the decline working. The committed
+    // economics artifact the harness falls back to is a captured snapshot that
+    // predates the NetworkImmunityPeriod read (#10285), and the ordering
+    // REFUSES to compute without it: an order without the immunity window is
+    // not an approximation, it is a different order that looks identical. The
+    // shape is validated against production by the daily
+    // check-mcp-conformance workflow once the capture lane has published a
+    // blob carrying the field.
+    "the committed economics artifact predates the NetworkImmunityPeriod capture, and the ordering declines rather than computing without it (deregistration_ranking_unavailable)",
+  ],
+  [
     "query_graphql",
     "executes against the live GraphQL schema, which the artifact harness does not serve",
   ],

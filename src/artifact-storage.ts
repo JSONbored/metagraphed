@@ -317,6 +317,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // — never a file. A committed copy would be worse than none here, since every
   // share in it is only interpretable against the block it was pinned to.
   /^chain\/emission-pipeline\.json$/,
+  // The deregistration order (#10285): computed live from the same pinned
+  // economics tier at /api/v1/chain/deregistration-ranking — never a file.
+  // A committed copy would be worse than none, because immunity is judged
+  // against the block the reads were pinned to; served from a stale file, a
+  // subnet that has since left its immunity window still reads as protected.
+  /^chain\/deregistration-ranking\.json$/,
   // The AI-native layer (#9092), all three computed live and never files:
   // a grounded answer over retrieved surfaces (/api/v1/ask), embedding-ranked
   // discovery (/api/v1/search/semantic), and a catalog-resolved probe of one
