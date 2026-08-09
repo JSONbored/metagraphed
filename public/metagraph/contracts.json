@@ -1022,7 +1022,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/SubnetLifecycleArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -1033,7 +1033,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainSubnetLifecycleArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",

@@ -894,7 +894,7 @@ export const ROUTE_QUERY_SCHEMAS = {
   // No `offset`: the chain feeds do not page, and with a 1000 ceiling over a
   // few-hundred-row table the whole network's lifecycle fits in one request.
   "/api/v1/chain/subnet-lifecycle": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),

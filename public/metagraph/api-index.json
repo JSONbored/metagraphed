@@ -838,7 +838,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/SubnetLifecycleArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",
@@ -847,7 +847,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainSubnetLifecycleArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",

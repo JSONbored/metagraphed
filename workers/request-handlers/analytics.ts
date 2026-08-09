@@ -104,7 +104,6 @@ import {
 import {
   buildChainSubnetLifecycle,
   CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
-  CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
   DEFAULT_SUBNET_LIFECYCLE_WINDOW,
   loadChainSubnetLifecycle,
 } from "../../src/subnet-lifecycle-read.ts";
@@ -2306,25 +2305,19 @@ export async function handleChainSubnetLifecycle(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  // The shared parser, with this route's own default passed explicitly so the
-  // helper's 30d default never applies. `days === null` means `all` (no lower
-  // bound) -- a real answer, so this must not become a truthiness test.
-  const parsed = parseHistoryWindow(
-    url.searchParams.get("window") ?? DEFAULT_SUBNET_LIFECYCLE_WINDOW,
-  );
+  // #10218: the router parsed and rejected against this route's schema before
+  // the handler ran -- including the `window` enum and the `limit` ceiling --
+  // so this reads the result rather than re-checking it. The ceiling still
+  // REJECTS rather than clamps; that is the schema's doing, not the handler's.
+  const {
+    window = DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+    limit = CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+  } = routeQuery(url);
+  // `days === null` means `all` (no lower bound) -- a real answer, so this must
+  // not become a truthiness test. The label is already schema-valid here.
+  const parsed = parseHistoryWindow(window);
   if ("error" in parsed) return analyticsQueryError(parsed.error);
   const { days } = parsed;
-  // REJECTS above the ceiling rather than clamping -- the REST half of the
-  // per-surface split (MCP clamps, REST 400s). Same helper every chain feed
-  // uses, with this route's own bounds.
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
-    maxLimit: CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const limit = limitResult.limit ?? CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT;
 
   const cacheRequest =
     request.method === "HEAD"

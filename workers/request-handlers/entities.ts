@@ -1174,9 +1174,9 @@ export async function handleSubnetLifecycle(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = parsePagination(url, FEED_PAGINATION);
-  if ("error" in page) return analyticsQueryError(page.error);
-  const { limit, offset } = page;
+  // #10218: the router already parsed and rejected against the route's schema,
+  // so this reads the result rather than re-checking it by hand.
+  const { limit, offset } = resolvePage(url, FEED_PAGINATION);
   const rows = await loadSubnetLifecycle(env, netuid, { limit, offset });
   const data = buildSubnetLifecycle(rows, netuid, { limit, offset });
   if (csvRequested(url, request)) {
