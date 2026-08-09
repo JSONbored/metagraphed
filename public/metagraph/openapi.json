@@ -29634,6 +29634,17 @@
                   "minimum": 0,
                   "type": "number"
                 },
+                "moving_price": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "SubtensorModule.SubnetMovingPrice in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published unnormalized because it is the quantity the runtime compares when deciding which subnet to deregister; emission_share divides it by the sum across subnets, so a caller cannot recover it from anything else here. Null for a subnet with no positive moving price (root, and the never-emitted set)."
+                },
                 "netuid": {
                   "maximum": 9007199254740991,
                   "minimum": 0,

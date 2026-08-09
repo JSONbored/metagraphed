@@ -7815,6 +7815,8 @@ export interface components {
                 liquidity_fraction: number | null;
                 /** @description Stage 2 input. A FRACTION in [0,1], never an amount. */
                 miner_burned: number;
+                /** @description SubtensorModule.SubnetMovingPrice in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published unnormalized because it is the quantity the runtime compares when deciding which subnet to deregister; emission_share divides it by the sum across subnets, so a caller cannot recover it from anything else here. Null for a subnet with no positive moving price (root, and the never-emitted set). */
+                moving_price?: number | null;
                 netuid: number;
                 /** @description Stage 8, measured: the TAO injected into the subnet's pool this block. */
                 tao_in_emission: number | null;

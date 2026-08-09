@@ -5348,6 +5348,8 @@ export type SubnetEmissionDecomposition = {
   liquidity_fraction?: Maybe<Scalars['Float']['output']>;
   /** Stage 2 input. A FRACTION in [0,1], never an amount. */
   miner_burned: Scalars['Float']['output'];
+  /** SubnetMovingPrice (I64F64) in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published because it is the quantity the runtime compares when deciding which subnet to deregister, and emission_share normalizes it away. Null for subnets with no positive moving price (root, never-emitted). */
+  moving_price?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
   /** Stage 8, measured: the TAO injected into the subnet's pool this block. */
   tao_in_emission?: Maybe<Scalars['Float']['output']>;
@@ -10306,6 +10308,7 @@ export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, Paren
   ineligible_reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   liquidity_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_burned?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  moving_price?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   tao_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
