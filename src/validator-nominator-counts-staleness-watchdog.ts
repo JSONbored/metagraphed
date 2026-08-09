@@ -44,6 +44,7 @@
 // ~5.4M D1 rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { passWindowMs } from "./producer-cadence.ts";
 import { readStore } from "./read-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -124,7 +125,10 @@ export const VALIDATOR_NOMINATOR_COUNTS_COVERAGE_FLOOR_ROWS = Math.round(
  * Overridable via VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS, which must be
  * re-sized against the poll interval if that interval ever shortens.
  */
-export const VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS = 4 * 60 * 60 * 1000;
+export const VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS = passWindowMs(
+  "validator_nominators",
+  1 / 6,
+);
 
 /**
  * One read, answering both questions: how fresh the newest pass is, and how

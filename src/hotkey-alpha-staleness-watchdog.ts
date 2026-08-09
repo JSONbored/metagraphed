@@ -61,6 +61,7 @@
 // lanes' names on one fault and send whoever reads it to the wrong producer.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
@@ -83,7 +84,10 @@ import { readStore } from "./read-store.ts";
  * Overridable via HOTKEY_ALPHA_STALENESS_THRESHOLD_MS so the number can follow
  * the Container's cadence without a code deploy.
  */
-export const HOTKEY_ALPHA_STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+export const HOTKEY_ALPHA_STALENESS_THRESHOLD_MS = missedTicksMs(
+  "hotkey_alpha",
+  2,
+);
 
 /**
  * How much of the referenced pool set a single pass must cover to count.
@@ -107,7 +111,7 @@ export const HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO = 0.8;
  * pass sitting on a complete one sums to full coverage and reports fine, which
  * is the bug reintroduced. Six is a quarter of the interval.
  */
-export const HOTKEY_ALPHA_PASS_WINDOW_MS = 6 * 60 * 60 * 1000;
+export const HOTKEY_ALPHA_PASS_WINDOW_MS = passWindowMs("hotkey_alpha", 1 / 4);
 
 /**
  * One read answering three questions: how fresh the newest pass is, how many

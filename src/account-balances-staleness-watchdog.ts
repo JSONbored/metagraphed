@@ -87,6 +87,7 @@
 // on the case above.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
@@ -111,7 +112,10 @@ import { readStore } from "./read-store.ts";
  * Overridable per-deployment via ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS so the
  * number can follow the Container's cadence without a code deploy.
  */
-export const ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS = 12 * 60 * 60 * 1000;
+export const ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS = missedTicksMs(
+  "account_balances",
+  2,
+);
 
 /**
  * How many accounts a COMPLETE pass is expected to write.
@@ -175,7 +179,10 @@ export const ACCOUNT_BALANCES_COVERAGE_FLOOR_ROWS = Math.round(
  * Overridable via ACCOUNT_BALANCES_PASS_WINDOW_MS, which must be re-sized
  * against the poll interval if that interval ever shortens.
  */
-export const ACCOUNT_BALANCES_PASS_WINDOW_MS = 2 * 60 * 60 * 1000;
+export const ACCOUNT_BALANCES_PASS_WINDOW_MS = passWindowMs(
+  "account_balances",
+  1 / 3,
+);
 
 /**
  * One read, answering both questions: how fresh the newest pass is, and how

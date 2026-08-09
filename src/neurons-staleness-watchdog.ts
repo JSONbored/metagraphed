@@ -43,6 +43,7 @@
 // so ~2.9M D1 rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
@@ -50,7 +51,7 @@ import { readStore } from "./read-store.ts";
 /** Three missed 15-minute ticks: one restart is routine (a deploy or an
  * eviction costs one tick by design), two could be an unlucky pair, three is
  * a stall. */
-export const NEURONS_STALENESS_THRESHOLD_MS = 45 * 60 * 1000;
+export const NEURONS_STALENESS_THRESHOLD_MS = missedTicksMs("metagraph", 3);
 
 /**
  * How many subnets a COMPLETE pass is expected to cover.
@@ -102,7 +103,7 @@ export const NEURONS_COVERAGE_FLOOR_NETUIDS = Math.round(
  * Overridable via NEURONS_PASS_WINDOW_MS, which must be re-sized against the
  * poller's tick if that tick ever changes.
  */
-export const NEURONS_PASS_WINDOW_MS = 5 * 60 * 1000;
+export const NEURONS_PASS_WINDOW_MS = passWindowMs("metagraph", 1 / 3);
 
 /**
  * One read, answering both questions: how fresh the newest pass is, and how

@@ -43,6 +43,12 @@ import { readStore } from "./read-store.ts";
  * further behind than that is on its way to a coverage hole, and this is the
  * only warning before recent blocks start declining.
  */
+// NOT DERIVED FROM THIS PRODUCER'S CADENCE, deliberately -- see
+// src/producer-cadence.ts. The lane ticks every ~24s; this bound is a
+// statement about the DOWNSTREAM consumer (the hourly decode lane's ~1h lag
+// that the hot tier covers), so expressing it as N missed ticks of a 24s
+// cadence would be arithmetic that means nothing. Left explicit so "not
+// cadence-derived" reads as a decision rather than an oversight.
 export const CHAIN_DETAIL_STALENESS_THRESHOLD_MS = 20 * 60 * 1000;
 
 export interface ChainDetailStalenessVerdict {

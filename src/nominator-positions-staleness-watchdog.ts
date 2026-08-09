@@ -53,6 +53,7 @@
 // ~6M D1 rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
@@ -83,7 +84,10 @@ import { readStore } from "./read-store.ts";
  * Overridable per-deployment via NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS so
  * the number can follow the Container's cadence without a code deploy.
  */
-export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = 30 * 60 * 60 * 1000;
+export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = missedTicksMs(
+  "validator_nominators",
+  1.25,
+);
 
 /**
  * How many coldkeys a COMPLETE pass is expected to cover.
@@ -132,7 +136,10 @@ export const NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS = Math.round(
  * Overridable via NOMINATOR_POSITIONS_PASS_WINDOW_MS, which must be re-sized
  * against the poll interval if that interval ever shortens.
  */
-export const NOMINATOR_POSITIONS_PASS_WINDOW_MS = 4 * 60 * 60 * 1000;
+export const NOMINATOR_POSITIONS_PASS_WINDOW_MS = passWindowMs(
+  "validator_nominators",
+  1 / 6,
+);
 
 /**
  * One read, answering both questions: how fresh the newest pass is, and how

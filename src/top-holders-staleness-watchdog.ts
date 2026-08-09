@@ -49,6 +49,7 @@
 // None of them is suppressed, on #9475's reasoning, which stands unchanged.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { missedTicksMs } from "./producer-cadence.ts";
 import {
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
   topHoldersFlowRows,
@@ -68,7 +69,10 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
  *
  * Overridable per-deployment via TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS.
  */
-export const TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+export const TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS = missedTicksMs(
+  "top_holders_flow",
+  2,
+);
 
 export type TopHoldersStalenessReason =
   "absent" | "unreadable" | "empty" | "stale" | null;
