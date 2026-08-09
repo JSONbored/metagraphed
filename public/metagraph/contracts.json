@@ -2484,7 +2484,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]
@@ -2537,7 +2538,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]
@@ -2590,7 +2592,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]
@@ -2643,7 +2646,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]
@@ -2696,7 +2700,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         },
         {
@@ -2766,7 +2771,8 @@
             "default": 50,
             "maximum": 50,
             "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "x-serving-bound": true
           }
         }
       ]

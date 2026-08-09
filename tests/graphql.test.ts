@@ -4436,7 +4436,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     };
     await gql(
       `{ extrinsics(
-          call_hash: "0xabc"
+          call_hash: "0x${"ab".repeat(32)}"
           block_start: 100
           block_end: 500
           from: "1750000000000"
@@ -4445,7 +4445,14 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
       env as unknown as Env,
     );
     assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
-    assert.equal(capturedUrl!.searchParams.get("call_hash"), "0xabc");
+    // A REAL 64-hex hash. "0xabc" was accepted before #10316 because nothing
+    // checked it, and the route's published pattern
+    // (^0x[0-9a-fA-F]{64}$) has always forbidden it -- the dispatch parse now
+    // enforces what the contract says, so the fixture had to become valid.
+    assert.equal(
+      capturedUrl!.searchParams.get("call_hash"),
+      `0x${"ab".repeat(32)}`,
+    );
     assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
     assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
     assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
@@ -10023,7 +10030,10 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
       '{ compare_validators(hotkeys: ["nope"]) { validator_count } }',
     );
     assert.ok(body.errors, "expected a GraphQL error");
-    assert.ok(/hotkeys must be/i.test(body.errors[0].message));
+    // The published pattern, quoted, plus the value (#10316). The hand-written
+    // check it replaces said "hotkeys must be a comma-separated list".
+    assert.match(body.errors[0].message, /hotkeys must match /);
+    assert.match(body.errors[0].message, /"nope"/);
   });
 
   test("compare_validators rejects an empty hotkey list", async () => {
@@ -10031,7 +10041,9 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
       "{ compare_validators(hotkeys: []) { validator_count } }",
     );
     assert.ok(body.errors, "expected a GraphQL error");
-    assert.ok(/hotkeys must be/i.test(body.errors[0].message));
+    // An empty list joins to the empty string, which the published pattern
+    // rejects for the same reason REST's does -- one required hotkey minimum.
+    assert.match(body.errors[0].message, /hotkeys must match /);
   });
 
   test("compare_validators rejects a negative netuid", async () => {
@@ -15634,7 +15646,12 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
     assert.equal(r.relationship.counterparty, OTHER);
     assert.equal(r.relationship.transfer_count, 0);
     assert.equal(r.relationship.scan_capped, false);
-    assert.equal(r.relationship.limit, 50);
+    // 20, the default the route PUBLISHES, applied by the dispatch parse
+    // (#10316) instead of the 50 the drilldown branch used to reach for. The
+    // route's own `limit` description claimed a second default of 50 for this
+    // mode and no code applied it -- the handler reads one `pageLimit(url)`
+    // for both branches, so 20 is what a REST caller has always received here.
+    assert.equal(r.relationship.limit, 20);
     assert.deepEqual(r.relationship.transfers, []);
   });
 
@@ -16307,8 +16324,13 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
     );
     assert.ok(err, "expected a BAD_USER_INPUT error");
-    // The same message REST's parseDateRange and MCP's optionalDayArg emit.
-    assert.equal(err.message, "from/to must be YYYY-MM-DD dates.");
+    // The published sentence, which now names WHICH of the pair was malformed
+    // and echoes the value (#10316). The old text came from a hand-written
+    // check that could only say "from/to" because it validated them together.
+    assert.equal(
+      err.message,
+      'from must be a YYYY-MM-DD date. Received: "not-a-date".',
+    );
     assert.equal(body.data, null);
     assert.equal(called, false, "must not reach the tier");
   });
@@ -16589,9 +16611,13 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 
   // D1 fully eliminated (2026-07-17): account_identity_history is built
   // directly from an empty row set on a tier miss now
-  // (buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null })),
-  // passing the raw (unclamped) GraphQL args straight through -- with no
-  // args supplied, limit/offset resolve to null, not a clamped default.
+  // (buildAccountIdentityHistory([], ss58, { limit, offset, nextCursor: null })).
+  //
+  // The nulls this used to assert were the #10306 shape on GraphQL: the route
+  // publishes `limit` 100 and `offset` 0, and the resolver passed the caller's
+  // absent args straight through, so the answer reported a page size it had
+  // not applied. The dispatch parse fills both from the published defaults
+  // (#10316), which is what a REST caller has always received here.
   test("cold store, default args: schema-stable empty timeline, never null", async () => {
     const { status, body } = await gql(historyQuery(`(ss58: "${SS58}")`));
     assert.equal(status, 200);
@@ -16600,8 +16626,8 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
       schema_version: 1,
       account: SS58,
       entry_count: 0,
-      limit: null,
-      offset: null,
+      limit: 100,
+      offset: 0,
       next_cursor: null,
       entries: [],
     });
@@ -17068,25 +17094,23 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.match(err.message, /bogus/);
   });
 
-  test("a limit above MOVERS_LIMIT_MAX is a GraphQL error, matching REST's exact rejection", async () => {
+  // CLAMPS since #10316. GraphQL's page bounds were split -- twelve fields
+  // clamped and five rejected -- which is the state #10174 found REST and MCP
+  // in and settled one sentence per surface. This surface clamps, matching
+  // MCP: it is the forgiving direction, so the twelve keep working and the
+  // five answer instead of erroring.
+  test("a limit above MOVERS_LIMIT_MAX clamps to the published ceiling", async () => {
     const { status, body } = await gql(moversQuery("(limit: 101)"));
     assert.equal(status, 200);
-    assert.equal(body.data, null);
-    const err = body.errors.find(
-      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
-    );
-    assert.ok(err);
-    assert.match(err.message, /1 to 100/);
+    assert.equal(body.errors, undefined);
+    assert.ok(body.data.subnet_movers);
   });
 
-  test("a limit below 1 is a GraphQL error", async () => {
+  test("a limit below 1 clamps up to the published floor", async () => {
     const { status, body } = await gql(moversQuery("(limit: 0)"));
     assert.equal(status, 200);
-    assert.equal(body.data, null);
-    const err = body.errors.find(
-      (e: Row) => e.extensions?.code === "BAD_USER_INPUT",
-    );
-    assert.ok(err);
+    assert.equal(body.errors, undefined);
+    assert.ok(body.data.subnet_movers);
   });
 
   test("subnet_movers is weighted as a fan-out field", () => {
@@ -19746,8 +19770,11 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.match(body.errors[0].message, /not a supported sort/);
+    // The published sentence lists the vocabulary and echoes the value; the
+    // hand-written one it replaces said "not a supported sort" (#10316).
+    assert.match(body.errors[0].message, /sort must be one of: /);
     assert.match(body.errors[0].message, /net_staked/);
+    assert.match(body.errors[0].message, /"bogus"/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
@@ -19802,7 +19829,10 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     );
     assert.equal(status, 200);
     assert.equal(body.data, null);
-    assert.match(body.errors[0].message, /coldkey must be a valid SS58/);
+    // The published sentence quotes the PATTERN rather than describing it, so
+    // the caller is told the exact shape the contract declares (#10316).
+    assert.match(body.errors[0].message, /coldkey must match /);
+    assert.match(body.errors[0].message, /"not-an-ss58"/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
@@ -19862,43 +19892,46 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.data.validator_nominators.nominator_count, 0);
   });
 
-  test("a limit above the max is a GraphQL error, not a silently clamped default (#8547)", async () => {
+  // CLAMPS since #10316. GraphQL's page bounds were split -- twelve fields
+  // clamped and five rejected -- which is the state #10174 found REST and MCP
+  // in and settled one sentence per surface. This surface clamps, matching
+  // MCP: it is the forgiving direction, so the twelve keep working and the
+  // five answer instead of erroring.
+  // The APPLIED value is asserted, not merely the absence of an error: a
+  // clamp that answered the wrong page would pass "no error" and fail here.
+  test("a limit above the max clamps to the published ceiling (#8547)", async () => {
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 2001)`),
     );
     assert.equal(status, 200);
-    assert.equal(body.data, null);
-    assert.match(
-      body.errors[0].message,
-      /`limit` must be an integer between 1 and 2000/,
-    );
-    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    assert.equal(body.errors, undefined);
+    // 100, not 2000, and both numbers are correct. The dispatch parse clamps
+    // 2001 to the 2000 the ROUTE publishes; the cold builder then slices in
+    // memory and reports NOMINATOR_LIMIT_MAX, a second and separately
+    // documented bound on how much it will hold at once
+    // (`src/validator-nominators.ts` explains why it does not apply when the
+    // caller already paged in SQL). What this test pins is that 2001 is no
+    // longer an ERROR -- the deleted hand-written check rejected it against
+    // GLOBAL_VALIDATOR_LIMIT_MAX.
+    assert.equal(body.data.validator_nominators.limit, 100);
   });
 
-  test("a limit below 1 is a GraphQL error (#8547)", async () => {
+  test("a limit below 1 clamps up to the published floor (#8547)", async () => {
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 0)`),
     );
     assert.equal(status, 200);
-    assert.equal(body.data, null);
-    assert.match(
-      body.errors[0].message,
-      /`limit` must be an integer between 1 and 2000/,
-    );
-    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_nominators.limit, 1);
   });
 
-  test("a negative offset is a GraphQL error (#8547)", async () => {
+  test("a negative offset clamps up to zero (#8547)", async () => {
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", offset: -1)`),
     );
     assert.equal(status, 200);
-    assert.equal(body.data, null);
-    assert.match(
-      body.errors[0].message,
-      /`offset` must be a non-negative integer/,
-    );
-    assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_nominators.offset, 0);
   });
 
   // #9146's cold-tier lane, through the SAME loadValidatorNominatorsColdTier
@@ -21121,20 +21154,31 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     );
     assert.equal(status, 200);
     assert.ok(body.errors?.length, "expected a GraphQL error");
-    assert.match(body.errors[0].message, /Unknown board "not-a-board"/);
+    // The published sentence names every board rather than only the bad one --
+    // strictly more useful, and derived from the enum instead of written out
+    // (#10316).
+    assert.match(body.errors[0].message, /board must be one of: /);
+    assert.match(body.errors[0].message, /"not-a-board"/);
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
     assert.equal(body.data?.registry_leaderboards ?? null, null);
   });
 
-  test("a limit outside REST's 1..100 range is a BAD_USER_INPUT error", async () => {
+  // CLAMPS since #10316. GraphQL's page bounds were split -- twelve fields
+  // clamped and five rejected -- which is the state #10174 found REST and MCP
+  // in and settled one sentence per surface. This surface clamps, matching
+  // MCP: it is the forgiving direction, so the twelve keep working and the
+  // five answer instead of erroring.
+  test("a limit outside REST's 1..100 range clamps into it", async () => {
     for (const limit of [0, 101]) {
       const { body } = await gql(
         `{ registry_leaderboards(limit: ${limit}) { board } }`,
         COLD_STORE_ENV,
       );
-      assert.ok(body.errors?.length, `limit ${limit} should error`);
-      assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
-      assert.match(body.errors[0].message, /between 1 and 100/);
+      assert.equal(
+        body.errors,
+        undefined,
+        `limit ${limit} should clamp, not error`,
+      );
     }
   });
 
@@ -22521,7 +22565,12 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       },
     };
     await gql(signersQuery(""), env);
-    assert.equal(capturedUrl!.searchParams.get("sort"), null);
+    // `sort` is FORWARDED now, carrying the default the route publishes
+    // (#10316) -- the same answer as before, stated by the surface that
+    // advertised it rather than re-derived downstream. `call_module` publishes
+    // no default and stays absent, which is what keeps this from reading as a
+    // blanket "everything is forwarded now".
+    assert.equal(capturedUrl!.searchParams.get("sort"), "tx_count");
     assert.equal(capturedUrl!.searchParams.get("call_module"), null);
     assert.equal(capturedUrl!.searchParams.get("window"), "7d");
     assert.equal(capturedUrl!.searchParams.get("limit"), "50");
@@ -23940,19 +23989,24 @@ describe("graphql — chain_events_stats (#7432, lakehouse all-events aggregate)
     assert.equal(body.data.chain_events_stats.window_blocks, 1000);
   });
 
-  test("a non-positive / non-integer blocks is BAD_USER_INPUT, not an aggregate", async () => {
+  // `blocks` is a WINDOW SIZE, so its floor bends like `limit`'s (#10316) --
+  // the schema marks it `x-serving-bound` and the dispatch parse clamps it up
+  // to 1. A NON-INTEGER is still a rejection, because that is a shape error
+  // rather than an over-ambitious window, which is what keeps this from being
+  // a blanket "everything about blocks is tolerated now".
+  test("a non-positive blocks clamps to the smallest window", async () => {
     for (const blocks of [0, -5]) {
       const { status, body } = await gql(
         `{ chain_events_stats(blocks: ${blocks}) { window_blocks } }`,
         { DATA_API: dataApi(Response.json({})) },
       );
       assert.equal(status, 200);
-      assert.ok(
-        body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
-        `blocks=${blocks} should be BAD_USER_INPUT`,
+      assert.equal(
+        body.errors,
+        undefined,
+        `blocks=${blocks} should clamp, not error`,
       );
-      assert.match(body.errors[0].message, /blocks/);
-      assert.equal(body.data?.chain_events_stats ?? null, null);
+      assert.equal(body.data.chain_events_stats.window_blocks, 1);
     }
   });
 

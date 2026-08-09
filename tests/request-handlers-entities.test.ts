@@ -2496,7 +2496,10 @@ describe("handleSubnetMovers", () => {
       await viaRouter("/api/v1/subnets/movers?window=1y"),
     );
     assert.equal(body.meta.parameter, "window");
-    assert.equal(body.error.message, "window must be one of: 7d, 30d, 90d.");
+    assert.equal(
+      body.error.message,
+      'window must be one of: 7d, 30d, 90d. Received: "1y".',
+    );
   });
 
   test("rejects an unsupported sort with 400", async () => {
@@ -3341,7 +3344,7 @@ describe("handleAccountCounterparties", () => {
       assert.equal(body.meta.parameter, "limit");
       assert.equal(
         body.error.message,
-        "limit must be an integer between 1 and 100.",
+        `limit must be an integer between 1 and 100. Received: "${limit}".`,
       );
     }
   });
@@ -3477,7 +3480,7 @@ describe("handleAccountCounterparties relationship drilldown", () => {
       assert.equal(rejectedBody.meta.parameter, "limit");
       assert.equal(
         rejectedBody.error.message,
-        "limit must be an integer between 1 and 100.",
+        `limit must be an integer between 1 and 100. Received: "${limit}".`,
       );
     }
   });

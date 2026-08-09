@@ -278,7 +278,10 @@ describe("declared query parameter VALUES are checked against the schema (#10218
       urlFor("/api/v1/health/trends", "?offset=notanumber"),
     );
     assert.equal(bad?.parameter, "offset");
-    assert.equal(bad?.message, "offset must be a non-negative integer.");
+    assert.equal(
+      bad?.message,
+      'offset must be a non-negative integer. Received: "notanumber".',
+    );
     assert.equal(
       queryError(urlFor("/api/v1/health/trends", "?offset=25")),
       null,
@@ -288,12 +291,15 @@ describe("declared query parameter VALUES are checked against the schema (#10218
   test("an over-cap limit is refused, and the message carries the route's own ceiling", () => {
     const bad = queryError(urlFor("/api/v1/blocks", "?limit=5000"));
     assert.equal(bad?.parameter, "limit");
-    assert.equal(bad?.message, "limit must be an integer between 1 and 100.");
+    assert.equal(
+      bad?.message,
+      'limit must be an integer between 1 and 100. Received: "5000".',
+    );
     // A DIFFERENT route with a different ceiling gets its own sentence, from
     // its own schema -- the two cannot drift onto one hard-coded number.
     assert.match(
       queryError(urlFor("/api/v1/validators", "?limit=5000"))?.message ?? "",
-      /between 1 and 2000\.$/,
+      /between 1 and 2000\. Received: "5000"\.$/,
     );
   });
 
@@ -322,7 +328,7 @@ describe("declared query parameter VALUES are checked against the schema (#10218
     assert.equal(bad?.parameter, "netuid");
     assert.equal(
       bad?.message,
-      "netuid must be an integer between 0 and 65535.",
+      'netuid must be an integer between 0 and 65535. Received: "70000".',
     );
     assert.equal(queryError(urlFor("/api/v1/subnets", "?netuid=65535")), null);
     assert.equal(
@@ -334,7 +340,10 @@ describe("declared query parameter VALUES are checked against the schema (#10218
   test("an unsupported format value is refused where the route declares format", () => {
     const bad = queryError(urlFor("/api/v1/subnets", "?format=xml"));
     assert.equal(bad?.parameter, "format");
-    assert.equal(bad?.message, "format must be one of: json, csv.");
+    assert.equal(
+      bad?.message,
+      'format must be one of: json, csv. Received: "xml".',
+    );
   });
 
   test("a sort key the route does not offer is refused, and the message lists the ones it does", () => {
@@ -396,7 +405,10 @@ describe("GraphQL arguments are checked against the mirrored route's schema", ()
       window: "90d",
     });
     assert.equal(error?.parameter, "window");
-    assert.equal(error?.message, "window must be one of: 7d, 30d.");
+    assert.equal(
+      error?.message,
+      'window must be one of: 7d, 30d. Received: "90d".',
+    );
     assert.equal(
       validateRouteArgs("/api/v1/chain/activity", { window: "30d" }),
       null,
@@ -429,7 +441,7 @@ describe("GraphQL arguments are checked against the mirrored route's schema", ()
     assert.match(
       validateRouteArgs("/api/v1/registry/leaderboards", { limit: 5000 })
         ?.message ?? "",
-      /^limit must be an integer between 1 and 100\.$/,
+      /^limit must be an integer between 1 and 100\. Received: "5000"\.$/,
     );
   });
 });
@@ -559,8 +571,16 @@ describe("every published constraint is enforced (#10218)", () => {
     // `src/feeds.ts` accepts a whole UTC day OR an offset-bearing date-time and
     // says which was wrong. The count may only SHRINK: a new unconstrained
     // parameter is a new thing the contract declines to say.
+    //
+    // 70 -> 71 in #10316, and the extra one is a CORRECTION rather than a
+    // regression. `/api/v1/chain-events` published `^\d+\.\d+$` for a cursor
+    // its own tier decodes as three parts, so the route rejected the
+    // `next_cursor` it had just handed out -- verified live, a 400. It now
+    // publishes the same opaque token its twelve sibling feeds do, which makes
+    // no claim at all. Saying nothing is worse than saying something true and
+    // better than saying something false.
     assert.ok(
-      unconstrained <= 70,
+      unconstrained <= 71,
       `${unconstrained} query parameters publish no constraint at all, up ` +
         "from 70 -- declare a bound, or the contract says nothing a caller " +
         "can rely on",

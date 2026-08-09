@@ -655,7 +655,7 @@ describe("chain_holders over GraphQL and MCP", () => {
     assert.equal(card.degraded, null);
   });
 
-  test("GraphQL validates sort and limit rather than clamping", async () => {
+  test("GraphQL rejects an unsupported sort and clamps an over-max limit", async () => {
     const bad = async (q: string) => {
       const res = await handleGraphQLRequest(
         new Request("https://api.metagraph.sh/api/v1/graphql", {
@@ -667,13 +667,32 @@ describe("chain_holders over GraphQL and MCP", () => {
       );
       return ((await res.json()) as Row).errors as Row[];
     };
+    const answer = async (q: string) => {
+      const res = await handleGraphQLRequest(
+        new Request("https://api.metagraph.sh/api/v1/graphql", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: q }),
+        }),
+        env(),
+      );
+      return (await res.json()) as Row;
+    };
     const sortErr = await bad(`{ chain_holders(sort: "nope") { sort } }`);
     assert.match(String(sortErr[0].message), /sort must be one of/);
     assert.equal((sortErr[0].extensions as Row)?.code, "BAD_USER_INPUT");
-    const limitErr = await bad(
+    // CLAMPS since #10316: GraphQL's page bounds were split -- twelve fields
+    // clamped and five rejected -- and the surface now clamps throughout,
+    // matching MCP. The VOCABULARY half is unchanged and still rejects,
+    // which is what this keeps checking.
+    const clamped = await answer(
       `{ chain_holders(limit: ${CHAIN_HOLDERS_LIMIT_MAX + 1}) { limit } }`,
     );
-    assert.match(String(limitErr[0].message), /limit must be an integer/);
+    assert.equal(clamped.errors, undefined);
+    assert.equal(
+      (clamped.data as Row)?.chain_holders?.limit,
+      CHAIN_HOLDERS_LIMIT_MAX,
+    );
   });
 
   test("GraphQL declines as a card, not a query-killing error", async () => {

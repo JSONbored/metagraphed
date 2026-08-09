@@ -57656,7 +57656,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -57668,7 +57669,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58160,7 +58162,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58172,7 +58175,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58333,7 +58337,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58345,7 +58350,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58649,8 +58655,6 @@
             "required": false,
             "schema": {
               "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
-              "maxLength": 33,
-              "pattern": "^\\d+\\.\\d+$",
               "type": "string"
             }
           },
@@ -58672,7 +58676,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -58823,7 +58828,8 @@
             "schema": {
               "maximum": 5000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -59107,7 +59113,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -59402,7 +59409,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -59578,7 +59586,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -59745,7 +59754,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -59921,7 +59931,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60101,7 +60112,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60277,7 +60289,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60444,7 +60457,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60611,7 +60625,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60778,7 +60793,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -60958,7 +60974,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -61511,7 +61528,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -61842,7 +61860,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -61854,7 +61873,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -62951,7 +62971,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -63772,7 +63793,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -64371,7 +64393,8 @@
               "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -64780,7 +64803,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -64792,7 +64816,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -64962,7 +64987,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -64974,7 +65000,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -65157,7 +65184,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -65169,7 +65197,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -65427,7 +65456,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -65439,7 +65469,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -66916,7 +66947,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -66928,7 +66960,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -67210,7 +67243,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -67968,7 +68002,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -67980,7 +68015,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -68424,7 +68460,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -68436,7 +68473,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -68581,7 +68619,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -68593,7 +68632,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -69018,7 +69058,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -69227,8 +69268,6 @@
             "required": false,
             "schema": {
               "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
-              "maxLength": 33,
-              "pattern": "^\\d+\\.\\d+$",
               "type": "string"
             }
           },
@@ -69250,7 +69289,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -69385,7 +69425,8 @@
             "schema": {
               "maximum": 5000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -69637,7 +69678,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -69788,7 +69830,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -70048,7 +70091,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -70450,7 +70494,8 @@
               "default": 20,
               "maximum": 512,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -70674,7 +70719,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -70855,7 +70901,8 @@
             "schema": {
               "maximum": 512,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -70990,7 +71037,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -71149,7 +71197,8 @@
               "default": 50,
               "maximum": 200,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -71276,7 +71325,8 @@
               "default": 20,
               "maximum": 512,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -71386,7 +71436,8 @@
               "default": 50,
               "maximum": 200,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -71804,7 +71855,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -71953,7 +72005,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72104,7 +72157,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72266,7 +72320,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72426,7 +72481,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72577,7 +72633,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72728,7 +72785,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -72882,7 +72940,8 @@
               "default": 50,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -73031,7 +73090,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -73195,7 +73255,8 @@
               "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -73347,7 +73408,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -73496,7 +73558,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -73645,7 +73708,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -74484,7 +74548,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -74919,7 +74984,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -75330,7 +75396,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -75753,7 +75820,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -75970,7 +76038,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -76259,7 +76328,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -76456,7 +76526,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -76712,7 +76783,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -76724,7 +76796,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -77100,7 +77173,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77198,7 +77272,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77286,7 +77361,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77374,7 +77450,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77462,7 +77539,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77560,7 +77638,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77648,7 +77727,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77736,7 +77816,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77824,7 +77905,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -77922,7 +78004,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78010,7 +78093,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78098,7 +78182,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78196,7 +78281,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78304,7 +78390,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78402,7 +78489,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78500,7 +78588,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78588,7 +78677,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78686,7 +78776,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78774,7 +78865,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78862,7 +78954,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -78950,7 +79043,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79058,7 +79152,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79156,7 +79251,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79254,7 +79350,8 @@
               "default": 50,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79675,7 +79772,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79824,7 +79922,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -79836,7 +79935,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -80079,7 +80179,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -80464,7 +80565,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -80631,7 +80733,8 @@
             "schema": {
               "maximum": 512,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -80642,7 +80745,8 @@
             "schema": {
               "default": 0,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -80787,7 +80891,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -81645,7 +81750,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -81871,7 +81977,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -82291,7 +82398,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -82492,7 +82600,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -82808,7 +82917,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -83095,7 +83205,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -83430,7 +83541,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -83834,7 +83946,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -84062,7 +84175,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -84338,7 +84452,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -84663,7 +84778,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -84880,7 +84996,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -85405,7 +85522,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -85596,7 +85714,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -85863,7 +85982,8 @@
               "default": 10,
               "maximum": 20,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -86199,7 +86319,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -86592,7 +86713,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -87330,7 +87452,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -88254,7 +88377,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -88457,7 +88581,8 @@
               "default": 10,
               "maximum": 50,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -88603,7 +88728,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -88615,7 +88741,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -88787,7 +88914,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -89003,7 +89131,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -89267,7 +89396,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -89912,7 +90042,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -90139,7 +90270,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -90151,7 +90283,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -90304,7 +90437,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -90316,7 +90450,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -90795,7 +90930,8 @@
               "default": 100,
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -90807,7 +90943,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -91389,7 +91526,8 @@
               "default": 2000,
               "maximum": 2000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -93076,7 +93214,8 @@
               "default": 50,
               "maximum": 200,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           }
         ],
@@ -93282,7 +93421,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -94917,7 +95057,8 @@
               "default": 20,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -95052,7 +95193,8 @@
               "default": 50,
               "maximum": 100,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -95064,7 +95206,8 @@
               "default": 0,
               "maximum": 1000000,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -95470,7 +95613,8 @@
             "schema": {
               "maximum": 1000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -95767,7 +95911,8 @@
               "default": 20,
               "maximum": 2000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -96194,7 +96339,8 @@
               "default": 20,
               "maximum": 2000,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -96205,7 +96351,8 @@
             "schema": {
               "default": 0,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -96365,7 +96512,8 @@
               "default": 50,
               "maximum": 512,
               "minimum": 1,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {
@@ -96376,7 +96524,8 @@
             "schema": {
               "maximum": 512,
               "minimum": 0,
-              "type": "integer"
+              "type": "integer",
+              "x-serving-bound": true
             }
           },
           {

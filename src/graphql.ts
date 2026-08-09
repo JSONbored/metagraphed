@@ -10,10 +10,15 @@ import {
   CHAIN_REGISTRATIONS_ROLLUP,
 } from "./chain-event-rollup-cold-tier.ts";
 import {
+  GraphQLBoolean,
   GraphQLError,
+  type GraphQLArgument,
   type GraphQLObjectType,
   buildSchema,
   execute,
+  getNamedType,
+  getNullableType,
+  isListType,
   parse,
   specifiedRules,
   validate,
@@ -274,7 +279,12 @@ import {
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "./concentration.ts";
 import { loadGlobalIncidentsLedger } from "../workers/request-handlers/analytics.ts";
-import { parseRouteArgs, validateRouteArgs } from "./route-query.ts";
+import {
+  parseRouteArgs,
+  resolveRouteArgs,
+  validateRouteArgs,
+} from "./route-query.ts";
+import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -599,8 +609,6 @@ import {
 import {
   DEFAULT_MOVERS_SORT,
   DEFAULT_MOVERS_WINDOW,
-  MOVERS_LIMIT_DEFAULT,
-  MOVERS_LIMIT_MAX,
   MOVERS_SORTS,
   MOVERS_WINDOWS,
   buildMovers,
@@ -6119,25 +6127,6 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // #8547: full limit/offset parity with the REST route + MCP tool. REST's
-    // parseBoundedIntParam rejects an out-of-range value (limit 1-
-    // GLOBAL_VALIDATOR_LIMIT_MAX, offset >= 0) rather than clamping, so a SUPPLIED
-    // out-of-range value is a BAD_USER_INPUT error here too, matching the schema's
-    // stated convention; an omitted arg falls through to the builder's own default.
-    // The GraphQL `Int` type already guarantees an integer, so REST's separate
-    // non-integer guard (it parses a raw string query param) is unnecessary here.
-    if (limit != null && (limit < 1 || limit > GLOBAL_VALIDATOR_LIMIT_MAX)) {
-      throw new GraphQLError(
-        `\`limit\` must be an integer between 1 and ${GLOBAL_VALIDATOR_LIMIT_MAX}. Received "${limit}".`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
-    if (offset != null && offset < 0) {
-      throw new GraphQLError(
-        `\`offset\` must be a non-negative integer. Received "${offset}".`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     if (sort != null) params.set("sort", sort);
@@ -7706,17 +7695,11 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    const requestedLimit = limit ?? MOVERS_LIMIT_DEFAULT;
-    if (
-      !Number.isInteger(requestedLimit) ||
-      requestedLimit < 1 ||
-      requestedLimit > MOVERS_LIMIT_MAX
-    ) {
-      throw new GraphQLError(
-        `limit must be an integer from 1 to ${MOVERS_LIMIT_MAX}.`,
-        { extensions: { code: "BAD_USER_INPUT" } },
-      );
-    }
+    // `limit` arrives clamped and defaulted by the dispatch parse (#10316), so
+    // neither the `?? MOVERS_LIMIT_DEFAULT` nor the range check that used to
+    // stand here can do anything: the value is already inside the range the
+    // route publishes.
+    const requestedLimit = limit;
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
     params.set("sort", requestedSort);
@@ -9696,6 +9679,117 @@ const rootValue = {
   },
 };
 
+/**
+ * Every Query field parses its arguments against its route's schema, ONCE, on
+ * the way in (#10316).
+ *
+ * ── The shape of the problem ───────────────────────────────────────────────
+ *
+ * REST got this at #10218: `workers/api.ts` parses a GET's query string against
+ * the route's Zod object before dispatch, and the seven hand-rolled parsers
+ * that each restated a published bound were deleted. GraphQL got the same
+ * `validateRouteArgs` function and OPT-IN adoption -- 8 of 165 resolvers call
+ * it, and the other 250 checks are written by hand, one `if` at a time. Every
+ * session adds a few more, because adding one is easier than finding the
+ * shared thing.
+ *
+ * A wrapper here is not tidier than 250 `if`s; it is a DIFFERENT KIND of
+ * thing. One call site cannot be half-adopted the way 165 resolvers can, and
+ * `validate:graphql-hand-written-checks` fails the 251st.
+ *
+ * ── Why it is keyed on QUERY_BINDINGS ──────────────────────────────────────
+ *
+ * The binding from a field to the route it mirrors is already declared and
+ * already gated (`validate:graphql-route-parity`, 656 argument pairs). A field
+ * with `route: null` -- the eight that compose several routes or none -- passes
+ * through untouched, because there is no single published schema to parse it
+ * against and inventing one would be the hand-writing this replaces.
+ *
+ * ── What it does NOT do ────────────────────────────────────────────────────
+ *
+ * It does not enforce the page ceiling. `resolveRouteArgs` clamps `limit` and
+ * leaves the rest to the schema, for the reason recorded there: #10174 settled
+ * that this surface clamps, and a parse that rejected instead would flip a
+ * published behaviour for every caller passing a large page.
+ */
+type Resolver = (args: Record<string, unknown>, context: GqlContext) => unknown;
+
+/**
+ * A published default, in the type the SDL argument declares.
+ *
+ * The inverse of `toRouteShape`, and it has to exist: the route publishes a
+ * boolean filter as the `["true","false"]` strings a query string can carry,
+ * and handing `"true"` to a resolver that tests `changes === true` would be
+ * this wrapper introducing the bug it exists to prevent.
+ */
+function fromRouteShape(value: unknown, argument: GraphQLArgument): unknown {
+  const named = getNamedType(argument.type);
+  if (named === GraphQLBoolean) return value === true || value === "true";
+  if (isListType(getNullableType(argument.type))) {
+    return typeof value === "string" ? value.split(",") : value;
+  }
+  return value;
+}
+
+export function parseArgumentsAtDispatch(
+  resolvers: Record<string, unknown>,
+): Record<string, unknown> {
+  const queryType = schema.getQueryType();
+  const wrapped: Record<string, unknown> = { ...resolvers };
+  for (const binding of QUERY_BINDINGS) {
+    const resolver = resolvers[binding.field];
+    if (binding.route === null || typeof resolver !== "function") continue;
+    const route = binding.route;
+    const field = binding.field;
+    const declared = queryType?.getFields()[field];
+    /* v8 ignore next -- QUERY_BINDINGS is gated against the SDL, so every
+       bound field exists on the Query type. */
+    if (!declared) continue;
+    const argumentsByName = new Map(
+      declared.args.map((argument) => [argument.name, argument]),
+    );
+    const inner = resolver as Resolver;
+    wrapped[field] = function parsed(
+      args: Record<string, unknown>,
+      context: GqlContext,
+    ) {
+      const { value, error, clamped } = resolveRouteArgs(
+        route,
+        field,
+        args ?? {},
+      );
+      if (error) {
+        throw new GraphQLError(error.message, {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      // The caller's arguments win, EXCEPT where the parse resolved something
+      // the caller cannot see: a clamped page bound, or a published default for
+      // an argument they omitted. Merging the parse wholesale would hand the
+      // resolver route-shaped values for arguments it received in GraphQL shape
+      // -- `changes: "true"` to a resolver that tests `changes === true`.
+      const resolved: Record<string, unknown> = { ...args };
+      for (const [name, parsedValue] of Object.entries(
+        (value ?? {}) as Record<string, unknown>,
+      )) {
+        const argument = argumentsByName.get(name);
+        if (!argument) continue;
+        const supplied = args?.[name];
+        const omitted = supplied === null || supplied === undefined;
+        // A page bound is always the parse's, because clamping is the answer
+        // this surface gives and the caller's raw value is what got clamped.
+        if (omitted || clamped.has(name)) {
+          resolved[name] = fromRouteShape(parsedValue, argument);
+        }
+      }
+      return inner(resolved, context);
+    };
+  }
+  return wrapped;
+}
+
+const parsedRootValue = parseArgumentsAtDispatch(rootValue);
+
 // --- Response helpers ---
 
 const GRAPHQL_CONTENT_TYPE = "application/graphql-response+json";
@@ -9911,7 +10005,7 @@ export async function handleGraphQLRequest(
   const result = await execute({
     schema,
     document,
-    rootValue,
+    rootValue: parsedRootValue,
     contextValue: { env, cache: new Map(), request, ctx },
     variableValues: variables ?? undefined,
     operationName: operationName ?? undefined,

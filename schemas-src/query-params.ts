@@ -86,18 +86,46 @@ export const netuidListSchema = () =>
  * surfaces, so a handler moving between clamping and rejecting is a visible
  * change rather than a caller's surprise.
  */
+/**
+ * The JSON Schema keyword that says a bound is a SERVING POLICY, not a validity
+ * constraint (#10316).
+ *
+ * Two integers can both publish `maximum` and mean completely different things:
+ *
+ *   limit  maximum 100     "we will not return more than 100 rows"
+ *   netuid maximum 65535   "there is no subnet 65536"
+ *
+ * The first is a decision we made about how much to serve; the second is the
+ * shape of the value. A surface may reasonably CLAMP the first -- answering
+ * with 100 rows is answering the question asked -- and must never clamp the
+ * second, because subnet 65535 is not the subnet the caller asked about.
+ *
+ * That difference lived nowhere. #10174 had to settle clamp-versus-reject one
+ * surface at a time by inspection, and MCP's `clampPublishedLimit` encodes it
+ * as a hard-coded `limit`-only rule with a comment explaining the distinction
+ * -- correct, and invisible to every other reader. Declaring it on the builder
+ * puts it in the published schema, so a caller can see which bounds bend, and
+ * a new window parameter carries the answer the day it is written instead of
+ * waiting for someone to notice it was left out.
+ */
+export const SERVING_BOUND = "x-serving-bound";
+
 export const limitSchema = (max: number, fallback?: number) => {
   const schema = z.int().min(1).max(max);
   return fallback === undefined
     ? schema
         .describe(`Maximum rows to return (1-${max}).`)
-        .meta({ examples: [Math.min(20, max)] })
+        .meta({ [SERVING_BOUND]: true, examples: [Math.min(20, max)] })
     : schema
         .describe(
           `Maximum rows to return (1-${max}). Defaults to ${fallback} when ` +
             "omitted. The response reports the limit actually applied.",
         )
-        .meta({ default: fallback, examples: [fallback] });
+        .meta({
+          [SERVING_BOUND]: true,
+          default: fallback,
+          examples: [fallback],
+        });
 };
 
 /**
@@ -116,7 +144,7 @@ export const offsetSchema = () =>
     // The default is PUBLISHED, not just described (#10060): the sentence above
     // has always said 0 and no machine-readable form of it existed, so a
     // generated client could not fill the parameter in.
-    .meta({ default: 0, examples: [0, 100] });
+    .meta({ [SERVING_BOUND]: true, default: 0, examples: [0, 100] });
 
 /**
  * An SS58 address. The pattern is the one 26 tool modules each declared
@@ -362,6 +390,22 @@ export const blockEventCursorSchema = () =>
     )
     .meta({ examples: ["8783000.4"] });
 
+/**
+ * An opaque pagination token, published with NO length or shape claim.
+ *
+ * Tried and reverted while writing #10316: bounding it at 128 characters looked
+ * like an improvement -- thirteen routes publish `{"type":"string"}` and
+ * nothing else -- and `tests/mcp-schema-enforcement.test.ts` immediately
+ * pointed out the problem. Seven MCP tools take this cursor and none of them
+ * check its length, because MCP dispatch does no schema validation (#8942,
+ * settled). Publishing a bound that only one of the two surfaces enforces is
+ * the same contract lie as the wrong `pattern` this replaced on
+ * `/api/v1/chain-events` -- smaller, and still a lie.
+ *
+ * So the token says what is actually true of it: pass it back verbatim, we
+ * make no promise about its contents. If a length ever needs enforcing, the
+ * place is `decodeCursor`, where every surface already funnels.
+ */
 export const keysetCursorSchema = () =>
   z
     .string()

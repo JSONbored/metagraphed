@@ -19,10 +19,23 @@ function run() {
   return execFileSync("node", [SCRIPT], { encoding: "utf8" });
 }
 
+/**
+ * Each declared-exemption map and the file that owns it.
+ *
+ * `DECLARED_ARGUMENTS` moved to `schemas-src/` (#10316) because the runtime
+ * needs it too: the GraphQL dispatch parse has to skip an argument the two
+ * surfaces legitimately spell differently, and `src/` cannot import from
+ * `scripts/`. This test follows it rather than pinning it to the gate -- what
+ * matters is that every entry carries a written reason, not which file it
+ * sits in.
+ */
 const DECLARED_MAPS = [
-  "DECLARED",
-  "DECLARED_ARGUMENTS",
-  "DECLARED_MISSING_ARGUMENTS",
+  { name: "DECLARED", file: SCRIPT },
+  {
+    name: "DECLARED_ARGUMENTS",
+    file: "schemas-src/graphql/argument-divergences.ts",
+  },
+  { name: "DECLARED_MISSING_ARGUMENTS", file: SCRIPT },
 ] as const;
 
 describe("graphql route parity gate", () => {
@@ -79,19 +92,19 @@ describe("graphql route parity gate", () => {
     // how an allowlist stops being evidence and becomes a place to put things.
     // A reason may be an inline string or a shared constant (several entries
     // share one paragraph); a shared constant must itself be prose.
-    const source = readFileSync(SCRIPT, "utf8");
-    for (const name of DECLARED_MAPS) {
+    for (const { name, file } of DECLARED_MAPS) {
+      const source = readFileSync(file, "utf8");
       const block =
         new RegExp(
-          `const ${name}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`,
+          `const ${name}: (?:Readonly<Record<string, string>>|Record<string, string>) = \\{([\\s\\S]*?)\\n\\};`,
         ).exec(source) ??
         // An EMPTY map is the goal state, not a missing one: every gap it
         // recorded has been closed. `{}` on one line does not match the
         // multi-line shape above, so accept it explicitly rather than
         // reporting the finished job as a broken gate.
-        (new RegExp(`const ${name}: Record<string, string> = \\{\\};`).test(
-          source,
-        )
+        (new RegExp(
+          `const ${name}: (?:Readonly<Record<string, string>>|Record<string, string>) = \\{\\};`,
+        ).test(source)
           ? ([source, ""] as unknown as RegExpExecArray)
           : null);
       assert.ok(block, `${name} must stay a hand-written map`);

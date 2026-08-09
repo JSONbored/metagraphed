@@ -211,6 +211,7 @@ import {
   offsetSchema,
   orderSchema,
   querySchema,
+  SERVING_BOUND,
   sortSchema,
   stakeActionSchema,
   ss58Schema,
@@ -239,7 +240,14 @@ import {
 // `default: 0` for the same reason offsetSchema() carries one (#10060):
 // omitting the parameter starts at row 0, and a caller could not read that
 // anywhere machine-readable.
-const unboundedOffsetSchema = () => z.int().min(0).meta({ default: 0 });
+// A page offset with no deep-paging ceiling of its own. Still a SERVING bound
+// -- it is a page position, so a surface that clamps page bounds clamps this
+// one too (#10316); it just has nothing to clamp the top of.
+const unboundedOffsetSchema = () =>
+  z
+    .int()
+    .min(0)
+    .meta({ [SERVING_BOUND]: true, default: 0 });
 
 /**
  * Routes that accept no query parameters at all.
@@ -568,7 +576,12 @@ export const ROUTE_QUERY_SCHEMAS = {
     ).optional(),
     // Bounded by the ranking's own ceiling, not the generic deep-paging one:
     // one row per subnet, so seeking past the limit seeks nothing.
-    offset: z.int().min(0).max(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
+    offset: z
+      .int()
+      .min(0)
+      .max(VALIDATOR_ECONOMICS_LIMIT_MAX)
+      .meta({ [SERVING_BOUND]: true })
+      .optional(),
     emission_gate_open: z.boolean().optional(),
     cap_binding: z.boolean().optional(),
   }),
@@ -969,11 +982,23 @@ export const ROUTE_QUERY_SCHEMAS = {
     method: z.string().max(CHAIN_EVENT_NAME_MAX_LENGTH).optional(),
     block: blockBoundSchema("first").optional(),
     extrinsic: z.int().min(0).optional(),
-    cursor: z
-      .string()
-      .regex(/^\d+\.\d+$/)
-      .max(33)
-      .optional(),
+    // OPAQUE, like the twelve sibling feeds -- and this is a live bug fix, not
+    // a tidy-up (#10316). The hand-written `^\d+\.\d+$` here published a
+    // TWO-part cursor while `chain-events-cold-tier.ts` decodes THREE
+    // (`CURSOR_ARITY = 3`, observed_at.block_number.event_index), so the route
+    // rejected the only cursor that works and accepted one it ignores.
+    // Verified against production 2026-08-09:
+    //
+    //   GET /api/v1/chain-events?limit=1
+    //     -> next_cursor "1786310148001.8809458.214"
+    //   GET /api/v1/chain-events?limit=1&cursor=1786310148001.8809458.214
+    //     -> 400 invalid_query, "cursor must match ^\d+\.\d+$."
+    //
+    // Following the route's own `next_cursor` -- the documented way to page --
+    // was a 400. The cold tier already treats an unusable cursor as inert
+    // rather than an error (see its own comment), so an opaque token is what
+    // this route has always actually accepted.
+    cursor: keysetCursorSchema().optional(),
     before: blockBoundSchema("first").optional(),
     // Resolved (#10109): this published 200 while the serving path clamped at
     // 100, because TWO constants carried the name CHAIN_EVENTS_LIMIT_MAX with
@@ -987,7 +1012,15 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/chain-events/stats": z.object({
-    blocks: z.int().min(1).max(CHAIN_EVENTS_STATS_BLOCKS_MAX).optional(),
+    // A WINDOW SIZE, so its ceiling is a serving policy like `limit`'s and
+    // bends the same way -- `blocks: 99999` answers over the newest 5000
+    // rather than refusing (#10316).
+    blocks: z
+      .int()
+      .min(1)
+      .max(CHAIN_EVENTS_STATS_BLOCKS_MAX)
+      .meta({ [SERVING_BOUND]: true })
+      .optional(),
   }),
   "/api/v1/extrinsics": z.object({
     limit: limitSchema(

@@ -1646,7 +1646,10 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     // route has to reject it against its OWN enum (#10218). The sentence is
     // derived from the published schema, so it cannot list a value the route
     // does not serve.
-    assert.equal(body.error.message, "window must be one of: 7d, 30d.");
+    assert.equal(
+      body.error.message,
+      'window must be one of: 7d, 30d. Received: "90d".',
+    );
   });
 
   test("trajectory returns empty-but-valid", async () => {

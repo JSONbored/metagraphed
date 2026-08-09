@@ -24,7 +24,10 @@ describe("free-text query filters enforce a maxLength (#5544)", () => {
   test("rejects a q longer than 200 chars", () => {
     const error = queryError(`/api/v1/economics?q=${"a".repeat(201)}`);
     assert.equal(error!.parameter, "q");
-    assert.equal(error!.message, "q must be 200 characters or fewer.");
+    assert.equal(
+      error!.message,
+      `q must be 200 characters or fewer. Received: "${"a".repeat(40)}...".`,
+    );
   });
 
   test("accepts a q of exactly 200 chars", () => {
@@ -35,7 +38,10 @@ describe("free-text query filters enforce a maxLength (#5544)", () => {
   test("rejects a provider filter longer than 100 chars", () => {
     const error = queryError(`/api/v1/endpoints?provider=${"a".repeat(101)}`);
     assert.equal(error!.parameter, "provider");
-    assert.equal(error!.message, "provider must be 100 characters or fewer.");
+    assert.equal(
+      error!.message,
+      `provider must be 100 characters or fewer. Received: "${"a".repeat(40)}...".`,
+    );
   });
 
   test("accepts a provider filter of exactly 100 chars", () => {
@@ -55,6 +61,9 @@ describe("free-text query filters enforce a maxLength (#5544)", () => {
   test("rejects an id filter longer than 100 chars", () => {
     const error = queryError(`/api/v1/providers?id=${"a".repeat(101)}`);
     assert.equal(error!.parameter, "id");
-    assert.equal(error!.message, "id must be 100 characters or fewer.");
+    assert.equal(
+      error!.message,
+      `id must be 100 characters or fewer. Received: "${"a".repeat(40)}...".`,
+    );
   });
 });

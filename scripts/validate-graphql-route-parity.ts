@@ -18,6 +18,7 @@
 // This runs entirely offline against the committed `openapi.json`; it needs no
 // production traffic and covers every field rather than a sample.
 import { readFileSync } from "node:fs";
+import { DECLARED_ARGUMENTS } from "../schemas-src/graphql/argument-divergences.ts";
 
 type Json = Record<string, unknown>;
 
@@ -361,44 +362,6 @@ for (const field of queryType.fields) {
  * and overflow GraphQL Int's 32 bits, so they are String args passed
  * verbatim". Not drift — the only spelling GraphQL has for the value.
  */
-const EPOCH_MS_BOUND =
-  "observed_at epoch-ms bound; overflows GraphQL's 32-bit Int, so the SDL " +
-  "passes it as a String verbatim (see the `blocks` resolver's own comment). " +
-  "The route's `integer` and the SDL's `String` are the same value in the two " +
-  "type systems that can each hold it.";
-
-/** SDL arguments the mirrored route does not publish, each with the reason. */
-const DECLARED_ARGUMENTS: Record<string, string> = {
-  "agent_catalog.netuid":
-    "the field merges TWO routes: netuid absent reads /api/v1/agent-catalog, " +
-    "netuid present reads the sibling detail route /api/v1/agent-catalog/{netuid} " +
-    "(src/graphql.ts `agent_catalog`), where it is a path parameter. The doc " +
-    "annotation can only name one of the two.",
-  "validators.cursor":
-    "GraphQL-only pagination. /api/v1/validators publishes sort+limit and 400s " +
-    "on cursor (verified live: 'cursor is not supported for this route'); the " +
-    "resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once and paginates in-process, " +
-    "keyed by hotkey, the way providers/economics do. A capability GraphQL adds, " +
-    "not a claim about the route.",
-  "endpoints.cursor":
-    "an OPAQUE id keyset, not REST's integer offset -- the same GraphQL-only " +
-    "pagination contract #7920 established for `providers`. Verified live: " +
-    'endpoints(limit:1) answers next_cursor "endpoint-srf-2d3306d2cfa2223e" ' +
-    'and endpoints(cursor:"abc") is accepted, where the four sibling list ' +
-    'fields answer "cursor must be a non-negative integer". Typing this Int ' +
-    "to match the route would break the only pagination the field has.",
-  "compare.netuids":
-    "/api/v1/compare takes a comma-joined string (pattern ^\\d{1,5}(,\\d{1,5}){0,127}$) " +
-    "because a query string has no list type. GraphQL does, so the SDL takes " +
-    "[Int!]! and the resolver joins — the stricter spelling of the same input, " +
-    "with the arity bound enforced by the schema instead of a regex.",
-  "extrinsics.from": EPOCH_MS_BOUND,
-  "extrinsics.to": EPOCH_MS_BOUND,
-  "blocks.from": EPOCH_MS_BOUND,
-  "blocks.to": EPOCH_MS_BOUND,
-  "sudo.from": EPOCH_MS_BOUND,
-  "sudo.to": EPOCH_MS_BOUND,
-};
 
 /**
  * Published query parameters with no SDL argument, each with the reason.

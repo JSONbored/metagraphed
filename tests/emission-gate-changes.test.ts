@@ -445,7 +445,7 @@ describe("emission_changes over GraphQL and MCP", () => {
     assert.equal((card.changes as Row[])[0].predates_capture, true);
   });
 
-  test("GraphQL validates kind and limit", async () => {
+  test("GraphQL rejects an unsupported kind and clamps an over-max limit", async () => {
     const bad = async (q: string) => {
       const res = await handleGraphQLRequest(
         new Request("https://api.metagraph.sh/api/v1/graphql", {
@@ -463,15 +463,24 @@ describe("emission_changes over GraphQL and MCP", () => {
       ),
       /kind must be one of/,
     );
-    assert.match(
-      String(
-        (
-          await bad(
-            `{ emission_changes(limit: ${EMISSION_CHANGES_LIMIT_MAX + 1}) { limit } }`,
-          )
-        )[0].message,
-      ),
-      /limit must be an integer/,
+    // CLAMPS since #10316 -- the surface settled on clamping page bounds,
+    // matching MCP. The `kind` vocabulary above still rejects, which is the
+    // half the schema owns on every surface.
+    const clamped = await handleGraphQLRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          query: `{ emission_changes(limit: ${EMISSION_CHANGES_LIMIT_MAX + 1}) { limit } }`,
+        }),
+      }),
+      env(),
+    );
+    const body = (await clamped.json()) as Row;
+    assert.equal(body.errors, undefined);
+    assert.equal(
+      (body.data as Row)?.emission_changes?.limit,
+      EMISSION_CHANGES_LIMIT_MAX,
     );
   });
 

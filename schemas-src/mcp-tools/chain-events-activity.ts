@@ -14,7 +14,7 @@
 import { z } from "zod";
 import { CHAIN_EVENTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
-import { blockEventCursorSchema, limitSchema } from "./shared.ts";
+import { keysetCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { ChainActivityArtifactSchema } from "../routes/chain-analytics.ts";
 import {
@@ -85,7 +85,9 @@ export const ListChainEventsInputSchema = z
     // and enforces that shape, so a bare string advertised a value it rejects
     // (#10118). keysetCursorSchema() stays for the genuinely opaque base64
     // cursors, which have nothing to bound.
-    cursor: blockEventCursorSchema().optional(),
+    // Opaque, matching the route it mirrors. It published a two-part
+    // `block.index` shape for a feed whose cursor has three parts (#10316).
+    cursor: keysetCursorSchema().optional(),
     before: z
       .int()
       .min(0)
