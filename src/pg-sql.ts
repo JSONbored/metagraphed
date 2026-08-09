@@ -66,13 +66,33 @@ types.setTypeParser(INT8_OID, (value: string) => {
   return Number.isSafeInteger(asNumber) ? asNumber : value;
 });
 
-export type PgSqlRows = Record<string, unknown>[];
+/**
+ * Rows a statement returns.
+ *
+ * GENERIC OVER THE ROW, defaulting to the untyped shape every existing caller
+ * already has (#10261). `generated/db/types.ts` now has one interface per Neon
+ * table, so a caller that knows what it selected can say so --
+ * `sql<Pick<Neurons, "netuid" | "hotkey">>\`SELECT netuid, hotkey ...\`` -- and
+ * get a compile error when a column is renamed or retyped, instead of the
+ * hand-written coercion that stands between Postgres and the first typed value
+ * everywhere else.
+ *
+ * The default keeps this a widening: not one of the ~150 existing call sites
+ * changes meaning, and a site opts in by naming its row.
+ */
+export type PgSqlRows<Row = Record<string, unknown>> = Row[];
 
 export interface PgSql {
-  (strings: TemplateStringsArray, ...values: unknown[]): Promise<PgSqlRows>;
+  <Row = Record<string, unknown>>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<PgSqlRows<Row>>;
   /** For the rare statement whose TEXT is built dynamically. Mirrors
    * D1Sql.unsafe so a caller can move between stores unchanged. */
-  unsafe(text: string, values?: unknown[]): Promise<PgSqlRows>;
+  unsafe<Row = Record<string, unknown>>(
+    text: string,
+    values?: unknown[],
+  ): Promise<PgSqlRows<Row>>;
 }
 
 /** The Hyperdrive binding's shape, structurally, so tests can hand a plain
@@ -147,8 +167,13 @@ export function createPgSql(
   // third path -- this one -- was not. A statement that already uses `$n` and
   // no `?` passes through unchanged, so applying it here is not a behaviour
   // change for any caller that was already correct.
-  sql.unsafe = (text: string, values: unknown[] = []) =>
-    run(toPositionalPlaceholders(text), values);
+  sql.unsafe = (<Row = Record<string, unknown>>(
+    text: string,
+    values: unknown[] = [],
+  ) =>
+    run(toPositionalPlaceholders(text), values) as Promise<
+      PgSqlRows<Row>
+    >) as PgSql["unsafe"];
   return sql;
 }
 

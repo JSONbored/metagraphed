@@ -1,0 +1,166 @@
+// Types for every Neon table, generated from a committed schema snapshot
+// (#10261).
+//
+// THE DB BOUNDARY WAS THE ONE CONTRACT WITH NO TYPE. `schemas-src/` gives one
+// Zod schema per parameter and per response, shared across REST, MCP and
+// GraphQL -- the OUTBOUND boundary. Inbound, every row arrived as
+// `Record<string, unknown>` (`PgSqlRows` in src/pg-sql.ts, `Row` in
+// src/read-store.ts), with ~150 hand-written coercions and ~40 unchecked casts
+// standing between Postgres and the first typed value.
+//
+// All three bugs found on 2026-08-08 were at that boundary and none was a logic
+// error: #10123 bound `netuid` as text against an integer column and wrote 0
+// rows for days; #9782 wrote `captured_at` in SECONDS where every other row is
+// milliseconds, and `new Date(1785715160)` is a perfectly good 1970 date so
+// nothing threw; #10200 emitted `round(double precision, integer)`, valid in
+// SQLite and nonexistent in Postgres. Each is the code and the column
+// disagreeing about a type.
+//
+// TWO STEPS, DELIBERATELY SPLIT, because CI has no database:
+//
+//   scripts/snapshot-neon-schema.ts  introspects a live Neon branch and writes
+//                                    generated/db/schema.json. Needs
+//                                    credentials, runs out of band.
+//   this script                      reads that snapshot and writes
+//                                    generated/db/types.ts. Pure, so
+//                                    `validate:db-types-drift` can regenerate
+//                                    and diff on any runner.
+//
+// The old kanel pipeline could spin up a scratch Postgres because
+// `deploy/postgres/schema.sql` existed; it left with the Postgres box, and
+// there is no schema file to introspect any more. The snapshot IS that file
+// now -- checked against production on a schedule rather than assumed.
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import path from "node:path";
+import { repoRoot } from "./lib.ts";
+
+export interface ColumnSnapshot {
+  table: string;
+  column: string;
+  /** `information_schema.columns.udt_name` -- the concrete Postgres type. */
+  udt: string;
+  nullable: boolean;
+}
+
+export const SNAPSHOT_PATH = "generated/db/schema.json";
+export const TYPES_PATH = "generated/db/types.ts";
+
+/**
+ * Postgres type -> the TypeScript type a row actually arrives as.
+ *
+ * READ THROUGH THE DRIVER, not the abstract SQL type. `int8` is the one that
+ * matters: node-postgres returns BIGINT as a STRING by default, and
+ * src/pg-sql.ts installs a parser that returns a number when the value is
+ * exactly representable and leaves it a string when it is not -- so `number |
+ * string` is the honest type, and a caller that assumes `number` is the #9782
+ * class of bug waiting to happen.
+ */
+const TS_TYPE: Record<string, string> = {
+  bool: "boolean",
+  int2: "number",
+  int4: "number",
+  int8: "number | string",
+  float4: "number",
+  float8: "number",
+  numeric: "string",
+  text: "string",
+  varchar: "string",
+  bpchar: "string",
+  uuid: "string",
+  json: "unknown",
+  jsonb: "unknown",
+  bytea: "Uint8Array",
+  date: "string",
+  timestamp: "string",
+  timestamptz: "string",
+  time: "string",
+  interval: "string",
+  inet: "string",
+};
+
+/** `account_position_daily` -> `AccountPositionDaily`. */
+export function interfaceName(table: string): string {
+  return table
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join("");
+}
+
+/** A column name safe to write bare in an interface, or quoted. */
+function propertyName(column: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(column)
+    ? column
+    : JSON.stringify(column);
+}
+
+export function emitTypes(columns: ColumnSnapshot[]): string {
+  const byTable = new Map<string, ColumnSnapshot[]>();
+  for (const column of columns) {
+    const list = byTable.get(column.table);
+    if (list) list.push(column);
+    else byTable.set(column.table, [column]);
+  }
+
+  const unmapped = new Set<string>();
+  const blocks: string[] = [];
+  for (const table of [...byTable.keys()].sort()) {
+    const rows = byTable.get(table)!;
+    const fields = rows.map((row) => {
+      const base = TS_TYPE[row.udt];
+      if (!base) unmapped.add(row.udt);
+      // An UNMAPPED type is `unknown`, never `any`: a column this generator has
+      // not been taught about must not silently type-check against everything.
+      const type = base ?? "unknown";
+      return `  ${propertyName(row.column)}: ${type}${row.nullable ? " | null" : ""};`;
+    });
+    blocks.push(
+      `/** \`public.${table}\` */\nexport interface ${interfaceName(table)} {\n${fields.join("\n")}\n}`,
+    );
+  }
+
+  const tableUnion = [...byTable.keys()]
+    .sort()
+    .map((table) => `  ${interfaceName(table)}: ${interfaceName(table)};`)
+    .join("\n");
+
+  const header = `// GENERATED by scripts/generate-db-types.ts from ${SNAPSHOT_PATH}.
+// Do not edit. Run \`npm run build:db-types\` after re-snapshotting Neon.
+//
+// One interface per table in \`public\`, typed from
+// \`information_schema.columns.udt_name\` -- the concrete Postgres type, read
+// through the driver this repo actually uses. \`int8\` is \`number | string\`
+// because src/pg-sql.ts's parser returns a number only when the value is
+// exactly representable and leaves it a string when it is not; typing it
+// \`number\` would restate the assumption that produced #9782.
+${unmapped.size > 0 ? `//\n// Types this generator has no mapping for, emitted as \`unknown\`: ${[...unmapped].sort().join(", ")}.\n` : ""}
+`;
+
+  return `${header}
+${blocks.join("\n\n")}
+
+/** Every table, so a runner can be generic over one. */
+export interface DatabaseTables {
+${tableUnion}
+}
+
+export type TableName = keyof DatabaseTables;
+`;
+}
+
+export function readSnapshot(): ColumnSnapshot[] {
+  return JSON.parse(
+    readFileSync(path.join(repoRoot, SNAPSHOT_PATH), "utf8"),
+  ) as ColumnSnapshot[];
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const columns = readSnapshot();
+  const output = emitTypes(columns);
+  mkdirSync(path.join(repoRoot, path.dirname(TYPES_PATH)), { recursive: true });
+  writeFileSync(path.join(repoRoot, TYPES_PATH), output);
+  const tables = new Set(columns.map((column) => column.table)).size;
+  console.log(
+    `db-types: ${tables} table(s), ${columns.length} column(s) -> ${TYPES_PATH}`,
+  );
+}

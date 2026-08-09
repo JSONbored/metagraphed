@@ -1,0 +1,2864 @@
+[
+  {
+    "table": "account_balances",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_balances",
+    "column": "free_tao",
+    "udt": "float8",
+    "nullable": false
+  },
+  {
+    "table": "account_balances",
+    "column": "reserved_tao",
+    "udt": "float8",
+    "nullable": false
+  },
+  {
+    "table": "account_balances",
+    "column": "ss58",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "completed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "expected_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "outcome",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "received_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "account_balances_passes",
+    "column": "scanned",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "account",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_identity",
+    "column": "additional",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_identity",
+    "column": "description",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "discord",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "github",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "image",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "name",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity",
+    "column": "url",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "account",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_identity_history",
+    "column": "additional",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "description",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "discord",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "github",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_identity_history",
+    "column": "identity_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_identity_history",
+    "column": "image",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "name",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_identity_history",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_identity_history",
+    "column": "url",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "account",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_position_daily",
+    "column": "active",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_position_daily",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "dividends",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "emission_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "incentive",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "account_position_daily",
+    "column": "rank",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "snapshot_date",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "account_position_daily",
+    "column": "stake_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "trust",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "uid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "account_position_daily",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "account_position_daily",
+    "column": "validator_permit",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "account_id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "blocked_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "blocked_by",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "note",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "reason_code",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "unblocked_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "api_key_blocks",
+    "column": "unblocked_note",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "account_id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "rejected_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "request_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_key_usage_daily",
+    "column": "route",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_keys",
+    "column": "account_id",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
+    "column": "created_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_keys",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_keys",
+    "column": "last_used_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
+    "column": "owner_contact",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_keys",
+    "column": "prefix",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
+    "column": "revoked_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
+    "column": "secret_hash",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_keys",
+    "column": "tier",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_keys",
+    "column": "unkey_key_id",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "api_quota_daily",
+    "column": "account_id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "api_quota_daily",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_quota_daily",
+    "column": "units_spent",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_quota_daily",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_usage_rollup",
+    "column": "cost_shape",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_usage_rollup",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "api_usage_rollup",
+    "column": "keyed_count",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_usage_rollup",
+    "column": "request_count",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "api_usage_rollup",
+    "column": "route_family",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "blocks_head",
+    "column": "author",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "blocks_head",
+    "column": "block_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "blocks_head",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "blocks_head",
+    "column": "event_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "blocks_head",
+    "column": "extrinsic_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "blocks_head",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "blocks_head",
+    "column": "parent_hash",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "delivered_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "response_snippet",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "retry_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "status_code",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "success",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_deliveries",
+    "column": "trigger_id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "account",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "active",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "channel",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "condition",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "created_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "destination",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "event_kind",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "last_matched_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "match_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "min_amount_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "name",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "owner_ss58",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "owner_token",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "table_filter",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_alert_triggers",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "builder_version",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "card",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "computed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "neuron_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_concentration_daily",
+    "column": "source_captured_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "alpha_amount",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "amount_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "event_index",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "event_kind",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "extrinsic_index",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_account_events",
+    "column": "uid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "account_event_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "block_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "chain_event_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "extrinsic_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "spec_version",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_blocks",
+    "column": "synced_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "args",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "event_index",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "extrinsic_index",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "method",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "pallet",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_chain_events",
+    "column": "phase",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "call_args",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "call_function",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "call_module",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "extrinsic_hash",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "extrinsic_index",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "fee_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "signer",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "success",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "chain_detail_extrinsics",
+    "column": "tip_tao",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "ema_block",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "is_set",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "item",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "emission_flow_watch",
+    "column": "predates_capture",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "param",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "predates_capture",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "previous_value",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "source",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "emission_gate_param_history",
+    "column": "value",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "github_accounts",
+    "column": "created_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "github_accounts",
+    "column": "github_login",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "github_accounts",
+    "column": "github_user_id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "github_accounts",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "github_accounts",
+    "column": "last_login_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "github_accounts",
+    "column": "tier",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha",
+    "column": "total_alpha",
+    "udt": "float8",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha_passes",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha_passes",
+    "column": "completed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "hotkey_alpha_passes",
+    "column": "expected_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "hotkey_alpha_passes",
+    "column": "received_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "lane_health",
+    "column": "age_ms",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "lane_health",
+    "column": "checked_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "lane_health",
+    "column": "detail",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "lane_health",
+    "column": "lane",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "lane_health",
+    "column": "verdict",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "active",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "axon",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "consensus",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "dividends",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "emission_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "incentive",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "is_immunity_period",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "rank",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "registered_at_block",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "snapshot_date",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "stake_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "take",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "trust",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "uid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "neuron_daily",
+    "column": "validator_permit",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neuron_daily",
+    "column": "validator_trust",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "active",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "axon",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "neurons",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "consensus",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "dividends",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "emission_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "incentive",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "is_immunity_period",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "neurons",
+    "column": "rank",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "registered_at_block",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "stake_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "take",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "trust",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "uid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "neurons",
+    "column": "validator_permit",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "neurons",
+    "column": "validator_trust",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "neurons_passes",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "neurons_passes",
+    "column": "completed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "neurons_passes",
+    "column": "expected_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "neurons_passes",
+    "column": "received_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions",
+    "column": "coldkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions",
+    "column": "share_fraction",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "nominator_positions_passes",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions_passes",
+    "column": "completed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "nominator_positions_passes",
+    "column": "expected_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "nominator_positions_passes",
+    "column": "received_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "providers",
+    "column": "id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "providers",
+    "column": "overlay",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "providers",
+    "column": "source_commit",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "providers",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "raw_capture_state",
+    "column": "last_contiguous_block",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "raw_capture_state",
+    "column": "last_error",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "raw_capture_state",
+    "column": "network",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "raw_capture_state",
+    "column": "stopped_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "raw_capture_state",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "rpc_accounts",
+    "column": "created_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "rpc_accounts",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "rpc_accounts",
+    "column": "last_login_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "rpc_accounts",
+    "column": "ss58",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "rpc_accounts",
+    "column": "tier",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "schema_migrations",
+    "column": "applied_at",
+    "udt": "timestamptz",
+    "nullable": false
+  },
+  {
+    "table": "schema_migrations",
+    "column": "filename",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "self_health_checks",
+    "column": "checked_at_ms",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "self_health_checks",
+    "column": "component",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "self_health_checks",
+    "column": "http_status",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "self_health_checks",
+    "column": "latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "self_health_checks",
+    "column": "ok",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "self_health_daily",
+    "column": "checks",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "self_health_daily",
+    "column": "component",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "self_health_daily",
+    "column": "day",
+    "udt": "date",
+    "nullable": false
+  },
+  {
+    "table": "self_health_daily",
+    "column": "ok_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "column": "burn_tao",
+    "udt": "float8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_burn_history",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "enabled",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "predates_capture",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "subnet_emission_enabled_history",
+    "column": "previous_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "activity_cutoff",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "activity_cutoff_factor",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "alpha_high_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "alpha_low_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "alpha_sigmoid_steepness",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "block_number",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "bonds_moving_avg_raw",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "bonds_reset_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "burn_half_life",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "burn_increase_mult",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "commit_reveal_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "commit_reveal_period",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "immunity_period",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "kappa_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "liquid_alpha_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "max_burn_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "max_regs_per_block",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "max_validators",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "max_weight_limit_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "min_allowed_weights",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "min_burn_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "min_childkey_take_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "owner_cut_auto_lock_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "owner_cut_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "registration_allowed",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "serving_rate_limit",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "subnet_is_active",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "target_regs_per_interval",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "tempo",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "transfers_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "user_liquidity_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "weights_rate_limit",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "weights_version",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams",
+    "column": "yuma_version",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "activity_cutoff",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "activity_cutoff_factor",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "alpha_high_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "alpha_low_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "alpha_sigmoid_steepness",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "bonds_moving_avg_raw",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "bonds_reset_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "burn_half_life",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "burn_increase_mult",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "commit_reveal_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "commit_reveal_period",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "hyperparams_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "immunity_period",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "kappa_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "liquid_alpha_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "max_burn_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "max_regs_per_block",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "max_validators",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "max_weight_limit_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "min_allowed_weights",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "min_burn_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "min_childkey_take_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "owner_cut_auto_lock_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "owner_cut_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "registration_allowed",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "serving_rate_limit",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "subnet_is_active",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "target_regs_per_interval",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "tempo",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "transfers_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "user_liquidity_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "weights_rate_limit",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "weights_version",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "column": "yuma_version",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "event",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_lifecycle",
+    "column": "predates_capture",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "alpha_in_emission",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "alpha_in_pool",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "alpha_out_emission",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "alpha_out_pool",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "alpha_price_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "candidate_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "completeness_score",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "emission_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "emission_share",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "endpoint_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "excess_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "first_emission_block",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "miner_burned_fraction",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "miner_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "monitored_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "pipeline_block",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "pipeline_block_hash",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "snapshot_date",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "subnet_volume_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "subtoken_enabled",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "surface_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "tao_in_emission_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "tao_in_pool_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "total_stake_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_snapshots",
+    "column": "validator_count",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "subnets",
+    "column": "name",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "overlay",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "slug",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "source",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "source_commit",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnets",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "surface_checks",
+    "column": "checked_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "surface_checks",
+    "column": "classification",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "kind",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "ok",
+    "udt": "bool",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "status",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "status_code",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_checks",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_checks",
+    "column": "surface_key",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "checks",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "classification",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "kind",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_failure_daily",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "action",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "overlay",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "recorded_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "source_commit",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "subnet_netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_history",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "classification",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "consecutive_failures",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_status",
+    "column": "kind",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "last_checked",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "last_ok",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "provider",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "status",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "status_code",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_status",
+    "column": "surface_key",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "surface_status",
+    "column": "url",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "avg_latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "day",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "latency_samples",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "ok_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "p50_latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "p95_latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "p99_latency_ms",
+    "udt": "int4",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "samples",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "status",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "surface_key",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "surface_uptime_daily",
+    "column": "uptime_ratio",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "surfaces",
+    "column": "authority",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "kind",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "overlay",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "probe_eligible",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "provider_id",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "surfaces",
+    "column": "public_safe",
+    "udt": "bool",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "review_state",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "source_commit",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "subnet_netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "surface_key",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "updated_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "surfaces",
+    "column": "url",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "eth_usd",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "pool_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "pools",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "price_basis",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "tao_usd_index",
+    "column": "usd_per_tao",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "validator_nominator_counts",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "validator_nominator_counts",
+    "column": "hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "validator_nominator_counts",
+    "column": "nominator_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "validator_nominator_counts_passes",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "validator_nominator_counts_passes",
+    "column": "completed_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "validator_nominator_counts_passes",
+    "column": "expected_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "validator_nominator_counts_passes",
+    "column": "received_rows",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "address",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "auth",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "created_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "endpoint",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "id",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "last_used_at",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "p256dh",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "watch_push_subscriptions",
+    "column": "user_agent",
+    "udt": "text",
+    "nullable": true
+  }
+]
