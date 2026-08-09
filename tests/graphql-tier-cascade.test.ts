@@ -142,8 +142,6 @@ const PENDING_WIRING = new Set<string>([
 const NO_TIER_ANYWHERE: Record<string, string> = {
   chain_axon_removals:
     "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no lane exists for it",
-  chain_prometheus:
-    "get_chain_prometheus falls to buildChainPrometheus([]) on MCP too -- no lane exists for it",
   account_prometheus:
     "get_account_prometheus falls to buildAccountPrometheus([]) on MCP too -- no lane exists for it",
   account_axon_removals:

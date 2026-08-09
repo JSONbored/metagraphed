@@ -1243,6 +1243,7 @@ import {
   CHAIN_PROMETHEUS_WINDOWS,
   DEFAULT_CHAIN_PROMETHEUS_WINDOW,
 } from "./chain-prometheus.ts";
+import { loadChainPrometheusColdTier } from "./chain-prometheus-loader.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
@@ -6659,7 +6660,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainPrometheus([], { window, limit })
+        )) ??
+        // The lakehouse rung, same as REST and GraphQL (#10248).
+        (await loadChainPrometheusColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadChainPrometheusColdTier
+          >[0],
+          { window, limit },
+        )) ??
+        buildChainPrometheus([], { window, limit })
       );
     },
   },
