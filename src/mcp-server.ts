@@ -690,6 +690,7 @@ import {
 } from "./mcp-input-schema.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
+  resolveEconomicsBlob,
   buildSubnetValidatorEconomicsHistoryPayload,
   buildValidatorEconomicsRankingPayload,
 } from "../workers/request-handlers/entities.ts";
@@ -5507,20 +5508,28 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         netuid,
         {
           loadEconomicsRow: async () => {
+            // The SAME live-then-artifact ladder REST climbs (#10307), with only
+            // the artifact READ supplied from here. Reading the artifact alone
+            // -- which this did -- made the tool answer
+            // `tao_inflow_per_day: 91.04839199999999` where REST answered
+            // 89.4820752 for the same subnet, both stable: two blobs refreshed
+            // on different cadences, not a moving window read twice.
+            //
             // A cold economics artifact DEGRADES this answer, it does not 404 it:
             // the artifact is an input to the derivation, not its subject, and the
             // floors in units are still true without the reserves. loadArtifactData
             // raises not_found for a missing artifact, which would otherwise turn a
             // partial answer into no answer at all.
-            let blob: Record<string, unknown> | null;
-            try {
-              blob = (await loadArtifactData(
-                ctx,
-                "/metagraph/economics.json",
-              )) as Record<string, unknown> | null;
-            } catch {
-              blob = null;
-            }
+            const blob = await resolveEconomicsBlob(ctx.env, async () => {
+              try {
+                return (await loadArtifactData(
+                  ctx,
+                  "/metagraph/economics.json",
+                )) as Record<string, unknown> | null;
+              } catch {
+                return null;
+              }
+            });
             const rows = Array.isArray(blob?.subnets)
               ? (blob.subnets as Array<Record<string, unknown>>)
               : [];
