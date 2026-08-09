@@ -411,7 +411,16 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
 // deploy/wss-lb/test/*.test.ts was the second entry until the Railway service was
 // deleted (#9353). Removed with it rather than left as a pattern matching nothing:
 // a dead exemption is an exemption nobody re-derives before widening.
-const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [/^scripts\/worker-test\.ts$/];
+const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
+  /^scripts\/worker-test\.ts$/,
+  // The SSRF corpus (#10216). This file's whole purpose is to send loopback,
+  // RFC1918, link-local metadata and file:// at the two outbound tools and
+  // assert they REFUSE -- the addresses are the test, and obfuscating them
+  // would make the one check that exercises this rule unreadable. Exempt for
+  // the private-URL pattern only: every other rule, including the secret and
+  // wallet-path ones, still applies to it.
+  /^scripts\/check-adversarial-surface\.ts$/,
+];
 function isUnsafeUrlRejectionFixture(relativePath: string): boolean {
   return UNSAFE_URL_REJECTION_FIXTURE_PATTERNS.some((pattern) =>
     pattern.test(relativePath),

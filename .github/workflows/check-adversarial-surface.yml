@@ -1,0 +1,68 @@
+name: Check adversarial surface
+
+# Has any endpoint on any surface ever been security-tested? (#10216)
+#
+# Until this workflow, no. Five sweeps ask about shape, emptiness, values,
+# cross-surface agreement and latency; not one sends a hostile input. This one
+# probes injection against every free-text published parameter, GraphQL cost,
+# SSRF against the two outbound tools, and credential shapes in every body it
+# sees.
+#
+# NOT A PENTEST -- a repeatable check, so it runs again tomorrow rather than
+# being a thing someone once did. Read-only payloads, and the cost ladder stops
+# at the first refusal so a nightly sweep never becomes the amplification it is
+# testing for. What it does NOT cover (cross-caller authorisation, the mutating
+# credential tools) is printed in the report rather than left implied.
+#
+# Out of band rather than in CI, for the same reason its five siblings are: it
+# needs the deployed surface, and a check that cannot run on a pull request
+# should not pretend to.
+on:
+  schedule:
+    # Weekly rather than daily, unlike its siblings. The others measure
+    # something that changes every day (values, freshness, latency); this one
+    # measures whether a class of defect was introduced, which tracks
+    # deploys rather than data. Sunday, after the daily five have finished.
+    - cron: "17 11 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-adversarial-surface
+  cancel-in-progress: false
+
+jobs:
+  adversarial:
+    name: Probe the published surface adversarially
+    runs-on: ubuntu-latest
+    # Seven payloads per free-text parameter at ~0.9s spacing, plus the cost
+    # ladder and the SSRF corpus.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Probe the surface
+        run: |
+          node scripts/check-adversarial-surface.ts | tee adversarial.log
+          {
+            echo '## Adversarial surface'
+            echo '```'
+            cat adversarial.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
