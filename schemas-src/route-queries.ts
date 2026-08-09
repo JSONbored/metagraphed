@@ -94,6 +94,7 @@ import { CHAIN_ALPHA_VOLUME_LIMIT_MAX } from "../src/chain-alpha-volume.ts";
 import { CHAIN_AXON_REMOVALS_LIMIT_MAX } from "../src/chain-axon-removals.ts";
 import { CHAIN_CALLS_LIMIT_MAX } from "../src/chain-calls-artifact.ts";
 import { CHAIN_DEREGISTRATIONS_LIMIT_MAX } from "../src/chain-deregistrations.ts";
+import { CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX } from "../src/subnet-lifecycle-read.ts";
 import { CHAIN_EVENTS_STATS_BLOCKS_MAX } from "../src/chain-events-cold-tier.ts";
 import { CHAIN_FEES_LIMIT_MAX } from "../src/chain-fees-artifact.ts";
 import { CHAIN_PROMETHEUS_LIMIT_MAX } from "../src/chain-prometheus.ts";
@@ -531,6 +532,14 @@ export const ROUTE_QUERY_SCHEMAS = {
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
+  // No `cursor`: the sibling above pages a table that grows per subnet per
+  // change, this one a table that grows per subnet per LIFETIME. Publishing a
+  // keyset token here would advertise resumability the loader does not provide.
+  "/api/v1/subnets/{netuid}/lifecycle": z.object({
+    limit: limitSchema(MAX_LIMIT).optional(),
+    offset: offsetSchema().optional(),
+    format: formatSchema().optional(),
+  }),
   "/api/v1/subnets/{netuid}/validators": z.object({
     fields: fieldsSchema().optional(),
     format: formatSchema().optional(),
@@ -876,6 +885,17 @@ export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/chain/deregistrations": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_DEREGISTRATIONS_LIMIT_MAX).optional(),
+    format: formatSchema().optional(),
+  }),
+  // The five-value window, not the 7d/30d the per-UID feed above takes: a
+  // SUBNET registers or deregisters a handful of times in its life, so a 7d
+  // default would answer "nothing happened" almost always. Defaults to `all`
+  // for the same reason.
+  // No `offset`: the chain feeds do not page, and with a 1000 ceiling over a
+  // few-hundred-row table the whole network's lifecycle fits in one request.
+  "/api/v1/chain/subnet-lifecycle": z.object({
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
+    limit: limitSchema(CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-transfers": z.object({

@@ -469,6 +469,10 @@ export const SUBNET_HYPERPARAMS_PATH_PATTERN =
 // (more specific) before the base pattern above — both are anchored.
 export const SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/;
+// When a subnet was registered or deregistered (#10263): read from the
+// subnet_lifecycle Neon table, no static file.
+export const SUBNET_LIFECYCLE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/lifecycle$/;
 // Stake/emission concentration metrics (#2106): computed live from the neurons
 // D1 tier, no static file.
 export const SUBNET_CONCENTRATION_PATH_PATTERN =

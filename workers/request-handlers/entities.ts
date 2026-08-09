@@ -92,6 +92,10 @@ import {
 import { buildSubnetHyperparams } from "../../src/subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "../../src/subnet-hyperparams-history.ts";
 import {
+  buildSubnetLifecycle,
+  loadSubnetLifecycle,
+} from "../../src/subnet-lifecycle-read.ts";
+import {
   buildSubnetYield,
   buildSubnetYieldHistory,
   DEFAULT_YIELD_HISTORY_WINDOW,
@@ -680,6 +684,17 @@ const SUBNET_HYPERPARAMS_HISTORY_CSV_COLUMNS = [
   "hyperparameters",
   "hyperparams_hash",
 ];
+// The whole row (#10263) -- five flat scalars, no nested object to serialize.
+// `netuid` is kept even on the per-subnet route, so a CSV saved from
+// /subnets/7/lifecycle still says which subnet it describes once detached from
+// the URL it came from.
+const SUBNET_LIFECYCLE_CSV_COLUMNS = [
+  "netuid",
+  "event",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+];
 const ACCOUNT_EXTRINSICS_CSV_COLUMNS = [
   "extrinsic_id",
   "block_number",
@@ -1129,6 +1144,57 @@ export async function handleSubnetHyperparamsHistory(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/hyperparameters/history.json`,
+        (data.entries as unknown as Array<Record<string, unknown>>)[0]
+          ?.observed_at ?? null,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/lifecycle: when this subnet was registered or
+// deregistered (#10263), newest first, from the subnet_lifecycle Neon table.
+//
+// No tier cascade and no cold tier, deliberately. The sibling history routes
+// fall back to the lakehouse for deep pages; this table holds a handful of rows
+// per subnet per LIFETIME, so there is no depth at which Neon stops being the
+// right answer, and a second tier would be a second place for the event list to
+// disagree with itself.
+//
+// An unbound store yields a schema-stable empty page rather than a 404, the
+// same shape the sibling routes return from a cold store: "this subnet has no
+// recorded transitions" and "we cannot reach the store" are both 200 with
+// `entries: []` here, and the loader's null is what distinguishes them for the
+// watchdogs rather than for the caller.
+export async function handleSubnetLifecycle(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const validationError = validateResponseFormat(url);
+  if (validationError) return analyticsQueryError(validationError);
+  // #10218: the router already parsed and rejected against the route's schema,
+  // so this reads the result rather than re-checking it by hand.
+  const { limit, offset } = resolvePage(url, FEED_PAGINATION);
+  const rows = await loadSubnetLifecycle(env, netuid, { limit, offset });
+  const data = buildSubnetLifecycle(rows, netuid, { limit, offset });
+  if (csvRequested(url, request)) {
+    return csvResponse(
+      data.entries as unknown[],
+      `subnet-${netuid}-lifecycle`,
+      "short",
+      request,
+      SUBNET_LIFECYCLE_CSV_COLUMNS,
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/lifecycle.json`,
         (data.entries as unknown as Array<Record<string, unknown>>)[0]
           ?.observed_at ?? null,
       ),

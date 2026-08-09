@@ -102,6 +102,14 @@ import {
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
 } from "../../src/chain-deregistrations.ts";
 import {
+  buildChainSubnetLifecycle,
+  CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+  DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+  loadChainSubnetLifecycle,
+} from "../../src/subnet-lifecycle-read.ts";
+// The shared window parser, rather than a restated map -- see the handler.
+import { parseHistoryWindow } from "../../src/neuron-history.ts";
+import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
 } from "../../src/chain-stake-moves.ts";
@@ -1102,6 +1110,14 @@ const CHAIN_REGISTRATIONS_CSV_COLUMNS = [
   "registrations_per_registrant",
 ];
 
+// The whole row (#10263): five flat scalars, no nested object to serialize.
+const CHAIN_SUBNET_LIFECYCLE_CSV_COLUMNS = [
+  "netuid",
+  "event",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+];
 const CHAIN_DEREGISTRATIONS_CSV_COLUMNS = [
   "netuid",
   "distinct_deregistered_hotkeys",
@@ -2271,6 +2287,80 @@ export async function handleChainRegistrations(
 // normalized through the GET cache key so they cannot bypass the edge cache and repeatedly force the
 // network-wide aggregations, cache keyed on the analytics cron freshness. The leaderboard is fixed
 // to most-active-first (total NeuronDeregistered events).
+// GET /api/v1/chain/subnet-lifecycle: every subnet's registrations and
+// deregistrations, newest first (#10263) — the network-wide view of the same
+// subnet_lifecycle table `/subnets/{netuid}/lifecycle` reads per subnet.
+//
+// HISTORY_WINDOWS, deliberately NOT analyticsWindow. That helper understands
+// only 7d/30d and clamps anything else to 400 days, which would silently
+// mistranslate the 90d/1y/all this route publishes. Same reasoning
+// src/neuron-history.ts records for its own window set.
+//
+// Defaults to `all` rather than the family's 30d: a subnet registers or
+// deregisters a handful of times in its LIFETIME, so a 30d default would
+// answer "nothing happened" almost every day and read as a broken feed.
+export async function handleChainSubnetLifecycle(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: EdgeCacheCtx = {},
+): Promise<Response> {
+  // #10218: the router parsed and rejected against this route's schema before
+  // the handler ran -- including the `window` enum and the `limit` ceiling --
+  // so this reads the result rather than re-checking it. The ceiling still
+  // REJECTS rather than clamps; that is the schema's doing, not the handler's.
+  const {
+    window = DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+    limit = CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+  } = routeQuery(url);
+  // `days === null` means `all` (no lower bound) -- a real answer, so this must
+  // not become a truthiness test. The label is already schema-valid here.
+  const parsed = parseHistoryWindow(window);
+  if ("error" in parsed) return analyticsQueryError(parsed.error);
+  const { days } = parsed;
+
+  const cacheRequest =
+    request.method === "HEAD"
+      ? new Request(request, { method: "GET" })
+      : request;
+  return withEdgeCache(
+    cacheRequest,
+    ctx,
+    env,
+    edgeCacheScope("chain-subnet-lifecycle", DEFAULT_CHAIN_NETWORK),
+    async () => {
+      const rows = await loadChainSubnetLifecycle(env, {
+        limit,
+        offset: 0,
+        sinceMs: days === null ? null : Date.now() - days * 86_400_000,
+      });
+      const data = buildChainSubnetLifecycle(rows, { limit, offset: null });
+      if (csvRequested(url, cacheRequest)) {
+        return csvResponse(
+          data.entries as unknown[],
+          "chain-subnet-lifecycle",
+          "short",
+          cacheRequest,
+          CHAIN_SUBNET_LIFECYCLE_CSV_COLUMNS,
+        );
+      }
+      return envelopeResponse(
+        cacheRequest,
+        {
+          data,
+          meta: await analyticsMeta(
+            env,
+            "/metagraph/chain/subnet-lifecycle.json",
+            (data.entries as unknown as Array<Record<string, unknown>>)[0]
+              ?.observed_at ?? null,
+          ),
+        },
+        "short",
+      );
+    },
+  );
+}
+
 export async function handleChainDeregistrations(
   request: Request,
   env: Env,

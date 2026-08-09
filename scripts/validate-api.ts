@@ -764,6 +764,38 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    // #10263. The table is append-only and a subnet may legitimately have no
+    // recorded transition yet, so this asserts the SHAPE, not a row count --
+    // an empty page is a valid answer here, and asserting otherwise would make
+    // the gate fail for a correct response.
+    "/api/v1/subnets/7/lifecycle?limit=5",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.entries), true);
+      assert.equal(body.data.entries.length <= 5, true);
+      for (const entry of body.data.entries) {
+        assert.equal(
+          ["registered", "deregistered"].includes(entry.event),
+          true,
+        );
+        // NULL is a real answer (predates capture); 0 would be a claim.
+        assert.equal(
+          entry.block_number === null || entry.block_number > 0,
+          true,
+        );
+      }
+    },
+  ],
+  [
+    "/api/v1/chain/subnet-lifecycle?limit=5",
+    (body) => {
+      assert.equal(Array.isArray(body.data.entries), true);
+      assert.equal(body.data.entries.length <= 5, true);
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(body.data.subnet_count <= body.data.entry_count, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/hyperparameters/history?limit=5",
     (body) => {
       assert.equal(body.data.netuid, 7);

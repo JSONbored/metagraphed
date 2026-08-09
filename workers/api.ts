@@ -107,6 +107,7 @@ import {
   handleChainAxonRemovals,
   handleChainCalls,
   handleChainDeregistrations,
+  handleChainSubnetLifecycle,
   handleChainFees,
   handleChainPrometheus,
   handleChainRegistrations,
@@ -132,6 +133,7 @@ import {
   handleNeuron,
   handleSubnetHyperparams,
   handleSubnetHyperparamsHistory,
+  handleSubnetLifecycle,
   handleSubnetValidators,
   handleSubnetEventSummary,
   handleSubnetEvents,
@@ -544,6 +546,7 @@ import {
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
+  SUBNET_LIFECYCLE_PATH_PATTERN,
   SUBNET_IDENTITY_HISTORY_PATH_PATTERN,
   SUBNET_METAGRAPH_PATH_PATTERN,
   SUBNET_NEURON_HISTORY_PATH_PATTERN,
@@ -5652,6 +5655,19 @@ export async function handleRequest(
         resolved.url,
       );
     }
+    const lifecycleMatch = SUBNET_LIFECYCLE_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (lifecycleMatch) {
+      // A handful of rows per subnet per lifetime -- the cheapest read in this
+      // family. Dispatch directly, no edge-cache wrapper, like the histories.
+      return handleSubnetLifecycle(
+        request,
+        env,
+        Number(lifecycleMatch[1]),
+        resolved.url,
+      );
+    }
     const hyperparamsMatch = SUBNET_HYPERPARAMS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -6251,6 +6267,7 @@ const REGISTRY_ONLY_SUBNET_LEAVES = new Set([
   "event-summary",
   "ownership-history",
   "hyperparameters/history",
+  "lifecycle",
   "lease/history",
   "stake-moves",
   "stake-transfers",
@@ -6313,6 +6330,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/idle-stake" ||
     pathname === "/api/v1/chain/identity-history" ||
+    pathname === "/api/v1/chain/subnet-lifecycle" ||
     pathname === "/api/v1/self-health" ||
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
@@ -6632,6 +6650,7 @@ const PROJECTION_ROUTE_HANDLERS: Record<
   "/api/v1/chain/alpha-volume": handleChainAlphaVolume,
   "/api/v1/chain/registrations": handleChainRegistrations,
   "/api/v1/chain/deregistrations": handleChainDeregistrations,
+  "/api/v1/chain/subnet-lifecycle": handleChainSubnetLifecycle,
   "/api/v1/chain/stake-moves": handleChainStakeMoves,
   "/api/v1/chain/stake-transfers": handleChainStakeTransfers,
 };

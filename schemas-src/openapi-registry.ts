@@ -262,6 +262,10 @@ import {
   SubnetHyperparamsHistoryArtifactSchema,
 } from "./routes/subnet-hyperparameters.ts";
 import {
+  ChainSubnetLifecycleArtifactSchema,
+  SubnetLifecycleArtifactSchema,
+} from "./routes/subnet-lifecycle.ts";
+import {
   SubnetPerformanceArtifactSchema,
   SubnetPerformanceHistoryArtifactSchema,
 } from "./routes/subnet-performance.ts";
@@ -709,6 +713,8 @@ register(
   SubnetHyperparamsHistoryArtifactSchema,
   "SubnetHyperparamsHistoryArtifact",
 );
+register(SubnetLifecycleArtifactSchema, "SubnetLifecycleArtifact");
+register(ChainSubnetLifecycleArtifactSchema, "ChainSubnetLifecycleArtifact");
 register(SubnetPerformanceArtifactSchema, "SubnetPerformanceArtifact");
 register(
   SubnetPerformanceHistoryArtifactSchema,
@@ -1045,6 +1051,8 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "NeuronHistoryArtifact",
   "SubnetHyperparametersArtifact",
   "SubnetHyperparamsHistoryArtifact",
+  "SubnetLifecycleArtifact",
+  "ChainSubnetLifecycleArtifact",
   "SubnetPerformanceArtifact",
   "SubnetPerformanceHistoryArtifact",
   "SubnetPrometheusArtifact",

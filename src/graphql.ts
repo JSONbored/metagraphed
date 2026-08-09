@@ -207,6 +207,14 @@ import {
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import {
+  buildChainSubnetLifecycle,
+  buildSubnetLifecycle,
+  CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+  DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+  loadChainSubnetLifecycle,
+  loadSubnetLifecycle,
+} from "./subnet-lifecycle-read.ts";
+import {
   buildSubnetRegistrations,
   SUBNET_REGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_REGISTRATIONS_WINDOW,
@@ -839,6 +847,8 @@ import type {
   QuerySubnet_Health_TrendsArgs,
   QuerySubnet_HistoryArgs,
   QuerySubnet_HyperparametersArgs,
+  QueryChain_Subnet_LifecycleArgs,
+  QuerySubnet_LifecycleArgs,
   QuerySubnet_Hyperparameters_HistoryArgs,
   QuerySubnet_Identity_HistoryArgs,
   QuerySubnet_Idle_StakeArgs,
@@ -2311,6 +2321,50 @@ const rootValue = {
       // per-field fallback here.
       hyperparameters: data.hyperparameters ?? null,
     };
+  },
+
+  async subnet_lifecycle(
+    { netuid, limit, offset }: QuerySubnet_LifecycleArgs,
+    context: GqlContext,
+  ) {
+    // Same FEED_PAGINATION bounds parsePagination applies for REST, so a
+    // GraphQL caller cannot request a wider page than the route allows.
+    const safeLimit = clampLimit(limit, FEED_PAGINATION);
+    const safeOffset = clampOffset(offset);
+    const rows = await loadSubnetLifecycle(context.env, Number(netuid), {
+      limit: safeLimit,
+      offset: safeOffset,
+    });
+    // Reads Neon directly rather than through a tier request: this route has
+    // no tier cascade and no cold tier (see src/subnet-lifecycle-read.ts), so
+    // there is nothing to forward to.
+    return buildSubnetLifecycle(rows, Number(netuid), {
+      limit: safeLimit,
+      offset: safeOffset,
+    });
+  },
+
+  async chain_subnet_lifecycle(
+    { window, limit }: QueryChain_Subnet_LifecycleArgs,
+    context: GqlContext,
+  ) {
+    // The shared parser, with this route's own default passed explicitly so
+    // the helper's 30d default never applies -- see DEFAULT_SUBNET_LIFECYCLE_WINDOW.
+    const parsed = parseHistoryWindow(
+      window ?? DEFAULT_SUBNET_LIFECYCLE_WINDOW,
+    );
+    if ("error" in parsed) throw new Error(parsed.error.message);
+    const { days } = parsed;
+    const safeLimit = clampLimit(limit, {
+      defaultLimit: 50,
+      maxLimit: CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+    });
+    const rows = await loadChainSubnetLifecycle(context.env, {
+      limit: safeLimit,
+      offset: 0,
+      sinceMs: days === null ? null : Date.now() - days * 86_400_000,
+    });
+    return buildChainSubnetLifecycle(rows, { limit: safeLimit, offset: null });
   },
 
   async subnet_hyperparameters_history(
