@@ -428,6 +428,7 @@ import {
 import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
+import type { ChainAlertTriggers } from "../generated/db/types.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
@@ -3033,13 +3034,28 @@ function numberOrNull(v: unknown) {
 // text[]/jsonb. Readers of those JSON columns parse at the consumption site
 // via parseJsonColumn below.
 
-type D1SqlRows = Record<string, unknown>[];
+/**
+ * Rows a statement returns, generic over the row (#10261).
+ *
+ * Defaults to the untyped shape every existing caller already has, so this is
+ * a widening and no call site changes meaning. A caller that knows what it
+ * selected names it -- `sql<ChainAlertTriggers>\`SELECT * FROM
+ * chain_alert_triggers ...\`` -- and gets `generated/db/types.ts`, which is
+ * introspected from Neon rather than assumed.
+ */
+type D1SqlRows<Row = Record<string, unknown>> = Row[];
 interface D1Sql {
-  (strings: TemplateStringsArray, ...values: unknown[]): Promise<D1SqlRows>;
+  <Row = Record<string, unknown>>(
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ): Promise<D1SqlRows<Row>>;
   /** Positional-placeholder escape hatch, mirroring postgres.js's
    * sql.unsafe(text, params) -- used only where the statement text is built
    * dynamically (the matched-write-back's `IN (?, ?, ...)` expansion). */
-  unsafe(text: string, values?: unknown[]): Promise<D1SqlRows>;
+  unsafe<Row = Record<string, unknown>>(
+    text: string,
+    values?: unknown[],
+  ): Promise<D1SqlRows<Row>>;
 }
 
 /**
@@ -3514,12 +3530,9 @@ async function handleAlertTriggerGet(
   }
   return withAlertTriggersSql(env, ctx, async (sql) => {
     const [row] =
-      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+      await sql<ChainAlertTriggers>`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!row) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(
-      request,
-      row.owner_token as string | null,
-    );
+    const authError = requireAlertTriggerOwner(request, row.owner_token);
     if (authError) return authError;
     return writeJson(ownerAlertTriggerView(normalizeAlertTriggerRow(row)));
   });
@@ -3621,12 +3634,9 @@ async function handleAlertTriggerUpdate(
   }
   return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
-      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+      await sql<ChainAlertTriggers>`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(
-      request,
-      existing.owner_token as string | null,
-    );
+    const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
     const merged = mergeAlertTriggerUpdateBody(
       normalizeAlertTriggerRow(existing),
@@ -3646,13 +3656,11 @@ async function handleAlertTriggerDelete(
     return writeJson({ error: "malformed trigger id" }, 400);
   }
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const [existing] =
-      await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
+    const [existing] = await sql<
+      Pick<ChainAlertTriggers, "owner_token">
+    >`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
-    const authError = requireAlertTriggerOwner(
-      request,
-      existing.owner_token as string | null,
-    );
+    const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
     await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
     return writeJson({ id, deleted: true });
@@ -3688,7 +3696,8 @@ async function handleAlertTriggersActiveList(
     );
   }
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
+    const rows =
+      await sql<ChainAlertTriggers>`SELECT * FROM chain_alert_triggers WHERE active`;
     return writeJson({
       triggers: rows.map((row) =>
         evaluatorAlertTriggerView(normalizeAlertTriggerRow(row)),
@@ -3987,7 +3996,7 @@ async function handleWatchTriggerUpdate(
   }
   return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
-      await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
+      await sql<ChainAlertTriggers>`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
       return writeJson({ error: "no such trigger" }, 404);
     }
