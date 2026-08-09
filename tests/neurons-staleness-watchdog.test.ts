@@ -417,18 +417,36 @@ describe("handleScheduled NEURONS_STALENESS_WATCHDOG_CRON", () => {
     // lane_health (#9330/#9340), so a bare `queries.length === 1` would have to be
     // bumped on every added statement and would stop saying anything about which
     // statement ran. Exactly one read of the lane, and it is the right read.
+    //
+    // TWO reads of `neurons` now, not one: #10262 folded the subnet-lifecycle
+    // detection into this same tick, and it reads the netuid set from the same
+    // newest pass. So the watchdog's own read is identified by SHAPE (`AS
+    // covered` is unique to it) rather than by being the only one -- keeping
+    // the original intent without making an unrelated lane's query a failure.
+    //
+    // That this asserted 1 and PASSED is exactly how #10265 hid: subnet_lifecycle
+    // was in no NEON_SOLE_STORE_TABLES list, so readStore answered undefined and
+    // the lifecycle lane returned before issuing a single statement. Declaring
+    // the table is what makes the second read appear.
     const reads = queries.filter((q: string) => q.includes("FROM neurons"));
-    assert.equal(reads.length, 1);
-    assert.match(reads[0], /MAX\(captured_at\)/);
-    assert.match(reads[0], /FROM neurons/);
+    assert.equal(reads.length, 2);
+    const covered = reads.filter((q: string) => q.includes("AS covered"));
     // The coverage half has to be IN the read, or the rule is being handed a
     // number nothing measured.
-    assert.match(reads[0], /AS covered/);
+    assert.equal(covered.length, 1);
+    assert.match(covered[0], /MAX\(captured_at\)/);
+    assert.match(covered[0], /FROM neurons/);
     // The durable record is the whole point of the change: a healthy tick must be
     // recorded too, or "the watchdog stopped running" stays invisible.
+    //
+    // TWO verdicts now, for the same reason as the two reads above: the
+    // subnet-lifecycle lane folded into this tick (#10262) records its own.
+    // The statements are textually identical -- they differ only in the bound
+    // `lane` value -- so this asserts the count and the per-lane assertions
+    // live in tests/subnet-lifecycle.test.ts, which can see the binds.
     const writes = queries.filter((q: string) =>
       q.includes("INSERT INTO lane_health"),
     );
-    assert.equal(writes.length, 1);
+    assert.equal(writes.length, 2);
   });
 });
