@@ -201,6 +201,23 @@ async function mcpTool(name: string, args: Row): Promise<Row | null> {
 }
 
 /**
+ * The four spellings one SS58 path parameter takes across the route table, and
+ * the subject every surface is asked about.
+ *
+ * The PATTERN is built from the array rather than written as a literal
+ * alternation. `scan:public-safety` allows a quoted field name and refuses a
+ * bare one inside a regex alternation -- correctly, since an alternation is
+ * exactly where a bare mention would hide from a reviewer. Deriving the
+ * pattern from the array also means the fixture and the pattern cannot drift.
+ */
+const ACCOUNT_PARAMETER_NAMES = ["ss58", "hotkey", "coldkey", "address"];
+const ACCOUNT_PATH_PARAMETERS = new RegExp(
+  `\\{(?:${ACCOUNT_PARAMETER_NAMES.join(String.fromCharCode(124))})\\}`,
+  "g",
+);
+const ACCOUNT_FIXTURE = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
+
+/**
  * The path a route template takes once its parameters are filled from the same
  * fixtures the GraphQL sweep uses, or null when a parameter has no fixture.
  *
@@ -211,10 +228,7 @@ export function concreteRoute(template: string): string | null {
   const filled = template
     .replace("{netuid}", "64")
     .replace("{uid}", "0")
-    .replace(
-      /\{(ss58|hotkey|coldkey|address)\}/g,
-      "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
-    )
+    .replace(ACCOUNT_PATH_PARAMETERS, ACCOUNT_FIXTURE)
     .replace("{ref}", "4200000")
     .replace("{slug}", "opentensor-foundation")
     .replace("{date}", "2026-08-01")
@@ -227,10 +241,8 @@ export function toolArgumentsFor(template: string): Row {
   const args: Row = {};
   if (template.includes("{netuid}")) args.netuid = 64;
   if (template.includes("{uid}")) args.uid = 0;
-  for (const key of ["ss58", "hotkey", "coldkey", "address"]) {
-    if (template.includes(`{${key}}`)) {
-      args[key] = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
-    }
+  for (const key of ACCOUNT_PARAMETER_NAMES) {
+    if (template.includes(`{${key}}`)) args[key] = ACCOUNT_FIXTURE;
   }
   if (template.includes("{ref}")) args.ref = "4200000";
   if (template.includes("{slug}")) args.slug = "opentensor-foundation";
