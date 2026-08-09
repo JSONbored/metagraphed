@@ -175,27 +175,78 @@ export function validateRouteArgs(
 }
 
 /**
+ * The page size this request resolved to: what the caller asked for, or the
+ * default the route PUBLISHES (#10060).
+ *
+ * The number is not restated here and no longer restated by the handler. It is
+ * declared once, beside the ceiling, in the module that owns the route's bounds
+ * -- `schemas-src/route-queries.ts` passes it to `limitSchema(max, fallback)`,
+ * which puts it in `openapi.json` as the parameter's `default`, and this reads
+ * it back out of the same object. A caller and the server now get the page size
+ * from one place.
+ *
+ * Before this, 103 of the 128 published `limit` parameters carried no `default`
+ * while their handler applied one -- so the contract could not say what a
+ * caller got for omitting it, and the MCP tool mirroring the same route DID
+ * declare one, leaving the two published surfaces disagreeing about a route
+ * neither was wrong about.
+ *
+ * Throws for a route that publishes no default. That is a developer-config
+ * error, not a request the caller can make: the 36 collection routes and the
+ * three others that return every matching row when `limit` is absent read
+ * `routeQuery(url).limit` directly, because `undefined` is the answer there and
+ * substituting a number would truncate them.
+ */
+export function pageLimit(url: URL): number {
+  const asked = routeQuery(url).limit;
+  if (asked !== undefined) return asked;
+  const fallback = publishedLimitDefault(url.pathname);
+  if (fallback === undefined) {
+    throw new Error(`No published limit default for ${url.pathname}`);
+  }
+  return fallback;
+}
+
+/**
+ * What `limitSchema(max, fallback)` recorded, read back off the published
+ * field.
+ *
+ * `.meta()` does not see through `.optional()`, and every query parameter is
+ * optional, so the wrapper comes off first -- and stays off for the routes
+ * that declare no `limit` at all, where there is nothing to unwrap. This is the
+ * same metadata object `z.toJSONSchema` turns into the published `default`
+ * keyword, so the contract and the runtime cannot be reading different numbers.
+ */
+function publishedLimitDefault(pathname: string): number | undefined {
+  const field = routeQuerySchemasForPathname(pathname)?.plain.shape.limit as
+    z.ZodType | undefined;
+  const inner = field instanceof z.ZodOptional ? field.unwrap() : field;
+  const declared = (inner as z.ZodType | undefined)?.meta()?.default;
+  return typeof declared === "number" ? declared : undefined;
+}
+
+/**
  * The pagination triplet from the already-validated query.
  *
  * `parsePagination` used to do this AND enforce it, restating `limit`'s bound
  * (#9916's reject-don't-clamp rule) next to a hand-rolled `offset` clamp that
  * did the opposite -- so one request could have its page size rejected and its
  * offset silently moved. Both bounds are published; the router enforces both
- * from the schema, and what is left here is the page-size default, which the
- * contract does not state.
+ * from the schema, and the page size now comes from the schema too.
  *
- * `defaultLimit` therefore stays a caller-supplied profile (FEED_PAGINATION /
- * BLOCK_PAGINATION) rather than being read off the schema: 83 of the 84 routes
- * that publish a `limit` publish no `default` alongside it. Publishing them is
- * a contract change and its own issue -- this is the read, not the decision.
+ * `defaultLimit` used to be a caller-supplied profile (FEED_PAGINATION /
+ * BLOCK_PAGINATION) because the contract did not state the default. It does
+ * now, on every route that has one, so the argument is gone rather than kept
+ * as a second way to say the same thing.
  */
-export function resolvePage(
-  url: URL,
-  { defaultLimit }: { defaultLimit: number },
-): { limit: number; offset: number; cursor: string | null } {
-  const { limit, offset, cursor } = routeQuery(url);
+export function resolvePage(url: URL): {
+  limit: number;
+  offset: number;
+  cursor: string | null;
+} {
+  const { offset, cursor } = routeQuery(url);
   return {
-    limit: limit ?? defaultLimit,
+    limit: pageLimit(url),
     offset: offset ?? 0,
     cursor: cursor ?? null,
   };

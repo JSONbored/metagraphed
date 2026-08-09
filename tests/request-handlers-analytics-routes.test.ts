@@ -792,7 +792,11 @@ describe("handleLeaderboards", () => {
   test("health/rpc/growth/reliability boards are always empty; most-complete is not", async () => {
     const env = createLocalArtifactEnv();
     const body = await json(
-      await handleLeaderboards(req("/"), mockEnv(env), url("/")),
+      await handleLeaderboards(
+        req("/api/v1/registry/leaderboards"),
+        mockEnv(env),
+        url("/api/v1/registry/leaderboards"),
+      ),
     );
     assert.deepEqual(body.data.boards["healthiest"], []);
     assert.deepEqual(body.data.boards["fastest-rpc"], []);

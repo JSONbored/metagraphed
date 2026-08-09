@@ -18,16 +18,6 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { CHAIN_SERVING_LIMIT_DEFAULT } from "../../src/chain-serving.ts";
-import { CHAIN_TURNOVER_LIMIT_DEFAULT } from "../../src/route-limits.ts";
-import { CHAIN_WEIGHTS_LIMIT_DEFAULT } from "../../src/chain-weights.ts";
-import { CHAIN_PROMETHEUS_LIMIT_DEFAULT } from "../../src/chain-prometheus.ts";
-import { CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT } from "../../src/chain-stake-transfers.ts";
-import { CHAIN_STAKE_FLOW_LIMIT_DEFAULT } from "../../src/chain-stake-flow.ts";
-import { CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } from "../../src/chain-weight-setters.ts";
-import { CHAIN_AXON_REMOVALS_LIMIT_DEFAULT } from "../../src/chain-axon-removals.ts";
-import { CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT } from "../../src/chain-alpha-volume.ts";
-import { CHAIN_STAKE_MOVES_LIMIT_DEFAULT } from "../../src/chain-stake-moves.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { ChainAlphaVolumeArtifactSchema } from "../routes/chain-alpha-volume.ts";
 import {
@@ -72,9 +62,7 @@ const RouteQuery_chain_alpha_volume =
 export const GetChainTurnoverInputSchema = z
   .object({
     window: RouteQuery_chain_turnover.shape.window,
-    limit: RouteQuery_chain_turnover.shape.limit.meta({
-      default: CHAIN_TURNOVER_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_turnover.shape.limit,
   })
   .strict();
 export type GetChainTurnoverInput = z.infer<typeof GetChainTurnoverInputSchema>;
@@ -87,9 +75,7 @@ export type GetChainTurnoverOutput = z.infer<
 export const GetChainStakeFlowInputSchema = z
   .object({
     window: RouteQuery_chain_stake_flow.shape.window,
-    limit: RouteQuery_chain_stake_flow.shape.limit.meta({
-      default: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_stake_flow.shape.limit,
   })
   .strict();
 export type GetChainStakeFlowInput = z.infer<
@@ -103,9 +89,7 @@ export type GetChainStakeFlowOutput = z.infer<
 
 export const GetChainAlphaVolumeInputSchema = z
   .object({
-    limit: RouteQuery_chain_alpha_volume.shape.limit.meta({
-      default: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_alpha_volume.shape.limit,
   })
   .strict();
 export type GetChainAlphaVolumeInput = z.infer<
@@ -124,9 +108,7 @@ export type GetChainAlphaVolumeOutput = z.infer<
 export const GetChainWeightsInputSchema = z
   .object({
     window: RouteQuery_chain_weights.shape.window,
-    limit: RouteQuery_chain_weights.shape.limit.meta({
-      default: CHAIN_WEIGHTS_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_weights.shape.limit,
   })
   .strict();
 export type GetChainWeightsInput = z.infer<typeof GetChainWeightsInputSchema>;
@@ -137,9 +119,7 @@ export type GetChainWeightsOutput = z.infer<typeof GetChainWeightsOutputSchema>;
 export const GetChainWeightSettersInputSchema = z
   .object({
     window: RouteQuery_chain_weights_setters.shape.window,
-    limit: RouteQuery_chain_weights_setters.shape.limit.meta({
-      default: CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_weights_setters.shape.limit,
   })
   .strict();
 export type GetChainWeightSettersInput = z.infer<
@@ -157,9 +137,7 @@ export type GetChainWeightSettersOutput = z.infer<
 export const GetChainStakeMovesInputSchema = z
   .object({
     window: RouteQuery_chain_stake_moves.shape.window,
-    limit: RouteQuery_chain_stake_moves.shape.limit.meta({
-      default: CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_stake_moves.shape.limit,
   })
   .strict();
 export type GetChainStakeMovesInput = z.infer<
@@ -174,9 +152,7 @@ export type GetChainStakeMovesOutput = z.infer<
 export const GetChainStakeTransfersInputSchema = z
   .object({
     window: RouteQuery_chain_stake_transfers.shape.window,
-    limit: RouteQuery_chain_stake_transfers.shape.limit.meta({
-      default: CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_stake_transfers.shape.limit,
   })
   .strict();
 export type GetChainStakeTransfersInput = z.infer<
@@ -192,9 +168,7 @@ export type GetChainStakeTransfersOutput = z.infer<
 export const GetChainAxonRemovalsInputSchema = z
   .object({
     window: RouteQuery_chain_axon_removals.shape.window,
-    limit: RouteQuery_chain_axon_removals.shape.limit.meta({
-      default: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_axon_removals.shape.limit,
   })
   .strict();
 export type GetChainAxonRemovalsInput = z.infer<
@@ -209,9 +183,7 @@ export type GetChainAxonRemovalsOutput = z.infer<
 export const GetChainServingInputSchema = z
   .object({
     window: RouteQuery_chain_serving.shape.window,
-    limit: RouteQuery_chain_serving.shape.limit.meta({
-      default: CHAIN_SERVING_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_serving.shape.limit,
   })
   .strict();
 export type GetChainServingInput = z.infer<typeof GetChainServingInputSchema>;
@@ -222,9 +194,7 @@ export type GetChainServingOutput = z.infer<typeof GetChainServingOutputSchema>;
 export const GetChainPrometheusInputSchema = z
   .object({
     window: RouteQuery_chain_prometheus.shape.window,
-    limit: RouteQuery_chain_prometheus.shape.limit.meta({
-      default: CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_prometheus.shape.limit,
   })
   .strict();
 export type GetChainPrometheusInput = z.infer<

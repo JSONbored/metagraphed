@@ -23,14 +23,12 @@ import {
 } from "./analytics.ts";
 import {
   historyWindow,
+  pageLimit,
   parseRouteQuery,
   routeQuery,
   uptimeWindow,
 } from "../../src/route-query.ts";
-import {
-  EMISSION_PIPELINE_LIMIT_MAX,
-  LEADERBOARDS_LIMIT_DEFAULT,
-} from "../../src/route-limits.ts";
+import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
 import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
@@ -473,8 +471,8 @@ export function canonicalTrajectoryCachePath(
 export function canonicalLeaderboardsCachePath(url: URL): string {
   const parsed = parseRouteQuery(url);
   if ("error" in parsed) return `${url.pathname}${url.search}`;
-  const { limit = LEADERBOARDS_LIMIT_DEFAULT, board } = parsed.query;
-  const params = [`limit=${limit}`];
+  const { board } = parsed.query;
+  const params = [`limit=${pageLimit(url)}`];
   if (board) params.unshift(`board=${encodeURIComponent(String(board))}`);
   return `${url.pathname}?${params.join("&")}`;
 }
@@ -610,7 +608,8 @@ export async function handleLeaderboards(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const { board, limit = LEADERBOARDS_LIMIT_DEFAULT } = routeQuery(url);
+  const { board } = routeQuery(url);
+  const limit = pageLimit(url);
   const { data, isFallback } = await composeLeaderboardsData(env, {
     board: (board as string | undefined) ?? null,
     limit,

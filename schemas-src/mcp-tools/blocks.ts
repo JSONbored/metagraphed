@@ -77,7 +77,7 @@ export const ListBlocksInputSchema = z
         "Inclusive lower bound on a block's event count; quieter blocks are excluded.",
       )
       .meta({ examples: [20] }),
-    limit: RouteQuery_blocks.shape.limit.meta({ default: 50 }),
+    limit: RouteQuery_blocks.shape.limit,
     offset: RouteQuery_blocks.shape.offset,
     cursor: RouteQuery_blocks.shape.cursor,
   })
@@ -133,7 +133,7 @@ export const ListBlockExtrinsicsInputSchema = z
           "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
         ],
       }),
-    limit: RouteQuery_blocks_ref_extrinsics.shape.limit.meta({ default: 50 }),
+    limit: RouteQuery_blocks_ref_extrinsics.shape.limit,
     offset: RouteQuery_blocks_ref_extrinsics.shape.offset,
   })
   .strict();
@@ -159,7 +159,7 @@ export const GetBlockEventsInputSchema = z
           "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
         ],
       }),
-    limit: RouteQuery_blocks_ref_events.shape.limit.meta({ default: 100 }),
+    limit: RouteQuery_blocks_ref_events.shape.limit,
     offset: RouteQuery_blocks_ref_events.shape.offset,
   })
   .strict();

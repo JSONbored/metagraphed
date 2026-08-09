@@ -22,7 +22,7 @@ export const GetAccountHistoryInputSchema = z
     // example was rejected (#10115).
     from: RouteQuery_accounts_ss58_history.shape.from,
     to: RouteQuery_accounts_ss58_history.shape.to,
-    limit: RouteQuery_accounts_ss58_history.shape.limit.meta({ default: 100 }),
+    limit: RouteQuery_accounts_ss58_history.shape.limit,
     offset: RouteQuery_accounts_ss58_history.shape.offset,
     cursor: RouteQuery_accounts_ss58_history.shape.cursor,
   })

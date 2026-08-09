@@ -11,8 +11,6 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT } from "../../src/chain-transfer-pairs.ts";
-import { CHAIN_TRANSFER_LIMIT_DEFAULT } from "../../src/chain-transfers.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   ChainTransferPairsArtifactSchema,
@@ -31,9 +29,7 @@ const RouteQuery_chain_transfer_pairs =
 export const GetChainTransfersInputSchema = z
   .object({
     window: RouteQuery_chain_transfers.shape.window,
-    limit: RouteQuery_chain_transfers.shape.limit.meta({
-      default: CHAIN_TRANSFER_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_transfers.shape.limit,
   })
   .strict();
 export type GetChainTransfersInput = z.infer<
@@ -49,9 +45,7 @@ export const GetChainTransferPairsInputSchema = z
   .object({
     window: RouteQuery_chain_transfer_pairs.shape.window,
     sort: RouteQuery_chain_transfer_pairs.shape.sort,
-    limit: RouteQuery_chain_transfer_pairs.shape.limit.meta({
-      default: CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
-    }),
+    limit: RouteQuery_chain_transfer_pairs.shape.limit,
   })
   .strict();
 export type GetChainTransferPairsInput = z.infer<

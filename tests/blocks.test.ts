@@ -475,6 +475,15 @@ const BAD_BLOCK_REFS = [
   "99999999999999999999", // all-digits but overflows MAX_SAFE_INTEGER → 1e20
 ];
 
+// The ref under test is the ARGUMENT, not the pathname: the router 404s a
+// malformed ref before dispatch (verified live -- `/api/v1/blocks/0x1/extrinsics`,
+// `/1e3/`, `/12-3/` and `/%205/` are all 404 `No API route matched this path`),
+// so a URL carrying one describes a request that cannot happen. Since #10060 the
+// handlers read their page size off the route the pathname resolves to, and an
+// unroutable pathname resolves to nothing -- so these pass a dispatchable URL and
+// keep the malformed ref where the handler actually reads it.
+const DISPATCHABLE_REF = "1";
+
 for (const badRef of BAD_BLOCK_REFS) {
   test(`handleBlock("${badRef}") is a clean miss, not a coerced row (#2063)`, async () => {
     const env = dbWith({
@@ -500,10 +509,12 @@ for (const badRef of BAD_BLOCK_REFS) {
       feed: [{ block_number: 1, extrinsic_index: 0, observed_at: 5 }],
     });
     const res = await handleBlockExtrinsics(
-      req(`/api/v1/blocks/${badRef}/extrinsics`),
+      req(`/api/v1/blocks/${DISPATCHABLE_REF}/extrinsics`),
       env as unknown as Env,
       badRef,
-      new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/extrinsics`),
+      new URL(
+        `https://api.metagraph.sh/api/v1/blocks/${DISPATCHABLE_REF}/extrinsics`,
+      ),
     );
     const body = (await res.json()) as Row;
     assert.equal(body.data.block_number, null);
@@ -516,10 +527,12 @@ for (const badRef of BAD_BLOCK_REFS) {
       feed: [{ block_number: 1, event_index: 0, observed_at: 5 }],
     });
     const res = await handleBlockEvents(
-      req(`/api/v1/blocks/${badRef}/events`),
+      req(`/api/v1/blocks/${DISPATCHABLE_REF}/events`),
       env as unknown as Env,
       badRef,
-      new URL(`https://api.metagraph.sh/api/v1/blocks/${badRef}/events`),
+      new URL(
+        `https://api.metagraph.sh/api/v1/blocks/${DISPATCHABLE_REF}/events`,
+      ),
     );
     const body = (await res.json()) as Row;
     assert.equal(body.data.block_number, null);

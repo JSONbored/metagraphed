@@ -22,12 +22,7 @@ const RouteQuery_chain_subnet_lifecycle =
 export const GetSubnetLifecycleInputSchema = z
   .object({
     netuid: netuidSchema(),
-    // The MCP narrowing of the route's ceiling, declared rather than silently
-    // different: an agent paying per token wants a page it can read, and this
-    // table is small enough that 100 is almost always the whole history.
-    limit: RouteQuery_subnets_netuid_lifecycle.shape.limit.meta({
-      default: 100,
-    }),
+    limit: RouteQuery_subnets_netuid_lifecycle.shape.limit,
     offset: RouteQuery_subnets_netuid_lifecycle.shape.offset,
   })
   .strict();
@@ -43,7 +38,12 @@ export type GetSubnetLifecycleOutput = z.infer<
 export const GetChainSubnetLifecycleInputSchema = z
   .object({
     window: RouteQuery_chain_subnet_lifecycle.shape.window,
-    limit: RouteQuery_chain_subnet_lifecycle.shape.limit.meta({ default: 100 }),
+    // Was a local `default: 100` against a route that serves 50 -- verified
+    // live, `GET /api/v1/chain/subnet-lifecycle` with no `limit` answers
+    // `limit: 50`. Not a declared narrowing but the opposite: the tool
+    // advertised a WIDER page than its own route, which #9701's asymmetry says
+    // never happens. Inherited now, so there is one number.
+    limit: RouteQuery_chain_subnet_lifecycle.shape.limit,
   })
   .strict();
 export type GetChainSubnetLifecycleInput = z.infer<

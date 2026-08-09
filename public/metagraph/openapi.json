@@ -56547,11 +56547,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -57048,11 +57049,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -57218,11 +57220,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -57554,11 +57557,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -57985,11 +57989,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -58277,11 +58282,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -58450,11 +58456,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -58614,11 +58621,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -58787,11 +58795,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -58963,11 +58972,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -59136,11 +59146,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -59300,11 +59311,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -59464,11 +59476,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -59628,11 +59641,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -59804,11 +59818,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -60356,7 +60371,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -60685,11 +60700,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -61792,7 +61808,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -62610,11 +62626,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -63205,11 +63222,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "description": "Max counterparties to return in list mode (default 20), or max transfer evidence rows in relationship drilldown mode when ?counterparty is present (default 50).",
               "maximum": 100,
               "minimum": 1,
@@ -63612,11 +63630,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -63791,11 +63810,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -63983,11 +64003,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -64250,11 +64271,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -65730,11 +65752,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -66019,11 +66042,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -66775,11 +66799,12 @@
         "operationId": "blocksFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -67228,11 +67253,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -67382,11 +67408,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -67817,7 +67844,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68047,11 +68074,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -68430,11 +68458,12 @@
         "operationId": "chainAlphaVolume",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -68578,11 +68607,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -68835,11 +68865,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -69232,11 +69263,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 512,
               "minimum": 1,
               "type": "integer"
@@ -69356,11 +69388,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -69536,7 +69569,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69669,11 +69702,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -69826,11 +69860,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 200,
               "minimum": 1,
               "type": "integer"
@@ -69951,11 +69986,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 512,
               "minimum": 1,
               "type": "integer"
@@ -70060,11 +70096,12 @@
         "operationId": "chainIdentityHistory",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 200,
               "minimum": 1,
               "type": "integer"
@@ -70476,11 +70513,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -70622,11 +70660,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -70770,11 +70809,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -70928,11 +70968,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71085,11 +71126,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71233,11 +71275,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71381,11 +71424,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71532,11 +71576,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -71678,11 +71723,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71838,11 +71884,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -71987,11 +72034,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -72133,11 +72181,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -72279,11 +72328,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -73117,7 +73167,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73551,7 +73601,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73962,7 +74012,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74382,7 +74432,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74599,7 +74649,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74888,7 +74938,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -75084,7 +75134,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -75339,11 +75389,12 @@
         "operationId": "extrinsicsFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -78300,7 +78351,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78448,11 +78499,12 @@
         "operationId": "governanceConfigChanges",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -78701,7 +78753,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79085,7 +79137,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79252,7 +79304,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79406,7 +79458,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80263,7 +80315,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80488,7 +80540,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80907,7 +80959,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81106,11 +81158,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -81422,7 +81475,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81708,7 +81761,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82043,7 +82096,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82446,7 +82499,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82674,7 +82727,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82949,7 +83002,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83273,7 +83326,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83490,7 +83543,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84013,7 +84066,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84204,7 +84257,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84470,7 +84523,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 10.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84807,7 +84860,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -85200,7 +85253,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -85935,7 +85988,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86854,7 +86907,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87054,11 +87107,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 50). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 50). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 10.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 10,
               "maximum": 50,
               "minimum": 1,
               "type": "integer"
@@ -87199,11 +87253,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -87381,7 +87436,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87597,7 +87652,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87860,7 +87915,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -88501,11 +88556,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -88727,11 +88783,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -88889,11 +88946,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -89377,11 +89435,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 100,
               "maximum": 1000,
               "minimum": 1,
               "type": "integer"
@@ -91631,11 +91690,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 200,
               "minimum": 1,
               "type": "integer"
@@ -91837,7 +91897,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93457,11 +93517,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -93590,11 +93651,12 @@
         "operationId": "sudoCalls",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
@@ -94006,7 +94068,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned.",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -94300,11 +94362,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 2000,
               "minimum": 1,
               "type": "integer"
@@ -94721,11 +94784,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 20,
               "maximum": 2000,
               "minimum": 1,
               "type": "integer"
@@ -94888,11 +94952,12 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916).",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
+              "default": 50,
               "maximum": 512,
               "minimum": 1,
               "type": "integer"

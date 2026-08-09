@@ -43,9 +43,7 @@ export type GetSubnetHyperparamsOutput = z.infer<
 export const GetSubnetHyperparamsHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    limit: RouteQuery_subnets_netuid_hyperparameters_history.shape.limit.meta({
-      default: 100,
-    }),
+    limit: RouteQuery_subnets_netuid_hyperparameters_history.shape.limit,
     offset: RouteQuery_subnets_netuid_hyperparameters_history.shape.offset,
     cursor: RouteQuery_subnets_netuid_hyperparameters_history.shape.cursor,
   })
