@@ -425,6 +425,7 @@ import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-n
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
 import { isFinneySs58Address } from "../src/account-balance.ts";
 import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
+import { runSubnetBurnCoverageWatchdog } from "../src/subnet-burn-coverage-watchdog.ts";
 import {
   readChainDetailHead,
   runChainDetailStalenessWatchdog,
@@ -2364,6 +2365,24 @@ async function dispatchScheduled(
             },
           ).then(() => undefined),
         );
+        // COVERAGE, on the same tick that wrote it (#10308).
+        //
+        // Deliberately not its own cron. Workers Builds deploys code but not
+        // cron triggers, so a new expression would need a separate
+        // `wrangler triggers deploy` and would silently never fire until
+        // someone ran it -- and a watchdog that does not run is worse than
+        // none, because the lane card then reads "no verdict" rather than
+        // "nobody checked".
+        //
+        // Riding the capture tick is also when the answer is knowable: the
+        // rows have just landed, so "how many netuids does the newest stamp
+        // carry" is a question about THIS pass rather than about whichever
+        // pass happened to be newest when a separate schedule fired.
+        //
+        // waitUntil, not awaited: the capture's own result is what the cron
+        // reports, and a watchdog must never be able to fail the lane it
+        // watches.
+        ctx.waitUntil(runSubnetBurnCoverageWatchdog(env).then(() => undefined));
         return result;
       } finally {
         store.close();
