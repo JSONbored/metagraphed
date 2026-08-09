@@ -140,6 +140,8 @@
     "deploy:wss-lb:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.wss-lb.jsonc --preview",
     "smoke:live": "node scripts/smoke-live-api.ts",
     "smoke:mcp": "node scripts/mcp-smoke-sweep.ts",
+    "conformance:cross-surface": "node scripts/check-cross-surface-values.ts",
+    "conformance:latency": "node scripts/check-operation-latency.ts",
     "conformance:graphql": "node scripts/check-graphql-conformance.ts",
     "conformance:mcp": "node scripts/check-mcp-conformance.ts",
     "lint": "eslint .",
