@@ -635,6 +635,9 @@ jobs:
       - name: Validate schema vocabularies
         run: npm run validate:schema-vocabularies
 
+      - name: Validate unreferenced modules
+        run: npm run validate:unreferenced-modules
+
       # Module-level mutable state in src/ and workers/ must register a reset
       # (src/module-state-registry.ts), or it leaks across test files once the
       # coverage pass runs with `isolate: false` (#8922). Static scan of the
