@@ -12,8 +12,9 @@ export function resolveTaoPrice(data: TaoMarketData | undefined): number | null 
 }
 
 /**
- * Shared TAO/USD price hook. Backed by the same coinpaprika query used on
- * /subnets so the browser cache dedupes across the app.
+ * Shared TAO/USD price hook. Backed by the same `tao-market` query the header
+ * ticker uses, so the browser cache dedupes across the app -- one composed
+ * read of OUR OWN API rather than a per-component fetch.
  *
  * Returns `null` price when the request is pending or has failed — callers
  * must render a "USD unavailable" fallback rather than invent a number.

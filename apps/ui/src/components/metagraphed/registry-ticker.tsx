@@ -156,14 +156,24 @@ export function RegistryTicker() {
 
         {/* Right cluster — market aggregates */}
         <div className="hidden min-[1120px]:flex items-center gap-4 shrink-0">
-          <span className="inline-flex items-baseline gap-1.5">
+          <span
+            className="inline-flex items-baseline gap-1.5"
+            title="The chain's own TotalIssuance x our TAO/USD price. Venues quoting a circulating-supply estimate report a smaller number against a smaller denominator."
+          >
             <span className="text-ink-muted">mkt cap</span>
             <span className="text-ink-strong tabular-nums">
               {formatUsdCompact(market?.market_cap)}
             </span>
           </span>
-          <span className="inline-flex items-baseline gap-1.5">
-            <span className="text-ink-muted">24h vol</span>
+          {/* "on-chain" is load-bearing, not decoration: this is subnet-AMM
+              volume from the account_events stream, not global exchange volume,
+              and it is roughly a third of what a ticker site reports. Dropping
+              the qualifier would make an honest number read as a wrong one. */}
+          <span
+            className="inline-flex items-baseline gap-1.5"
+            title="Subnet-AMM volume over 24h, priced in USD. Not global exchange volume — most TAO trades on centralized venues this does not index."
+          >
+            <span className="text-ink-muted">24h on-chain vol</span>
             <span className="text-ink-strong tabular-nums">
               {formatUsdCompact(market?.volume_24h)}
             </span>
