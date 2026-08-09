@@ -974,6 +974,19 @@ export async function handleSubnetHyperparams(
     // identical whichever tier answered.
     (await loadSubnetHyperparamsColdTier(env, netuid)) ??
     buildSubnetHyperparams(null, netuid);
+  // #10259: the card is retained for deregistered subnets rather than pruned,
+  // so it has to say which it is. Read-only and best-effort -- a lifecycle
+  // store that cannot be reached leaves the field null, which is "unknown"
+  // rather than a claim that the subnet is live.
+  const lifecycle = await loadSubnetLifecycle(env, netuid, {
+    limit: 1,
+    offset: 0,
+  }).catch(() => null);
+  (data as Record<string, unknown>).subnet_status = lifecycle?.[0]
+    ? lifecycle[0].event === "deregistered"
+      ? "deregistered"
+      : "live"
+    : null;
   return envelopeResponse(
     request,
     {

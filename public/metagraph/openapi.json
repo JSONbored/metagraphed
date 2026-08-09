@@ -9590,7 +9590,8 @@
               "yuma_version": 1
             },
             "netuid": 7,
-            "schema_version": 1
+            "schema_version": 1,
+            "subnet_status": "live"
           },
           "meta": {
             "artifact_path": "example",
@@ -46197,6 +46198,20 @@
             "maximum": 9007199254740991,
             "minimum": -9007199254740991,
             "type": "integer"
+          },
+          "subnet_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "live",
+                  "deregistered"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

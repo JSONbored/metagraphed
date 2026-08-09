@@ -10690,6 +10690,7 @@ export interface components {
             } | null;
             netuid: number;
             schema_version: number;
+            subnet_status?: ("live" | "deregistered") | null;
         } & {
             [key: string]: unknown;
         };
@@ -40998,7 +40999,8 @@ export interface operations {
                      *           "yuma_version": 1
                      *         },
                      *         "netuid": 7,
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "subnet_status": "live"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
