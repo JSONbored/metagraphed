@@ -253,7 +253,7 @@ describe("analytics-live loaders", () => {
     assert.ok(typeof data.boards === "object");
     // Without a `db` binding the surface_status/subnet_snapshots/
     // surface_uptime_daily boards stay empty -- the floor. The populated case
-    // runs against a real SQLite database in analytics-live-sqlite.test.ts.
+    // runs against a real Postgres in analytics-live-postgres.test.ts.
     assert.deepEqual(data.boards.healthiest, []);
     assert.deepEqual(data.boards["fastest-rpc"], []);
     assert.deepEqual(data.boards["fastest-growing"], []);
