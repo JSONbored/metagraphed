@@ -30,6 +30,7 @@
     "subnet-lease",
     "subnet-lease-by-network",
     "subnet-lease-history",
+    "subnet-lifecycle",
     "subnet-metagraph",
     "subnet-movers",
     "subnet-neuron",

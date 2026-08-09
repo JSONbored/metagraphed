@@ -37,6 +37,7 @@
     "chain-stake-moves-by-network",
     "chain-stake-transfers",
     "chain-stake-transfers-by-network",
+    "chain-subnet-lifecycle",
     "chain-transfer-pairs",
     "chain-transfer-pairs-by-network",
     "chain-transfers",
