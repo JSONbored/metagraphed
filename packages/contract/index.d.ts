@@ -10091,7 +10091,7 @@ export interface components {
              * @description How this capture compares with the previous one. Absent only where a producer omits it.
              * @enum {string}
              */
-            drift_status?: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+            drift_status?: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
             error?: string | null;
             hash?: string | null;
             netuid: number;
@@ -10118,7 +10118,7 @@ export interface components {
             schemas: {
                 content_type?: string | null;
                 /** @enum {string} */
-                drift_status: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+                drift_status: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
                 error?: string | null;
                 hash?: string | null;
                 netuid?: number;
@@ -37263,7 +37263,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "schemas": [
                      *           {
-                     *             "drift_status": "changed",
+                     *             "drift_status": "new",
                      *             "schema_url": "https://api.metagraph.sh/example",
                      *             "status": "captured",
                      *             "surface_id": "example"

@@ -32,6 +32,8 @@ import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { IntegrationReadinessSchema } from "./subnet-profile.ts";
 import { AgentReadinessBlockerSchema } from "./coverage.ts";
+import { SurfaceAuthLocationSchema } from "../shared.ts";
+import { SurfaceAuthSchemeSchema } from "../shared.ts";
 
 export const AgentReadinessStatusSchema = z
   .object({
@@ -211,25 +213,12 @@ export const AgentCatalogServiceSchema = z
     // declarations is #9799.
     auth: z
       .object({
-        scheme: z
-          .enum([
-            "none",
-            "bearer",
-            "api-key",
-            "basic",
-            "oauth2",
-            "signature",
-            "custom",
-          ])
-          .describe(
-            "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
-          ),
-        location: z
-          .enum(["header", "query", "cookie", "body"])
-          .optional()
-          .describe(
-            "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
-          ),
+        scheme: SurfaceAuthSchemeSchema.describe(
+          "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
+        ),
+        location: SurfaceAuthLocationSchema.optional().describe(
+          "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
+        ),
         name: z
           .string()
           .optional()

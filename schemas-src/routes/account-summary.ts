@@ -40,6 +40,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
+import { EntityCategorySchema } from "../shared.ts";
 
 const AccountRegistrationSchema = z
   .object({
@@ -90,19 +91,7 @@ const EntityLabelSchema = z
     // #8372: widened to match schemas/entity.schema.json's category enum
     // (bridge/pool/infra/project added; exchange/foundation/operator/other
     // retained so an existing entry stays valid). Keep both in sync.
-    category: z
-      .enum([
-        "exchange",
-        "bridge",
-        "foundation",
-        "pool",
-        "infra",
-        "project",
-        "operator",
-        "other",
-      ])
-      .nullable()
-      .optional(),
+    category: EntityCategorySchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),

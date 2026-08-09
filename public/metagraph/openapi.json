@@ -7964,7 +7964,7 @@
             "schema_version": 1,
             "schemas": [
               {
-                "drift_status": "changed",
+                "drift_status": "new",
                 "schema_url": "https://api.metagraph.sh/example",
                 "status": "captured",
                 "surface_id": "example"
@@ -41073,11 +41073,11 @@
           "drift_status": {
             "description": "How this capture compares with the previous one. Absent only where a producer omits it.",
             "enum": [
-              "changed",
-              "missing-after-previous-capture",
               "new",
+              "changed",
+              "unchanged",
               "not-captured",
-              "unchanged"
+              "missing-after-previous-capture"
             ],
             "type": "string"
           },
@@ -41207,11 +41207,11 @@
                 },
                 "drift_status": {
                   "enum": [
-                    "changed",
-                    "missing-after-previous-capture",
                     "new",
+                    "changed",
+                    "unchanged",
                     "not-captured",
-                    "unchanged"
+                    "missing-after-previous-capture"
                   ],
                   "type": "string"
                 },

@@ -79,6 +79,72 @@ export const BITTENSOR_NETWORK_VALUES = ["finney", "test", "local"] as const;
 export const BittensorNetworkSchema = z.enum(BITTENSOR_NETWORK_VALUES);
 export type BittensorNetwork = z.infer<typeof BittensorNetworkSchema>;
 
+/**
+ * What an address-labelling entity IS (#8372).
+ *
+ * Both copies carried an instruction rather than an import -- "keep all three
+ * in sync" on one and "Keep both in sync" on the other -- which is the shape
+ * of a vocabulary with no owner. `validate:schema-vocabularies` could not see
+ * either: prettier had wrapped both as `z` then `.enum([...])` on the next
+ * line, and the gate's matcher was anchored on `z.enum(`.
+ */
+export const ENTITY_CATEGORY_VALUES = [
+  "exchange",
+  "bridge",
+  "foundation",
+  "pool",
+  "infra",
+  "project",
+  "operator",
+  "other",
+] as const;
+export const EntityCategorySchema = z.enum(ENTITY_CATEGORY_VALUES);
+export type EntityCategory = z.infer<typeof EntityCategorySchema>;
+
+/**
+ * How a callable surface authenticates.
+ *
+ * Restated by the agent catalogue and the subnet detail card, which describe
+ * the same surfaces -- and the catalogue's own comment already said so:
+ * "Single-sourcing the two declarations is #9799". `signature` means the
+ * request is signed per call (a hotkey/nonce/signature header set) rather than
+ * carrying a static token.
+ */
+export const SURFACE_AUTH_SCHEME_VALUES = [
+  "none",
+  "bearer",
+  "api-key",
+  "basic",
+  "oauth2",
+  "signature",
+  "custom",
+] as const;
+export const SurfaceAuthSchemeSchema = z.enum(SURFACE_AUTH_SCHEME_VALUES);
+export type SurfaceAuthScheme = z.infer<typeof SurfaceAuthSchemeSchema>;
+
+/** Where an auth credential travels. Same two restating modules as the kind
+ * above -- one vocabulary split across two files describing one surface. */
+export const SURFACE_AUTH_LOCATION_VALUES = [
+  "header",
+  "query",
+  "cookie",
+  "body",
+] as const;
+export const SurfaceAuthLocationSchema = z.enum(SURFACE_AUTH_LOCATION_VALUES);
+export type SurfaceAuthLocation = z.infer<typeof SurfaceAuthLocationSchema>;
+
+/** What a capture pass concluded about one surface's schema since the last
+ * one. The drift artifact declares it and the profile card republishes it. */
+export const SCHEMA_DRIFT_STATUS_VALUES = [
+  "new",
+  "changed",
+  "unchanged",
+  "not-captured",
+  "missing-after-previous-capture",
+] as const;
+export const SchemaDriftStatusSchema = z.enum(SCHEMA_DRIFT_STATUS_VALUES);
+export type SchemaDriftStatus = z.infer<typeof SchemaDriftStatusSchema>;
+
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
 export const HEALTH_STATUS_VALUES = QUERY_ENUMS.healthStatus;

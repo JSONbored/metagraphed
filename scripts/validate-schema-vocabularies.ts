@@ -87,7 +87,14 @@ for (const dir of SCHEMA_DIRS) {
       if (values.every((value) => JSON_SCHEMA_TYPES.has(value))) return;
       sites.push({ file, values });
     };
-    for (const match of source.matchAll(/z\.enum\(\s*\[([^\]]*)\]\s*\)/g))
+    // `z\s*\.enum`, not `z\.enum`: prettier breaks a chain across lines once it
+    // grows past the print width, so `z.enum([...])` becomes `z` then
+    // `.enum([...])` on the next line the moment a `.describe()` is added. The
+    // anchored form stopped matching `chain-alpha-volume.ts` for exactly that
+    // reason and the gate reported the bullish/bearish/neutral allowlist entry
+    // as STALE -- a formatting change had made it blind, and the fix it asked
+    // for was to delete the entry guarding a live duplicate (#10288).
+    for (const match of source.matchAll(/z\s*\.enum\(\s*\[([^\]]*)\]\s*\)/g))
       push(match[1]);
     for (const match of source.matchAll(
       /(?:export )?const \w+\s*=\s*\[([^\]]*)\]\s*as const;/g,

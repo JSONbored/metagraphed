@@ -23,25 +23,14 @@
 // identical field).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EntityCategorySchema } from "../shared.ts";
 
 const EntityLabelSchema = z
   .object({
     name: z.string().nullable().optional(),
     // #8372: widened to match schemas/entity.schema.json's category enum
     // and account-summary.ts's own copy -- keep all three in sync.
-    category: z
-      .enum([
-        "exchange",
-        "bridge",
-        "foundation",
-        "pool",
-        "infra",
-        "project",
-        "operator",
-        "other",
-      ])
-      .nullable()
-      .optional(),
+    category: EntityCategorySchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
