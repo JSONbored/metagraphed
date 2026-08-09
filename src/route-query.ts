@@ -175,6 +175,49 @@ export function validateRouteArgs(
 }
 
 /**
+ * The route's own parse of a non-URL argument set, defaults applied (#10313).
+ *
+ * `validateRouteArgs` answers "is this allowed"; this answers "what is it".
+ * The difference matters for GraphQL, whose resolvers receive arguments rather
+ * than a URL and therefore cannot use `routeValue`: without this they restate
+ * the route's default -- `limit ?? MAX_CANDLES` -- which is a second copy of a
+ * number the schema already publishes, and the copy is what drifts.
+ *
+ * Returns null when the path has no query schema, so a caller can tell "this
+ * route declares nothing" from "this route declares nothing about that
+ * argument".
+ */
+export function parseRouteArgs<T = Record<string, unknown>>(
+  routePath: string,
+  args: Record<string, unknown>,
+): T | null {
+  const schemas = routeQuerySchemasForPathname(routePath);
+  if (!schemas) return null;
+  const supplied: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(args)) {
+    if (value !== null && value !== undefined && name in schemas.plain.shape) {
+      supplied[name] = value;
+    }
+  }
+  const parsed = schemas.plain.safeParse(supplied);
+  if (!parsed.success) return null;
+  // `.meta({ default })` is published, not applied by parse -- the same reason
+  // `pageLimit` reads it back rather than trusting the parsed object.
+  const withDefaults = { ...(parsed.data as Record<string, unknown>) };
+  for (const [name, field] of Object.entries(schemas.plain.shape)) {
+    if (withDefaults[name] !== undefined) continue;
+    const declared = field as z.ZodType;
+    const inner =
+      declared instanceof z.ZodOptional
+        ? (declared.unwrap() as z.ZodType)
+        : declared;
+    const fallback = inner.meta()?.default;
+    if (fallback !== undefined) withDefaults[name] = fallback;
+  }
+  return withDefaults as T;
+}
+
+/**
  * The page size this request resolved to: what the caller asked for, or the
  * default the route PUBLISHES (#10060).
  *

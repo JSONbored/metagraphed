@@ -78,6 +78,10 @@ export interface SubnetOhlcQuery {
   interval?: unknown;
   /** 1..MAX_OHLC_WINDOW_DAYS. Same reasoning. */
   days?: unknown;
+  /** How many candles to return, newest-first, up to MAX_CANDLES (#10318).
+   * The window is unchanged -- `candle_count` still reports what the window
+   * holds, so a narrowed page keeps its denominator. */
+  limit?: number;
 }
 
 /**
@@ -197,7 +201,10 @@ export async function loadSubnetOhlcColdTier(
   }
 
   return {
-    data: buildSubnetOhlcFromBuckets(buckets, subnet, { interval }),
+    data: buildSubnetOhlcFromBuckets(buckets, subnet, {
+      interval,
+      limit: query.limit,
+    }),
     // data-api derives generatedAt from the newest observed_at it read; the
     // capped window is the same set of rows the candles came from, so the
     // two tiers report the same instant for the same data.

@@ -4441,6 +4441,7 @@ export type QuerySubnet_MoversArgs = {
 export type QuerySubnet_OhlcArgs = {
   days?: InputMaybe<Scalars['Int']['input']>;
   interval?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
 };
 
@@ -5678,6 +5679,8 @@ export type SubnetMoversNetwork = {
 /** One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
 export type SubnetOhlc = {
   __typename?: 'SubnetOhlc';
+  /** How many candles the WINDOW holds, not how many this page carries. A limit narrows the candle list from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
+  candle_count: Scalars['Int']['output'];
   candles: Array<SubnetOhlcCandle>;
   /** The resolved bucket interval (1h/1d). */
   interval?: Maybe<Scalars['String']['output']>;
@@ -10574,6 +10577,7 @@ export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType ex
 }>;
 
 export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlc'] = ResolversParentTypes['SubnetOhlc']> = ResolversObject<{
+  candle_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   candles?: Resolver<Array<ResolversTypes['SubnetOhlcCandle']>, ParentType, ContextType>;
   interval?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

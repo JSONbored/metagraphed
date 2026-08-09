@@ -458,11 +458,12 @@ describe("buildSubnetOhlc — MAX_CANDLES cap", () => {
 });
 
 describe("buildSubnetOhlc — output shape", () => {
-  test("top-level shape carries schema_version, netuid, interval, candles, root_excluded", () => {
+  test("top-level shape carries schema_version, netuid, interval, candles, candle_count, root_excluded", () => {
     const data = buildSubnetOhlc([trade(STAKE_ADDED_KIND, 1, 1, BASE)], 12, {
       interval: "1d",
     });
     assert.deepEqual(Object.keys(data).sort(), [
+      "candle_count",
       "candles",
       "interval",
       "netuid",
@@ -471,6 +472,34 @@ describe("buildSubnetOhlc — output shape", () => {
     ]);
     assert.equal(data.netuid, 12);
     assert.equal(data.interval, "1d");
+  });
+
+  // #10318: `limit` narrows the PAGE, never the window. The route capped this
+  // response at MAX_CANDLES from the day it shipped and published no way to
+  // ask for fewer -- 486 KB and 13.5 s, the largest and slowest answer this
+  // API gives.
+  test("limit narrows the page from the recent end and keeps the denominator", () => {
+    const trades = Array.from({ length: 5 }, (_, i) =>
+      trade(STAKE_ADDED_KIND, 1, 1, BASE + i * 24 * 60 * 60 * 1000),
+    );
+    const full = buildSubnetOhlc(trades, 12, { interval: "1d" });
+    const paged = buildSubnetOhlc(trades, 12, { interval: "1d", limit: 2 });
+    assert.equal((full.candles as unknown[]).length, 5);
+    assert.equal((paged.candles as unknown[]).length, 2);
+    // The window is what it was; only the page moved.
+    assert.equal(paged.candle_count, 5);
+    assert.equal(full.candle_count, 5);
+    // NEWEST-first: a caller asking for two candles of a price series wants
+    // the recent end, not the oldest two of a 90-day window.
+    const newest = (full.candles as { bucket_start: number }[]).slice(-2);
+    assert.deepEqual(paged.candles, newest);
+  });
+
+  test("root reports a zero candle_count rather than omitting it", () => {
+    const data = buildSubnetOhlc([], 0, { interval: "1d" });
+    assert.equal(data.root_excluded, true);
+    assert.deepEqual(data.candles, []);
+    assert.equal(data.candle_count, 0);
   });
 
   test("each candle carries exactly the documented fields", () => {

@@ -31,6 +31,12 @@ export const SubnetOhlcArtifactSchema = z
       .enum(["1h", "1d"])
       .describe("The resolved bucket interval (1h/1d)."),
     candles: z.array(SubnetOhlcCandleSchema),
+    candle_count: z
+      .int()
+      .min(0)
+      .describe(
+        "How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page.",
+      ),
     root_excluded: z
       .boolean()
       .describe(

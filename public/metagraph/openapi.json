@@ -10085,6 +10085,7 @@
       "SubnetOhlcArtifactResponse": {
         "value": {
           "data": {
+            "candle_count": 1,
             "candles": [
               {
                 "bucket_start": 1,
@@ -49138,6 +49139,12 @@
         "additionalProperties": false,
         "description": "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope.",
         "properties": {
+          "candle_count": {
+            "description": "How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "candles": {
             "items": {
               "additionalProperties": false,
@@ -49221,6 +49228,7 @@
           "netuid",
           "interval",
           "candles",
+          "candle_count",
           "root_excluded"
         ],
         "type": "object"
@@ -91368,6 +91376,18 @@
             "schema": {
               "default": 90,
               "maximum": 365,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 2000.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "maximum": 2000,
               "minimum": 1,
               "type": "integer"
             }

@@ -11492,6 +11492,8 @@ export interface components {
         };
         /** @description One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
         SubnetOhlcArtifact: {
+            /** @description How many candles the WINDOW holds, not how many this page carries. A `limit` narrows `candles` from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
+            candle_count: number;
             candles: {
                 /** @description Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. */
                 bucket_start: number;
@@ -42929,6 +42931,8 @@ export interface operations {
             query?: {
                 interval?: "1h" | "1d";
                 days?: number;
+                /** @description Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 2000. */
+                limit?: number;
             };
             header?: never;
             path: {
@@ -42950,6 +42954,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "candle_count": 1,
                      *         "candles": [
                      *           {
                      *             "bucket_start": 1,

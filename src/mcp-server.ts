@@ -1576,10 +1576,12 @@ import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
+  MAX_CANDLES,
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { GET_SUBNET_OHLC_CANDLE_DEFAULT } from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
 import { computeStakeQuote } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
@@ -8511,6 +8513,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `days must be at most ${MAX_OHLC_WINDOW_DAYS}.`,
         );
       }
+      // The tool's own page size (#10318), smaller than the route's cap: the
+      // uncapped answer is 486 KB and 13.5 s, and an agent asking about a
+      // subnet's price wants recent candles, not 83 days of hourly ones.
+      // `candle_count` still reports the window, so the narrowing costs no
+      // context. Forwarded to the Postgres tier too, or the two surfaces would
+      // disagree about the page.
+      const limit =
+        optionalPositiveInt(args, "limit") ?? GET_SUBNET_OHLC_CANDLE_DEFAULT;
+      if (limit > MAX_CANDLES) {
+        throw toolError(
+          "invalid_params",
+          `limit must be at most ${MAX_CANDLES}.`,
+        );
+      }
       return (
         (
           await tryPostgresTier(
@@ -8518,15 +8534,21 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/ohlc`, {
               interval,
               days,
+              limit,
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
         )?.data ??
         // The SAME lakehouse reader REST's handleSubnetOhlc falls to, so the
         // two surfaces cannot disagree about a subnet's candles.
-        (await loadSubnetOhlcColdTier(ctx.env, netuid, { interval, days }))
-          ?.data ??
-        buildSubnetOhlc([], netuid, { interval })
+        (
+          await loadSubnetOhlcColdTier(ctx.env, netuid, {
+            interval,
+            days,
+            limit,
+          })
+        )?.data ??
+        buildSubnetOhlc([], netuid, { interval, limit })
       );
     },
   },
