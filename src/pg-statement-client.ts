@@ -86,32 +86,57 @@ export function createPgStatementClient(
     return c.query(toPositionalPlaceholders(stmt.text), stmt.values);
   };
 
+  /**
+   * BIND RETURNS A NEW STATEMENT. It must, and this is not a style choice.
+   *
+   * D1's `bind()` is immutable -- it yields a fresh statement and leaves the
+   * prepared one alone -- and the lanes are written against that contract. The
+   * idiom this whole module exists to keep working is:
+   *
+   *     const insert = db.prepare(SQL);
+   *     await db.batch(rows.map((r) => insert.bind(r.a, r.b)));
+   *
+   * An earlier version mutated one shared `stmt` and returned one shared
+   * `bound` object, so every element of that array was THE SAME OBJECT holding
+   * only the LAST row's values. `batch()` then ran the statement N times with
+   * identical parameters, and an `ON CONFLICT ... DO UPDATE` collapsed the lot
+   * into a single row.
+   *
+   * It failed silently and it failed in production: measured 2026-08-09,
+   * `subnet-burn-history` had written exactly ONE row per 15-minute tick since
+   * 2026-08-08T15:31 -- the instant the table went sole-store on Neon and this
+   * shim took over from D1 -- while reporting `captured 129` on every pass.
+   * 126 of 129 subnets stopped accruing history and every lane card stayed
+   * green. Nothing about the shape of the call looks wrong at the call site,
+   * which is exactly why the invariant belongs here.
+   */
   function prepare(text: string) {
-    const stmt: PendingStatement = { text, values: [] };
-    const bound = {
-      // `results` mirrors D1's envelope so a caller reading either shape works.
-      async all() {
-        const res = await run(stmt);
-        return { results: (res.rows ?? []) as unknown[] };
-      },
-      async run() {
-        const res = await run(stmt);
-        return { meta: { changes: res.rowCount ?? 0 } };
-      },
-      async first() {
-        const res = await run(stmt);
-        return ((res.rows ?? [])[0] ?? null) as unknown;
-      },
-      /** Read by batch() -- the pending statement, not a promise. */
-      __stmt: stmt,
+    const statement = (values: unknown[]) => {
+      const stmt: PendingStatement = { text, values };
+      return {
+        // `results` mirrors D1's envelope so a caller reading either shape works.
+        async all() {
+          const res = await run(stmt);
+          return { results: (res.rows ?? []) as unknown[] };
+        },
+        async run() {
+          const res = await run(stmt);
+          return { meta: { changes: res.rowCount ?? 0 } };
+        },
+        async first() {
+          const res = await run(stmt);
+          return ((res.rows ?? [])[0] ?? null) as unknown;
+        },
+        /** Read by batch() -- the pending statement, not a promise. */
+        __stmt: stmt,
+        /** A FRESH statement, never `this` -- see the note above. Chainable, so
+         * a re-bind of an already-bound statement is also independent. */
+        bind(...next: unknown[]) {
+          return statement(next);
+        },
+      };
     };
-    return {
-      bind(...values: unknown[]) {
-        stmt.values = values;
-        return bound;
-      },
-      ...bound,
-    };
+    return statement([]);
   }
 
   return {
