@@ -1,0 +1,66 @@
+name: Check operation latency
+
+# How long does every published operation actually take? (#10220)
+#
+# Six of 624 operations had ever been timed -- the six in #9789, each found by
+# hand after someone noticed a slow call. This times all of them: every REST
+# route with a subject, every MCP tool the live server advertises, every
+# GraphQL Query field.
+#
+# ONE SAMPLE EACH, so the budget is deliberately loose (5s). The point is to
+# catch the ten-second operation and to build a daily series, not to police
+# 300ms against 500ms -- a tighter budget would fail on weather.
+#
+# Out of band rather than in CI, for the same reason its four siblings are: it
+# needs production, and a check that cannot run on a pull request should not
+# pretend to.
+on:
+  schedule:
+    # Daily, and LAST of the five: after check-response-conformance (06:41),
+    # check-mcp-conformance (07:17), check-graphql-conformance (07:53) and
+    # check-cross-surface-values (08:31). A sweep measuring latency must not
+    # share the Worker with a sweep generating load, or it times the sibling.
+    - cron: "23 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-operation-latency
+  cancel-in-progress: false
+
+jobs:
+  latency:
+    name: Time every published operation
+    runs-on: ubuntu-latest
+    # ~620 serial calls at 1.6s spacing is ~17 minutes of spacing alone, plus
+    # the calls themselves; the ceiling leaves room for the slow tail without
+    # letting a hung fetch hold a runner all day.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Time every operation
+        run: |
+          node scripts/check-operation-latency.ts | tee latency.log
+          {
+            echo '## Operation latency'
+            echo '```'
+            cat latency.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

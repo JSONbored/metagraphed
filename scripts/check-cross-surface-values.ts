@@ -25,6 +25,7 @@ import { buildSchema } from "graphql";
 import { SDL } from "../src/graphql-sdl.ts";
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
 import { planAll, type FieldPlan } from "./check-graphql-conformance.ts";
+import { concreteRoute, toolArguments } from "./conformance-subjects.ts";
 
 type Row = Record<string, unknown>;
 
@@ -201,57 +202,6 @@ async function mcpTool(name: string, args: Row): Promise<Row | null> {
 }
 
 /**
- * The four spellings one SS58 path parameter takes across the route table, and
- * the subject every surface is asked about.
- *
- * The PATTERN is built from the array rather than written as a literal
- * alternation. `scan:public-safety` allows a quoted field name and refuses a
- * bare one inside a regex alternation -- correctly, since an alternation is
- * exactly where a bare mention would hide from a reviewer. Deriving the
- * pattern from the array also means the fixture and the pattern cannot drift.
- */
-const ACCOUNT_PARAMETER_NAMES = ["ss58", "hotkey", "coldkey", "address"];
-const ACCOUNT_PATH_PARAMETERS = new RegExp(
-  `\\{(?:${ACCOUNT_PARAMETER_NAMES.join(String.fromCharCode(124))})\\}`,
-  "g",
-);
-const ACCOUNT_FIXTURE = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
-
-/**
- * The path a route template takes once its parameters are filled from the same
- * fixtures the GraphQL sweep uses, or null when a parameter has no fixture.
- *
- * Shared subjects, deliberately: a triple compared with three different
- * subjects compares nothing.
- */
-export function concreteRoute(template: string): string | null {
-  const filled = template
-    .replace("{netuid}", "64")
-    .replace("{uid}", "0")
-    .replace(ACCOUNT_PATH_PARAMETERS, ACCOUNT_FIXTURE)
-    .replace("{ref}", "4200000")
-    .replace("{slug}", "opentensor-foundation")
-    .replace("{date}", "2026-08-01")
-    .replace("{crowdloan_id}", "0");
-  return filled.includes("{") ? null : filled;
-}
-
-/** Arguments for the MCP tool that mirrors this route. */
-export function toolArgumentsFor(template: string): Row {
-  const args: Row = {};
-  if (template.includes("{netuid}")) args.netuid = 64;
-  if (template.includes("{uid}")) args.uid = 0;
-  for (const key of ACCOUNT_PARAMETER_NAMES) {
-    if (template.includes(`{${key}}`)) args[key] = ACCOUNT_FIXTURE;
-  }
-  if (template.includes("{ref}")) args.ref = "4200000";
-  if (template.includes("{slug}")) args.slug = "opentensor-foundation";
-  if (template.includes("{date}")) args.date = "2026-08-01";
-  if (template.includes("{crowdloan_id}")) args.crowdloan_id = 0;
-  return args;
-}
-
-/**
  * Compare the top level of two answers to one question.
  *
  * SCALARS AND EMPTINESS only. A number that differs is the #10246 shape; an
@@ -345,7 +295,7 @@ export async function run(): Promise<CrossSurfaceReport> {
 
     const rest = await restBody(path);
     await sleep(CALL_SPACING_MS);
-    const mcp = await mcpTool(tool, toolArgumentsFor(template));
+    const mcp = await mcpTool(tool, toolArguments(template));
     await sleep(CALL_SPACING_MS);
     const graphql = await graphqlField(plan);
     await sleep(CALL_SPACING_MS);
