@@ -2822,6 +2822,8 @@ export const SDL = /* GraphQL */ `
     captured_at: String
     block_number: Int
     hyperparameters: Hyperparameters
+    "Whether this subnet is still registered: live | deregistered. The card is retained rather than pruned when a subnet leaves -- netuids are reused, so deleting it would let a re-registered subnet inherit a dead one's row. null means no lifecycle event has been recorded, which is not a claim either way."
+    subnet_status: String
   }
 
   "One subnet's on-chain hyperparameter block. Every field is nullable: a value absent from the captured row stays null rather than being coerced. *_ratio fields are 0..1 U16-derived ratios; *_tao fields are rao-exact (9dp); bonds_moving_avg_raw is the unscaled on-chain integer."

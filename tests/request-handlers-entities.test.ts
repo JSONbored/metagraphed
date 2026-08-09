@@ -4599,7 +4599,14 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSubnetHyperparams(req(path), env as unknown as Env, NETUID),
     );
     assert.equal(body.data.hyperparameters.tempo, 999);
-    assert.deepEqual(captures.sql, []);
+    // The hyperparameter DATA still comes entirely from the Postgres tier --
+    // the one statement here is #10259's subnet_status lookup, which reads
+    // subnet_lifecycle because the card is retained for deregistered subnets
+    // rather than pruned. Asserted by SHAPE rather than as an empty list, so
+    // this keeps saying "no tier query" instead of "no query at all".
+    assert.equal(captures.sql.length, 1);
+    assert.match(captures.sql[0], /FROM subnet_lifecycle/);
+    assert.doesNotMatch(captures.sql[0], /subnet_hyperparams/);
   });
 
   test("handleSubnetHyperparams: flag=postgres falls back to schema-stable null on failure (D1 retired)", async () => {

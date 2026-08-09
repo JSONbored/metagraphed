@@ -5509,6 +5509,8 @@ export type SubnetHyperparameters = {
   hyperparameters?: Maybe<Hyperparameters>;
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+  /** Whether this subnet is still registered: live | deregistered. The card is retained rather than pruned when a subnet leaves -- netuids are reused, so deleting it would let a re-registered subnet inherit a dead one's row. null means no lifecycle event has been recorded, which is not a claim either way. */
+  subnet_status?: Maybe<Scalars['String']['output']>;
 };
 
 export type SubnetHyperparamsHistory = {
@@ -10426,6 +10428,7 @@ export type SubnetHyperparametersResolvers<ContextType = GqlContext, ParentType 
   hyperparameters?: Resolver<Maybe<ResolversTypes['Hyperparameters']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetHyperparamsHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHyperparamsHistory'] = ResolversParentTypes['SubnetHyperparamsHistory']> = ResolversObject<{

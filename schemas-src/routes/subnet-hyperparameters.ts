@@ -65,6 +65,19 @@ export const SubnetHyperparametersArtifactSchema = z
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
     hyperparameters: SubnetHyperparametersSchema.nullable(),
+    /**
+     * Whether this subnet is still registered (#10259).
+     *
+     * The card is NOT pruned when a subnet is deregistered: netuids are reused,
+     * so deleting the row would let a re-registered subnet silently inherit a
+     * dead one's card, and the last known configuration is a fact worth
+     * keeping. This says which it is, so one call answers "is it live" instead
+     * of requiring a second to /lifecycle.
+     *
+     * `null` means no lifecycle event has been recorded for this netuid --
+     * distinct from `deregistered`, and not a claim either way.
+     */
+    subnet_status: z.enum(["live", "deregistered"]).nullable().optional(),
   })
   .passthrough();
 export type SubnetHyperparametersArtifact = z.infer<
