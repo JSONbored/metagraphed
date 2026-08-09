@@ -27,7 +27,7 @@ read); it accrues daily forward via the live rollup.
 
 Run (one-time; resumable):
   NEURON_DAILY_BACKFILL_SECRET=... \
-  uv run --with bittensor --with xxhash==3.5.0 python scripts/backfill-neuron-history.py --days 365
+  uv run --project scripts --with xxhash==3.5.0 python scripts/backfill-neuron-history.py --days 365
 """
 import argparse
 import ipaddress

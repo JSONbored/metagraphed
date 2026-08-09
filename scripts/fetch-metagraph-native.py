@@ -19,7 +19,7 @@ Units (verified by the parity check vs the prior Taostats data, #1348):
     floor take. Hotkeys with no Delegates entry get take=None (never
     registered as a delegate, not "0% take").
 
-Run: uv run --with bittensor python scripts/fetch-metagraph-native.py
+Run: uv run --project scripts python scripts/fetch-metagraph-native.py
 """
 import argparse
 import ipaddress

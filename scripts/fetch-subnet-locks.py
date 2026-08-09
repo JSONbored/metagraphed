@@ -44,7 +44,7 @@ from any previously-assumed "default") -- MaturityRate read 311622 against
 UnlockRate's 934866 -- so baking either into this snapshot would go stale
 silently the moment governance adjusts one.
 
-Run: uv run --with bittensor python scripts/fetch-subnet-locks.py
+Run: uv run --project scripts python scripts/fetch-subnet-locks.py
 """
 import argparse
 import json

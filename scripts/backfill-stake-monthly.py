@@ -30,7 +30,7 @@ retains historical state. In bittensor 10.4.x the metagraph helpers live on
 
 Run (one-time; resumable):
   NEURON_DAILY_BACKFILL_SECRET=... \
-  uv run --with bittensor python scripts/backfill-stake-monthly.py --months 8
+  uv run --project scripts python scripts/backfill-stake-monthly.py --months 8
 """
 import argparse
 import ipaddress
