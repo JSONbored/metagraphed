@@ -174,6 +174,9 @@ function overdueView(
 // `rows` are already ordered by activity (newest-first tiebreak); `totals` carries weight_sets
 // (COUNT(*)), distinct_setters (COUNT(DISTINCT identity)) and newest_observed (MAX). Each
 // setter's share is its count over the subnet total, null when the total is zero (no rows).
+// `distinct_setters` is the POPULATION and `setter_count` is the PAGE -- `setters.length`, what
+// the caller got back (#10249). They agree on a subnet whose setters fit under the cap and part
+// company on one whose do not, which is exactly when the distinction matters.
 // Null-safe: null/absent inputs yield the schema-stable empty card.
 export function buildSubnetWeightSetters(
   rows: Row[] | null | undefined,

@@ -140,16 +140,33 @@ export interface ChainServingResult {
 // distinct_servers) plus the newest observed_at. `limit` caps the leaderboard; subnet_count and
 // the distribution span every subnet with observed serving activity (subnets with no AxonServed
 // events in the window are absent). Null-safe: no rows yields the empty block.
+//
+// SUBNET_COUNT COMES FROM THE LOADER when the loader capped in SQL (#10249). This sentence used
+// to be false on exactly that path: the builder never sees the rows beyond the cap, so
+// `subnets.length` answered "how big was the page" under a field named for a population --
+// measured live, `?limit=20` published 20 where the window covered 38. The in-memory callers
+// still get the promise honestly from `subnets.length`, because they hand over every row.
 export function buildChainServing(
   subnetRows: Array<Record<string, unknown>> | null | undefined,
   {
     window,
     limit = CHAIN_SERVING_LIMIT_DEFAULT,
     networkDistinct,
+    subnetCount,
   }: {
     window?: string | null;
     limit?: number;
     networkDistinct?: { distinct_servers?: unknown; newest_observed?: unknown };
+    /**
+     * How many subnets the WINDOW covers, from the loader's own count.
+     *
+     * Optional because the in-memory callers hand this builder EVERY row and cap
+     * them here, where `subnets.length` is already the true answer. It is the
+     * SQL-capping path that needs telling: there the builder never sees the rows
+     * beyond the cap, so counting what arrived answers "how big was the page"
+     * under a field named for a population (#10249).
+     */
+    subnetCount?: number | null;
   } = {},
 ): ChainServingResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
@@ -225,7 +242,7 @@ export function buildChainServing(
     schema_version: 1,
     window: window ?? null,
     observed_at: observedAt,
-    subnet_count: subnets.length,
+    subnet_count: subnetCount ?? subnets.length,
     network,
     // Distribution of per-subnet re-announcement intensity over EVERY subnet (not just the
     // returned page), so the spread is network-wide even when `limit` truncates the leaderboard.

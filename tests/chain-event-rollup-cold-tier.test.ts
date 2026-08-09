@@ -35,6 +35,7 @@ function fakeEngine(
   answers: {
     rows?: Record<string, unknown>[] | null;
     network?: Record<string, unknown>[] | null;
+    subnets?: Record<string, unknown>[] | null;
   } = {},
 ) {
   const seen: string[] = [];
@@ -44,13 +45,19 @@ function fakeEngine(
     value === undefined ? fallback : value;
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
-    return sql.includes("ORDER BY")
-      ? pick(answers.rows, [
-          { netuid: 1, announcements: 5, distinct_servers: 3 },
-        ])
-      : pick(answers.network, [
-          { distinct_servers: 3, newest_observed: NOW - 1000 },
-        ]);
+    // Three queries now (#10249). Routed by shape rather than by call order,
+    // because they run in one `Promise.all` and order is not a contract.
+    if (sql.includes("ORDER BY")) {
+      return pick(answers.rows, [
+        { netuid: 1, announcements: 5, distinct_servers: 3 },
+      ]);
+    }
+    if (sql.includes("AS subnet_count")) {
+      return pick(answers.subnets, [{ subnet_count: 12 }]);
+    }
+    return pick(answers.network, [
+      { distinct_servers: 3, newest_observed: NOW - 1000 },
+    ]);
   };
   return {
     query,
@@ -60,7 +67,11 @@ function fakeEngine(
      * on GROUP BY: the uid-keyed network total is itself a GROUP BY subquery,
      * so that would misroute it. */
     rowsSql: () => seen.find((sql) => sql.includes("ORDER BY")),
-    networkSql: () => seen.find((sql) => !sql.includes("ORDER BY")),
+    networkSql: () =>
+      seen.find(
+        (sql) => !sql.includes("ORDER BY") && !sql.includes("AS subnet_count"),
+      ),
+    subnetCountSql: () => seen.find((sql) => sql.includes("AS subnet_count")),
   };
 }
 
@@ -250,7 +261,7 @@ describe("the SQL it emits", () => {
     // network-wide AxonServed servers in 7d, well under the per-subnet sum.
     const { engine, result } = load();
     await result;
-    assert.equal(engine.seen.length, 2, "both halves must be queried");
+    assert.equal(engine.seen.length, 3, "every half must be queried");
     const rowsSql = engine.rowsSql()!;
     const networkSql = engine.networkSql()!;
     assert.match(rowsSql, /GROUP BY netuid/);
@@ -427,5 +438,53 @@ describe("what it hands back", () => {
     ]);
     assert.equal(rollup.networkDistinct.distinct_servers, 4);
     assert.equal(rollup.networkDistinct.newest_observed, NOW - 5);
+  });
+
+  test("the subnet count comes from its own query, not from the page", async () => {
+    // #10249. `rows` is capped, so counting it answers "how big was the page"
+    // the moment the cap binds -- measured live, /chain/weights published
+    // subnet_count 20 at ?limit=20 and 99 at ?limit=100 while the window
+    // covered 129. One row here against a count of 12 is the whole point: the
+    // two numbers must be allowed to disagree.
+    const { result } = load({
+      rows: [{ netuid: 7, announcements: 9, distinct_servers: 4 }],
+      subnets: [{ subnet_count: 12 }],
+    });
+    const rollup = await result;
+    assert.ok(rollup);
+    assert.equal(rollup.rows.length, 1);
+    assert.equal(rollup.subnetCount, 12);
+  });
+
+  test("the subnet count emits no COUNT(DISTINCT), at any window", async () => {
+    // The shape this module has routed around twice, and re-measured for
+    // #10249: `count(DISTINCT netuid)` over the network block's derived table
+    // LOOKS free -- same source scan -- and executes at 7d for the uid
+    // identity. R2 SQL refuses it everywhere else (`40015: scan budget
+    // exceeded ... for count(DISTINCT) without GROUP BY` on AxonServed at 7d
+    // and 30d, on WeightsSet at 30d), because the budget is priced against the
+    // SOURCE scan rather than the few thousand rows it would run over.
+    for (const windowDays of [1, 7, 30, 90]) {
+      const { engine, result } = load({}, { windowDays });
+      await result;
+      const sql = engine.subnetCountSql();
+      assert.ok(sql, `no subnet-count query at ${windowDays}d`);
+      assert.doesNotMatch(
+        sql,
+        /count\s*\(\s*distinct/i,
+        `${windowDays}d reintroduced the shape the budget refuses`,
+      );
+      assert.match(sql, /GROUP BY netuid/);
+    }
+  });
+
+  test("a missing subnet count degrades to null, it does not decline", async () => {
+    // The other two queries ARE the payload; this one refines a number that
+    // already has an honest fallback. Blanking the card over it would trade a
+    // slightly-wrong count for no card at all.
+    const { result } = load({ subnets: null });
+    const rollup = await result;
+    assert.ok(rollup, "the card still answers");
+    assert.equal(rollup.subnetCount, null);
   });
 });
