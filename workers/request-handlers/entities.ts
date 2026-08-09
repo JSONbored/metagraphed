@@ -22,6 +22,7 @@ import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
 import {
   CHAIN_SERVING_ROLLUP,
+  CHAIN_PROMETHEUS_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
   CHAIN_STAKE_TRANSFERS_ROLLUP,
   CHAIN_REGISTRATIONS_ROLLUP,
@@ -244,6 +245,7 @@ import {
 import {
   loadAccountRegistrationsColdTier,
   loadAccountServingColdTier,
+  loadAccountPrometheusColdTier,
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
@@ -2764,6 +2766,19 @@ export async function handleSubnetPrometheus(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetPrometheus> | null) ??
+    // The rung its serving twin got in #9369 and this card did not (#10248).
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE is "retired", so the tier above declines
+    // unconditionally and a confident 0 was the only answer left.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_PROMETHEUS_ROLLUP,
+      netuid,
+      buildSubnetPrometheus,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_PROMETHEUS_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetPrometheus(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed PrometheusServed event, mirroring the sibling serving route.
@@ -4311,6 +4326,10 @@ export const handleAccountPrometheus = makeAccountEventHandler({
   defaultWindow: DEFAULT_PROMETHEUS_WINDOW,
   build: buildAccountPrometheus,
   urlSuffix: "prometheus",
+  // The rung its serving twin has always had (#10248). Without it this card
+  // fell from a retired tier straight to zeros for every account.
+  coldTier: (env, ss58, window) =>
+    loadAccountPrometheusColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/deregistrations: the account's per-subnet NeuronDeregistered footprint

@@ -85,6 +85,12 @@ import {
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.ts";
 import {
+  buildAccountPrometheus,
+  PROMETHEUS_EVENT_KIND,
+  PROMETHEUS_WINDOWS,
+  DEFAULT_PROMETHEUS_WINDOW,
+} from "./account-prometheus.ts";
+import {
   buildValidatorNominators,
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
@@ -412,6 +418,44 @@ export async function loadAccountServingColdTier(
   if (rows === null) return null;
   return {
     data: buildAccountServing(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/**
+ * The account's PrometheusServed footprint from the lakehouse.
+ *
+ * Its serving twin above has had this rung since the cold tier was built; the
+ * prometheus card never got one, so `handleAccountPrometheus` fell from a
+ * retired tier straight to zeros (#10248). Same query, same shape, different
+ * event kind -- the two events are emitted by the same pallet arm as the same
+ * (netuid, hotkey) tuple.
+ */
+export async function loadAccountPrometheusColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountPrometheus>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(
+    PROMETHEUS_WINDOWS,
+    DEFAULT_PROMETHEUS_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE hotkey = '${addr}' AND event_kind = '${PROMETHEUS_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountPrometheus(rows, ss58, { window: label }),
     generatedAt: latestObservedIso(rows),
   };
 }
