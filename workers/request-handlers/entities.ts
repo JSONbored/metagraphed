@@ -3995,6 +3995,7 @@ export async function handleSubnetOhlc(
 ) {
   const interval = routeValue<string>(url, "interval");
   const daysResult = routeValue<number>(url, "days");
+  const candleLimit = pageLimit(url);
   const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
@@ -4011,8 +4012,12 @@ export async function handleSubnetOhlc(
     (await loadSubnetOhlcColdTier(env, netuid, {
       interval,
       days: daysResult,
+      limit: candleLimit,
     })) ?? {
-      data: buildSubnetOhlc([], Number(netuid), { interval }),
+      data: buildSubnetOhlc([], Number(netuid), {
+        interval,
+        limit: candleLimit,
+      }),
       generatedAt: null,
     };
   return envelopeResponse(

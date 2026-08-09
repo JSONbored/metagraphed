@@ -147,7 +147,10 @@ export interface OhlcBucket {
 export function buildSubnetOhlcFromBuckets(
   buckets: Map<number, OhlcBucket>,
   netuid: number,
-  { interval = OHLC_INTERVAL_DEFAULT }: { interval?: unknown } = {},
+  {
+    interval = OHLC_INTERVAL_DEFAULT,
+    limit,
+  }: { interval?: unknown; limit?: number } = {},
 ): Row {
   const normalizedInterval = normalizeInterval(interval);
   if (netuid === 0) {
@@ -156,14 +159,23 @@ export function buildSubnetOhlcFromBuckets(
       netuid: 0,
       interval: normalizedInterval,
       candles: [],
+      candle_count: 0,
       root_excluded: true,
     };
   }
 
   const bucketStarts = [...buckets.keys()].sort((a, b) => a - b);
+  // `limit` narrows the same way MAX_CANDLES caps -- newest-first -- because a
+  // caller asking for fewer candles of a price series wants the recent end,
+  // and answering with the oldest 24 hours of an 83-day window would be a
+  // technically-correct page of the wrong data.
+  const ceiling = Math.max(
+    1,
+    Math.min(MAX_CANDLES, Number.isFinite(limit) ? Number(limit) : MAX_CANDLES),
+  );
   const cappedStarts =
-    bucketStarts.length > MAX_CANDLES
-      ? bucketStarts.slice(bucketStarts.length - MAX_CANDLES)
+    bucketStarts.length > ceiling
+      ? bucketStarts.slice(bucketStarts.length - ceiling)
       : bucketStarts;
 
   const candles = cappedStarts.map((bucketStart) => {
@@ -186,6 +198,11 @@ export function buildSubnetOhlcFromBuckets(
     netuid,
     interval: normalizedInterval,
     candles,
+    // The WINDOW's candle count, not the page's. A caller that narrowed with
+    // `limit` still needs the denominator it narrowed against -- the same
+    // reason #10249 made subnet_count stop tracking `?limit=`, and the same
+    // convention /chain/deregistrations already publishes.
+    candle_count: bucketStarts.length,
     root_excluded: false,
   };
 }
@@ -209,7 +226,10 @@ export function buildSubnetOhlcFromBuckets(
 export function buildSubnetOhlc(
   rows: Row[] | null | undefined,
   netuid: number,
-  { interval = OHLC_INTERVAL_DEFAULT }: { interval?: unknown } = {},
+  {
+    interval = OHLC_INTERVAL_DEFAULT,
+    limit,
+  }: { interval?: unknown; limit?: number } = {},
 ): Row {
   const normalizedInterval = normalizeInterval(interval);
 
@@ -219,6 +239,7 @@ export function buildSubnetOhlc(
   if (netuid === 0) {
     return buildSubnetOhlcFromBuckets(new Map(), netuid, {
       interval: normalizedInterval,
+      limit,
     });
   }
 
@@ -270,5 +291,6 @@ export function buildSubnetOhlc(
 
   return buildSubnetOhlcFromBuckets(buckets, netuid, {
     interval: normalizedInterval,
+    limit,
   });
 }

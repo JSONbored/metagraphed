@@ -184,6 +184,7 @@ import {
 } from "../src/counterparties.ts";
 import {
   DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_CANDLES,
   MAX_OHLC_WINDOW_DAYS,
   OHLC_INTERVAL_DEFAULT,
 } from "../src/subnet-ohlc.ts";
@@ -535,6 +536,13 @@ export const ROUTE_QUERY_SCHEMAS = {
       .max(MAX_OHLC_WINDOW_DAYS)
       .meta({ default: DEFAULT_OHLC_WINDOW_DAYS })
       .optional(),
+    // The candle ceiling, published (#9981/#10318). MAX_CANDLES has capped
+    // this response at 2,000 since it shipped, and a caller had no way to ask
+    // for fewer and no way to learn the cap existed -- 1h over the default 90
+    // days is 486 KB and 13.5 s, the largest and slowest thing this API
+    // serves. The DEFAULT is the cap, so today's answer is unchanged for
+    // every existing consumer; what is new is the lever.
+    limit: limitSchema(MAX_CANDLES, MAX_CANDLES).optional(),
   }),
   "/api/v1/subnets/{netuid}/stake-quote": z.object({
     amount: z.number().gt(0).optional(),

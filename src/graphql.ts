@@ -274,7 +274,7 @@ import {
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "./concentration.ts";
 import { loadGlobalIncidentsLedger } from "../workers/request-handlers/analytics.ts";
-import { validateRouteArgs } from "./route-query.ts";
+import { parseRouteArgs, validateRouteArgs } from "./route-query.ts";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -467,6 +467,7 @@ import {
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   DEFAULT_OHLC_WINDOW_DAYS,
+  MAX_CANDLES,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
@@ -4767,7 +4768,7 @@ const rootValue = {
   },
 
   async subnet_ohlc(
-    { netuid, interval, days }: QuerySubnet_OhlcArgs,
+    { netuid, interval, days, limit }: QuerySubnet_OhlcArgs,
     context: GqlContext,
   ) {
     if (!Number.isInteger(netuid) || netuid < 0) {
@@ -4796,9 +4797,27 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    // #10318: the candle ceiling is published now, so this surface has to
+    // forward it -- otherwise a GraphQL caller asking for 24 candles gets the
+    // route's 2,000 and the three surfaces disagree about the page.
+    //
+    // PARSED BY THE ROUTE'S OWN SCHEMA, not by a bound restated here.
+    // `assertRouteArgs` safeParses against the same Zod object `openapi.json`
+    // is emitted from, so the ceiling lives in one place and this resolver
+    // cannot disagree with it. Only 8 of the 165 resolvers in this file do
+    // that today and the other 250 checks are hand-written (#10313) -- adding
+    // a 251st would have been the easy thing and the wrong one.
+    assertRouteArgs("/api/v1/subnets/{netuid}/ohlc", { limit });
+    // The published default, read back rather than restated -- the same rule
+    // `pageLimit` follows for a URL, applied to a resolver's arguments.
+    const limitParam =
+      parseRouteArgs<{ limit?: number }>("/api/v1/subnets/{netuid}/ohlc", {
+        limit,
+      })?.limit ?? MAX_CANDLES;
     const params = new URLSearchParams();
     params.set("interval", intervalParam);
     params.set("days", String(daysParam));
+    params.set("limit", String(limitParam));
     // The tier serves this route inside a { data, generatedAt } envelope (same
     // as subnet_volume above, unlike the flat cards), so unwrap it before
     // falling back. Reading the envelope as the payload made `candles` always
@@ -4818,14 +4837,19 @@ const rootValue = {
         await loadSubnetOhlcColdTier(context.env, netuid, {
           interval: intervalParam,
           days: daysParam,
+          limit: limitParam,
         })
       )?.data ??
-      buildSubnetOhlc([], netuid, { interval: intervalParam });
+      buildSubnetOhlc([], netuid, {
+        interval: intervalParam,
+        limit: limitParam,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       interval: data.interval ?? intervalParam,
       candles: data.candles ?? [],
+      candle_count: data.candle_count ?? 0,
       root_excluded: data.root_excluded ?? false,
     };
   },

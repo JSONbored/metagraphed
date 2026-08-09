@@ -7313,6 +7313,15 @@
             "minimum": 1,
             "type": "integer"
           }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "default": 2000,
+            "maximum": 2000,
+            "minimum": 1,
+            "type": "integer"
+          }
         }
       ]
     },

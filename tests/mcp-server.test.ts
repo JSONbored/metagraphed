@@ -24526,7 +24526,15 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
     );
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/subnets/7/ohlc?interval=1d&days=30");
+    // `limit` rides along even when the caller did not name one (#10318). The
+    // tool's page size is 168 where the route's default is the 2,000-candle
+    // cap, so the tier has to be told which one it is answering -- forwarding
+    // interval and days but not limit is how the two surfaces would come to
+    // disagree about the page while agreeing about the window.
+    assert.equal(
+      captured,
+      "/api/v1/subnets/7/ohlc?interval=1d&days=30&limit=168",
+    );
   });
 
   test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {

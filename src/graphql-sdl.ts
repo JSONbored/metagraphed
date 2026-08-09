@@ -194,7 +194,12 @@ export const SDL = /* GraphQL */ `
       cursor: Int
     ): JSON
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
-    subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
+    subnet_ohlc(
+      netuid: Int!
+      interval: String
+      days: Int
+      limit: Int
+    ): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
     subnet_stake_quote(
       netuid: Int!
@@ -3833,6 +3838,8 @@ export const SDL = /* GraphQL */ `
     "The resolved bucket interval (1h/1d)."
     interval: String
     candles: [SubnetOhlcCandle!]!
+    "How many candles the WINDOW holds, not how many this page carries. A limit narrows the candle list from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page."
+    candle_count: Int!
     "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
     root_excluded: Boolean!
   }
