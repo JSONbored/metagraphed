@@ -98,7 +98,8 @@ describe("health-sql latency builders", () => {
     // every Postgres read, and it would have blocked the fix (#10200).
     //
     // What matters is the rank each quantile selects. node:sqlite evaluates it
-    // here; tests/analytics-live-sqlite.test.ts runs the whole loader.
+    // here; tests/analytics-live-postgres.test.ts runs the whole loader on the
+    // engine that threw -- which is where a repeat of #10200 would surface.
     const cols = latencyStatColumns();
     for (const p of ["AS p50", "AS p95", "AS p99"]) {
       assert.ok(cols.includes(p), p);
