@@ -66,6 +66,13 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // capture cron writes -- never a file. A baked series would freeze at build time,
   // which is the opposite of what a series is for.
   /^subnets\/(?:\d+|\{netuid\})\/burn-history\.json$/,
+  // Subnet registration/deregistration timeline (#10263): computed live from
+  // the subnet_lifecycle Neon table, never written as a file. Without this the
+  // path falls through to the default-git tier -- the #998 mis-tiering that
+  // publishes a stale committed copy of a live route.
+  /^subnets\/(?:\d+|\{netuid\})\/lifecycle\.json$/,
+  // The network-wide counterpart, same table, same reasoning.
+  /^chain\/subnet-lifecycle\.json$/,
   // One subnet's alpha holder leaderboard (#9557), computed live from the D1
   // positions ledger joined to the proven pool totals. A baked ranking would
   // freeze a leaderboard whose whole value is that it is current, and would also
