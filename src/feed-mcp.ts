@@ -13,6 +13,7 @@
 // injected-KV convention (see mcp-server.ts's header comment).
 
 import { z } from "zod";
+import { FILTER_TEXT_MAX_LENGTH } from "../schemas-src/query-params.ts";
 import {
   FEED_MAX_ITEMS,
   filterByTag,
@@ -123,6 +124,16 @@ export function optionalTag(
   if (value === undefined || value === null || value === "") return null;
   if (typeof value !== "string") {
     throw feedMcpError("invalid_params", "Argument `tag` must be a string.");
+  }
+  // The ceiling the tool publishes, enforced (#10218). The feed parameters
+  // were the last raw JSON Schema on the surface and carried no bound at all;
+  // once the route declared one, a tool that advertised it and accepted a
+  // longer value would filter to nothing and return a confidently empty page.
+  if (value.length > FILTER_TEXT_MAX_LENGTH) {
+    throw feedMcpError(
+      "invalid_params",
+      `Argument \`tag\` must be ${FILTER_TEXT_MAX_LENGTH} characters or fewer.`,
+    );
   }
   return value;
 }
