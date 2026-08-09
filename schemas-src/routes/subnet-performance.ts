@@ -25,13 +25,26 @@ export const SubnetPerformanceArtifactSchema = z
     validator_count: z.int().min(0).optional(),
     active_count: z.int().min(0).optional(),
     captured_at: z.string().nullable().optional(),
-    incentive: ConcentrationMetricsSchema,
-    dividends: ConcentrationMetricsSchema,
-    trust: ScoreDistributionSchema,
-    consensus: ScoreDistributionSchema,
-    validator_trust: ScoreDistributionSchema.optional(),
+    incentive: ConcentrationMetricsSchema.describe(
+      "Incentive concentration across all neurons with positive incentive.",
+    ),
+    dividends: ConcentrationMetricsSchema.describe(
+      "Dividends concentration across permitted validators only.",
+    ),
+    trust: ScoreDistributionSchema.describe(
+      "Trust score spread across all neurons.",
+    ),
+    consensus: ScoreDistributionSchema.describe(
+      "Consensus score spread across all neurons.",
+    ),
+    validator_trust: ScoreDistributionSchema.optional().describe(
+      "Validator-trust score spread across permitted validators only.",
+    ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance.",
+  );
 export type SubnetPerformanceArtifact = z.infer<
   typeof SubnetPerformanceArtifactSchema
 >;
@@ -58,17 +71,27 @@ const SubnetPerformanceHistoryPointSchema = z
     validator_trust_mean: z.number().nullable().optional(),
     validator_trust_median: z.number().nullable().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day.",
+  );
 
 export const SubnetPerformanceHistoryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
-    window: z.string().nullable().optional(),
+    window: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("The resolved window label (7d/30d/90d)."),
     point_count: z.int().min(0),
     points: z.array(SubnetPerformanceHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history.",
+  );
 export type SubnetPerformanceHistoryArtifact = z.infer<
   typeof SubnetPerformanceHistoryArtifactSchema
 >;

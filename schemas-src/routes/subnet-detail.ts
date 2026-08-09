@@ -31,6 +31,8 @@ import {
   CONFIDENCE_LEVEL_VALUES,
   NATIVE_NAME_QUALITY_VALUES,
 } from "../shared.ts";
+import { SurfaceAuthLocationSchema } from "../shared.ts";
+import { SurfaceAuthSchemeSchema } from "../shared.ts";
 
 const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 const HttpOrWssUrlSchema = z
@@ -149,20 +151,12 @@ const AuthSchema = z
       })
       .strict()
       .optional(),
-    location: z.enum(["header", "query", "cookie", "body"]).optional(),
+    location: SurfaceAuthLocationSchema.optional(),
     name: z.string().optional(),
     // minItems:1 in the hand-edited contract -- verified against real
     // registry/subnets/*.json auth.names values (#7860's diff audit).
     names: z.array(z.string()).min(1).optional(),
-    scheme: z.enum([
-      "none",
-      "bearer",
-      "api-key",
-      "basic",
-      "oauth2",
-      "signature",
-      "custom",
-    ]),
+    scheme: SurfaceAuthSchemeSchema,
     scopes_note: z.string().optional(),
     token_url: HttpUrlSchema.optional(),
     value_format: z.string().optional(),

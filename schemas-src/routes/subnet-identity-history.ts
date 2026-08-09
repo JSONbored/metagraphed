@@ -27,7 +27,10 @@ export const SubnetIdentityHistoryEntrySchema = z
     logo_url: z.url().nullable().optional(),
     identity_hash: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One SubnetIdentitiesV3 snapshot recorded when a tracked identity field changed.",
+  );
 export type SubnetIdentityHistoryEntry = z.infer<
   typeof SubnetIdentityHistoryEntrySchema
 >;
@@ -42,7 +45,10 @@ export const SubnetIdentityHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(SubnetIdentityHistoryEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history.",
+  );
 export type SubnetIdentityHistoryArtifact = z.infer<
   typeof SubnetIdentityHistoryArtifactSchema
 >;

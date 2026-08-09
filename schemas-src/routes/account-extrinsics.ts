@@ -32,7 +32,11 @@ const ExtrinsicSchema = z
     signer: z.string().nullable().optional(),
     call_module: z.string().nullable().optional(),
     call_function: z.string().nullable().optional(),
-    call_args: z.unknown().nullable().optional(),
+    call_args: z
+      .unknown()
+      .nullable()
+      .optional()
+      .describe("JSON-encoded decoded call arguments."),
     fee_tao: z.number().nullable().optional(),
     tip_tao: z.number().nullable().optional(),
     success: z.boolean().nullable().optional(),
@@ -40,7 +44,13 @@ const ExtrinsicSchema = z
     // #8525: deterministic human-readable action sentence for this
     // extrinsic's call, or null when no template matches
     // call_module.call_function -- never a guessed/partial sentence.
-    summary: z.string().nullable().optional(),
+    summary: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525).",
+      ),
   })
   .strict();
 
@@ -61,7 +71,10 @@ export const AccountExtrinsicsArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     extrinsics: z.array(ExtrinsicSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip).",
+  );
 export type AccountExtrinsicsArtifact = z.infer<
   typeof AccountExtrinsicsArtifactSchema
 >;

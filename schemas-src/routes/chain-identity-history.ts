@@ -34,7 +34,10 @@ const ChainIdentityHistoryChangeSchema = z
     logo_url: z.url().nullable().optional(),
     identity_hash: z.string().nullable(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One cross-subnet identity change in the network-wide feed (carries its netuid).",
+  );
 
 export const ChainIdentityHistoryArtifactSchema = z
   .object({

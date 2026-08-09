@@ -43,7 +43,10 @@ export const AccountEventsArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent.",
+  );
 export type AccountEventsArtifact = z.infer<typeof AccountEventsArtifactSchema>;
 export const AccountEventsResponseSchema = successEnvelopeSchema(
   AccountEventsArtifactSchema,
@@ -58,7 +61,10 @@ const AccountDaySchema = z
     first_block: z.int().nullable().optional(),
     last_block: z.int().nullable().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One day's rolled-up activity for an account on one subnet, from the account_events_daily tier. event_kinds is the distinct set of event ids seen that day.",
+  );
 
 export const AccountHistoryArtifactSchema = z
   .object({
@@ -70,7 +76,10 @@ export const AccountHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     days: z.array(AccountDaySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay.",
+  );
 export type AccountHistoryArtifact = z.infer<
   typeof AccountHistoryArtifactSchema
 >;
@@ -88,7 +97,10 @@ const AccountTransferEntrySchema = z
     direction: z.enum(["sent", "received"]).nullable().optional(),
     observed_at: z.string().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One native-TAO Balances.Transfer event on an account's feed. direction is relative to the queried address (sent = it paid, received = it was paid).",
+  );
 
 export const AccountTransfersArtifactSchema = z
   .object({
@@ -100,7 +112,10 @@ export const AccountTransfersArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     transfers: z.array(AccountTransferEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope.",
+  );
 export type AccountTransfersArtifact = z.infer<
   typeof AccountTransfersArtifactSchema
 >;

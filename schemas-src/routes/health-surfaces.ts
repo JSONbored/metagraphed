@@ -126,19 +126,26 @@ export const BulkHealthTrendsArtifactSchema = z
     schema_version: z.int(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
-    windows: z.record(
-      z.string(),
-      z
-        .object({
-          days: z.int().min(0),
-          granularity: z.literal("1d"),
-          subnet_count: z.int().min(0),
-          subnets: z.array(BulkHealthTrendSubnetSchema),
-        })
-        .strict(),
-    ),
+    windows: z
+      .record(
+        z.string(),
+        z
+          .object({
+            days: z.int().min(0),
+            granularity: z.literal("1d"),
+            subnet_count: z.int().min(0),
+            subnets: z.array(BulkHealthTrendSubnetSchema),
+          })
+          .strict(),
+      )
+      .describe(
+        "The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "All-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history. Mirrors GET /api/v1/health/trends' data envelope.",
+  );
 export type BulkHealthTrendsArtifact = z.infer<
   typeof BulkHealthTrendsArtifactSchema
 >;
@@ -184,7 +191,10 @@ const GlobalIncidentEntrySchema = z
     // tightened from optional to required.
     failed_samples: z.int().min(0),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One reconstructed outage window.\n\n\\`started_at\\` and \\`ended_at\\` are epoch MILLISECONDS, which is why they are\nFloat and not Int: GraphQL's Int is 32-bit and every real value overflows it\n(1786228205841 against a ceiling of 2147483647). Every incident window on\n\\`incidents\\`, \\`global_incidents\\` and \\`subnet_health_incidents\\` therefore\nerrored, and because both fields are non-null the error propagated up and\nnulled the surrounding list -- on every request, since the surface shipped.\nNothing had executed these fields (#10215). \\`duration_ms\\` is a span rather\nthan an instant and stays an Int.",
+  );
 
 const GlobalIncidentSurfaceSchema = z
   .object({
@@ -202,7 +212,10 @@ const GlobalIncidentSurfaceSchema = z
     transient_failed_samples: z.int().min(0),
     incidents: z.array(GlobalIncidentEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One endpoint incident in the global ledger. Mirrors the REST EndpointIncident shape (enum-valued fields carried as their string values).",
+  );
 
 export const GlobalIncidentsArtifactSchema = z
   .object({
@@ -215,13 +228,19 @@ export const GlobalIncidentsArtifactSchema = z
         incident_count: z.int().min(0),
         affected_surface_count: z.int().min(0),
       })
-      .passthrough(),
+      .passthrough()
+      .describe(
+        "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape.",
+      ),
     // #8824: the incident-qualifying threshold (MIN_INCIDENT_SAMPLES),
     // published once so a surface's transient_failure_count is self-describing.
     min_incident_samples: z.int().min(1),
     surfaces: z.array(GlobalIncidentSurfaceSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope.",
+  );
 export type GlobalIncidentsArtifact = z.infer<
   typeof GlobalIncidentsArtifactSchema
 >;
@@ -370,9 +389,16 @@ export const HealthIncidentsArtifactSchema = z
     // #8824: the incident-qualifying threshold (MIN_INCIDENT_SAMPLES),
     // published once so a surface's transient_failure_count is self-describing.
     min_incident_samples: z.int().min(1),
-    surfaces: z.array(HealthIncidentSurfaceSchema),
+    surfaces: z
+      .array(HealthIncidentSurfaceSchema)
+      .describe(
+        "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows).",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope.",
+  );
 export type HealthIncidentsArtifact = z.infer<
   typeof HealthIncidentsArtifactSchema
 >;
@@ -406,9 +432,16 @@ export const HealthPercentilesArtifactSchema = z
     window: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
-    surfaces: z.array(HealthPercentilesSurfaceSchema),
+    surfaces: z
+      .array(HealthPercentilesSurfaceSchema)
+      .describe(
+        "Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces).",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope.",
+  );
 export type HealthPercentilesArtifact = z.infer<
   typeof HealthPercentilesArtifactSchema
 >;
@@ -450,9 +483,16 @@ export const HealthTrendsArtifactSchema = z
     netuid: z.int().min(0),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
-    windows: z.record(z.string(), HealthTrendWindowSchema),
+    windows: z
+      .record(z.string(), HealthTrendWindowSchema)
+      .describe(
+        "The 7d/30d windows keyed by window label, each holding this subnet's samples, uptime_ratio, latency_sample_count and the per-surface uptime/latency series. Opaque JSON: dynamic-keyed by window label, matching the get_subnet_health_trends MCP/REST shape.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's uptime + latency trend windows. Mirrors GET /api/v1/subnets/{netuid}/health/trends's data envelope.",
+  );
 export type HealthTrendsArtifact = z.infer<typeof HealthTrendsArtifactSchema>;
 
 // ---- GET /api/v1/subnets/{netuid}/uptime -> UptimeArtifact ----
@@ -492,10 +532,12 @@ const UptimeDaySchema = z
         p99: z.int().nullable().optional(),
       })
       .passthrough()
+      .describe("Percentile latency summary for one uptime day.")
       .optional(),
     status: z.string(),
   })
-  .passthrough();
+  .passthrough()
+  .describe("One daily uptime point for a surface.");
 
 const UptimeSurfaceSchema = z
   .object({
@@ -503,10 +545,18 @@ const UptimeSurfaceSchema = z
     day_count: z.int().min(0),
     samples: z.int().min(0),
     uptime_ratio: z.number().nullable(),
-    reliability: z.union([ReliabilityScoreSchema, z.null()]).optional(),
+    reliability: z
+      .union([ReliabilityScoreSchema, z.null()])
+      .describe(
+        "Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at.",
+      )
+      .optional(),
     days: z.array(UptimeDaySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One operational surface's uptime history over the requested window.",
+  );
 
 export const UptimeArtifactSchema = z
   .object({
@@ -517,8 +567,19 @@ export const UptimeArtifactSchema = z
     // Always-present key in formatUptime()'s real return (its value is the
     // JS null when there are no samples, never an omitted key) -- required,
     // unlike the per-surface `reliability` above (no comparable guarantee).
-    reliability: z.union([ReliabilityScoreSchema, z.null()]),
-    surfaces: z.array(UptimeSurfaceSchema),
+    reliability: z
+      .union([ReliabilityScoreSchema, z.null()])
+      .describe(
+        "Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at.",
+      ),
+    surfaces: z
+      .array(UptimeSurfaceSchema)
+      .describe(
+        "Per-surface day series with window-wide uptime ratios and per-surface reliability scores.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope.",
+  );
 export type UptimeArtifact = z.infer<typeof UptimeArtifactSchema>;

@@ -16,18 +16,34 @@ import {
 export const ChainPerformanceArtifactSchema = z
   .object({
     schema_version: z.int(),
-    subnet_count: z.int().min(0),
+    subnet_count: z
+      .int()
+      .min(0)
+      .describe("Distinct subnets the snapshot spans."),
     neuron_count: z.int().min(0),
     validator_count: z.int().min(0).optional(),
     active_count: z.int().min(0).optional(),
     captured_at: z.string().nullable().optional(),
-    incentive: ConcentrationMetricsSchema,
-    dividends: ConcentrationMetricsSchema,
-    trust: ScoreDistributionSchema,
-    consensus: ScoreDistributionSchema,
-    validator_trust: ScoreDistributionSchema.optional(),
+    incentive: ConcentrationMetricsSchema.describe(
+      "Incentive concentration across all neurons network-wide with positive incentive.",
+    ),
+    dividends: ConcentrationMetricsSchema.describe(
+      "Dividends concentration across permitted validators network-wide only.",
+    ),
+    trust: ScoreDistributionSchema.describe(
+      "Trust score spread across all neurons network-wide.",
+    ),
+    consensus: ScoreDistributionSchema.describe(
+      "Consensus score spread across all neurons network-wide.",
+    ),
+    validator_trust: ScoreDistributionSchema.optional().describe(
+      "Validator-trust score spread across permitted validators network-wide only.",
+    ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance.",
+  );
 export type ChainPerformanceArtifact = z.infer<
   typeof ChainPerformanceArtifactSchema
 >;

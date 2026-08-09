@@ -4816,6 +4816,7 @@ export interface components {
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -4832,6 +4833,7 @@ export interface components {
             total_removals: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance. */
         AccountBalanceArtifact: {
             balance_tao?: number | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -4850,6 +4852,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children. */
         AccountChildrenArtifact: {
             account: string;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -4885,8 +4888,10 @@ export interface components {
                 transfer_count: number;
             }[];
             counterparty_count: number;
+            /** @description Present only in relationship (counterparty) mode; null in list mode. */
             relationship?: {
                 counterparty: string;
+                /** @description Oldest block/timestamp are null when the newest-first scan was truncated (scan_capped). */
                 first_block: number | null;
                 first_seen_at: string | null;
                 last_block: number | null;
@@ -4902,7 +4907,10 @@ export interface components {
                 transfers: {
                     amount_tao: number;
                     block_number: number | null;
-                    /** @enum {string} */
+                    /**
+                     * @description sent (account = from) or received (account = to).
+                     * @enum {string}
+                     */
                     direction: "sent" | "received";
                     event_index: number | null;
                     from: string;
@@ -4924,19 +4932,24 @@ export interface components {
         AccountDeregistrationsArtifact: {
             address: string;
             concentration: number | null;
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
             };
+            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
             derivation?: {
                 /**
                  * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
                  * @example true
                  */
                 is_lower_bound: boolean;
+                /** @description Days of NeuronRegistered history the derivation had available. */
                 lookback_days: number;
                 method: string;
+                /** @description Of those, the ones with no observed previous holder. */
                 unattributed_registrations: number;
+                /** @description Registrations observed inside the reported window. */
                 window_registrations: number;
             };
             dominant_netuid: number | null;
@@ -4951,6 +4964,7 @@ export interface components {
             total_deregistrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
         AccountEntitiesArtifact: {
             labels: ({
                 category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
@@ -4991,6 +5005,7 @@ export interface components {
             price_basis?: ("trade_exact" | "root_no_pool") | null;
             uid?: number | null;
         };
+        /** @description One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent. */
         AccountEventsArtifact: {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
@@ -5002,10 +5017,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip). */
         AccountExtrinsicsArtifact: {
             extrinsic_count: number;
             extrinsics: {
                 block_number: number | null;
+                /** @description JSON-encoded decoded call arguments. */
                 call_args?: unknown | null;
                 call_function?: string | null;
                 call_module?: string | null;
@@ -5015,6 +5032,7 @@ export interface components {
                 observed_at?: string | null;
                 signer?: string | null;
                 success?: boolean | null;
+                /** @description Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525). */
                 summary?: string | null;
                 tip_tao?: number | null;
             }[];
@@ -5026,6 +5044,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay. */
         AccountHistoryArtifact: {
             day_count: number;
             days: ({
@@ -5066,6 +5085,7 @@ export interface components {
                 description?: string | null;
                 discord?: string | null;
                 github?: string | null;
+                /** @description Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. */
                 identity_hash: string;
                 image?: string | null;
                 name?: string | null;
@@ -5080,6 +5100,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents. */
         AccountParentsArtifact: {
             account: string;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -5105,6 +5126,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio. */
         AccountPortfolioArtifact: {
             captured_at: string | null;
             miner_count: number;
@@ -5125,10 +5147,12 @@ export interface components {
                 stake_tao: number;
                 trust: number | null;
                 uid: number | null;
+                /** @description Emission over stake for this position; null when stake is 0. */
                 yield: number | null;
             }[];
             schema_version: number;
             ss58: string;
+            /** @description How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions. */
             stake_concentration: components["schemas"]["ConcentrationMetrics"];
             subnet_count: number;
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
@@ -5139,6 +5163,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history. */
         AccountPositionHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -5166,6 +5191,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions. */
         AccountPositionsArtifact: {
             captured_at: string | null;
             degraded?: {
@@ -5183,6 +5209,7 @@ export interface components {
             positions: {
                 hotkey: string;
                 netuid: number;
+                /** @description This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount. */
                 share_fraction: number;
                 /** @description This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945). */
                 stake_tao: number;
@@ -5194,9 +5221,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
         AccountPrometheusArtifact: {
             address: string;
+            /** @description Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements. */
             concentration: number | null;
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -5228,6 +5258,7 @@ export interface components {
             total_registrations: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim. */
         AccountRootClaimArtifact: {
             claim_type?: {
                 /** @enum {string} */
@@ -5309,12 +5340,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's StakeAdded/StakeRemoved staking-behavior scorecard (#5706) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/stake-flow. */
         AccountStakeFlowArtifact: {
             address: string;
+            /** @description Herfindahl-Hirschman index of gross flow across subnets: 1 = all flow in one subnet, -> 1/n as it spreads evenly; null when there is no flow to concentrate. */
             concentration: number | null;
-            /** @enum {string} */
+            /**
+             * @description accumulating / exiting / churning / idle, derived from flow_ratio.
+             * @enum {string}
+             */
             direction: "accumulating" | "exiting" | "churning" | "idle";
             dominant_netuid: number | null;
+            /** @description net_flow_tao / gross_flow_tao, [-1, 1]; null when gross_flow_tao is 0 (no flow to rate). */
             flow_ratio: number | null;
             gross_flow_tao: number;
             net_flow_tao: number;
@@ -5349,15 +5386,18 @@ export interface components {
                 last_moved_at: string | null;
                 movements: number;
                 netuid: number;
+                /** @description Alpha price (TAO) on the UTC day of this subnet's most recent move; null when that day has no snapshot yet or there was no move. */
                 price_tao_at_last_move: number | null;
             }[];
             total_movements: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup. */
         AccountSubnetsArtifact: {
             schema_version: number;
             ss58: string;
             subnet_count: number;
+            /** @description Where this hotkey is currently registered, ordered by netuid -- each an AccountRegistration (netuid/uid/stake/validator_permit/active). */
             subnets: {
                 active: boolean;
                 netuid: number;
@@ -5369,6 +5409,7 @@ export interface components {
             [key: string]: unknown;
         };
         AccountSummaryArtifact: {
+            /** @description Signing-activity aggregate from the extrinsics tier, matched by signer only. tx_count / total_fee_tao / last_tx_* are all-time over every extrinsic this address has signed; modules_called is the pallet mix over the newest 1000 only, with modules_called_capped true when that window is incomplete. An account queried by a key that did not sign returns tx_count 0, modules_called_capped false, other fields null/empty. */
             activity?: {
                 last_tx_at: string | null;
                 last_tx_block: number | null;
@@ -5385,6 +5426,7 @@ export interface components {
                 count: number;
                 kind: string;
             }[];
+            /** @description True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null. */
             event_scan_capped?: boolean;
             first_block?: number | null;
             first_seen_at?: string | null;
@@ -5400,6 +5442,7 @@ export interface components {
             last_block?: number | null;
             last_seen_at?: string | null;
             recent_events?: components["schemas"]["AccountEvent"][];
+            /** @description Where this hotkey is currently registered + staked (the live cross-subnet footprint). */
             registrations: {
                 active: boolean;
                 netuid: number;
@@ -5413,6 +5456,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope. */
         AccountTransfersArtifact: {
             limit: number | null;
             next_cursor?: string | null;
@@ -5432,8 +5476,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters. */
         AccountWeightSettersArtifact: {
             address: string;
+            /** @description Herfindahl-Hirschman index of weight-sets across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no weight-sets. */
             concentration: number | null;
             dominant_netuid: number | null;
             schema_version: number;
@@ -5447,8 +5493,10 @@ export interface components {
             total_weight_sets: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope. */
         AdapterArtifact: {
             contract_version?: string;
+            /** @description Per-adapter extension metadata keyed by provider id; each value's shape is adapter-specific. */
             extensions: {
                 [key: string]: {
                     [key: string]: unknown;
@@ -5456,10 +5504,12 @@ export interface components {
             };
             generated_at: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
             slug: string;
+            /** @description Captured adapter metrics payload; shape is adapter-specific. */
             snapshot?: ({
                 adapter_kind?: string | null;
                 contract_version?: string;
@@ -5525,6 +5575,7 @@ export interface components {
             callable_service_count?: number;
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -5573,6 +5624,7 @@ export interface components {
             integration_readiness?: number;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             previously_known_as?: string[];
             readiness?: components["schemas"]["IntegrationReadiness"];
@@ -5722,6 +5774,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             published_at?: string | null;
             resources: ({
@@ -5782,6 +5835,7 @@ export interface components {
             base_path: "/api/v1";
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             openapi_url: "/metagraph/openapi.json";
@@ -5829,6 +5883,7 @@ export interface components {
         ArtifactBase: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -5872,6 +5927,7 @@ export interface components {
                 observed_at?: number | null;
                 pallet: string | null;
                 phase?: string | null;
+                /** @description Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
                 summary?: string | null;
             }[];
         } & {
@@ -5888,13 +5944,16 @@ export interface components {
                 parent_hash: string | null;
                 spec_version: number | null;
             } | null;
+            /** @description Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve. */
             next_block_number: number | null;
+            /** @description Nearest STORED lower block height for chain-walk nav (detail only); null at the start of the retained window or when the ref didn't resolve. */
             prev_block_number: number | null;
             ref: string | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
         };
+        /** @description One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref. */
         BlockEventsArtifact: {
             block_number: number | null;
             event_count: number;
@@ -5906,6 +5965,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One block's extrinsics list (#6977). Rows are the opaque JSON extrinsic shape the extrinsics feed uses; block_number is null for an unknown ref. */
         BlockExtrinsicsArtifact: {
             block_number: number | null;
             extrinsic_count: number;
@@ -5951,6 +6011,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary. */
         BlocksSummaryArtifact: {
             author_concentration: components["schemas"]["ConcentrationMetrics"] | null;
             block_count: number;
@@ -6014,6 +6075,7 @@ export interface components {
             full_artifact_count?: number;
             full_artifact_size_bytes?: number;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             profile_count?: number;
             provider_count?: number;
@@ -6037,10 +6099,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description All-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history. Mirrors GET /api/v1/health/trends' data envelope. */
         BulkHealthTrendsArtifact: {
             observed_at?: string | null;
             schema_version: number;
             source: string;
+            /** @description The 7d/30d windows keyed by window label (7d, 30d), each holding days/granularity/subnet_count and the per-subnet daily point series. Opaque JSON: dynamic-keyed by window label, matching the get_health_trends MCP/REST shape. */
             windows: {
                 [key: string]: {
                     days: number;
@@ -6070,6 +6134,7 @@ export interface components {
             candidates: components["schemas"]["CandidateSurface"][];
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -6128,6 +6193,7 @@ export interface components {
             url: string;
             verification?: components["schemas"]["VerificationResult"] | null;
         };
+        /** @description Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope. */
         ChainActivityArtifact: {
             day_count: number;
             days: {
@@ -6145,7 +6211,9 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope. */
         ChainAlphaVolumeArtifact: {
+            /** @description Network-wide buy/sell volume rollup across every subnet with volume in the window. */
             network: {
                 buy_count: number;
                 buy_volume_alpha: number;
@@ -6154,16 +6222,22 @@ export interface components {
                 sell_count: number;
                 sell_volume_alpha: number;
                 sell_volume_tao: number;
-                /** @enum {string} */
+                /**
+                 * @description Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window.
+                 * @enum {string}
+                 */
                 sentiment: "bullish" | "bearish" | "neutral";
+                /** @description net/gross alpha lean in [-1, 1]; null when there was no volume in the window. */
                 sentiment_ratio: number | null;
                 total_volume_alpha: number;
                 total_volume_tao: number;
             };
+            /** @description Newest event observed_at across the window; null on a cold store. */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
+            /** @description Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume. */
             volume_distribution: {
                 count: number;
                 max: number;
@@ -6174,10 +6248,14 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
-            /** @enum {string} */
+            /**
+             * @description Fixed rolling window label (always 24h).
+             * @enum {string}
+             */
             window: "24h";
         };
         ChainAxonRemovalsArtifact: {
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -6192,9 +6270,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 distinct_removers: number;
                 removals: number;
+                /** @description Null when distinct_removers is 0 (no defined intensity without removers). */
                 removals_per_remover: number | null;
             };
             observed_at: string | null;
@@ -6234,6 +6314,7 @@ export interface components {
             burn_tao: number;
             netuid: number;
         };
+        /** @description Extrinsic call-mix breakdown over the window. Mirrors GET /api/v1/chain/calls's data envelope. */
         ChainCallsArtifact: {
             call_count: number;
             calls: {
@@ -6250,29 +6331,41 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration. */
         ChainConcentrationArtifact: {
             captured_at: string | null;
+            /** @description Raw emission concentration across every neuron network-wide. */
             emission: components["schemas"]["ConcentrationMetrics"];
+            /** @description Distinct controlling entities (coldkeys) network-wide, collapsed across subnets. */
             entity_count: number;
+            /** @description Emission concentration per controlling entity -- hotkeys collapsed across subnets. */
             entity_emission: components["schemas"]["ConcentrationMetrics"];
+            /** @description Stake concentration per controlling entity -- hotkeys collapsed across subnets, so one operator counts once. */
             entity_stake: components["schemas"]["ConcentrationMetrics"];
             neuron_count: number;
             schema_version: number;
+            /** @description Raw stake concentration across every neuron network-wide. */
             stake: components["schemas"]["ConcentrationMetrics"];
+            /** @description Distinct subnets the snapshot spans. */
             subnet_count: number;
+            /** @description UIDs per controlling entity network-wide -- a consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many). Null when no entities. */
             uids_per_entity: number | null;
+            /** @description Stake concentration across permitted validators network-wide only. */
             validator_stake: components["schemas"]["ConcentrationMetrics"];
         } & {
             [key: string]: unknown;
         };
         ChainConcentrationHistoryArtifact: {
+            /** @description Every distinct builder version in the series. More than one means it changes DEFINITION partway along. */
             builder_versions: number[];
+            /** @description Present ONLY on a decline. An empty window is a measurement. */
             degraded?: {
                 /** @enum {string} */
                 reason: "unavailable";
             };
             newest_day: string | null;
             oldest_day: string | null;
+            /** @description From the ROWS. A day the capture did not run is absent, never a zero-concentration point. */
             point_count: number | null;
             points: components["schemas"]["ChainConcentrationHistoryPoint"][];
             schema_version: number;
@@ -6281,14 +6374,18 @@ export interface components {
             [key: string]: unknown;
         };
         ChainConcentrationHistoryPoint: {
+            /** @description Which definition of the metrics produced this point. */
             builder_version: number | null;
             day: string;
             emission: components["schemas"]["ChainConcentrationScorecard"] | null;
             entity_count: number | null;
             entity_emission: components["schemas"]["ChainConcentrationScorecard"] | null;
             entity_stake: components["schemas"]["ChainConcentrationScorecard"] | null;
+            /** @description The shape of the day the card was computed over -- a point across half the network is not comparable to one across all of it. */
             neuron_count: number | null;
+            /** @description WHEN the network looked like this, as distinct from when it was computed. */
             source_captured_at: string | null;
+            /** @description NULL means no measurable distribution, NOT missing. */
             stake: components["schemas"]["ChainConcentrationScorecard"] | null;
             subnet_count: number | null;
             uids_per_entity: number | null;
@@ -6349,19 +6446,24 @@ export interface components {
             [key: string]: unknown;
         };
         ChainDeregistrationsArtifact: {
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
             };
+            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
             derivation?: {
                 /**
                  * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
                  * @example true
                  */
                 is_lower_bound: boolean;
+                /** @description Days of NeuronRegistered history the derivation had available. */
                 lookback_days: number;
                 method: string;
+                /** @description Of those, the ones with no observed previous holder. */
                 unattributed_registrations: number;
+                /** @description Registrations observed inside the reported window. */
                 window_registrations: number;
             };
             intensity_distribution: {
@@ -6374,8 +6476,10 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 deregistrations: number;
+                /** @description Null when distinct_deregistered_hotkeys is 0 (no defined intensity without hotkeys). */
                 deregistrations_per_hotkey: number | null;
                 distinct_deregistered_hotkeys: number;
                 tenure?: {
@@ -6408,6 +6512,7 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents. */
         ChainEventsFeedArtifact: {
             count: number;
             events: {
@@ -6428,6 +6533,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
         ChainEventsStatsArtifact: {
             activity: {
                 count: number;
@@ -6439,6 +6545,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope. */
         ChainFeesArtifact: {
             daily: {
                 avg_fee_tao: number | null;
@@ -6466,6 +6573,7 @@ export interface components {
         };
         ChainHoldersArtifact: {
             captured_at: string | null;
+            /** @description Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
             degraded?: {
                 /** @enum {string} */
                 reason: "pool_totals_unproven" | "unavailable";
@@ -6475,25 +6583,32 @@ export interface components {
             positions_captured_at: string | null;
             schema_version: number;
             sort: string;
+            /** @description Subnets measured -- NOT the length of the subnets list when limit bites. */
             subnet_count: number | null;
             subnets: components["schemas"]["ChainHoldersSubnet"][];
         } & {
             [key: string]: unknown;
         };
+        /** @description Dimension-free network facts. There is deliberately no cross-subnet alpha total: summing different subnets' alpha has no unit. */
         ChainHoldersNetwork: {
             median_top1_share: number | null;
             subnets_measured: number | null;
+            /** @description Subnets where ONE account holds a majority of the measured alpha. */
             subnets_with_majority_holder: number | null;
+            /** @description Subnets whose entire measured alpha sits in a single wallet. */
             subnets_with_single_holder: number | null;
         };
+        /** @description One subnet's alpha-ownership concentration. */
         ChainHoldersSubnet: {
             holder_count: number | null;
             netuid: number;
+            /** @description The largest holder's coldkey (an ss58 address). */
             top_holder: string | null;
             top1_share: number | null;
             top10_share: number | null;
             top20_share: number | null;
             top5_share: number | null;
+            /** @description ALPHA, comparable only WITHIN this subnet -- each subnet's alpha is a different token. */
             total_alpha: number | null;
         };
         ChainIdentityHistoryArtifact: {
@@ -6518,6 +6633,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope. */
         ChainIdleStakeArtifact: {
             captured_at?: string | null;
             schema_version: number;
@@ -6534,22 +6650,30 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance. */
         ChainPerformanceArtifact: {
             active_count?: number;
             captured_at?: string | null;
+            /** @description Consensus score spread across all neurons network-wide. */
             consensus: components["schemas"]["ScoreDistribution"];
+            /** @description Dividends concentration across permitted validators network-wide only. */
             dividends: components["schemas"]["ConcentrationMetrics"];
+            /** @description Incentive concentration across all neurons network-wide with positive incentive. */
             incentive: components["schemas"]["ConcentrationMetrics"];
             neuron_count: number;
             schema_version: number;
+            /** @description Distinct subnets the snapshot spans. */
             subnet_count: number;
+            /** @description Trust score spread across all neurons network-wide. */
             trust: components["schemas"]["ScoreDistribution"];
             validator_count?: number;
+            /** @description Validator-trust score spread across permitted validators network-wide only. */
             validator_trust?: components["schemas"]["ScoreDistribution"];
         } & {
             [key: string]: unknown;
         };
         ChainPrometheusArtifact: {
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -6564,8 +6688,10 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 announcements: number;
+                /** @description Null when distinct_exporters is 0 (no defined intensity without exporters). */
                 announcements_per_exporter: number | null;
                 distinct_exporters: number;
             };
@@ -6591,9 +6717,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide registration rollup: every subnet with NeuronRegistered events in the window, combined. distinct_registrants counts a hotkey once even when it registers on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 distinct_registrants: number;
                 registrations: number;
+                /** @description Null when distinct_registrants is 0 (no defined intensity without hotkeys). */
                 registrations_per_registrant: number | null;
             };
             observed_at: string | null;
@@ -6607,6 +6735,7 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
         ChainServingArtifact: {
             intensity_distribution: {
                 count: number;
@@ -6618,8 +6747,10 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined. */
             network: {
                 announcements: number;
+                /** @description Null when distinct_servers is 0 (no defined intensity without servers). */
                 announcements_per_server: number | null;
                 distinct_servers: number;
             };
@@ -6634,6 +6765,7 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters. */
         ChainSignersArtifact: {
             observed_at?: string | null;
             schema_version: number;
@@ -6641,17 +6773,23 @@ export interface components {
             signers: {
                 last_tx_block: number | null;
                 signer: string;
+                /** @description Total fees paid across the window's extrinsics; null when the tier has no fee data. */
                 total_fee_tao: number;
                 total_tip_tao: number;
                 tx_count: number;
             }[];
-            /** @enum {string} */
+            /**
+             * @description The rank order actually applied: tx_count or total_fee_tao.
+             * @enum {string}
+             */
             sort: "tx_count" | "total_fee_tao";
             window: string;
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope. */
         ChainStakeFlowArtifact: {
+            /** @description Spread of per-subnet net_flow_tao across EVERY subnet with stake events; null when no subnet moved stake. */
             net_flow_distribution: {
                 count: number;
                 max: number;
@@ -6662,6 +6800,7 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network rollup over every subnet that moved stake in the window. */
             network: {
                 flat: number;
                 gaining: number;
@@ -6677,7 +6816,10 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: {
-                /** @enum {string} */
+                /**
+                 * @description inflow | outflow | balanced
+                 * @enum {string}
+                 */
                 direction: "inflow" | "outflow" | "balanced";
                 gross_flow_tao: number;
                 net_flow_tao: number;
@@ -6689,6 +6831,7 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description Network-wide stake-movement (re-delegation) leaderboard over a lookback window, summed live from the account_events StakeMoved stream. Mirrors GET /api/v1/chain/stake-moves's data envelope. */
         ChainStakeMovesArtifact: {
             intensity_distribution: {
                 count: number;
@@ -6700,9 +6843,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets. */
             network: {
                 distinct_movers: number;
                 movements: number;
+                /** @description Null when distinct_movers is 0. */
                 movements_per_mover: number | null;
             };
             observed_at: string | null;
@@ -6716,6 +6861,7 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description Network-wide stake-transfer (between-coldkeys) leaderboard over a lookback window, summed live from the account_events StakeTransferred stream. Mirrors GET /api/v1/chain/stake-transfers's data envelope. */
         ChainStakeTransfersArtifact: {
             intensity_distribution: {
                 count: number;
@@ -6727,9 +6873,11 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets. */
             network: {
                 distinct_senders: number;
                 transfers: number;
+                /** @description Null when distinct_senders is 0. */
                 transfers_per_sender: number | null;
             };
             observed_at: string | null;
@@ -6759,10 +6907,12 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
+            /** @description Distinct subnets appearing in this page -- context for entry_count. */
             subnet_count: number;
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide directed native-TAO transfer-corridor leaderboard over a lookback window. Mirrors GET /api/v1/chain/transfer-pairs's data envelope. */
         ChainTransferPairsArtifact: {
             observed_at: string | null;
             pair_count: number;
@@ -6775,14 +6925,19 @@ export interface components {
                 volume_tao: number;
             }[];
             schema_version: number;
-            /** @enum {string} */
+            /**
+             * @description The rank order actually applied: volume or count.
+             * @enum {string}
+             */
             sort: "volume" | "count";
+            /** @description Highest-volume corridor's share of total pairable volume; null when the window has no pairable volume. */
             top_pair_share: number | null;
             total_volume_tao: number;
             transfer_count: number;
             unique_pairs: number;
             window: string | null;
         };
+        /** @description Network-wide native-TAO transfer analytics over a lookback window. Mirrors GET /api/v1/chain/transfers's data envelope. */
         ChainTransfersArtifact: {
             observed_at: string | null;
             schema_version: number;
@@ -6791,6 +6946,7 @@ export interface components {
                 transfer_count: number;
                 volume_tao: number;
             }[];
+            /** @description Top senders' combined share of total volume; null when total volume is 0. */
             top_sender_share: number | null;
             top_senders: {
                 address: string;
@@ -6803,11 +6959,17 @@ export interface components {
             unique_senders: number;
             window: string | null;
         };
+        /** @description Network-wide validator-set churn across all subnets (#5686). Mirrors GET /api/v1/chain/turnover's data envelope. */
         ChainTurnoverArtifact: {
+            /** @description False when the window resolved to fewer than two distinct snapshots, so start/end churn is not measurable. */
             comparable: boolean;
+            /** @description End snapshot date; null on a cold store. */
             end_date: string | null;
+            /** @description Network-wide validator-set rollup: every subnet's validators combined, deduplicated across the network. */
             network: {
+                /** @description 0-100 stability score; null on a cold/non-comparable window. */
                 stability_score: number | null;
+                /** @description Jaccard retention of the start set into the end set; null on a cold/non-comparable window. */
                 validator_retention: number | null;
                 validators_end: number;
                 validators_entered: number;
@@ -6815,6 +6977,7 @@ export interface components {
                 validators_start: number;
             };
             schema_version: number;
+            /** @description Null when no subnet had a stability score in the window (nothing to distribute). */
             stability_distribution: {
                 count: number;
                 max: number;
@@ -6825,6 +6988,7 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Start snapshot date; null on a cold store. */
             start_date: string | null;
             subnet_count: number;
             subnets: {
@@ -6838,6 +7002,7 @@ export interface components {
             }[];
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
         ChainWeightsArtifact: {
             intensity_distribution: {
                 count: number;
@@ -6849,8 +7014,10 @@ export interface components {
                 p75: number;
                 p90: number;
             } | null;
+            /** @description Network-wide weight-setting rollup: every subnet that set weights in the window, combined. */
             network: {
                 distinct_setters: number;
+                /** @description Null when distinct_setters is 0 (no defined intensity without setters). */
                 sets_per_setter: number | null;
                 weight_sets: number;
             };
@@ -6875,6 +7042,7 @@ export interface components {
                 hotkey: string | null;
                 last_set_at: string | null;
                 netuid: number | null;
+                /** @description This setter's share of the network total weight_sets; null when the network total is 0. */
                 share: number | null;
                 uid: number | null;
                 weight_sets: number;
@@ -6882,6 +7050,7 @@ export interface components {
             weight_sets: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield. */
         ChainYieldArtifact: {
             captured_at?: string | null;
             distribution: ({
@@ -6933,6 +7102,7 @@ export interface components {
             };
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -7017,7 +7187,9 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators. */
         CompareValidatorsArtifact: {
+            /** @description The optional subnet context the comparison was scoped to. */
             netuid: number | null;
             schema_version: number;
             validator_count: number;
@@ -7026,6 +7198,7 @@ export interface components {
                 apy_estimate_eligible_subnet_count: number;
                 avg_validator_trust: number | null;
                 coldkey: string | null;
+                /** @description The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape. */
                 coldkey_identity: {
                     additional: string | null;
                     captured_at: string | null;
@@ -7040,6 +7213,7 @@ export interface components {
                 hotkey: string;
                 max_validator_trust: number | null;
                 nominator_count: number | null;
+                /** @description This validator's membership row in the requested netuid; null when netuid was omitted or it has no permit there. Opaque JSON, matching the REST/MCP shape. */
                 subnet_context: {
                     active: boolean;
                     axon: string | null;
@@ -7108,6 +7282,7 @@ export interface components {
             contract_version?: string;
             generated_at: string;
             name: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             openapi_url: "/metagraph/openapi.json";
@@ -7161,6 +7336,7 @@ export interface components {
             native_only_without_candidates: number;
             native_snapshot_captured_at: string;
             network: components["schemas"]["BittensorNetwork"];
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             probed_count: number;
             probed_surface_count: number;
@@ -7189,6 +7365,7 @@ export interface components {
             contract_version?: string;
             coverage_depth_version: number;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             ranked_queue: {
                 name: string;
@@ -7339,6 +7516,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -7359,6 +7537,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
         CurationArtifact: {
             contract_version?: string;
             curation: {
@@ -7377,6 +7556,7 @@ export interface components {
                 surface_count: number;
             }[];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -7393,13 +7573,16 @@ export interface components {
             source_count?: number;
             verified_at?: string | null;
         };
+        /** @description The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
         DomainsArtifact: {
             domain_count: number;
             domains: components["schemas"]["DomainSummaryArtifact"][];
             schema_version: number;
         };
+        /** @description One domain/capability tag's rollup (#6989). Mirrors GET /api/v1/domains/{tag}/summary. */
         DomainSummaryArtifact: {
             domain: string;
+            /** @description Within-domain emission concentration scorecard; null when the domain has no members. Declared Float until #9889 — the route has served the full 12-key scorecard for long enough that the scalar coerced to null on every domain, which this type's own comment then read as 'no members'. */
             emission_concentration: {
                 entropy: number | null;
                 entropy_normalized: number | null;
@@ -7423,11 +7606,15 @@ export interface components {
         };
         EconomicsArtifact: {
             captured_at: string | null;
+            /** @description The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
             chain_state?: {
                 block: number;
+                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
                 block_hash: string;
                 emission_bar_quantile: number | null;
+                /** @description theta. Null when the bar is unset, which disables the gate outright. */
                 emission_gate_bar: number | null;
+                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
                 emission_gate_exponent: number | null;
                 total_issuance_tao: number;
             };
@@ -7444,6 +7631,7 @@ export interface components {
             };
             generated_at: string;
             network: string | null;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -7454,9 +7642,13 @@ export interface components {
                 alpha_market_cap_tao: number | null;
                 alpha_out_emission?: number | null;
                 alpha_out_pool: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
                 alpha_price_change_1d?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227). */
                 alpha_price_change_1h?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227). */
                 alpha_price_change_1m?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
                 alpha_price_change_7d?: number | null;
                 /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
                 alpha_price_tao: number | null;
@@ -7493,9 +7685,12 @@ export interface components {
             summary: {
                 registration_open_count: number;
                 subnet_count: number;
+                /** @description Sum of every non-root subnet's alpha_market_cap_tao -- rao-precision decimal string (#6641). */
                 total_alpha_value_tao: string;
                 total_miners: number;
+                /** @description total_root_value_tao + total_alpha_value_tao -- Backprop's Total Network Value (#6641). */
                 total_network_value_tao: string;
+                /** @description Root (netuid 0) TAO-denominated stake -- rao-precision decimal string (#6641). */
                 total_root_value_tao: string;
                 total_stake_alpha: string;
                 total_validators: number;
@@ -7513,6 +7708,7 @@ export interface components {
                 miner_count?: number | null;
                 snapshot_date: string;
                 subnet_count: number;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
                 total_stake_alpha?: string | null;
                 validator_count?: number | null;
             }[];
@@ -7538,6 +7734,7 @@ export interface components {
             kind: string | null;
             latest_change_at: string | null;
             limit: number | null;
+            /** @description How many returned entries are first observations rather than changes. */
             predates_capture_count: number;
             schema_version: number;
         } & {
@@ -7555,23 +7752,32 @@ export interface components {
             source: ("governance" | "runtime_recomputed") | null;
             value: number | null;
         };
+        /** @description The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served. */
         EmissionPipelineArtifact: {
+            /** @description Network-wide totals across every row in the capture -- unchanged by the netuid argument, which narrows the per-subnet rows only. */
             aggregate: {
                 disabled_count: number;
                 eligible_count: number;
                 excess_tao: number;
+                /** @description The network split nobody else publishes: pool injection vs chain buys. */
                 liquidity_fraction: number | null;
                 tao_in_emission: number;
                 tao_total: number;
+                /** @description Sum of final_share. 1.0 to float precision, or the surface is broken. */
                 total_final_share: number;
             };
             block_emission_halvings: number | null;
+            /** @description Block emission derived from TotalIssuance at that block, never read from the stale BlockEmission storage item. */
             block_emission_tao: number | null;
+            /** @description The block every input below was pinned to. Required: without it nothing here can be verified. */
             chain_state: {
                 block: number;
+                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
                 block_hash: string;
                 emission_bar_quantile: number | null;
+                /** @description theta. Null when the bar is unset, which disables the gate outright. */
                 emission_gate_bar: number | null;
+                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
                 emission_gate_exponent: number | null;
                 total_issuance_tao: number;
             };
@@ -7591,22 +7797,34 @@ export interface components {
             subnets: {
                 alpha_in_emission: number | null;
                 alpha_out_emission: number | null;
+                /** @description weighted_share / theta. Null when the bar is unset. */
                 distance_to_bar: number | null;
+                /** @description PUBLISHED, NOT INFERRED. A subnet far enough below the bar has its gated share underflow to exactly 0, so an enabled-but-deeply-gated subnet and a disabled one both read final_share: 0 -- this flag is the only thing that separates them. */
                 emission_enabled: boolean;
+                /** @description Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received. */
                 emission_share: number | null;
+                /** @description Stage 7, measured: the TAO that reached the subnet by chain buys instead. */
                 excess_tao: number | null;
                 final_share: number | null;
+                /** @description gated_share - weighted_share. Sums to ~0 across the network: the gate redistributes, it never withholds. */
                 gate_delta: number | null;
                 gated_share: number | null;
+                /** @description Non-null (root, never_emitted, subtoken_disabled, registration_closed) means the subnet took no part in stage 1, and every downstream share is null rather than 0 -- 'not in the distribution' is not 'in it with nothing'. */
                 ineligible_reason: ("root" | "never_emitted" | "subtoken_disabled" | "registration_closed") | null;
+                /** @description tao_in_emission / tao_total, the headline per-subnet number. Null rather than NaN for a zero-intake subnet: 0/0 is not a fraction, and zero intake is a real state. */
                 liquidity_fraction: number | null;
+                /** @description Stage 2 input. A FRACTION in [0,1], never an amount. */
                 miner_burned: number;
                 netuid: number;
+                /** @description Stage 8, measured: the TAO injected into the subnet's pool this block. */
                 tao_in_emission: number | null;
+                /** @description Their sum -- the subnet's whole TAO intake this block. Null unless both channels were actually read. */
                 tao_total: number | null;
                 weighted_share: number | null;
             }[];
+            /** @description The four identities, evaluated on the rows being served rather than read from a stored flag -- a stored flag can be green while THIS response is broken, and it can go stale. ADR 0023 decision 3. */
             verification: {
+                /** @description A rao count as a string -- the tolerance is a bigint, and a JSON number is the wrong type for one. */
                 aggregate_tolerance_rao: string;
                 checks: {
                     detail: string;
@@ -7614,6 +7832,7 @@ export interface components {
                     ok: boolean;
                 }[];
                 subnet_share_tolerance: number;
+                /** @description False means at least one identity did not hold on these rows: the response is not defensible and must not be used. */
                 verified: boolean;
             };
         } & {
@@ -7665,6 +7884,7 @@ export interface components {
             contract_version?: string;
             generated_at: string;
             incidents: components["schemas"]["EndpointIncident"][];
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -7691,6 +7911,7 @@ export interface components {
             source: string;
             timeout_ms?: number | null;
         };
+        /** @description Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here. */
         EndpointPoolsArtifact: {
             contract_version?: string;
             disabled_proxy_contract?: {
@@ -7715,6 +7936,7 @@ export interface components {
                 [key: string]: unknown;
             };
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             pools: components["schemas"]["RpcPool"][];
             provider_scores?: {
@@ -7791,6 +8013,7 @@ export interface components {
             endpoints: components["schemas"]["EndpointResource"][];
             generated_at: string;
             health_source?: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             operational_observed_at?: string | null;
             /** @constant */
@@ -7852,6 +8075,7 @@ export interface components {
             claims: components["schemas"]["EvidenceClaim"][];
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -7864,6 +8088,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
         EvmAddressMappingArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -7933,12 +8158,17 @@ export interface components {
         FailureReason: {
             checks: number;
             classification: string;
+            /** @description Of the FAILING probes only; null on a succeeding classification, where the question does not apply. */
             failure_share: number | null;
+            /** @description redirected is NOT a failure -- a surface answering from a new location is serving. */
             is_failure: boolean;
+            /** @description Of every probe in the window. */
             share: number | null;
         };
         FailureReasonsArtifact: {
+            /** @description Counted from the ROWS, not the requested window -- a day the prober did not run is absent rather than a zero. */
             days_covered: number | null;
+            /** @description Present ONLY on a decline. An empty window is a measurement, not a decline. */
             degraded?: {
                 /** @enum {string} */
                 reason: "unavailable";
@@ -7951,6 +8181,7 @@ export interface components {
             oldest_day: string | null;
             reasons: components["schemas"]["FailureReason"][];
             schema_version: number;
+            /** @description Oldest day first. */
             series: components["schemas"]["FailureReasonsDay"][];
             total_checks: number | null;
             window: string | null;
@@ -7958,6 +8189,7 @@ export interface components {
             [key: string]: unknown;
         };
         FailureReasonsDay: {
+            /** @description Checks per classification on this day, as a JSON object. */
             by_classification: {
                 [key: string]: number;
             };
@@ -7972,6 +8204,7 @@ export interface components {
             generated_at: string;
             kind: components["schemas"]["SurfaceKind"];
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             request: {
                 /** @constant */
@@ -8026,6 +8259,7 @@ export interface components {
             })[];
             generated_at: string;
             missing_count?: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             published_at?: string | null;
             /** @constant */
@@ -8039,6 +8273,7 @@ export interface components {
         FreshnessArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -8088,6 +8323,7 @@ export interface components {
             moving_target_surfaces?: string[];
             supported_kinds: components["schemas"]["SurfaceKind"][];
         };
+        /** @description Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps). */
         GapsArtifact: {
             contract_version?: string;
             gaps: {
@@ -8103,6 +8339,7 @@ export interface components {
                 slug: string;
             }[];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -8114,11 +8351,13 @@ export interface components {
             generated_at?: "1970-01-01T00:00:00.000Z";
         };
         GenericArtifact: components["schemas"]["ArtifactBase"];
+        /** @description Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope. */
         GlobalIncidentsArtifact: {
             min_incident_samples: number;
             observed_at?: string | null;
             schema_version: number;
             source: string;
+            /** @description Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape. */
             summary: {
                 affected_surface_count: number;
                 incident_count: number;
@@ -8223,6 +8462,7 @@ export interface components {
             /** @description Badge right-hand text. Currently the same value as `status`, kept separate because the badge's wording is a display concern and the verdict is not. */
             message: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             ok_count?: number;
             /** @constant */
@@ -8237,6 +8477,7 @@ export interface components {
             contract_version?: string;
             date: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             probe_finished_at: string | null;
             probe_started_at: string | null;
@@ -8267,12 +8508,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope. */
         HealthIncidentsArtifact: {
             min_incident_samples: number;
             netuid: number;
             observed_at?: string | null;
             schema_version: number;
             source: string;
+            /** @description Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows). */
             surfaces: ({
                 downtime_ms: number;
                 incident_count: number;
@@ -8299,6 +8542,7 @@ export interface components {
         HealthLatestArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @description When the probe run that produced this rollup finished -- `probe_finished_at || observed_at || null`, not the build's `generated_at`. */
             observed_at: string | null;
@@ -8319,11 +8563,13 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope. */
         HealthPercentilesArtifact: {
             netuid: number;
             observed_at?: string | null;
             schema_version: number;
             source: string;
+            /** @description Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces). */
             surfaces: ({
                 latency_ms: {
                     avg: number | null;
@@ -8458,11 +8704,13 @@ export interface components {
             url: string;
             verified_at?: string | null;
         };
+        /** @description One subnet's uptime + latency trend windows. Mirrors GET /api/v1/subnets/{netuid}/health/trends's data envelope. */
         HealthTrendsArtifact: {
             netuid: number;
             observed_at?: string | null;
             schema_version: number;
             source: string;
+            /** @description The 7d/30d windows keyed by window label, each holding this subnet's samples, uptime_ratio, latency_sample_count and the per-surface uptime/latency series. Opaque JSON: dynamic-keyed by window label, matching the get_subnet_health_trends MCP/REST shape. */
             windows: {
                 [key: string]: {
                     latency_sample_count: number;
@@ -8492,21 +8740,26 @@ export interface components {
             [key: string]: unknown;
         };
         IndexerLagArtifact: {
+            /** @description Blocks the distribution was computed over. Null only on a decline. */
             block_count: number | null;
+            /** @description Present ONLY on a decline; its absence says the measurement is real. */
             degraded?: {
                 detail?: string;
                 /** @enum {string} */
                 reason: "no_retained_blocks" | "unavailable";
             };
+            /** @description now - the newest observed_at. The number that moves when the lane stalls. */
             head_age_ms: number | null;
             /** Format: date-time */
             measured_at: string;
             schema_version: number;
+            /** @description What was actually measured -- the table is pruned, so a distribution without its bounds would read as a lifetime one. */
             window: components["schemas"]["IndexerLagWindow"] | null;
             write_latency_ms: components["schemas"]["IndexerLagLatency"] | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description Milliseconds from a block's own timestamp to the moment it became queryable here. Unbounded below: a negative value is block-author clock skew, served as measured. */
         IndexerLagLatency: {
             max: number | null;
             mean: number | null;
@@ -8569,6 +8822,7 @@ export interface components {
             matched_by_counts?: {
                 [key: string]: number;
             };
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             published_at?: string | null;
             /** @constant */
@@ -8609,6 +8863,7 @@ export interface components {
             /** @constant */
             schema_version: 1;
         };
+        /** @description Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope. */
         NetworkParametersArtifact: {
             block_emission_halvings?: number | null;
             block_emission_tao?: number | null;
@@ -8635,10 +8890,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot. */
         NeuronDetailArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
             netuid: number;
+            /** @description The UID's live metagraph row; null when absent from the latest snapshot. */
             neuron: {
                 active: boolean;
                 /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
@@ -8650,7 +8907,9 @@ export interface components {
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
+                /** @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640). */
                 immunity_expires_at?: string | null;
+                /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
@@ -8659,6 +8918,7 @@ export interface components {
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
+                /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
                 trust?: number | null;
                 uid: number;
@@ -8669,6 +8929,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history. */
         NeuronHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -8685,7 +8946,9 @@ export interface components {
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
+                /** @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640). */
                 immunity_expires_at?: string | null;
+                /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
@@ -8695,6 +8958,7 @@ export interface components {
                 snapshot_date: string;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
+                /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
                 trust?: number | null;
                 uid: number;
@@ -8735,6 +8999,7 @@ export interface components {
             generated_at: string;
             /** @description The operational surface kinds this list is filtered to (OPERATIONAL_SURFACE_KINDS), sorted. */
             kinds: string[];
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -8806,15 +9071,19 @@ export interface components {
          */
         PartnershipTier: "pilot";
         PipelineHistoryArtifact: {
+            /** @description Present ONLY on a decline. An empty series is a measurement. */
             degraded?: {
                 /** @enum {string} */
                 reason: "unavailable";
             };
+            /** @description Independent samples -- the honest denominator for any claim about how a value moved. */
             distinct_observations: number | null;
+            /** @description The first day the pipeline columns were ever written, so a short series reads as a start rather than a gap. */
             first_captured_day: string;
             netuid: number;
             newest_day: string | null;
             oldest_day: string | null;
+            /** @description Rows returned. NOT the number of times the pipeline was read. */
             point_count: number | null;
             points: components["schemas"]["PipelineHistoryPoint"][];
             schema_version: number;
@@ -8830,12 +9099,16 @@ export interface components {
             day: string;
             emission_enabled: boolean | null;
             emission_share: number | null;
+            /** @description Chain buys. */
             excess_tao: number | null;
             first_emission_block: number | null;
             miner_burned_fraction: number | null;
+            /** @description The chain state this point describes. A point that cannot say which block it came from is not served. */
             pipeline_block: number;
             pipeline_block_hash: string | null;
+            /** @description True when the snapshot writer carried the previous capture forward: this point is NOT an independent sample. */
             repeats_previous_observation: boolean;
+            /** @description Pool liquidity injection. */
             tao_in_emission_tao: number | null;
             tao_in_pool_tao: number | null;
         };
@@ -8878,6 +9151,7 @@ export interface components {
             contract_version?: string;
             endpoint_summary?: components["schemas"]["EndpointSummary"];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             provider: components["schemas"]["Provider"];
             /** @constant */
@@ -8889,6 +9163,7 @@ export interface components {
             contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             provider: {
                 authority?: string;
@@ -8909,6 +9184,7 @@ export interface components {
         ProvidersArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             providers: components["schemas"]["Provider"][];
             /** @constant */
@@ -8945,6 +9221,7 @@ export interface components {
              * @enum {string}
              */
             manifest_kind?: "compact" | "full";
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @description Artifact paths the publish step must find in the archive even though the compact manifest omits them. */
             required_artifact_paths?: string[];
@@ -8969,6 +9246,7 @@ export interface components {
             /** @enum {string} */
             storage_tier: "dual" | "git" | "r2";
         };
+        /** @description Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope. */
         RandomnessArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -8988,8 +9266,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards. */
         RegistryLeaderboardsArtifact: {
+            /** @description The board filter that was applied, or null when every board is returned. */
             board?: string | null;
+            /** @description Every board keyed by board name, each an array of ranked subnet entries capped at limit. Opaque JSON like HealthTrends.windows: the keys are dynamic AND hyphenated (fastest-rpc, most-complete, open-slots, …) so they are not expressible as GraphQL field names, and each board carries its own metric columns (healthiest has uptime_ratio/surfaces_ok, fastest-rpc has latency_ms, fastest-growing has completeness_delta, …). Passing it through verbatim keeps the REST/MCP get_registry_leaderboards shape byte-for-byte. */
             boards: {
                 [key: string]: ({
                     alpha_price_change_1d?: number | null;
@@ -9067,6 +9348,7 @@ export interface components {
             }) | null;
             curation_level_counts?: components["schemas"]["CountMap"];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             profile_level_counts?: components["schemas"]["CountMap"];
             recent_changes?: {
@@ -9153,6 +9435,7 @@ export interface components {
             candidates: components["schemas"]["ReviewAdapterCandidate"][];
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -9175,6 +9458,7 @@ export interface components {
             contract_version?: string;
             gap_priorities: components["schemas"]["ReviewGapPriority"][];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             review_decisions: components["schemas"]["ReviewDecision"][];
             /** @constant */
@@ -9205,6 +9489,7 @@ export interface components {
             contract_version?: string;
             decisions: components["schemas"]["ReviewDecision"][];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -9426,6 +9711,7 @@ export interface components {
         ReviewGapPrioritiesArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             priorities: components["schemas"]["ReviewGapPriority"][];
             /** @constant */
@@ -9449,6 +9735,7 @@ export interface components {
         ReviewProfileCompletenessArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             profiles: {
                 candidate_count: number;
@@ -9548,6 +9835,7 @@ export interface components {
                 url: string;
             }[];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -9603,6 +9891,7 @@ export interface components {
             id: string;
             kind: string;
         };
+        /** @description RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay. */
         RpcPoolsArtifact: {
             contract_version?: string;
             disabled_proxy_contract?: {
@@ -9627,6 +9916,7 @@ export interface components {
                 [key: string]: unknown;
             };
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             pools: components["schemas"]["RpcPool"][];
             provider_scores?: {
@@ -9647,8 +9937,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope. */
         RpcUsageArtifact: {
+            /** @description Time-bucket granularity for buckets: 1h for the 7d window, 6h for 30d. Null on a cold store. */
             bucket_granularity?: string | null;
+            /** @description Bounded time buckets over the window for heatmaps, oldest-first. */
             buckets: ({
                 avg_latency_ms: number | null;
                 errors: number;
@@ -9657,28 +9950,38 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description What the answer is actually about, as opposed to what window was asked for. */
             coverage: {
+                /** @description Epoch ms of the newest measured event across every contributing store, or null when nothing was measured. */
                 end: number | null;
+                /** @description The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function. */
                 latency_percentiles: ({
                     end: number | null;
                     start: number | null;
                 } & {
                     [key: string]: unknown;
                 }) | null;
+                /** @description One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers. */
                 segments: ({
+                    /** @description Epoch ms of this store's newest measured event in the window. */
                     end: number | null;
+                    /** @description Which store measured it: analytics-engine (live capture) or lakehouse (frozen history). */
                     source: string;
+                    /** @description Epoch ms of this store's oldest measured event in the window. */
                     start: number | null;
                 } & {
                     [key: string]: unknown;
                 })[];
+                /** @description Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured. */
                 start: number | null;
             } & {
                 [key: string]: unknown;
             };
+            /** @description Per-endpoint request distribution, ranked by request volume (top 50). */
             endpoints: ({
                 avg_latency_ms?: number | null;
                 endpoint_id: string | null;
+                /** @description Null when the endpoint had no requests in the window. */
                 error_rate?: number | null;
                 ok_requests: number;
                 provider?: string | null;
@@ -9687,7 +9990,9 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description Per-network request breakdown, ordered by request volume. */
             networks: ({
+                /** @description Null when the network had no requests in the window. */
                 error_rate?: number | null;
                 network: string;
                 ok_requests: number;
@@ -9702,13 +10007,18 @@ export interface components {
             observed_at?: number | null;
             schema_version: number;
             source: string;
+            /** @description Window-total rollup for RPC reverse-proxy traffic. */
             summary: {
+                /** @description Null when there are no requests in the window. */
                 cache_hit_rate?: number | null;
                 cache_hits?: number;
+                /** @description Null when there are no requests in the window (no defined rate). */
                 error_rate?: number | null;
                 error_requests: number;
+                /** @description Null when there are no requests in the window. */
                 failover_rate?: number | null;
                 failover_requests?: number;
+                /** @description Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store. */
                 latency_ms?: {
                     avg?: number | null;
                     p50?: number | null;
@@ -9725,6 +10035,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime. */
         RuntimeVersionsArtifact: {
             coverage_complete: boolean;
             coverage_from_at: string | null;
@@ -9750,6 +10061,7 @@ export interface components {
         SchemaDriftArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @description When the snapshot run observed these surfaces -- NOT the build's `generated_at`. A rebuild republishes an old capture unchanged, so this is the only field that says how old the drift verdict is. Absent on the build-time placeholder, which observed nothing. */
             observed_at?: string | null;
@@ -9779,7 +10091,7 @@ export interface components {
              * @description How this capture compares with the previous one. Absent only where a producer omits it.
              * @enum {string}
              */
-            drift_status?: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+            drift_status?: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
             error?: string | null;
             hash?: string | null;
             netuid: number;
@@ -9798,6 +10110,7 @@ export interface components {
         SchemaIndexArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             observed_at?: string;
             /** @constant */
@@ -9805,7 +10118,7 @@ export interface components {
             schemas: {
                 content_type?: string | null;
                 /** @enum {string} */
-                drift_status: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
+                drift_status: "new" | "changed" | "unchanged" | "not-captured" | "missing-after-previous-capture";
                 error?: string | null;
                 hash?: string | null;
                 netuid?: number;
@@ -9884,6 +10197,7 @@ export interface components {
         SearchArtifact: {
             contract_version?: string;
             document_count?: number;
+            /** @description Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON. */
             documents: {
                 artifact_path: string;
                 categories?: string[];
@@ -9899,12 +10213,14 @@ export interface components {
                 url?: string;
             }[];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
         } & {
             [key: string]: unknown;
         };
+        /** @description Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index). */
         SearchIndexArtifact: {
             contract_version?: string;
             document_count?: number;
@@ -9922,6 +10238,7 @@ export interface components {
                 url?: string;
             }[];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -9938,38 +10255,65 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health. */
         SelfHealthArtifact: {
             components: components["schemas"]["SelfHealthComponent"][];
             lanes: components["schemas"]["SelfHealthLane"][];
+            /** @description Components with data. Zero means the poller hasn't written anything yet. */
             measured_component_count: number;
             observed_at: string | null;
             schema_version: number;
             stale_lane_count: number;
-            /** @enum {string} */
+            /**
+             * @description operational | degraded | outage.
+             * @enum {string}
+             */
             verdict: "operational" | "degraded" | "outage";
         } & {
             [key: string]: unknown;
         };
+        /** @description One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios. */
         SelfHealthComponent: {
             checked_at: string | null;
             component: string;
+            /** @description Null when the component has never been probed -- NOT false. */
             current_ok: boolean | null;
+            /** @description Trailing-90d daily ratios, oldest first; gaps are absent, never zero-filled. */
             days: components["schemas"]["SelfHealthDay"][];
             http_status: number | null;
             latency_ms: number | null;
+            /** @description Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add. */
             note: string | null;
+            /** @description Mean uptime across the days we actually have. Null when there are none. */
             uptime_90d: number | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled. */
         SelfHealthDay: {
             checks: number;
             day: string;
             ok_count: number;
+            /** @description ok_count / checks, 0..1. */
             uptime_ratio: number;
         } & {
             [key: string]: unknown;
         };
+        /**
+         * @description One ingest lane's staleness verdict.
+         *
+         *     Three of these five were declared non-null against a Zod schema that says
+         *     otherwise, and production proved it: \`self_health\` returned
+         *     \`Cannot return null for non-nullable field SelfHealthLane.detail\` and nulled
+         *     the whole \`lanes\` list. \`age_ms\` and \`checked_at\` are null for the same
+         *     reason -- the watchdog could not measure the lane, which is the "we did not
+         *     measure" this type exists to distinguish from "the lane is fine" (#10215).
+         *
+         *     \`age_ms\` is a Float because it is a duration in MILLISECONDS: a lane stale
+         *     for more than 24.8 days exceeds GraphQL's 32-bit Int, and the answer to
+         *     "how far behind is this lane" must not stop being representable exactly when
+         *     it starts to matter.
+         */
         SelfHealthLane: {
             age_ms: number | null;
             checked_at: string | null;
@@ -10003,6 +10347,7 @@ export interface components {
         SourceHealthArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             providers: {
                 authority: components["schemas"]["Authority"];
@@ -10038,6 +10383,7 @@ export interface components {
         SourceSnapshotsArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -10063,6 +10409,7 @@ export interface components {
         };
         /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
+        /** @description One subnet's rolling 24h alpha trading volume (#6979). Mirrors GET /api/v1/subnets/{netuid}/volume' data envelope. */
         SubnetAlphaVolumeArtifact: {
             buy_count: number;
             buy_volume_alpha: number;
@@ -10073,16 +10420,25 @@ export interface components {
             sell_count: number;
             sell_volume_alpha: number;
             sell_volume_tao: number;
-            /** @enum {string} */
+            /**
+             * @description Bucketed reading of sentiment_ratio (buying/selling/neutral).
+             * @enum {string}
+             */
             sentiment: "bullish" | "bearish" | "neutral";
+            /** @description Buy share of total volume (0-1); null when there was no volume. */
             sentiment_ratio: number | null;
             total_volume_alpha: number;
             total_volume_tao: number;
+            /** @description Total TAO volume over alpha market cap; null when market cap is unknown. */
             vol_mcap_ratio: number | null;
-            /** @enum {string} */
+            /**
+             * @description The rolling window label this card covers (24h).
+             * @enum {string}
+             */
             window: "24h";
         };
         SubnetAxonRemovalsArtifact: {
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -10095,6 +10451,7 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn. */
         SubnetBurnArtifact: {
             burn_tao?: number | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -10136,6 +10493,7 @@ export interface components {
             generated_at: string;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -10143,8 +10501,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
+            /** @description Emission concentration across all UIDs. */
             emission: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
@@ -10161,7 +10521,9 @@ export interface components {
             } & {
                 [key: string]: unknown;
             }) | null;
+            /** @description Distinct controlling entities (coldkeys) behind the subnet's UIDs. */
             entity_count: number;
+            /** @description Emission concentration collapsed to one holder per controlling entity. */
             entity_emission?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
@@ -10178,6 +10540,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             }) | null;
+            /** @description Stake concentration collapsed to one holder per controlling entity. */
             entity_stake?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
@@ -10197,6 +10560,7 @@ export interface components {
             netuid: number;
             neuron_count: number;
             schema_version: number;
+            /** @description Stake concentration across all UIDs. */
             stake: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
@@ -10213,7 +10577,9 @@ export interface components {
             } & {
                 [key: string]: unknown;
             }) | null;
+            /** @description UIDs per controlling entity -- a Sybil/consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys). Null on an empty subnet. */
             uids_per_entity?: number | null;
+            /** @description Stake concentration across permitted validators only. */
             validator_stake?: ({
                 entropy?: number | null;
                 entropy_normalized?: number | null;
@@ -10233,6 +10599,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history. */
         SubnetConcentrationHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -10249,10 +10616,12 @@ export interface components {
                 [key: string]: unknown;
             })[];
             schema_version: number;
+            /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction. */
         SubnetConvictionArtifact: {
             count: number;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -10280,22 +10649,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
         SubnetDeregistrationsArtifact: {
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
             };
             deregistrations: number;
             deregistrations_per_hotkey: number | null;
+            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
             derivation?: {
                 /**
                  * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
                  * @example true
                  */
                 is_lower_bound: boolean;
+                /** @description Days of NeuronRegistered history the derivation had available. */
                 lookback_days: number;
                 method: string;
+                /** @description Of those, the ones with no observed previous holder. */
                 unattributed_registrations: number;
+                /** @description Registrations observed inside the reported window. */
                 window_registrations: number;
             };
             distinct_deregistered_hotkeys: number;
@@ -10416,9 +10791,13 @@ export interface components {
                 alpha_market_cap_tao: number | null;
                 alpha_out_emission?: number | null;
                 alpha_out_pool: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
                 alpha_price_change_1d?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227). */
                 alpha_price_change_1h?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227). */
                 alpha_price_change_1m?: number | null;
+                /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
                 alpha_price_change_7d?: number | null;
                 /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
                 alpha_price_tao: number | null;
@@ -10455,6 +10834,7 @@ export interface components {
             endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -10471,6 +10851,7 @@ export interface components {
             health_source?: string;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             operational_observed_at?: string | null;
             /** @constant */
@@ -10480,6 +10861,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope. */
         SubnetEventsArtifact: {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
@@ -10491,7 +10873,9 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope. */
         SubnetEventSummaryArtifact: {
+            /** @description Per event category: its kind list and rolled-up counts. Opaque JSON passed through verbatim, matching the get_subnet_event_summary MCP/REST shape. */
             categories: {
                 alpha_amount: number;
                 amount_tao: number;
@@ -10505,6 +10889,7 @@ export interface components {
                 last_observed_at: string | null;
             }[];
             category_count: number;
+            /** @description Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim. */
             event_kinds: {
                 alpha_amount: number;
                 amount_tao: number;
@@ -10520,14 +10905,19 @@ export interface components {
                 last_observed_at: string | null;
             }[];
             kind_count: number;
+            /** @description The resolved recent-event cap actually applied (1-50, default 10). */
             limit: number;
             netuid: number;
             observed_at: string | null;
             recent_event_count: number;
+            /** @description The bounded newest-first recent-event list. Opaque JSON passed through verbatim. */
             recent_events: components["schemas"]["AccountEvent"][];
             schema_version: number;
             total_events: number;
-            /** @enum {string} */
+            /**
+             * @description The resolved window label (7d/30d/90d).
+             * @enum {string}
+             */
             window: "7d" | "30d" | "90d";
         } & {
             [key: string]: unknown;
@@ -10538,6 +10928,7 @@ export interface components {
             generated_at: string;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -10598,6 +10989,7 @@ export interface components {
             generated_at: string;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             priorities: components["schemas"]["ReviewGapPriority"][];
             /** @constant */
@@ -10606,6 +10998,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope. */
         SubnetHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -10621,35 +11014,46 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One `coldkey`'s holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet. */
         SubnetHolder: {
+            /** @description ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO. */
             alpha: number;
             coldkey: string;
+            /** @description Distinct hotkeys this `coldkey` holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
             hotkey_count: number | null;
+            /** @description This holder's alpha over the subnet's FULL measured total, so it means the same thing at limit 5 and limit 100. Null when the total is zero. */
             share_of_total: number | null;
         };
         SubnetHoldersArtifact: {
+            /** @description The pool pass every row was valued against. */
             captured_at: string | null;
             concentration: components["schemas"]["SubnetHoldersConcentration"];
+            /** @description Present ONLY on a decline. Its absence is what says the ranking is real -- an empty holders list with no degraded block means the subnet genuinely has no measured holders. */
             degraded?: components["schemas"]["SubnetHoldersDegraded"];
+            /** @description Distinct coldkeys holding this subnet's alpha -- the whole set, never the returned page's length. */
             holder_count: number | null;
             holders: components["schemas"]["SubnetHolder"][];
             limit: number | null;
             netuid: number;
+            /** @description When the positions ledger itself was last written, which advances on a different cadence than the pool totals. */
             positions_captured_at: string | null;
             schema_version: number;
             total_alpha: number | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description Concentration of a subnet's alpha, each rank summed over the top N of the FULL holder set rather than the returned page. */
         SubnetHoldersConcentration: {
             top10_share: number | null;
             top20_share: number | null;
             top5_share: number | null;
         };
+        /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
         SubnetHoldersDegraded: {
             /** @enum {string} */
             reason: "pool_totals_unproven" | "root_not_in_alpha_map" | "unavailable";
         };
+        /** @description Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations. */
         SubnetHyperparametersArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
@@ -10744,6 +11148,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history. */
         SubnetIdentityHistoryArtifact: {
             entries: {
                 block_number?: number | null;
@@ -10766,6 +11171,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet idle-stake scorecard (#7172). Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/idle-stake. */
         SubnetIdleStakeArtifact: {
             captured_at?: string | null;
             idle_neuron_count: number;
@@ -10846,6 +11252,7 @@ export interface components {
             updated_at?: string | null;
             website_url?: string | null;
         };
+        /** @description Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease. */
         SubnetLeaseArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -10877,6 +11284,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history. */
         SubnetLeaseHistoryArtifact: {
             count: number;
             event_kinds: string[];
@@ -10928,7 +11336,9 @@ export interface components {
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
+                /** @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640). */
                 immunity_expires_at?: string | null;
+                /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
@@ -10937,6 +11347,7 @@ export interface components {
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
+                /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
                 trust?: number | null;
                 uid: number;
@@ -10961,13 +11372,16 @@ export interface components {
                 neurons_start: number;
                 stake_delta_alpha: number;
                 stake_end_alpha: number;
+                /** @description Null when the start snapshot's stake was 0 (growth from nothing is undefined). */
                 stake_pct_change: number | null;
+                /** @description This subnet's share of network stake at the end snapshot; null when the network total is 0. */
                 stake_share_pct: number | null;
                 stake_start_alpha: number;
                 validators_delta: number;
                 validators_end: number;
                 validators_start: number;
             }[];
+            /** @description Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page). */
             network: {
                 gainers: number;
                 losers: number;
@@ -10976,6 +11390,7 @@ export interface components {
                 total_emission_start_alpha: string;
                 total_stake_delta_alpha: string;
                 total_stake_end_alpha: string;
+                /** @description Lossless fixed 9-decimal (rao-precision) TAO string -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
                 total_stake_start_alpha: string;
                 total_validators_delta: number;
                 total_validators_end: number;
@@ -10989,8 +11404,10 @@ export interface components {
             subnet_count: number;
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope. */
         SubnetOhlcArtifact: {
             candles: {
+                /** @description Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. */
                 bucket_start: number;
                 /** Format: date-time */
                 bucket_start_iso: string;
@@ -11002,9 +11419,13 @@ export interface components {
                 volume_alpha: number;
                 volume_tao: number;
             }[];
-            /** @enum {string} */
+            /**
+             * @description The resolved bucket interval (1h/1d).
+             * @enum {string}
+             */
             interval: "1h" | "1d";
             netuid: number;
+            /** @description True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted. */
             root_excluded: boolean;
             schema_version: number;
         };
@@ -11039,6 +11460,7 @@ export interface components {
             health_source?: string | null;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             operational_observed_at?: string | null;
             profile: components["schemas"]["SubnetProfile"] | null;
@@ -11049,12 +11471,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
         SubnetOwnershipHistoryArtifact: {
             count: number;
+            /** @description The chain_events method the authoritative records are decoded from. */
             event_method: string;
+            /** @description The chain_events pallet the authoritative records are decoded from. */
             event_pallet: string;
             netuid: number;
+            /** @description The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read. */
             observed_through?: string | null;
+            /** @description Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null). */
             ownership_changes: {
                 block_number?: number | null;
                 netuid?: number | null;
@@ -11067,21 +11494,28 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance. */
         SubnetPerformanceArtifact: {
             active_count?: number;
             captured_at?: string | null;
+            /** @description Consensus score spread across all neurons. */
             consensus: components["schemas"]["ScoreDistribution"];
+            /** @description Dividends concentration across permitted validators only. */
             dividends: components["schemas"]["ConcentrationMetrics"];
+            /** @description Incentive concentration across all neurons with positive incentive. */
             incentive: components["schemas"]["ConcentrationMetrics"];
             netuid: number;
             neuron_count: number;
             schema_version: number;
+            /** @description Trust score spread across all neurons. */
             trust: components["schemas"]["ScoreDistribution"];
             validator_count?: number;
+            /** @description Validator-trust score spread across permitted validators only. */
             validator_trust?: components["schemas"]["ScoreDistribution"];
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history. */
         SubnetPerformanceHistoryArtifact: {
             netuid: number;
             point_count: number;
@@ -11106,6 +11540,7 @@ export interface components {
                 [key: string]: unknown;
             })[];
             schema_version: number;
+            /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         } & {
             [key: string]: unknown;
@@ -11243,6 +11678,7 @@ export interface components {
             endpoints: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             profile: components["schemas"]["SubnetProfile"];
             /** @constant */
@@ -11268,6 +11704,7 @@ export interface components {
         SubnetProfilesArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             profiles: components["schemas"]["SubnetProfile"][];
             /** @constant */
@@ -11291,9 +11728,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
+            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
             degraded?: {
                 detail?: string;
                 reason: string;
@@ -11304,6 +11743,7 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled. */
         SubnetRecycledArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -11335,6 +11775,7 @@ export interface components {
             contract_version?: string;
             generated_at: string;
             network: components["schemas"]["BittensorNetwork"];
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -11361,6 +11802,7 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description Per-subnet net stake flow (#7172) over a 7d/30d/90d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-flow' data envelope. */
         SubnetStakeFlowArtifact: {
             net_flow_tao: number;
             netuid: number;
@@ -11380,15 +11822,20 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote. */
         SubnetStakeQuoteArtifact: {
             alpha_in_pool: number | null;
             amount: number;
-            /** @enum {string} */
+            /**
+             * @description stake (spends TAO for alpha) or unstake (spends alpha for TAO).
+             * @enum {string}
+             */
             direction: "stake" | "unstake";
             effective_price_tao: number;
             expected_out: number;
             /** @enum {string} */
             expected_out_unit: "alpha" | "tao";
+            /** @description True for root (netuid 0), which quotes 1:1 with no price impact. */
             is_root: boolean;
             netuid: number;
             price_impact_pct: number;
@@ -11396,6 +11843,7 @@ export interface components {
             spot_price_tao: number;
             tao_in_pool_tao: number | null;
         };
+        /** @description Per-subnet stake-transfer activity (#5717) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
         SubnetStakeTransfersArtifact: {
             distinct_senders: number;
             netuid: number;
@@ -11414,6 +11862,7 @@ export interface components {
             limit: number | null;
             netuid: number;
             schema_version: number;
+            /** @description Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there. */
             surface_count: number;
         } & {
             [key: string]: unknown;
@@ -11423,6 +11872,7 @@ export interface components {
             generated_at: string;
             name?: string;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -11431,7 +11881,9 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
         SubnetTrajectoryArtifact: {
+            /** @description Latest-vs-window-ago deltas -- one entry per window (7d, 30d) that has a prior point to compare against; empty when the series is too short. */
             deltas: {
                 [key: string]: ({
                     alpha_in_pool?: number | null;
@@ -11469,7 +11921,9 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard. */
         SubnetTurnoverArtifact: {
+            /** @description Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store. */
             changes?: {
                 uid_reassignment_count?: number;
                 uid_reassignments: {
@@ -11479,11 +11933,13 @@ export interface components {
                 }[];
                 validators_entered: {
                     hotkey: string;
+                    /** @description The UID it held at the boundary snapshot, null when the row carried no usable uid. */
                     uid: number | null;
                 }[];
                 validators_entered_count?: number;
                 validators_exited: {
                     hotkey: string;
+                    /** @description The UID it held at the boundary snapshot, null when the row carried no usable uid. */
                     uid: number | null;
                 }[];
                 validators_exited_count?: number;
@@ -11512,10 +11968,13 @@ export interface components {
         SubnetValidatorEconomicsArtifact: {
             cap_binding: boolean | null;
             composition: components["schemas"]["ValidatorSetComposition"] | null;
+            /** @description Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'. */
             degraded_reason: string | null;
             earning_entry_cost_tao: number | null;
             earning_floor_cost_tao: number | null;
+            /** @description The smallest stake that actually EARNS dividends here, excluding the subnet owner -- its permit is unconditional, so an owner earning on ~0 stake would report a floor of 0. Null when NO non-owner has earned on this subnet, which is a real answer (the owner is taking the dividends), not a missing one. */
             earning_floor_units: number | null;
+            /** @description Reported, never scored. Gate-closed subnets still emit alpha at a comparable rate and are less contested, so per unit of stake they pay MORE -- the gate is an exit-liquidity question, not an eligibility one. */
             emission_gate_open: boolean | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -11531,13 +11990,18 @@ export interface components {
             min_childkey_take_ratio: number | null;
             model_agreement: components["schemas"]["ValidatorPermitModelAgreement"] | null;
             netuid: number;
+            /** @description Floor cost plus the registration burn. Entry is two spends; publishing one understates it. */
             permit_entry_cost_tao: number | null;
             permit_floor_cost_tao: number | null;
+            /** @description Floors are in total_stake UNITS (alpha + tao_weight * root), the quantity the chain threshold actually tests -- not alpha alone. */
             permit_floor_units: number | null;
+            /** @description How much more it takes to EARN than merely to hold a permit. */
             permit_to_earning_multiple: number | null;
             registration_cost_tao: number | null;
+            /** @description Root is not split: this much root clears the threshold on EVERY subnet the hotkey is registered on at once. */
             root_tao_to_clear_threshold: number | null;
             schema_version: number;
+            /** @description Echoed so a caller never has to guess what the floor was computed against. Both are sudo-settable, so a cached copy would silently rot. */
             stake_threshold_units: number | null;
             takes: components["schemas"]["ValidatorTakeDistribution"] | null;
             tao_inflow_per_day: number | null;
@@ -11557,16 +12021,19 @@ export interface components {
                 };
             };
             netuid: number;
+            /** @description Newest first. */
             points: components["schemas"]["ValidatorEconomicsHistoryPoint"][];
             schema_version: number;
             window: string;
         };
+        /** @description One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope. */
         SubnetValidatorsArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
             netuid: number;
             schema_version: number;
             validator_count: number;
+            /** @description Each permitted validator's live metagraph row -- the same NeuronState shape the neuron field returns. */
             validators: {
                 active: boolean;
                 /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
@@ -11578,7 +12045,9 @@ export interface components {
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
+                /** @description Estimated wall-clock ETA for immunity_expires_at_block, extrapolated from this snapshot's own block/timestamp at ~12s/block; null if that anchor is unavailable (#6640). */
                 immunity_expires_at?: string | null;
+                /** @description The block immunity ends (registered_at_block + the subnet's live immunity_period); only present while is_immunity_period is true (#6640). */
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
@@ -11587,6 +12056,7 @@ export interface components {
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
+                /** @description Validator take/commission (0..1) from SubtensorModule::Delegates; null when no Delegates entry at capture. */
                 take?: number | null;
                 trust?: number | null;
                 uid: number;
@@ -11602,6 +12072,7 @@ export interface components {
             generated_at: string;
             name: string | null;
             netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             results: components["schemas"]["VerificationResult"][];
             /** @constant */
@@ -11626,6 +12097,7 @@ export interface components {
             weight_sets: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters. */
         SubnetWeightSettersArtifact: {
             distinct_setters: number;
             netuid: number;
@@ -11641,6 +12113,7 @@ export interface components {
                 /** @description Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time'). */
                 overdue: boolean | null;
                 seconds_since_last_set: number | null;
+                /** @description This setter's share of the subnet total weight_sets; null when the subnet total is 0. */
                 share: number | null;
                 tempos_since_last_set: number | null;
                 uid: number | null;
@@ -11698,6 +12171,7 @@ export interface components {
                 [key: string]: unknown;
             })[];
             schema_version: number;
+            /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         } & {
             [key: string]: unknown;
@@ -11712,6 +12186,7 @@ export interface components {
             /** @constant */
             schema_version: 1;
         };
+        /** @description The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope. */
         SudoKeyArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -11831,6 +12306,7 @@ export interface components {
             }[];
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -11848,13 +12324,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One recorded mutation of a subnet's public surface. */
         SurfaceHistoryChange: {
+            /** @description insert, update or delete. A delete is the only evidence a surface ever existed. */
             action: ("insert" | "update" | "delete") | null;
             kind: string | null;
             name: string | null;
             /** Format: date-time */
             recorded_at: string;
+            /** @description The registry commit that produced the change. */
             source_commit: string | null;
+            /** @description Coalesced column then overlay id, so it is present on every row including those written before the column was recorded. */
             surface_id: string | null;
             url: string | null;
         };
@@ -11863,6 +12343,7 @@ export interface components {
         SurfacesArtifact: {
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
@@ -11894,28 +12375,36 @@ export interface components {
             change_pct: number | null;
             change_usd: number | null;
             latest: components["schemas"]["TaoUsdLatest"] | null;
+            /** @description How far back the answer actually reaches -- the series began 2026-08-02. */
             oldest_observed_at: string | null;
             point_count: number;
             points: components["schemas"]["TaoUsdPoint"][];
+            /** @description How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
             priced_point_count: number;
             schema_version: number;
             window: string | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description The newest reading with the derivation that produced it, kept together so both describe the same block. */
         TaoUsdLatest: {
             block_number: number | null;
+            /** @description The ETH/USDC anchor leg the composition multiplied through. */
             eth_usd: number | null;
             observed_at: string | null;
             pool_count: number | null;
+            /** @description Per-pool provenance as the producer stored it. */
             pools: unknown[];
+            /** @description Stated even when the price is null -- it is what says why. */
             price_basis: string | null;
             usd_per_tao: number | null;
         };
+        /** @description One TAO/USD reading. */
         TaoUsdPoint: {
             block_number: number | null;
             /** Format: date-time */
             observed_at: string;
+            /** @description Null means the block was not priceable (insufficient pool quorum), NOT a zero price. */
             usd_per_tao: number | null;
         };
         TopHoldersArtifact: {
@@ -11944,8 +12433,10 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope. */
         UptimeArtifact: {
             netuid: number;
+            /** @description Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at. */
             reliability: ({
                 avg_latency_ms: number | null;
                 computed_at?: string | null;
@@ -11963,11 +12454,13 @@ export interface components {
             }) | null;
             schema_version: number;
             source: string;
+            /** @description Per-surface day series with window-wide uptime ratios and per-surface reliability scores. */
             surfaces: ({
                 day_count: number;
                 days: ({
                     avg_latency_ms?: number | null;
                     day: string;
+                    /** @description Percentile latency summary for one uptime day. */
                     latency_ms?: {
                         p50?: number | null;
                         p95?: number | null;
@@ -11982,6 +12475,7 @@ export interface components {
                 } & {
                     [key: string]: unknown;
                 })[];
+                /** @description Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at. */
                 reliability?: ({
                     avg_latency_ms: number | null;
                     computed_at?: string | null;
@@ -12047,6 +12541,7 @@ export interface components {
             root_stake_tao: number;
             schema_version: number;
             subnet_count: number;
+            /** @description Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet. */
             subnets: {
                 active: boolean;
                 axon: string | null;
@@ -12075,16 +12570,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking. */
         ValidatorEconomicsExclusion: {
             netuid: number;
             reason: string;
         };
+        /** @description One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor. */
         ValidatorEconomicsHistoryPoint: {
             earning_floor_alpha: number | null;
             emission_gate_open: boolean | null;
+            /** @description The validator cap in force on this day. permit_floor_alpha is the observed floor REGARDLESS of cap state, so it cannot be read without this -- and joining today's cap onto an old point is wrong for any subnet whose cap moved. */
             max_validators: number | null;
+            /** @description Where max_validators came from: observed = the hyperparameter change-log recorded it at or before this day; current = the change-log does not reach this far back, so the LIVE cap is reported. */
             max_validators_source: ("observed" | "current") | null;
             permit_floor_alpha: number | null;
+            /** @description Whether the permit set was full on this day (validators_permitted >= max_validators). NOT the same measure as the current record's cap_binding, which counts UIDs clearing the threshold against slots -- only the permitted set survives in a daily snapshot. */
             permit_set_full: boolean | null;
             snapshot_date: string;
             tao_inflow_per_day: number | null;
@@ -12110,12 +12610,16 @@ export interface components {
             rows: components["schemas"]["SubnetValidatorEconomicsArtifact"][];
             schema_version: number;
             sort: string;
+            /** @description Echoed once for the whole ranking: every row's floors were derived against exactly these values, and both are sudo-settable. */
             stake_threshold_units: number | null;
             tao_weight: number | null;
+            /** @description Rows matching the filters, BEFORE limit/offset -- so a caller can page without re-counting. */
             total: number;
         };
+        /** @description One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history. */
         ValidatorHistoryArtifact: {
             hotkey: string;
+            /** @description The subnet this series was scoped to, or null for the cross-subnet rollup. */
             netuid: number | null;
             /** @description take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'. */
             next_take_change_eligible_date: string | null;
@@ -12125,6 +12629,7 @@ export interface components {
                 dividend_efficiency?: number | null;
                 dividends?: number | null;
                 emission_alpha?: number | null;
+                /** @description The scoped subnet. Null on the unscoped cross-subnet series. */
                 netuid?: number | null;
                 rewards_per_1000_alpha?: number | null;
                 rewards_per_1000_tao: number | null;
@@ -12140,6 +12645,7 @@ export interface components {
                 uid?: number | null;
                 /** @description Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'. */
                 validator_permit?: boolean | null;
+                /** @description Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes. */
                 validator_trust?: number | null;
             }[];
             schema_version: number;
@@ -12150,6 +12656,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope. */
         ValidatorNominatorsArtifact: {
             concentration_complete: boolean;
             hotkey: string;
@@ -12160,22 +12667,30 @@ export interface components {
             nominators: {
                 coldkey: string;
                 event_count: number;
+                /** @description staked_tao + unstaked_tao (total churn, regardless of direction). */
                 gross_staked_tao: number;
+                /** @description Most recent StakeAdded/StakeRemoved time for this `coldkey`; null when unstamped. */
                 last_observed_at: string | null;
+                /** @description staked_tao - unstaked_tao. */
                 net_staked_tao: number;
                 staked_tao: number;
                 unstaked_tao: number;
             }[];
             offset: number;
             schema_version: number;
-            /** @enum {string} */
+            /**
+             * @description The resolved sort actually applied (an omitted sort resolves to net_staked).
+             * @enum {string}
+             */
             sort: "net_staked" | "gross_staked" | "last_activity";
             top_nominator_share: number | null;
             top5_nominator_share: number | null;
+            /** @description The resolved window label; null only if the builder was handed no window. */
             window: string | null;
         } & {
             [key: string]: unknown;
         };
+        /** @description How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports. */
         ValidatorPermitModelAgreement: {
             agreement: number | null;
             matched: number;
@@ -12184,15 +12699,18 @@ export interface components {
             publishable: boolean;
             under_predicted: number;
         };
+        /** @description Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers. */
         ValidatorSetComposition: {
             active: number;
             earning: number;
             permitted: number;
         };
+        /** @description The commission picture across permit-holders. The sorted vector is published because the shape is the information: it is genuinely bimodal, with a cohort competing at or near zero against a median at the effective ceiling, and validators earning at both ends. */
         ValidatorTakeDistribution: {
             distribution: number[];
             max: number | null;
             median: number | null;
+            /** @description Median restricted to permit-holders that actually earn -- takes among validators nobody delegates to are noise. */
             median_earning: number | null;
             min: number | null;
             sample_size: number;
@@ -12202,6 +12720,7 @@ export interface components {
             candidate_count: number;
             contract_version?: string;
             generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             observed_at?: string | null;
             results: components["schemas"]["VerificationResult"][];
@@ -36745,7 +37264,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "schemas": [
                      *           {
-                     *             "drift_status": "changed",
+                     *             "drift_status": "new",
                      *             "schema_url": "https://api.metagraph.sh/example",
                      *             "status": "captured",
                      *             "surface_id": "example"

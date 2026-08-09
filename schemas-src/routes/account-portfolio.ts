@@ -44,9 +44,15 @@ const PortfolioPositionSchema = z
     trust: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    yield: z.number().nullable(),
+    yield: z
+      .number()
+      .nullable()
+      .describe("Emission over stake for this position; null when stake is 0."),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet position in a wallet's portfolio, ranked biggest-stake-first.",
+  );
 
 export const AccountPortfolioArtifactSchema = z
   .object({
@@ -73,10 +79,15 @@ export const AccountPortfolioArtifactSchema = z
       .describe(
         "Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake.",
       ),
-    stake_concentration: ConcentrationMetricsSchema,
+    stake_concentration: ConcentrationMetricsSchema.describe(
+      "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions.",
+    ),
     positions: z.array(PortfolioPositionSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
+  );
 export type AccountPortfolioArtifact = z.infer<
   typeof AccountPortfolioArtifactSchema
 >;

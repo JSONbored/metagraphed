@@ -61,9 +61,19 @@ export const AdapterArtifactSchema = ArtifactBaseSchema.extend({
   // dimension lists, the generic OpenAPI adapter ships something else
   // entirely. There is no shape to declare, so the contract says so instead
   // of pretending. Listed in scripts/validate-schema-opacity.ts.
-  extensions: z.record(z.string(), z.object({}).passthrough()),
-  snapshot: AdapterSnapshotSchema.nullable().optional(),
-}).passthrough();
+  extensions: z
+    .record(z.string(), z.object({}).passthrough())
+    .describe(
+      "Per-adapter extension metadata keyed by provider id; each value's shape is adapter-specific.",
+    ),
+  snapshot: AdapterSnapshotSchema.nullable()
+    .optional()
+    .describe("Captured adapter metrics payload; shape is adapter-specific."),
+})
+  .passthrough()
+  .describe(
+    "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope.",
+  );
 export type AdapterArtifact = z.infer<typeof AdapterArtifactSchema>;
 export const AdapterResponseSchema = successEnvelopeSchema(
   AdapterArtifactSchema,

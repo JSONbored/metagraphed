@@ -21,7 +21,10 @@ export const EvmAddressMappingArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.",
+  );
 export type EvmAddressMappingArtifact = z.infer<
   typeof EvmAddressMappingArtifactSchema
 >;
@@ -59,7 +62,10 @@ export const NetworkParametersArtifactSchema = z
     // values we supply, and nothing else in the body says so.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope.",
+  );
 export type NetworkParametersArtifact = z.infer<
   typeof NetworkParametersArtifactSchema
 >;
@@ -78,7 +84,10 @@ export const RandomnessArtifactSchema = z
     // not a retention window the beacon publishes.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope.",
+  );
 export type RandomnessArtifact = z.infer<typeof RandomnessArtifactSchema>;
 export const RandomnessResponseSchema = successEnvelopeSchema(
   RandomnessArtifactSchema,
@@ -94,7 +103,10 @@ export const SudoKeyArtifactSchema = z
     // assume from the absence of a map.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope.",
+  );
 export type SudoKeyArtifact = z.infer<typeof SudoKeyArtifactSchema>;
 export const SudoKeyResponseSchema = successEnvelopeSchema(
   SudoKeyArtifactSchema,

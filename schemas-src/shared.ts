@@ -79,6 +79,72 @@ export const BITTENSOR_NETWORK_VALUES = ["finney", "test", "local"] as const;
 export const BittensorNetworkSchema = z.enum(BITTENSOR_NETWORK_VALUES);
 export type BittensorNetwork = z.infer<typeof BittensorNetworkSchema>;
 
+/**
+ * What an address-labelling entity IS (#8372).
+ *
+ * Both copies carried an instruction rather than an import -- "keep all three
+ * in sync" on one and "Keep both in sync" on the other -- which is the shape
+ * of a vocabulary with no owner. `validate:schema-vocabularies` could not see
+ * either: prettier had wrapped both as `z` then `.enum([...])` on the next
+ * line, and the gate's matcher was anchored on `z.enum(`.
+ */
+export const ENTITY_CATEGORY_VALUES = [
+  "exchange",
+  "bridge",
+  "foundation",
+  "pool",
+  "infra",
+  "project",
+  "operator",
+  "other",
+] as const;
+export const EntityCategorySchema = z.enum(ENTITY_CATEGORY_VALUES);
+export type EntityCategory = z.infer<typeof EntityCategorySchema>;
+
+/**
+ * How a callable surface authenticates.
+ *
+ * Restated by the agent catalogue and the subnet detail card, which describe
+ * the same surfaces -- and the catalogue's own comment already said so:
+ * "Single-sourcing the two declarations is #9799". `signature` means the
+ * request is signed per call (a hotkey/nonce/signature header set) rather than
+ * carrying a static token.
+ */
+export const SURFACE_AUTH_SCHEME_VALUES = [
+  "none",
+  "bearer",
+  "api-key",
+  "basic",
+  "oauth2",
+  "signature",
+  "custom",
+] as const;
+export const SurfaceAuthSchemeSchema = z.enum(SURFACE_AUTH_SCHEME_VALUES);
+export type SurfaceAuthScheme = z.infer<typeof SurfaceAuthSchemeSchema>;
+
+/** Where an auth credential travels. Same two restating modules as the kind
+ * above -- one vocabulary split across two files describing one surface. */
+export const SURFACE_AUTH_LOCATION_VALUES = [
+  "header",
+  "query",
+  "cookie",
+  "body",
+] as const;
+export const SurfaceAuthLocationSchema = z.enum(SURFACE_AUTH_LOCATION_VALUES);
+export type SurfaceAuthLocation = z.infer<typeof SurfaceAuthLocationSchema>;
+
+/** What a capture pass concluded about one surface's schema since the last
+ * one. The drift artifact declares it and the profile card republishes it. */
+export const SCHEMA_DRIFT_STATUS_VALUES = [
+  "new",
+  "changed",
+  "unchanged",
+  "not-captured",
+  "missing-after-previous-capture",
+] as const;
+export const SchemaDriftStatusSchema = z.enum(SCHEMA_DRIFT_STATUS_VALUES);
+export type SchemaDriftStatus = z.infer<typeof SchemaDriftStatusSchema>;
+
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
 export const HEALTH_STATUS_VALUES = QUERY_ENUMS.healthStatus;
@@ -125,10 +191,34 @@ export const SubnetEconomicsSchema = z
     alpha_in_pool: z.number().nullable(),
     alpha_market_cap_tao: z.number().nullable(),
     alpha_out_pool: z.number().nullable(),
-    alpha_price_change_1d: z.number().nullable().optional(),
-    alpha_price_change_1h: z.number().nullable().optional(),
-    alpha_price_change_1m: z.number().nullable().optional(),
-    alpha_price_change_7d: z.number().nullable().optional(),
+    alpha_price_change_1d: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227).",
+      ),
+    alpha_price_change_1h: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227).",
+      ),
+    alpha_price_change_1m: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227).",
+      ),
+    alpha_price_change_7d: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227).",
+      ),
     alpha_price_tao: z
       .number()
       .nullable()
@@ -224,7 +314,12 @@ export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
 export const ChainStateSchema = z
   .object({
     block: z.int().min(0),
-    block_hash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
+    block_hash: z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{64}$/)
+      .describe(
+        "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
+      ),
     // Block emission is derived from issuance (#8747), never read from the
     // stale `BlockEmission` storage item. Kept at the height so a historical
     // row stays interpretable against the emission in force when captured.
@@ -236,15 +331,28 @@ export const ChainStateSchema = z
     //
     // theta is null when the bar is unset, which disables the gate outright
     // (apply_emission_gate's own `if theta <= zero { return; }`).
-    emission_gate_bar: z.number().nullable(),
+    emission_gate_bar: z
+      .number()
+      .nullable()
+      .describe(
+        "theta. Null when the bar is unset, which disables the gate outright.",
+      ),
     emission_bar_quantile: z.number().nullable(),
     // NULL MEANS THE RUNTIME DEFAULT h = 3, NOT ZERO. h = 0 would make the
     // Hill gate return exactly 0.5 for every subnet, so coercing absent to 0
     // silently replaces the gate with a constant. Left null here and resolved
     // by the consumer against DEFAULT_EMISSION_GATE_EXPONENT.
-    emission_gate_exponent: z.int().nullable(),
+    emission_gate_exponent: z
+      .int()
+      .nullable()
+      .describe(
+        "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360.",
+  );
 export type ChainState = z.infer<typeof ChainStateSchema>;
 
 // Per-field provenance (#9078): every published value labelled `measured` --

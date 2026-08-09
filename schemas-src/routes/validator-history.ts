@@ -22,7 +22,12 @@ const ValidatorHistoryPointSchema = z
     // take are per-(hotkey, netuid) facts and averaging them across subnets would
     // publish a number the chain never computes. The point schema is .strict(), so
     // they have to be declared here or a scoped response fails its own contract.
-    netuid: z.int().min(0).nullable().optional(),
+    netuid: z
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe("The scoped subnet. Null on the unscoped cross-subnet series."),
     uid: z.int().min(0).nullable().optional(),
     stake_alpha: z
       .number()
@@ -32,7 +37,13 @@ const ValidatorHistoryPointSchema = z
         "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point.",
       ),
     emission_alpha: z.number().nullable().optional(),
-    validator_trust: z.number().nullable().optional(),
+    validator_trust: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes.",
+      ),
     consensus: z.number().nullable().optional(),
     dividends: z.number().nullable().optional(),
     take: z.number().nullable().optional(),
@@ -52,7 +63,10 @@ const ValidatorHistoryPointSchema = z
     stake_share: z.number().min(0).nullable().optional(),
     dividend_efficiency: z.number().min(0).nullable().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One day's rollup for a validator's hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too.",
+  );
 
 export const ValidatorHistoryArtifactSchema = z
   .object({
@@ -61,7 +75,13 @@ export const ValidatorHistoryArtifactSchema = z
     window: z.string().nullable(),
     // The subnet this series was scoped to; null for the cross-subnet rollup, so a
     // consumer never has to probe a point to learn which shape it received.
-    netuid: z.int().min(0).nullable(),
+    netuid: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "The subnet this series was scoped to, or null for the cross-subnet rollup.",
+      ),
     // #9390: take is a delegate-level fact, reported once for the series rather than
     // per point, and compared as the u16 the chain stores it in — the float rendering
     // is not stable and diffing it manufactures changes that never happened.
@@ -77,7 +97,10 @@ export const ValidatorHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(ValidatorHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history.",
+  );
 export type ValidatorHistoryArtifact = z.infer<
   typeof ValidatorHistoryArtifactSchema
 >;

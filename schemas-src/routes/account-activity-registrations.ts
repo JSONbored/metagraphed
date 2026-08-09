@@ -35,7 +35,10 @@ export const AccountAxonRemovalsArtifactSchema = z
           first_removed_at: z.string().nullable(),
           last_removed_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's slice of an account's axon-removal footprint over the window.",
+        ),
     ),
     // #9307: AxonInfoRemoved has never been emitted, so this footprint's zero
     // has never measured this account.
@@ -66,7 +69,10 @@ export const AccountDeregistrationsArtifactSchema = z
           first_deregistered_at: z.string().nullable(),
           last_deregistered_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's slice of an account's deregistration footprint over the window.",
+        ),
     ),
     // #9307: the slots where this account was the PREVIOUS holder, derived
     // from UID reuse; `degraded` when nothing derived it.
@@ -98,7 +104,10 @@ export const AccountRegistrationsArtifactSchema = z
           first_registered_at: z.string().nullable(),
           last_registered_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's slice of an account's registration footprint over the window.",
+        ),
     ),
   })
   .strict();
@@ -116,7 +125,12 @@ export const AccountWeightSettersArtifactSchema = z
     window: z.enum(WINDOW_ENUM_7_30D).nullable(),
     total_weight_sets: z.int().min(0),
     subnet_count: z.int().min(0),
-    concentration: z.number().nullable(),
+    concentration: z
+      .number()
+      .nullable()
+      .describe(
+        "Herfindahl-Hirschman index of weight-sets across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no weight-sets.",
+      ),
     dominant_netuid: z.int().min(0).nullable(),
     subnets: z.array(
       z
@@ -126,10 +140,16 @@ export const AccountWeightSettersArtifactSchema = z
           first_set_at: z.string().nullable(),
           last_set_at: z.string().nullable(),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's WeightsSet activity in an account's weight-setting footprint, ranked most-active-first.",
+        ),
     ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
+  );
 export type AccountWeightSettersArtifact = z.infer<
   typeof AccountWeightSettersArtifactSchema
 >;

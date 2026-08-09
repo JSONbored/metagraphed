@@ -15,11 +15,20 @@ const ChainWeightSetterSchema = z
     netuid: z.int().min(0).nullable(),
     uid: z.int().min(0).nullable(),
     weight_sets: z.int().min(0),
-    share: z.number().min(0).nullable(),
+    share: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "This setter's share of the network total weight_sets; null when the network total is 0.",
+      ),
     first_set_at: z.string().nullable(),
     last_set_at: z.string().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One validator's network-wide weight-setting activity in the window. netuid is set only when hotkey is null (a uid-only identity has no meaning outside its own subnet).",
+  );
 
 export const ChainWeightSettersArtifactSchema = z
   .object({

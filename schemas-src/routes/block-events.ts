@@ -26,7 +26,10 @@ export const BlockEventsArtifactSchema = z
     offset: z.int().nullable(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref.",
+  );
 export type BlockEventsArtifact = z.infer<typeof BlockEventsArtifactSchema>;
 export const BlockEventsResponseSchema = successEnvelopeSchema(
   BlockEventsArtifactSchema,

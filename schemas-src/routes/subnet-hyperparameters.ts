@@ -56,7 +56,10 @@ const SubnetHyperparametersSchema = z
     owner_cut_auto_lock_enabled: z.boolean(),
     min_childkey_take_ratio: z.number().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's on-chain hyperparameter block. Every field is nullable: a value absent from the captured row stays null rather than being coerced. *_ratio fields are 0..1 U16-derived ratios; *_tao fields are rao-exact (9dp); bonds_moving_avg_raw is the unscaled on-chain integer.",
+  );
 
 export const SubnetHyperparametersArtifactSchema = z
   .object({
@@ -79,7 +82,10 @@ export const SubnetHyperparametersArtifactSchema = z
      */
     subnet_status: z.enum(["live", "deregistered"]).nullable().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations.",
+  );
 export type SubnetHyperparametersArtifact = z.infer<
   typeof SubnetHyperparametersArtifactSchema
 >;
@@ -94,7 +100,10 @@ const SubnetHyperparamsHistoryEntrySchema = z
     hyperparameters: SubnetHyperparametersSchema.nullable().optional(),
     hyperparams_hash: z.string(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One observed hyperparameter change: the full block as of that block_number, plus the hash the diff-on-change writer keyed it by.",
+  );
 
 export const SubnetHyperparamsHistoryArtifactSchema = z
   .object({

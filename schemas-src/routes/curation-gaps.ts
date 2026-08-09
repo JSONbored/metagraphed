@@ -42,7 +42,11 @@ export const CurationEntrySchema = z
 
 export const CurationArtifactSchema = ArtifactBaseSchema.extend({
   curation: z.array(CurationEntrySchema),
-}).passthrough();
+})
+  .passthrough()
+  .describe(
+    "Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence).",
+  );
 export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
 export const CurationResponseSchema = successEnvelopeSchema(
   CurationArtifactSchema,
@@ -75,6 +79,10 @@ export const GapsEntrySchema = z
 
 export const GapsArtifactSchema = ArtifactBaseSchema.extend({
   gaps: z.array(GapsEntrySchema),
-}).passthrough();
+})
+  .passthrough()
+  .describe(
+    "Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps).",
+  );
 export type GapsArtifact = z.infer<typeof GapsArtifactSchema>;
 export const GapsResponseSchema = successEnvelopeSchema(GapsArtifactSchema);

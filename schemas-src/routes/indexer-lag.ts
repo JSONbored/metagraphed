@@ -30,14 +30,25 @@ export const IndexerLagLatencySchema = z
     max: z.number().nullable(),
     mean: z.number().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Milliseconds from a block's own timestamp to the moment it became queryable here. Unbounded below: a negative value is block-author clock skew, served as measured.",
+  );
 
 export const IndexerLagArtifactSchema = z
   .object({
     schema_version: z.int(),
     /** Blocks the distribution was computed over. Null only on a decline. */
-    block_count: z.int().min(0).nullable(),
-    window: IndexerLagWindowSchema.nullable(),
+    block_count: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "Blocks the distribution was computed over. Null only on a decline.",
+      ),
+    window: IndexerLagWindowSchema.nullable().describe(
+      "What was actually measured -- the table is pruned, so a distribution without its bounds would read as a lifetime one.",
+    ),
     write_latency_ms: IndexerLagLatencySchema.nullable(),
     /**
      * now - the newest observed_at: how far behind the lane is RIGHT NOW.
@@ -46,7 +57,12 @@ export const IndexerLagArtifactSchema = z
      * lane stalls -- a stalled lane keeps a perfect latency distribution while
      * this climbs without bound.
      */
-    head_age_ms: z.number().nullable(),
+    head_age_ms: z
+      .number()
+      .nullable()
+      .describe(
+        "now - the newest observed_at. The number that moves when the lane stalls.",
+      ),
     measured_at: z.iso.datetime(),
     /** Present ONLY on a decline; its absence says the measurement is real. */
     degraded: z
@@ -55,7 +71,10 @@ export const IndexerLagArtifactSchema = z
         detail: z.string().optional(),
       })
       .strict()
-      .optional(),
+      .optional()
+      .describe(
+        "Present ONLY on a decline; its absence says the measurement is real.",
+      ),
   })
   .passthrough();
 export type IndexerLagArtifact = z.infer<typeof IndexerLagArtifactSchema>;

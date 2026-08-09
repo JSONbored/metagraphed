@@ -28,13 +28,23 @@ const VolumeDistributionSchema = z
     p90: z.number().min(0),
     max: z.number().min(0),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard).",
+  );
 
 export const ChainAlphaVolumeArtifactSchema = z
   .object({
     schema_version: z.int(),
-    window: z.enum(["24h"]),
-    observed_at: z.string().nullable(),
+    window: z
+      .enum(["24h"])
+      .describe("Fixed rolling window label (always 24h)."),
+    observed_at: z
+      .string()
+      .nullable()
+      .describe(
+        "Newest event observed_at across the window; null on a cold store.",
+      ),
     subnet_count: z.int().min(0),
     network: z
       .object({
@@ -47,14 +57,31 @@ export const ChainAlphaVolumeArtifactSchema = z
         buy_count: z.int().min(0),
         sell_count: z.int().min(0),
         net_volume_alpha: z.number(),
-        sentiment_ratio: z.number().nullable(),
-        sentiment: z.enum(["bullish", "bearish", "neutral"]),
+        sentiment_ratio: z
+          .number()
+          .nullable()
+          .describe(
+            "net/gross alpha lean in [-1, 1]; null when there was no volume in the window.",
+          ),
+        sentiment: z
+          .enum(["bullish", "bearish", "neutral"])
+          .describe(
+            "Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window.",
+          ),
       })
-      .strict(),
-    volume_distribution: VolumeDistributionSchema.nullable(),
+      .strict()
+      .describe(
+        "Network-wide buy/sell volume rollup across every subnet with volume in the window.",
+      ),
+    volume_distribution: VolumeDistributionSchema.nullable().describe(
+      "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume.",
+    ),
     subnets: z.array(SubnetAlphaVolumeArtifactSchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope.",
+  );
 export type ChainAlphaVolumeArtifact = z.infer<
   typeof ChainAlphaVolumeArtifactSchema
 >;

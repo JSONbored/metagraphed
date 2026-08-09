@@ -31,23 +31,54 @@ const ConcentrationLensSchema = z
     entropy: z.number().nullable().optional(),
     entropy_normalized: z.number().nullable().optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
+  );
 
 export const SubnetConcentrationArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
     neuron_count: z.int().min(0),
-    entity_count: z.int().min(0),
-    uids_per_entity: z.number().nullable().optional(),
+    entity_count: z
+      .int()
+      .min(0)
+      .describe(
+        "Distinct controlling entities (coldkeys) behind the subnet's UIDs.",
+      ),
+    uids_per_entity: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "UIDs per controlling entity -- a Sybil/consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys). Null on an empty subnet.",
+      ),
     captured_at: z.string().nullable().optional(),
-    stake: ConcentrationLensSchema.nullable(),
-    emission: ConcentrationLensSchema.nullable(),
-    entity_stake: ConcentrationLensSchema.nullable().optional(),
-    entity_emission: ConcentrationLensSchema.nullable().optional(),
-    validator_stake: ConcentrationLensSchema.nullable().optional(),
+    stake: ConcentrationLensSchema.nullable().describe(
+      "Stake concentration across all UIDs.",
+    ),
+    emission: ConcentrationLensSchema.nullable().describe(
+      "Emission concentration across all UIDs.",
+    ),
+    entity_stake: ConcentrationLensSchema.nullable()
+      .optional()
+      .describe(
+        "Stake concentration collapsed to one holder per controlling entity.",
+      ),
+    entity_emission: ConcentrationLensSchema.nullable()
+      .optional()
+      .describe(
+        "Emission concentration collapsed to one holder per controlling entity.",
+      ),
+    validator_stake: ConcentrationLensSchema.nullable()
+      .optional()
+      .describe("Stake concentration across permitted validators only."),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
+  );
 export type SubnetConcentrationArtifact = z.infer<
   typeof SubnetConcentrationArtifactSchema
 >;
@@ -72,11 +103,18 @@ export const SubnetConcentrationHistoryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
-    window: z.string().nullable().optional(),
+    window: z
+      .string()
+      .nullable()
+      .optional()
+      .describe("The resolved window label (7d/30d/90d)."),
     point_count: z.int().min(0),
     points: z.array(SubnetConcentrationHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history.",
+  );
 export type SubnetConcentrationHistoryArtifact = z.infer<
   typeof SubnetConcentrationHistoryArtifactSchema
 >;

@@ -116,7 +116,11 @@ export const ValidatorDetailArtifactSchema = z
     max_validator_trust: z.number().nullable(),
     captured_at: z.string().nullable(),
     block_number: z.int().min(0).nullable(),
-    subnets: z.array(ValidatorDetailSubnetSchema),
+    subnets: z
+      .array(ValidatorDetailSubnetSchema)
+      .describe(
+        "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet.",
+      ),
   })
   .passthrough();
 export type ValidatorDetailArtifact = z.infer<

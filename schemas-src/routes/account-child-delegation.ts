@@ -21,14 +21,20 @@ const ChildDelegationEntrySchema = z
     proportion: z.string(),
     proportion_fraction: z.number(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One child hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float.",
+  );
 
 const ChildDelegationSubnetSchema = z
   .object({
     netuid: z.int().min(0).max(65535),
     entries: z.array(ChildDelegationEntrySchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's child-hotkey delegation entries in an account's live children graph.",
+  );
 
 export const AccountChildrenArtifactSchema = z
   .object({
@@ -40,7 +46,10 @@ export const AccountChildrenArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children.",
+  );
 export type AccountChildrenArtifact = z.infer<
   typeof AccountChildrenArtifactSchema
 >;
@@ -54,14 +63,20 @@ const ParentDelegationEntrySchema = z
     proportion: z.string(),
     proportion_fraction: z.number(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One parent hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float.",
+  );
 
 const ParentDelegationSubnetSchema = z
   .object({
     netuid: z.int().min(0).max(65535),
     entries: z.array(ParentDelegationEntrySchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's parent-hotkey delegation entries in an account's live parents graph.",
+  );
 
 export const AccountParentsArtifactSchema = z
   .object({
@@ -73,7 +88,10 @@ export const AccountParentsArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents.",
+  );
 export type AccountParentsArtifact = z.infer<
   typeof AccountParentsArtifactSchema
 >;

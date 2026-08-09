@@ -40,6 +40,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
+import { EntityCategorySchema } from "../shared.ts";
 
 const AccountRegistrationSchema = z
   .object({
@@ -74,7 +75,10 @@ export const AccountActivitySchema = z
     ),
     modules_called_capped: z.boolean(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Signing-activity aggregate from the extrinsics tier, matched by signer only. tx_count / total_fee_tao / last_tx_* are all-time over every extrinsic this address has signed; modules_called is the pallet mix over the newest 1000 only, with modules_called_capped true when that window is incomplete. An account queried by a key that did not sign returns tx_count 0, modules_called_capped false, other fields null/empty.",
+  );
 
 // EntityLabel is reused inline (not imported) -- it's still a shared component
 // referenced by the not-yet-converted AccountEntitiesArtifact (GET /api/v1/
@@ -87,19 +91,7 @@ const EntityLabelSchema = z
     // #8372: widened to match schemas/entity.schema.json's category enum
     // (bridge/pool/infra/project added; exchange/foundation/operator/other
     // retained so an existing entry stays valid). Keep both in sync.
-    category: z
-      .enum([
-        "exchange",
-        "bridge",
-        "foundation",
-        "pool",
-        "infra",
-        "project",
-        "operator",
-        "other",
-      ])
-      .nullable()
-      .optional(),
+    category: EntityCategorySchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
@@ -116,9 +108,18 @@ export const AccountSummaryArtifactSchema = z
     last_block: z.int().nullable().optional(),
     first_seen_at: z.string().nullable().optional(),
     last_seen_at: z.string().nullable().optional(),
-    event_scan_capped: z.boolean().optional(),
+    event_scan_capped: z
+      .boolean()
+      .optional()
+      .describe(
+        "True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null.",
+      ),
     event_kinds: z.array(AccountEventKindCountSchema).optional(),
-    registrations: z.array(AccountRegistrationSchema),
+    registrations: z
+      .array(AccountRegistrationSchema)
+      .describe(
+        "Where this hotkey is currently registered + staked (the live cross-subnet footprint).",
+      ),
     recent_events: z.array(AccountEventSchema).optional(),
     activity: AccountActivitySchema.optional(),
     labels: z.array(EntityLabelSchema).optional(),
@@ -136,9 +137,16 @@ export const AccountSubnetsArtifactSchema = z
     schema_version: z.int(),
     ss58: z.string(),
     subnet_count: z.int().min(0),
-    subnets: z.array(AccountRegistrationSchema),
+    subnets: z
+      .array(AccountRegistrationSchema)
+      .describe(
+        "Where this hotkey is currently registered, ordered by netuid -- each an AccountRegistration (netuid/uid/stake/validator_permit/active).",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup.",
+  );
 export type AccountSubnetsArtifact = z.infer<
   typeof AccountSubnetsArtifactSchema
 >;

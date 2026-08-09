@@ -17,9 +17,17 @@ export const SUBNET_TURNOVER_WINDOW_VALUES = [
 const ValidatorDetailSchema = z
   .object({
     hotkey: z.string(),
-    uid: z.int().nullable(),
+    uid: z
+      .int()
+      .nullable()
+      .describe(
+        "The UID it held at the boundary snapshot, null when the row carried no usable uid.",
+      ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One validator that entered or left a subnet's validator set between the window's boundary snapshots.",
+  );
 
 const UidReassignmentSchema = z
   .object({
@@ -27,7 +35,10 @@ const UidReassignmentSchema = z
     from_hotkey: z.string(),
     to_hotkey: z.string(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One UID that changed hands between the window's boundary snapshots.",
+  );
 
 const TurnoverChangesSchema = z
   .object({
@@ -38,7 +49,10 @@ const TurnoverChangesSchema = z
     validators_exited: z.array(ValidatorDetailSchema),
     uid_reassignments: z.array(UidReassignmentSchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "The per-neuron churn behind a subnet's turnover scorecard: which validators entered and exited, and which UIDs were reassigned. Mirrors the changes block of GET /api/v1/subnets/{netuid}/turnover?changes=true.",
+  );
 
 export const SubnetTurnoverArtifactSchema = z
   .object({
@@ -58,9 +72,16 @@ export const SubnetTurnoverArtifactSchema = z
     uids_deregistered: z.int().min(0).optional(),
     neuron_retention: z.number().nullable().optional(),
     stability_score: z.int().nullable().optional(),
-    changes: TurnoverChangesSchema.nullable().optional(),
+    changes: TurnoverChangesSchema.nullable()
+      .optional()
+      .describe(
+        "Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard.",
+  );
 export type SubnetTurnoverArtifact = z.infer<
   typeof SubnetTurnoverArtifactSchema
 >;

@@ -33,7 +33,13 @@ const NominatorPositionSchema = z
   .object({
     hotkey: z.string(),
     netuid: z.int().min(0),
-    share_fraction: z.number().min(0).max(1),
+    share_fraction: z
+      .number()
+      .min(0)
+      .max(1)
+      .describe(
+        "This account's share of the hotkey's total alpha-pool shares on this subnet (0..1), not a TAO amount.",
+      ),
     stake_tao: z
       .number()
       .min(0)
@@ -41,7 +47,10 @@ const NominatorPositionSchema = z
         "This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945).",
       ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One (hotkey, netuid) delegation this account holds, reconstructed from the nominator-positions ledger joined against the hotkey's live stake_tao for that netuid.",
+  );
 
 // #9273. Present ONLY when this payload's zero is not a measurement, so a
 // consumer that ignores it reads exactly what it read before. Optional rather
@@ -89,7 +98,10 @@ export const AccountPositionsArtifactSchema = z
     positions: z.array(NominatorPositionSchema),
     degraded: AccountPositionsDegradedSchema.optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions.",
+  );
 export type AccountPositionsArtifact = z.infer<
   typeof AccountPositionsArtifactSchema
 >;
@@ -121,7 +133,10 @@ const AccountPositionHistoryPointSchema = z
     dividends: z.number().nullable(),
     yield: z.number().nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One day's position for an account in one subnet: the neuron's uid/role/active plus stake/emission and its rank/trust/incentive/dividends scores and emission-per-stake yield.",
+  );
 
 export const AccountPositionHistoryArtifactSchema = z
   .object({
@@ -132,7 +147,10 @@ export const AccountPositionHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(AccountPositionHistoryPointSchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
+  );
 export type AccountPositionHistoryArtifact = z.infer<
   typeof AccountPositionHistoryArtifactSchema
 >;

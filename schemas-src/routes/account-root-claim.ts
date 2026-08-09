@@ -26,7 +26,10 @@ const RootClaimTypeSchema = z
     kind: z.enum(["Swap", "Keep", "KeepSubnets"]),
     subnets: z.array(z.int().min(0).max(65535)).optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-account RootClaimTypeEnum (#7229): Swap / Keep / KeepSubnets.",
+  );
 
 const RootClaimEntrySchema = z
   .object({
@@ -35,14 +38,20 @@ const RootClaimEntrySchema = z
     claimed: z.string(),
     threshold: z.number(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One netuid's root-claim accounting for a (hotkey, account) pair (#7229).",
+  );
 
 const RootClaimHotkeySchema = z
   .object({
     hotkey: z.string(),
     entries: z.array(RootClaimEntrySchema),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Root-claim rows for one staking/owned hotkey of the queried account (#7229).",
+  );
 
 export const AccountRootClaimArtifactSchema = z
   .object({
@@ -55,7 +64,10 @@ export const AccountRootClaimArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
+  );
 export type AccountRootClaimArtifact = z.infer<
   typeof AccountRootClaimArtifactSchema
 >;

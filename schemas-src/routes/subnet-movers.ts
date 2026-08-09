@@ -25,7 +25,9 @@ const SignedRaoPrecisionTaoStringSchema = z.string().regex(/^-?\d+\.\d{9}$/);
 
 const MoversNetworkSummarySchema = z
   .object({
-    total_stake_start_alpha: RaoPrecisionTaoStringSchema,
+    total_stake_start_alpha: RaoPrecisionTaoStringSchema.describe(
+      "Lossless fixed 9-decimal (rao-precision) TAO string -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float.",
+    ),
     total_stake_end_alpha: RaoPrecisionTaoStringSchema,
     total_stake_delta_alpha: SignedRaoPrecisionTaoStringSchema,
     total_emission_start_alpha: RaoPrecisionTaoStringSchema,
@@ -38,7 +40,10 @@ const MoversNetworkSummarySchema = z
     losers: z.int().min(0),
     unchanged: z.int().min(0),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Network-wide boundary totals for the movers window, summed across every ranked subnet (not just the returned page).",
+  );
 
 const MoverEntrySchema = z
   .object({
@@ -46,8 +51,20 @@ const MoverEntrySchema = z
     stake_start_alpha: z.number(),
     stake_end_alpha: z.number(),
     stake_delta_alpha: z.number(),
-    stake_pct_change: z.number().nullable(),
-    stake_share_pct: z.number().min(0).max(100).nullable(),
+    stake_pct_change: z
+      .number()
+      .nullable()
+      .describe(
+        "Null when the start snapshot's stake was 0 (growth from nothing is undefined).",
+      ),
+    stake_share_pct: z
+      .number()
+      .min(0)
+      .max(100)
+      .nullable()
+      .describe(
+        "This subnet's share of network stake at the end snapshot; null when the network total is 0.",
+      ),
     emission_start_alpha: z.number(),
     emission_end_alpha: z.number(),
     emission_delta_alpha: z.number(),
@@ -60,7 +77,10 @@ const MoverEntrySchema = z
     neurons_end: z.int().min(0),
     neurons_delta: z.int(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "One subnet's stake/emission/validator/neuron movement between the window's start and end snapshots.",
+  );
 
 export const SubnetMoversArtifactSchema = z
   .object({

@@ -27,6 +27,7 @@ import {
   SubnetDetailSchema,
   SurfaceSchema,
 } from "./subnet-detail.ts";
+import { SchemaDriftStatusSchema } from "../shared.ts";
 
 export const SubnetProfilesArtifactSchema = ArtifactBaseSchema.extend({
   profiles: z.array(SubnetProfileSchema),
@@ -60,13 +61,7 @@ export type SubnetProfileArtifact = z.infer<typeof SubnetProfileArtifactSchema>;
 const SchemaIndexEntrySchema = z
   .object({
     content_type: z.string().nullable().optional(),
-    drift_status: z.enum([
-      "changed",
-      "missing-after-previous-capture",
-      "new",
-      "not-captured",
-      "unchanged",
-    ]),
+    drift_status: SchemaDriftStatusSchema,
     error: z.string().nullable().optional(),
     hash: z.string().nullable().optional(),
     netuid: z.int().min(0).optional(),

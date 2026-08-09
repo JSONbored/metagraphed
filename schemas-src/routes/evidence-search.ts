@@ -178,7 +178,11 @@ const SearchDocumentSchema = z
 
 export const SearchArtifactSchema = ArtifactBaseSchema.extend({
   document_count: z.int().min(0).optional(),
-  documents: z.array(SearchDocumentSchema),
+  documents: z
+    .array(SearchDocumentSchema)
+    .describe(
+      "Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON.",
+    ),
 });
 export type SearchArtifact = z.infer<typeof SearchArtifactSchema>;
 
@@ -202,5 +206,7 @@ const SearchIndexDocumentSchema = z
 export const SearchIndexArtifactSchema = ArtifactBaseSchema.extend({
   document_count: z.int().min(0).optional(),
   documents: z.array(SearchIndexDocumentSchema),
-});
+}).describe(
+  "Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index).",
+);
 export type SearchIndexArtifact = z.infer<typeof SearchIndexArtifactSchema>;

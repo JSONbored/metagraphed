@@ -36,18 +36,39 @@ export const SubnetOwnershipHistoryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0).max(65535),
-    event_pallet: z.string(),
-    event_method: z.string(),
+    event_pallet: z
+      .string()
+      .describe(
+        "The chain_events pallet the authoritative records are decoded from.",
+      ),
+    event_method: z
+      .string()
+      .describe(
+        "The chain_events method the authoritative records are decoded from.",
+      ),
     count: z.int().min(0),
-    ownership_changes: z.array(SubnetOwnershipChangeSchema),
+    ownership_changes: z
+      .array(SubnetOwnershipChangeSchema)
+      .describe(
+        "Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null).",
+      ),
     // How far the owner-observation source covers this subnet at all (#9312),
     // ISO-8601. Optional because the DATA_API tier does not read that source;
     // null when it was read and holds nothing for this netuid. It is what makes
     // "watched, never changed hands" distinguishable from "not watched since",
     // which an empty ownership_changes array on its own cannot say.
-    observed_through: z.iso.datetime().nullable().optional(),
+    observed_through: z.iso
+      .datetime()
+      .nullable()
+      .optional()
+      .describe(
+        "The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read.",
+      ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history.",
+  );
 export type SubnetOwnershipHistoryArtifact = z.infer<
   typeof SubnetOwnershipHistoryArtifactSchema
 >;

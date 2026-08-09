@@ -23,30 +23,22 @@
 // identical field).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EntityCategorySchema } from "../shared.ts";
 
 const EntityLabelSchema = z
   .object({
     name: z.string().nullable().optional(),
     // #8372: widened to match schemas/entity.schema.json's category enum
     // and account-summary.ts's own copy -- keep all three in sync.
-    category: z
-      .enum([
-        "exchange",
-        "bridge",
-        "foundation",
-        "pool",
-        "infra",
-        "project",
-        "operator",
-        "other",
-      ])
-      .nullable()
-      .optional(),
+    category: EntityCategorySchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "A community-contributed entity label for an address (exchange/foundation/operator/other).",
+  );
 
 export const AccountEntitiesArtifactSchema = z
   .object({
@@ -62,10 +54,16 @@ export const AccountEntitiesArtifactSchema = z
           block_number: z.int().nullable().optional(),
           observed_at: z.string().nullable().optional(),
         })
-        .passthrough(),
+        .passthrough()
+        .describe(
+          "One SubnetOwnerChanged transfer tying this `coldkey` to a subnet, either as the gaining or losing side, newest first.",
+        ),
     ),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
+  );
 export type AccountEntitiesArtifact = z.infer<
   typeof AccountEntitiesArtifactSchema
 >;

@@ -94,7 +94,10 @@ export const SubnetDeregistrationsArtifactSchema = z
     derivation: DeregistrationDerivationSchema.optional(),
     degraded: EventStreamDegradedSchema.optional(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
+  );
 export type SubnetDeregistrationsArtifact = z.infer<
   typeof SubnetDeregistrationsArtifactSchema
 >;

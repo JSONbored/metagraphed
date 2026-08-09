@@ -16,7 +16,10 @@ export const SubnetStakeTransfersArtifactSchema = z
     transfers: z.int().min(0),
     transfers_per_sender: z.number().min(0).nullable(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Per-subnet stake-transfer activity (#5717) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers.",
+  );
 export type SubnetStakeTransfersArtifact = z.infer<
   typeof SubnetStakeTransfersArtifactSchema
 >;

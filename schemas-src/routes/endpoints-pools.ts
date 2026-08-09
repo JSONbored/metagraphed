@@ -221,5 +221,7 @@ export const EndpointPoolsArtifactSchema = ArtifactBaseSchema.extend({
     .optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),
   pools: z.array(RpcPoolSchema),
-});
+}).describe(
+  "Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here.",
+);
 export type EndpointPoolsArtifact = z.infer<typeof EndpointPoolsArtifactSchema>;

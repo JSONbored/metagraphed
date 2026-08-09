@@ -14,7 +14,9 @@ export const CompareValidatorEntrySchema = z
   .object({
     hotkey: z.string(),
     coldkey: z.string().nullable(),
-    coldkey_identity: ColdkeyIdentitySchema.nullable(),
+    coldkey_identity: ColdkeyIdentitySchema.nullable().describe(
+      "The `coldkey`'s self-declared on-chain identity; opaque JSON, matching the REST/MCP shape.",
+    ),
     take: z.number().nullable(),
     apy_estimate: z.number().min(0).nullable(),
     apy_estimate_eligible_subnet_count: z.int().min(0),
@@ -24,18 +26,27 @@ export const CompareValidatorEntrySchema = z
     avg_validator_trust: z.number().nullable(),
     max_validator_trust: z.number().nullable(),
     subnet_count: z.int().min(0),
-    subnet_context: ValidatorDetailSubnetSchema.nullable(),
+    subnet_context: ValidatorDetailSubnetSchema.nullable().describe(
+      "This validator's membership row in the requested netuid; null when netuid was omitted or it has no permit there. Opaque JSON, matching the REST/MCP shape.",
+    ),
   })
   .strict();
 
 export const CompareValidatorsArtifactSchema = z
   .object({
     schema_version: z.int(),
-    netuid: z.int().min(0).nullable(),
+    netuid: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe("The optional subnet context the comparison was scoped to."),
     validator_count: z.int().min(0),
     validators: z.array(CompareValidatorEntrySchema),
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators.",
+  );
 export type CompareValidatorsArtifact = z.infer<
   typeof CompareValidatorsArtifactSchema
 >;

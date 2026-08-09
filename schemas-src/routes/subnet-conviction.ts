@@ -31,7 +31,10 @@ export const SubnetConvictionArtifactSchema = z
     // not a reading at it -- this is where the response says so.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .passthrough()
+  .describe(
+    "Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction.",
+  );
 export type SubnetConvictionArtifact = z.infer<
   typeof SubnetConvictionArtifactSchema
 >;

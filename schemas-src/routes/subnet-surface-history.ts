@@ -7,17 +7,31 @@ export const SurfaceHistoryChangeSchema = z
   .object({
     /** Coalesced column -> overlay id, so it is present on every row including
      * the 8,831 written before the writer recorded the column. */
-    surface_id: z.string().nullable(),
+    surface_id: z
+      .string()
+      .nullable()
+      .describe(
+        "Coalesced column then overlay id, so it is present on every row including those written before the column was recorded.",
+      ),
     /** A DELETE entry is the only evidence a surface ever existed. */
-    action: z.enum(["insert", "update", "delete"]).nullable(),
+    action: z
+      .enum(["insert", "update", "delete"])
+      .nullable()
+      .describe(
+        "insert, update or delete. A delete is the only evidence a surface ever existed.",
+      ),
     kind: z.string().nullable(),
     url: z.string().nullable(),
     name: z.string().nullable(),
     /** The registry commit that produced the change. */
-    source_commit: z.string().nullable(),
+    source_commit: z
+      .string()
+      .nullable()
+      .describe("The registry commit that produced the change."),
     recorded_at: z.iso.datetime(),
   })
-  .strict();
+  .strict()
+  .describe("One recorded mutation of a subnet's public surface.");
 
 export const SubnetSurfaceHistoryArtifactSchema = z
   .object({
@@ -27,7 +41,12 @@ export const SubnetSurfaceHistoryArtifactSchema = z
     change_count: z.int().min(0),
     /** Distinct surfaces with a recorded mutation -- NOT the subnet's current
      * surface count. A deleted surface is counted here and absent there. */
-    surface_count: z.int().min(0),
+    surface_count: z
+      .int()
+      .min(0)
+      .describe(
+        "Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there.",
+      ),
     latest_change_at: z.iso.datetime().nullable(),
     changes: z.array(SurfaceHistoryChangeSchema),
   })

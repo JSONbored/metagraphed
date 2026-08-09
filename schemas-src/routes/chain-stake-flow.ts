@@ -16,7 +16,10 @@ const NetFlowDistributionSchema = z
     p90: z.number(),
     max: z.number(),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Spread of per-subnet net_flow_tao (can be negative) across EVERY subnet with stake events (not just the returned page).",
+  );
 
 export const ChainStakeFlowArtifactSchema = z
   .object({
@@ -36,8 +39,13 @@ export const ChainStakeFlowArtifactSchema = z
         losing: z.int().min(0),
         flat: z.int().min(0),
       })
-      .strict(),
-    net_flow_distribution: NetFlowDistributionSchema.nullable(),
+      .strict()
+      .describe(
+        "Network rollup over every subnet that moved stake in the window.",
+      ),
+    net_flow_distribution: NetFlowDistributionSchema.nullable().describe(
+      "Spread of per-subnet net_flow_tao across EVERY subnet with stake events; null when no subnet moved stake.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -48,12 +56,20 @@ export const ChainStakeFlowArtifactSchema = z
           gross_flow_tao: z.number().min(0),
           stake_events: z.int().min(0),
           unstake_events: z.int().min(0),
-          direction: z.enum(["inflow", "outflow", "balanced"]),
+          direction: z
+            .enum(["inflow", "outflow", "balanced"])
+            .describe("inflow | outflow | balanced"),
         })
-        .strict(),
+        .strict()
+        .describe(
+          "One subnet's capital-flow scorecard in the window, ranked by net_flow_tao.",
+        ),
     ),
   })
-  .strict();
+  .strict()
+  .describe(
+    "Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope.",
+  );
 export type ChainStakeFlowArtifact = z.infer<
   typeof ChainStakeFlowArtifactSchema
 >;

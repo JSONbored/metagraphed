@@ -17,6 +17,7 @@
 // snapshot producer.
 import { z } from "zod";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
+import { SchemaDriftStatusSchema } from "../shared.ts";
 
 export const SchemaDriftSurfaceSchema = z
   .object({
@@ -35,18 +36,9 @@ export const SchemaDriftSurfaceSchema = z
       .describe(
         "What the capture attempt found. `ui-only-or-undiscovered` means the surface declares no schema_url at all, which is a gap rather than a failure.",
       ),
-    drift_status: z
-      .enum([
-        "changed",
-        "missing-after-previous-capture",
-        "new",
-        "not-captured",
-        "unchanged",
-      ])
-      .optional()
-      .describe(
-        "How this capture compares with the previous one. Absent only where a producer omits it.",
-      ),
+    drift_status: SchemaDriftStatusSchema.optional().describe(
+      "How this capture compares with the previous one. Absent only where a producer omits it.",
+    ),
     subnet_slug: z.string(),
     surface_id: z.string(),
     url: z.url(),
