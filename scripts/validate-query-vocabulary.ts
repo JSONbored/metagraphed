@@ -125,7 +125,10 @@ function defaultIsInVocabulary(parameter: Row): boolean {
   const values = schema.enum as unknown[] | undefined;
   if (Array.isArray(values)) return values.includes(schema.default);
   if (typeof schema.default === "number") {
-    const { minimum, maximum } = schema as { minimum?: number; maximum?: number };
+    const { minimum, maximum } = schema as {
+      minimum?: number;
+      maximum?: number;
+    };
     if (typeof minimum === "number" && schema.default < minimum) return false;
     if (typeof maximum === "number" && schema.default > maximum) return false;
   }
