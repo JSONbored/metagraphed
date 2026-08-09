@@ -116,14 +116,33 @@ async function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>) {
   }
 }
 
+/**
+ * A DEGRADED answer is not a disagreement, and the header is the only way to
+ * tell.
+ *
+ * #10270 put `x-metagraph-degraded: tier_unavailable` on exactly this case: the
+ * lakehouse declines, the route serves a schema-stable empty card, and the BODY
+ * is indistinguishable from a measured zero. This sweep hit it on its first
+ * full run -- `get_account_counterparties` answered 0 against GraphQL's 114,
+ * and `get_account_transfers` 0 against 100, in the same three minutes.
+ *
+ * Reporting that as a cross-surface divergence would blame the wrong thing: the
+ * surfaces agree about the data, one of them just could not read it this time.
+ * So a labelled response counts as "did not answer" and lands in the incomplete
+ * bucket, where a declining surface belongs.
+ */
 async function restBody(path: string): Promise<Row | null> {
   try {
-    const body = await withTimeout(async (signal) => {
+    const answer = await withTimeout(async (signal) => {
       const res = await fetch(`${REST_ORIGIN}${path}`, { signal });
-      return (await res.json()) as Row;
+      return {
+        degraded: res.headers.get("x-metagraph-degraded"),
+        body: (await res.json()) as Row,
+      };
     });
-    const data = at(body, "data");
-    return at(body, "ok") === true && data && typeof data === "object"
+    if (answer.degraded) return null;
+    const data = at(answer.body, "data");
+    return at(answer.body, "ok") === true && data && typeof data === "object"
       ? (data as Row)
       : null;
   } catch {
