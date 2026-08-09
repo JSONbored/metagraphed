@@ -5,6 +5,7 @@ import {
   subnetIdleStakeQuery,
   subnetStakeMovesQuery,
   subnetStakeTransfersQuery,
+  subnetBurnHistoryQuery,
   subnetTrajectoryQuery,
 } from "@/lib/metagraphed/queries";
 import {
@@ -158,6 +159,67 @@ function IdleStakeTile({ netuid }: { netuid: number }) {
   );
 }
 
+// #10300: the registration cost had a live value and no series, so "is this
+// subnet getting more or less expensive" -- the question the burn capture was
+// built for (#9402) -- was unanswerable from the UI while the data sat in
+// subnet_burn_history unread.
+//
+// The MOVEMENT comes from the route, never from the points. /burn/history caps
+// at 2,000 newest-first, so a client-side first-vs-last would silently measure
+// the page rather than the window; `change_tao`/`change_pct` are computed over
+// the whole window server-side.
+//
+// The live cost stays the tile's headline rather than the series' last point:
+// they come from different reads (economics is a pinned capture, /burn is a
+// live RPC), and showing the series' tail as "the price" would quietly age the
+// number by up to a tick.
+function RegistrationTile({
+  netuid,
+  costTao,
+  allowed,
+}: {
+  netuid: number;
+  costTao: number | null;
+  allowed: boolean;
+}) {
+  const { data: res } = useQuery(subnetBurnHistoryQuery(netuid, "7d"));
+  const card = res?.data;
+  const points: SparklinePoint[] = (card?.points ?? []).map((p) => ({
+    t: p.observed_at,
+    v: p.burn_tao,
+  }));
+  const pct = card?.change_pct;
+  // A flat series is the common case (most subnets re-price rarely), so the
+  // hint says "flat" rather than "0.0%" -- a signed zero reads as a measurement
+  // that moved and landed back, which is not what happened.
+  const movement =
+    typeof pct === "number" && Number.isFinite(pct) && pct !== 0
+      ? `${pct > 0 ? "+" : ""}${pct.toFixed(1)}% 7d`
+      : points.length > 1
+        ? "flat 7d"
+        : null;
+  return (
+    <StatTile
+      eyebrow="Registration"
+      tone={!allowed ? "down" : "default"}
+      value={costTao != null ? `${costTao} τ` : "—"}
+      hint={[allowed ? "open" : "closed", movement].filter(Boolean).join(" · ")}
+      chart={
+        points.length > 1 ? (
+          <Sparkline
+            values={points.map((p) => p.v)}
+            points={points}
+            width={72}
+            height={28}
+            formatValue={(v) => `${v} τ`}
+            ariaLabel="Registration cost trend"
+          />
+        ) : undefined
+      }
+    />
+  );
+}
+
 export function EconomicsPanel({ netuid }: { netuid: number }) {
   const { data: res, isPending } = useQuery(economicsQuery());
   const e = res?.data.find((x) => x.netuid === netuid);
@@ -225,11 +287,10 @@ export function EconomicsPanel({ netuid }: { netuid: number }) {
         <StatTile eyebrow="Max stake" value={formatTao(e.max_stake_tao)} />
         <StatTile eyebrow="Market cap" value={formatTao(e.alpha_market_cap_tao)} hint="proxy" />
         <StatTile eyebrow="FDV" value={formatTao(e.alpha_fdv_tao)} hint="proxy" />
-        <StatTile
-          eyebrow="Registration"
-          tone={e.registration_allowed === false ? "down" : "default"}
-          value={e.registration_cost_tao != null ? `${e.registration_cost_tao} τ` : "—"}
-          hint={e.registration_allowed === false ? "closed" : "open"}
+        <RegistrationTile
+          netuid={netuid}
+          costTao={e.registration_cost_tao ?? null}
+          allowed={e.registration_allowed !== false}
         />
         <RecycledTaoTile netuid={netuid} />
         <IdleStakeTile netuid={netuid} />

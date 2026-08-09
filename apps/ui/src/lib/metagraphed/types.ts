@@ -2864,6 +2864,24 @@ export interface SubnetConcentrationHistory {
   points: ConcentrationHistoryPoint[];
 }
 
+/**
+ * Registration-cost series from /api/v1/subnets/{netuid}/burn/history.
+ *
+ * ALIASED FROM THE GENERATED CONTRACT, not restated. `SubnetBurnHistoryArtifact`
+ * and `SubnetBurnHistoryPoint` are emitted into public/metagraph/types.d.ts from
+ * the same Zod route schema the Worker serves, so a field rename there is a
+ * compile error here rather than a shape this file quietly disagrees about.
+ *
+ * The operator question is "is this subnet getting more or less expensive",
+ * which the single live `registration_cost_tao` on /economics cannot answer.
+ * `change_tao`/`change_pct` are the ROUTE's movement across the window, so no
+ * caller re-derives them from the points it received -- the route caps at 2,000
+ * newest-first, and a client-side first-vs-last would measure the page rather
+ * than the window.
+ */
+export type SubnetBurnHistoryPoint = ApiSchema<"SubnetBurnHistoryPoint">;
+export type SubnetBurnHistory = ApiSchema<"SubnetBurnHistoryArtifact">;
+
 /** Reward-distribution & score-spread metrics from /api/v1/subnets/{netuid}/performance. */
 export interface SubnetPerformance {
   netuid: number;
