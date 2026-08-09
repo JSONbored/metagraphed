@@ -2170,13 +2170,13 @@ export const SDL = /* GraphQL */ `
     error_requests: Int!
     "Null when there are no requests in the window (no defined rate)."
     error_rate: Float
-    failover_requests: Int!
+    failover_requests: Int
     "Null when there are no requests in the window."
     failover_rate: Float
-    cache_hits: Int!
+    cache_hits: Int
     "Null when there are no requests in the window."
     cache_hit_rate: Float
-    latency_ms: RpcUsageLatency!
+    latency_ms: RpcUsageLatency
   }
 
   "Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store."
@@ -2188,7 +2188,7 @@ export const SDL = /* GraphQL */ `
 
   "One endpoint's share of RPC reverse-proxy traffic in the window."
   type RpcUsageEndpoint {
-    rank: Int!
+    rank: Int
     endpoint_id: String
     provider: String
     requests: Int!
@@ -2689,8 +2689,8 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     source: String
     observed_at: String
-    dimensions: [String!]!
-    requested_netuids: [Int!]!
+    dimensions: [String!]
+    requested_netuids: [Int!]
     subnets: [CompareSubnet!]!
   }
 
@@ -2719,13 +2719,13 @@ export const SDL = /* GraphQL */ `
     validator_count: Int
     miner_count: Int
     total_stake_alpha: Float
-    miner_readiness: Int
+    miner_readiness: Float
   }
 
   type CompareHealth {
     surface_count: Int
     ok_count: Int
-    avg_latency_ms: Int
+    avg_latency_ms: Float
   }
 
   "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history."
@@ -3489,8 +3489,8 @@ export const SDL = /* GraphQL */ `
     "Distinct subnets the snapshot spans."
     subnet_count: Int!
     neuron_count: Int!
-    validator_count: Int!
-    active_count: Int!
+    validator_count: Int
+    active_count: Int
     captured_at: String
     "Incentive concentration across all neurons network-wide with positive incentive."
     incentive: ConcentrationMetrics
@@ -3532,8 +3532,8 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     netuid: Int!
     neuron_count: Int!
-    validator_count: Int!
-    active_count: Int!
+    validator_count: Int
+    active_count: Int
     captured_at: String
     "Incentive concentration across all neurons with positive incentive."
     incentive: ConcentrationMetrics
@@ -3572,9 +3572,9 @@ export const SDL = /* GraphQL */ `
   "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day."
   type SubnetPerformanceHistoryPoint {
     snapshot_date: String!
-    neuron_count: Int!
-    validator_count: Int!
-    active_count: Int!
+    neuron_count: Int
+    validator_count: Int
+    active_count: Int
     incentive_gini: Float
     incentive_nakamoto_coefficient: Int
     incentive_top_10pct_share: Float
@@ -3601,9 +3601,9 @@ export const SDL = /* GraphQL */ `
 
   type SubnetYieldHistoryPoint {
     snapshot_date: String!
-    neuron_count: Int!
-    validator_count: Int!
-    yield_count: Int!
+    neuron_count: Int
+    validator_count: Int
+    yield_count: Int
     subnet_yield: Float
     mean_yield: Float
     median_yield: Float
@@ -3624,7 +3624,7 @@ export const SDL = /* GraphQL */ `
 
   type SubnetConcentrationHistoryPoint {
     snapshot_date: String!
-    neuron_count: Int!
+    neuron_count: Int
     stake_gini: Float
     stake_nakamoto_coefficient: Int
     stake_top_10pct_share: Float
@@ -4061,13 +4061,13 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     subnet_count: Int!
     neuron_count: Int!
-    validator_count: Int!
-    miner_count: Int!
+    validator_count: Int
+    miner_count: Int
     captured_at: String
     "Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count (renamed from total_stake_tao in #8803). Use it as the yields' denominator, not as a TAO figure."
-    total_stake_alpha: Float!
+    total_stake_alpha: Float
     "Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid."
-    total_emission_alpha: Float!
+    total_emission_alpha: Float
     network_yield: Float
     validator_yield: Float
     miner_yield: Float
@@ -4092,7 +4092,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     netuid: Int!
     recycled_tao: Float
-    queried_at: String!
+    queried_at: String
     "Per-field { kind, storage } map: recycled_tao is measured, read from SubtensorModule.RAORecycledForRegistration -- the chain's own cumulative counter, not an account_events aggregation. ADR 0023 decision 5, generalised in #9078/#9104."
     field_sources: JSON!
   }
@@ -4102,7 +4102,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     netuid: Int!
     burn_tao: Float
-    queried_at: String!
+    queried_at: String
     "Per-field { kind, storage } map: burn_tao is measured, read from SubtensorModule.Burn. ADR 0023 decision 5, generalised in #9078/#9104."
     field_sources: JSON!
   }
@@ -4154,14 +4154,14 @@ export const SDL = /* GraphQL */ `
     start_date: String
     end_date: String
     comparable: Boolean!
-    validators_start: Int!
-    validators_end: Int!
-    validators_entered: Int!
-    validators_exited: Int!
+    validators_start: Int
+    validators_end: Int
+    validators_entered: Int
+    validators_exited: Int
     validator_retention: Float
-    neurons_start: Int!
-    neurons_end: Int!
-    uids_deregistered: Int!
+    neurons_start: Int
+    neurons_end: Int
+    uids_deregistered: Int
     neuron_retention: Float
     stability_score: Int
     "Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store."
@@ -4184,9 +4184,9 @@ export const SDL = /* GraphQL */ `
 
   "The per-neuron churn behind a subnet's turnover scorecard: which validators entered and exited, and which UIDs were reassigned. Mirrors the changes block of GET /api/v1/subnets/{netuid}/turnover?changes=true."
   type SubnetTurnoverChanges {
-    validators_entered_count: Int!
-    validators_exited_count: Int!
-    uid_reassignment_count: Int!
+    validators_entered_count: Int
+    validators_exited_count: Int
+    uid_reassignment_count: Int
     validators_entered: [TurnoverValidatorChange!]!
     validators_exited: [TurnoverValidatorChange!]!
     uid_reassignments: [TurnoverUidReassignment!]!
@@ -4239,7 +4239,7 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     leased: Boolean
     lease: JSON
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4251,7 +4251,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     ss58: String!
     balance_tao: Float
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4284,7 +4284,7 @@ export const SDL = /* GraphQL */ `
     ss58: String!
     claim_type: RootClaimType
     hotkeys: [RootClaimHotkey!]
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4296,7 +4296,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     account: String!
     subnets: [AccountChildSubnet!]
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4321,7 +4321,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     account: String!
     subnets: [AccountParentSubnet!]
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4345,7 +4345,7 @@ export const SDL = /* GraphQL */ `
   type SudoKey {
     schema_version: Int!
     hotkey: String
-    queried_at: String!
+    queried_at: String
     "Per-field { kind, storage } map: hotkey is measured, read from Sudo.Key. ADR 0023 decision 5, generalised in #9078."
     field_sources: JSON!
   }
@@ -4363,7 +4363,7 @@ export const SDL = /* GraphQL */ `
     emission_bar_quantile: Float
     emission_gate_exponent: Float
     emission_gate_exponent_effective: Float
-    queried_at: String!
+    queried_at: String
     "Per-field { kind, storage } map: every value labelled measured (with the storage item it came from) or reconstructed (ours). READ IT BEFORE CITING block_emission_tao, block_emission_halvings, or emission_gate_exponent_effective -- all three are reconstructed. The first two are derived from TotalIssuance rather than the stale BlockEmission item, and the third is the runtime default whenever the storage item is unset, which is its current state. ADR 0023 decision 5, generalised in #9078."
     field_sources: JSON!
   }
@@ -4374,7 +4374,7 @@ export const SDL = /* GraphQL */ `
     last_stored_round: Int
     oldest_stored_round: Int
     stored_round_span: Int
-    queried_at: String!
+    queried_at: String
     "Per-field { kind, storage } map: the two rounds are measured (Drand.LastStoredRound / Drand.OldestStoredRound); stored_round_span is reconstructed -- our subtraction of them, not a retention window the beacon publishes. ADR 0023 decision 5, generalised in #9078."
     field_sources: JSON!
   }
@@ -4384,7 +4384,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     h160: String!
     ss58: String
-    queried_at: String!
+    queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4447,7 +4447,7 @@ export const SDL = /* GraphQL */ `
 
   "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy."
   type ConcentrationMetrics {
-    holders: Int!
+    holders: Int
     total: Float
     gini: Float
     hhi: Float
@@ -4739,18 +4739,18 @@ export const SDL = /* GraphQL */ `
   type AccountSummary {
     ss58: String!
     event_count: Int!
-    subnet_count: Int!
+    subnet_count: Int
     "True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null."
-    event_scan_capped: Boolean!
+    event_scan_capped: Boolean
     first_block: Int
     last_block: Int
     first_seen_at: String
     last_seen_at: String
-    event_kinds: [AccountEventKind!]!
+    event_kinds: [AccountEventKind!]
     "Where this hotkey is currently registered + staked (the live cross-subnet footprint)."
     registrations: [AccountRegistration!]!
-    recent_events: [AccountEvent!]!
-    activity: AccountActivity!
+    recent_events: [AccountEvent!]
+    activity: AccountActivity
     schema_version: Int
     labels: [AccountLabel!]
   }
@@ -5027,7 +5027,7 @@ export const SDL = /* GraphQL */ `
     day: String
     netuid: Int
     event_count: Int
-    event_kinds: [String!]!
+    event_kinds: [String!]
     first_block: Int
     last_block: Int
   }
@@ -5115,7 +5115,7 @@ export const SDL = /* GraphQL */ `
     name: String
     category: String
     notes: String
-    source_urls: [String!]!
+    source_urls: [String!]
     url: String
   }
 

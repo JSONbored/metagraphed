@@ -53,7 +53,7 @@ export type AccountBalance = {
   balance_tao?: Maybe<Scalars['Float']['output']>;
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
 };
@@ -79,7 +79,7 @@ export type AccountChildren = {
   account: Scalars['String']['output'];
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnets?: Maybe<Array<AccountChildSubnet>>;
 };
@@ -149,7 +149,7 @@ export type AccountDay = {
   __typename?: 'AccountDay';
   day?: Maybe<Scalars['String']['output']>;
   event_count?: Maybe<Scalars['Int']['output']>;
-  event_kinds: Array<Scalars['String']['output']>;
+  event_kinds?: Maybe<Array<Scalars['String']['output']>>;
   first_block?: Maybe<Scalars['Int']['output']>;
   last_block?: Maybe<Scalars['Int']['output']>;
   netuid?: Maybe<Scalars['Int']['output']>;
@@ -194,7 +194,7 @@ export type AccountEntityLabel = {
   category?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
   notes?: Maybe<Scalars['String']['output']>;
-  source_urls: Array<Scalars['String']['output']>;
+  source_urls?: Maybe<Array<Scalars['String']['output']>>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -372,7 +372,7 @@ export type AccountParents = {
   account: Scalars['String']['output'];
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnets?: Maybe<Array<AccountParentSubnet>>;
 };
@@ -527,7 +527,7 @@ export type AccountRootClaim = {
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
   hotkeys?: Maybe<Array<RootClaimHotkey>>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   ss58: Scalars['String']['output'];
 };
@@ -633,22 +633,22 @@ export type AccountSubnets = {
 
 export type AccountSummary = {
   __typename?: 'AccountSummary';
-  activity: AccountActivity;
+  activity?: Maybe<AccountActivity>;
   event_count: Scalars['Int']['output'];
-  event_kinds: Array<AccountEventKind>;
+  event_kinds?: Maybe<Array<AccountEventKind>>;
   /** True when this account has more events than the summary's scan window -- event_count/subnet_count/event_kinds are then a lower bound and first_block/first_seen_at are null. */
-  event_scan_capped: Scalars['Boolean']['output'];
+  event_scan_capped?: Maybe<Scalars['Boolean']['output']>;
   first_block?: Maybe<Scalars['Int']['output']>;
   first_seen_at?: Maybe<Scalars['String']['output']>;
   labels?: Maybe<Array<AccountLabel>>;
   last_block?: Maybe<Scalars['Int']['output']>;
   last_seen_at?: Maybe<Scalars['String']['output']>;
-  recent_events: Array<AccountEvent>;
+  recent_events?: Maybe<Array<AccountEvent>>;
   /** Where this hotkey is currently registered + staked (the live cross-subnet footprint). */
   registrations: Array<AccountRegistration>;
   schema_version?: Maybe<Scalars['Int']['output']>;
   ss58: Scalars['String']['output'];
-  subnet_count: Scalars['Int']['output'];
+  subnet_count?: Maybe<Scalars['Int']['output']>;
 };
 
 /** One native-TAO Balances.Transfer event on an account's feed. direction is relative to the queried address (sent = it paid, received = it was paid). */
@@ -1353,7 +1353,7 @@ export type ChainIdleStakeSubnet = {
 /** Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance. */
 export type ChainPerformance = {
   __typename?: 'ChainPerformance';
-  active_count: Scalars['Int']['output'];
+  active_count?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
   /** Consensus score spread across all neurons network-wide. */
   consensus?: Maybe<ScoreDistribution>;
@@ -1367,7 +1367,7 @@ export type ChainPerformance = {
   subnet_count: Scalars['Int']['output'];
   /** Trust score spread across all neurons network-wide. */
   trust?: Maybe<ScoreDistribution>;
-  validator_count: Scalars['Int']['output'];
+  validator_count?: Maybe<Scalars['Int']['output']>;
   /** Validator-trust score spread across permitted validators network-wide only. */
   validator_trust?: Maybe<ScoreDistribution>;
 };
@@ -1855,17 +1855,17 @@ export type ChainYield = {
   __typename?: 'ChainYield';
   captured_at?: Maybe<Scalars['String']['output']>;
   distribution?: Maybe<YieldDistribution>;
-  miner_count: Scalars['Int']['output'];
+  miner_count?: Maybe<Scalars['Int']['output']>;
   miner_yield?: Maybe<Scalars['Float']['output']>;
   network_yield?: Maybe<Scalars['Float']['output']>;
   neuron_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   /** Sum of every neuron's emission across every subnet, alpha-denominated for the same reason as total_stake_alpha (renamed from total_emission_tao in #8803). Alpha/alpha keeps the *_yield ratios below dimensionally valid. */
-  total_emission_alpha: Scalars['Float']['output'];
+  total_emission_alpha?: Maybe<Scalars['Float']['output']>;
   /** Sum of every neuron's stake across every subnet. ALPHA, not TAO: a non-root neuron's stake is that subnet's alpha token, so this is a cross-subnet alpha count (renamed from total_stake_tao in #8803). Use it as the yields' denominator, not as a TAO figure. */
-  total_stake_alpha: Scalars['Float']['output'];
-  validator_count: Scalars['Int']['output'];
+  total_stake_alpha?: Maybe<Scalars['Float']['output']>;
+  validator_count?: Maybe<Scalars['Int']['output']>;
   validator_yield?: Maybe<Scalars['Float']['output']>;
 };
 
@@ -1884,9 +1884,9 @@ export type Changelog = {
 
 export type Compare = {
   __typename?: 'Compare';
-  dimensions: Array<Scalars['String']['output']>;
+  dimensions?: Maybe<Array<Scalars['String']['output']>>;
   observed_at?: Maybe<Scalars['String']['output']>;
-  requested_netuids: Array<Scalars['Int']['output']>;
+  requested_netuids?: Maybe<Array<Scalars['Int']['output']>>;
   schema_version: Scalars['Int']['output'];
   source?: Maybe<Scalars['String']['output']>;
   subnets: Array<CompareSubnet>;
@@ -1897,7 +1897,7 @@ export type CompareEconomics = {
   alpha_price_tao?: Maybe<Scalars['Float']['output']>;
   emission_share?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
-  miner_readiness?: Maybe<Scalars['Int']['output']>;
+  miner_readiness?: Maybe<Scalars['Float']['output']>;
   open_slots?: Maybe<Scalars['Int']['output']>;
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
@@ -1907,7 +1907,7 @@ export type CompareEconomics = {
 
 export type CompareHealth = {
   __typename?: 'CompareHealth';
-  avg_latency_ms?: Maybe<Scalars['Int']['output']>;
+  avg_latency_ms?: Maybe<Scalars['Float']['output']>;
   ok_count?: Maybe<Scalars['Int']['output']>;
   surface_count?: Maybe<Scalars['Int']['output']>;
 };
@@ -1957,7 +1957,7 @@ export type ConcentrationMetrics = {
   gini?: Maybe<Scalars['Float']['output']>;
   hhi?: Maybe<Scalars['Float']['output']>;
   hhi_normalized?: Maybe<Scalars['Float']['output']>;
-  holders: Scalars['Int']['output'];
+  holders?: Maybe<Scalars['Int']['output']>;
   nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
   top_1pct_share?: Maybe<Scalars['Float']['output']>;
   top_5pct_share?: Maybe<Scalars['Float']['output']>;
@@ -2324,7 +2324,7 @@ export type EvmAddressMapping = {
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
   h160: Scalars['String']['output'];
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   ss58?: Maybe<Scalars['String']['output']>;
 };
@@ -2626,7 +2626,7 @@ export type NetworkParameters = {
   /** Per-field { kind, storage } map: every value labelled measured (with the storage item it came from) or reconstructed (ours). READ IT BEFORE CITING block_emission_tao, block_emission_halvings, or emission_gate_exponent_effective -- all three are reconstructed. The first two are derived from TotalIssuance rather than the stale BlockEmission item, and the third is the runtime default whenever the storage item is unset, which is its current state. ADR 0023 decision 5, generalised in #9078. */
   field_sources: Scalars['JSON']['output'];
   pending_childkey_cooldown_blocks?: Maybe<Scalars['Int']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   stake_threshold_tao?: Maybe<Scalars['Float']['output']>;
   tao_weight?: Maybe<Scalars['Float']['output']>;
@@ -2640,7 +2640,7 @@ export type NetworkRandomness = {
   field_sources: Scalars['JSON']['output'];
   last_stored_round?: Maybe<Scalars['Int']['output']>;
   oldest_stored_round?: Maybe<Scalars['Int']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   stored_round_span?: Maybe<Scalars['Int']['output']>;
 };
@@ -4901,7 +4901,7 @@ export type RpcUsageEndpoint = {
   error_rate?: Maybe<Scalars['Float']['output']>;
   ok_requests: Scalars['Int']['output'];
   provider?: Maybe<Scalars['String']['output']>;
-  rank: Scalars['Int']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
   requests: Scalars['Int']['output'];
 };
 
@@ -4928,14 +4928,14 @@ export type RpcUsageSummary = {
   __typename?: 'RpcUsageSummary';
   /** Null when there are no requests in the window. */
   cache_hit_rate?: Maybe<Scalars['Float']['output']>;
-  cache_hits: Scalars['Int']['output'];
+  cache_hits?: Maybe<Scalars['Int']['output']>;
   /** Null when there are no requests in the window (no defined rate). */
   error_rate?: Maybe<Scalars['Float']['output']>;
   error_requests: Scalars['Int']['output'];
   /** Null when there are no requests in the window. */
   failover_rate?: Maybe<Scalars['Float']['output']>;
-  failover_requests: Scalars['Int']['output'];
-  latency_ms: RpcUsageLatency;
+  failover_requests?: Maybe<Scalars['Int']['output']>;
+  latency_ms?: Maybe<RpcUsageLatency>;
   ok_requests: Scalars['Int']['output'];
   total_requests: Scalars['Int']['output'];
 };
@@ -5166,7 +5166,7 @@ export type SubnetBurn = {
   /** Per-field { kind, storage } map: burn_tao is measured, read from SubtensorModule.Burn. ADR 0023 decision 5, generalised in #9078/#9104. */
   field_sources: Scalars['JSON']['output'];
   netuid: Scalars['Int']['output'];
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
 };
 
@@ -5230,7 +5230,7 @@ export type SubnetConcentrationHistoryPoint = {
   emission_gini?: Maybe<Scalars['Float']['output']>;
   emission_nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
   emission_top_10pct_share?: Maybe<Scalars['Float']['output']>;
-  neuron_count: Scalars['Int']['output'];
+  neuron_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
   stake_gini?: Maybe<Scalars['Float']['output']>;
   stake_nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
@@ -5568,7 +5568,7 @@ export type SubnetLease = {
   lease?: Maybe<Scalars['JSON']['output']>;
   leased?: Maybe<Scalars['Boolean']['output']>;
   netuid: Scalars['Int']['output'];
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
 };
 
@@ -5710,7 +5710,7 @@ export type SubnetOwnershipHistory = {
 /** Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance. */
 export type SubnetPerformance = {
   __typename?: 'SubnetPerformance';
-  active_count: Scalars['Int']['output'];
+  active_count?: Maybe<Scalars['Int']['output']>;
   captured_at?: Maybe<Scalars['String']['output']>;
   /** Consensus score spread across all neurons. */
   consensus?: Maybe<ScoreDistribution>;
@@ -5723,7 +5723,7 @@ export type SubnetPerformance = {
   schema_version: Scalars['Int']['output'];
   /** Trust score spread across all neurons. */
   trust?: Maybe<ScoreDistribution>;
-  validator_count: Scalars['Int']['output'];
+  validator_count?: Maybe<Scalars['Int']['output']>;
   /** Validator-trust score spread across permitted validators only. */
   validator_trust?: Maybe<ScoreDistribution>;
 };
@@ -5742,7 +5742,7 @@ export type SubnetPerformanceHistory = {
 /** One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day. */
 export type SubnetPerformanceHistoryPoint = {
   __typename?: 'SubnetPerformanceHistoryPoint';
-  active_count: Scalars['Int']['output'];
+  active_count?: Maybe<Scalars['Int']['output']>;
   consensus_mean?: Maybe<Scalars['Float']['output']>;
   consensus_median?: Maybe<Scalars['Float']['output']>;
   dividends_gini?: Maybe<Scalars['Float']['output']>;
@@ -5751,11 +5751,11 @@ export type SubnetPerformanceHistoryPoint = {
   incentive_gini?: Maybe<Scalars['Float']['output']>;
   incentive_nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
   incentive_top_10pct_share?: Maybe<Scalars['Float']['output']>;
-  neuron_count: Scalars['Int']['output'];
+  neuron_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
   trust_mean?: Maybe<Scalars['Float']['output']>;
   trust_median?: Maybe<Scalars['Float']['output']>;
-  validator_count: Scalars['Int']['output'];
+  validator_count?: Maybe<Scalars['Int']['output']>;
   validator_trust_mean?: Maybe<Scalars['Float']['output']>;
   validator_trust_median?: Maybe<Scalars['Float']['output']>;
 };
@@ -5797,7 +5797,7 @@ export type SubnetRecycled = {
   /** Per-field { kind, storage } map: recycled_tao is measured, read from SubtensorModule.RAORecycledForRegistration -- the chain's own cumulative counter, not an account_events aggregation. ADR 0023 decision 5, generalised in #9078/#9104. */
   field_sources: Scalars['JSON']['output'];
   netuid: Scalars['Int']['output'];
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   recycled_tao?: Maybe<Scalars['Float']['output']>;
   schema_version: Scalars['Int']['output'];
 };
@@ -5943,29 +5943,29 @@ export type SubnetTurnover = {
   end_date?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
   neuron_retention?: Maybe<Scalars['Float']['output']>;
-  neurons_end: Scalars['Int']['output'];
-  neurons_start: Scalars['Int']['output'];
+  neurons_end?: Maybe<Scalars['Int']['output']>;
+  neurons_start?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   stability_score?: Maybe<Scalars['Int']['output']>;
   start_date?: Maybe<Scalars['String']['output']>;
-  uids_deregistered: Scalars['Int']['output'];
+  uids_deregistered?: Maybe<Scalars['Int']['output']>;
   validator_retention?: Maybe<Scalars['Float']['output']>;
-  validators_end: Scalars['Int']['output'];
-  validators_entered: Scalars['Int']['output'];
-  validators_exited: Scalars['Int']['output'];
-  validators_start: Scalars['Int']['output'];
+  validators_end?: Maybe<Scalars['Int']['output']>;
+  validators_entered?: Maybe<Scalars['Int']['output']>;
+  validators_exited?: Maybe<Scalars['Int']['output']>;
+  validators_start?: Maybe<Scalars['Int']['output']>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
 /** The per-neuron churn behind a subnet's turnover scorecard: which validators entered and exited, and which UIDs were reassigned. Mirrors the changes block of GET /api/v1/subnets/{netuid}/turnover?changes=true. */
 export type SubnetTurnoverChanges = {
   __typename?: 'SubnetTurnoverChanges';
-  uid_reassignment_count: Scalars['Int']['output'];
+  uid_reassignment_count?: Maybe<Scalars['Int']['output']>;
   uid_reassignments: Array<TurnoverUidReassignment>;
   validators_entered: Array<TurnoverValidatorChange>;
-  validators_entered_count: Scalars['Int']['output'];
+  validators_entered_count?: Maybe<Scalars['Int']['output']>;
   validators_exited: Array<TurnoverValidatorChange>;
-  validators_exited_count: Scalars['Int']['output'];
+  validators_exited_count?: Maybe<Scalars['Int']['output']>;
 };
 
 /** One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope. */
@@ -6145,14 +6145,14 @@ export type SubnetYieldHistoryPoint = {
   __typename?: 'SubnetYieldHistoryPoint';
   mean_yield?: Maybe<Scalars['Float']['output']>;
   median_yield?: Maybe<Scalars['Float']['output']>;
-  neuron_count: Scalars['Int']['output'];
+  neuron_count?: Maybe<Scalars['Int']['output']>;
   p25_yield?: Maybe<Scalars['Float']['output']>;
   p75_yield?: Maybe<Scalars['Float']['output']>;
   p90_yield?: Maybe<Scalars['Float']['output']>;
   snapshot_date: Scalars['String']['output'];
   subnet_yield?: Maybe<Scalars['Float']['output']>;
-  validator_count: Scalars['Int']['output'];
-  yield_count: Scalars['Int']['output'];
+  validator_count?: Maybe<Scalars['Int']['output']>;
+  yield_count?: Maybe<Scalars['Int']['output']>;
 };
 
 /** One UID's emission-per-stake yield within a subnet's current metagraph snapshot. */
@@ -6184,7 +6184,7 @@ export type SudoKey = {
   /** Per-field { kind, storage } map: hotkey is measured, read from Sudo.Key. ADR 0023 decision 5, generalised in #9078. */
   field_sources: Scalars['JSON']['output'];
   hotkey?: Maybe<Scalars['String']['output']>;
-  queried_at: Scalars['String']['output'];
+  queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
 };
 
@@ -7368,7 +7368,7 @@ export type AccountAxonRemovalsResolvers<ContextType = GqlContext, ParentType ex
 export type AccountBalanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountBalance'] = ResolversParentTypes['AccountBalance']> = ResolversObject<{
   balance_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
@@ -7387,7 +7387,7 @@ export type AccountChildSubnetResolvers<ContextType = GqlContext, ParentType ext
 export type AccountChildrenResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountChildren'] = ResolversParentTypes['AccountChildren']> = ResolversObject<{
   account?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Maybe<Array<ResolversTypes['AccountChildSubnet']>>, ParentType, ContextType>;
 }>;
@@ -7445,7 +7445,7 @@ export type AccountCounterpartyTransferResolvers<ContextType = GqlContext, Paren
 export type AccountDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountDay'] = ResolversParentTypes['AccountDay']> = ResolversObject<{
   day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   event_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  event_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  event_kinds?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   first_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   last_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -7483,7 +7483,7 @@ export type AccountEntityLabelResolvers<ContextType = GqlContext, ParentType ext
   category?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  source_urls?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  source_urls?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -7632,7 +7632,7 @@ export type AccountParentSubnetResolvers<ContextType = GqlContext, ParentType ex
 export type AccountParentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountParents'] = ResolversParentTypes['AccountParents']> = ResolversObject<{
   account?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Maybe<Array<ResolversTypes['AccountParentSubnet']>>, ParentType, ContextType>;
 }>;
@@ -7756,7 +7756,7 @@ export type AccountRootClaimResolvers<ContextType = GqlContext, ParentType exten
   claim_type?: Resolver<Maybe<ResolversTypes['RootClaimType']>, ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   hotkeys?: Resolver<Maybe<Array<ResolversTypes['RootClaimHotkey']>>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
@@ -7843,20 +7843,20 @@ export type AccountSubnetsResolvers<ContextType = GqlContext, ParentType extends
 }>;
 
 export type AccountSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountSummary'] = ResolversParentTypes['AccountSummary']> = ResolversObject<{
-  activity?: Resolver<ResolversTypes['AccountActivity'], ParentType, ContextType>;
+  activity?: Resolver<Maybe<ResolversTypes['AccountActivity']>, ParentType, ContextType>;
   event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  event_kinds?: Resolver<Array<ResolversTypes['AccountEventKind']>, ParentType, ContextType>;
-  event_scan_capped?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  event_kinds?: Resolver<Maybe<Array<ResolversTypes['AccountEventKind']>>, ParentType, ContextType>;
+  event_scan_capped?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   first_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   first_seen_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   labels?: Resolver<Maybe<Array<ResolversTypes['AccountLabel']>>, ParentType, ContextType>;
   last_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   last_seen_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  recent_events?: Resolver<Array<ResolversTypes['AccountEvent']>, ParentType, ContextType>;
+  recent_events?: Resolver<Maybe<Array<ResolversTypes['AccountEvent']>>, ParentType, ContextType>;
   registrations?: Resolver<Array<ResolversTypes['AccountRegistration']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   ss58?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type AccountTransferResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountTransfer'] = ResolversParentTypes['AccountTransfer']> = ResolversObject<{
@@ -8402,7 +8402,7 @@ export type ChainIdleStakeSubnetResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type ChainPerformanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPerformance'] = ResolversParentTypes['ChainPerformance']> = ResolversObject<{
-  active_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  active_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
@@ -8411,7 +8411,7 @@ export type ChainPerformanceResolvers<ContextType = GqlContext, ParentType exten
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
-  validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
 }>;
 
@@ -8797,15 +8797,15 @@ export type ChainWeightsSubnetResolvers<ContextType = GqlContext, ParentType ext
 export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainYield'] = ResolversParentTypes['ChainYield']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   distribution?: Resolver<Maybe<ResolversTypes['YieldDistribution']>, ParentType, ContextType>;
-  miner_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   network_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  total_emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  total_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
@@ -8822,9 +8822,9 @@ export type ChangelogResolvers<ContextType = GqlContext, ParentType extends Reso
 }>;
 
 export type CompareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Compare'] = ResolversParentTypes['Compare']> = ResolversObject<{
-  dimensions?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  dimensions?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  requested_netuids?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
+  requested_netuids?: Resolver<Maybe<Array<ResolversTypes['Int']>>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['CompareSubnet']>, ParentType, ContextType>;
@@ -8834,7 +8834,7 @@ export type CompareEconomicsResolvers<ContextType = GqlContext, ParentType exten
   alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  miner_readiness?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  miner_readiness?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   open_slots?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -8843,7 +8843,7 @@ export type CompareEconomicsResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type CompareHealthResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CompareHealth'] = ResolversParentTypes['CompareHealth']> = ResolversObject<{
-  avg_latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  avg_latency_ms?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   ok_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
@@ -8886,7 +8886,7 @@ export type ConcentrationMetricsResolvers<ContextType = GqlContext, ParentType e
   gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hhi?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hhi_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  holders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  holders?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   top_1pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   top_5pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -9173,7 +9173,7 @@ export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends R
 export type EvmAddressMappingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvmAddressMapping'] = ResolversParentTypes['EvmAddressMapping']> = ResolversObject<{
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   h160?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ss58?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -9420,7 +9420,7 @@ export type NetworkParametersResolvers<ContextType = GqlContext, ParentType exte
   emission_gate_exponent_effective?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   pending_childkey_cooldown_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stake_threshold_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -9431,7 +9431,7 @@ export type NetworkRandomnessResolvers<ContextType = GqlContext, ParentType exte
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   last_stored_round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   oldest_stored_round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stored_round_span?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
@@ -9986,7 +9986,7 @@ export type RpcUsageEndpointResolvers<ContextType = GqlContext, ParentType exten
   error_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   ok_requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   provider?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  rank?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rank?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -10005,12 +10005,12 @@ export type RpcUsageNetworkResolvers<ContextType = GqlContext, ParentType extend
 
 export type RpcUsageSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsageSummary'] = ResolversParentTypes['RpcUsageSummary']> = ResolversObject<{
   cache_hit_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  cache_hits?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  cache_hits?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   error_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   error_requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   failover_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  failover_requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  latency_ms?: Resolver<ResolversTypes['RpcUsageLatency'], ParentType, ContextType>;
+  failover_requests?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  latency_ms?: Resolver<Maybe<ResolversTypes['RpcUsageLatency']>, ParentType, ContextType>;
   ok_requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -10162,7 +10162,7 @@ export type SubnetBurnResolvers<ContextType = GqlContext, ParentType extends Res
   burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -10208,7 +10208,7 @@ export type SubnetConcentrationHistoryPointResolvers<ContextType = GqlContext, P
   emission_gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   emission_top_10pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   stake_gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   stake_nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -10475,7 +10475,7 @@ export type SubnetLeaseResolvers<ContextType = GqlContext, ParentType extends Re
   lease?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   leased?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -10589,7 +10589,7 @@ export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType
 }>;
 
 export type SubnetPerformanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPerformance'] = ResolversParentTypes['SubnetPerformance']> = ResolversObject<{
-  active_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  active_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
@@ -10598,7 +10598,7 @@ export type SubnetPerformanceResolvers<ContextType = GqlContext, ParentType exte
   neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
-  validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['ScoreDistribution']>, ParentType, ContextType>;
 }>;
 
@@ -10611,7 +10611,7 @@ export type SubnetPerformanceHistoryResolvers<ContextType = GqlContext, ParentTy
 }>;
 
 export type SubnetPerformanceHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPerformanceHistoryPoint'] = ResolversParentTypes['SubnetPerformanceHistoryPoint']> = ResolversObject<{
-  active_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  active_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   consensus_mean?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   consensus_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   dividends_gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -10620,11 +10620,11 @@ export type SubnetPerformanceHistoryPointResolvers<ContextType = GqlContext, Par
   incentive_gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   incentive_nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   incentive_top_10pct_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   trust_mean?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   trust_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_trust_mean?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_trust_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
@@ -10656,7 +10656,7 @@ export type SubnetPrometheusResolvers<ContextType = GqlContext, ParentType exten
 export type SubnetRecycledResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetRecycled'] = ResolversParentTypes['SubnetRecycled']> = ResolversObject<{
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   recycled_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -10779,27 +10779,27 @@ export type SubnetTurnoverResolvers<ContextType = GqlContext, ParentType extends
   end_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   neuron_retention?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  neurons_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  neurons_start?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neurons_end?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  neurons_start?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stability_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   start_date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  uids_deregistered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uids_deregistered?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_retention?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  validators_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  validators_entered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  validators_exited?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  validators_start?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_end?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validators_entered?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validators_exited?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validators_start?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetTurnoverChangesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTurnoverChanges'] = ResolversParentTypes['SubnetTurnoverChanges']> = ResolversObject<{
-  uid_reassignment_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uid_reassignment_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   uid_reassignments?: Resolver<Array<ResolversTypes['TurnoverUidReassignment']>, ParentType, ContextType>;
   validators_entered?: Resolver<Array<ResolversTypes['TurnoverValidatorChange']>, ParentType, ContextType>;
-  validators_entered_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_entered_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validators_exited?: Resolver<Array<ResolversTypes['TurnoverValidatorChange']>, ParentType, ContextType>;
-  validators_exited_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_exited_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type SubnetUptimeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetUptime'] = ResolversParentTypes['SubnetUptime']> = ResolversObject<{
@@ -10941,14 +10941,14 @@ export type SubnetYieldHistoryResolvers<ContextType = GqlContext, ParentType ext
 export type SubnetYieldHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldHistoryPoint'] = ResolversParentTypes['SubnetYieldHistoryPoint']> = ResolversObject<{
   mean_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   median_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  neuron_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   p25_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   p75_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   p90_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnet_yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  yield_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  yield_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type SubnetYieldNeuronResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetYieldNeuron'] = ResolversParentTypes['SubnetYieldNeuron']> = ResolversObject<{
@@ -10968,7 +10968,7 @@ export type SubscriptionResolvers<ContextType = GqlContext, ParentType extends R
 export type SudoKeyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SudoKey'] = ResolversParentTypes['SudoKey']> = ResolversObject<{
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
