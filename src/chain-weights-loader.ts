@@ -51,9 +51,13 @@ export async function loadChainWeightsColdTier(
     query,
   });
   if (!rollup) return null;
+  // No cast. The sibling serving loader records why: `as unknown as
+  // Parameters<...>` is what let a window/limit mismatch typecheck there, and
+  // it would have hidden a mistyped `subnetCount` here just as well.
   return buildChainWeights(rollup.rows, {
     window,
     limit,
     networkDistinct: rollup.networkDistinct,
-  } as unknown as Parameters<typeof buildChainWeights>[1]);
+    subnetCount: rollup.subnetCount,
+  });
 }

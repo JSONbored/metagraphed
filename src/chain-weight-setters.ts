@@ -99,7 +99,10 @@ export interface ChainWeightSettersResult {
 // totals row. `rows` are already ordered by activity (newest-first tiebreak) from the loader;
 // `totals` carries weight_sets (COUNT(*)), distinct_setters (COUNT(DISTINCT identity)) and
 // newest_observed (MAX), all network-wide (no netuid filter). `limit` caps the returned page;
-// `distinct_setters` always reports the true network-wide total regardless of `limit`. Each
+// `distinct_setters` always reports the true network-wide total regardless of `limit`, and
+// `setter_count` is the PAGE -- `setters.length`, what the caller got back, which is a different
+// question from how many exist (#10249). Both are published because both are useful and neither
+// can be derived from the other once `limit` binds. Each
 // setter's share is its count over the network total, null when the total is zero (no rows).
 // Null-safe: null/absent inputs yield the schema-stable empty card.
 export function buildChainWeightSetters(

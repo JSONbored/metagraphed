@@ -133,22 +133,45 @@ export function safeColumnAlias(value: unknown): string | null {
     : null;
 }
 
+/**
+ * A count cell as a number, or null when the query could not answer.
+ *
+ * Null rather than 0: a failed count and a measured zero read identically once
+ * they are both `0`, and this one has a fallback the caller can take instead.
+ */
+function toRowCount(value: unknown): number | null {
+  const n = Math.trunc(Number(value));
+  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+}
+
 export interface ChainEventRollup {
   /** One row per netuid, already grouped -- the shape the builders expect. */
   rows: Row[];
   /** The network block: distinct hotkeys across the whole window, and the
    * newest reading in it. */
   networkDistinct: Row;
+  /**
+   * How many subnets the WINDOW covers, not how many the page carries (#10249).
+   *
+   * `rows` is capped, so counting it answers a different question the moment
+   * the cap binds -- measured live before this existed:
+   * `/api/v1/chain/weights?limit=20` published `subnet_count: 20`, `?limit=100`
+   * published 99, and the truth was 129. A field named for a population,
+   * tracking a query parameter nobody set.
+   */
+  subnetCount: number | null;
 }
 
 /**
- * Both halves of one rollup, or null to leave the caller's empty payload
+ * Every part of one rollup, or null to leave the caller's empty payload
  * standing.
  *
- * Null on ANY miss rather than a partial answer: serving the per-subnet rows
- * without the network distinct would report a distinct-server count of zero
- * beside real per-subnet activity, which is a contradiction a caller cannot
- * detect.
+ * Null on a miss of EITHER PAYLOAD half rather than a partial answer: serving
+ * the per-subnet rows without the network distinct would report a
+ * distinct-server count of zero beside real per-subnet activity, which is a
+ * contradiction a caller cannot detect. `subnetCount` is not one of those
+ * halves -- it refines a number that already has an honest fallback -- so it
+ * degrades to null instead of blanking the card (#10249).
  */
 export async function loadChainEventRollup(
   env: Parameters<typeof r2SqlQuery>[0],
@@ -196,7 +219,7 @@ export async function loadChainEventRollup(
   const identity =
     distinctColumn === "uid" ? `netuid, ${distinctColumn}` : distinctColumn;
 
-  const [rows, networkRows] = await Promise.all([
+  const [rows, networkRows, subnetRows] = await Promise.all([
     // TWO LEVELS, NOT count(DISTINCT)+GROUP BY (#9227). The single-level form
     //
     //   SELECT netuid, count(*), count(DISTINCT hotkey) ... GROUP BY netuid
@@ -253,11 +276,43 @@ export async function loadChainEventRollup(
         ` FROM (SELECT ${identity}, max(observed_at) AS newest` +
         ` FROM chain.account_events ${where} GROUP BY ${identity})`,
     ),
+    // How many subnets the window covers (#10249). A THIRD query rather than a
+    // column on either of the two above, and both alternatives were measured
+    // before settling here:
+    //
+    //  * The first query cannot carry it: its outer level is `GROUP BY netuid
+    //    ... LIMIT cap`, so a window-wide aggregate cannot ride alongside a
+    //    capped page.
+    //  * Widening the network block's grouping to (identity, netuid) and taking
+    //    `count(DISTINCT identity)` / `count(DISTINCT netuid)` off the derived
+    //    table LOOKS free -- same source scan -- and it executes at 7d for the
+    //    uid identity. It is rejected everywhere else: `40015: scan budget
+    //    exceeded ... for count(DISTINCT) without GROUP BY` on AxonServed at
+    //    both 7d and 30d, and on WeightsSet at 30d. The engine prices the
+    //    DISTINCT against the SOURCE scan, not against the few thousand rows it
+    //    would actually run over, so nesting does not buy anything. That is the
+    //    same budget this module already routed around twice, which is why
+    //    there is no COUNT(DISTINCT) left in it -- and why this is not the
+    //    place to reintroduce the shape.
+    //
+    // So: the module's standard grouped form, in the SAME `Promise.all` as the
+    // other two. It costs one more source scan and no wall-clock latency.
+    // Measured against every window the routes offer, both event kinds:
+    // 1.2-3.6s, never the slowest of the three.
+    query(
+      env,
+      `SELECT count(*) AS subnet_count` +
+        ` FROM (SELECT netuid FROM chain.account_events ${where} GROUP BY netuid)`,
+    ),
   ]);
 
   if (!rows || !networkRows) return null;
   const networkDistinct = networkRows[0];
   if (!networkDistinct) return null;
+  // NOT a decline. The two above are the payload; this one only sharpens a
+  // count that has a usable fallback, so a miss here leaves the builder to fall
+  // back to the page length rather than blanking a card that is otherwise fine.
+  const subnetCount = toRowCount(subnetRows?.[0]?.subnet_count);
 
   // A window the frozen table no longer reaches. Declining keeps the caller's
   // empty payload rather than publishing zeros that read as measured silence:
@@ -265,7 +320,7 @@ export async function loadChainEventRollup(
   // will eventually cover none of them.
   if (rows.length === 0) return null;
 
-  return { rows, networkDistinct };
+  return { rows, networkDistinct, subnetCount };
 }
 
 /** The per-identity leaderboard, plus the ungrouped totals it is a share of. */

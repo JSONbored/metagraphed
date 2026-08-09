@@ -137,16 +137,33 @@ export interface ChainWeightsResult {
 // subnet_count and the distribution span every subnet with observed weight-setting activity
 // (subnets with no WeightsSet events in the window are absent). Null-safe: no rows yields the
 // empty block.
+//
+// SUBNET_COUNT COMES FROM THE LOADER when the loader capped in SQL (#10249). The sentence above
+// was false on that path in both directions: measured live, `?limit=20` published 20 and
+// `?limit=100` published 99, while the window covered 129. `subnets.length` is the page, and the
+// page is what the builder can see. The in-memory callers still get the promise honestly from it,
+// because they hand over every row.
 export function buildChainWeights(
   subnetRows: Array<Record<string, unknown>> | null | undefined,
   {
     window,
     limit = CHAIN_WEIGHTS_LIMIT_DEFAULT,
     networkDistinct,
+    subnetCount,
   }: {
     window?: string | null;
     limit?: number;
     networkDistinct?: { distinct_setters?: unknown; newest_observed?: unknown };
+    /**
+     * How many subnets the WINDOW covers, from the loader's own count.
+     *
+     * Optional because the in-memory callers hand this builder EVERY row and cap
+     * them here, where `subnets.length` is already the true answer. It is the
+     * SQL-capping path that needs telling: there the builder never sees the rows
+     * beyond the cap, so counting what arrived answers "how big was the page"
+     * under a field named for a population (#10249).
+     */
+    subnetCount?: number | null;
   } = {},
 ): ChainWeightsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
@@ -211,7 +228,7 @@ export function buildChainWeights(
     schema_version: 1,
     window: window ?? null,
     observed_at: observedAt,
-    subnet_count: subnets.length,
+    subnet_count: subnetCount ?? subnets.length,
     network,
     // Distribution of per-subnet update intensity over EVERY subnet (not just the returned page),
     // so the spread is network-wide even when `limit` truncates the leaderboard.

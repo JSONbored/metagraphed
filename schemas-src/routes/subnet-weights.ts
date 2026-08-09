@@ -53,8 +53,16 @@ export const SubnetWeightSettersArtifactSchema = z
     netuid: z.int().min(0),
     window: z.enum(["7d", "30d"]).nullable(),
     observed_at: z.string().nullable(),
+    // The POPULATION: every distinct setter in the window, whatever the page
+    // carries.
     distinct_setters: z.int().min(0),
     weight_sets: z.int().min(0),
+    // The PAGE, not the population -- `setters.length`, which is what a
+    // caller gets back rather than what exists (#10249). Named here because
+    // the name alone reads as a population, and the two sit side by side.
+    // Unlike `subnet_count` on /chain/weights, this one has a true count
+    // beside it already, so making it a second copy of `distinct_setters`
+    // would cost the page size and add nothing.
     setter_count: z.int().min(0),
     // The cadence the verdicts were measured against, echoed so a null `overdue` is
     // explainable from the payload alone. Null when the subnet has no hyperparams row.

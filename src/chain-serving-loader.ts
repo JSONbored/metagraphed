@@ -81,5 +81,6 @@ export async function loadChainServingColdTier(
     window: label,
     limit: rowLimit,
     networkDistinct: rollup.networkDistinct,
+    subnetCount: rollup.subnetCount,
   });
 }

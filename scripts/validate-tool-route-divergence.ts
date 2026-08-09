@@ -17,11 +17,15 @@
 //   /api/v1/gaps AND /api/v1/review/gaps, and comparing it against the primary
 //   alone reports its correct match with the second as a divergence.
 //
-// What is left after both corrections is 81 differences, and every one of them
-// is an ENCODING (a boolean filter is `enum:["true","false"]` on a query string
-// and `boolean` in typed JSON) or a DECLARED NARROWING (a tool sized to a
-// context window, per #9701). This gate is what keeps that true: a NEW
+// What is left after both corrections is every difference being an ENCODING (a
+// boolean filter is `enum:["true","false"]` on a query string and `boolean` in
+// typed JSON) or a NARROWING (a tool sized to a context window, per #9701) or
+// one of the DECLARED entries below. This gate is what keeps that true: a NEW
 // difference in any other class fails.
+//
+// The count itself is deliberately not written down here -- it moves with every
+// tool and route added, and a number in a comment is a claim nothing checks.
+// Run the gate; it prints the current one.
 import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import { readJson, repoRoot } from "./lib.ts";
