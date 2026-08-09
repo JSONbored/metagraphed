@@ -84,6 +84,69 @@ export const PRODUCER_CADENCE_SECS = {
 
 export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;
 
+/**
+ * Which `lane_health` lane names are written by a producer we know the cadence
+ * of (#10333).
+ *
+ * EXPLICIT, not derived by string surgery. The obvious rule -- strip a `neon:`
+ * prefix and a `-pass` suffix, swap dashes for underscores -- gets four of
+ * these right and `neon:nominator-positions-pass` wrong, because that lane's
+ * producer is `validator_nominators`: ONE poller writes both the counts and the
+ * positions, which is why PRODUCER_CADENCE_SECS is keyed by producer rather
+ * than by watchdog. A rule that is right most of the time here fails silently,
+ * in the direction of a bound that is too tight.
+ *
+ * The declared cadence is a FLOOR under the observed one, never a replacement.
+ * Observation is what catches a lane whose real interval has drifted from the
+ * configured one; the floor is what stops a sample that is a burst followed by
+ * silence -- which is what a `-pass` mirror's seven days look like -- from
+ * producing a bound tighter than a single tick.
+ */
+export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
+  "account-balances": "account_balances",
+  "neon:account-balances": "account_balances",
+  "neon:account-balances-pass": "account_balances",
+  "hotkey-alpha": "hotkey_alpha",
+  "neon:hotkey-alpha": "hotkey_alpha",
+  "neon:hotkey-alpha-pass": "hotkey_alpha",
+  "validator-nominators": "validator_nominators",
+  "neon:validator-nominator-counts": "validator_nominators",
+  "neon:validator-nominator-counts-pass": "validator_nominators",
+  "neon:nominator-positions": "validator_nominators",
+  "neon:nominator-positions-pass": "validator_nominators",
+  "neon:nominator-positions-prune": "validator_nominators",
+  "account-identity": "account_identity",
+  "neon:account-identity": "account_identity",
+  "subnet-hyperparams": "subnet_hyperparams",
+  "neon:subnet-hyperparams": "subnet_hyperparams",
+  metagraph: "metagraph",
+  "neon:neurons": "metagraph",
+  "neon:neurons-pass": "metagraph",
+  "neon:neuron_daily": "metagraph",
+  "neon:account_position_daily": "metagraph",
+} as const;
+
+/**
+ * The cadence to judge one lane's silence by: its own observed maximum gap,
+ * floored by its producer's declared cadence where we have one.
+ *
+ * `null` in means null out -- no sample and no declaration is no bound, and
+ * withLaneHealth then leaves the verdict alone rather than guessing.
+ */
+export function laneSilenceCadenceMs(
+  lane: string,
+  observedMaxGapMs: number | null | undefined,
+): number | null {
+  const declared = LANE_PRODUCER[lane];
+  const floor = declared ? cadenceMs(declared) : null;
+  const observed =
+    typeof observedMaxGapMs === "number" && observedMaxGapMs > 0
+      ? observedMaxGapMs
+      : null;
+  if (observed === null) return floor;
+  return floor === null ? observed : Math.max(observed, floor);
+}
+
 /** One producer's cadence in milliseconds. */
 export function cadenceMs(lane: ProducerLane): number {
   return PRODUCER_CADENCE_SECS[lane] * 1000;
