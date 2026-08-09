@@ -162,7 +162,16 @@ export function createPgStatementClient(
             toPositionalPlaceholders(stmt.text),
             stmt.values,
           );
-          out.push({ results: res.rows ?? [] });
+          // D1's per-statement envelope is `{ results, meta: { changes } }`,
+          // and `meta.changes` was the missing half. Without it a batching
+          // lane has NO WAY to learn how many rows it actually wrote, so the
+          // only number it can report is the one it intended -- which is how
+          // subnet-burn-history reported `captured 129` on ticks that wrote 1.
+          // A write path that cannot count its own effect cannot be watched.
+          out.push({
+            results: res.rows ?? [],
+            meta: { changes: res.rowCount ?? 0 },
+          });
         }
         await c.query("COMMIT");
         return out;

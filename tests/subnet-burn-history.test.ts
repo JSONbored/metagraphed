@@ -16,6 +16,7 @@ import {
   buildSubnetBurnHistory,
   captureSubnetBurnHistory,
   loadSubnetBurnHistory,
+  type BurnHistoryDb,
 } from "../src/subnet-burn-history.ts";
 import { SubnetBurnHistoryArtifactSchema } from "../schemas-src/routes/subnet-registration-cost.ts";
 
@@ -85,6 +86,43 @@ describe("captureSubnetBurnHistory", () => {
     assert.deepEqual(inserts[0].values, [0, NOW, 0.0005]);
     assert.deepEqual(inserts[1].values, [76, NOW, 0]);
     assert.equal(new Set(inserts.map((c) => c.values[1])).size, 1);
+  });
+
+  test("reports rows the batch WROTE, not rows it read (#10304)", async () => {
+    // The lane spent 34h announcing `captured 129` on ticks that wrote one
+    // row. A verdict that counts intent cannot see that, so it must count the
+    // batch's own reported changes when the runner reports them.
+    const db = {
+      prepare: () => ({ bind: () => ({ __call: {} }), run: async () => {} }),
+      batch: async () => [{ meta: { changes: 1 } }, { meta: { changes: 0 } }],
+    } as unknown as BurnHistoryDb;
+    const out = await captureSubnetBurnHistory({} as Env, {
+      db,
+      now: () => 1_700_000_000_000,
+      load: async () =>
+        ({
+          subnets: [
+            { netuid: 1, burn_tao: 0.5 },
+            { netuid: 2, burn_tao: 0.5 },
+          ],
+        }) as never,
+    });
+    assert.equal(out.captured, 1, "two statements, one row actually written");
+  });
+
+  test("a runner that reports no changes falls back to the intended count", async () => {
+    // The inversion guard: an empty batch result means "cannot count", not
+    // "wrote nothing", and reading it as zero would alarm on a working lane.
+    const db = {
+      prepare: () => ({ bind: () => ({ __call: {} }), run: async () => {} }),
+      batch: async () => [],
+    } as unknown as BurnHistoryDb;
+    const out = await captureSubnetBurnHistory({} as Env, {
+      db,
+      now: () => 1_700_000_000_000,
+      load: async () => ({ subnets: [{ netuid: 1, burn_tao: 0.5 }] }) as never,
+    });
+    assert.equal(out.captured, 1);
   });
 
   test("a genuine zero price is recorded, not skipped", async () => {
