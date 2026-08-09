@@ -258,6 +258,7 @@ export const ALL_TABLES = [
   "validator_nominator_counts_passes",
   "emission_gate_param_history",
   "subnet_emission_enabled_history",
+  "subnet_lifecycle",
   "emission_flow_watch",
   "lane_health",
   "account_balances",
