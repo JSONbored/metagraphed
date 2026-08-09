@@ -266,6 +266,10 @@ import { answerAccountEntities } from "../../src/account-entities-answer.ts";
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "../../src/lane-health.ts";
 import { withLaneHealth } from "../../src/self-health.ts";
+import {
+  loadLaneCadence,
+  LANE_ALARM_CADENCE_WINDOW_MS,
+} from "../../src/lane-alarm.ts";
 import { loadTopHoldersFlowTier } from "../../src/top-holders-flow-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "../../src/blocks-summary-artifact.ts";
@@ -2056,7 +2060,18 @@ export async function handleSelfHealth(
       typeof loadLatestLaneHealth
     >[0],
   );
-  const withLanes = withLaneHealth(data, lanes);
+  // The cadence sample the silence bound needs (#10232). One extra GROUP BY
+  // over the same table the read above already touched, and it is what stops a
+  // dead lane serving its last verdict forever. loadLaneCadence declines to a
+  // {} on any failure, and withLaneHealth then leaves every verdict alone --
+  // so a cadence read that fails costs today's behaviour, never a false alarm.
+  const cadences = await loadLaneCadence(
+    laneHealthStore(env as unknown as Record<string, unknown>) as Parameters<
+      typeof loadLaneCadence
+    >[0],
+    Date.now() - LANE_ALARM_CADENCE_WINDOW_MS,
+  );
+  const withLanes = withLaneHealth(data, lanes, { cadences });
   return envelopeResponse(
     request,
     {
