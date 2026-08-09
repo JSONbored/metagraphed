@@ -394,7 +394,11 @@ import {
   degradedChainEventsPayload,
   hotTierBlockChainEvents,
 } from "../src/chain-events-degraded.ts";
-import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
+import {
+  degradedSnapshot,
+  labelDegradedResponse,
+  markPostgresTierFallbackResponse,
+} from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
@@ -4259,7 +4263,42 @@ async function handleChainFirehoseIngest(request: Request, env: Env) {
   });
 }
 
+/**
+ * THE ROUTER, plus the one thing every route must not be able to forget
+ * (#10270).
+ *
+ * A data tier that declines mid-request leaves the handler holding a
+ * schema-stable empty payload, and 71 of the tier-reading handlers in
+ * `request-handlers/entities.ts` returned it with `ok: true` and no header --
+ * `/accounts/{ss58}/counterparties` answering `counterparty_count: 0,
+ * transfers_scanned: 0` for an account with 114, on roughly one request in
+ * five, while the lakehouse was rate-limited. `transfers_scanned: 0` is the
+ * tell: the route reported that it scanned nothing and concluded there was
+ * nothing.
+ *
+ * #9110 solved this for the analytics family by labelling inside
+ * `withEdgeCache` rather than in each handler, on the argument that a
+ * per-handler flag is exactly what the next handler forgets. Not one of the 71
+ * uses `withEdgeCache`, so none of them was ever covered. This is the same
+ * argument at the only point that covers all of them: a handler cannot opt out
+ * of being routed.
+ *
+ * The dispatch itself is `dispatchRequest` below, unchanged -- it has ~40
+ * early returns, and wrapping it from outside is what makes the label
+ * unforgettable rather than 40 more places to remember.
+ */
 export async function handleRequest(
+  request: Request,
+  env: Env = {} as unknown as Env,
+  ctx: Ctx = {},
+) {
+  const before = degradedSnapshot();
+  const response = await dispatchRequest(request, env, ctx);
+  labelDegradedResponse(response, before);
+  return response;
+}
+
+async function dispatchRequest(
   request: Request,
   env: Env = {} as unknown as Env,
   ctx: Ctx = {},
