@@ -26,6 +26,25 @@ export const SubnetEmissionDecompositionSchema = z
       .describe(
         "Non-null (root, never_emitted, subtoken_disabled, registration_closed) means the subnet took no part in stage 1, and every downstream share is null rather than 0 -- 'not in the distribution' is not 'in it with nothing'.",
       ),
+    /**
+     * `SubnetMovingPrice` (I96F32) -- the EMA of the subnet's alpha price and
+     * stage 1's raw input, in TAO.
+     *
+     * Published because it is the quantity the runtime compares when deciding
+     * which subnet to deregister, and one subnet leaves every time a new one
+     * registers (#10285). `emission_share` normalizes it away, so a caller
+     * cannot recover it from anything else served here.
+     *
+     * Null for a subnet with no positive moving price -- root and the
+     * never-emitted set.
+     */
+    moving_price: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "SubtensorModule.SubnetMovingPrice in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published unnormalized because it is the quantity the runtime compares when deciding which subnet to deregister; emission_share divides it by the sum across subnets, so a caller cannot recover it from anything else here. Null for a subnet with no positive moving price (root, and the never-emitted set).",
+      ),
     /** Stage 1, the published `emission_share` (ADR 0023 decision 1). */
     emission_share: ShareSchema.describe(
       "Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received.",

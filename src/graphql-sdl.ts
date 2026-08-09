@@ -1255,6 +1255,8 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     "Non-null (root, never_emitted, subtoken_disabled, registration_closed) means the subnet took no part in stage 1, and every downstream share is null rather than 0 -- 'not in the distribution' is not 'in it with nothing'."
     ineligible_reason: String
+    "SubnetMovingPrice (I64F64) in TAO -- the EMA of the subnet's alpha price and stage 1's raw input. Published because it is the quantity the runtime compares when deciding which subnet to deregister, and emission_share normalizes it away. Null for subnets with no positive moving price (root, never-emitted)."
+    moving_price: Float
     "Stage 1, the published emission_share (ADR 0023 decision 1) -- the PRICE share, not the share of TAO received."
     emission_share: Float
     "Stage 2 input. A FRACTION in [0,1], never an amount."

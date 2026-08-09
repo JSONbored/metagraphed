@@ -64,6 +64,16 @@ export interface SubnetPipelineStages {
   netuid: number;
   /** Null when ineligible — a subnet outside stage 0 has no share at all. */
   ineligible_reason: IneligibleReason | null;
+  /**
+   * `SubnetMovingPrice` itself (I64F64), the EMA of the subnet's alpha price
+   * and stage 1's raw input.
+   *
+   * Published rather than kept internal (#10285) because it is the quantity
+   * the runtime compares when it decides which subnet to deregister -- one
+   * leaves every time a new one registers -- and nothing else we serve exposes
+   * it. `price_share` normalizes it away, so a caller cannot recover it.
+   */
+  moving_price: number | null;
   /** Stage 1: `SubnetMovingPrice_i / Σ SubnetMovingPrice`. */
   price_share: number | null;
   miner_burned: number;
@@ -191,6 +201,7 @@ export function reconstructEmissionPipeline(input: {
     const row: SubnetPipelineStages = {
       netuid: subnet.netuid,
       ineligible_reason: reason,
+      moving_price: positive(subnet.moving_price) ? subnet.moving_price : null,
       price_share: null,
       // Capped at 1 the way the runtime caps it: a value above 1 would make
       // (1 - burned) negative and hand the subnet a negative weight.

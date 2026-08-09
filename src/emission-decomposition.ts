@@ -95,6 +95,15 @@ export const EMISSION_FIELD_SOURCES = {
     kind: "measured",
     storage: "SubtensorModule.SubnetMovingPrice",
   },
+  // The same storage item `emission_share` names, published unnormalized
+  // (#10285). Two entries citing one read is not a duplication: the pallet
+  // compares the RAW price when it decides which subnet to prune, and
+  // `emission_share` is that price divided by the sum across subnets — a
+  // caller cannot recover one from the other without every row.
+  moving_price: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetMovingPrice",
+  },
   miner_burned: { kind: "measured", storage: "SubtensorModule.MinerBurned" },
   emission_enabled: {
     kind: "measured",
