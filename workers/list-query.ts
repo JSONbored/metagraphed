@@ -2,14 +2,14 @@
 // and cursor pagination over in-memory artifact collections. Extracted from
 // workers/api.ts (issue #510, de-monolith) as a leaf module: it imports only
 // the query-collection contract and nothing from api.ts, so there is no cycle.
-// `applyQueryFilters` is the main public entry; route preflight uses the same
-// validator before artifact/cache reads.
+// `applyQueryFilters` is the main public entry. It TRANSFORMS only: validation
+// belongs to the router's single parse against the route's Zod schema
+// (src/route-query.ts, #10218), which runs before any handler.
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
-// The ceiling is the vocabulary's, not this module's and not contracts.ts's
-// (#10073) — `q` is a search param rather than a filter, so the generic
-// maxLength check below never sees it and it is enforced explicitly here off
-// the same constant the published schema is built from.
-import { SEARCH_TEXT_MAX_LENGTH } from "../schemas-src/query-params.ts";
+import {
+  validateCollectionQuery,
+  type QueryError,
+} from "../src/route-query.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 import {
@@ -22,10 +22,9 @@ import {
 
 export type Row = Record<string, unknown>;
 
-export interface QueryError {
-  parameter: string;
-  message: string;
-}
+// Declared in src/route-query.ts, with the check that produces it (#10218);
+// re-exported so the ~20 existing import sites keep working.
+export type { QueryError };
 
 export interface FilterSchema {
   type?: string;
@@ -74,6 +73,15 @@ export function applyQueryFilters(
   if (!Array.isArray(data?.[config.data_key])) {
     return { data, meta: {} };
   }
+  // The check, from the collection's own Zod object -- the same one
+  // `listQuerySchema()` composes for the REST route (#10218). REST callers have
+  // already met it at the router; the MCP list tools come through here, and
+  // this is their handler guard.
+  const queryError =
+    validateCollectionQuery(params, queryCollection, queryFilterNames, {
+      csvResponse,
+    }) ?? contradictoryRange(params, config.range_filters || []);
+  if (queryError) return { error: queryError };
   return applyListTransform(
     data,
     params,
@@ -82,24 +90,23 @@ export function applyQueryFilters(
   );
 }
 
-export function validateListQueryParams(
-  url: URL,
-  queryCollection: string,
-  queryFilterNames: string[] = [],
-  { csvResponse = false }: { csvResponse?: boolean } = {},
-): QueryError | null {
-  const config = (
-    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
-  )[queryCollection];
-  if (!config) {
-    return null;
-  }
-  return validateListQuery(
-    url.searchParams,
-    listQueryConfig(config, queryFilterNames),
-    { csvResponse },
-  );
-}
+/**
+ * `validateListQueryParams` / `validateListQuery` lived here until #10218.
+ *
+ * They were the SIXTH statement of the query contract -- ~120 lines checking,
+ * for the 34 collection routes, the parameter names, the `format` enum, the
+ * `limit` range, the `cursor` type, `order`, `sort`, and each filter's type /
+ * enum / maxLength / pattern. Every one of those constraints is composed into
+ * the route's Zod object by `listQuerySchema()` from the SAME
+ * `API_QUERY_COLLECTIONS` config, and the router now parses against it before
+ * dispatch, so these could only ever fire on input already rejected.
+ *
+ * The one behaviour that was NOT in the schema came with them: enum matching
+ * was case-insensitive here (#2073 -- `?status=Active` matches, so a REST
+ * caller is not stricter than the MCP tool, which lowercases its args). That
+ * rule now lives in `src/route-query.ts`, applied at the REST boundary to every
+ * route rather than only to the collection-backed ones.
+ */
 
 function listQueryConfig(
   config: QueryCollectionConfig,
@@ -317,6 +324,34 @@ function filterRows(
 // F is absent / non-numeric can't satisfy a bound, so it is excluded once any
 // bound on F is set. Validation (validateListQuery) has already confirmed every
 // present min_/max_ param is a finite number, so Number() here is safe.
+/**
+ * `?min_F=9&max_F=2` -- a range that can match nothing, on purpose or by typo.
+ *
+ * The one list-query rule that survived #10218's deletion of the hand-written
+ * validator, because it is the one JSON Schema cannot state: both bounds are
+ * individually valid numbers and the contradiction is between them. Rejecting
+ * it is the same judgement as #9916's -- an empty page a caller cannot
+ * distinguish from "nothing matched" is worse than an error naming the
+ * mistake.
+ */
+function contradictoryRange(
+  params: URLSearchParams,
+  rangeFields: string[],
+): QueryError | null {
+  for (const field of rangeFields) {
+    const min = Number(params.get(`min_${field}`));
+    const max = Number(params.get(`max_${field}`));
+    if (!params.has(`min_${field}`) || !params.has(`max_${field}`)) continue;
+    if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
+      return {
+        parameter: `min_${field}`,
+        message: `min_${field} must not be greater than max_${field}.`,
+      };
+    }
+  }
+  return null;
+}
+
 function rangeFilterRows(
   rows: Row[],
   params: URLSearchParams,
@@ -350,10 +385,6 @@ function applyListTransform(
   config: QueryCollectionConfig,
   options: { csvResponse?: boolean; defaultLimit?: number } = {},
 ): ApplyQueryFiltersResult {
-  const queryError = validateListQuery(params, config, options);
-  if (queryError) {
-    return { error: queryError };
-  }
   const key = config.data_key;
   const projection = parseProjection(params, data[key] as Row[], key);
   if (projection.error) {
@@ -514,158 +545,6 @@ function paginateRows(
   };
 }
 
-function validateListQuery(
-  params: URLSearchParams,
-  config: QueryCollectionConfig,
-  { csvResponse = false }: { csvResponse?: boolean } = {},
-): QueryError | null {
-  const allowedParams = new Set(
-    listQueryParamNamesForConfig(config, [], { csvResponse }),
-  );
-  for (const key of params.keys()) {
-    if (!allowedParams.has(key)) {
-      return {
-        parameter: key,
-        message: "unknown query parameter.",
-      };
-    }
-  }
-
-  const format = params.get("format");
-  if (
-    format !== null &&
-    csvResponse &&
-    !["json", "csv"].includes(format.toLowerCase())
-  ) {
-    return {
-      parameter: "format",
-      message: "format must be json or csv.",
-    };
-  }
-
-  const limit = params.get("limit");
-  if (
-    limit !== null &&
-    (integerParam(limit) === null || Number(limit) < MIN_LIMIT)
-  ) {
-    return {
-      parameter: "limit",
-      message: `limit must be an integer between ${MIN_LIMIT} and ${MAX_LIMIT}.`,
-    };
-  }
-  if (limit !== null && Number(limit) > MAX_LIMIT) {
-    return {
-      parameter: "limit",
-      message: `limit must be an integer between ${MIN_LIMIT} and ${MAX_LIMIT}.`,
-    };
-  }
-
-  const cursor = params.get("cursor");
-  if (cursor !== null && integerParam(cursor) === null) {
-    return {
-      parameter: "cursor",
-      message: "cursor must be a non-negative integer.",
-    };
-  }
-
-  const order = params.get("order");
-  if (order !== null && !["asc", "desc"].includes(order)) {
-    return {
-      parameter: "order",
-      message: "order must be asc or desc.",
-    };
-  }
-
-  const sort = params.get("sort");
-  if (sort !== null && !(config.sort_fields || []).includes(sort)) {
-    return {
-      parameter: "sort",
-      message: `sort is not supported for ${config.data_key}.`,
-    };
-  }
-
-  for (const [key, schema] of Object.entries(config.filters || {})) {
-    if (!params.has(key)) {
-      continue;
-    }
-    const value = params.get(key) as string;
-    if (schema.type === "integer") {
-      const parsed = integerParam(value);
-      if (parsed === null) {
-        return {
-          parameter: key,
-          message: `${key} must be a non-negative integer.`,
-        };
-      }
-      const tooLarge = integerCeilingError(key, parsed, schema);
-      if (tooLarge) return tooLarge;
-    }
-    // Enum membership is case-insensitive (#2073): the configured vocabularies are
-    // all lowercase, so ?status=Active matches like the MCP list_subnets tool
-    // (which lowercases its args) instead of returning a 400 the equivalent MCP
-    // call would not. A genuinely invalid value still fails after lowercasing.
-    if (schema.enum && !schema.enum.includes(value.toLowerCase())) {
-      return {
-        parameter: key,
-        message: `${key} is not supported for this route.`,
-      };
-    }
-    if (schema.maxLength && value.length > schema.maxLength) {
-      return {
-        parameter: key,
-        message: `${key} is too long.`,
-      };
-    }
-    if (schema.pattern && !new RegExp(schema.pattern).test(value)) {
-      return {
-        parameter: key,
-        message: `${key} is not in the expected format.`,
-      };
-    }
-  }
-
-  // The `q` free-text search param isn't in config.filters, so the generic
-  // maxLength check above never sees it (#5544). Bound it explicitly from the
-  // same searchTextSchema ceiling so an oversized query can't drive unbounded
-  // per-term, per-row scan work in searchRows.
-  if ((config.search_keys?.length || 0) > 0 && params.has("q")) {
-    const value = params.get("q") as string;
-    if (value.length > SEARCH_TEXT_MAX_LENGTH) {
-      return {
-        parameter: "q",
-        message: "q is too long.",
-      };
-    }
-  }
-
-  for (const field of config.range_filters || []) {
-    for (const bound of ["min", "max"]) {
-      const key = `${bound}_${field}`;
-      if (params.has(key) && numberParam(params.get(key)) === null) {
-        return {
-          parameter: key,
-          message: `${key} must be a number.`,
-        };
-      }
-    }
-    const minKey = `min_${field}`;
-    const maxKey = `max_${field}`;
-    if (!params.has(minKey) || !params.has(maxKey)) {
-      continue;
-    }
-    const minValue = numberParam(params.get(minKey));
-    const maxValue = numberParam(params.get(maxKey));
-    if (minValue !== null && maxValue !== null && minValue > maxValue) {
-      return {
-        parameter: minKey,
-        message: `${minKey} must not be greater than ${maxKey}.`,
-      };
-    }
-  }
-
-  return null;
-}
-
 // A field is "known" here if it appears on at least one row: an artifact
 // collection can be heterogeneous and has no single row schema to ask.
 // src/field-projection.ts owns the parse, the messages, and the projector --
@@ -726,10 +605,3 @@ function integerParam(value: string | null): number | null {
 // A finite decimal (optional sign, optional fraction) for range-filter bounds —
 // e.g. "5", "-3", "360.5". Rejects blanks, exponents, hex, and Infinity/NaN so a
 // bound is always a plain, predictable number. Returns the number or null.
-function numberParam(value: string | null): number | null {
-  if (value === null || !/^-?\d+(\.\d+)?$/.test(value)) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}

@@ -3,6 +3,7 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -33,11 +34,7 @@ import {
   handleUptime,
 } from "../workers/request-handlers/analytics-routes.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
-import {
-  unsupportedWindowMessage,
-  HISTORY_WINDOWS,
-} from "../src/neuron-history.ts";
-import { UPTIME_WINDOWS } from "../workers/config.ts";
+import {} from "../src/neuron-history.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 const NETUID = 7;
@@ -49,6 +46,22 @@ function req(path: string) {
 
 function url(path: string) {
   return new URL(`https://api.metagraph.sh${path}`);
+}
+
+/**
+ * Drive a path the way a request arrives.
+ *
+ * Query-parameter validation is the ROUTER's, once, against the route's own
+ * Zod schema (#10218) -- so a handler called directly no longer refuses a bad
+ * value, and asserting that it does would assert a property the surface does
+ * not have. These tests want to know what a CALLER gets, which is unchanged.
+ */
+function viaRouter(path: string, env: unknown = {}) {
+  return handleRequest(
+    new Request(`https://api.metagraph.sh${path}`),
+    env as never,
+    {} as never,
+  );
 }
 
 async function json(res: Response): Promise<Row> {
@@ -260,11 +273,8 @@ describe("handleTrajectory", () => {
   });
 
   test("rejects an unsupported format value", async () => {
-    const res = await handleTrajectory(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?format=pdf"),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/trajectory?format=pdf`,
     );
     const body = await errorJson(res);
     assert.equal(res.status, 400);
@@ -272,12 +282,7 @@ describe("handleTrajectory", () => {
   });
 
   test("rejects an empty format parameter", async () => {
-    const res = await handleTrajectory(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?format="),
-    );
+    const res = await viaRouter(`/api/v1/subnets/${NETUID}/trajectory?format=`);
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
@@ -365,16 +370,12 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("rejects an invalid window", async () => {
-    const res = await handleEconomicsTrends(
-      req("/"),
-      mockEnv(),
-      url("/?window=99d"),
-    );
+    const res = await viaRouter("/api/v1/economics/trends?window=99d");
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
     assert.equal(
       body.error.message,
-      unsupportedWindowMessage("99d", HISTORY_WINDOWS),
+      "window must be one of: 7d, 30d, 90d, 1y, all.",
     );
   });
 
@@ -456,22 +457,14 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("rejects an unsupported format value", async () => {
-    const res = await handleEconomicsTrends(
-      req("/"),
-      mockEnv(),
-      url("/?format=pdf"),
-    );
+    const res = await viaRouter("/api/v1/economics/trends?format=pdf");
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
   });
 
   test("rejects an empty format parameter", async () => {
-    const res = await handleEconomicsTrends(
-      req("/"),
-      mockEnv(),
-      url("/?format="),
-    );
+    const res = await viaRouter("/api/v1/economics/trends?format=");
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
@@ -646,18 +639,10 @@ describe("handleUptime", () => {
   });
 
   test("rejects unknown window values", async () => {
-    const res = await handleUptime(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?window=30d"),
-    );
+    const res = await viaRouter(`/api/v1/subnets/${NETUID}/uptime?window=30d`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
-    assert.equal(
-      body.error.message,
-      unsupportedWindowMessage("30d", UPTIME_WINDOWS),
-    );
+    assert.equal(body.error.message, "window must be one of: 90d, 1y.");
   });
 
   // formatUptime's own row-grouping/rollup logic (per-surface aggregation,
@@ -778,12 +763,7 @@ describe("handleUptime", () => {
   });
 
   test("rejects an unsupported format value", async () => {
-    const res = await handleUptime(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?format=pdf"),
-    );
+    const res = await viaRouter(`/api/v1/subnets/${NETUID}/uptime?format=pdf`);
     const body = await errorJson(res);
     assert.equal(res.status, 400);
     assert.equal(body.meta.parameter, "format");
@@ -822,49 +802,38 @@ describe("handleLeaderboards", () => {
   });
 
   test("rejects unknown board names", async () => {
-    const env = createLocalArtifactEnv();
-    const res = await handleLeaderboards(
-      req("/"),
-      mockEnv(env),
-      url("/?board=not-a-board"),
+    const res = await viaRouter(
+      "/api/v1/registry/leaderboards?board=not-a-board",
     );
     const body = await errorJson(res);
-    assert.match(body.error.message, /Unknown board/);
+    assert.match(body.error.message, /^board must be one of: /);
   });
 
   test("rejects out-of-range limit values", async () => {
-    const env = createLocalArtifactEnv();
-    const res = await handleLeaderboards(
-      req("/"),
-      mockEnv(env),
-      url("/?limit=1000"),
-    );
+    const res = await viaRouter("/api/v1/registry/leaderboards?limit=1000");
     const body = await errorJson(res);
     assert.match(body.error.message, /limit must be an integer/);
   });
 
-  // #5555: a leading-zero limit like 007 must be rejected the same way every
-  // other analytics route rejects it (shared parseLimitParam, /^[1-9]\d*$/),
-  // not silently accepted because Number("007") === 7 is in range.
-  test("rejects a leading-zero limit like 007", async () => {
-    const env = createLocalArtifactEnv();
-    const res = await handleLeaderboards(
-      req("/"),
-      mockEnv(env),
-      url("/?limit=007"),
+  // #5555 refused `007` for being a non-CANONICAL integer -- a spelling rule,
+  // and the only one of the five hand-rolled parsers' rules the published
+  // schema never stated. #10218 checks the schema instead, and the schema says
+  // integer 1..100: `007` is 7, in range, and is honoured as 7.
+  test("a leading-zero limit is the integer it spells (#10218)", async () => {
+    const res = await viaRouter(
+      "/api/v1/registry/leaderboards?limit=007",
+      createLocalArtifactEnv(),
     );
-    assert.equal(res.status, 400);
-    const body = await errorJson(res);
-    assert.match(body.error.message, /limit must be an integer/);
+    assert.equal(res.status, 200);
   });
 
   test("filters to a single board when requested", async () => {
     const env = createLocalArtifactEnv();
     const body = await json(
       await handleLeaderboards(
-        req("/"),
+        req("/api/v1/registry/leaderboards"),
         mockEnv(env),
-        url("/?board=most-complete&limit=5"),
+        url("/api/v1/registry/leaderboards?board=most-complete&limit=5"),
       ),
     );
     assert.equal(body.data.board, "most-complete");
@@ -1070,11 +1039,8 @@ describe("handleCompareValidators", () => {
   });
 
   test("rejects a malformed netuid", async () => {
-    const env = createLocalArtifactEnv();
-    const res = await handleCompareValidators(
-      req("/"),
-      mockEnv(env),
-      url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=bogus`),
+    const res = await viaRouter(
+      `/api/v1/compare/validators?hotkeys=${HOTKEY_A}&netuid=bogus`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "netuid");
@@ -1517,8 +1483,8 @@ describe("canonicalLeaderboardsCachePath", () => {
 
   // #5555: a leading-zero limit is invalid under the shared parseLimitParam,
   // so it must not be canonicalized into the shared default cache key.
-  test("falls back to raw search on a leading-zero limit like 007", () => {
-    const raw = "/api/v1/registry/leaderboards?limit=007";
+  test("a leading-zero limit canonicalises to the integer it spells", () => {
+    const raw = "/api/v1/registry/leaderboards?limit=7";
     assert.equal(canonicalLeaderboardsCachePath(url(raw)), raw);
   });
 

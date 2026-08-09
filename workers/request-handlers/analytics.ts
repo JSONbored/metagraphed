@@ -28,7 +28,6 @@ import { readStore } from "../../src/read-store.ts";
 import { HEALTH_CHECK_TABLES } from "../../src/read-store-tables.ts";
 import {
   ANALYTICS_WINDOW_PARAM,
-  ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
   MAX_INCIDENT_ROWS,
 } from "../config.ts";
@@ -37,14 +36,13 @@ import {
   DEFAULT_CHAIN_NETWORK,
 } from "../../src/chain-network.ts";
 import {
-  parseLimitParam,
-  parseNonNegativeIntParam,
-} from "../request-params.ts";
-import { HEALTH_TREND_WINDOW_VALUES } from "../../schemas-src/routes/health-surfaces.ts";
+  analyticsWindow,
+  parseRouteQuery,
+  routeQuery,
+} from "../../src/route-query.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
-import { API_ROUTES, contractPathForPathname } from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
@@ -58,10 +56,7 @@ import {
   tryPostgresTier,
 } from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
-import {
-  BULK_HEALTH_TRENDS_LIMIT_MAX,
-  CHAIN_CALL_MODULE_MAX_LENGTH,
-} from "../../src/route-limits.ts";
+import {} from "../../src/route-limits.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
@@ -76,7 +71,6 @@ import {
   loadSubnetIncidents,
   loadSubnetPercentiles,
 } from "../../src/analytics-live.ts";
-import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.ts";
 import {
   buildChainActivity,
   buildChainCalls,
@@ -85,60 +79,47 @@ import {
   trimChainFeesToWindow,
   buildChainSigners,
 } from "../../src/chain-analytics.ts";
-import {
-  CHAIN_TRANSFER_PAIR_SORTS,
-  buildChainTransferPairs,
-} from "../../src/chain-transfer-pairs.ts";
+import { buildChainTransferPairs } from "../../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../../src/chain-transfers.ts";
 import {
   buildChainServing,
   CHAIN_SERVING_LIMIT_DEFAULT,
-  CHAIN_SERVING_LIMIT_MAX,
 } from "../../src/chain-serving.ts";
 import {
   buildChainPrometheus,
   CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-  CHAIN_PROMETHEUS_LIMIT_MAX,
 } from "../../src/chain-prometheus.ts";
 import {
   buildChainAxonRemovals,
   CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-  CHAIN_AXON_REMOVALS_LIMIT_MAX,
 } from "../../src/chain-axon-removals.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-  CHAIN_REGISTRATIONS_LIMIT_MAX,
 } from "../../src/chain-registrations.ts";
 import {
   buildChainDeregistrations,
   CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-  CHAIN_DEREGISTRATIONS_LIMIT_MAX,
 } from "../../src/chain-deregistrations.ts";
 import {
   buildChainStakeMoves,
   CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-  CHAIN_STAKE_MOVES_LIMIT_MAX,
 } from "../../src/chain-stake-moves.ts";
 import {
   buildChainStakeTransfers,
   CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-  CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
 } from "../../src/chain-stake-transfers.ts";
 import {
   buildChainWeights,
   CHAIN_WEIGHTS_LIMIT_DEFAULT,
-  CHAIN_WEIGHTS_LIMIT_MAX,
 } from "../../src/chain-weights.ts";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
-  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
 } from "../../src/chain-weight-setters.ts";
 import {
   buildChainStakeFlow,
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-  CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../../src/chain-stake-flow.ts";
 import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
@@ -159,7 +140,6 @@ import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-art
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-  CHAIN_ALPHA_VOLUME_LIMIT_MAX,
 } from "../../src/chain-alpha-volume.ts";
 
 // The shape of the api.ts-local in-isolate memoized KV read (see
@@ -219,99 +199,6 @@ export function configureAnalytics(deps: {
   readEconomicsCurrentKv = deps.readEconomicsCurrentKv;
 }
 
-/**
- * The declared query-parameter names for a route path, straight off the
- * contract (#9149, completed by #10065).
- *
- * Returns `[]` for a route that declares no query parameters — "this route
- * accepts none" is a statement the contract makes, not an absence of one — and
- * `null` only when the path matches no route at all, where this module has no
- * opinion to enforce.
- */
-export function declaredQueryParams(routePath: string): string[] | null {
-  const route = (
-    API_ROUTES as unknown as {
-      path: string;
-      method: string;
-      query_parameters?: { name: string }[];
-    }[]
-  ).find((entry) => entry.path === routePath && entry.method === "GET");
-  if (!route) return null;
-  return (route.query_parameters ?? []).map((parameter) => parameter.name);
-}
-
-/**
- * Parameters accepted on every route regardless of what it declares.
- *
- * `format` is the one API-wide parameter whose no-op is DELIBERATE and tested:
- * /api/v1/chain-events/stats is an aggregate with no top-level row array, so
- * `?format=csv` deliberately falls through to the JSON envelope rather than
- * producing a bogus export ("chain-events/stats ignores ?format=csv and keeps
- * the JSON envelope"). Rejecting it would break that contract to guard against
- * a typo that cannot silently change any result -- the harm here is a dropped
- * FILTER, and format is not one.
- *
- * A declared judgement rather than a derived fact, so it is deliberately a set
- * of exactly one: anything added here stops being typo-checked everywhere. It
- * is a RULE, not a per-route list -- it does not grow when a route is added.
- */
-const GLOBALLY_ACCEPTED_PARAMS = ["format"];
-
-/**
- * Reject a request carrying a parameter its route does not declare.
- *
- * THE query-parameter allowlist for the whole API. #9149 built this and wired
- * it at one call site; 119 handlers went on passing a hand-written array to
- * `validateQueryParams` — a fifth statement of the query contract, after the
- * Zod schema, openapi.json, the MCP tool input and the GraphQL argument list.
- *
- * A fifth copy drifts like any other, and it did. Sweeping all 202 GET routes
- * through the real router found three parameters a handler accepted and
- * honoured that the contract never published:
- *
- *   /api/v1/validators/{hotkey}/history   netuid  (echoed back as data.netuid)
- *   /api/v1/accounts/{ss58}/history       cursor  (forwarded to the cold tier)
- *   /api/v1/subnets/{netuid}/events       cursor
- *
- * Undiscoverable by construction: the published contract said passing them was
- * an error. All three are declared now, and deriving the allowlist means the
- * next one cannot happen — a parameter is accepted exactly when it is
- * published, in one direction, from one place.
- *
- * The route is resolved from the pathname through `contractPathForPathname`,
- * so a handler needs to know nothing about its own contract entry.
- */
-export function validateDeclaredQueryParams(url: URL): QueryError | null {
-  const routePath = contractPathForPathname(url.pathname);
-  if (routePath === null) return null;
-  const allowed = declaredQueryParams(routePath);
-  if (allowed === null) return null;
-  return validateQueryParams(url, [...allowed, ...GLOBALLY_ACCEPTED_PARAMS]);
-}
-
-function validateQueryParams(
-  url: URL,
-  allowedParams: string[],
-): QueryError | null {
-  const seen = new Set<string>();
-  for (const key of url.searchParams.keys()) {
-    if (!allowedParams.includes(key)) {
-      return {
-        parameter: key,
-        message: `${key} is not supported for this route.`,
-      };
-    }
-    if (seen.has(key)) {
-      return {
-        parameter: key,
-        message: `${key} may only be provided once.`,
-      };
-    }
-    seen.add(key);
-  }
-  return null;
-}
-
 // Build the canonical edge-cache key for an analytics route from the handler's
 // ALREADY-RESOLVED param values, so a bare request and an explicit request for
 // the handler's own documented default share one cache entry (#6356).
@@ -347,44 +234,15 @@ function canonicalAnalyticsCacheRoute(
   return `${url.pathname}${query ? `?${query}` : ""}`;
 }
 
-// Two-shape (not `ok`-tagged) union matching the original JS's `{label,days}` /
-// `{error}` return -- callers narrow via `"error" in result`, same convention as
-// ParamError-style returns elsewhere (workers/request-params.ts).
-type WindowResult = { label: string; days: number } | { error: QueryError };
-
-function analyticsWindow(url: URL): WindowResult {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return { error: validationError };
-
-  const requested = url.searchParams.get(ANALYTICS_WINDOW_PARAM);
-  if (
-    requested !== null &&
-    !ANALYTICS_WINDOWS[requested as keyof typeof ANALYTICS_WINDOWS]
-  ) {
-    return {
-      error: {
-        parameter: ANALYTICS_WINDOW_PARAM,
-        message: `"${requested}" is not a valid window. Supported: ${Object.keys(ANALYTICS_WINDOWS).join(", ")}.`,
-      },
-    };
-  }
-
-  const label = requested || DEFAULT_ANALYTICS_WINDOW;
-  return {
-    label,
-    days: ANALYTICS_WINDOWS[label as keyof typeof ANALYTICS_WINDOWS],
-  };
-}
-
 // Normalizes per-subnet health analytics URLs so a bare ?-free request and an
 // explicit ?window=7d request both resolve to the same edge-cache entry — mirrors
 // canonicalEconomicsTrendsCachePath in analytics-routes.ts.
 export function canonicalHealthWindowCachePath(url: URL): string {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return `${url.pathname}${url.search}`;
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return `${url.pathname}${url.search}`;
-  return `${url.pathname}?window=${encodeURIComponent(windowResult.label)}`;
+  // A request the router will reject keys on its raw search, so the 400 is not
+  // served from -- or written to -- the slot a valid request shares.
+  if ("error" in parseRouteQuery(url)) return `${url.pathname}${url.search}`;
+  const { label } = analyticsWindow(url);
+  return `${url.pathname}?window=${encodeURIComponent(label)}`;
 }
 
 // dataRateLimitResponse lived here until the chain-fees Postgres tier above was
@@ -398,50 +256,6 @@ function analyticsQueryError(error: QueryError): Response {
   return errorResponse("invalid_query", error.message, 400, {
     parameter: error.parameter,
   });
-}
-
-function validateEnumParam(
-  url: URL,
-  parameter: string,
-  allowedValues: readonly string[],
-): QueryError | null {
-  const raw = url.searchParams.get(parameter);
-  if (raw === null) return null;
-  if (allowedValues.includes(raw)) return null;
-  return {
-    parameter,
-    message: `${parameter} must be one of: ${allowedValues.join(", ")}.`,
-  };
-}
-
-// Enforce the declared `format` enum (json|csv). The per-handler allow-list only
-// gates the param NAME, not its value — without this a `?format=xml` would be
-// silently accepted, contradicting the contract's `enum: [json, csv]` (#2532).
-function validateFormatParam(url: URL): QueryError | null {
-  return validateEnumParam(url, "format", ["json", "csv"]);
-}
-
-/**
- * Bound an optional free-text filter so an oversized value never reaches D1.
- *
- * Exported (#10096) because /api/v1/extrinsics needed it and did not have it:
- * the three chain-analytics feeds rejected an over-length `call_module` while
- * the fourth route taking the same filter accepted any length, so one filter
- * had two behaviours depending on which door you came through.
- */
-export function validateMaxLength(
-  url: URL,
-  parameter: string,
-  max: number,
-): QueryError | null {
-  const raw = url.searchParams.get(parameter);
-  if (raw !== null && raw.length > max) {
-    return {
-      parameter,
-      message: `${parameter} must be ${max} characters or fewer.`,
-    };
-  }
-  return null;
 }
 
 const POSTGRES_TIER_FALLBACK_RESPONSES = new WeakSet<Response>();
@@ -748,19 +562,11 @@ export async function handleBulkHealthTrends(
       { parameter: key },
     );
   }
-  const windowError = validateEnumParam(url, "window", [
-    ...HEALTH_TREND_WINDOW_VALUES,
-  ]);
-  if (windowError) return analyticsQueryError(windowError);
-  const trendsLimit = parseLimitParam(url, {
-    maxLimit: BULK_HEALTH_TRENDS_LIMIT_MAX,
-  });
-  if ("error" in trendsLimit) return analyticsQueryError(trendsLimit.error);
-  const trendsOffset = parseNonNegativeIntParam(
-    url.searchParams.get("offset"),
-    "offset",
-  );
-  if ("error" in trendsOffset) return analyticsQueryError(trendsOffset.error);
+  const {
+    window: trendsWindow,
+    limit: trendsLimit,
+    offset: trendsOffset,
+  } = routeQuery(url);
 
   return withEdgeCache(
     request,
@@ -800,9 +606,9 @@ export async function handleBulkHealthTrends(
             env as unknown as Record<string, unknown>,
             ctx,
           ),
-          window: url.searchParams.get("window"),
-          limit: trendsLimit.limit ?? null,
-          offset: trendsOffset.value ?? 0,
+          window: trendsWindow ?? null,
+          limit: trendsLimit ?? null,
+          offset: trendsOffset ?? 0,
         });
         data = result.data;
         isFallback =
@@ -845,8 +651,6 @@ export async function handleHealthTrends(
   // Reject unsupported query params (400) like every sibling analytics route
   // (percentiles/incidents/uptime/trajectory and the bulk trends route); this
   // route takes no params and returns all configured windows.
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return analyticsQueryError(validationError);
   return withEdgeCache(request, ctx, env, "trends", async (cacheRequest) => {
     // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
     let usedFallback = false;
@@ -907,9 +711,7 @@ export async function handleHealthPercentiles(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label } = analyticsWindow(url);
   return withEdgeCache(
     request,
     ctx,
@@ -970,9 +772,7 @@ export async function handleHealthIncidents(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label } = analyticsWindow(url);
   return withEdgeCache(
     request,
     ctx,
@@ -1144,11 +944,7 @@ export async function handleGlobalIncidents(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) {
-    return analyticsQueryError(windowResult.error);
-  }
-  const { label, days } = windowResult;
+  const { label, days } = analyticsWindow(url);
   // See handleBulkHealthTrends' own comment on METAGRAPH_HEALTH_SOURCE.
   const { data, isFallback } = await resolveGlobalIncidents(request, env, {
     label,
@@ -1378,11 +1174,7 @@ export async function handleChainActivity(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label, days: windowDays } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
+  const { label, days: windowDays } = analyticsWindow(url);
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -1463,29 +1255,9 @@ export async function handleChainCalls(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const groupByError = validateEnumParam(url, "group_by", [
-    "module",
-    "module_function",
-  ]);
-  if (groupByError) return analyticsQueryError(groupByError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: 50,
-    maxLimit: 100,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = 50 } = routeQuery(url);
   const groupBy = url.searchParams.get("group_by") || "module";
-  const callModuleError = validateMaxLength(
-    url,
-    "call_module",
-    CHAIN_CALL_MODULE_MAX_LENGTH,
-  );
-  if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -1573,28 +1345,11 @@ export async function handleChainSigners(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const sortError = validateEnumParam(url, "sort", CHAIN_SIGNERS_SORTS);
-  if (sortError) return analyticsQueryError(sortError);
+  const { label } = analyticsWindow(url);
   // limit/call_module no longer feed a live D1 read (see the retirement note
   // below) but are still shape-validated so the REST contract stays stable.
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: 50,
-    maxLimit: 100,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { limit = 50 } = routeQuery(url);
   const sort = url.searchParams.get("sort") || "tx_count";
-  const callModuleError = validateMaxLength(
-    url,
-    "call_module",
-    CHAIN_CALL_MODULE_MAX_LENGTH,
-  );
-  if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -1673,19 +1428,10 @@ export async function handleChainTransfers(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
+  const { label } = analyticsWindow(url);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: 25,
-    maxLimit: 100,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { limit = 25 } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   // HEAD probes are globally allowed for read-only API routes. Normalize them
@@ -1781,21 +1527,10 @@ export async function handleChainTransferPairs(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const sortError = validateEnumParam(url, "sort", CHAIN_TRANSFER_PAIR_SORTS);
-  if (sortError) return analyticsQueryError(sortError);
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
+  const { label } = analyticsWindow(url);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: 25,
-    maxLimit: 100,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { limit = 25 } = routeQuery(url);
   const sort = url.searchParams.get("sort") || "volume";
   const csv = csvRequested(url, request);
 
@@ -1887,17 +1622,8 @@ export async function handleChainStakeFlow(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-    maxLimit: CHAIN_STAKE_FLOW_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_STAKE_FLOW_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -2000,16 +1726,7 @@ export async function handleChainAlphaVolume(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const validationError = validateDeclaredQueryParams(url);
-  if (validationError) return analyticsQueryError(validationError);
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-    maxLimit: CHAIN_ALPHA_VOLUME_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -2093,17 +1810,8 @@ export async function handleChainWeights(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_WEIGHTS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_WEIGHTS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_WEIGHTS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2183,17 +1891,8 @@ export async function handleChainWeightSetters(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2265,17 +1964,8 @@ export async function handleChainServing(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_SERVING_LIMIT_DEFAULT,
-    maxLimit: CHAIN_SERVING_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_SERVING_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2355,17 +2045,8 @@ export async function handleChainPrometheus(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_PROMETHEUS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_PROMETHEUS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2435,17 +2116,8 @@ export async function handleChainAxonRemovals(
   url: URL,
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_AXON_REMOVALS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2516,17 +2188,8 @@ export async function handleChainRegistrations(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_REGISTRATIONS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_REGISTRATIONS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2616,17 +2279,8 @@ export async function handleChainDeregistrations(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_DEREGISTRATIONS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2723,17 +2377,8 @@ export async function handleChainStakeMoves(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-    maxLimit: CHAIN_STAKE_MOVES_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_STAKE_MOVES_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2818,17 +2463,8 @@ export async function handleChainStakeTransfers(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-    maxLimit: CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label } = analyticsWindow(url);
+  const { limit = CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT } = routeQuery(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2910,25 +2546,10 @@ export async function handleChainFees(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label, days: windowDays } = windowResult;
-  const formatError = validateFormatParam(url);
-  if (formatError) return analyticsQueryError(formatError);
-  const limitResult = parseLimitParam(url, {
-    defaultLimit: 25,
-    maxLimit: 100,
-  });
-  if ("error" in limitResult) return analyticsQueryError(limitResult.error);
-  const { limit } = limitResult;
+  const { label, days: windowDays } = analyticsWindow(url);
+  const { limit = 25 } = routeQuery(url);
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_module_block.
-  const callModuleError = validateMaxLength(
-    url,
-    "call_module",
-    CHAIN_CALL_MODULE_MAX_LENGTH,
-  );
-  if (callModuleError) return analyticsQueryError(callModuleError);
   const csv = csvRequested(url, request);
   return withEdgeCache(
     request,
@@ -3016,7 +2637,5 @@ export {
   analyticsMeta,
   analyticsQueryError,
   canonicalAnalyticsCacheRoute,
-  analyticsWindow,
   markPostgresTierFallbackResponse,
-  validateQueryParams,
 };

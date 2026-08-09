@@ -24,13 +24,13 @@ import {
   surfaceStatusAvgLatencySql,
 } from "./health-sql.ts";
 import {
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DAY_MS,
   HEALTH_TREND_WINDOWS,
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
-  UPTIME_WINDOWS,
+  UPTIME_WINDOW_DAYS,
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
@@ -314,7 +314,9 @@ export async function loadSubnetUptime(
     db?: ObservationsReadDb | null;
   } = {},
 ): Promise<unknown> {
-  const windowParam = Object.hasOwn(UPTIME_WINDOWS, window) ? window : "90d";
+  const windowParam = Object.hasOwn(UPTIME_WINDOW_DAYS, window)
+    ? window
+    : "90d";
   // Optional min_samples floor: drop low-sample day rows (daily probe count
   // below the threshold, incl. zero-sample "unknown" days) via HAVING,
   // mirroring the REST /uptime route (#2700). Null → no filter.
@@ -322,7 +324,7 @@ export async function loadSubnetUptime(
     Number.isInteger(minSamples) && (minSamples as number) >= 0
       ? minSamples
       : null;
-  const days = UPTIME_WINDOWS[windowParam] as number;
+  const days = UPTIME_WINDOW_DAYS[windowParam] as number;
   const cutoff = new Date(Date.now() - days * DAY_MS)
     .toISOString()
     .slice(0, 10);
@@ -430,8 +432,10 @@ export async function loadSubnetPercentiles(
     db?: ObservationsReadDb | null;
   } = {},
 ): Promise<Record<string, unknown>> {
-  const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
-  const days = ANALYTICS_WINDOWS[windowParam] as number;
+  const windowParam = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+    ? window
+    : "7d";
+  const days = ANALYTICS_WINDOW_DAYS[windowParam] as number;
   const rows = await d1All(
     db,
     `${rankedChecksCte("netuid = ? AND checked_at >= ?")}
@@ -473,9 +477,11 @@ export async function loadSubnetIncidents(
     db?: ObservationsReadDb | null;
   } = {},
 ): Promise<Record<string, unknown>> {
-  const windowParam = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const windowParam = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+    ? window
+    : "7d";
   const since =
-    Date.now() - (ANALYTICS_WINDOWS[windowParam] as number) * DAY_MS;
+    Date.now() - (ANALYTICS_WINDOW_DAYS[windowParam] as number) * DAY_MS;
   const [slaRows, incidentRows] = await Promise.all([
     d1All(
       db,
@@ -840,19 +846,22 @@ export function parseAnalyticsWindow(
   window: unknown,
 ): { label: string; days: number } | null {
   if (window === null || window === undefined) {
-    return { label: "7d", days: ANALYTICS_WINDOWS["7d"] };
+    return { label: "7d", days: ANALYTICS_WINDOW_DAYS["7d"] };
   }
-  if (typeof window !== "string" || !Object.hasOwn(ANALYTICS_WINDOWS, window)) {
+  if (
+    typeof window !== "string" ||
+    !Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+  ) {
     return null;
   }
-  return { label: window, days: ANALYTICS_WINDOWS[window] };
+  return { label: window, days: ANALYTICS_WINDOW_DAYS[window] };
 }
 
 export function parseUptimeWindow(window: unknown): string | null {
   if (window === null || window === undefined) {
     return "90d";
   }
-  return typeof window === "string" && Object.hasOwn(UPTIME_WINDOWS, window)
+  return typeof window === "string" && Object.hasOwn(UPTIME_WINDOW_DAYS, window)
     ? window
     : null;
 }

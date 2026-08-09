@@ -41469,7 +41469,7 @@ export interface operations {
     subnetMetagraph: {
         parameters: {
             query?: {
-                validator_permit?: "true";
+                validator_permit?: "true" | "false";
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -44376,7 +44376,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `1y`, `all`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d" | "1y" | "all";
-                changes?: "true";
+                changes?: "true" | "false";
             };
             header?: never;
             path: {

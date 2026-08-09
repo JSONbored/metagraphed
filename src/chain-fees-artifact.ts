@@ -19,7 +19,7 @@ import {
   projectionKey,
 } from "./chain-network.ts";
 import {
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
 
@@ -96,7 +96,7 @@ export async function loadChainFeesFromArtifact(
     const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
     // A window outside the route's set — or one this artifact does not carry
     // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOWS, label)) return null;
+    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
     const win = (body.windows as Record<string, unknown>)[label] as {
       newest_observed?: unknown;
       daily_rows?: unknown;

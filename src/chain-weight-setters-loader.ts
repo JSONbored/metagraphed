@@ -17,7 +17,7 @@
 // Same single-implementation shape as chain-weights-loader.ts and
 // chain-serving-loader.ts: one loader, three callers, so a surface cannot be
 // wired to the lakehouse while its siblings answer zeros.
-import { ANALYTICS_WINDOWS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS } from "../workers/config.ts";
 import { buildChainWeightSetters } from "./chain-weight-setters.ts";
 import {
   CHAIN_WEIGHTS_ROLLUP,
@@ -47,7 +47,7 @@ export async function loadChainWeightSettersColdTier(
   },
 ): Promise<ReturnType<typeof buildChainWeightSetters> | null> {
   const rollup = await loadChainEventIdentityRollup(env, CHAIN_WEIGHTS_ROLLUP, {
-    windowDays: (ANALYTICS_WINDOWS as Record<string, number>)[window] ?? 7,
+    windowDays: (ANALYTICS_WINDOW_DAYS as Record<string, number>)[window] ?? 7,
     limit,
     query,
   });

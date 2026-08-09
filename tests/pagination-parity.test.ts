@@ -16,6 +16,7 @@ import {
   MAX_OFFSET,
   MIN_LIMIT,
 } from "../workers/request-params.ts";
+import { handleRequest } from "../workers/api.ts";
 import {
   handleAccountEvents,
   handleAccountExtrinsics,
@@ -206,6 +207,33 @@ async function pageFor(route: (typeof ROUTES)[number], qs: string) {
   return { limit: body.data.limit, offset: body.data.offset };
 }
 
+/**
+ * Drive the route the way a request arrives.
+ *
+ * The REJECTION half of this file moved to the router with #10218: `limit` is
+ * checked once, against the route's own published schema, before dispatch --
+ * so a handler called directly no longer refuses an over-cap page size, and
+ * asserting that it does would be asserting a property the surface does not
+ * have. What a CALLER gets is unchanged, and that is what these now drive.
+ */
+function dispatch(route: (typeof ROUTES)[number], qs: string) {
+  // The route's own name IS its template; the same fixtures the direct calls
+  // above use fill it, so there is no second list of paths to keep in step.
+  let path = route.name.replace("GET ", "");
+  for (const [token, value] of Object.entries({
+    "{ss58}": SS58,
+    "{netuid}": "1",
+    "{ref}": BLOCK_REF,
+  })) {
+    path = path.split(token).join(value);
+  }
+  return handleRequest(
+    new Request(`https://api.metagraph.sh/api/v1${path}?${qs}`),
+    ENV,
+    {} as never,
+  );
+}
+
 for (const route of ROUTES) {
   describe(`pagination parity — ${route.name}`, () => {
     test("REJECTS an over-cap limit instead of clamping it (#9916)", async () => {
@@ -213,7 +241,7 @@ for (const route of ROUTES) {
       // asking for 99999 and receiving maxLimit rows reads that as "the result
       // set is exhausted" and stops paginating -- truncation presented as a
       // complete answer, and the only signal was the echoed `limit`.
-      const res = await route.invoke("limit=99999");
+      const res = await dispatch(route, "limit=99999");
       assert.equal(res.status, 400);
       const body = (await res.json()) as Row;
       assert.equal(body.error.code, "invalid_query");
@@ -226,7 +254,7 @@ for (const route of ROUTES) {
     test("REJECTS limit=0 rather than reinterpreting it (#9916)", async () => {
       // Routes used to answer this three different ways -- 1 row, the route
       // default, or a 400 -- and none of them is "zero rows".
-      const res = await route.invoke("limit=0");
+      const res = await dispatch(route, "limit=0");
       assert.equal(res.status, 400);
       const body = (await res.json()) as Row;
       assert.equal(body.error.code, "invalid_query");
@@ -240,12 +268,16 @@ for (const route of ROUTES) {
       },
     );
 
-    test.skipIf(!route.resolvesPage)(
-      "clamps an over-cap offset down to MAX_OFFSET",
-      async () => {
-        const { offset } = await pageFor(route, "offset=99999999");
-        assert.equal(offset, MAX_OFFSET);
-      },
-    );
+    test("REJECTS an over-cap offset instead of clamping it (#10218)", async () => {
+      // This used to clamp to MAX_OFFSET and answer 200 -- rows from position
+      // 1,000,000 for a caller who asked for 99,999,999, echoed back as though
+      // that were the page they requested. `offset` publishes the same ceiling
+      // `limit` does, and the two are now refused the same way.
+      const res = await dispatch(route, `offset=${MAX_OFFSET + 1}`);
+      assert.equal(res.status, 400);
+      const body = (await res.json()) as Row;
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "offset");
+    });
   });
 }

@@ -40,7 +40,7 @@
 // sampling-aware builders in src/analytics-engine-sql.ts; a raw COUNT(*) here
 // would silently undercount once traffic grows enough to trigger sampling,
 // and would agree with the corrected form right up until it did.
-import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 import {
   analyticsSqlQuery,
@@ -97,7 +97,7 @@ export function hotWindowBounds(
   window: string,
   bucketOverride?: number,
 ): { days: number; interval: string; granularity: string } | null {
-  const days = (ANALYTICS_WINDOWS as Record<string, number>)[window];
+  const days = (ANALYTICS_WINDOW_DAYS as Record<string, number>)[window];
   const bucket = (
     RPC_USAGE_BUCKETS as Record<
       string,
@@ -168,7 +168,9 @@ export async function loadRpcUsageHotTier(
   } = {},
 ): Promise<Row | null> {
   if (!isAnalyticsSqlConfigured(env)) return null;
-  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+    ? window
+    : "7d";
   const bounds = hotWindowBounds(windowLabel, bucketMs);
   if (!bounds) return null;
 

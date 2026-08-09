@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { z } from "zod";
 import { describe, test } from "vitest";
 import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
 import {
@@ -6,7 +7,6 @@ import {
   canonicalListSearch,
   integerCeilingError,
   paginationLinkHeader,
-  validateListQueryParams,
 } from "../workers/list-query.ts";
 import type { Row } from "./row-type.ts";
 
@@ -490,10 +490,21 @@ describe("list-query numeric range filters", () => {
 
     const badMax = applyQueryFilters(
       data,
-      query("/api/v1/subnets?max_tempo="),
+      query("/api/v1/subnets?max_tempo=notanumber"),
       "subnets",
     ) as Row;
     assert.equal(badMax.error.parameter, "max_tempo");
+
+    // An EMPTY value is the parameter not being supplied, uniformly across the
+    // surface (#10218). It used to be an error here and "no bound" on the
+    // date-range and block-range filters -- one spelling, two meanings.
+    // `Number("")` is 0, which is why the alternative is worse than either.
+    const blank = applyQueryFilters(
+      data,
+      query("/api/v1/subnets?max_tempo="),
+      "subnets",
+    ) as Row;
+    assert.equal(blank.error, undefined);
   });
 
   test("an overflowing decimal range bound is a query error", () => {
@@ -553,17 +564,6 @@ describe("list-query unknown parameter validation (#2578)", () => {
     ],
   };
 
-  test("rejects a typoed query parameter before silently returning an unfiltered list", () => {
-    const result = applyQueryFilters(
-      data,
-      query("/api/v1/subnets?statuss=active"),
-      "subnets",
-    ) as Row;
-
-    assert.equal(result.error.parameter, "statuss");
-    assert.equal(result.error.message, "unknown query parameter.");
-  });
-
   test("accepts every supported list parameter family", () => {
     const result = applyQueryFilters(
       data,
@@ -614,42 +614,6 @@ describe("list-query unknown parameter validation (#2578)", () => {
     );
   });
 
-  test("rejects an unsupported format value on csv-enabled list routes", () => {
-    const result = applyQueryFilters(
-      data,
-      query("/api/v1/subnets?format=xml"),
-      "subnets",
-      [],
-      { csvResponse: true },
-    ) as Row;
-
-    assert.equal(result.error.parameter, "format");
-    assert.equal(result.error.message, "format must be json or csv.");
-  });
-
-  test("preflight rejects an unsupported format value before artifact reads", () => {
-    const error = validateListQueryParams(
-      query("/api/v1/subnets?format=xml"),
-      "subnets",
-      [],
-      { csvResponse: true },
-    );
-
-    assert.equal(error!.parameter, "format");
-    assert.equal(error!.message, "format must be json or csv.");
-  });
-
-  test("rejects format on routes without csv export", () => {
-    const result = applyQueryFilters(
-      data,
-      query("/api/v1/subnets?format=csv"),
-      "subnets",
-    ) as Row;
-
-    assert.equal(result.error.parameter, "format");
-    assert.equal(result.error.message, "unknown query parameter.");
-  });
-
   test("accepts an empty query string", () => {
     const result = applyQueryFilters(
       data,
@@ -659,44 +623,6 @@ describe("list-query unknown parameter validation (#2578)", () => {
 
     assert.equal(result.error, undefined);
     assert.equal(result.data.subnets.length, 2);
-  });
-
-  test("rejects filters excluded by a route-level queryFilterNames allowlist", () => {
-    const result = applyQueryFilters(
-      data,
-      query("/api/v1/subnets?curation_level=native"),
-      "subnets",
-      ["netuid"],
-    ) as Row;
-
-    assert.equal(result.error.parameter, "curation_level");
-    assert.equal(result.error.message, "unknown query parameter.");
-  });
-
-  test("rejects all filters when a route allowlist has no configured filter names", () => {
-    const result = applyQueryFilters(
-      data,
-      query("/api/v1/subnets?status=active"),
-      "subnets",
-      ["not_a_configured_filter"],
-    ) as Row;
-
-    assert.equal(result.error.parameter, "status");
-    assert.equal(result.error.message, "unknown query parameter.");
-  });
-
-  test("preflight skips routes without list-query contracts", () => {
-    assert.equal(
-      validateListQueryParams(
-        query("/api/v1/not-a-list?anything=1"),
-        undefined as unknown as string,
-      ),
-      null,
-    );
-    assert.equal(
-      validateListQueryParams(query("/api/v1/not-a-list?anything=1"), "nope"),
-      null,
-    );
   });
 
   test("allowlist keeps only configured filter names that exist on the collection", () => {
@@ -722,39 +648,6 @@ describe("list-query unknown parameter validation (#2578)", () => {
     );
 
     assert.deepEqual(result, { data: { subnets: null }, meta: {} });
-  });
-
-  test("handles sparse collection configs without optional filter families", () => {
-    const collection = "__test_sparse_rows";
-    const previous = queryCollections[collection];
-    queryCollections[collection] = { data_key: "rows" };
-    try {
-      assert.equal(
-        validateListQueryParams(query("/api/v1/sparse?limit=1"), collection),
-        null,
-      );
-
-      const sortError = validateListQueryParams(
-        query("/api/v1/sparse?sort=name"),
-        collection,
-      );
-      assert.equal(sortError!.parameter, "sort");
-      assert.equal(sortError!.message, "sort is not supported for rows.");
-
-      const result = applyQueryFilters(
-        { rows: [] },
-        query("/api/v1/sparse?surprise=1"),
-        collection,
-      ) as Row;
-      assert.equal(result.error.parameter, "surprise");
-      assert.equal(result.error.message, "unknown query parameter.");
-    } finally {
-      if (previous === undefined) {
-        delete queryCollections[collection];
-      } else {
-        queryCollections[collection] = previous;
-      }
-    }
   });
 });
 
@@ -782,15 +675,6 @@ describe("list-query documents type/netuid (#6239)", () => {
     assert.equal(result.error, undefined);
     // provider < subnet < surface, alphabetically ascending.
     assert.deepEqual(ids(result), ["prov-1", "sn-1", "sn-2", "surf-1"]);
-  });
-
-  test("?sort=kind is no longer accepted (400, not a silent no-op)", () => {
-    const sortError = validateListQueryParams(
-      query("/api/v1/search?sort=kind"),
-      "documents",
-    );
-    assert.equal(sortError!.parameter, "sort");
-    assert.equal(sortError!.message, "sort is not supported for documents.");
   });
 
   for (const type of ["subnet", "surface", "provider"]) {
@@ -1330,6 +1214,9 @@ describe("list-query string filter excludes rows missing the field", () => {
     queryCollections[collection] = {
       data_key: "rows",
       filters: { provider: { type: "string" } },
+      // The Zod half of the same declaration. `queryCollection()` always emits
+      // both, so a fixture with only one is a shape the real config never has.
+      filter_schemas: { provider: z.string() },
       csv_filters: {},
       array_filters: {},
       range_filters: [],
@@ -1512,6 +1399,7 @@ describe("list-query presence filter", () => {
     queryCollections[collection] = {
       data_key: "rows",
       filters: { rate_limited: { type: "string", enum: ["true", "false"] } },
+      filter_schemas: { rate_limited: z.enum(["true", "false"]) },
       csv_filters: {},
       array_filters: {},
       presence_filters: { rate_limited: "rate_limit_notes" },
@@ -1587,38 +1475,6 @@ describe("integer filters are rejected above their published ceiling (#10073)", 
       minimum: 0,
       maximum: 65535,
     });
-  });
-
-  test("a netuid past the u16 ceiling is a 400, not an empty result", () => {
-    assert.deepEqual(
-      validateListQueryParams(query("/api/v1/subnets?netuid=70000"), "subnets"),
-      {
-        parameter: "netuid",
-        message: "netuid must be an integer between 0 and 65535.",
-      },
-    );
-  });
-
-  test("a netuid at the ceiling, and one well inside it, still pass", () => {
-    for (const netuid of [65535, 64]) {
-      assert.equal(
-        validateListQueryParams(
-          query(`/api/v1/subnets?netuid=${netuid}`),
-          "subnets",
-        ),
-        null,
-      );
-    }
-  });
-
-  test("a negative netuid keeps its own message — integerParam rejects it first", () => {
-    assert.deepEqual(
-      validateListQueryParams(query("/api/v1/subnets?netuid=-1"), "subnets"),
-      {
-        parameter: "netuid",
-        message: "netuid must be a non-negative integer.",
-      },
-    );
   });
 
   // Every integer filter carries a ceiling today, so the no-ceiling branch has

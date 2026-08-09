@@ -38,12 +38,8 @@ import {
   envelopeResponse,
   publishedAt,
 } from "../responses.ts";
-import {
-  analyticsMeta,
-  analyticsQueryError,
-  analyticsWindow,
-  type EdgeCacheCtx,
-} from "./analytics.ts";
+import { analyticsMeta, type EdgeCacheCtx } from "./analytics.ts";
+import { analyticsWindow } from "../../src/route-query.ts";
 import {
   findSurface,
   verifySurfaceWithCache,
@@ -227,9 +223,7 @@ export async function handleRpcUsage(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const windowResult = analyticsWindow(url);
-  if ("error" in windowResult) return analyticsQueryError(windowResult.error);
-  const { label } = windowResult;
+  const { label } = analyticsWindow(url);
   const meta = await readHealthMetaKv(env);
   const data = await answerRpcUsage(env, {
     window: label,

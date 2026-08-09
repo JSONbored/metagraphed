@@ -1527,18 +1527,23 @@ describe("feeds — Worker dispatch integration", () => {
     assert.ok(etag);
     assert.equal(cache.putCount, 1);
 
-    const cached = await handleRequest(
+    // #10218: the feed paths join the rest of the surface's rule -- an
+    // undeclared parameter is a 400, not a silently unfiltered feed. They were
+    // exempt only because `FEED_ROUTES` is its own table and #9149's derived
+    // allow-list reads `API_ROUTES`, so `?tagg=upgrade` answered 200 with every
+    // item on all 24 published feed paths.
+    const undeclared = await handleRequest(
       new Request(
         "https://api.metagraph.sh/api/v1/feeds/incidents.json?cachebust=1",
       ),
       env as unknown as Env,
       ctx,
     );
-    assert.equal(cached.status, 200);
+    assert.equal(undeclared.status, 400);
     assert.equal(
       cache.putCount,
       1,
-      "an unrelated param reuses the cached entry",
+      "a rejected request never reaches the cache",
     );
 
     const head = await handleRequest(

@@ -30,7 +30,7 @@
 // same empty payload it replaced, without ever having claimed the traffic
 // was current. `observed_at` in the response is the data's own newest
 // reading, so freshness stays visible rather than implied.
-import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
+import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
 
@@ -58,7 +58,7 @@ export function windowCutoffMs(
   window: string,
   now: number,
 ): { cutoff: number; bucketMs: number; granularity: string } | null {
-  const days = (ANALYTICS_WINDOWS as Record<string, number>)[window];
+  const days = (ANALYTICS_WINDOW_DAYS as Record<string, number>)[window];
   const bucket = (
     RPC_USAGE_BUCKETS as Record<
       string,
@@ -104,7 +104,9 @@ export async function loadRpcUsageColdTier(
     query?: typeof r2SqlQuery;
   } = {},
 ): Promise<Record<string, unknown> | null> {
-  const windowLabel = Object.hasOwn(ANALYTICS_WINDOWS, window) ? window : "7d";
+  const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
+    ? window
+    : "7d";
   const bounds = windowCutoffMs(windowLabel, now);
   if (!bounds) return null;
   const { cutoff, bucketMs, granularity } = bounds;

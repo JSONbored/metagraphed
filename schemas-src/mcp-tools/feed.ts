@@ -6,7 +6,12 @@
 // symbolic in the hand-written original (src/feeds.ts's own exports),
 // cross-checked against the actual runtime source at the time of writing.
 import { z } from "zod";
-import { kindSchema, limitSchema, netuidSchema } from "./shared.ts";
+import {
+  filterTokenSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+} from "./shared.ts";
 
 // Single source of truth for get_feed kind enums (input + output) and the
 // runtime requireKind allow-list in src/feed-mcp.ts.
@@ -25,8 +30,11 @@ export const GetFeedInputSchema = z
   .object({
     kind: kindSchema(FEED_KINDS),
     netuid: netuidSchema().optional(),
-    tag: z
-      .string()
+    // The route's own bound (#10218): the feed parameters were the last raw
+    // JSON Schema on the surface, so `tag` published no ceiling on either
+    // side. It has one now, and a tool looser than its route is what
+    // `validate:mcp-input-parity` exists to catch.
+    tag: filterTokenSchema()
       .optional()
       .describe(
         "Restrict the feed to items carrying this tag. Exact match against the item's own tags.",

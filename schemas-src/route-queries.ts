@@ -58,6 +58,7 @@
 import { z } from "zod";
 import {
   ACCOUNTS_LIST_LIMIT_MAX,
+  ANALYTICS_WINDOWS,
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
   CHAIN_CALL_MODULE_MAX_LENGTH,
@@ -70,7 +71,11 @@ import {
   EMISSION_CHANGES_LIMIT_MAX,
   EMISSION_PIPELINE_LIMIT_MAX,
   FAILURE_REASONS_WINDOWS,
+  FEED_LIMIT_MAX,
+  FEED_WATCH_IDS_MAX_LENGTH,
   GLOBAL_VALIDATOR_LIMIT_MAX,
+  HISTORY_WINDOWS,
+  LEADERBOARDS_LIMIT_MAX,
   MOVERS_LIMIT_MAX,
   PIPELINE_HISTORY_WINDOWS,
   SEMANTIC_LIMIT_DEFAULT,
@@ -78,6 +83,7 @@ import {
   SEMANTIC_QUERY_MAX_LENGTH,
   SEMANTIC_TYPES,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  UPTIME_WINDOWS,
   SUBNET_HOLDERS_LIMIT_MAX,
   SURFACE_HISTORY_LIMIT_MAX,
   TOP_HOLDERS_LIMIT_MAX,
@@ -108,6 +114,7 @@ import {
   daySchema,
   directionSchema,
   fieldsSchema,
+  filterTokenSchema,
   keysetCursorSchema,
   formatSchema,
   kindSchema,
@@ -243,6 +250,33 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
  * what lets schemas-src/mcp-tools/* build a tool input FROM its route instead
  * of restating it (#10064).
  */
+/**
+ * What every feed family accepts (#10218).
+ *
+ * The feed routes live in their own table (`FEED_ROUTES`), and their
+ * parameters were the one set still written as raw JSON Schema -- the second
+ * vocabulary #10073 deleted everywhere else, surviving because it was in a
+ * different array. What that cost: all 24 published feed paths declare
+ * `limit` maximum 50 and nothing enforced it, so `?limit=51` answered 200.
+ *
+ * `since`/`until` stay plain strings: `src/feeds.ts` accepts a whole UTC day
+ * OR an offset-bearing date-time and rejects a malformed one with a message
+ * naming which, so this is a case where the handler genuinely knows more than
+ * a schema can say -- unlike the bound above it, which is a number.
+ */
+export const FEED_QUERY_SCHEMAS = {
+  common: z.object({
+    tag: filterTokenSchema().optional(),
+    since: z.string().optional(),
+    until: z.string().optional(),
+    limit: limitSchema(FEED_LIMIT_MAX, FEED_LIMIT_MAX).optional(),
+  }),
+  /** `/api/v1/feeds/watch` -- the URL-carried watchlist. */
+  ids: z.string().max(FEED_WATCH_IDS_MAX_LENGTH).optional(),
+  /** `/api/v1/feeds/subnets/{netuid}` -- the path parameter, echoed as a filter. */
+  netuid: netuidSchema().optional(),
+} as const;
+
 export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the
@@ -283,7 +317,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     fields: fieldsSchema().optional(),
   }),
   "/api/v1/economics/trends": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/health/trends": z.object({
@@ -291,15 +325,15 @@ export const ROUTE_QUERY_SCHEMAS = {
     // parseLimitParam / parseNonNegativeIntParam, so `?limit=abc` has always
     // been a 400 -- the published `{"type":"string"}` said otherwise. `offset`
     // carries no ceiling because the handler enforces none.
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(BULK_HEALTH_TRENDS_LIMIT_MAX).optional(),
     offset: unboundedOffsetSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/health/percentiles": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/health/incidents": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/trajectory": z.object({
     format: formatSchema().optional(),
@@ -313,37 +347,41 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/turnover": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
-    // DIVERGENCE: see `validator_permit` on /subnets/{netuid}/metagraph --
-    // the same boolean-as-string filter, published as a one-value enum.
-    changes: z.enum(["true"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
+    // The same boolean-as-string filter `validator_permit` is on
+    // /subnets/{netuid}/metagraph, and published the same way: both values,
+    // because the handler reads `=== "true"` and `changes=false` therefore
+    // MEANS something -- "no change filter". Publishing only `true` said the
+    // other half of a boolean was an error, which nothing enforced until
+    // #10218 started parsing with this object and turned the claim into a 400.
+    changes: z.enum(["true", "false"] as const).optional(),
   }),
   "/api/v1/subnets/{netuid}/weights": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/weights/setters": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/serving": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/prometheus": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/stake-transfers": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/stake-moves": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/registrations": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/axon-removals": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/deregistrations": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/stake-flow": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
@@ -463,7 +501,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/validators/{hotkey}/history": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
     // #9383 added this to the handler's allowlist, the MCP tool and the
     // GraphQL field, and the response echoes it back as `data.netuid` -- but
     // it was never declared, so openapi.json told every generated client that
@@ -472,12 +510,15 @@ export const ROUTE_QUERY_SCHEMAS = {
     netuid: netuidSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/metagraph": z.object({
-    // DIVERGENCE: a one-value enum for a boolean filter. The sibling feeds
-    // publish `["true","false"]` for the same shape, and the handler here
-    // accepts (and ignores) any value -- verified live, `?validator_permit=false`
-    // and `?validator_permit=bogus` both return the full metagraph. Whichever
-    // of the three behaviours is right, three is too many.
-    validator_permit: z.enum(["true"] as const).optional(),
+    // Both values, matching the sibling feeds. The handler reads
+    // `=== "true"`, so `validator_permit=false` is a caller asking for the
+    // unfiltered metagraph -- a real request, not an error. Published as a
+    // one-value enum it was a claim nothing enforced (verified live:
+    // `?validator_permit=false` and `?validator_permit=bogus` both returned
+    // the full set); #10218 parses with this object, so the claim would have
+    // become a 400 on a request the route has always answered. `bogus` now
+    // genuinely is one.
+    validator_permit: z.enum(["true", "false"] as const).optional(),
     fields: fieldsSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -519,10 +560,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     limit: limitSchema(SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX).optional(),
   }),
   "/api/v1/subnets/{netuid}/neurons/{uid}/history": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/history": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/identity-history": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
@@ -596,13 +637,13 @@ export const ROUTE_QUERY_SCHEMAS = {
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
   }),
   "/api/v1/accounts/{ss58}/weight-setters": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/accounts/{ss58}/registrations": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
   }),
   "/api/v1/accounts/{ss58}/subnets/{netuid}/history": z.object({
-    window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/accounts/{ss58}/identity-history": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
@@ -765,36 +806,36 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/activity": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/calls": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     group_by: z.enum(["module", "module_function"] as const).optional(),
     limit: limitSchema(CHAIN_CALLS_LIMIT_MAX).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/signers": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     sort: sortSchema(["tx_count", "total_fee_tao"] as const).optional(),
     limit: limitSchema(CHAIN_SIGNERS_LIMIT_MAX).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/transfers": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_TRANSFER_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/transfer-pairs": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_TRANSFER_PAIR_LIMIT_MAX).optional(),
     sort: sortSchema(["volume", "count"] as const).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-flow": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_STAKE_FLOW_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
@@ -803,52 +844,52 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/weights": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_WEIGHTS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/weights/setters": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_WEIGHT_SETTERS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/serving": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_SERVING_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/axon-removals": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_AXON_REMOVALS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/prometheus": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_PROMETHEUS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/registrations": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_REGISTRATIONS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/deregistrations": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_DEREGISTRATIONS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-transfers": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_STAKE_TRANSFERS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-moves": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_STAKE_MOVES_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/fees": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     limit: limitSchema(CHAIN_FEES_LIMIT_MAX).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
@@ -883,7 +924,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/uptime": z.object({
-    window: windowSchema(["90d", "1y"] as const).optional(),
+    window: windowSchema(UPTIME_WINDOWS as [string, ...string[]]).optional(),
     min_samples: z.int().min(0).optional(),
     format: formatSchema().optional(),
   }),
@@ -904,7 +945,7 @@ export const ROUTE_QUERY_SCHEMAS = {
         "biggest-alpha-gain-7d",
       ] as const)
       .optional(),
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(LEADERBOARDS_LIMIT_MAX).optional(),
   }),
   "/api/v1/compare": z.object({
     netuids: netuidListSchema().optional(),
@@ -921,6 +962,6 @@ export const ROUTE_QUERY_SCHEMAS = {
     netuid: netuidSchema().optional(),
   }),
   "/api/v1/rpc/usage": z.object({
-    window: windowSchema(["7d", "30d"] as const).optional(),
+    window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
   }),
 } satisfies Record<string, z.ZodObject>;

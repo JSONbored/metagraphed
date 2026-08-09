@@ -19,7 +19,7 @@ import {
 } from "./chain-network.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import {
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
 
@@ -98,7 +98,7 @@ export async function loadChainSignersFromArtifact(
     const label = query.window ?? DEFAULT_ANALYTICS_WINDOW;
     // A window outside the route's set — or one this artifact does not carry
     // — must never be answered with a DIFFERENT window's numbers.
-    if (!Object.hasOwn(ANALYTICS_WINDOWS, label)) return null;
+    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, label)) return null;
     const sort = query.sort ?? "tx_count";
     // Only the two precomputed orders exist; an unknown sort must never be
     // answered with a DIFFERENT order's rows.

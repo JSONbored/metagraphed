@@ -2426,6 +2426,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2447,6 +2448,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"
@@ -2477,6 +2479,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2498,6 +2501,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"
@@ -2528,6 +2532,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2549,6 +2554,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"
@@ -2579,6 +2585,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2600,6 +2607,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"
@@ -2630,6 +2638,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2651,6 +2660,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"
@@ -2660,6 +2670,7 @@
           "description": "Comma-separated kind-prefixed entities: `s<netuid>` (subnet), `v<hotkey>` (validator), `a<ss58>` (account). Up to 50 per URL (WATCH_MAX_IDS in src/feeds.ts; more is a 413). Validator/account ids are accepted and counted toward that cap but produce no items yet — no change-tracking source exists for them.",
           "name": "ids",
           "schema": {
+            "maxLength": 2500,
             "type": "string"
           }
         }
@@ -2697,6 +2708,7 @@
           "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
           "name": "tag",
           "schema": {
+            "maxLength": 100,
             "type": "string"
           }
         },
@@ -2718,6 +2730,7 @@
           "description": "Maximum items to return (1-50). Defaults to 50.",
           "name": "limit",
           "schema": {
+            "default": 50,
             "maximum": 50,
             "minimum": 1,
             "type": "integer"

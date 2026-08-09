@@ -9,16 +9,17 @@ import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.ts";
 
 type Row = Record<string, unknown>;
 
-// History windows. Deliberately NOT analyticsWindow (which only understands
-// 7d/30d and clamps anything else to 400 days). `all` → no lower bound.
-export const HISTORY_WINDOWS: Record<string, number | null> = {
-  "7d": 7,
-  "30d": 30,
-  "90d": 90,
-  "1y": 365,
-  all: null,
-};
-export const DEFAULT_HISTORY_WINDOW = "30d";
+// History windows. Deliberately NOT the analytics family (which only
+// understands 7d/30d); `all` → no lower bound. Declared in src/route-limits.ts
+// with the other per-route bounds, because the published enum is derived from
+// these same keys (#10218); re-exported here so the existing import sites keep
+// working.
+export {
+  DEFAULT_HISTORY_WINDOW,
+  HISTORY_WINDOW_DAYS,
+  HISTORY_WINDOWS,
+} from "./route-limits.ts";
+import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
@@ -35,15 +36,15 @@ export function parseHistoryWindow(
   | { label: string; days: number | null }
   | { error: { parameter: string; message: string } } {
   const v = typeof value === "string" && value ? value : DEFAULT_HISTORY_WINDOW;
-  if (!Object.prototype.hasOwnProperty.call(HISTORY_WINDOWS, v)) {
+  if (!Object.prototype.hasOwnProperty.call(HISTORY_WINDOW_DAYS, v)) {
     return {
       error: {
         parameter: "window",
-        message: unsupportedWindowMessage(v, HISTORY_WINDOWS),
+        message: unsupportedWindowMessage(v, HISTORY_WINDOW_DAYS),
       },
     };
   }
-  return { label: v, days: HISTORY_WINDOWS[v] };
+  return { label: v, days: HISTORY_WINDOW_DAYS[v] };
 }
 
 function toIso(ms: unknown): string | null {

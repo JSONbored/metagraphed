@@ -1637,14 +1637,16 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
       assert.equal(body.meta.parameter, parameter);
     }
   });
-  test("invalid window value names the bad value and valid options in the error", async () => {
+  test("an invalid window names the ROUTE's options, not every window the API knows", async () => {
     const { body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=90d",
       env,
     );
-    assert.ok(body.error.message.includes("90d"), body.error.message);
-    assert.ok(body.error.message.includes("7d"), body.error.message);
-    assert.ok(body.error.message.includes("30d"), body.error.message);
+    // 90d is a real window elsewhere on the surface, which is exactly why this
+    // route has to reject it against its OWN enum (#10218). The sentence is
+    // derived from the published schema, so it cannot list a value the route
+    // does not serve.
+    assert.equal(body.error.message, "window must be one of: 7d, 30d.");
   });
 
   test("trajectory returns empty-but-valid", async () => {

@@ -35,6 +35,17 @@ export const GLOBAL_VALIDATOR_LIMIT_DEFAULT = 20;
 // `?limit=2000` on the SSR path and `ALL_VALIDATORS_LIMIT` mirrors it.
 export const GLOBAL_VALIDATOR_LIMIT_MAX = 2000;
 
+/**
+ * `/api/v1/registry/leaderboards` -- the registry board rankings.
+ *
+ * Named here rather than borrowed: the route published `BLOCK_PAGINATION`'s
+ * ceiling, which is the BLOCK EXPLORER's page size and coincides with this one
+ * at 100 by accident, and the handler's default of 20 was a literal at two
+ * call sites with nothing tying them together (#10218).
+ */
+export const LEADERBOARDS_LIMIT_DEFAULT = 20;
+export const LEADERBOARDS_LIMIT_MAX = 100;
+
 /** `/api/v1/subnets/movers` -- cross-subnet momentum leaderboard. */
 export const MOVERS_LIMIT_DEFAULT = 20;
 export const MOVERS_LIMIT_MAX = 100;
@@ -120,6 +131,76 @@ export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
 // recent-events feed sizing): default 50 changes, capped at 200.
 export const CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT = 50;
 export const CHAIN_IDENTITY_HISTORY_LIMIT_MAX = 200;
+
+/**
+ * The three window families that predate this module's `*_WINDOW_DAYS` idiom
+ * (#10218).
+ *
+ * Each was declared twice: a `label -> days` map next to the handler that
+ * reads it, and the same labels written out again as a Zod enum in
+ * `schemas-src/route-queries.ts` -- 30 restatements of the analytics pair, 6
+ * of the history set, 1 of the uptime set. Two declarations of one vocabulary
+ * is what the three families BELOW this comment already avoid by deriving the
+ * enum from the map's keys, and these now do the same.
+ *
+ * They live here, with the ceilings, because that is where a route's declared
+ * bounds live and because this module is a leaf: `schemas-src` can read it
+ * without dragging a Worker module into the schema layer. `workers/config.ts`
+ * and `src/neuron-history.ts` re-export their own family, so every existing
+ * import path still works -- the same arrangement the per-route ceilings use.
+ */
+
+/** The trailing 7d/30d aggregate the analytics feeds compute over. */
+export const ANALYTICS_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+};
+export const ANALYTICS_WINDOWS = Object.keys(ANALYTICS_WINDOW_DAYS);
+export const DEFAULT_ANALYTICS_WINDOW = "7d";
+
+/**
+ * `/api/v1/subnets/{netuid}/uptime` -- the long-horizon availability history.
+ *
+ * Deliberately disjoint from the analytics pair: this route reads a daily
+ * rollup that exists to answer "how has this held up over months", so its
+ * shortest window is the analytics family's longest-plus-two.
+ */
+export const UPTIME_WINDOW_DAYS: Record<string, number> = {
+  "90d": 90,
+  "1y": 365,
+};
+export const UPTIME_WINDOWS = Object.keys(UPTIME_WINDOW_DAYS);
+export const DEFAULT_UPTIME_WINDOW = "90d";
+
+/**
+ * The per-entity history windows (subnet/neuron/economics timelines).
+ *
+ * `all` maps to no lower bound rather than to a day count, which is why the
+ * span is nullable -- the one family where the value is not simply a number.
+ */
+export const HISTORY_WINDOW_DAYS: Record<string, number | null> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "1y": 365,
+  all: null,
+};
+export const HISTORY_WINDOWS = Object.keys(HISTORY_WINDOW_DAYS);
+export const DEFAULT_HISTORY_WINDOW = "30d";
+
+/**
+ * The feed families (`/api/v1/feeds/*`) -- page size and watchlist length.
+ *
+ * 50 items is what `src/feeds.ts` has always served and what all 24 published
+ * feed paths declare; it is here rather than inline in the feed table so the
+ * published bound and the enforced one are the same number (#10218).
+ */
+export const FEED_LIMIT_MAX = 50;
+/**
+ * `?ids=` on the watch feed: 50 kind-prefixed entities, the longest of which
+ * is an ss58 at 48 characters plus its prefix and separator.
+ */
+export const FEED_WATCH_IDS_MAX_LENGTH = 2500;
 
 /**
  * `/api/v1/health/failure-reasons` -- the probe failure-reason mix (#9622).

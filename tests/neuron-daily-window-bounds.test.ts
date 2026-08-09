@@ -4,7 +4,7 @@
 // end to end against real SQLite. This file covers all four, because the other
 // two are unreachable only by accident of the current window maps --
 // CHAIN_TURNOVER_WINDOWS and MOVERS_WINDOWS are `Record<string, number>` so a
-// chain-wide call cannot carry a null window, while HISTORY_WINDOWS's
+// chain-wide call cannot carry a null window, while HISTORY_WINDOW_DAYS's
 // `all: null` makes the per-netuid one. Add `all` to either map and the
 // untested shape ships.
 //
@@ -67,7 +67,7 @@ describe("neuronDailyWindowBounds", () => {
   });
 
   test("a null window binds no boundary at all", async () => {
-    // `all` in HISTORY_WINDOWS. There is nothing to shift, so the start is the
+    // `all` in HISTORY_WINDOW_DAYS. There is nothing to shift, so the start is the
     // slice's own minimum and no cutoff is bound -- binding null here would
     // match nothing, which is the #9792 failure wearing a different hat.
     const perNetuid = fakeSql([

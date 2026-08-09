@@ -4,6 +4,7 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
+import { handleRequest } from "../workers/api.ts";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
 
@@ -27,8 +28,6 @@ import {
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
-import { MOVERS_WINDOWS } from "../src/movers.ts";
-import { unsupportedWindowMessage } from "../src/neuron-history.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { type Row, type AnyFn, jsonBody } from "./row-type.ts";
 import {
@@ -142,6 +141,22 @@ function req(path: string) {
 
 function url(path: string) {
   return new URL(`https://api.metagraph.sh${path}`);
+}
+
+/**
+ * Drive a path the way a request arrives.
+ *
+ * Query-parameter validation is the ROUTER's, once, against the route's own
+ * Zod schema (#10218) -- so a handler called directly no longer refuses a bad
+ * value, and asserting that it does would assert a property the surface does
+ * not have. These tests want to know what a CALLER gets, which is unchanged.
+ */
+function viaRouter(path: string) {
+  return handleRequest(
+    new Request(`https://api.metagraph.sh${path}`),
+    {} as never,
+    {} as never,
+  );
 }
 
 async function json(res: Response): Promise<Row> {
@@ -1289,12 +1304,8 @@ describe("canonicalGlobalValidatorsCachePath", () => {
 
 describe("handleNeuronHistory", () => {
   test("rejects an invalid window param with 400", async () => {
-    const res = await handleNeuronHistory(
-      req(`/api/v1/subnets/${NETUID}/neurons/${UID}/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      UID,
-      url(`/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=400d`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/neurons/${UID}/history?window=400d`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -1381,11 +1392,8 @@ describe("handleSubnetHistory", () => {
   });
 
   test("invalid window returns 400", async () => {
-    const res = await handleSubnetHistory(
-      req(`/api/v1/subnets/${NETUID}/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/history?window=bogus`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/history?window=bogus`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -1525,11 +1533,8 @@ describe("handleSubnetConcentration", () => {
 
 describe("handleSubnetConcentrationHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
-    const res = await handleSubnetConcentrationHistory(
-      req(`/api/v1/subnets/${NETUID}/concentration/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/concentration/history?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/concentration/history?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -1568,11 +1573,8 @@ describe("handleSubnetConcentrationHistory", () => {
 
 describe("handleSubnetPerformanceHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
-    const res = await handleSubnetPerformanceHistory(
-      req(`/api/v1/subnets/${NETUID}/performance/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/performance/history?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/performance/history?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -1611,11 +1613,8 @@ describe("handleSubnetPerformanceHistory", () => {
 
 describe("handleSubnetYieldHistory", () => {
   test("rejects an out-of-range window with 400", async () => {
-    const res = await handleSubnetYieldHistory(
-      req(`/api/v1/subnets/${NETUID}/yield/history`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/yield/history?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/yield/history?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -1840,12 +1839,7 @@ describe("handleSubnetTurnover", () => {
 
 describe("handleSubnetWeights", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetWeights(
-      req(`/api/v1/subnets/${NETUID}/weights`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/weights?window=1y`),
-    );
+    const res = await viaRouter(`/api/v1/subnets/${NETUID}/weights?window=1y`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
   });
@@ -1904,12 +1898,7 @@ describe("handleSubnetWeights", () => {
 
 describe("handleSubnetServing", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetServing(
-      req(`/api/v1/subnets/${NETUID}/serving`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/serving?window=1y`),
-    );
+    const res = await viaRouter(`/api/v1/subnets/${NETUID}/serving?window=1y`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
   });
@@ -1968,11 +1957,8 @@ describe("handleSubnetServing", () => {
 
 describe("handleSubnetPrometheus", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetPrometheus(
-      req(`/api/v1/subnets/${NETUID}/prometheus`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/prometheus?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/prometheus?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2034,11 +2020,8 @@ describe("handleSubnetPrometheus", () => {
 
 describe("handleSubnetStakeMoves", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetStakeMoves(
-      req(`/api/v1/subnets/${NETUID}/stake-moves`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-moves?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/stake-moves?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2102,11 +2085,8 @@ describe("handleSubnetStakeMoves", () => {
 
 describe("handleSubnetStakeTransfers", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetStakeTransfers(
-      req(`/api/v1/subnets/${NETUID}/stake-transfers`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-transfers?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/stake-transfers?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2170,11 +2150,8 @@ describe("handleSubnetStakeTransfers", () => {
 
 describe("handleSubnetRegistrations", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetRegistrations(
-      req(`/api/v1/subnets/${NETUID}/registrations`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/registrations?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/registrations?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2238,11 +2215,8 @@ describe("handleSubnetRegistrations", () => {
 
 describe("handleSubnetAxonRemovals", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetAxonRemovals(
-      req(`/api/v1/subnets/${NETUID}/axon-removals`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/axon-removals?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/axon-removals?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2306,11 +2280,8 @@ describe("handleSubnetAxonRemovals", () => {
 
 describe("handleSubnetDeregistrations", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetDeregistrations(
-      req(`/api/v1/subnets/${NETUID}/deregistrations`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/deregistrations?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/deregistrations?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
@@ -2398,11 +2369,8 @@ describe("handleSubnetDeregistrations", () => {
 
 describe("handleSubnetStakeFlow", () => {
   test("rejects an out-of-retention window with 400", async () => {
-    const res = await handleSubnetStakeFlow(
-      req(`/api/v1/subnets/${NETUID}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/stake-flow?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/stake-flow?window=1y`,
     );
     await errorJson(res);
   });
@@ -2522,17 +2490,10 @@ describe("handleSubnetStakeFlow", () => {
 describe("handleSubnetMovers", () => {
   test("rejects an unsupported window with 400", async () => {
     const body = await errorJson(
-      await handleSubnetMovers(
-        req("/api/v1/subnets/movers"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/subnets/movers?window=1y"),
-      ),
+      await viaRouter("/api/v1/subnets/movers?window=1y"),
     );
     assert.equal(body.meta.parameter, "window");
-    assert.equal(
-      body.error.message,
-      unsupportedWindowMessage("1y", MOVERS_WINDOWS),
-    );
+    assert.equal(body.error.message, "window must be one of: 7d, 30d, 90d.");
   });
 
   test("rejects an unsupported sort with 400", async () => {
@@ -3114,34 +3075,23 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
 
 describe("handleAccountEvents", () => {
   test("rejects a non-integer block_start with 400", async () => {
-    const res = await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?block_start=abc`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/events?block_start=abc`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_start");
   });
 
   test("rejects a non-integer block_end with 400", async () => {
-    const res = await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?block_end=oops`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/events?block_end=oops`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
   });
 
   test("rejects a malformed netuid with 400", async () => {
-    const res = await handleAccountEvents(
-      req(`/api/v1/accounts/${SS58}/events`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/events?netuid=abc`),
-    );
+    const res = await viaRouter(`/api/v1/accounts/${SS58}/events?netuid=abc`);
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "netuid");
   });
@@ -3212,12 +3162,7 @@ describe("handleAccountEvents", () => {
 
 describe("handleAccountHistory", () => {
   test("rejects malformed from/to dates with 400", async () => {
-    const res = await handleAccountHistory(
-      req(`/api/v1/accounts/${SS58}/history`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/history?from=June`),
-    );
+    const res = await viaRouter(`/api/v1/accounts/${SS58}/history?from=June`);
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "from");
@@ -3229,11 +3174,8 @@ describe("handleAccountHistory", () => {
     // 70000 is past the u16 ceiling (#10075): a value no subnet can carry used
     // to come back 200 with an empty result, which reads as "no activity".
     for (const netuid of ["abc", "-1", "7.5", "9007199254740993", "70000"]) {
-      const res = await handleAccountHistory(
-        req(`/api/v1/accounts/${SS58}/history`),
-        emptyEnv() as unknown as Env,
-        SS58,
-        url(`/api/v1/accounts/${SS58}/history?netuid=${netuid}`),
+      const res = await viaRouter(
+        `/api/v1/accounts/${SS58}/history?netuid=${netuid}`,
       );
       const body = await errorJson(res);
       assert.equal(body.error.code, "invalid_query");
@@ -3305,22 +3247,16 @@ describe("handleAccountExtrinsics", () => {
   });
 
   test("rejects a non-integer block_start with 400", async () => {
-    const res = await handleAccountExtrinsics(
-      req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/extrinsics?block_start=abc`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/extrinsics?block_start=abc`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_start");
   });
 
   test("rejects a non-integer block_end with 400", async () => {
-    const res = await handleAccountExtrinsics(
-      req(`/api/v1/accounts/${SS58}/extrinsics`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/extrinsics?block_end=oops`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/extrinsics?block_end=oops`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
@@ -3359,22 +3295,16 @@ describe("handleAccountTransfers", () => {
   });
 
   test("rejects a non-integer block_start with 400", async () => {
-    const res = await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?block_start=abc`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/transfers?block_start=abc`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_start");
   });
 
   test("rejects a non-integer block_end with 400", async () => {
-    const res = await handleAccountTransfers(
-      req(`/api/v1/accounts/${SS58}/transfers`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/transfers?block_end=oops`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/transfers?block_end=oops`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
@@ -3445,11 +3375,8 @@ describe("handleAccountCounterparties", () => {
   });
 
   test("rejects an unsupported format value with 400", async () => {
-    const res = await handleAccountCounterparties(
-      req(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/counterparties?format=xml`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/counterparties?format=xml`,
     );
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
@@ -3609,11 +3536,8 @@ describe("handleAccountCounterparties relationship drilldown", () => {
 
 describe("handleAccountStakeFlow", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleAccountStakeFlow(
-      req(`/api/v1/accounts/${SS58}/stake-flow`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-flow?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/stake-flow?window=1y`,
     );
     await errorJson(res);
   });
@@ -3656,11 +3580,8 @@ describe("handleAccountStakeFlow", () => {
 
 describe("handleAccountStakeMoves", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleAccountStakeMoves(
-      req(`/api/v1/accounts/${SS58}/stake-moves`),
-      emptyEnv() as unknown as Env,
-      SS58,
-      url(`/api/v1/accounts/${SS58}/stake-moves?window=1y`),
+    const res = await viaRouter(
+      `/api/v1/accounts/${SS58}/stake-moves?window=1y`,
     );
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
@@ -3748,22 +3669,16 @@ describe("handleSubnetEvents", () => {
   });
 
   test("rejects a non-integer block_start with 400", async () => {
-    const res = await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?block_start=abc`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/events?block_start=abc`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_start");
   });
 
   test("rejects a non-integer block_end with 400", async () => {
-    const res = await handleSubnetEvents(
-      req(`/api/v1/subnets/${NETUID}/events`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/events?block_end=oops`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/events?block_end=oops`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "block_end");
@@ -3772,22 +3687,16 @@ describe("handleSubnetEvents", () => {
 
 describe("handleSubnetEventSummary", () => {
   test("rejects an unsupported window with 400", async () => {
-    const res = await handleSubnetEventSummary(
-      req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/event-summary?window=365d`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/event-summary?window=365d`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "window");
   });
 
   test("rejects an invalid recent-event limit with 400", async () => {
-    const res = await handleSubnetEventSummary(
-      req(`/api/v1/subnets/${NETUID}/event-summary`),
-      emptyEnv() as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/event-summary?limit=0`),
+    const res = await viaRouter(
+      `/api/v1/subnets/${NETUID}/event-summary?limit=0`,
     );
     const body = await errorJson(res);
     assert.equal(body.meta.parameter, "limit");
@@ -4089,24 +3998,14 @@ describe("handleBlocks", () => {
   });
 
   test("rejects an unsupported format value with 400", async () => {
-    await errorJson(
-      await handleBlocks(
-        req("/api/v1/blocks?format=xml"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/blocks?format=xml"),
-      ),
-    );
+    await errorJson(await viaRouter("/api/v1/blocks?format=xml"));
   });
 
   test("REJECTS a limit above the declared maximum (#9916)", async () => {
     // Was: clamped to 100 and answered 200, so a caller asking for 999 got
     // a short page with no signal that it was short.
-    const { env } = dbWith({ blocksFeed: [] });
-    const res = await handleBlocks(
-      req("/api/v1/blocks"),
-      env as unknown as Env,
-      url("/api/v1/blocks?limit=999"),
-    );
+    dbWith({ blocksFeed: [] });
+    const res = await viaRouter("/api/v1/blocks?limit=999");
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.match(body.error.message, /between 1 and 100\./);
@@ -4278,11 +4177,7 @@ describe("handleExtrinsics", () => {
     // a number nobody enforces any more.
     const long = "A".repeat(CHAIN_CALL_MODULE_MAX_LENGTH + 1);
     const path = `/api/v1/extrinsics?call_module=${long}`;
-    const res = await handleExtrinsics(
-      req(path),
-      emptyEnv() as unknown as Env,
-      url(path),
-    );
+    const res = await viaRouter(path);
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "call_module");
@@ -4314,12 +4209,8 @@ describe("handleExtrinsics", () => {
   });
 
   test("rejects a non-boolean success value with 400 (#2575)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env as unknown as Env,
-      url("/api/v1/extrinsics?success=1"),
-    );
+    const { captures } = dbWith({ extrinsics: [] });
+    const res = await viaRouter("/api/v1/extrinsics?success=1");
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "success");
@@ -4331,12 +4222,8 @@ describe("handleExtrinsics", () => {
   });
 
   test("rejects a malformed call_hash with 400 (#4322)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env as unknown as Env,
-      url("/api/v1/extrinsics?call_hash=not-a-hash"),
-    );
+    const { captures } = dbWith({ extrinsics: [] });
+    const res = await viaRouter("/api/v1/extrinsics?call_hash=not-a-hash");
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "call_hash");
@@ -4397,12 +4284,8 @@ describe("handleExtrinsics", () => {
   });
 
   test("rejects malformed time filters with 400 (#2086)", async () => {
-    const { env, captures } = dbWith({ extrinsics: [] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env as unknown as Env,
-      url("/api/v1/extrinsics?from=abc"),
-    );
+    const { captures } = dbWith({ extrinsics: [] });
+    const res = await viaRouter("/api/v1/extrinsics?from=abc");
     await errorJson(res);
     assert.equal(
       captures.sql.filter((s: string) => /FROM extrinsics/.test(s)).length,
@@ -4478,12 +4361,8 @@ describe("handleExtrinsics", () => {
   test("REJECTS a limit above the declared maximum (#9916)", async () => {
     // Was: clamped to 100 and answered 200, so a caller asking for 500 got
     // a short page with no signal that it was short.
-    const { env } = dbWith({ extrinsics: [] });
-    const res = await handleExtrinsics(
-      req("/api/v1/extrinsics"),
-      env as unknown as Env,
-      url("/api/v1/extrinsics?limit=500"),
-    );
+    dbWith({ extrinsics: [] });
+    const res = await viaRouter("/api/v1/extrinsics?limit=500");
     const body = await errorJson(res);
     assert.equal(body.error.code, "invalid_query");
     assert.match(body.error.message, /between 1 and 100\./);
@@ -4523,11 +4402,7 @@ describe("handleExtrinsics", () => {
 
   test("rejects an unsupported format value", async () => {
     const body = await errorJson(
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        emptyEnv() as unknown as Env,
-        url("/api/v1/extrinsics?format=pdf"),
-      ),
+      await viaRouter("/api/v1/extrinsics?format=pdf"),
     );
     assert.equal(body.meta.parameter, "format");
   });

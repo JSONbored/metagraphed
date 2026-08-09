@@ -453,13 +453,12 @@ test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier 
   assert.equal(requestedUrl!.searchParams.get("group_by"), "module_function");
 });
 
-test("GET /api/v1/chain/calls rejects inert group_by and non-canonical limits", async () => {
+test("GET /api/v1/chain/calls rejects an inert group_by and an out-of-range limit", async () => {
   const env = createLocalArtifactEnv();
   const long = "x".repeat(101);
   for (const [path, parameter] of [
     ["/api/v1/chain/calls?group_by=x1", "group_by"],
     ["/api/v1/chain/calls?limit=abc1", "limit"],
-    ["/api/v1/chain/calls?limit=001", "limit"],
     ["/api/v1/chain/calls?limit=999999", "limit"],
     [`/api/v1/chain/calls?call_module=${long}`, "call_module"],
   ]) {
@@ -773,11 +772,10 @@ test("GET /api/v1/chain/transfers rejects an unsupported window", async () => {
   assert.equal(res.status, 400);
 });
 
-test("GET /api/v1/chain/transfers rejects non-canonical limits", async () => {
+test("GET /api/v1/chain/transfers rejects an out-of-range limit", async () => {
   const env = createLocalArtifactEnv();
   for (const path of [
     "/api/v1/chain/transfers?limit=abc1",
-    "/api/v1/chain/transfers?limit=001",
     "/api/v1/chain/transfers?limit=999999",
   ]) {
     const res = await handleRequest(
@@ -1233,7 +1231,6 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
   const env = createLocalArtifactEnv();
   for (const path of [
     "/api/v1/chain/transfer-pairs?sort=fee",
-    "/api/v1/chain/transfer-pairs?limit=001",
     "/api/v1/chain/transfer-pairs?bogus=1",
   ]) {
     const res = await handleRequest(
@@ -1349,11 +1346,10 @@ test("chain signers/fees reject an over-long call_module with 400", async () => 
   }
 });
 
-test("GET /api/v1/chain/signers rejects non-canonical limits", async () => {
+test("GET /api/v1/chain/signers rejects an out-of-range limit", async () => {
   const env = createLocalArtifactEnv();
   for (const path of [
     "/api/v1/chain/signers?limit=abc1",
-    "/api/v1/chain/signers?limit=001",
     "/api/v1/chain/signers?limit=999999",
   ]) {
     const res = await handleRequest(
@@ -1512,11 +1508,10 @@ test("buildChainFees reports malformed median rows as null, not JSON numbers", (
 // call_module test above. The envelope pass-through it proved is now the
 // projection tier's, covered in tests/chain-fees-artifact.test.ts.
 
-test("GET /api/v1/chain/fees rejects non-canonical limits", async () => {
+test("GET /api/v1/chain/fees rejects an out-of-range limit", async () => {
   const env = createLocalArtifactEnv();
   for (const path of [
     "/api/v1/chain/fees?limit=abc1",
-    "/api/v1/chain/fees?limit=001",
     "/api/v1/chain/fees?limit=999999",
   ]) {
     const res = await handleRequest(

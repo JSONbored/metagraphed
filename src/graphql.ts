@@ -265,10 +265,8 @@ import {
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "./concentration.ts";
-import {
-  analyticsWindow,
-  loadGlobalIncidentsLedger,
-} from "../workers/request-handlers/analytics.ts";
+import { loadGlobalIncidentsLedger } from "../workers/request-handlers/analytics.ts";
+import { validateRouteArgs } from "./route-query.ts";
 import {
   BLOCK_PAGINATION,
   DAY_PATTERN,
@@ -380,7 +378,7 @@ import {
   parseCompareNetuidList,
   parseUptimeWindow,
 } from "./analytics-live.ts";
-import { UPTIME_WINDOWS } from "../workers/config.ts";
+import { UPTIME_WINDOW_DAYS } from "../workers/config.ts";
 import {
   buildAccountExtrinsics,
   buildExtrinsic,
@@ -551,7 +549,7 @@ import {
 } from "./counterparties.ts";
 import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
-  ANALYTICS_WINDOWS,
+  ANALYTICS_WINDOW_DAYS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
@@ -1517,6 +1515,30 @@ export function maxComplexityRule(max: number) {
         }
       },
     },
+  });
+}
+
+/**
+ * Check a resolver's arguments against the REST route the field mirrors
+ * (#10218).
+ *
+ * The SDL types an argument; the ROUTE narrows it. `window: String` says
+ * nothing about which windows /api/v1/chain/activity computes, and an
+ * `Int` says nothing about a page-size ceiling -- so the two published
+ * surfaces agreed on the shape and disagreed on the values. This closes that
+ * by parsing with the route's own Zod object, the same one `openapi.json` is
+ * emitted from, rather than with a vocabulary restated here.
+ *
+ * The route path is stated per call site because a field's mirrored route is
+ * per field; `scripts/validate-graphql-tier-parity.ts` already pairs the two
+ * from the SDL's `Mirrors GET …` annotation, so a wrong path here is visible
+ * to that gate rather than only at runtime.
+ */
+function assertRouteArgs(routePath: string, args: Record<string, unknown>) {
+  const error = validateRouteArgs(routePath, args);
+  if (!error) return;
+  throw new GraphQLError(error.message, {
+    extensions: { code: "BAD_USER_INPUT" },
   });
 }
 
@@ -4387,20 +4409,13 @@ const rootValue = {
     { window, netuid, fields, sort, order, limit, cursor }: QueryIncidentsArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleGlobalIncidents
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL BAD_USER_INPUT
-    // error, not a silent empty result. analyticsWindow reads only the ?window param.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/incidents
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/incidents", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
     // Same METAGRAPH_HEALTH_SOURCE Postgres tier -> loadGlobalIncidentsLedger D1
     // fallback contract handleGlobalIncidents uses; the ledger is schema-stable on
     // a cold/retired tier (empty surfaces + zeroed summary), never a GraphQL error.
@@ -4888,21 +4903,13 @@ const rootValue = {
     { netuid, window }: QuerySubnet_Health_PercentilesArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's percentiles handler
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty result, matching
-    // subnet_health_incidents.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/subnets/{netuid}/health/percentiles
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/subnets/{netuid}/health/percentiles", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetPercentiles
     // fallback the REST route and the get_subnet_health_percentiles MCP tool
     // share -- the tier owns the percentile computation, so nothing is
@@ -5181,20 +5188,13 @@ const rootValue = {
     { netuid, window }: QuerySubnet_Health_IncidentsArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleHealthIncidents
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/subnets/{netuid}/health/incidents
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/subnets/{netuid}/health/incidents", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
     // Same tryPostgresTier(METAGRAPH_HEALTH_SOURCE) -> loadSubnetIncidents D1
     // fallback contract handleHealthIncidents and the get_subnet_health_incidents
     // MCP tool share -- the tier owns the gap-island incident reconstruction, so
@@ -7738,20 +7738,15 @@ const rootValue = {
     { window }: QueryChain_ActivityArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleChainActivity
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label, days } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/chain/activity
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/chain/activity", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
+    const days =
+      ANALYTICS_WINDOW_DAYS[label as keyof typeof ANALYTICS_WINDOW_DAYS];
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_EXTRINSICS_SOURCE) -> buildChainActivity
@@ -7804,20 +7799,13 @@ const rootValue = {
     }: QueryChain_CallsArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleChainCalls
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/chain/calls
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/chain/calls", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
     const requestedGroupBy = groupBy ?? "module";
     if (
       requestedGroupBy !== "module" &&
@@ -7880,20 +7868,15 @@ const rootValue = {
     { window, limit, call_module: callModule }: QueryChain_FeesArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleChainFees
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty result.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label, days } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/chain/fees
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/chain/fees", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
+    const days =
+      ANALYTICS_WINDOW_DAYS[label as keyof typeof ANALYTICS_WINDOW_DAYS];
     if (callModule != null && callModule.length > 100) {
       throw new GraphQLError("call_module must be at most 100 characters.", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -8277,20 +8260,13 @@ const rootValue = {
     { window, limit, sort, call_module: callModule }: QueryChain_SignersArgs,
     context: GqlContext,
   ) {
-    // Reuse the exact analyticsWindow parse/validate REST's handleChainSigners
-    // uses (7d/30d, default 7d) -- an unsupported window is a GraphQL
-    // BAD_USER_INPUT error, not a silent empty leaderboard.
-    const windowUrl = new URL((context.request as Request).url);
-    windowUrl.search = "";
-    if (window != null) windowUrl.searchParams.set("window", window);
-    const windowResult = analyticsWindow(windowUrl);
-    if ("error" in windowResult) {
-      const { error } = windowResult;
-      throw new GraphQLError(error.message, {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
-    }
-    const { label } = windowResult;
+    // Checked against the window enum the ROUTE publishes, not against
+    // every window the API knows: /api/v1/chain/signers
+    // narrows the vocabulary, and reading it from that route's own schema is
+    // what makes the two surfaces accept the same set. An unsupported window
+    // is a GraphQL BAD_USER_INPUT error, not a silent empty result.
+    assertRouteArgs("/api/v1/chain/signers", { window });
+    const label = window ?? DEFAULT_ANALYTICS_WINDOW;
     // Same CHAIN_SIGNERS_SORTS allow-list REST validates against; sort is
     // optional (null -> the loader's tx_count default), so only a non-null
     // value is checked.
@@ -8984,9 +8960,12 @@ const rootValue = {
     // parseUptimeWindow(undefined) → "90d"; a supplied bad value → null.
     const windowParam = parseUptimeWindow(window);
     if (windowParam === null) {
-      throw new GraphQLError(unsupportedWindowMessage(window, UPTIME_WINDOWS), {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+      throw new GraphQLError(
+        unsupportedWindowMessage(window, UPTIME_WINDOW_DAYS),
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        },
+      );
     }
     // Same non-negative min_samples floor the REST route and MCP tool enforce
     // (GraphQL Int coercion already rejects non-integers at parse time).
@@ -9035,9 +9014,9 @@ const rootValue = {
 
   async rpc_usage({ window }: QueryRpc_UsageArgs, context: GqlContext) {
     const requestedWindow = window ?? DEFAULT_ANALYTICS_WINDOW;
-    if (!Object.hasOwn(ANALYTICS_WINDOWS, requestedWindow)) {
+    if (!Object.hasOwn(ANALYTICS_WINDOW_DAYS, requestedWindow)) {
       throw new GraphQLError(
-        unsupportedWindowMessage(requestedWindow, ANALYTICS_WINDOWS),
+        unsupportedWindowMessage(requestedWindow, ANALYTICS_WINDOW_DAYS),
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
