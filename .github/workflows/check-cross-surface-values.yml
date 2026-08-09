@@ -1,0 +1,64 @@
+name: Check cross-surface values
+
+# Do the three surfaces answer the same question with the same NUMBER? (#10217)
+#
+# REST, MCP and GraphQL each have a conformance sweep, and all three ask the
+# same question: "is this the right shape?" None asks "is this the right
+# number?" An empty array is schema-valid on every surface, which is why #10200
+# (`surfaces: []` on two of three) and #10246 (`chain_transfers` 0 against its
+# REST twin's 2,859,197 in the same second) both passed every static gate and
+# were found by hand rather than by a check.
+#
+# Out of band rather than in CI, for the same reason its three siblings are: it
+# needs production data, and a check that cannot run on a pull request should
+# not pretend to.
+on:
+  schedule:
+    # Daily, offset from check-response-conformance (06:41), check-mcp-
+    # conformance (07:17) and check-graphql-conformance (07:53) so the four are
+    # not sweeping the same Worker at once -- and last, because this one calls
+    # every surface and is the heaviest of the four.
+    - cron: "31 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-cross-surface-values
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: Compare what the three surfaces answer
+    runs-on: ubuntu-latest
+    # Three calls per triple at ~1.6s spacing over ~150 triples is ~12 minutes;
+    # the ceiling leaves room for rate-limit backoff without letting a hung
+    # fetch hold a runner all day.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compare the three surfaces
+        run: |
+          node scripts/check-cross-surface-values.ts | tee cross-surface.log
+          {
+            echo '## Cross-surface values'
+            echo '```'
+            cat cross-surface.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
