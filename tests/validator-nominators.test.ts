@@ -526,4 +526,33 @@ describe("buildValidatorNominators — count and concentration", () => {
     assert.equal((d.nominators as Row[]).length, 2, "still paged here");
     assert.equal(d.concentration_complete, true);
   });
+
+  test("an already-paged read reports the page size it was actually served", () => {
+    // #10060. NOMINATOR_LIMIT_MAX bounds the IN-MEMORY slice, and clamping an
+    // already-paged read to it published a page size that was not the one
+    // served: verified live before the fix, `?limit=2000` on a validator with
+    // 3,020 nominators returned 2000 rows and echoed `limit: 100`, on a route
+    // whose published ceiling is 2000. A caller paging on the echoed number
+    // would have re-read the same 1,900 rows on every page.
+    const served = 300;
+    const page = nominators(...Array.from({ length: served }, (_, i) => i + 1));
+    const d = buildValidatorNominators(page, HOTKEY, {
+      limit: served,
+      totalCount: 3020,
+      alreadyPaged: true,
+    }) as Row;
+    assert.equal(d.limit, served);
+    assert.equal((d.nominators as Row[]).length, served);
+  });
+
+  test("the in-memory slice is still capped at NOMINATOR_LIMIT_MAX", () => {
+    // The other half: without alreadyPaged the builder IS the pager, and an
+    // unbounded slice is what the cap exists to stop.
+    const all = nominators(...Array.from({ length: 300 }, (_, i) => i + 1));
+    const d = buildValidatorNominators(all, HOTKEY, {
+      limit: 300,
+    }) as Row;
+    assert.equal(d.limit, NOMINATOR_LIMIT_MAX);
+    assert.equal((d.nominators as Row[]).length, NOMINATOR_LIMIT_MAX);
+  });
 });

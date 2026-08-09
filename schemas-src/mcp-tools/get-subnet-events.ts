@@ -24,7 +24,7 @@ export const GetSubnetEventsInputSchema = z
     kind: RouteQuery_subnets_netuid_events.shape.kind,
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: RouteQuery_subnets_netuid_events.shape.limit.meta({ default: 100 }),
+    limit: RouteQuery_subnets_netuid_events.shape.limit,
     offset: RouteQuery_subnets_netuid_events.shape.offset,
     cursor: RouteQuery_subnets_netuid_events.shape.cursor,
   })

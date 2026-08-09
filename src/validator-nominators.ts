@@ -204,11 +204,16 @@ export function buildValidatorNominators(
   const normalizedSort = NOMINATOR_SORTS.includes(sort)
     ? sort
     : DEFAULT_NOMINATOR_SORT;
-  const normalizedLimit = clampRowLimit(
-    limit,
-    NOMINATOR_LIMIT_DEFAULT,
-    NOMINATOR_LIMIT_MAX,
-  );
+  // NOMINATOR_LIMIT_MAX bounds the IN-MEMORY slice below, and only that. When
+  // the caller already applied its page in SQL, clamping again would report a
+  // page size that is not the one served: verified live before the fix,
+  // `/api/v1/validators/{hotkey}/nominators?limit=2000` returned 2000 rows and
+  // echoed `limit: 100`, on a route whose published ceiling is 2000 and whose
+  // `limit` parameter promises the response reports the limit actually applied
+  // (#10060). The ceiling itself is enforced by the router, from the schema.
+  const normalizedLimit = alreadyPaged
+    ? clampRowLimit(limit, NOMINATOR_LIMIT_DEFAULT, Number.MAX_SAFE_INTEGER)
+    : clampRowLimit(limit, NOMINATOR_LIMIT_DEFAULT, NOMINATOR_LIMIT_MAX);
   const flooredOffset = Math.floor(Number(offset));
   const normalizedOffset =
     Number.isFinite(flooredOffset) && flooredOffset > 0 ? flooredOffset : 0;

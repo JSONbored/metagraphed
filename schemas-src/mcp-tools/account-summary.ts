@@ -116,7 +116,7 @@ export const GetAccountEventsInputSchema = z
     netuid: RouteQuery_accounts_ss58_events.shape.netuid,
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: RouteQuery_accounts_ss58_events.shape.limit.meta({ default: 100 }),
+    limit: RouteQuery_accounts_ss58_events.shape.limit,
     offset: RouteQuery_accounts_ss58_events.shape.offset,
     cursor: RouteQuery_accounts_ss58_events.shape.cursor,
   })

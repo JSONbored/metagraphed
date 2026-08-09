@@ -32,7 +32,6 @@ import {
   type ChainNetworkId,
 } from "../../src/chain-network.ts";
 import { resolveClientIp } from "../config.ts";
-import { BLOCK_PAGINATION, FEED_PAGINATION } from "../request-params.ts";
 
 import {
   errorResponse,
@@ -53,6 +52,7 @@ import {
 } from "./analytics.ts";
 import {
   historyWindow,
+  pageLimit,
   parseRouteQuery,
   resolvePage,
   resolveWindow,
@@ -334,10 +334,7 @@ import {
   buildChainIdleStake,
   buildSubnetIdleStake,
 } from "../../src/subnet-idle-stake.ts";
-import {
-  buildChainIdentityHistory,
-  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
-} from "../../src/chain-identity-history.ts";
+import { buildChainIdentityHistory } from "../../src/chain-identity-history.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -1105,7 +1102,7 @@ export async function handleSubnetHyperparamsHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
@@ -1176,7 +1173,7 @@ export async function handleSubnetLifecycle(
   if (validationError) return analyticsQueryError(validationError);
   // #10218: the router already parsed and rejected against the route's schema,
   // so this reads the result rather than re-checking it by hand.
-  const { limit, offset } = resolvePage(url, FEED_PAGINATION);
+  const { limit, offset } = resolvePage(url);
   const rows = await loadSubnetLifecycle(env, netuid, { limit, offset });
   const data = buildSubnetLifecycle(rows, netuid, { limit, offset });
   if (csvRequested(url, request)) {
@@ -1860,7 +1857,7 @@ export async function handleSubnetIdentityHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const identityTier =
     ((await tryPostgresTier(
@@ -2139,7 +2136,7 @@ export async function handleChainIdentityHistory(
   env: Env,
   url: URL,
 ) {
-  const { limit = CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   // D1 retirement: subnet_identity_history's D1 write path is retired
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
@@ -2274,8 +2271,7 @@ export async function handleChainYield(request: Request, env: Env) {
 export function canonicalChainIdentityHistoryCachePath(url: URL) {
   const parsed = parseRouteQuery(url);
   if ("error" in parsed) return `${url.pathname}${url.search}`;
-  const { limit = CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT } = parsed.query;
-  return `${url.pathname}?limit=${limit}`;
+  return `${url.pathname}?limit=${pageLimit(url)}`;
 }
 
 // Shared helper: build a canonical edge-cache key for a windowed route, so an
@@ -4763,7 +4759,7 @@ export async function handleAccountEvents(
   }
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
@@ -4836,7 +4832,7 @@ export async function handleAccountHistory(
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const { from = null, to = null } = routeQuery(url);
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const netuid = url.searchParams.get("netuid");
   // Inverted YYYY-MM-DD bounds are a deterministic no-match. Short-circuit before
@@ -4945,7 +4941,7 @@ export async function handleAccountExtrinsics(
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
@@ -5021,7 +5017,7 @@ export async function handleAccountTransfers(
       message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
     });
   }
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
@@ -5389,7 +5385,7 @@ export async function handleAccountIdentityHistory(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
@@ -5461,7 +5457,7 @@ export async function handleSubnetEvents(
   // seeks rather than scans this public, ~60s-cached route.
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit: parsedLimit, offset: parsedOffset } = page;
   const { block_start: blockStart, block_end: blockEnd } = routeQuery(url);
   // #9146: this feed has always read empty -- data-api never registered
@@ -6483,7 +6479,7 @@ export async function handleBlocks(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, BLOCK_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   // When the Postgres tier misses (the self-hosted box is gone), the cold tier
   // answers from the two sources that outlive it: the R2 lakehouse for
@@ -6664,7 +6660,7 @@ export async function handleBlockExtrinsics(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, BLOCK_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
@@ -6738,7 +6734,7 @@ export async function handleBlockEvents(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, FEED_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
@@ -6815,7 +6811,7 @@ export async function handleExtrinsics(
   // The same cap the three chain-analytics feeds apply to `call_module`
   // (#10096). This route took the identical filter with no bound at all, so a
   // 150-character value was a 400 on /chain/calls and a 200 here.
-  const page = resolvePage(url, BLOCK_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const query = routeQuery(url);
   const successRaw = (query.success as string | undefined) ?? null;
@@ -6904,7 +6900,7 @@ export async function handleExtrinsics(
 export async function handleSudo(request: Request, env: Env, url: URL) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, BLOCK_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const query = routeQuery(url);
   const successRaw = (query.success as string | undefined) ?? null;
@@ -6972,7 +6968,7 @@ export async function handleGovernanceConfigChanges(
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
-  const page = resolvePage(url, BLOCK_PAGINATION);
+  const page = resolvePage(url);
   const { limit, offset } = page;
   const query = routeQuery(url);
   const successRaw = (query.success as string | undefined) ?? null;

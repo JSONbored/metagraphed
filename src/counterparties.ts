@@ -7,6 +7,15 @@
  * default by counting rows.
  */
 export const COUNTERPARTIES_LIMIT_DEFAULT = 20;
+/**
+ * The ceiling the route rejects above.
+ *
+ * The number existed as a bare `100` in three places -- the route's query
+ * schema, the MCP tool's, and nowhere the handler could cite -- which is the
+ * same shape the default above was in before #10101 named it. Named here, with
+ * the default, so the two halves of one bound have one owner.
+ */
+export const COUNTERPARTIES_LIMIT_MAX = 100;
 // Account counterparty / fund-flow analytics: who one account transacts with,
 // aggregated from the account_events Transfer tier (hotkey = from, coldkey = to,
 // amount_tao). Pure + exported for unit tests; workers/data-api.ts does the

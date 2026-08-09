@@ -37,6 +37,7 @@ import {
 } from "../../src/chain-network.ts";
 import {
   analyticsWindow,
+  pageLimit,
   parseRouteQuery,
   routeQuery,
 } from "../../src/route-query.ts";
@@ -81,54 +82,23 @@ import {
 } from "../../src/chain-analytics.ts";
 import { buildChainTransferPairs } from "../../src/chain-transfer-pairs.ts";
 import { buildChainTransfers } from "../../src/chain-transfers.ts";
-import {
-  buildChainServing,
-  CHAIN_SERVING_LIMIT_DEFAULT,
-} from "../../src/chain-serving.ts";
-import {
-  buildChainPrometheus,
-  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
-} from "../../src/chain-prometheus.ts";
-import {
-  buildChainAxonRemovals,
-  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
-} from "../../src/chain-axon-removals.ts";
-import {
-  buildChainRegistrations,
-  CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
-} from "../../src/chain-registrations.ts";
-import {
-  buildChainDeregistrations,
-  CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
-} from "../../src/chain-deregistrations.ts";
+import { buildChainServing } from "../../src/chain-serving.ts";
+import { buildChainPrometheus } from "../../src/chain-prometheus.ts";
+import { buildChainAxonRemovals } from "../../src/chain-axon-removals.ts";
+import { buildChainRegistrations } from "../../src/chain-registrations.ts";
+import { buildChainDeregistrations } from "../../src/chain-deregistrations.ts";
 import {
   buildChainSubnetLifecycle,
-  CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
   DEFAULT_SUBNET_LIFECYCLE_WINDOW,
   loadChainSubnetLifecycle,
 } from "../../src/subnet-lifecycle-read.ts";
 // The shared window parser, rather than a restated map -- see the handler.
 import { parseHistoryWindow } from "../../src/neuron-history.ts";
-import {
-  buildChainStakeMoves,
-  CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
-} from "../../src/chain-stake-moves.ts";
-import {
-  buildChainStakeTransfers,
-  CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
-} from "../../src/chain-stake-transfers.ts";
-import {
-  buildChainWeights,
-  CHAIN_WEIGHTS_LIMIT_DEFAULT,
-} from "../../src/chain-weights.ts";
-import {
-  buildChainWeightSetters,
-  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
-} from "../../src/chain-weight-setters.ts";
-import {
-  buildChainStakeFlow,
-  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
-} from "../../src/chain-stake-flow.ts";
+import { buildChainStakeMoves } from "../../src/chain-stake-moves.ts";
+import { buildChainStakeTransfers } from "../../src/chain-stake-transfers.ts";
+import { buildChainWeights } from "../../src/chain-weights.ts";
+import { buildChainWeightSetters } from "../../src/chain-weight-setters.ts";
+import { buildChainStakeFlow } from "../../src/chain-stake-flow.ts";
 import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
 import { loadChainRegistrationsFromArtifact } from "../../src/chain-registrations-artifact.ts";
@@ -145,10 +115,7 @@ import { resolveMarketCapIndex } from "../../src/market-cap-index.ts";
 import { loadChainStakeTransfersFromArtifact } from "../../src/chain-stake-transfers-artifact.ts";
 import { loadChainTransferPairsFromArtifact } from "../../src/chain-transfer-pairs-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-artifact.ts";
-import {
-  buildChainAlphaVolume,
-  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
-} from "../../src/chain-alpha-volume.ts";
+import { buildChainAlphaVolume } from "../../src/chain-alpha-volume.ts";
 
 // The shape of the api.ts-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`
@@ -1272,7 +1239,7 @@ export async function handleChainCalls(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = 50 } = routeQuery(url);
+  const limit = pageLimit(url);
   const groupBy = url.searchParams.get("group_by") || "module";
   const csv = csvRequested(url, request);
   return withEdgeCache(
@@ -1364,7 +1331,7 @@ export async function handleChainSigners(
   const { label } = analyticsWindow(url);
   // limit/call_module no longer feed a live D1 read (see the retirement note
   // below) but are still shape-validated so the REST contract stays stable.
-  const { limit = 50 } = routeQuery(url);
+  const limit = pageLimit(url);
   const sort = url.searchParams.get("sort") || "tx_count";
   const csv = csvRequested(url, request);
   return withEdgeCache(
@@ -1447,7 +1414,7 @@ export async function handleChainTransfers(
   const { label } = analyticsWindow(url);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const { limit = 25 } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   // HEAD probes are globally allowed for read-only API routes. Normalize them
@@ -1546,7 +1513,7 @@ export async function handleChainTransferPairs(
   const { label } = analyticsWindow(url);
   // limit no longer feeds a live D1 read (see the retirement note below) but
   // is still shape-validated so the REST contract stays stable.
-  const { limit = 25 } = routeQuery(url);
+  const limit = pageLimit(url);
   const sort = url.searchParams.get("sort") || "volume";
   const csv = csvRequested(url, request);
 
@@ -1639,7 +1606,7 @@ export async function handleChainStakeFlow(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_STAKE_FLOW_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -1742,7 +1709,7 @@ export async function handleChainAlphaVolume(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
-  const { limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   // Normalize HEAD probes through the GET cache key so they cannot bypass the edge cache and
@@ -1827,7 +1794,7 @@ export async function handleChainWeights(
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_WEIGHTS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1908,7 +1875,7 @@ export async function handleChainWeightSetters(
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -1981,7 +1948,7 @@ export async function handleChainServing(
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_SERVING_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2062,7 +2029,7 @@ export async function handleChainPrometheus(
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_PROMETHEUS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2133,7 +2100,7 @@ export async function handleChainAxonRemovals(
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_AXON_REMOVALS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2205,7 +2172,7 @@ export async function handleChainRegistrations(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_REGISTRATIONS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2309,10 +2276,8 @@ export async function handleChainSubnetLifecycle(
   // the handler ran -- including the `window` enum and the `limit` ceiling --
   // so this reads the result rather than re-checking it. The ceiling still
   // REJECTS rather than clamps; that is the schema's doing, not the handler's.
-  const {
-    window = DEFAULT_SUBNET_LIFECYCLE_WINDOW,
-    limit = CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
-  } = routeQuery(url);
+  const { window = DEFAULT_SUBNET_LIFECYCLE_WINDOW } = routeQuery(url);
+  const limit = pageLimit(url);
   // `days === null` means `all` (no lower bound) -- a real answer, so this must
   // not become a truthiness test. The label is already schema-valid here.
   const parsed = parseHistoryWindow(window);
@@ -2370,7 +2335,7 @@ export async function handleChainDeregistrations(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2468,7 +2433,7 @@ export async function handleChainStakeMoves(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_STAKE_MOVES_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2554,7 +2519,7 @@ export async function handleChainStakeTransfers(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label } = analyticsWindow(url);
-  const { limit = CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT } = routeQuery(url);
+  const limit = pageLimit(url);
   const csv = csvRequested(url, request);
 
   const cacheRequest =
@@ -2637,7 +2602,7 @@ export async function handleChainFees(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const { label, days: windowDays } = analyticsWindow(url);
-  const { limit = 25 } = routeQuery(url);
+  const limit = pageLimit(url);
   // Optional pallet scope (applies to both the daily series and the payer list),
   // backed by idx_extrinsics_module_block.
   const csv = csvRequested(url, request);

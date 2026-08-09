@@ -57,58 +57,133 @@
 // what 3/5 publishes either way.
 import { z } from "zod";
 import {
+  ACCOUNTS_LIST_LIMIT_DEFAULT,
   ACCOUNTS_LIST_LIMIT_MAX,
   ANALYTICS_WINDOWS,
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
   CHAIN_CALL_MODULE_MAX_LENGTH,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+  CHAIN_EVENTS_LIMIT_DEFAULT,
   CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_EVENT_NAME_MAX_LENGTH,
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  CHAIN_TURNOVER_LIMIT_DEFAULT,
   CHAIN_TURNOVER_LIMIT_MAX,
+  EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
   EMISSION_PIPELINE_LIMIT_MAX,
   FAILURE_REASONS_WINDOWS,
   FEED_LIMIT_MAX,
   FEED_WATCH_IDS_MAX_LENGTH,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   HISTORY_WINDOWS,
+  LEADERBOARDS_LIMIT_DEFAULT,
   LEADERBOARDS_LIMIT_MAX,
+  MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
   PIPELINE_HISTORY_WINDOWS,
   SEMANTIC_LIMIT_DEFAULT,
   SEMANTIC_LIMIT_MAX,
   SEMANTIC_QUERY_MAX_LENGTH,
   SEMANTIC_TYPES,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   UPTIME_WINDOWS,
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
+  SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
+  TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
+  VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
   VALIDATOR_ECONOMICS_LIMIT_MAX,
 } from "../src/route-limits.ts";
-import { BLOCK_PAGINATION, MAX_LIMIT } from "../workers/request-params.ts";
-import { CHAIN_ALPHA_VOLUME_LIMIT_MAX } from "../src/chain-alpha-volume.ts";
-import { CHAIN_AXON_REMOVALS_LIMIT_MAX } from "../src/chain-axon-removals.ts";
-import { CHAIN_CALLS_LIMIT_MAX } from "../src/chain-calls-artifact.ts";
-import { CHAIN_DEREGISTRATIONS_LIMIT_MAX } from "../src/chain-deregistrations.ts";
-import { CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX } from "../src/subnet-lifecycle-read.ts";
+import {
+  BLOCK_PAGINATION,
+  FEED_PAGINATION,
+  MAX_LIMIT,
+} from "../workers/request-params.ts";
+import {
+  CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+  CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+} from "../src/chain-alpha-volume.ts";
+import {
+  CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+  CHAIN_AXON_REMOVALS_LIMIT_MAX,
+} from "../src/chain-axon-removals.ts";
+import {
+  CHAIN_CALLS_LIMIT_DEFAULT,
+  CHAIN_CALLS_LIMIT_MAX,
+} from "../src/chain-calls-artifact.ts";
+import {
+  CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+} from "../src/chain-deregistrations.ts";
+import {
+  CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+  CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+} from "../src/subnet-lifecycle-read.ts";
 import { CHAIN_EVENTS_STATS_BLOCKS_MAX } from "../src/chain-events-cold-tier.ts";
-import { CHAIN_FEES_LIMIT_MAX } from "../src/chain-fees-artifact.ts";
-import { CHAIN_PROMETHEUS_LIMIT_MAX } from "../src/chain-prometheus.ts";
-import { CHAIN_REGISTRATIONS_LIMIT_MAX } from "../src/chain-registrations.ts";
-import { CHAIN_SERVING_LIMIT_MAX } from "../src/chain-serving.ts";
-import { CHAIN_SIGNERS_LIMIT_MAX } from "../src/chain-signers-artifact.ts";
-import { CHAIN_STAKE_FLOW_LIMIT_MAX } from "../src/chain-stake-flow.ts";
-import { CHAIN_STAKE_MOVES_LIMIT_MAX } from "../src/chain-stake-moves.ts";
-import { CHAIN_STAKE_TRANSFERS_LIMIT_MAX } from "../src/chain-stake-transfers.ts";
-import { CHAIN_TRANSFER_PAIR_LIMIT_MAX } from "../src/chain-transfer-pairs.ts";
-import { CHAIN_TRANSFER_LIMIT_MAX } from "../src/chain-transfers.ts";
-import { CHAIN_WEIGHT_SETTERS_LIMIT_MAX } from "../src/chain-weight-setters.ts";
-import { CHAIN_WEIGHTS_LIMIT_MAX } from "../src/chain-weights.ts";
+import {
+  CHAIN_FEES_LIMIT_DEFAULT,
+  CHAIN_FEES_LIMIT_MAX,
+} from "../src/chain-fees-artifact.ts";
+import {
+  CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+  CHAIN_PROMETHEUS_LIMIT_MAX,
+} from "../src/chain-prometheus.ts";
+import {
+  CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+  CHAIN_REGISTRATIONS_LIMIT_MAX,
+} from "../src/chain-registrations.ts";
+import {
+  CHAIN_SERVING_LIMIT_DEFAULT,
+  CHAIN_SERVING_LIMIT_MAX,
+} from "../src/chain-serving.ts";
+import {
+  CHAIN_SIGNERS_LIMIT_DEFAULT,
+  CHAIN_SIGNERS_LIMIT_MAX,
+} from "../src/chain-signers-artifact.ts";
+import {
+  CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+  CHAIN_STAKE_FLOW_LIMIT_MAX,
+} from "../src/chain-stake-flow.ts";
+import {
+  CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+  CHAIN_STAKE_MOVES_LIMIT_MAX,
+} from "../src/chain-stake-moves.ts";
+import {
+  CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+  CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+} from "../src/chain-stake-transfers.ts";
+import {
+  CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+} from "../src/chain-transfer-pairs.ts";
+import {
+  CHAIN_TRANSFER_LIMIT_DEFAULT,
+  CHAIN_TRANSFER_LIMIT_MAX,
+} from "../src/chain-transfers.ts";
+import {
+  CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+  CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+} from "../src/chain-weight-setters.ts";
+import {
+  CHAIN_WEIGHTS_LIMIT_DEFAULT,
+  CHAIN_WEIGHTS_LIMIT_MAX,
+} from "../src/chain-weights.ts";
+import {
+  COUNTERPARTIES_LIMIT_DEFAULT,
+  COUNTERPARTIES_LIMIT_MAX,
+} from "../src/counterparties.ts";
 import { TOP_HOLDERS_SORTS } from "../src/top-holders.ts";
+import { NOMINATOR_LIMIT_DEFAULT } from "../src/validator-nominators.ts";
 import { VALIDATOR_ECONOMICS_SORTS } from "../src/validator-economics.ts";
 import {
   blockBoundSchema,
@@ -409,7 +484,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     sort: sortSchema(
       VALIDATOR_ECONOMICS_SORTS as unknown as [string, ...string[]],
     ).optional(),
-    limit: limitSchema(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      VALIDATOR_ECONOMICS_LIMIT_MAX,
+      VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+    ).optional(),
     // Bounded by the ranking's own ceiling, not the generic deep-paging one:
     // one row per subnet, so seeking past the limit seeks nothing.
     offset: z.int().min(0).max(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
@@ -424,7 +502,7 @@ export const ROUTE_QUERY_SCHEMAS = {
       "validators",
       "neurons",
     ] as const).optional(),
-    limit: limitSchema(MOVERS_LIMIT_MAX).optional(),
+    limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/validators": z.object({
@@ -437,7 +515,10 @@ export const ROUTE_QUERY_SCHEMAS = {
       "total_stake",
       "uid_count",
     ] as const).optional(),
-    limit: limitSchema(GLOBAL_VALIDATOR_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      GLOBAL_VALIDATOR_LIMIT_MAX,
+      GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/accounts": z.object({
@@ -450,7 +531,10 @@ export const ROUTE_QUERY_SCHEMAS = {
       "stake_dominance",
       "last_active",
     ] as const).optional(),
-    limit: limitSchema(ACCOUNTS_LIST_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      ACCOUNTS_LIST_LIMIT_MAX,
+      ACCOUNTS_LIST_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/accounts/top-holders": z.object({
@@ -462,7 +546,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     // recomputed daily. The route's own 400 has always named all six.
     // The enum IS TOP_HOLDERS_SORTS, read from the module that owns it.
     sort: sortSchema(TOP_HOLDERS_SORTS as [string, ...string[]]).optional(),
-    limit: limitSchema(TOP_HOLDERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      TOP_HOLDERS_LIMIT_MAX,
+      TOP_HOLDERS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/validators/{hotkey}/nominators": z.object({
@@ -485,7 +572,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     // cold-tier builder still clamps at NOMINATOR_LIMIT_MAX, so a fallback
     // page is shorter than this ceiling; that is a tier difference, not a
     // second contract.
-    limit: limitSchema(GLOBAL_VALIDATOR_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      GLOBAL_VALIDATOR_LIMIT_MAX,
+      NOMINATOR_LIMIT_DEFAULT,
+    ).optional(),
     offset: unboundedOffsetSchema().optional(),
     // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
     // verified live -- and the contract simply did not say so, while
@@ -527,7 +617,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     fields: fieldsSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/hyperparameters/history": z.object({
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -536,7 +626,7 @@ export const ROUTE_QUERY_SCHEMAS = {
   // change, this one a table that grows per subnet per LIFETIME. Publishing a
   // keyset token here would advertise resumability the loader does not provide.
   "/api/v1/subnets/{netuid}/lifecycle": z.object({
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -555,7 +645,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     kind: kindStringSchema().optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     // The handler has always accepted and forwarded this, and the sibling
     // /accounts/{ss58}/events feed publishes it -- but this route did not, so
@@ -566,7 +656,10 @@ export const ROUTE_QUERY_SCHEMAS = {
   }),
   "/api/v1/subnets/{netuid}/event-summary": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
-    limit: limitSchema(SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/subnets/{netuid}/neurons/{uid}/history": z.object({
     window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
@@ -575,7 +668,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/subnets/{netuid}/identity-history": z.object({
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -585,7 +678,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     netuid: netuidSchema().optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -594,7 +687,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     netuid: netuidSchema().optional(),
     from: daySchema("first").optional(),
     to: daySchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     // handleAccountHistory forwards this to loadAccountHistoryColdTier and has
     // since #9315; only the contract left it out (#10065).
@@ -604,7 +697,7 @@ export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/accounts/{ss58}/extrinsics": z.object({
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -613,7 +706,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     direction: directionSchema(["all", "sent", "received"] as const).optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -623,7 +716,10 @@ export const ROUTE_QUERY_SCHEMAS = {
       .string()
       .regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/)
       .optional(),
-    limit: z.int().min(1).max(100).optional(),
+    limit: limitSchema(
+      COUNTERPARTIES_LIMIT_MAX,
+      COUNTERPARTIES_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/accounts/{ss58}/stake-flow": z.object({
@@ -655,7 +751,7 @@ export const ROUTE_QUERY_SCHEMAS = {
     window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
   }),
   "/api/v1/accounts/{ss58}/identity-history": z.object({
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
@@ -668,14 +764,23 @@ export const ROUTE_QUERY_SCHEMAS = {
     window: windowSchema(["24h", "7d", "30d", "90d"] as const).optional(),
   }),
   "/api/v1/subnets/{netuid}/holders": z.object({
-    limit: limitSchema(SUBNET_HOLDERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      SUBNET_HOLDERS_LIMIT_MAX,
+      SUBNET_HOLDERS_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/subnets/{netuid}/surface-history": z.object({
-    limit: limitSchema(SURFACE_HISTORY_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      SURFACE_HISTORY_LIMIT_MAX,
+      SURFACE_HISTORY_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/chain/governance/emission-changes": z.object({
     kind: kindSchema(["param", "subnet", "flow"] as const).optional(),
-    limit: limitSchema(EMISSION_CHANGES_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      EMISSION_CHANGES_LIMIT_MAX,
+      EMISSION_CHANGES_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/chain/holders": z.object({
     sort: sortSchema([
@@ -686,7 +791,10 @@ export const ROUTE_QUERY_SCHEMAS = {
       "holder_count",
       "total_alpha",
     ] as const).optional(),
-    limit: limitSchema(CHAIN_HOLDERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_HOLDERS_LIMIT_MAX,
+      CHAIN_HOLDERS_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/health/failure-reasons": z.object({
     window: windowSchema(
@@ -714,7 +822,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     ).optional(),
   }),
   "/api/v1/blocks": z.object({
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(
+      BLOCK_PAGINATION.maxLimit,
+      BLOCK_PAGINATION.defaultLimit,
+    ).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     // DIVERGENCE: the block author is an SS58 and publishes no pattern.
@@ -729,12 +840,15 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/blocks/{ref}/extrinsics": z.object({
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(
+      BLOCK_PAGINATION.maxLimit,
+      BLOCK_PAGINATION.defaultLimit,
+    ).optional(),
     offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/blocks/{ref}/events": z.object({
-    limit: limitSchema(MAX_LIMIT).optional(),
+    limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
     offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -754,14 +868,20 @@ export const ROUTE_QUERY_SCHEMAS = {
     // different values and the contract was written from the one the request
     // path does not use. One constant now, in src/route-limits.ts, and it is
     // the number the route enforces.
-    limit: limitSchema(CHAIN_EVENTS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_EVENTS_LIMIT_MAX,
+      CHAIN_EVENTS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain-events/stats": z.object({
     blocks: z.int().min(1).max(CHAIN_EVENTS_STATS_BLOCKS_MAX).optional(),
   }),
   "/api/v1/extrinsics": z.object({
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(
+      BLOCK_PAGINATION.maxLimit,
+      BLOCK_PAGINATION.defaultLimit,
+    ).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
@@ -786,7 +906,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/sudo": z.object({
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(
+      BLOCK_PAGINATION.maxLimit,
+      BLOCK_PAGINATION.defaultLimit,
+    ).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
@@ -799,7 +922,10 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/governance/config-changes": z.object({
-    limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
+    limit: limitSchema(
+      BLOCK_PAGINATION.maxLimit,
+      BLOCK_PAGINATION.defaultLimit,
+    ).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
@@ -821,70 +947,109 @@ export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/chain/calls": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     group_by: z.enum(["module", "module_function"] as const).optional(),
-    limit: limitSchema(CHAIN_CALLS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_CALLS_LIMIT_MAX,
+      CHAIN_CALLS_LIMIT_DEFAULT,
+    ).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/signers": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
     sort: sortSchema(["tx_count", "total_fee_tao"] as const).optional(),
-    limit: limitSchema(CHAIN_SIGNERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_SIGNERS_LIMIT_MAX,
+      CHAIN_SIGNERS_LIMIT_DEFAULT,
+    ).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/transfers": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_TRANSFER_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_TRANSFER_LIMIT_MAX,
+      CHAIN_TRANSFER_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/transfer-pairs": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_TRANSFER_PAIR_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+      CHAIN_TRANSFER_PAIR_LIMIT_DEFAULT,
+    ).optional(),
     sort: sortSchema(["volume", "count"] as const).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-flow": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_STAKE_FLOW_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_STAKE_FLOW_LIMIT_MAX,
+      CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/alpha-volume": z.object({
-    limit: limitSchema(CHAIN_ALPHA_VOLUME_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+      CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/weights": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_WEIGHTS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_WEIGHTS_LIMIT_MAX,
+      CHAIN_WEIGHTS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/weights/setters": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_WEIGHT_SETTERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+      CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/serving": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_SERVING_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_SERVING_LIMIT_MAX,
+      CHAIN_SERVING_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/axon-removals": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_AXON_REMOVALS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_AXON_REMOVALS_LIMIT_MAX,
+      CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/prometheus": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_PROMETHEUS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_PROMETHEUS_LIMIT_MAX,
+      CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/registrations": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_REGISTRATIONS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_REGISTRATIONS_LIMIT_MAX,
+      CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/deregistrations": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_DEREGISTRATIONS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_DEREGISTRATIONS_LIMIT_MAX,
+      CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   // The five-value window, not the 7d/30d the per-UID feed above takes: a
@@ -895,22 +1060,34 @@ export const ROUTE_QUERY_SCHEMAS = {
   // few-hundred-row table the whole network's lifecycle fits in one request.
   "/api/v1/chain/subnet-lifecycle": z.object({
     window: windowSchema(HISTORY_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_SUBNET_LIFECYCLE_LIMIT_MAX,
+      CHAIN_SUBNET_LIFECYCLE_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-transfers": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_STAKE_TRANSFERS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_STAKE_TRANSFERS_LIMIT_MAX,
+      CHAIN_STAKE_TRANSFERS_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/stake-moves": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_STAKE_MOVES_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_STAKE_MOVES_LIMIT_MAX,
+      CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain/fees": z.object({
     window: windowSchema(ANALYTICS_WINDOWS as [string, ...string[]]).optional(),
-    limit: limitSchema(CHAIN_FEES_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_FEES_LIMIT_MAX,
+      CHAIN_FEES_LIMIT_DEFAULT,
+    ).optional(),
     call_module: z.string().max(CHAIN_CALL_MODULE_MAX_LENGTH).optional(),
     format: formatSchema().optional(),
   }),
@@ -933,14 +1110,23 @@ export const ROUTE_QUERY_SCHEMAS = {
       "netuid",
     ] as const).optional(),
     order: orderSchema().optional(),
-    limit: limitSchema(CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+      CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/chain/identity-history": z.object({
-    limit: limitSchema(CHAIN_IDENTITY_HISTORY_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+      CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/chain/turnover": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
-    limit: limitSchema(CHAIN_TURNOVER_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_TURNOVER_LIMIT_MAX,
+      CHAIN_TURNOVER_LIMIT_DEFAULT,
+    ).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/uptime": z.object({
@@ -965,7 +1151,10 @@ export const ROUTE_QUERY_SCHEMAS = {
         "biggest-alpha-gain-7d",
       ] as const)
       .optional(),
-    limit: limitSchema(LEADERBOARDS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      LEADERBOARDS_LIMIT_MAX,
+      LEADERBOARDS_LIMIT_DEFAULT,
+    ).optional(),
   }),
   "/api/v1/compare": z.object({
     netuids: netuidListSchema().optional(),

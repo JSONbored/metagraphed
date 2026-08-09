@@ -23,9 +23,7 @@ export const GetAccountExtrinsicsInputSchema = z
     ss58: ss58Schema(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: RouteQuery_accounts_ss58_extrinsics.shape.limit.meta({
-      default: 100,
-    }),
+    limit: RouteQuery_accounts_ss58_extrinsics.shape.limit,
     offset: RouteQuery_accounts_ss58_extrinsics.shape.offset,
     cursor: RouteQuery_accounts_ss58_extrinsics.shape.cursor,
   })

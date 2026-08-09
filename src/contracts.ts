@@ -5549,7 +5549,12 @@ function openApiOperationId(routeId: string) {
 export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
   string,
   (parameter: {
-    schema?: { maximum?: number; minimum?: number; enum?: unknown[] };
+    schema?: {
+      maximum?: number;
+      minimum?: number;
+      enum?: unknown[];
+      default?: unknown;
+    };
   }) => string
 > = {
   // ── Why this map exists ALONGSIDE limitSchema's own .describe() ───────────
@@ -5580,14 +5585,21 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
   // exemption.
   limit: (parameter) => {
     const maximum = parameter.schema?.maximum;
-    // The ceiling is read off the parameter's own schema rather than restated,
-    // so it follows route-limits.ts wherever a route sets a different one.
+    // The ceiling AND the omitted-value behaviour are read off the parameter's
+    // own schema rather than restated, so both follow the route wherever it
+    // sets its own (#10060). A route that publishes no `default` does not do so
+    // by omission: it returns every matching row when `limit` is absent, which
+    // is what the second sentence says instead of leaving a caller to guess.
+    const fallback = parameter.schema?.default;
     return (
       "Maximum number of rows to return in one page" +
       (typeof maximum === "number" ? ` (at most ${maximum})` : "") +
       ". A larger value, or a non-positive one, is rejected with 400 " +
       "`invalid_query` -- so a short page means the result set is exhausted, " +
-      "not that the server quietly capped you (#9916)."
+      "not that the server quietly capped you (#9916). " +
+      (typeof fallback === "number"
+        ? `Omitted, the server applies ${fallback}.`
+        : "Omitted, every matching row is returned.")
     );
   },
   offset: () =>
@@ -5644,7 +5656,12 @@ function withSharedParameterDescription<T extends object>(parameter: T): T {
   const spec = parameter as {
     name?: unknown;
     description?: unknown;
-    schema?: { maximum?: number; minimum?: number; enum?: unknown[] };
+    schema?: {
+      maximum?: number;
+      minimum?: number;
+      enum?: unknown[];
+      default?: unknown;
+    };
   };
   if (typeof spec.name !== "string" || spec.description) return parameter;
   const shared = SHARED_QUERY_PARAMETER_DESCRIPTIONS[spec.name];
