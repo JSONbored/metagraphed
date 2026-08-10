@@ -187,7 +187,7 @@
       "id": "sn-19-blockmachine-epochs-catalog",
       "kind": "data-artifact",
       "name": "BlockMachine epochs catalog",
-      "notes": "Public no-auth BlockMachine epochs listing — every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
+      "notes": "Public no-auth BlockMachine epochs listing \u2014 every epoch's id/number, participating gateway_ids, and per-gateway manifest (request log files + finalized CU-allocation objects). The full-history catalog behind the already-registered latest-finalized/current single-epoch endpoints; declared as GET /epochs (\"List Epochs\") in the operator's OpenAPI (source).",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -721,7 +721,12 @@
       "id": "sn-19-blockmachine-pricing-rules",
       "kind": "subnet-api",
       "name": "BlockMachine pricing rules",
-      "notes": "Delete Pricing Rule operation on the BlockMachine API (DELETE, GET, POST /pricing/rules), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.blockmachine.io/openapi.json"
+      },
+      "notes": "Delete Pricing Rule operation on the BlockMachine API (DELETE, GET, POST /pricing/rules), declared in the subnet's own OpenAPI spec at https://api.blockmachine.io/openapi.json. The spec declares the HTTPBearer security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3). Live-verified 2026-07-21: an unauthenticated GET returns HTTP 401 {\"detail\":\"Not authenticated\"}, confirming the gate. REVENUE ROLE (#10452): not-revenue. /pricing/rules is a rate card, not a revenue figure, and it answers 401 unauthenticated. No public surface on this subnet carries an external-revenue number as of 2026-08-10. REVENUE ROLE (#10452): not-revenue. /pricing/rules is a rate card, not a revenue figure, and it answers 401 unauthenticated. No public surface on this subnet carries an external-revenue number as of 2026-08-10.",
       "probe": {
         "enabled": false,
         "expect": "json",
