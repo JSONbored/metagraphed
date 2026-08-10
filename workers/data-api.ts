@@ -396,6 +396,7 @@ import {
 } from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { neonOwnsTable } from "../src/neon-write.ts";
+import { KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 
@@ -7622,6 +7623,40 @@ export async function writeTaoUsdIndexRow(
   return { inserted: written.length > 0 };
 }
 
+/**
+ * Mirror the newest reading into KV so /api/v1/economics can price alpha in USD
+ * without a database read (#10381).
+ *
+ * ONLY THE FIELDS A CONSUMER NEEDS TO MULTIPLY AND AUDIT: the rate, when it was
+ * taken, the block it was pinned to, and the basis. `pools` stays out -- it is
+ * the audit trail for /api/v1/network/tao-usd, where it belongs, and copying it
+ * per minute into a hot key would grow the value for a field nothing on this
+ * path reads.
+ *
+ * Best-effort throughout. A KV that refuses leaves the durable row untouched
+ * and the consumer falls back to declining a USD figure, which is the correct
+ * behaviour anyway -- see taoUsdUsable in src/alpha-usd.ts, where an absent
+ * reading is `no_index_reading` rather than a silent zero.
+ */
+async function writeTaoUsdCurrentKv(env: Env, row: TaoUsdIndexRow) {
+  const kv = env.METAGRAPH_CONTROL;
+  if (!kv?.put) return;
+  try {
+    await kv.put(
+      KV_TAO_USD_CURRENT,
+      JSON.stringify({
+        usd_per_tao: row.usd_per_tao,
+        observed_at: row.observed_at,
+        block_number: row.block_number,
+        price_basis: row.price_basis,
+      }),
+    );
+  } catch (err) {
+    // Logged, never thrown: the series is already durable by this point.
+    console.error("data-api tao-usd current KV write failed:", err);
+  }
+}
+
 export async function ingestTaoUsdIndex(
   env: Env,
   ctx?: ExecutionContext,
@@ -7654,6 +7689,12 @@ export async function ingestTaoUsdIndex(
     if (!row) return { ok: false, reason: "observation_unusable" };
 
     const { inserted } = await writeTaoUsdIndexRow(env, row, ctx);
+    // The hot-path copy, beside the durable row (#10381). Best-effort and
+    // AFTER the Neon write, in that order deliberately: KV is a cache of the
+    // series, so a KV failure must never cost a minute of the series itself.
+    // The series is what a caller can audit; this is only what saves them a
+    // database read.
+    await writeTaoUsdCurrentKv(env, row);
     return {
       ok: true,
       inserted,
