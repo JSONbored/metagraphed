@@ -2750,7 +2750,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
 
   test("block_events: cold store returns a schema-stable empty list, never an error", async () => {
     const { status, body } = await gql(
-      '{ block_events(ref: "9") { block_number event_count events } }',
+      '{ block_events(ref: "9") { block_number event_count events { block_number event_kind } } }',
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_events.event_count, 0);
@@ -2770,19 +2770,32 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
             limit: 100,
             offset: 0,
             events: [
-              { block_number: 9, event_index: 0, kind: "Balances.Transfer" },
+              // `event_kind`, not `kind` -- the name AccountEvent publishes,
+              // the name the component declares, and the name production
+              // serves (verified: block_events rows carry block_number,
+              // event_index, event_kind, hotkey, ...). The invented `kind`
+              // survived only while `events` was `[JSON!]`, which passes any
+              // row through verbatim (#10404).
+              {
+                block_number: 9,
+                event_index: 0,
+                event_kind: "Balances.Transfer",
+              },
             ],
           },
         }),
       ),
     };
     const { status, body } = await gql(
-      '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events } }',
+      '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events { block_number event_kind } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_events.event_count, 1);
-    assert.equal(body.data.block_events.events[0].kind, "Balances.Transfer");
+    assert.equal(
+      body.data.block_events.events[0].event_kind,
+      "Balances.Transfer",
+    );
   });
 
   test("block_chain_events: resolves the all-events tier by block_number", async () => {
@@ -6051,7 +6064,12 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
           queried_at_block: 5000000,
           unlock_rate: 0.001,
           maturity_rate: 0.002,
-          king: { coldkey: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i" },
+          // A plain SS58, which is what the producer emits
+          // (`king: combined[0]?.hotkey ?? null`), what the component declares
+          // (`z.string().nullable().optional()`) and what production serves.
+          // The object this used to be was a shape no producer can reach --
+          // invisible while the field was JSON, which accepts anything (#10404).
+          king: "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
           count: 1,
           leaderboard: [
             {
@@ -6071,10 +6089,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     const r = body.data.subnet_conviction;
     assert.equal(r.netuid, 7);
     assert.equal(r.unlock_rate, 0.001);
-    assert.equal(
-      r.king.coldkey,
-      "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i",
-    );
+    assert.equal(r.king, "5HHBZRFX9UiyG77qU1pn1qMceRYKeg2a4yGBwPCHCyDocX4i");
     assert.equal(r.leaderboard[0].conviction, 1000);
   });
 
@@ -11594,7 +11609,8 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     const { status, body } = await gql(
       `{ subnet_event_summary(netuid: 5) {
           schema_version netuid window total_events kind_count category_count
-          recent_event_count limit categories event_kinds recent_events
+          recent_event_count limit categories event_kinds
+          recent_events { block_number event_kind }
         } }`,
     );
     assert.equal(status, 200);
@@ -11635,7 +11651,7 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
       ),
     };
     const { status, body } = await gql(
-      '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories event_kinds recent_events } }',
+      '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories event_kinds recent_events { block_number event_kind } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
