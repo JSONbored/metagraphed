@@ -608,6 +608,17 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:surface
 
+      # #10443/#10516: relationships the JSON Schema cannot see. A
+      # `probe-derived` revenue figure on a surface nothing probes did not come
+      # from a probe, and a revenue/treasury role on a PROTOCOL-DERIVED subnet
+      # account is the misattribution #10448 nearly made — that account
+      # receives large many-party inbound because that is what buying alpha
+      # looks like, so evidence requirements pass it while the conclusion stays
+      # wrong. File-only scan over registry/, no build needed.
+      - name: Validate revenue provenance
+        if: env.DOCS_ONLY != 'true'
+        run: npm run validate:revenue-provenance
+
       # #8658: the cron prober's input list and call_subnet_surface's resolution
       # catalog must be exactly the published registry filtered to
       # probe-enabled + public-safe + callable kinds. When they drift, surfaces
