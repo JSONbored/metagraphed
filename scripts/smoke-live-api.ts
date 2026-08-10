@@ -19,16 +19,6 @@ const baseUrl = normalizeBaseUrl(
 );
 const timeoutMs = Number(process.env.METAGRAPH_LIVE_SMOKE_TIMEOUT_MS || 15000);
 
-// Only fire the live smoke when this file is executed directly (npm run
-// smoke:live). Importing it for the PR-time substitution unit test must not hit
-// the network.
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
-  await runLiveSmoke();
-}
-
 async function runLiveSmoke(): Promise<void> {
   const healthDate = await discoverHealthHistoryDate();
   const fixtureSurfaceId =
@@ -706,4 +696,32 @@ function normalizeBaseUrl(value: string): string {
   url.search = "";
   url.hash = "";
   return url.toString().replace(/\/$/, "");
+}
+
+// Only fire the live smoke when this file is executed directly (npm run
+// smoke:live). Importing it for the PR-time substitution unit test must not hit
+// the network.
+//
+// AT THE FOOT OF THE FILE, and that is load-bearing rather than tidiness. This
+// call used to sit at line 29 of 709, which meant `runLiveSmoke` executed while
+// every `const` below it was still in its temporal dead zone. Function
+// DECLARATIONS hoist and initialise, so the call worked; `const` and `let` do
+// not, so the script was correct only for as long as nothing it reached touched
+// one.
+//
+// On 2026-08-08 something did. `CALLER_OWNED_ROUTE_IDS` was declared at line 646
+// and read at 622, and the production publish gate died with
+// `ReferenceError: Cannot access 'CALLER_OWNED_ROUTE_IDS' before initialization`
+// on every attempt for two days -- while the retry wrapper reported it as
+// "edge cache may still be revalidating" and burned four attempts and six
+// minutes on a deterministic crash.
+//
+// Running last means every declaration in the module is initialised first, so
+// the whole class is gone rather than this one instance of it. Do not move it
+// back up to be near what it calls.
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  await runLiveSmoke();
 }
