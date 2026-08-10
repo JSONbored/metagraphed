@@ -45,6 +45,8 @@
     "subnet-recycled",
     "subnet-recycled-by-network",
     "subnet-registrations",
+    "subnet-revenue",
+    "subnet-revenue-by-network",
     "subnet-serving",
     "subnet-stake-flow",
     "subnet-stake-moves",

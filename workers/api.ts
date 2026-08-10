@@ -167,6 +167,8 @@ import {
   handleValidatorEconomicsRanking,
   handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
+  handleSubnetRevenue,
+  handleChainRevenueCoverage,
   handleSubnetBurn,
   handleChainBurn,
   handleChainHolders,
@@ -581,6 +583,8 @@ import {
   VALIDATOR_ECONOMICS_RANKING_PATH,
   SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
+  SUBNET_REVENUE_PATH_PATTERN,
+  CHAIN_REVENUE_COVERAGE_PATH,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
   CROWDLOAN_DETAIL_PATH_PATTERN,
@@ -6614,6 +6618,13 @@ async function dispatchLiveChainRoute(
   const chain = chainNetworkId(network.id);
   const { pathname } = url;
 
+  const revenueMatch = SUBNET_REVENUE_PATH_PATTERN.exec(pathname);
+  if (revenueMatch) {
+    return handleSubnetRevenue(request, env, Number(revenueMatch[1]));
+  }
+  if (pathname === CHAIN_REVENUE_COVERAGE_PATH) {
+    return handleChainRevenueCoverage(request, env);
+  }
   const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(pathname);
   if (recycledMatch) {
     return handleSubnetRecycled(request, env, Number(recycledMatch[1]), chain);

@@ -1248,6 +1248,38 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/revenue",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      const r = body.data.revenue;
+      assert.equal(r.netuid, 7);
+      // The emission side is real for every subnet, revenue or not.
+      assert.equal(typeof r.emission.tao, "number");
+      assert.equal(r.emission.basis, "tao_total");
+      // #10446/#10447: a subnet with no observed revenue reports null, never
+      // 0 — 127 of 129 are in that state, and rendering them 0% covered would
+      // be a false claim about each of them.
+      assert.equal("revenue_usd" in r, true);
+      if (r.revenue_usd === null) {
+        assert.equal(r.coverage_ratio, null);
+        assert.equal(r.subsidy_multiple, null);
+      }
+      assert.equal(Array.isArray(r.sources), true);
+      assert.equal(typeof r.provenance, "string");
+      assert.equal(typeof r.verification.verified, "boolean");
+    },
+  ],
+  [
+    "/api/v1/chain/revenue-coverage",
+    (body) => {
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.observed_count, "number");
+      // The covered set can never exceed the network.
+      assert.equal(body.data.observed_count <= body.data.subnet_count, true);
+      assert.equal(Array.isArray(body.data.subnets), true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/recycled",
     (body) => {
       assert.equal(body.data.netuid, 7);

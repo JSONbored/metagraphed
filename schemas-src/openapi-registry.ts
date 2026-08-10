@@ -159,6 +159,10 @@ import {
   SubnetRecycledArtifactSchema,
 } from "./routes/subnet-registration-cost.ts";
 import {
+  ChainRevenueCoverageArtifactSchema,
+  SubnetRevenueArtifactSchema,
+} from "./routes/revenue-coverage.ts";
+import {
   SubnetHolderSchema,
   SubnetHoldersConcentrationSchema,
   SubnetHoldersDegradedSchema,
@@ -596,6 +600,8 @@ register(ChainBurnArtifactSchema, "ChainBurnArtifact");
 register(SubnetBurnHistoryPointSchema, "SubnetBurnHistoryPoint");
 register(SubnetBurnHistoryArtifactSchema, "SubnetBurnHistoryArtifact");
 register(SubnetRecycledArtifactSchema, "SubnetRecycledArtifact");
+register(SubnetRevenueArtifactSchema, "SubnetRevenueArtifact");
+register(ChainRevenueCoverageArtifactSchema, "ChainRevenueCoverageArtifact");
 register(SubnetHolderSchema, "SubnetHolder");
 register(SubnetHoldersConcentrationSchema, "SubnetHoldersConcentration");
 register(SubnetHoldersDegradedSchema, "SubnetHoldersDegraded");

@@ -1456,6 +1456,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's external revenue against the TAO the network emits to it (#10446/#10447), composed live at /api/v1/subnets/{netuid}/revenue (no static file). The denominator is tao_total -- SubnetTaoInEmission + SubnetExcessTao, measured -- with the alpha-priced and 18% owner-take alternates published beside it and never substituted for it. COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND THAT IS THE NORMAL CASE: two of 129 subnets publish a readable revenue figure, so a client rendering null as 0% makes a false claim about the other 127. An observed zero is a different fact and reads back as a real 0, with subsidy_multiple null there because dividing by zero is undefined rather than infinite. Only chain-verified and probe-derived contribute to the headline; operator-attested and third-party-reported are carried in `sources` and never summed in. Never 404s for a subnet with no revenue data.",
+      "id": "subnet-revenue",
+      "path": "/metagraph/subnets/{netuid}/revenue.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetRevenueArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Every subnet's revenue coverage in ONE response (#10447), composed live at /api/v1/chain/revenue-coverage (no static file) -- the cross-subnet companion to /subnets/{netuid}/revenue. `observed_count` against `subnet_count` is the honest headline: it states how much of the network has a readable revenue figure at all rather than leaving a reader to infer it from nulls. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network.",
+      "id": "chain-revenue-coverage",
+      "path": "/metagraph/chain/revenue-coverage.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainRevenueCoverageArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Live cumulative TAO recycled for registration on one subnet (#4339/8.4), queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache — not an account_events/log-layer aggregation (empirically confirmed the burn amount isn't captured by any ingested event or extrinsic field). REGISTRATION ECONOMICS, NOT A TEAM BURN (#10482): this is what it costs to register a UID, and nothing here measures a team destroying tokens it said it would destroy. That separate concept is named `token_burn` and is carried by the entity `burn` role (schemas/entity.schema.json), which requires an `unspendable_proof`. The two share a word and nothing else. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
       "id": "subnet-recycled",
       "path": "/metagraph/subnets/{netuid}/recycled.json",

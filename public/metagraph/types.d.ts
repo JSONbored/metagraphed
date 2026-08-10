@@ -401,6 +401,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/chain/revenue-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["chainRevenueCoverageByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/chain/signers": {
         parameters: {
             query?: never;
@@ -833,6 +853,26 @@ export interface paths {
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetRecycledByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/{network}/subnets/{netuid}/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 127 of 129 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["subnetRevenueByNetwork"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1924,6 +1964,23 @@ export interface paths {
         };
         /** Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainRegistrations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/revenue-coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped. */
+        get: operations["chainRevenueCoverage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4333,6 +4390,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 127 of 129 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible. */
+        get: operations["subnetRevenue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/serving": {
         parameters: {
             query?: never;
@@ -6710,6 +6784,73 @@ export interface components {
                 registrations_per_registrant: number | null;
             }[];
             window: ("7d" | "30d") | null;
+        };
+        /** @description Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network. Mirrors GET /api/v1/chain/revenue-coverage. */
+        ChainRevenueCoverageArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
+            notes?: string | string[];
+            /** @description How many subnets have a readable revenue figure. Against subnet_count this is the honest headline, stated rather than left to be inferred from nulls. */
+            observed_count: number;
+            /** @constant */
+            schema_version: 1;
+            subnet_count: number;
+            subnets: {
+                /** @description revenue / emission. NULL whenever revenue_usd is null, which is the majority case. A client must render null as 'not observed', never as 0%. */
+                coverage_ratio: number | null;
+                emission: {
+                    alternates: {
+                        alpha_out_priced: {
+                            tao: number;
+                            usd: number;
+                        } | null;
+                        owner_take: {
+                            tao: number;
+                            usd: number;
+                        };
+                    };
+                    /**
+                     * @description SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted.
+                     * @constant
+                     */
+                    basis: "tao_total";
+                    tao: number;
+                    usd: number;
+                };
+                netuid: number;
+                /** @enum {string} */
+                provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                /** @description NULL means not observed. Never zero-by-default: a subnet that earned nothing and a subnet nobody has read are different facts. */
+                revenue_usd: number | null;
+                searched_at?: string | null;
+                sources: {
+                    /** @description Null when the surface declares revenue but nothing has been read from it — an auth-gated endpoint, or a probe that has not run. */
+                    amount_usd: number | null;
+                    currency: string;
+                    grain: string;
+                    observed_at?: string | null;
+                    /** @enum {string} */
+                    provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                    response_hash?: string | null;
+                    surface_id: string;
+                }[];
+                /** @description emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero — dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable. */
+                subsidy_multiple: number | null;
+                verification: {
+                    checks: {
+                        detail: string;
+                        name: string;
+                        ok: boolean;
+                    }[];
+                    /** @description False means the response is not defensible and must not be presented as fact. Mirrors the emission-pipeline convention. */
+                    verified: boolean;
+                };
+                window_days: number;
+            }[];
+            window_days: number;
+        } & {
+            [key: string]: unknown;
         };
         /** @description Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
         ChainServingArtifact: {
@@ -11702,6 +11843,80 @@ export interface components {
             schema_version: number;
             window: ("7d" | "30d") | null;
         };
+        /** @description One subnet's external revenue against the TAO the network emits to it. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed, which is the normal case — 127 of 129 subnets publish no readable figure, and rendering them as 0% covered would be a false claim about each of them. Mirrors GET /api/v1/subnets/{netuid}/revenue. */
+        SubnetRevenueArtifact: {
+            contract_version?: string;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            generated_at: string;
+            netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
+            notes?: string | string[];
+            revenue: {
+                /** @description revenue / emission. NULL whenever revenue_usd is null, which is the majority case. A client must render null as 'not observed', never as 0%. */
+                coverage_ratio: number | null;
+                emission: {
+                    alternates: {
+                        alpha_out_priced: {
+                            tao: number;
+                            usd: number;
+                        } | null;
+                        owner_take: {
+                            tao: number;
+                            usd: number;
+                        };
+                    };
+                    /**
+                     * @description SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted.
+                     * @constant
+                     */
+                    basis: "tao_total";
+                    tao: number;
+                    usd: number;
+                };
+                netuid: number;
+                /** @enum {string} */
+                provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                /** @description NULL means not observed. Never zero-by-default: a subnet that earned nothing and a subnet nobody has read are different facts. */
+                revenue_usd: number | null;
+                searched_at?: string | null;
+                sources: {
+                    /** @description Null when the surface declares revenue but nothing has been read from it — an auth-gated endpoint, or a probe that has not run. */
+                    amount_usd: number | null;
+                    currency: string;
+                    grain: string;
+                    observed_at?: string | null;
+                    /** @enum {string} */
+                    provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                    response_hash?: string | null;
+                    surface_id: string;
+                }[];
+                /** @description emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero — dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable. */
+                subsidy_multiple: number | null;
+                verification: {
+                    checks: {
+                        detail: string;
+                        name: string;
+                        ok: boolean;
+                    }[];
+                    /** @description False means the response is not defensible and must not be presented as fact. Mirrors the emission-pipeline convention. */
+                    verified: boolean;
+                };
+                window_days: number;
+            };
+            /** @constant */
+            schema_version: 1;
+        } & {
+            [key: string]: unknown;
+        };
         SubnetsArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -15443,6 +15658,158 @@ export interface operations {
             };
         };
     };
+    chainRevenueCoverageByNetwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "observed_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "coverage_ratio": 0.9966,
+                     *             "emission": {
+                     *               "alternates": {
+                     *                 "alpha_out_priced": {
+                     *                   "tao": 0.5,
+                     *                   "usd": 0.5
+                     *                 },
+                     *                 "owner_take": {
+                     *                   "tao": 0.5,
+                     *                   "usd": 0.5
+                     *                 }
+                     *               },
+                     *               "basis": "tao_total",
+                     *               "tao": 0.5,
+                     *               "usd": 0.5
+                     *             },
+                     *             "netuid": 7,
+                     *             "provenance": "chain-verified",
+                     *             "revenue_usd": 0.5,
+                     *             "sources": [
+                     *               {
+                     *                 "amount_usd": 0.5,
+                     *                 "currency": "example",
+                     *                 "grain": "example",
+                     *                 "provenance": "chain-verified",
+                     *                 "surface_id": "example"
+                     *               }
+                     *             ],
+                     *             "subsidy_multiple": 0.5,
+                     *             "verification": {
+                     *               "checks": [
+                     *                 {
+                     *                   "detail": "example",
+                     *                   "name": "Example Subnet",
+                     *                   "ok": true
+                     *                 }
+                     *               ],
+                     *               "verified": false
+                     *             },
+                     *             "window_days": 1
+                     *           }
+                     *         ],
+                     *         "window_days": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainRevenueCoverageArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainSignersByNetwork: {
         parameters: {
             query?: {
@@ -18556,6 +18923,162 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetRecycledArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetRevenueByNetwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "revenue": {
+                     *           "coverage_ratio": 0.9966,
+                     *           "emission": {
+                     *             "alternates": {
+                     *               "alpha_out_priced": {
+                     *                 "tao": 0.5,
+                     *                 "usd": 0.5
+                     *               },
+                     *               "owner_take": {
+                     *                 "tao": 0.5,
+                     *                 "usd": 0.5
+                     *               }
+                     *             },
+                     *             "basis": "tao_total",
+                     *             "tao": 0.5,
+                     *             "usd": 0.5
+                     *           },
+                     *           "netuid": 7,
+                     *           "provenance": "chain-verified",
+                     *           "revenue_usd": 0.5,
+                     *           "searched_at": "2026-06-01T00:00:00.000Z",
+                     *           "sources": [
+                     *             {
+                     *               "amount_usd": 0.5,
+                     *               "currency": "example",
+                     *               "grain": "example",
+                     *               "provenance": "chain-verified",
+                     *               "surface_id": "example"
+                     *             }
+                     *           ],
+                     *           "subsidy_multiple": 0.5,
+                     *           "verification": {
+                     *             "checks": [
+                     *               {
+                     *                 "detail": "example",
+                     *                 "name": "Example Subnet",
+                     *                 "ok": true
+                     *               }
+                     *             ],
+                     *             "verified": false
+                     *           },
+                     *           "window_days": 1
+                     *         },
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetRevenueArtifact"];
                     };
                 };
             };
@@ -26982,6 +27505,155 @@ export interface operations {
                      *     1,4,40,10
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainRevenueCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "notes": "Example description.",
+                     *         "observed_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "coverage_ratio": 0.9966,
+                     *             "emission": {
+                     *               "alternates": {
+                     *                 "alpha_out_priced": {
+                     *                   "tao": 0.5,
+                     *                   "usd": 0.5
+                     *                 },
+                     *                 "owner_take": {
+                     *                   "tao": 0.5,
+                     *                   "usd": 0.5
+                     *                 }
+                     *               },
+                     *               "basis": "tao_total",
+                     *               "tao": 0.5,
+                     *               "usd": 0.5
+                     *             },
+                     *             "netuid": 7,
+                     *             "provenance": "chain-verified",
+                     *             "revenue_usd": 0.5,
+                     *             "sources": [
+                     *               {
+                     *                 "amount_usd": 0.5,
+                     *                 "currency": "example",
+                     *                 "grain": "example",
+                     *                 "provenance": "chain-verified",
+                     *                 "surface_id": "example"
+                     *               }
+                     *             ],
+                     *             "subsidy_multiple": 0.5,
+                     *             "verification": {
+                     *               "checks": [
+                     *                 {
+                     *                   "detail": "example",
+                     *                   "name": "Example Subnet",
+                     *                   "ok": true
+                     *                 }
+                     *               ],
+                     *               "verified": false
+                     *             },
+                     *             "window_days": 1
+                     *           }
+                     *         ],
+                     *         "window_days": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainRevenueCoverageArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */
@@ -44513,6 +45185,160 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetRegistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetRevenue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "revenue": {
+                     *           "coverage_ratio": 0.9966,
+                     *           "emission": {
+                     *             "alternates": {
+                     *               "alpha_out_priced": {
+                     *                 "tao": 0.5,
+                     *                 "usd": 0.5
+                     *               },
+                     *               "owner_take": {
+                     *                 "tao": 0.5,
+                     *                 "usd": 0.5
+                     *               }
+                     *             },
+                     *             "basis": "tao_total",
+                     *             "tao": 0.5,
+                     *             "usd": 0.5
+                     *           },
+                     *           "netuid": 7,
+                     *           "provenance": "chain-verified",
+                     *           "revenue_usd": 0.5,
+                     *           "searched_at": "2026-06-01T00:00:00.000Z",
+                     *           "sources": [
+                     *             {
+                     *               "amount_usd": 0.5,
+                     *               "currency": "example",
+                     *               "grain": "example",
+                     *               "provenance": "chain-verified",
+                     *               "surface_id": "example"
+                     *             }
+                     *           ],
+                     *           "subsidy_multiple": 0.5,
+                     *           "verification": {
+                     *             "checks": [
+                     *               {
+                     *                 "detail": "example",
+                     *                 "name": "Example Subnet",
+                     *                 "ok": true
+                     *               }
+                     *             ],
+                     *             "verified": false
+                     *           },
+                     *           "window_days": 1
+                     *         },
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetRevenueArtifact"];
                     };
                 };
             };

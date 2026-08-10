@@ -180,6 +180,8 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   },
   get_subnet_conviction: { route: "/api/v1/subnets/{netuid}/conviction" },
   get_subnet_recycled: { route: "/api/v1/subnets/{netuid}/recycled" },
+  get_subnet_revenue: { route: "/api/v1/subnets/{netuid}/revenue" },
+  list_revenue_coverage: { route: "/api/v1/chain/revenue-coverage" },
   get_subnet_burn: { route: "/api/v1/subnets/{netuid}/burn" },
   get_subnet_burn_history: { route: "/api/v1/subnets/{netuid}/burn/history" },
   get_tao_usd: { route: "/api/v1/network/tao-usd" },
