@@ -44,7 +44,7 @@
 // pair too. So the mapping between the two name systems is COMPUTED, and a new
 // type is covered the moment it is reachable -- there is no map to update.
 import { readFileSync } from "node:fs";
-import { parse } from "graphql";
+import { parse, print } from "graphql";
 import { GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
 import type {
   FieldDefinitionNode,
@@ -632,7 +632,7 @@ export function checkComponentParity(
     }
     projectedTypes += 1;
     const genFields = genType.getFields();
-    const added = new Set(projection.added);
+    const added = new Map(Object.entries(projection.added));
     const usedAdded = new Set<string>();
     // A paginated view RENAMES the component's row array and row count rather
     // than dropping them, so the element type and the count are compared under
@@ -652,8 +652,21 @@ export function checkComponentParity(
       const name = field.name.value;
       const genField = genFields[renamed.get(name) ?? name];
       if (!genField) {
-        if (added.has(name)) usedAdded.add(name);
-        else
+        const declaredSpelling = added.get(name);
+        if (declaredSpelling !== undefined) {
+          usedAdded.add(name);
+          // The declared TYPE, against the one the SDL publishes. It is the
+          // only place a resolver-added field's shape is written down -- there
+          // is no component to read one from -- so an unchecked spelling would
+          // make the generator emit a field the schema never had (#10214).
+          const spelling = print(field.type);
+          if (spelling !== declaredSpelling) {
+            violations.push(
+              `${sdlName}.${name} -- declared as resolver-added ` +
+                `${declaredSpelling}, the SDL publishes ${spelling}`,
+            );
+          }
+        } else
           violations.push(
             `${sdlName}.${name} -- neither ${projection.component} nor the ` +
               `declared \`added\` list supplies it`,
@@ -705,7 +718,7 @@ export function checkComponentParity(
         }
       }
     }
-    for (const name of added) {
+    for (const name of added.keys()) {
       if (!usedAdded.has(name)) {
         violations.push(
           `${sdlName}.${name} -- declared as resolver-added, but the SDL ` +

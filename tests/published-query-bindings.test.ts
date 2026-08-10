@@ -183,9 +183,9 @@ describe("traverse", () => {
       SubnetList: {
         component: "SubnetsArtifact",
         itemsFrom: "subnets",
-        added: [],
+        added: {},
       },
-      Subnet: { component: "SubnetIndexEntry", added: [], dropped: [] },
+      Subnet: { component: "SubnetIndexEntry", added: {}, dropped: [] },
     });
     expect(reachable.has("SubnetIndexEntry")).toBe(true);
   });
