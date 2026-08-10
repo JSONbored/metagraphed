@@ -58,6 +58,12 @@
 -- As 0011. Apply statement by statement; a failed build leaves an INVALID index
 -- to drop before retrying (`SELECT indexrelid::regclass FROM pg_index WHERE NOT
 -- indisvalid`).
+--
+-- Machine-readable, as in 0011: the prose above was addressed to a human and
+-- scripts/neon-migrate.ts wrapped the file in BEGIN/COMMIT regardless (#10365).
+-- Every statement is IF NOT EXISTS, so a half-applied run is re-runnable --
+-- which is what pays for having no rollback.
+-- neon:no-transaction
 
 -- 1. Block-by-hash, case-insensitively.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_blocks_head_hash_lower
