@@ -26,6 +26,12 @@
   "slug": "sn-39",
   "source_repo": "https://github.com/one-covenant/basilica",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:pricing). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -75,7 +81,7 @@
       "id": "sn-39-basilica-examples",
       "kind": "example",
       "name": "Basilica code examples",
-      "notes": "Official Basilica examples — hello-world, storage, and FastAPI quickstarts.",
+      "notes": "Official Basilica examples \u2014 hello-world, storage, and FastAPI quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
