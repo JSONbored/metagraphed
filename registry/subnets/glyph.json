@@ -27,6 +27,11 @@
   "slug": "glyph",
   "source_repo": "https://github.com/glyph-research/glyph-subnet",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,

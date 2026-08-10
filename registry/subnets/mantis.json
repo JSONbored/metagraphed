@@ -26,6 +26,11 @@
   "slug": "sn-123",
   "source_repo": "https://github.com/Barbariandev/MANTIS",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -75,7 +80,7 @@
       "id": "sn-123-mantis-price-feed",
       "kind": "data-artifact",
       "name": "MANTIS price & funding data artifact",
-      "notes": "Public no-auth JSON data artifact of asset prices and funding rates published by the SN123 MANTIS validator — the PRICE_DATA_URL declared in the official repo's config.py (line 63). Freshness/uptime are probe-derived and not asserted here.",
+      "notes": "Public no-auth JSON data artifact of asset prices and funding rates published by the SN123 MANTIS validator \u2014 the PRICE_DATA_URL declared in the official repo's config.py (line 63). Freshness/uptime are probe-derived and not asserted here.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -99,7 +104,7 @@
       "id": "sn-123-mantis-datalog-archive",
       "kind": "data-artifact",
       "name": "MANTIS historical datalog archive",
-      "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series — the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here. Confirmed ~74.3GiB (Content-Length 79805812736) via HEAD; probe intentionally uses HEAD rather than GET to avoid downloading the full archive on every check.",
+      "notes": "Public no-auth downloadable SQLite datalog of the SN123 MANTIS validator's full historical multi-asset signal/price time series \u2014 the DATALOG_ARCHIVE_URL declared in the official repo's config.py, distinct from and complementary to the latest_prices.json snapshot (this is the complete historical archive, served as a SQLite database file). Verified as a live SQLite artifact (magic bytes 'SQLite format 3'). Freshness/size are probe-derived and not asserted here. Confirmed ~74.3GiB (Content-Length 79805812736) via HEAD; probe intentionally uses HEAD rather than GET to avoid downloading the full archive on every check.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -148,7 +153,7 @@
       "id": "sn-123-mantis-website",
       "kind": "website",
       "name": "MANTIS subnet network console",
-      "notes": "Live MANTIS SN123 network console/dashboard at mantis123.com (page title \"MANTIS · Subnet 123 Network Console\"). Previously tracked only as the overlay's website_url field with a gap_note claiming no standalone website was verified; the domain is now confirmed live and self-identifies netuid 123 via its own dashboard API (see sn-123-mantis-dashboard-snap-meta). Served with an X-Robots noindex/nofollow tag, which does not affect public reachability.",
+      "notes": "Live MANTIS SN123 network console/dashboard at mantis123.com (page title \"MANTIS \u00b7 Subnet 123 Network Console\"). Previously tracked only as the overlay's website_url field with a gap_note claiming no standalone website was verified; the domain is now confirmed live and self-identifies netuid 123 via its own dashboard API (see sn-123-mantis-dashboard-snap-meta). Served with an X-Robots noindex/nofollow tag, which does not affect public reachability.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -220,7 +225,7 @@
       "id": "sn-123-mantis-dashboard-snap-breakouts",
       "kind": "subnet-api",
       "name": "MANTIS dashboard breakout events",
-      "notes": "Public no-auth GET /dashboard/api/snap/breakouts on mantis123.com returning per-ticker breakout event history (trigger/resolution blocks, direction, labels, predictor counts). Sibling of the already-registered snap/meta surface — same host/pattern, discovered via the console app.js snap(\"breakouts\") call site. Live-verified 2026-07-21: HTTP 200 JSON.",
+      "notes": "Public no-auth GET /dashboard/api/snap/breakouts on mantis123.com returning per-ticker breakout event history (trigger/resolution blocks, direction, labels, predictor counts). Sibling of the already-registered snap/meta surface \u2014 same host/pattern, discovered via the console app.js snap(\"breakouts\") call site. Live-verified 2026-07-21: HTTP 200 JSON.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -245,7 +250,7 @@
       "id": "sn-123-mantis-dashboard-snap-clusters",
       "kind": "subnet-api",
       "name": "MANTIS dashboard miner clusters",
-      "notes": "Public no-auth GET /dashboard/api/snap/clusters on mantis123.com returning per-ticker miner clustering data as public SS58 address groups (no coldkeys or wallet secrets). Sibling of snap/meta — app.js snap(\"clusters\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "notes": "Public no-auth GET /dashboard/api/snap/clusters on mantis123.com returning per-ticker miner clustering data as public SS58 address groups (no coldkeys or wallet secrets). Sibling of snap/meta \u2014 app.js snap(\"clusters\"). Live-verified 2026-07-21: HTTP 200 JSON.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -270,7 +275,7 @@
       "id": "sn-123-mantis-dashboard-snap-metagraph",
       "kind": "subnet-api",
       "name": "MANTIS dashboard metagraph snapshot",
-      "notes": "Public no-auth GET /dashboard/api/snap/metagraph on mantis123.com returning a per-UID metagraph snapshot (hotkey, incentive, emission, stake, trust) at the latest synced block. Same public-hotkey-only shape as history/incentive. Sibling of snap/meta — app.js snap(\"metagraph\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "notes": "Public no-auth GET /dashboard/api/snap/metagraph on mantis123.com returning a per-UID metagraph snapshot (hotkey, incentive, emission, stake, trust) at the latest synced block. Same public-hotkey-only shape as history/incentive. Sibling of snap/meta \u2014 app.js snap(\"metagraph\"). Live-verified 2026-07-21: HTTP 200 JSON.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -295,7 +300,7 @@
       "id": "sn-123-mantis-dashboard-snap-miners",
       "kind": "subnet-api",
       "name": "MANTIS dashboard miner totals",
-      "notes": "Public no-auth GET /dashboard/api/snap/miners on mantis123.com returning per-ticker miner participation totals (ch_totals). Sibling of snap/meta — app.js snap(\"miners\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "notes": "Public no-auth GET /dashboard/api/snap/miners on mantis123.com returning per-ticker miner participation totals (ch_totals). Sibling of snap/meta \u2014 app.js snap(\"miners\"). Live-verified 2026-07-21: HTTP 200 JSON.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -320,7 +325,7 @@
       "id": "sn-123-mantis-dashboard-snap-participation",
       "kind": "subnet-api",
       "name": "MANTIS dashboard participation history",
-      "notes": "Public no-auth GET /dashboard/api/snap/participation on mantis123.com returning per-ticker time series of participation counts. Sibling of snap/meta — app.js snap(\"participation\"). Live-verified 2026-07-21: HTTP 200 JSON.",
+      "notes": "Public no-auth GET /dashboard/api/snap/participation on mantis123.com returning per-ticker time series of participation counts. Sibling of snap/meta \u2014 app.js snap(\"participation\"). Live-verified 2026-07-21: HTTP 200 JSON.",
       "probe": {
         "enabled": true,
         "expect": "json",

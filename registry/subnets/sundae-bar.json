@@ -29,6 +29,12 @@
   },
   "source_repo": "https://github.com/sundae-bar/bittensor-subnet",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (website:pricing). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -146,7 +152,7 @@
       "id": "sn-121-sundae-bar-products-api",
       "kind": "subnet-api",
       "name": "Sundae Bar products catalog API",
-      "notes": "Public no-auth GET /api/products on www.sundaebar.ai returning the paginated JSON catalog of SN121 sundae_bar listings ({\"data\":[{type,name,description,...}]}) — the source-of-truth listings feed that the site's own llms.txt directs AI agents to query. Verified 200 application/json, distinct in host and path from the api.sundaebar.ai/api/v2/validators coordinator surface already registered.",
+      "notes": "Public no-auth GET /api/products on www.sundaebar.ai returning the paginated JSON catalog of SN121 sundae_bar listings ({\"data\":[{type,name,description,...}]}) \u2014 the source-of-truth listings feed that the site's own llms.txt directs AI agents to query. Verified 200 application/json, distinct in host and path from the api.sundaebar.ai/api/v2/validators coordinator surface already registered.",
       "probe": {
         "enabled": true,
         "expect": "json",
