@@ -21,6 +21,11 @@
   "schema_version": 1,
   "slug": "sn-83",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -88,7 +93,7 @@
       "id": "sn-83-cliqueai-min-compute",
       "kind": "data-artifact",
       "name": "CliqueAI minimum compute requirements",
-      "notes": "Public no-auth static YAML data file committed at the root of SN83 CliqueAI's official toptensor/CliqueAI repository — the subnet's minimum/recommended compute specification (per-role miner and validator CPU, GPU/VRAM, memory, storage, OS, and network bandwidth requirements) used by operators to provision hardware. Served read-only via raw.githubusercontent from the same official repo.",
+      "notes": "Public no-auth static YAML data file committed at the root of SN83 CliqueAI's official toptensor/CliqueAI repository \u2014 the subnet's minimum/recommended compute specification (per-role miner and validator CPU, GPU/VRAM, memory, storage, OS, and network bandwidth requirements) used by operators to provision hardware. Served read-only via raw.githubusercontent from the same official repo.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -137,7 +142,7 @@
       "id": "sn-83-cliqueai-protocol",
       "kind": "data-artifact",
       "name": "CliqueAI subnet protocol definition",
-      "notes": "Public no-auth machine-readable protocol module (CliqueAI/protocol.py) committed in the official toptensor/CliqueAI repository, defining the subnet's Bittensor synapse schema MaximumCliqueOfLambdaGraph — the request/response contract SN83 miners and validators communicate over (inputs: uuid, label, number_of_nodes, base92-encoded adjacency matrix; output: the maximum_clique node list). Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the min_compute spec and dashboard already registered.",
+      "notes": "Public no-auth machine-readable protocol module (CliqueAI/protocol.py) committed in the official toptensor/CliqueAI repository, defining the subnet's Bittensor synapse schema MaximumCliqueOfLambdaGraph \u2014 the request/response contract SN83 miners and validators communicate over (inputs: uuid, label, number_of_nodes, base92-encoded adjacency matrix; output: the maximum_clique node list). Pinned to an immutable commit. Verified 200, SS58-clean, no keys or secrets. Distinct from the min_compute spec and dashboard already registered.",
       "probe": {
         "enabled": true,
         "method": "GET",

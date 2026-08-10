@@ -31,6 +31,12 @@
   },
   "source_repo": "https://github.com/vidaio-subnet/vidaio-subnet",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["openapi", "website"],
+    "notes": "Its OpenAPI declares GET /available_credits behind a declared security scheme -- a per-user credit balance, not platform revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,

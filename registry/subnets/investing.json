@@ -29,6 +29,11 @@
       "No verified SSE/event stream yet."
     ]
   },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "id": "sn-88-investing-website",
@@ -161,7 +166,7 @@
       "id": "sn-88-investing-kym-app",
       "kind": "dashboard",
       "name": "Investing KYM (Know Your Miner) app",
-      "notes": "Public no-auth 'Know Your Miner' (KYM) web app for SN88 Investing at kym.investing88.ai — the no-code mining/onboarding interface documented as the 'KYM app' in the official mobiusfund/investing README. Served on the same investing88.ai domain as the already-registered dashboard and data APIs; distinct from the db.investing88.ai performance dashboard.",
+      "notes": "Public no-auth 'Know Your Miner' (KYM) web app for SN88 Investing at kym.investing88.ai \u2014 the no-code mining/onboarding interface documented as the 'KYM app' in the official mobiusfund/investing README. Served on the same investing88.ai domain as the already-registered dashboard and data APIs; distinct from the db.investing88.ai performance dashboard.",
       "probe": {
         "enabled": true,
         "expect": "html",
