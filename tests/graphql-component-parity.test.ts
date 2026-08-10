@@ -256,7 +256,7 @@ describe("scalar identity", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.undertyped, 30);
+    assert.equal(report.undertyped, 28);
   });
 
   test("it FAILS when a field is retyped to a different scalar", () => {
@@ -308,7 +308,7 @@ describe("scalar identity", () => {
       report.stale.includes("SubnetConviction.king"),
       `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
     );
-    assert.equal(report.undertyped, 29);
+    assert.equal(report.undertyped, 27);
   });
 
   test("a Float over an Int component field is a WIDENING and stays allowed", () => {

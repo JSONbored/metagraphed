@@ -327,6 +327,36 @@ export function orderingNote(edge: "first" | "last"): string {
  * A block height bound. Inclusive on both ends, which is the one thing a
  * caller cannot infer from the name and gets wrong by one row.
  */
+/**
+ * An `observed_at` bound on a block-derived feed, in epoch MILLISECONDS.
+ *
+ * Distinct from `blockBoundSchema` (#10395). `from`/`to` borrowed that builder
+ * and inherited its description -- "Inclusive first block height of the range
+ * to read", with `8783000` as the worked example -- while every reader that
+ * applies them compares `observed_at`:
+ *
+ *   src/blocks-cold-tier.ts      `[query.from, "b.observed_at >= ?"]`
+ *   src/r2-sql-blocks.ts         `[query.from, "observed_at >="]`
+ *
+ * and the route's own summary in `src/contracts.ts` says so too
+ * ("?from / ?to (observed_at epoch-ms)"). The contract contradicted itself,
+ * and a caller who followed the parameter description got an empty page from
+ * the two routes that honour the bound: 8,783,000 ms is January 1970.
+ *
+ * `block_start`/`block_end` are the height range and keep `blockBoundSchema`.
+ */
+export const observedAtBoundSchema = (edge: "first" | "last") =>
+  z
+    .int()
+    .min(0)
+    .describe(
+      `Inclusive ${edge} \`observed_at\` bound, as epoch MILLISECONDS -- ` +
+        "not a block height (use block_start/block_end for that). Omit for an " +
+        "unbounded end." +
+        orderingNote(edge),
+    )
+    .meta({ examples: [1786000000000] });
+
 export const blockBoundSchema = (edge: "first" | "last") =>
   z
     .int()

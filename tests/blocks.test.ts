@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { routeInt, routeText } from "../src/route-query.ts";
 import {
   handleBlock,
   handleBlockEvents,
@@ -761,4 +762,38 @@ test("loadBlocks keeps the plain OFFSET path when unfiltered", async () => {
   const { sql } = capture[0];
   assert.ok(!/WHERE/.test(sql));
   assert.ok(/ORDER BY block_number DESC LIMIT \? OFFSET \?/.test(sql));
+});
+
+// #10395: `from`/`to` are declared `z.int()` like every sibling bound on this
+// route, so `route-query.ts` hands the handler a NUMBER -- and the handler read
+// them with `routeText`, whose documented contract is to answer null for a
+// value that is not a string. The filter was dropped on every request, on a
+// parameter the route has published since #1991.
+//
+// Measured against production before the fix: `?to=8000000` and
+// `?to=1786000000000` both returned the newest blocks unfiltered, while the
+// identical bound on /api/v1/extrinsics -- whose handler forwards
+// `routeQuery(url)` wholesale rather than per-parameter -- returned an empty
+// page.
+//
+// Asserted at the parse, which is where the two accessors disagree: a test
+// that only checked "the handler passes something" would pass with `null`.
+test("blocks from/to parse to NUMBERS, which routeText cannot read (#10395)", () => {
+  const url = new URL(
+    "https://api.metagraph.sh/api/v1/blocks?limit=5&from=1786000000000&to=1786341977154",
+  );
+  // The bug: the string accessor answers null for a parameter the contract
+  // declares as an integer.
+  assert.equal(routeText(url, "from"), null);
+  assert.equal(routeText(url, "to"), null);
+  // The fix: the integer accessor answers the value the caller sent.
+  assert.equal(routeInt(url, "from"), 1786000000000);
+  assert.equal(routeInt(url, "to"), 1786341977154);
+  // And the sibling height bounds are unchanged -- they were always read with
+  // the integer accessor, which is why only from/to were dropped.
+  const heights = new URL(
+    "https://api.metagraph.sh/api/v1/blocks?block_start=8800000&block_end=8812000",
+  );
+  assert.equal(routeInt(heights, "block_start"), 8800000);
+  assert.equal(routeInt(heights, "block_end"), 8812000);
 });

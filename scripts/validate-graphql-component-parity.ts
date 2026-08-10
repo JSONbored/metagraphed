@@ -133,13 +133,6 @@ export const DECLARED: Record<string, string> = {
  */
 const JSON_UNDERTYPED: Record<string, string> = {
   "Adapter.snapshot": "AdapterArtifactSnapshot",
-  // Landed on main between this check being written (#10400) and the
-  // `field_sources_usd` provenance block being added (#10392) -- each PR was
-  // green against its own base and red together, which is what a gate added
-  // in parallel with the thing it measures always risks. Unlike
-  // `field_sources`, which is a record keyed by field name and honestly JSON,
-  // this one is a fixed `{kind, storage}` object.
-  "EconomicsTrends.field_sources_usd": "EconomicsTrendsArtifactFieldSourcesUsd",
   "BlockEvents.events": "[AccountEvent!]",
   "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
   "BuildSummary.artifact_budget_summary":
@@ -162,7 +155,6 @@ const JSON_UNDERTYPED: Record<string, string> = {
     "CompareValidatorsArtifactValidatorsSubnetContext",
   "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
   "SubnetConviction.king": "String",
-  "SubnetOhlc.field_sources_usd": "SubnetOhlcArtifactFieldSourcesUsd",
   "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
   "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
   "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",

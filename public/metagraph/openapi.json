@@ -56591,7 +56591,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -56601,7 +56601,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -60863,7 +60863,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -60873,7 +60873,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -66964,7 +66964,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -66974,7 +66974,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -75825,7 +75825,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -75835,7 +75835,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -78942,7 +78942,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -78952,7 +78952,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -94243,7 +94243,7 @@
             }
           },
           {
-            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
+            "description": "Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -94253,7 +94253,7 @@
             }
           },
           {
-            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
+            "description": "Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
