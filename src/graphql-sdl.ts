@@ -2928,6 +2928,12 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     window: String
     point_count: Int!
+    "True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh."
+    stale: Boolean!
+    "The bound that stale is measured against -- the same one the API refuses to derive USD figures from."
+    stale_after_ms: Int!
+    "How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading."
+    age_ms: Float
     "How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself."
     priced_point_count: Int!
     latest: TaoUsdLatest

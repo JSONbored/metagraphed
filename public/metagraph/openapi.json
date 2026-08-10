@@ -12229,6 +12229,7 @@
       "TaoUsdArtifactResponse": {
         "value": {
           "data": {
+            "age_ms": 1,
             "change_pct": 0.5,
             "change_usd": 0.5,
             "latest": {
@@ -12253,6 +12254,8 @@
             ],
             "priced_point_count": 1,
             "schema_version": 1,
+            "stale": false,
+            "stale_after_ms": 1,
             "window": "30d"
           },
           "meta": {
@@ -53395,6 +53398,19 @@
       "TaoUsdArtifact": {
         "additionalProperties": {},
         "properties": {
+          "age_ms": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading."
+          },
           "change_pct": {
             "anyOf": [
               {
@@ -53460,6 +53476,16 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "stale": {
+            "description": "True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh.",
+            "type": "boolean"
+          },
+          "stale_after_ms": {
+            "description": "The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "window": {
             "anyOf": [
               {
@@ -53475,6 +53501,9 @@
           "schema_version",
           "window",
           "point_count",
+          "stale",
+          "stale_after_ms",
+          "age_ms",
           "priced_point_count",
           "latest",
           "oldest_observed_at",

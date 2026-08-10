@@ -33,7 +33,41 @@
 // young series read as a complete one is how a four-day chart becomes a claim
 // about the month.
 
+import { TAO_USD_MAX_AGE_MS } from "./alpha-usd.ts";
+
 type Row = Record<string, unknown>;
+
+/**
+ * Age of a stored reading in ms, or null when it cannot say when it was taken.
+ *
+ * NOT `Number(row.observed_at)`. `Number(null)` and `Number("")` are both 0,
+ * which is FINITE -- a missing stamp would come out as "aged since the epoch",
+ * a 56-year-old reading reported as a number rather than as unknown. Only a
+ * real number, or a string that says one, is accepted.
+ */
+function readingAgeMs(row: Row, nowMs: number): number | null {
+  const raw = row?.observed_at;
+  const observed =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string" && raw.trim() !== ""
+        ? Number(raw)
+        : Number.NaN;
+  if (!Number.isFinite(observed)) return null;
+  return nowMs - observed;
+}
+
+/**
+ * Whether the newest reading is too old to price against.
+ *
+ * A reading that cannot say WHEN it was taken counts as STALE, never fresh --
+ * defaulting the unknown direction to "current" is exactly how a frozen rate
+ * survives a staleness check, and src/alpha-usd.ts makes the same call.
+ */
+function isStale(row: Row, nowMs: number): boolean {
+  const age = readingAgeMs(row, nowMs);
+  return age === null ? true : age > TAO_USD_MAX_AGE_MS;
+}
 
 /** The minimal D1 surface used here, so tests can inject a plain object. */
 export interface TaoUsdSeriesDb {
@@ -111,7 +145,8 @@ export function buildTaoUsdSeries(
   {
     window,
     includePoints = true,
-  }: { window?: unknown; includePoints?: boolean } = {},
+    now = Date.now,
+  }: { window?: unknown; includePoints?: boolean; now?: () => number } = {},
 ): Row {
   const points = (Array.isArray(rows) ? rows : [])
     .map((r) => ({
@@ -151,6 +186,23 @@ export function buildTaoUsdSeries(
     oldest_observed_at: points.length
       ? points[points.length - 1].observed_at
       : null,
+    // STALENESS IS STATED, NOT INFERRED (#8601 requirement 3).
+    //
+    // `latest.observed_at` was always there, but making every consumer parse
+    // it, know TAO_USD_MAX_AGE_MS, and compare correctly is three chances to
+    // get it wrong -- and a consumer that skips the check reads a frozen rate
+    // as a current one, which is #9704's shape: a value with no live writer
+    // behind it, served at 200 OK.
+    //
+    // The bound is the one src/alpha-usd.ts already refuses to multiply by, so
+    // "this response says stale" and "no USD figure anywhere on the API" are
+    // the same condition rather than two thresholds that can drift apart.
+    stale: newestRow ? isStale(newestRow, now()) : true,
+    stale_after_ms: TAO_USD_MAX_AGE_MS,
+    // How old the newest reading actually is, so a caller can show "3 minutes
+    // ago" without re-deriving it -- and so a stale response says HOW stale
+    // rather than only that it is.
+    age_ms: newestRow ? readingAgeMs(newestRow, now()) : null,
     change_usd: changeUsd,
     // Undefined from a zero base: a rise from 0 is not "infinitely more
     // expensive", it is a change with no meaningful ratio.

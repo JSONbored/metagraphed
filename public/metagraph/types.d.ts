@@ -12294,6 +12294,8 @@ export interface components {
             [key: string]: unknown;
         };
         TaoUsdArtifact: {
+            /** @description How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading. */
+            age_ms: number | null;
             change_pct: number | null;
             change_usd: number | null;
             latest: components["schemas"]["TaoUsdLatest"] | null;
@@ -12304,6 +12306,10 @@ export interface components {
             /** @description How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
             priced_point_count: number;
             schema_version: number;
+            /** @description True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh. */
+            stale: boolean;
+            /** @description The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift. */
+            stale_after_ms: number;
             window: string | null;
         } & {
             [key: string]: unknown;
@@ -34348,6 +34354,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "age_ms": 1,
                      *         "change_pct": 0.5,
                      *         "change_usd": 0.5,
                      *         "latest": {
@@ -34372,6 +34379,8 @@ export interface operations {
                      *         ],
                      *         "priced_point_count": 1,
                      *         "schema_version": 1,
+                     *         "stale": false,
+                     *         "stale_after_ms": 1,
                      *         "window": "30d"
                      *       },
                      *       "meta": {
