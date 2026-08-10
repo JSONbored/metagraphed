@@ -82,7 +82,7 @@
     // what keeps it from becoming drift.
     // ---------------------------------------------------------------------
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
-    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,subnet_lifecycle,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily,subnets,surfaces,providers,surface_history",
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,subnet_lifecycle,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily,subnets,surfaces,providers,surface_history,revenue_observations,revenue_probe_failures",
     // Staging drift tripwire (types-epic B, #7860): when "true", the routes
     // schemas-src/ covers (subnets, subnet-detail, health, economics,
     // subnet-stake-quote) parse their own outgoing envelope against the Zod
@@ -1053,6 +1053,15 @@
       // visible without waiting for the publish path to notice. See
       // ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON in workers/config.ts.
       "4,34 * * * *",
+      // 24 = the hourly revenue probe lane (#10566). src/revenue-probe.ts
+      // shipped in #10444 with no caller and no trigger, so revenue_observations
+      // was never written and every revenue route served null. Minute 24 is one
+      // of only two free on this grid. See REVENUE_PROBE_CRON in
+      // workers/config.ts for why hourly rather than the 15-minute probe grid --
+      // these are billing endpoints, and the cadence is for restatement, not
+      // freshness. NOTE: Workers Builds does not apply cron triggers; this one
+      // needs `wrangler triggers deploy` or the lane never fires.
+      "24 * * * *",
       // 54 = the hotkey-alpha staleness watchdog (#9576): the same source-side
       // alarm for the OTHER ledger the holdings columns are composed from,
       // which shipped in #9512 without one. Hourly rather than twice-hourly,

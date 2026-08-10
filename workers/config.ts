@@ -107,6 +107,34 @@ export const SELF_HEALTH_PROBE_CRON =
  */
 export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
 
+/**
+ * The revenue probe lane (#10566).
+ *
+ * src/revenue-probe.ts shipped in #10444 with NO caller -- no worker imported
+ * it and no config carried a trigger -- so `revenue_observations` was never
+ * written and every revenue route reported null for all 129 subnets. Nothing
+ * failed, because the epic's own rule is that absent revenue serialises as null
+ * rather than zero, which is exactly what a dead producer looks like.
+ *
+ * Minute 24 is one of only TWO free on the hourly grid (24 and 56), computed
+ * from the full trigger list in wrangler.jsonc rather than guessed.
+ *
+ * HOURLY, not the 15-minute probe grid. Four surfaces are eligible today --
+ * three on SN64, one on SN51 -- and these are a small team's BILLING endpoints,
+ * which the lane's own header calls out: a lane that hammers them is a bad
+ * citizen. Hourly is chosen for correctness rather than freshness: SN64's
+ * `daily_revenue_summary` restates the current day all day, so an hourly pass
+ * settles each day's final value, where a single daily snapshot would capture
+ * whatever the figure happened to be mid-afternoon and store it as the day. 4
+ * surfaces x 24 = 96 requests/day.
+ *
+ * THE TRIGGER MUST BE DEPLOYED SEPARATELY. Workers Builds ships code but not
+ * cron triggers, so this expression needs a `wrangler triggers deploy` or the
+ * lane silently never fires -- which is indistinguishable from the state it was
+ * added to fix.
+ */
+export const REVENUE_PROBE_CRON = "24 * * * *";
+
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
 // stores directly. Each keeps the cadence its workflow ran on, offset onto a

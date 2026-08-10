@@ -2801,6 +2801,11 @@ const operationalSurfaces = surfaces
     // (direct surface-id match, exact schema_url match, or same-netuid
     // same-origin openapi projection for a subnet-api surface).
     schema_source: serviceSchemaSource(resolveAgentServiceSchema(surface)),
+    // #10566: the revenue declaration, verbatim. This artifact is already the
+    // probe-enabled, public-safe surface list, which is exactly the set the
+    // revenue lane may fetch -- so the lane reads one document instead of
+    // rebuilding the same list from 129 per-subnet artifacts every tick.
+    revenue: surface.revenue ?? null,
   }))
   .sort(
     (a, b) => a.netuid - b.netuid || a.surface_id.localeCompare(b.surface_id),
