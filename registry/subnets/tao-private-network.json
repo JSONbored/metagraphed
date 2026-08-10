@@ -23,6 +23,11 @@
   "name": "TAO Private Network",
   "netuid": 65,
   "notes": "First maintainer-reviewed pass for SN65 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 13-path OpenAPI schema (base path /api/v1, declared via the schema's own servers block): added one new no-auth no-param surface, /api/v1/version. Two other no-auth routes (/vpn/countries, /vpn/stats) consistently time out live and were not promoted; three routes require apiKeyAuth.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-65",
   "social": {
@@ -100,7 +105,7 @@
       "id": "sn-65-taofu-labs-subnet-api",
       "kind": "subnet-api",
       "name": "TAO Private Network subnet-api",
-      "notes": "Public no-auth JSON endpoint (canonical health check → {\"message\":\"OK!\"}) of the SN65 TAO Private Network API; /api/v1/version is a sibling. The full contract is the openapi surface. Served on api.taoprivatenetwork.com, the subnet's registered contact domain.",
+      "notes": "Public no-auth JSON endpoint (canonical health check \u2192 {\"message\":\"OK!\"}) of the SN65 TAO Private Network API; /api/v1/version is a sibling. The full contract is the openapi surface. Served on api.taoprivatenetwork.com, the subnet's registered contact domain.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -398,6 +403,11 @@
       "id": "sn-65-tpn-vpn-stats",
       "kind": "subnet-api",
       "name": "TPN VPN network statistics",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Get VPN Validator Statistics operation on the TPN API (GET /vpn/stats), declared in the subnet's own OpenAPI spec at https://api.taoprivatenetwork.com/api-docs/openapi.json (server /api/v1). The spec declares no security on it. Live-checked 2026-07-21: GET /vpn/stats returned HTTP 500 after roughly 50s (reproduced for both no-auth GET reporting routes), so the endpoint is documented but not currently serving; the probe is left disabled rather than asserting a working surface.",
       "probe": {
         "enabled": false,

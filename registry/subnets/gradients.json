@@ -28,6 +28,11 @@
   "name": "Gradients",
   "netuid": 56,
   "notes": "Reviewed overlay for SN56 Gradients. The website describes decentralized AI training on Bittensor and exposes a public API host with machine-readable OpenAPI. Only read-only public performance endpoints are promoted; credentialed/write task and account flows are intentionally excluded. This pass removed a duplicate surface (sn-56-gradients-data-artifact and sn-56-gradients-subnet-api pointed to the identical /v1/network/status URL; kept the correctly-classified subnet-api one) and fixed 4 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 56-path OpenAPI schema and added one new no-auth no-param surface, /tournament/latest/details; the schema's other undiscovered no-param route, /v1/tasks/organic/completed, 404s live and was not promoted. On-chain identity re-confirmed unchanged.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "gradients",
   "source_repo": "https://github.com/gradients-ai/G.O.D",
@@ -186,7 +191,7 @@
       "id": "sn-56-gradients-examples",
       "kind": "example",
       "name": "Gradients code examples",
-      "notes": "Official Gradients (G.O.D) examples — DPO / GRPO / environment task quickstarts.",
+      "notes": "Official Gradients (G.O.D) examples \u2014 DPO / GRPO / environment task quickstarts.",
       "probe": {
         "enabled": false,
         "expect": "any",
@@ -278,7 +283,7 @@
       "id": "sn-56-gradients-auditing-tasks-api",
       "kind": "subnet-api",
       "name": "Gradients auditing tasks API",
-      "notes": "Public no-auth GET /auditing/tasks — audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /auditing/tasks \u2014 audited task records (task id, organic flag, status, model) for the SN56 Gradients tournament. Documented in the subnet's openapi and served on the same api.gradients.io host as the subnet's registered API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -300,7 +305,7 @@
       "id": "sn-56-gradients-challenger-review-config",
       "kind": "data-artifact",
       "name": "Gradients challenger code-review config",
-      "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament — the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
+      "notes": "Public no-auth machine-readable JSON config from the official SN56 Gradients (G.O.D) validator repository (gradients-ai/G.O.D), pinned to an immutable commit. Defines the forensic code-review policy the validators apply to challenger repositories in the training tournament \u2014 the system prompt and rules used to detect cheating (undeclared external datasets, benchmark leakage, external pretrained weights). Static artifact documenting the subnet's anti-cheat evaluation logic.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -987,6 +992,11 @@
       "id": "sn-56-gradients-v1-scheduler-jobs",
       "kind": "subnet-api",
       "name": "Gradients v1 scheduler jobs",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.gradients.io/openapi.json"
+      },
       "notes": "Scheduler List Jobs operation on the Gradients API (GET /v1/scheduler/jobs), declared in the subnet's own OpenAPI 3.1.0 spec at https://api.gradients.io/openapi.json. The spec declares the APIKeyHeader security scheme on it, so it is registered auth_required:true with probe.enabled:false (Phase 3).",
       "probe": {
         "enabled": false,

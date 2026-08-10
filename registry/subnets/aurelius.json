@@ -20,6 +20,11 @@
   "name": "Aurelius",
   "netuid": 37,
   "notes": "First maintainer-reviewed pass for SN37 (previously candidate-discovered/unreviewed, categories empty, no source-repo surface despite source_repo already being set). Added the missing source-repo surface; the registered website (aureliusaligned.ai) is currently unreachable (DNS resolves, connection times out on both ports 80/443) so no website surface is promoted. Fixed all 9 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Aurelius Central API OpenAPI schema (58 paths): the /work-token/admin/*, /config, /submissions/*, /benchmark/*, /novelty/*, /classifier/*, /stats/*, /reports/*, and /admin/api/* prefixes all live-tested as 401-gated despite the schema declaring no security scheme for several of them (a documentation gap on the operator's side, not a registry concern). Found and added one new genuine no-auth public endpoint: GET /work-token/deposit-address/verify, returning the designated multisig deposit address and its verification instructions (public on-chain address only, no secrets).",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-37",
   "social": {
@@ -1218,7 +1223,12 @@
       "id": "sn-37-aurelius-stats-deposits",
       "kind": "subnet-api",
       "name": "Aurelius GET stats deposits",
-      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/deposits on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
+      "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/deposits on new-collector-api-production.up.railway.app. Live-verified 2026-07-21: HTTP 401 {\"detail\":\"Not authenticated\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes. REVENUE ROLE (#10464): none, searched 2026-08-10. Every one of this subnet's nine stats endpoints answers 404 {\"message\":\"Application not found\"} -- the Railway host itself is gone, not just the routes.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1249,6 +1259,11 @@
       "id": "sn-37-aurelius-stats-submissions",
       "kind": "subnet-api",
       "name": "Aurelius GET stats submissions",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/submissions on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1280,6 +1295,11 @@
       "id": "sn-37-aurelius-stats-validators",
       "kind": "subnet-api",
       "name": "Aurelius GET stats validators",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/validators on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1311,6 +1331,11 @@
       "id": "sn-37-aurelius-stats-pipeline",
       "kind": "subnet-api",
       "name": "Aurelius GET stats pipeline",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/pipeline on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1342,6 +1367,11 @@
       "id": "sn-37-aurelius-stats-transparency-report",
       "kind": "subnet-api",
       "name": "Aurelius GET stats transparency report",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/transparency-report on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1373,6 +1403,11 @@
       "id": "sn-37-aurelius-stats-consensus-deviation",
       "kind": "subnet-api",
       "name": "Aurelius GET stats consensus deviation",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/consensus-deviation on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1404,6 +1439,11 @@
       "id": "sn-37-aurelius-stats-version-distribution",
       "kind": "subnet-api",
       "name": "Aurelius GET stats version distribution",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/version-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1435,6 +1475,11 @@
       "id": "sn-37-aurelius-stats-archetypes",
       "kind": "subnet-api",
       "name": "Aurelius GET stats archetypes",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/archetypes on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -1466,6 +1511,11 @@
       "id": "sn-37-aurelius-stats-influence-distribution",
       "kind": "subnet-api",
       "name": "Aurelius GET stats influence distribution",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Auth-gated (Bearer token, Phase 3 credential passthrough, not built yet) GET /stats/influence-distribution on new-collector-api-production.up.railway.app. Not individually curled at this volume (44 HTTPBearer-declared operations) \u2014 same declared `HTTPBearer` security scheme as the verified `sn-37-aurelius-stats-deposits` (401 \"Not authenticated\"), and the OpenAPI schema's own `security` field names the scheme explicitly (unlike SN36's undocumented case). Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7052) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,

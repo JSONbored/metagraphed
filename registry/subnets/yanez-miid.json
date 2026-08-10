@@ -22,6 +22,11 @@
   "name": "Yanez MIID",
   "netuid": 54,
   "notes": "First maintainer-reviewed pass for SN54 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 5-path Miner Stats API OpenAPI schema: all no-auth no-param routes are already tracked; the sole remaining route, /miners/{miner_uid}, has no stable canonical value (254 possible miner UIDs) and was excluded.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-54",
   "social": {
@@ -99,6 +104,10 @@
       "id": "sn-54-yanez-compliance-subnet-api",
       "kind": "subnet-api",
       "name": "Yanez MIID subnet-api",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth JSON endpoint of the SN54 Yanez MIID Miner Stats API (latest per-miner quality/similarity scores). Sibling endpoints: /miners and /miners/{miner_uid}; the full contract is the openapi surface. Powers the subnet's official leaderboard dashboard.",
       "probe": {
         "enabled": true,
@@ -124,6 +133,10 @@
       "id": "sn-54-yanez-compliance-miners-list",
       "kind": "data-artifact",
       "name": "Yanez MIID miner UID catalog",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET returning the full catalog of registered SN54 miner UIDs (254 entries observed), distinct from the miners_stats scoring payload already registered as the subnet-api surface. Documented in the subnet's own OpenAPI spec (already the registered schema_url) as \"List Miners\" (operationId list_miners_miners_get), same host as the registered openapi/subnet-api surfaces.",
       "probe": {
         "enabled": true,
@@ -193,7 +206,7 @@
       "id": "sn-54-yanez-miner-by-uid",
       "kind": "subnet-api",
       "name": "Yanez Compliance per-miner score history",
-      "notes": "Public no-auth GET /miners/{miner_uid} on miners-stats.yanezcompliance.net returning that miner's scored evaluation history. Documented in the subnet OpenAPI (miners-stats.yanezcompliance.net/openapi.json); sibling of the already-registered /miners list. Path-parameterized template registered per catalog-everything policy (URL uses percent-encoded {miner_uid} for URI-format compliance — not a baked-in example uid). probe.enabled:false because there is no single fixed URL to auto-probe without a caller-supplied miner_uid. Live-verified 2026-07-21: GET /miners/0 -> 200 JSON array of scored evaluations.",
+      "notes": "Public no-auth GET /miners/{miner_uid} on miners-stats.yanezcompliance.net returning that miner's scored evaluation history. Documented in the subnet OpenAPI (miners-stats.yanezcompliance.net/openapi.json); sibling of the already-registered /miners list. Path-parameterized template registered per catalog-everything policy (URL uses percent-encoded {miner_uid} for URI-format compliance \u2014 not a baked-in example uid). probe.enabled:false because there is no single fixed URL to auto-probe without a caller-supplied miner_uid. Live-verified 2026-07-21: GET /miners/0 -> 200 JSON array of scored evaluations.",
       "probe": {
         "enabled": false,
         "expect": "json",
