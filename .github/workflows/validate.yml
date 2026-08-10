@@ -343,10 +343,25 @@ jobs:
       # private-boundary leak, broken doc-contract reference, or malformed
       # intake template can land in a "docs-only" PR just as easily as in a
       # code PR).
+      # CONCURRENTLY, not sequentially (#10424). eslint and prettier read the
+      # same tree and write nothing, so they share nothing but CPU: timed
+      # separately they are 38s and 29s, and in series that is the 80s that
+      # dominated this job.
+      #
+      # Both are waited on and the exit code is carried out explicitly, because
+      # a bare `cmd & cmd & wait` reports the SHELL's status, not the jobs' --
+      # it would turn a red lint into a green step, which is worse than a slow
+      # one. Verified against every combination: (0,0)->0, (1,0)->1, (0,1)->1,
+      # (3,5)->5. Both still run even when the first fails, so one push shows
+      # you both lists rather than making you fix them one at a time.
       - name: Lint + format
         run: |
-          npm run lint
-          npm run format:check
+          npm run lint & lint=$!
+          npm run format:check & fmt=$!
+          rc=0
+          wait $lint || rc=$?
+          wait $fmt || rc=$?
+          exit $rc
 
       # Same class of check as Lint + format above: cheap, no build, no network
       # — runs unconditionally rather than gating on DOCS_ONLY since a real
@@ -727,24 +742,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: shared 1/3
+          - name: shared 1/5
             id: shared-1
-            args: --pass=shared --shard=1/3
+            args: --pass=shared --shard=1/5
             cov: coverage
             junit: ""
-          - name: shared 2/3
+          - name: shared 2/5
             id: shared-2
-            args: --pass=shared --shard=2/3
+            args: --pass=shared --shard=2/5
             cov: coverage
             junit: ""
-          - name: shared 3/3
+          - name: shared 3/5
             id: shared-3
-            args: --pass=shared --shard=3/3
+            args: --pass=shared --shard=3/5
             cov: coverage
             junit: ""
-          - name: mocked
-            id: mocked
-            args: --pass=mocked
+          - name: shared 4/5
+            id: shared-4
+            args: --pass=shared --shard=4/5
+            cov: coverage
+            junit: ""
+          - name: shared 5/5
+            id: shared-5
+            args: --pass=shared --shard=5/5
+            cov: coverage
+            junit: ""
+          - name: mocked 1/2
+            id: mocked-1
+            args: --pass=mocked --shard=1/2
+            cov: coverage-mocked
+            junit: "-mocked"
+          - name: mocked 2/2
+            id: mocked-2
+            args: --pass=mocked --shard=2/2
             cov: coverage-mocked
             junit: "-mocked"
     steps:
@@ -896,7 +926,7 @@ jobs:
       # failure this check has always existed to prevent.
       - name: Verify every leg's report arrived
         run: |
-          for f in lcov-shared-1 lcov-shared-2 lcov-shared-3 lcov-mocked; do
+          for f in lcov-shared-1 lcov-shared-2 lcov-shared-3 lcov-shared-4 lcov-shared-5 lcov-mocked-1 lcov-mocked-2; do
             test -s "cov/$f.info" || { echo "missing or empty: cov/$f.info"; exit 1; }
           done
 
@@ -950,7 +980,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-shared-4.info,./cov/lcov-shared-5.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
@@ -969,7 +999,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-shared-4.info,./cov/lcov-shared-5.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
@@ -982,7 +1012,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-shared-4.xml,./cov/vitest-shared-5.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
@@ -995,7 +1025,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-shared-4.xml,./cov/vitest-shared-5.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
