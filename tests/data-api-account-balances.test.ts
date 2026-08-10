@@ -18,13 +18,12 @@
 // SKIPS an account whose free and reserved are both zero, so "absent from the
 // scan" would mean "delete every wallet that emptied" if this lane ever pruned.
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
@@ -39,27 +38,28 @@ vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0017_account_balances.sql",
-  ),
-  "utf8",
-);
-const PASSES_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0020_account_balances_passes.sql",
-  ),
-  "utf8",
-);
+/**
+ * The REAL Neon DDL for the two tables this route writes (#10328).
+ *
+ * Applied verbatim rather than transliterated. The pass tally this suite
+ * asserts on is emitted as `$1::bigint`, and the SQLite path deleted that cast
+ * before the engine saw it -- so a typing fault in the tally was unreachable
+ * from here even though the tally is what these tests are about.
+ */
+const MIGRATIONS = [
+  "migrations/neon/0005_remaining_d1_tables.sql",
+  "migrations/neon/0007_hand_created_tables.sql",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
+
+/** Tables a test may write, emptied between tests. */
+const SEEDED_TABLES = ["account_balances", "account_balances_passes"];
 
 const PATH = "/api/v1/internal/account-balances-sync";
 const SECRET = "test-account-balances-sync-secret";
 const SS58 = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 const SS58_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-let db: InstanceType<typeof DatabaseSync>;
+let db: PGlite;
 
 // Every message the route enqueued during the current test. The route is
 // ENQUEUE-ONLY (metagraphed-infra#353), so this is now the only thing it
@@ -149,24 +149,32 @@ function balanceRow(overrides: Row = {}): Row {
   };
 }
 
-const rows = () =>
-  db.prepare("SELECT * FROM account_balances ORDER BY ss58").all() as Row[];
+const rows = async () =>
+  (await db.query<Row>("SELECT * FROM account_balances ORDER BY ss58")).rows;
 
-const passes = () =>
-  db
-    .prepare("SELECT * FROM account_balances_passes ORDER BY captured_at")
-    .all() as Row[];
+const passes = async () =>
+  (
+    await db.query<Row>(
+      "SELECT * FROM account_balances_passes ORDER BY captured_at",
+    )
+  ).rows;
 
-beforeEach(() => {
+// ONE instance for the file, TRUNCATE between tests -- booting pglite is
+// ~470ms and the schema never varies.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
   enqueued = [];
-  db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
-  db.exec(PASSES_SCHEMA);
+  await db.exec(`TRUNCATE ${SEEDED_TABLES.join(", ")}`);
   pg.control.queries.length = 0;
-  // Wrapped rather than handed over raw: the upsert and the pass tally are
-  // emitted as Postgres, and `$1::bigint` is a parse error in SQLite. See
-  // tests/helpers/pg-sqlite.ts for exactly what is translated and what is not.
-  pg.control.db = sqliteBackedPg(db);
+  // Handed over VERBATIM. The upsert and the pass tally are emitted as
+  // Postgres, `$1::bigint` included, and this is the engine that can judge
+  // them -- no placeholder rewrite and no cast stripping in between.
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
 });
 
 describe("POST /api/v1/internal/account-balances-sync", () => {
@@ -190,12 +198,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       // than dropped, so a producer can tell the field was understood.
       pass_total: null,
     });
-    assert.equal(rows().length, 2);
+    assert.equal((await rows()).length, 2);
     // A zero free_tao IS stored: the producer only skips an account whose free
     // AND reserved are both zero, so "nothing liquid, some reserved" is a real
     // balance and not a placeholder.
-    assert.equal(rows()[1]!.free_tao, 0);
-    assert.equal(rows()[1]!.reserved_tao, 7);
+    assert.equal((await rows())[1]!.free_tao, 0);
+    assert.equal((await rows())[1]!.reserved_tao, 7);
   });
 
   test("accepts a bare array as well as {rows:[...]}", async () => {
@@ -203,7 +211,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     // bare array must not cost a whole six-hour cycle.
     const response = await postAndConsume([balanceRow()]);
     assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
+    assert.equal((await rows()).length, 1);
   });
 
   test("a later capture wins and an older one is a no-op", async () => {
@@ -214,13 +222,13 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     await postAndConsume({
       rows: [balanceRow({ free_tao: 2000.75, captured_at: 1_780_000_100_000 })],
     });
-    assert.equal(rows()[0]!.free_tao, 2000.75);
+    assert.equal((await rows())[0]!.free_tao, 2000.75);
 
     await postAndConsume({
       rows: [balanceRow({ free_tao: 1, captured_at: 1_779_000_000_000 })],
     });
     assert.equal(
-      rows()[0]!.free_tao,
+      (await rows())[0]!.free_tao,
       2000.75,
       "an older capture must never walk a balance backwards",
     );
@@ -235,13 +243,20 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     await postAndConsume({
       rows: [balanceRow(), balanceRow({ ss58: SS58_B })],
     });
-    assert.equal(rows().length, 2);
+    assert.equal((await rows()).length, 2);
 
     await postAndConsume({
       rows: [balanceRow({ captured_at: 1_780_000_100_000 })],
     });
-    assert.equal(rows().length, 2, "the absent account survived the batch");
-    assert.equal(rows().find((r) => r.ss58 === SS58_B)!.free_tao, 1000.5);
+    assert.equal(
+      (await rows()).length,
+      2,
+      "the absent account survived the batch",
+    );
+    assert.equal(
+      (await rows()).find((r) => r.ss58 === SS58_B)!.free_tao,
+      1000.5,
+    );
   });
 
   test("rejects a missing or wrong token (401)", async () => {
@@ -253,7 +268,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       (await postAndConsume({ rows: [balanceRow()] }, "nope")).status,
       401,
     );
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("is disabled (503) when the secret is not configured", async () => {
@@ -327,7 +342,11 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
         `expected 400 for ${JSON.stringify(row)}`,
       );
     }
-    assert.equal(rows().length, 0, "no partial write from a rejected batch");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "no partial write from a rejected batch",
+    );
   });
 
   test("rejects an oversized batch (413) by rows and by bytes", async () => {
@@ -343,7 +362,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       " ",
     );
     assert.equal((await postAndConsume(huge)).status, 413);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("a whole batch is ONE statement, end to end through the route", async () => {
@@ -372,12 +391,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       stores: ["queue"],
       pass_total: null,
     });
-    assert.equal(rows().length, 60, "every row landed");
+    assert.equal((await rows()).length, 60, "every row landed");
     // And the values are not shifted a column: pgFlatValues' flattening and
     // pgValuesClause's `$n` numbering have to agree with the writer's own
     // column order, and a silent shift here would write every balance into the
     // wrong field and still succeed.
-    const first = rows().find((r) => r.ss58 === "acct-7")!;
+    const first = (await rows()).find((r) => r.ss58 === "acct-7")!;
     assert.equal(first.free_tao, balanceRow().free_tao);
     assert.equal(first.reserved_tao, balanceRow().reserved_tao);
   });
@@ -400,7 +419,11 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     );
     assert.equal(response.status, 502);
     assert.deepEqual(await response.json(), { error: "enqueue failed" });
-    assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "no fallback write -- the lane is cut over",
+    );
   });
 });
 
@@ -422,7 +445,7 @@ describe("pass_total completeness accounting", () => {
       stores: ["queue"],
       pass_total: 1,
     });
-    const [row] = passes();
+    const [row] = await passes();
     assert.equal(row!.expected_rows, 1);
     assert.equal(row!.received_rows, 1);
     assert.ok(row!.completed_at, "a satisfied pass carries a completion stamp");
@@ -433,10 +456,10 @@ describe("pass_total completeness accounting", () => {
     // ranking over them would drop real top holders -- which is exactly what
     // production did on 2026-08-05.
     await postAndConsume({ rows: [balanceRow()], pass_total: 3 });
-    assert.equal(rows().length, 1);
-    assert.equal(passes()[0]!.received_rows, 1);
+    assert.equal((await rows()).length, 1);
+    assert.equal((await passes())[0]!.received_rows, 1);
     assert.equal(
-      passes()[0]!.completed_at,
+      (await passes())[0]!.completed_at,
       null,
       "one of three requests is NOT a complete pass",
     );
@@ -445,26 +468,33 @@ describe("pass_total completeness accounting", () => {
       rows: [balanceRow({ ss58: SS58_B })],
       pass_total: 3,
     });
-    assert.equal(passes()[0]!.received_rows, 2);
-    assert.equal(passes()[0]!.completed_at, null);
+    assert.equal((await passes())[0]!.received_rows, 2);
+    assert.equal((await passes())[0]!.completed_at, null);
 
     await postAndConsume({
       rows: [balanceRow({ ss58: "5Third" })],
       pass_total: 3,
     });
-    assert.equal(passes()[0]!.received_rows, 3);
-    assert.ok(passes()[0]!.completed_at, "the closing request stamps it");
+    assert.equal((await passes())[0]!.received_rows, 3);
+    assert.ok(
+      (await passes())[0]!.completed_at,
+      "the closing request stamps it",
+    );
   });
 
   test("a replayed request never un-completes a finished pass", async () => {
     // The producer re-sends on failure, so received can exceed expected. The
     // stamp is set once and must survive the overshoot.
     await postAndConsume({ rows: [balanceRow()], pass_total: 1 });
-    const stamped = passes()[0]!.completed_at;
+    const stamped = (await passes())[0]!.completed_at;
     await postAndConsume({ rows: [balanceRow()], pass_total: 1 });
-    assert.equal(passes()[0]!.received_rows, 2, "the replay is counted");
     assert.equal(
-      passes()[0]!.completed_at,
+      (await passes())[0]!.received_rows,
+      2,
+      "the replay is counted",
+    );
+    assert.equal(
+      (await passes())[0]!.completed_at,
       stamped,
       "and the original completion stamp is preserved",
     );
@@ -476,14 +506,22 @@ describe("pass_total completeness accounting", () => {
       rows: [balanceRow({ captured_at: 1_790_000_000_000 })],
       pass_total: 2,
     });
-    assert.equal(passes().length, 2, "one row per captured_at");
-    assert.equal(passes()[1]!.completed_at, null, "the newer one is partial");
+    assert.equal((await passes()).length, 2, "one row per captured_at");
+    assert.equal(
+      (await passes())[1]!.completed_at,
+      null,
+      "the newer one is partial",
+    );
   });
 
   test("omitting pass_total writes no tally at all -- the bare-array envelope", async () => {
     await postAndConsume([balanceRow()]);
-    assert.equal(rows().length, 1);
-    assert.deepEqual(passes(), [], "an undeclared pass is not half-tracked");
+    assert.equal((await rows()).length, 1);
+    assert.deepEqual(
+      await passes(),
+      [],
+      "an undeclared pass is not half-tracked",
+    );
   });
 
   test("rejects a pass_total that is absent-shaped, negative, fractional or absurd", async () => {
@@ -494,7 +532,11 @@ describe("pass_total completeness accounting", () => {
       });
       assert.equal(response.status, 400, `expected 400 for ${bad}`);
     }
-    assert.equal(rows().length, 0, "no partial write from a rejected batch");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "no partial write from a rejected batch",
+    );
   });
 
   test("rejects a pass_total smaller than the request it arrived with", async () => {
@@ -517,7 +559,7 @@ describe("pass_total completeness accounting", () => {
       pass_total: 5,
     });
     assert.equal(response.status, 400);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 });
 
@@ -549,8 +591,12 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
       pass_total: null,
     });
     assert.equal(sent.length, 1);
-    assert.equal(rows().length, 0, "the store must not also have been written");
-    assert.equal(passes().length, 0);
+    assert.equal(
+      (await rows()).length,
+      0,
+      "the store must not also have been written",
+    );
+    assert.equal((await passes()).length, 0);
   });
 
   test("carries a declared pass through to the queue", async () => {
@@ -601,7 +647,11 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
       }),
     );
     assert.equal(response.status, 502);
-    assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "no fallback write -- the lane is cut over",
+    );
   });
 
   test("an unbound queue is a loud 503, not a silent drop", async () => {
@@ -616,6 +666,6 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
       env({ SYNC_BATCHES: undefined }),
     );
     assert.equal(response.status, 503);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 });

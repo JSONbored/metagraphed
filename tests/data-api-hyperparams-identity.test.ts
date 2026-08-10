@@ -12,12 +12,11 @@
 // cold-tier snapshot -- pinned here in both directions (empty table -> 503;
 // populated table with an absent row -> the schema-stable shape).
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test, vi } from "vitest";
+import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
@@ -33,35 +32,39 @@ vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql",
-  ),
-  "utf8",
-);
+/**
+ * The REAL Neon DDL, applied verbatim (#10328).
+ *
+ * THIS REPLACES A HAND-KEPT DIVERGENCE. The suite used to load a SQLite
+ * fixture and then apply two `CREATE UNIQUE INDEX` statements by hand, under a
+ * comment naming them "the one place the two stores' DDL genuinely differs,
+ * and it is load bearing" -- because FAMILY_MIRROR_PLANS conflicts on
+ * (netuid, observed_at) / (account, observed_at), and an ON CONFLICT naming
+ * columns with no unique index behind them is a runtime error rather than a
+ * slower query.
+ *
+ * A divergence patched back up by hand is a second schema. On the real DDL
+ * there is nothing to patch: 0003 declares those constraints, so what the code
+ * conflicts on is what production has.
+ *
+ * The boolean columns are the other half. The sync coerces nine flag columns
+ * to real booleans for Postgres' BOOLEAN type -- a bind node:sqlite refuses
+ * outright, which is why the old path needed a translation layer at all.
+ */
+const MIGRATIONS = [
+  "migrations/neon/0001_side_tables.sql",
+  "migrations/neon/0003_append_only_histories.sql",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
-// The one place the two stores' DDL genuinely differs, and it is load bearing.
-//
-// Both history tables carry `UNIQUE (netuid, observed_at)` /
-// `UNIQUE (account, observed_at)` in Neon (migrations/neon/0003), and that
-// constraint is what FAMILY_MIRROR_PLANS conflicts on -- an ON CONFLICT naming
-// columns with no unique index behind them is a runtime error, not a slower
-// query. The D1 file indexes the same pair non-uniquely, because D1's writer
-// appended without an upsert.
-//
-// So the fixture is the D1 tables plus this, rather than a hand-translation of
-// the Postgres DDL: `BIGINT GENERATED ALWAYS AS IDENTITY` and `BOOLEAN` are not
-// SQLite, and translating 37 columns to assert a two-column constraint would
-// put the fixture further from both schemas rather than closer to either.
-const NEON_HISTORY_UNIQUE = [
-  "CREATE UNIQUE INDEX subnet_hyperparams_history_natural_key" +
-    " ON subnet_hyperparams_history (netuid, observed_at)",
-  "CREATE UNIQUE INDEX account_identity_history_natural_key" +
-    " ON account_identity_history (account, observed_at)",
+/** Tables a test may write, emptied between tests. */
+const SEEDED_TABLES = [
+  "subnet_hyperparams",
+  "subnet_hyperparams_history",
+  "account_identity",
+  "account_identity_history",
 ];
 
-let db: InstanceType<typeof DatabaseSync>;
+let db: PGlite;
 
 const HYPERPARAMS_SECRET = "test-subnet-hyperparams-sync-secret";
 const IDENTITY_SECRET = "test-account-identity-sync-secret";
@@ -103,21 +106,34 @@ async function call(request: Request, envOverride: Env = env()) {
   return worker.fetch(request, envOverride, ctx);
 }
 
-const one = (sql: string, ...params: unknown[]) =>
-  db.prepare(sql).get(...(params as never[])) as Row;
-const count = (table: string) =>
-  (db.prepare(`SELECT COUNT(*) n FROM ${table}`).get() as { n: number }).n;
+const one = async (sql: string, ...params: unknown[]) =>
+  (await db.query<Row>(sql, params as never[])).rows[0] as Row;
+const count = async (table: string) =>
+  Number(
+    (await db.query<{ n: number }>(`SELECT COUNT(*) n FROM ${table}`)).rows[0]!
+      .n,
+  );
 
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
-  for (const index of NEON_HISTORY_UNIQUE) db.exec(index);
+// ONE instance for the file, TRUNCATE between tests.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
+  // RE-APPLY, not just TRUNCATE. One instance serves the whole file, and two
+  // tests below DROP a table on purpose to reach the two 502 paths -- so
+  // emptying is not enough to undo them. Every statement is `IF NOT EXISTS`,
+  // so this is a no-op on every tick except those two.
+  for (const sql of MIGRATIONS) await db.exec(sql);
+  await db.exec(`TRUNCATE ${SEEDED_TABLES.join(", ")}`);
   pg.control.queries.length = 0;
   pg.control.failNext = null;
-  // Wrapped rather than handed over raw: the sync coerces the nine flag columns
-  // to real booleans for Postgres' BOOLEAN type, and node:sqlite refuses a
-  // boolean bind outright. See tests/helpers/pg-sqlite.ts.
-  pg.control.db = sqliteBackedPg(db);
+  // Handed over VERBATIM. Real booleans reach real BOOLEAN columns and the
+  // ON CONFLICT finds the unique constraints 0003 declares -- neither of
+  // which the SQLite path could represent without patching.
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
 });
 
 /** One wire-shape hyperparams row (0/1 ints for the boolean-flag columns,
@@ -236,11 +252,16 @@ test("hyperparams sync writes the family and reports what it did", async () => {
   assert.equal(body.subnet_hyperparams_written, 2);
   // Cold history: every netuid diffs as changed on the first sync.
   assert.equal(body.history_appended, 2);
-  const row = one("SELECT * FROM subnet_hyperparams WHERE netuid = 8");
+  const row = await one("SELECT * FROM subnet_hyperparams WHERE netuid = 8");
   assert.equal(row.tempo, 360);
-  assert.equal(row.registration_allowed, 1, "booleans land as 0/1");
-  assert.equal(row.commit_reveal_enabled, 0);
-  assert.equal(count("subnet_hyperparams_history"), 2);
+  // A REAL BOOLEAN, and this assertion used to read `1, "booleans land as
+  // 0/1"`. That was never true of the store -- `registration_allowed` is
+  // BOOLEAN in migrations/neon/0001, and 0/1 was node:sqlite's coercion showing
+  // through the double. The suite was pinning the harness's behaviour and
+  // calling it the store's, which is the quietest way a test can be wrong.
+  assert.equal(row.registration_allowed, true);
+  assert.equal(row.commit_reveal_enabled, false);
+  assert.equal(await count("subnet_hyperparams_history"), 2);
 });
 
 test("a replayed identical batch appends nothing to history", async () => {
@@ -248,7 +269,7 @@ test("a replayed identical batch appends nothing to history", async () => {
   const res = await postHyperparams([hyperparamsSyncRow()]);
   const body = (await res.json()) as Row;
   assert.equal(body.history_appended, 0);
-  assert.equal(count("subnet_hyperparams_history"), 1);
+  assert.equal(await count("subnet_hyperparams_history"), 1);
 });
 
 test("a changed value appends exactly one history revision", async () => {
@@ -259,11 +280,11 @@ test("a changed value appends exactly one history revision", async () => {
   ]);
   const body = (await res.json()) as Row;
   assert.equal(body.history_appended, 1);
-  const revisions = db
-    .prepare(
+  const revisions = (
+    await db.query<Row>(
       "SELECT id, tempo FROM subnet_hyperparams_history WHERE netuid = 8 ORDER BY id",
     )
-    .all() as Row[];
+  ).rows;
   assert.equal(revisions.length, 2);
   assert.equal(revisions[1].tempo, 99);
 });
@@ -292,9 +313,11 @@ test("two revisions inside ONE millisecond are one row, not two", async () => {
   } finally {
     vi.useRealTimers();
   }
-  const revisions = db
-    .prepare("SELECT observed_at, tempo FROM subnet_hyperparams_history")
-    .all() as Row[];
+  const revisions = (
+    await db.query<Row>(
+      "SELECT observed_at, tempo FROM subnet_hyperparams_history",
+    )
+  ).rows;
   assert.equal(revisions.length, 1);
   assert.equal(revisions[0].tempo, 99, "the later revision is the one kept");
 });
@@ -307,7 +330,7 @@ test("a stale replay cannot regress the latest-only table", async () => {
     hyperparamsSyncRow({ tempo: 1, captured_at: 1_779_000_000_000 }),
   ]);
   assert.equal(
-    one("SELECT tempo FROM subnet_hyperparams WHERE netuid = 8").tempo,
+    (await one("SELECT tempo FROM subnet_hyperparams WHERE netuid = 8")).tempo,
     99,
   );
 });
@@ -336,7 +359,7 @@ test("hyperparams sync answers 503 with no store, 502 when the write fails", asy
   // ok:true here would tell the producer its rows are safe when nothing holds
   // them. The history read still succeeds (that table is intact), so this is
   // the WRITE half of the two 502s this route can answer.
-  db.exec("DROP TABLE subnet_hyperparams");
+  await db.exec("DROP TABLE subnet_hyperparams");
   const broken = await postHyperparams([hyperparamsSyncRow()]);
   assert.equal(broken.status, 502);
   assert.equal(((await broken.json()) as Row).error, "neon write failed");
@@ -347,11 +370,15 @@ test("a failed history read is its OWN 502, never a silent empty diff", async ()
   // that fails and is treated as "no prior hashes" would append a revision for
   // every netuid on every sync -- growing the audit trail without a single
   // value having changed. It has to decline instead.
-  db.exec("DROP TABLE subnet_hyperparams_history");
+  await db.exec("DROP TABLE subnet_hyperparams_history");
   const res = await postHyperparams([hyperparamsSyncRow()]);
   assert.equal(res.status, 502);
   assert.equal(((await res.json()) as Row).error, "history read failed");
-  assert.equal(count("subnet_hyperparams"), 0, "nothing was written first");
+  assert.equal(
+    await count("subnet_hyperparams"),
+    0,
+    "nothing was written first",
+  );
 });
 
 // --- the identity write lane ------------------------------------------------
@@ -366,7 +393,7 @@ test("identity sync writes the family, strips NUL bytes, and never prunes", asyn
   assert.equal(body.account_identity_written, 1);
   assert.equal(body.history_appended, 1);
   assert.equal(
-    one("SELECT discord FROM account_identity WHERE account = '5Alice'")
+    (await one("SELECT discord FROM account_identity WHERE account = '5Alice'"))
       .discord,
     "abcdef",
     "Postgres TEXT rejects an embedded NUL outright, so the strip is what " +
@@ -374,14 +401,14 @@ test("identity sync writes the family, strips NUL bytes, and never prunes", asyn
   );
   // A later batch covering a different account leaves the first in place.
   await postIdentity([identitySyncRow({ account: "5Bob", name: "Bob" })]);
-  assert.equal(count("account_identity"), 2);
+  assert.equal(await count("account_identity"), 2);
 });
 
 test("a replayed identical identity batch appends nothing to history", async () => {
   await postIdentity([identitySyncRow()]);
   const res = await postIdentity([identitySyncRow()]);
   assert.equal(((await res.json()) as Row).history_appended, 0);
-  assert.equal(count("account_identity_history"), 1);
+  assert.equal(await count("account_identity_history"), 1);
 });
 
 test("identity sync answers 503 with no store, 502 when the write fails", async () => {
@@ -614,7 +641,7 @@ test("hyperparams: declaring only ONE table of the family is refused, not half-w
   );
   assert.equal(res.status, 503);
   assert.equal(
-    count("subnet_hyperparams"),
+    await count("subnet_hyperparams"),
     0,
     "refused before the write, so the card cannot outrun its own history",
   );
@@ -634,5 +661,5 @@ test("identity: declaring only ONE table of the family is refused, not half-writ
     env({ NEON_SOLE_STORE_TABLES: "account_identity" }),
   );
   assert.equal(res.status, 503);
-  assert.equal(count("account_identity"), 0);
+  assert.equal(await count("account_identity"), 0);
 });
