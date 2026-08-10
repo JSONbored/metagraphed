@@ -235,18 +235,6 @@ test("declines with 503 when no store is bound for the route", async () => {
   );
 });
 
-// The gate is per ROUTE, not just per binding: routeStore consults
-// neonServesRoute, so a deployment that has not read-enabled surface_status
-// declines here rather than reading a table it has not declared.
-test("declines when surface_status is not read-enabled on this deployment", async () => {
-  insertStatus();
-  const res = await get("?since=0", {
-    ...pgMockEnv(),
-    NEON_READ_LANES: "neurons",
-  } as unknown as Env);
-  assert.equal(res.status, 503);
-});
-
 // A failing query answers an opaque 502 that leaks no DB detail -- the same
 // envelope the neurons and hyperparams blocks use. It matters here because
 // the caller reads a non-2xx as "this tier declines" and carries on with an

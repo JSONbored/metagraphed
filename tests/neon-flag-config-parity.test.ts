@@ -61,11 +61,7 @@ const GATED_CONFIGS = [
  *  declared-and-empty: an empty flag reads as "no tables need this" rather than
  *  "this question no longer exists", and two prune gates had already inverted
  *  under exactly that ambiguity (#10152, #10164). */
-const FLAGS = [
-  "NEON_DUAL_WRITE_LANES",
-  "NEON_READ_LANES",
-  "NEON_SOLE_STORE_TABLES",
-] as const;
+const FLAGS = ["NEON_DUAL_WRITE_LANES", "NEON_SOLE_STORE_TABLES"] as const;
 
 /** Read a flag as declared, tolerating the line break Prettier introduces
  * when a value is long enough to wrap. */

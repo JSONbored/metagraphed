@@ -18,8 +18,6 @@ import {
   buildPgUpsert,
   neonDualWriteEnabled,
   neonDualWriteLanes,
-  neonReadEnabled,
-  neonReadLanes,
   PG_PARAM_BUDGET,
   PG_PARAM_LIMIT,
   pgFlatValues,
@@ -446,42 +444,5 @@ describe("neonDualWriteLanes", () => {
     assert.equal(neonDualWriteEnabled(env, "neurons"), true);
     assert.equal(neonDualWriteEnabled(env, "neuron_daily"), false);
     assert.equal(neonDualWriteEnabled({}, "neurons"), false);
-  });
-});
-
-describe("neonReadLanes", () => {
-  test("is a SEPARATE flag from the write list", () => {
-    // The conflation is what broke the pilot: the read gate was "is HYPERDRIVE
-    // bound", so binding the config for a WRITE pilot silently moved a READ
-    // onto a store nothing had ever written to.
-    const env = { NEON_DUAL_WRITE_LANES: "neurons" };
-    assert.equal(neonDualWriteEnabled(env, "neurons"), true);
-    assert.equal(neonReadEnabled(env, "neurons"), false);
-  });
-
-  test("defaults to empty, so a binding alone moves nothing", () => {
-    assert.deepEqual([...neonReadLanes(undefined)], []);
-    assert.deepEqual([...neonReadLanes(null)], []);
-    assert.deepEqual([...neonReadLanes({})], []);
-    assert.deepEqual([...neonReadLanes({ NEON_READ_LANES: "" })], []);
-    assert.deepEqual([...neonReadLanes({ NEON_READ_LANES: 7 })], []);
-  });
-
-  test("reads a comma list, tolerating spacing and empties", () => {
-    assert.deepEqual(
-      [
-        ...neonReadLanes({
-          NEON_READ_LANES: " account_position_daily , ,neurons ",
-        }),
-      ],
-      ["account_position_daily", "neurons"],
-    );
-    assert.equal(
-      neonReadEnabled(
-        { NEON_READ_LANES: "account_position_daily" },
-        "account_position_daily",
-      ),
-      true,
-    );
   });
 });

@@ -113,13 +113,12 @@
     // Neon that refuses writes costs a mirror and a `neon:` lane verdict -- and
     // nothing a caller can see.
     //
-    // NEON_READ_LANES stayed EMPTY until those verdicts had been green across
-    // many 15-minute producer ticks AND the two stores had been reconciled row
-    // for row. Reading before that is exactly #9704, and "the mirror is
-    // deployed" is not evidence that it wrote anything. One table has since
-    // cleared that bar -- see NEON_READ_LANES below. The other two have not:
-    // `neurons` has no route asking for it yet, and `neuron_daily` is still
-    // being backfilled.
+    // A companion NEON_READ_LANES flag held the reads back until those
+    // verdicts had been green across many 15-minute producer ticks AND the two
+    // stores had been reconciled row for row. Reading before that is exactly
+    // #9704, and "the mirror is deployed" is not evidence that it wrote
+    // anything. It is gone (#10051): with D1 deleted it named the only store
+    // there is, so it could refuse a read but no longer redirect one.
     //
     // Schema note: `neuron_daily` was created in Neon BY HAND on 2026-08-07,
     // which is the practice migrations/neon/ + the `Neon migrate` workflow now
@@ -132,72 +131,6 @@
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
-    // THE CUTOVER (metagraphed-infra#336). `GET /api/v1/accounts/{ss58}/
-    // subnets/{netuid}/history` now reads Neon.
-    //
-    // This is the route #9704 broke: its read moved to Neon while nothing
-    // wrote there, and it served a 2026-08-05 snapshot for two days. What is
-    // different now, in the order the config comment above demanded:
-    //
-    //   1. A WRITER exists. The mirror has written this table on every
-    //      producer tick since #9714, lane `neon:account_position_daily`.
-    //   2. The lane has been GREEN across many ticks, not one.
-    //   3. The two stores were RECONCILED, not assumed. #9752's reconciler
-    //      compares per-date row counts on both sides every three minutes and
-    //      reports `neon:backfill:account_position_daily ok :: in sync` --
-    //      which it only says after re-counting, never after copying.
-    //
-    // Rollback is deleting the entry: the gate falls back to createD1Sql on
-    // the same query text, so the store moves by choosing a runner.
-    // Three tables, each proven before it was named:
-    //   account_position_daily  reconciled `in sync` (#9752), route verified
-    //                           against its D1 baseline across four deploys
-    //   neurons                 mirror green every producer tick since #9714,
-    //                           content-checksum identical to D1
-    //   neuron_daily            816,803 rows backfilled and reconciled
-    //                           `in sync` 2026-08-07 09:19
-    //
-    // `neurons` is named EXPLICITLY rather than ridden in on another lane's
-    // flag. Before this, the position-history gate checked only
-    // account_position_daily while its handler also read `neurons` -- safe by
-    // luck, not by gate. NEON_READ_ROUTE_TABLES now requires every table a
-    // route reads.
-    //
-    // NOT here: nominator_positions, hotkey_alpha, account_balances. Their
-    // mirrors have never fired (12h/30h/48h producers), which #9772's watchdog
-    // reports as never-mirrored-not-alarmed. Naming one would move a read onto
-    // a store with no proven writer -- #9704 exactly.
-    //
-    // `neurons` and `neuron_daily` are RE-ADDED here after two rollbacks. Both
-    // were pulled on 2026-08-07 for the same underlying reason -- a query that
-    // is valid SQLite and invalid Postgres -- surfacing in two different ways:
-    //
-    //   #9792  neuron_daily. /subnets/movers and /subnets/{netuid}/history
-    //          anchored a window with `date(MAX(snapshot_date), '-30 days')`,
-    //          which Postgres does not have. movers 5 rows -> 0, history
-    //          28 -> 0.
-    //   #9802  neurons. /validators compared `validator_permit = 1` against a
-    //          column Neon declares BOOLEAN. 5 rows -> 0, measured across three
-    //          deploys (baseline 5, f07234628 5, 2df376f7e 0).
-    //
-    // Both are fixed at the source rather than worked around: the window
-    // boundary is computed in TypeScript and bound (#9807), and the boolean
-    // comparisons and aggregates now use spellings both stores accept. Neither
-    // failure was visible from a response -- each returned a schema-stable 200
-    // with zero rows -- so what makes this re-add different from the last two
-    // is not confidence, it is that both classes are now checked in CI by
-    // tests/neon-sql-portability.test.ts, which scans the movable routes AND
-    // the loader modules they reach and fails the build on either construct.
-    //
-    // Rollback remains deleting the entry.
-    //
-    // `surface_status` is here because it has to be, not because a mirror
-    // proved itself: Neon is its ONLY store (it is in NEON_SOLE_STORE_TABLES
-    // below), and /api/v1/internal/health-status-live reads it. While D1 was
-    // still bound, a table missing from this list simply stayed on D1; with D1
-    // gone the same omission is a 503 on every request, which puts the prober
-    // back on the empty prior map #9522 exists to prevent.
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history,surface_status",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above
@@ -218,10 +151,10 @@
     //
     // EMPTY UNTIL A COPY IS VERIFIED, and per table. workers/data-api.ts's
     // userStateRunner requires EVERY table in a group to be named here before
-    // it hands out a Postgres runner -- the same all-or-nothing rule
-    // neonServesRoute applies to a read route, because the helper picks one
-    // runner for the whole callback and a half-listed group would send a
-    // statement to a store where its table does not exist.
+    // it hands out a Postgres runner -- the same all-or-nothing rule the
+    // per-route read gate used to apply before #10051 deleted it, because the
+    // helper picks one runner for the whole callback and a half-listed group
+    // would send a statement to a store where its table does not exist.
     //
     // Rollback is deleting a name. When this holds every table D1 has, the D1
     // binding comes off.
@@ -581,16 +514,16 @@
   // THE BINDING WAS NEVER THE PROBLEM. The read gate was
   // `env.HYPERDRIVE && ...`, so a connection provisioned for a WRITE pilot
   // silently moved a public route's read. "This Worker can reach Neon" and
-  // "this route should read Neon" are different questions, and they now have
-  // different answers:
+  // "this route should read Neon" were different questions, and a separate
+  // NEON_READ_LANES flag answered the second one: a lane was named in
+  // NEON_DUAL_WRITE_LANES first, its `neon:` verdict in lane_health watched
+  // green across several producer ticks, and only then named for reading.
   //
-  //   NEON_DUAL_WRITE_LANES  which lanes MIRROR into Neon after their D1 write
-  //   NEON_READ_LANES        which lanes are SERVED from Neon
-  //
-  // Both empty at this commit, so rebinding moves nothing. The order is fixed:
-  // name a lane in the write list, watch its `neon:` verdict in lane_health go
-  // green across several producer ticks -- metagraphed#9698 reads those, which
-  // is the check that did not exist -- and only then name it in the read list.
+  // That ordering mattered while D1 held the other copy. It does not now
+  // (#10051). With one store the two questions have collapsed back into one,
+  // and the read flag has been deleted rather than left to answer a question
+  // it can no longer get wrong in the interesting direction -- it could refuse
+  // a route, never send it somewhere better.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",

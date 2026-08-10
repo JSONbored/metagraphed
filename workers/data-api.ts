@@ -395,7 +395,7 @@ import {
   neuronSnapshotWrite,
 } from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
-import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
+import { neonOwnsTable } from "../src/neon-write.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 
@@ -3132,8 +3132,8 @@ function normalizeDeliveryRow(row: Row): Row {
  *
  * `userStateRunner` below requires EVERY table in the group to be listed in
  * NEON_SOLE_STORE_TABLES before it hands out a Postgres runner. That is the
- * same all-or-nothing rule `neonServesRoute` applies to a read route, and for
- * the same reason: the helper picks ONE runner for the whole callback, so a
+ * same all-or-nothing rule the read gate used to apply per route (deleted in
+ * #10051), and for the same reason: one runner serves the whole callback, so a
  * half-listed group would send a statement to a store where its table does not
  * exist. Naming the tables is what makes that impossible to get wrong by
  * accident -- a table added to one of these groups cannot move until someone
@@ -6107,286 +6107,28 @@ async function loadRealizedStakeBaselinesD1(
 // remaining tiers unchanged). Split from execution so the caller can check
 // the binding exactly once, after a route has actually matched.
 /**
- * Which of the neurons-family routes reads Neon rather than D1.
+ * The runner every route in the three blocks below uses.
  *
- * ONE ROUTE, on purpose. `account_position_daily` is the first table moved
- * (metagraphed-infra#336) because it carries a third of the family's ~8.6M
- * daily row-writes behind the smallest read surface: two query sites in one
- * file, against `neurons`' forty across eighteen. Same D1 relief, a twentieth
- * of the blast radius.
+ * This used to be `routeStore`, which asked NEON_READ_LANES whether the route
+ * was allowed on Neon yet and returned undefined -- a 503 -- when it was not.
+ * That question had an answer while D1 was the other side of it. It has none
+ * now: Neon is the only store these handlers can reach, so the flag could not
+ * send a read anywhere else, only refuse it.
  *
- * A LIST, not a flag, so the next table added is one entry and its rollback is
- * deleting that entry.
+ * A GATE THAT CAN ONLY FAIL CLOSED IS NOT A SAFETY PROPERTY, it is an outage
+ * waiting on a typo. All 32 routes the three matchers accept were named in
+ * NEON_READ_ROUTE_TABLES and every table they declared was named in
+ * NEON_READ_LANES in all three configs, so the gate answered yes 32 times out
+ * of 32 -- while dropping any single table from the flag would have 503'd up to
+ * 19 routes at once. The flag's own doc said a typo in it "does not fail, warn,
+ * or degrade", which was survivable when the fallback was another store.
+ *
+ * What remains is the question that still has two answers: is a store bound at
+ * all. The callers keep the 503 for that, which is why this returns undefined
+ * rather than throwing (#10162 -- a runner over an absent binding was worse).
  */
-export function positionHistoryServedFromNeon(url: URL): boolean {
-  return /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/.test(
-    url.pathname,
-  );
-}
-
-/**
- * The lane name this route's read gate asks NEON_READ_LANES about.
- *
- * Exported so the flag's deployed value can be checked against it rather than
- * eyeballed. A typo in NEON_READ_LANES does not fail, warn, or degrade -- it
- * leaves the read on D1 and looks exactly like a cutover that has not happened
- * yet, which is the one failure mode a flag-driven migration cannot detect from
- * its own output.
- */
-export const POSITION_HISTORY_NEON_LANE = "account_position_daily";
-
-/**
- * Every mirrored table each neurons-family route reads.
- *
- * ALL OF THEM MUST BE READ-ENABLED FOR THE ROUTE TO MOVE, and that is a
- * correction to how #9768 shipped. The handler picks ONE runner and uses it for
- * every query it makes, so a route touching two tables cannot half-move. The
- * position-history gate checked only `account_position_daily` -- but its
- * handler also reads `neurons`, so naming one table silently moved both. It
- * happened to be safe (`neurons` mirrors on every producer tick and matched D1
- * on a content checksum), but "happened to be safe" is not the property a gate
- * is for.
- *
- * Ordered longest-prefix-last so the first match wins on the specific route
- * rather than a broader one. Each entry's table list is asserted against the
- * handler's own SQL in tests/neon-read-routes.test.ts -- a map that drifts from
- * the queries would gate on the wrong evidence, which is worse than no gate.
- */
-/**
- * EVERY table the handler reads, mirrored or not -- including the ones reached
- * through a side loader.
- *
- * This list used to name only MIRRORED tables, and that was the defect, not a
- * simplification. The dispatcher picks ONE runner for the whole handler, so a
- * route sent to Neon sends ALL of its queries there, side loaders included. A
- * table that is not mirrored does not exist on that side; the read comes back
- * empty and the response degrades silently.
- *
- * `/api/v1/validators` is the worked example, and it was mapped as
- * `["neurons"]`. Its handler also calls loadAlphaPricesByNetuidD1
- * (subnet_snapshots), loadIdentityByColdkeyMap (account_identity),
- * loadSubnetTemposD1 (subnet_hyperparams) and loadNominatorCountsD1
- * (validator_nominator_counts). Three of those five tables have no Neon copy
- * at all and the fourth has a mirror that has never fired -- so enabling
- * `neurons` moved a route whose data was 3/5 absent on the other side.
- *
- * Naming the unmirrored tables is what makes that safe WITHOUT a second
- * mechanism: neonServesRoute requires every listed table to appear in
- * NEON_READ_LANES, and a table nothing mirrors can never legitimately be
- * listed there (tests/neon-read-routes.test.ts enforces that separately). So
- * an unmirrored dependency blocks the move by construction, and the route
- * un-blocks on its own the day that table gets a proven mirror.
- *
- * The lists are asserted against the handler's TRANSITIVE reads in
- * tests/neon-read-routes.test.ts. Over-declaring is safe and under-declaring
- * is the bug, so that test checks one direction: everything the code reads
- * must be named here.
- */
-export const NEON_READ_ROUTE_TABLES: readonly {
-  pattern: RegExp;
-  tables: readonly string[];
-}[] = [
-  // neuron_daily only.
-  { pattern: /^\/api\/v1\/subnets\/movers$/, tables: ["neuron_daily"] },
-  { pattern: /^\/api\/v1\/chain\/turnover$/, tables: ["neuron_daily"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/turnover$/, tables: ["neuron_daily"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/history$/, tables: ["neuron_daily"] },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/yield\/history$/,
-    tables: ["neuron_daily"],
-  },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/performance\/history$/,
-    tables: ["neuron_daily"],
-  },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+\/history$/,
-    tables: ["neuron_daily"],
-  },
-  // `neurons` only. Several of these declared `neuron_daily` until the map
-  // test's block split was corrected (#9825): a parameterised guard is two
-  // statements, so splitting before the `if` attributed each route's SQL to
-  // its NEIGHBOUR. Gating on the wrong table is what that test exists to stop,
-  // and it was doing the opposite.
-  { pattern: /^\/api\/v1\/subnets\/\d+\/metagraph$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/validators$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/concentration$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/performance$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/yield$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/idle-stake$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/chain\/concentration$/, tables: ["neurons"] },
-  {
-    pattern: /^\/api\/v1\/chain\/concentration\/subnets$/,
-    tables: ["neurons"],
-  },
-  { pattern: /^\/api\/v1\/chain\/performance$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/chain\/idle-stake$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/chain\/yield$/, tables: ["neurons"] },
-  // Reads `neurons` for the account's current UIDs, then the dated positions.
-  {
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/,
-    tables: ["neurons", "account_position_daily"],
-  },
-  // BLOCKED until their unmirrored tables have a proven Neon lane (#9814).
-  // Listing the real dependency is what keeps neonServesRoute returning false
-  // for them, and what will un-block them automatically once the mirror exists.
-  //
-  // The first two are LIVE REGRESSIONS this corrects (#9825). Both were
-  // declared without `subnet_snapshots` and both moved to Neon when #9810
-  // enabled `neurons`/`neuron_daily`; the join found no such table and each
-  // served an empty 200.
-  {
-    // + loadAlphaPricesByNetuidD1.
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/portfolio$/,
-    tables: ["neurons", "subnet_snapshots"],
-  },
-  {
-    // Joins subnet_snapshots directly for the alpha -> TAO conversion.
-    pattern: /^\/api\/v1\/validators\/[^/]+\/history$/,
-    tables: ["neuron_daily", "subnet_snapshots"],
-  },
-  {
-    pattern: /^\/api\/v1\/accounts$/,
-    tables: ["neurons", "subnet_snapshots"],
-  },
-  {
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets$/,
-    tables: ["neurons", "subnet_snapshots"],
-  },
-  {
-    // + prices, identities, tempos and nominator counts.
-    pattern: /^\/api\/v1\/validators$/,
-    tables: [
-      "neurons",
-      "subnet_snapshots",
-      "account_identity",
-      "subnet_hyperparams",
-      "validator_nominator_counts",
-    ],
-  },
-  {
-    pattern: /^\/api\/v1\/validators\/[^/]+$/,
-    tables: [
-      "neurons",
-      "subnet_snapshots",
-      "subnet_hyperparams",
-      "validator_nominator_counts",
-    ],
-  },
-  // Cut over once the two stores agreed on BOTH the rows and the ids
-  // (#9954): 137/137 and 531/531, with `id` copied from D1 so `MAX(id)` picks
-  // the same latest revision and the (observed_at, id) cursor means the same
-  // thing on either side. Each route reads ONE table -- no side loader to drag
-  // along.
-  // The last two public routes in the D1 matchers. Both read a single table
-  // that is already served from Neon and already at exact parity -- 129/129
-  // and 498/498 -- so this is a declaration, not a migration: the tables moved
-  // long ago and these two handlers were simply never pointed at them.
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters$/,
-    tables: ["subnet_hyperparams"],
-  },
-  {
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/identity$/,
-    tables: ["account_identity"],
-  },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters\/history$/,
-    tables: ["subnet_hyperparams_history"],
-  },
-  {
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/identity-history$/,
-    tables: ["account_identity_history"],
-  },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
-    tables: [
-      "neurons",
-      "neuron_daily",
-      "subnet_snapshots",
-      "account_identity",
-      "subnet_hyperparams",
-      "validator_nominator_counts",
-    ],
-  },
-  // The prober's own continuity read (#9522), and the ONE route in the three
-  // matchers that had no entry here. That was survivable while routeStore fell
-  // back to D1 -- the route simply stayed on D1 like every unmapped route. With
-  // D1 gone (#10179) the fallback is `undefined`, so an unmapped route is not
-  // "still on the old store", it is 503 on every request: src/health-prober.ts
-  // and src/health-serving.ts would both go back to reading null, which is
-  // exactly the empty prior map that made the pool breaker unreachable.
-  {
-    pattern: /^\/api\/v1\/internal\/health-status-live$/,
-    tables: ["surface_status"],
-  },
-];
-
-/**
- * Whether THIS request may be served from Neon.
- *
- * False unless every table the route reads is named in NEON_READ_LANES. A route
- * with no entry is never served from Neon, which is the safe default: an
- * unmapped route is one whose tables nobody has enumerated.
- */
-/**
- * The store this request's handler should run against.
- *
- * ONE function because there are THREE dispatcher blocks, and until now only
- * one of them asked. `matchNeuronsD1Route`'s block chose its runner from
- * `neonServesRoute`; `matchHealthStatusD1Route`'s and
- * `matchHyperparamsIdentityD1Route`'s both called `createD1Sql` outright.
- *
- * That was not a stylistic gap, it was a silent no-op. #9954 added
- * NEON_READ_ROUTE_TABLES entries for `/subnets/{netuid}/hyperparameters`,
- * `/subnets/{netuid}/hyperparameters/history`, `/accounts/{ss58}/identity` and
- * `/accounts/{ss58}/identity-history`, and put all four of their tables in
- * NEON_READ_LANES. None of those four routes is matched by
- * matchNeuronsD1Route -- they are served by the hyperparams/identity block --
- * so the declarations were read by nothing and the routes kept reading D1.
- * Every piece of the cutover was in place except the line that consults it.
- *
- * Nothing about the decision changes here; it moves. The gate is still an
- * explicit flag rather than the binding's presence (#9704: reading
- * `env.HYPERDRIVE && ...` alone meant binding Hyperdrive for a WRITE pilot
- * silently moved a READ onto a store nothing had written to). Every table a
- * route touches must still be enabled, not just one, because a handler uses
- * one runner for all its queries and a route touching two tables cannot
- * half-move.
- *
- * A route with no NEON_READ_ROUTE_TABLES entry gets D1, which is why applying
- * this to two more blocks moves nothing on its own.
- */
-function routeStore(
-  env: Env,
-  ctx: ExecutionContext,
-  url: URL,
-): D1Sql | undefined {
-  if (
-    env.HYPERDRIVE &&
-    neonServesRoute(env as unknown as Record<string, unknown>, url)
-  ) {
-    return createPgSql(env.HYPERDRIVE, ctx);
-  }
-  // `undefined` rather than a runner over an absent binding (#10162). The three
-  // dispatcher blocks below used to answer 503 on the D1 binding BEFORE asking
-  // this function, so a route Neon already serves was refused whenever D1
-  // happened to be unbound -- the whole point of the gate, undone by the check
-  // above it. Returning undefined moves the "is there a store" question here,
-  // where the answer is actually known.
-  return undefined;
-}
-
-export function neonServesRoute(
-  env: Record<string, unknown> | null | undefined,
-  url: URL,
-): boolean {
-  const entry = NEON_READ_ROUTE_TABLES.find((r) =>
-    r.pattern.test(url.pathname),
-  );
-  if (!entry) return false;
-  return entry.tables.every((table) => neonReadEnabled(env, table));
+function routeRunner(env: Env, ctx: ExecutionContext): D1Sql | undefined {
+  return env.HYPERDRIVE ? createPgSql(env.HYPERDRIVE, ctx) : undefined;
 }
 
 /**
@@ -6419,7 +6161,7 @@ export function neonServesRoute(
  * exactly what the NULL subquery used to produce -- every caller already
  * branches on that.
  *
- * EXPORTED FOR ASSERTION, the same reason positionHistoryServedFromNeon is:
+ * EXPORTED FOR ASSERTION rather than for a caller:
  * only two of its four query shapes are reachable from today's routes
  * (`CHAIN_TURNOVER_WINDOWS`/`MOVERS_WINDOWS` are `Record<string, number>`, so a
  * chain-wide call can never carry a null window, while HISTORY_WINDOW_DAYS's
@@ -7711,29 +7453,10 @@ async function dispatchDataApiRequest(
     // capture + an opaque 502 that never leaks DB detail.
     const neuronsD1Handler = matchNeuronsD1Route(url);
     if (neuronsD1Handler) {
-      const store = routeStore(env, ctx, url);
+      const store = routeRunner(env, ctx);
       if (!store) {
         return json({ error: "no store bound for this route" }, 503);
       }
-      // `account_position_daily` can be served from Neon
-      // (metagraphed-infra#336). The handler is unchanged -- it is written
-      // against a tagged template, and createPgSql is interface-compatible
-      // with createD1Sql -- so the store moves by choosing a runner, not by
-      // rewriting a query.
-      //
-      // THE GATE IS AN EXPLICIT FLAG, NOT THE BINDING'S PRESENCE, and that
-      // change is the whole lesson of metagraphed#9704. It used to read
-      // `env.HYPERDRIVE && ...`, so binding Hyperdrive for a WRITE pilot
-      // silently moved this READ onto a store nothing had ever written to --
-      // and it served a two-day-old snapshot until the binding was pulled.
-      //
-      // "The binding exists" and "this route should read Neon" are different
-      // questions. NEON_READ_LANES answers the second one, defaults to empty,
-      // and must not name a lane until that lane's `neon:` verdict has been
-      // green across several producer ticks.
-      // Every table this route reads must be read-enabled, not just one --
-      // the handler uses ONE runner for all its queries, so a route touching
-      // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
       try {
         return await neuronsD1Handler(store, env);
       } catch (err) {
@@ -7749,7 +7472,7 @@ async function dispatchDataApiRequest(
     {
       const healthStatusD1Handler = matchHealthStatusD1Route(url);
       if (healthStatusD1Handler) {
-        const store = routeStore(env, ctx, url);
+        const store = routeRunner(env, ctx);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }
@@ -7771,7 +7494,7 @@ async function dispatchDataApiRequest(
     {
       const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(url);
       if (hyperparamsIdentityD1Handler) {
-        const store = routeStore(env, ctx, url);
+        const store = routeRunner(env, ctx);
         if (!store) {
           return json({ error: "no store bound for this route" }, 503);
         }

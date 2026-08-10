@@ -556,29 +556,12 @@ test("a route no matcher claims falls through to the gone-tier 503", async () =>
 // a Postgres tier that no longer exists, and the test that pinned it is deleted
 // rather than rewritten: the main Worker still reads the flag to decide whether
 // to FORWARD here, which is a different assertion in a different suite. What
-// gates these routes instead is NEON_READ_ROUTE_TABLES, asserted below.
+// gates these routes instead is the HYPERDRIVE binding alone (#10051).
 
 test("a neurons route 503s cleanly when there is no store bound", async () => {
   const res = await call(
     req("/api/v1/subnets/7/metagraph"),
     env({ HYPERDRIVE: undefined }),
-  );
-  assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), {
-    error: "no store bound for this route",
-  });
-});
-
-test("a neurons route declines unless every table it reads is read-enabled", async () => {
-  // routeStore consults neonServesRoute, which requires EVERY table the route
-  // touches to be named in NEON_READ_LANES -- a handler uses one runner for all
-  // its queries, so a route touching two tables cannot half-move. With D1 gone
-  // this is the only thing between a route and a 503: an un-enabled route no
-  // longer quietly stays on an older store.
-  insertNeuron();
-  const res = await call(
-    req("/api/v1/subnets/7/metagraph"),
-    env({ NEON_READ_LANES: "neuron_daily" }),
   );
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
