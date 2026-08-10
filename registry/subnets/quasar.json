@@ -41,6 +41,12 @@
   "slug": "sn-24",
   "source_repo": "https://github.com/SILX-LABS/QUASAR-SUBNET",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:billing, docs:pricing, docs:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -206,7 +212,7 @@
       "id": "sn-24-quasar-training-corpus",
       "kind": "data-artifact",
       "name": "Quasar training corpus dataset",
-      "notes": "Public SILX Labs HuggingFace tokenized training corpus for Quasar (SN24) — ~1.05M rows (tokens/loss/shard/bucket scoring columns) fitting the subnet's continued-pretraining task; parquet, not gated. Published by silx-ai, whose SILX-LABS/QUASAR-SUBNET README (source) declares Mainnet netuid 24. The -SN3 suffix is a model/series version label, not a subnet-3 reference.",
+      "notes": "Public SILX Labs HuggingFace tokenized training corpus for Quasar (SN24) \u2014 ~1.05M rows (tokens/loss/shard/bucket scoring columns) fitting the subnet's continued-pretraining task; parquet, not gated. Published by silx-ai, whose SILX-LABS/QUASAR-SUBNET README (source) declares Mainnet netuid 24. The -SN3 suffix is a model/series version label, not a subnet-3 reference.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -256,7 +262,7 @@
       "id": "sn-24-quasar-incentive-protocol",
       "kind": "data-artifact",
       "name": "Quasar incentive protocol definition",
-      "notes": "Public no-auth machine-readable protocol module (incentive/core/protocol.py) committed in the official SILX-LABS/QUASAR-SUBNET repository, defining the SN24 Quasar pretraining-incentive wire records — the validator/miner contract types the subnet communicates over (assignment grants, training-job manifests, artifact digests, miner receipts, and worker identities). Pinned to an immutable commit. Verified 200, SS58-clean, contains no keys or secret values. Distinct from the model/dataset artifacts already registered.",
+      "notes": "Public no-auth machine-readable protocol module (incentive/core/protocol.py) committed in the official SILX-LABS/QUASAR-SUBNET repository, defining the SN24 Quasar pretraining-incentive wire records \u2014 the validator/miner contract types the subnet communicates over (assignment grants, training-job manifests, artifact digests, miner receipts, and worker identities). Pinned to an immutable commit. Verified 200, SS58-clean, contains no keys or secret values. Distinct from the model/dataset artifacts already registered.",
       "provider": "silx-labs",
       "public_safe": true,
       "review": {

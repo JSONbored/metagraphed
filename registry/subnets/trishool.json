@@ -30,6 +30,11 @@
   },
   "source_repo": "https://github.com/TrishoolAI/trishool-phase2",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -117,7 +122,7 @@
       "id": "sn-23-trishool-submission-schema",
       "kind": "data-artifact",
       "name": "Trishool tri-check submission schema template",
-      "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1–Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
+      "notes": "Public no-auth JSON template for the tri-check / alignet-style miner submission format (Q1\u2013Q12 prompt object keys). Used for local testing and documentation of the expected batch submission shape.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -142,7 +147,7 @@
       "id": "sn-23-trishool-litepaper-docs",
       "kind": "docs",
       "name": "Trishool litepaper",
-      "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai — a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered.",
+      "notes": "Public no-auth Trishool litepaper (PDF) for SN23, served at litepaper.trishool.ai \u2014 a dedicated subdomain of the registered official website trishool.ai (same operator as the api.trishool.ai and docs.trishool.ai surfaces). A machine-readable primary-source document describing the subnet's design, mechanism, and roles. Distinct in URL from the docs.trishool.ai API documentation already registered.",
       "probe": {
         "enabled": true,
         "expect": "any",
