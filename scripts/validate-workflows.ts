@@ -209,6 +209,27 @@ for (const workflow of workflows) {
         workflow,
         "sharded test legs must publish coverage as artifacts for one merged Codecov upload, not upload per leg",
       );
+      // Every leg must be named in the merge job -- in the existence check AND
+      // in both Codecov `files:` lists (token and tokenless). Changing the
+      // shard count and missing one of those four places is not hypothetical:
+      // it happened twice while writing this, and the failure is silent. A
+      // leg left out of `files:` is simply not counted, which reads as a
+      // coverage drop; a leg left out of the existence check removes the only
+      // thing that would have said so.
+      const legIds = [
+        ...content.matchAll(/\n\s+id: (\S+)\n\s+args: --pass=/g),
+      ].map((m) => m[1]);
+      const missing = legIds.filter(
+        (id) =>
+          !content.includes(`lcov-${id}.info`) ||
+          !content.includes(`vitest-${id}.xml`) ||
+          !new RegExp(`for f in [^;]*lcov-${id}\\b`).test(content),
+      );
+      check(
+        legIds.length > 0 && missing.length === 0,
+        workflow,
+        `test matrix leg(s) missing from the coverage merge job: ${missing.join(", ") || "(no legs parsed)"} -- every leg must appear in both Codecov files: lists and the per-leg existence check`,
+      );
     }
 
     const coverageUploads = codecovSteps.filter(
