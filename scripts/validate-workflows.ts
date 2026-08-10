@@ -168,20 +168,27 @@ for (const workflow of workflows) {
     const codecovSteps = workflowSteps(content).filter((step) =>
       step.block.includes("uses: codecov/codecov-action@"),
     );
-    // Matched on `lcov.info` / `vitest*.xml` rather than the exact former
+    // Matched on `lcov*.info` / `vitest*.xml` rather than the exact former
     // paths: the uploads are matrix-driven since #10414
     // (`./${{ matrix.cov }}/lcov.info`), and a gate keyed to a literal path
     // goes silently blind the moment the path becomes an expression — it
     // stops finding ANY upload and reports the split as missing, which is the
     // opposite of what it checks. The rule is "a coverage upload exists on
     // both the token and tokenless paths", not "the path is spelled this way".
-    // codecov.yml's `after_n_builds` MUST equal the number of matrix legs that
-    // upload coverage (#10414). Codecov computes project/patch once it has that
-    // many uploads; if the workflow grows a leg and the number does not, it
-    // fires on a PARTIAL merge and reports the missing legs as a coverage
-    // regression -- observed as 95.77% (-2.17%) when it waited for 2 of 4.
-    // That failure is indistinguishable from a real drop by eye, which is why
-    // it is asserted here rather than left to a comment.
+    // Codecov's verdict must be computed ONCE, over every leg (#10414).
+    //
+    // The workflow shards the suite, so the reports arrive from four runners.
+    // They are merged by a single `coverage` job and uploaded once; Codecov is
+    // never asked to merge concurrent uploads, which is what silently reported
+    // 95.77% (-2.17%) when it fired on 2 of 4. Two things keep that true and
+    // neither fails loudly on its own:
+    //
+    //   - `after_n_builds` must be 1, or Codecov waits for uploads that a
+    //     consolidated workflow will never send (or, if raised, fires early
+    //     again the moment the shard count changes).
+    //   - the legs must publish ARTIFACTS, not upload directly. A leg that
+    //     uploads reintroduces both the partial-merge race and N GPG-verified
+    //     CLI downloads of a signature that races its own key propagation.
     const legCount = (content.match(/args: --pass=/g) ?? []).length;
     if (legCount > 0) {
       const codecovYml = readFileSync(
@@ -192,20 +199,26 @@ for (const workflow of workflows) {
         /after_n_builds:\s*(\d+)/.exec(codecovYml)?.[1] ?? NaN,
       );
       check(
-        afterN === legCount,
+        afterN === 1,
         workflow,
-        `codecov.yml after_n_builds is ${afterN} but the test matrix has ${legCount} coverage-uploading leg(s) -- Codecov would compute the verdict on a partial merge and report the shortfall as a coverage drop`,
+        `codecov.yml after_n_builds is ${afterN}, but the ${legCount} test legs publish artifacts merged by a single upload -- anything but 1 makes Codecov wait for uploads that never arrive, or compute its verdict on a partial merge`,
+      );
+      check(
+        content.includes("actions/download-artifact") &&
+          content.includes("pattern: coverage-*"),
+        workflow,
+        "sharded test legs must publish coverage as artifacts for one merged Codecov upload, not upload per leg",
       );
     }
 
-    const coverageUploads = codecovSteps.filter((step) =>
-      step.block.includes("lcov.info"),
+    const coverageUploads = codecovSteps.filter(
+      (step) => step.block.includes("lcov") && step.block.includes(".info"),
     );
     const tokenless = codecovSteps.filter(
       (step) => !step.block.includes("secrets.CODECOV_TOKEN"),
     );
-    const tokenlessCoverage = tokenless.filter((step) =>
-      step.block.includes("lcov.info"),
+    const tokenlessCoverage = tokenless.filter(
+      (step) => step.block.includes("lcov") && step.block.includes(".info"),
     );
     const tokenlessResults = tokenless.filter(
       (step) => step.block.includes("vitest") && step.block.includes(".xml"),

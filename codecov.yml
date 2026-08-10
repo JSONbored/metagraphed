@@ -20,12 +20,19 @@
 # counting a subset: at 2 it fired on 2 of 4 legs and reported 95.77% (-2.17%),
 # a false red caused entirely by not waiting.
 #
-# THIS NUMBER IS THE MATRIX LEG COUNT and must move with it. A stale value does
-# not fail loudly -- it silently reports a partial merge as a coverage
-# regression -- so scripts/validate-workflows.ts asserts the two agree.
+# ONE, because the workflow now does ONE upload: every matrix leg publishes its
+# report as an artifact and a single `coverage` job merges and uploads them
+# (#10414). That is deliberately not the same as trusting Codecov to merge N
+# concurrent uploads -- at 2 it fired on 2 of 4 legs and reported 95.77%
+# (-2.17%), a false red caused entirely by not waiting.
+#
+# Consolidating removes the coupling as well as the bug: this number no longer
+# tracks how many shards exist, so adding a shard cannot silently turn a partial
+# merge into a reported coverage regression. validate-workflows asserts the
+# consolidation is still in place.
 codecov:
   notify:
-    after_n_builds: 4
+    after_n_builds: 1
 
 coverage:
   status:

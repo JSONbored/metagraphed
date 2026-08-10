@@ -728,18 +728,22 @@ jobs:
       matrix:
         include:
           - name: shared 1/3
+            id: shared-1
             args: --pass=shared --shard=1/3
             cov: coverage
             junit: ""
           - name: shared 2/3
+            id: shared-2
             args: --pass=shared --shard=2/3
             cov: coverage
             junit: ""
           - name: shared 3/3
+            id: shared-3
             args: --pass=shared --shard=3/3
             cov: coverage
             junit: ""
           - name: mocked
+            id: mocked
             args: --pass=mocked
             cov: coverage-mocked
             junit: "-mocked"
@@ -825,6 +829,77 @@ jobs:
         run: |
           test -s ${{ matrix.cov }}/lcov.info
 
+      # Coverage and results leave as ARTIFACTS; the `coverage` job below does
+      # the single Codecov upload (#10414).
+      #
+      # WHY NOT UPLOAD FROM EACH LEG: the Codecov CLI is downloaded and
+      # GPG-verified once per upload, and that verification races its own key
+      # propagation across edge nodes -- observed here as
+      # "gpg: Can't check signature: No public key" on the mocked leg, with the
+      # tests themselves green. Uploading per leg multiplies a known transient
+      # by the shard count. One upload also means Codecov computes the verdict
+      # ONCE over the whole merged set, so `after_n_builds` stops being coupled
+      # to how many shards happen to exist.
+      #
+      # Staged into a flat directory with per-leg names because the three shared
+      # shards all write `coverage/lcov.info` and `reports/junit/vitest.xml` --
+      # identical paths on different runners, which merge-multiple would
+      # collapse into whichever landed last.
+      - name: Stage coverage + results for the merge job
+        run: |
+          mkdir -p cov-out
+          cp ${{ matrix.cov }}/lcov.info cov-out/lcov-${{ matrix.id }}.info
+          cp reports/junit/vitest${{ matrix.junit }}.xml cov-out/vitest-${{ matrix.id }}.xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-${{ matrix.id }}
+          path: cov-out/
+          retention-days: 1
+          if-no-files-found: error
+
+  # ONE Codecov upload, over every leg's report (#10414).
+  #
+  # `needs: test` waits for all four legs, so the verdict is computed once over
+  # the complete set rather than whenever Codecov decides it has seen enough
+  # uploads. That is what makes codecov.yml's `after_n_builds: 1` correct and
+  # keeps it correct when the shard count changes.
+  #
+  # `!cancelled()` rather than `success()`: a red leg still produced a coverage
+  # report for the legs that passed, and uploading it is how the PR comment
+  # shows what the failure did to coverage. A leg that never ran uploads
+  # nothing, which `if-no-files-found: error` above turns into a loud failure
+  # rather than a silently partial merge.
+  coverage:
+    name: coverage
+    needs: test
+    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Download every leg's coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+          path: cov
+
+      # Every leg must have produced a report. A missing one would upload a
+      # partial denominator and understate coverage silently, which is the
+      # failure this check has always existed to prevent.
+      - name: Verify every leg's report arrived
+        run: |
+          for f in lcov-shared-1 lcov-shared-2 lcov-shared-3 lcov-mocked; do
+            test -s "cov/$f.info" || { echo "missing or empty: cov/$f.info"; exit 1; }
+          done
+
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
       # local backstop. Missing coverage or upload errors fail the test job.
@@ -875,7 +950,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./${{ matrix.cov }}/lcov.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
@@ -894,7 +969,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./${{ matrix.cov }}/lcov.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
@@ -907,7 +982,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./reports/junit/vitest${{ matrix.junit }}.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
@@ -920,7 +995,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./reports/junit/vitest${{ matrix.junit }}.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
