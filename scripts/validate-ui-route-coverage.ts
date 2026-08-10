@@ -44,9 +44,15 @@ import { repoRoot } from "./lib.ts";
  *
  * NOW ZERO (#10300). Every published non-feed GET route is referenced by
  * apps/ui, so this has stopped being a ratchet with slack in it and become a
- * flat rule: a new route that nothing renders fails CI. That is the gate
+ * flat rule: a new route that nothing references fails CI. That is the gate
  * #10300 asked for -- "fails when a NEW route lands with no UI reference" --
  * and it is only enforceable because the backlog it was measuring is gone.
+ *
+ * WHAT IT PROVES IS A REFERENCE, NOT A RENDER (#10517). The evidence is a
+ * string match over the apps/ui sources, which cannot tell a fetch from a
+ * comment or see whether the component holding it is ever mounted. That was
+ * fine for a ratchet against a backlog and is a weaker claim than a ceiling of
+ * 0 invites; #10517 tracks narrowing it.
  *
  * Measured by RUNNING this check, never by subtracting feeds from a total by
  * hand, which is how the first value here came out one too low.
@@ -163,11 +169,22 @@ function main(): void {
     process.exit(1);
   }
 
+  // "REFERENCED BY", not "rendered" (#10517).
+  //
+  // This check matches a route path against the apps/ui source blob, so any
+  // occurrence counts -- a comment, an `.mdx` line, or an ApiSourceFooter
+  // `paths` entry, which is a plain string array and the case most likely to
+  // occur by accident. It cannot see whether anything fetches the route or
+  // whether the component holding it is ever mounted.
+  //
+  // At a ceiling of 25 that slack did not matter: the check was a ratchet
+  // against a backlog. At 0 it gets read as a guarantee, so the wording says
+  // what was actually measured. #10517 tracks narrowing the evidence.
   console.log(
     MAX_UNRENDERED_ROUTES === 0
-      ? `UI route coverage: all ${routes.length} published route(s) are rendered ` +
+      ? `UI route coverage: all ${routes.length} published route(s) are referenced by apps/ui ` +
           `(feeds excluded, their consumer is external).`
-      : `UI route coverage: ${routes.length - unrendered.length}/${routes.length} published route(s) rendered, ` +
+      : `UI route coverage: ${routes.length - unrendered.length}/${routes.length} published route(s) referenced, ` +
           `${unrendered.length} not (at the ceiling; feeds excluded, their consumer is external).`,
   );
 }
