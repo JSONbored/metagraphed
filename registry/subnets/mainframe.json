@@ -33,6 +33,11 @@
   },
   "source_repo": "https://github.com/macrocosm-os/mainframe",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -110,7 +115,7 @@
       "id": "sn-25-mainframe-wandb",
       "kind": "dashboard",
       "name": "Mainframe (folding-openmm) Weights & Biases dashboard",
-      "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) — live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
+      "notes": "Public Weights & Biases project the SN25 Mainframe validators log to (wandb.ai/macrocosmos/folding-openmm) \u2014 live protein-folding validation runs and metrics (260k+ runs). Project 'folding-openmm' and entity 'macrocosmos' are the validator defaults in the official macrocosm-os/mainframe config (folding/utils/config.py), and wandb.init runs from folding/utils/logging.py. Publicly readable via the W&B API. Distinct host from the sn25 API and object storage.",
       "probe": {
         "enabled": true,
         "expect": "html",

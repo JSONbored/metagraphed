@@ -27,6 +27,12 @@
   "dashboard_url": null,
   "docs_url": "https://www.perturbai.io/whitepaper",
   "notes": "First maintainer-reviewed pass for SN26 (previously unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Perturb is an adversarial-robustness network: miners find imperceptible perturbations that fool image classifiers (fixed EfficientNetV2-L on ImageNet-100), validators verify and score. Added the missing website and source-repo surfaces. Checked the website for additional surfaces beyond what was already tracked: /playground is a hands-on interactive demo (image upload), not a data feed or leaderboard -- not tracked. No OpenAPI schema or separate docs subdomain found.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:$1, docs:$5, docs:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "id": "sn-26-perturb-website",
