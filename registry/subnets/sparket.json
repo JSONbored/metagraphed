@@ -29,6 +29,11 @@
   "slug": "sn-57",
   "source_repo": "https://github.com/sparket-ai/sparket-ai",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -97,7 +102,7 @@
       "id": "sn-57-sparket-leaderboard",
       "kind": "data-artifact",
       "name": "Sparket miner leaderboard",
-      "notes": "Public no-auth GET returning the Sparket (SN57) miner leaderboard as JSON — per-miner rank, uid, component scores (skill/accuracy/edge/timeliness/uniqueness), incentive, and weight (25 ranked rows plus a meta block). Served on the subnet's own registered domain sparket.ai under /api/v1/; all fields are public scoreboard and ranking data. Fills the file's noted missing standalone-data-artifact gap.",
+      "notes": "Public no-auth GET returning the Sparket (SN57) miner leaderboard as JSON \u2014 per-miner rank, uid, component scores (skill/accuracy/edge/timeliness/uniqueness), incentive, and weight (25 ranked rows plus a meta block). Served on the subnet's own registered domain sparket.ai under /api/v1/; all fields are public scoreboard and ranking data. Fills the file's noted missing standalone-data-artifact gap.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -119,7 +124,7 @@
       "id": "sn-57-sparket-leaderboard-dashboard",
       "kind": "dashboard",
       "name": "Sparket miner leaderboard dashboard",
-      "notes": "Public no-auth web leaderboard for SN57 Sparket at dashboard.sparket.ai/leaderboard — the Sparket prediction-markets app's live miner leaderboard view, rendering the same rankings exposed by the subnet's public /api/v1/leaderboard endpoint. Served on the official sparket.ai domain (app subdomain); distinct host from the sparket.ai API surfaces.",
+      "notes": "Public no-auth web leaderboard for SN57 Sparket at dashboard.sparket.ai/leaderboard \u2014 the Sparket prediction-markets app's live miner leaderboard view, rendering the same rankings exposed by the subnet's public /api/v1/leaderboard endpoint. Served on the official sparket.ai domain (app subdomain); distinct host from the sparket.ai API surfaces.",
       "provider": "sparket",
       "public_safe": true,
       "review": {
