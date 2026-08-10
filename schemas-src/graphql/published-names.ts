@@ -1851,6 +1851,52 @@ export interface ProjectedType {
  * scalar narrowing -- and that is what the projection pass now checks.
  */
 export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
+  // ── the three that DO have a component behind them (#10404) ───────────────
+  //
+  // `subnets` and `providers` are the two Query fields with `route: null` --
+  // they read a published artifact directly rather than mirroring an
+  // /api/v1 route -- so the traversal cannot reach their list types and both
+  // sat in RESOLVER_BUILT_TYPES, unchecked. The projection pass does not need
+  // the traversal: naming the component is enough.
+  SubnetList: {
+    component: "SubnetsArtifact",
+    itemsFrom: "subnets",
+    added: ["total", "next_cursor"],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "network",
+      "source",
+    ],
+  },
+  ProviderList: {
+    component: "ProvidersArtifact",
+    itemsFrom: "providers",
+    added: ["total", "next_cursor"],
+    dropped: ["contract_version", "generated_at", "notes", "schema_version"],
+  },
+  // A flattened card: the artifact's own fields plus the counts the resolver
+  // derives from `global.status_counts`, which is a record GraphQL cannot
+  // name. The five it takes straight from the component are checked now; the
+  // nine it computes stay declared.
+  GlobalHealth: {
+    component: "HealthSummaryArtifact",
+    added: [
+      "status",
+      "ok_count",
+      "degraded_count",
+      "failed_count",
+      "unknown_count",
+      "avg_latency_ms",
+      "latency_sample_count",
+      "last_checked",
+      "last_ok",
+      "surface_count",
+    ],
+    dropped: ["contract_version", "schema_version", "global", "source"],
+  },
   Subnet: {
     component: "SubnetIndexEntry",
     added: ["health", "economics", "surfaces", "endpoints"],
@@ -2314,18 +2360,32 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
 /**
  * Types a resolver builds, with no component behind them.
  *
- * A pagination view (`{items, total, next_cursor}`) is the resolver's shape,
- * not a mirror of the artifact it pages over, and the remaining entries are
- * hand-shaped cards. The generator emits these from the resolver side; the
- * component emitter never sees them.
+ * THIS LIST IS THE DEBT, and only it: everything in `PROJECTED_TYPES` gets
+ * checked field by field, and everything here is taken on trust. It was 15
+ * when #10371 split the two, 8 after the projections were declared, and 5
+ * now that the three with a component behind them moved across -- `SubnetList`
+ * and `ProviderList` page over `SubnetsArtifact`/`ProvidersArtifact`, and
+ * `GlobalHealth` flattens `HealthSummaryArtifact`. Anything that picks its
+ * fields from a component belongs there, not here.
  *
- * Anything that picks its fields from a component belongs in `PROJECTED_TYPES`
- * instead, where it gets checked.
+ * Why each of the five is still here, and what closing it would take:
+ *
+ *   OpportunityBoards       six boards of OpportunityEntry, assembled from a
+ *                           leaderboard read. No artifact has this shape.
+ *   SubnetTrajectoryDelta   the artifact keys `deltas` by window ('7d'/'30d'),
+ *                           which are not valid GraphQL field names, so the
+ *                           resolver turns the record into a list carrying
+ *                           `window`. Modelling the record's VALUE as a named
+ *                           Zod schema would close it.
+ *   EmissionGateChange      the flattened form of a three-arm union
+ *                           (param/subnet/flow), each arm carrying only its
+ *                           own fields. GraphQL could express it as a union;
+ *                           the SDL chose one type with everything nullable.
+ *   Subscription            a root type, not a component.
+ *   ChainEvent              the subscription payload -- the #4980 NOTIFY
+ *                           shape, which no REST route serves.
  */
 export const RESOLVER_BUILT_TYPES: readonly string[] = [
-  "SubnetList",
-  "ProviderList",
-  "GlobalHealth",
   "OpportunityBoards",
   "SubnetTrajectoryDelta",
   "EmissionGateChange",

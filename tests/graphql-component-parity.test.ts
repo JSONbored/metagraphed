@@ -332,7 +332,10 @@ describe("paginated views", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.equal(report.projections.length, 25);
-    assert.equal(report.droppedFields, 180);
+    // Every projection's drops, not just the paginated ones -- `dropped` is
+    // the whole set on all 38, which is what makes an undeclared drop a
+    // failure rather than a silence.
+    assert.equal(report.droppedFields, 194);
   });
 
   test("it FAILS when a component field is neither published nor declared dropped", () => {
