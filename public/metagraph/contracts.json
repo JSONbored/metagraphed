@@ -2464,14 +2464,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2518,14 +2518,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2572,14 +2572,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2626,14 +2626,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2680,14 +2680,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2751,14 +2751,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"

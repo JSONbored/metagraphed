@@ -6,6 +6,7 @@ import {
   netuidListSchema,
   netuidSchema,
   numericCursorSchema,
+  orderingNote,
   orderSchema,
   querySchema,
   RPC_POOL_KIND_VALUES,
@@ -78,6 +79,35 @@ const CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION =
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
+
+/**
+ * The parameter names `SHARED_QUERY_PARAMETER_DESCRIPTIONS` covers.
+ *
+ * A SECOND declaration of that map's keys, which normally would not survive
+ * review here -- and the reason it does is a hard ordering constraint rather
+ * than a preference. `route()` runs at module load, hundreds of lines above
+ * where the map is declared, so reading the map from the parameter emitter is
+ * a temporal dead zone: it throws `Cannot access ... before initialization`
+ * during import. Hoisting the map itself would move ~200 lines of prose past
+ * every route in the file.
+ *
+ * The list is therefore small, adjacent to its purpose, and GATED --
+ * `tests/shared-query-parameter-descriptions.test.ts` asserts it equals the
+ * map's own keys, so the two cannot drift.
+ *
+ * What it decides: whether a parameter's prose may fall back to the builder's
+ * `.describe()` (#10219). A name in here has a sentence that differs per
+ * SURFACE -- `limit` is rejected on REST and clamped on MCP -- and a builder
+ * shared by both surfaces must not be able to overwrite it.
+ */
+export const SHARED_DESCRIPTION_NAMES: ReadonlySet<string> = new Set([
+  "fields",
+  "limit",
+  "netuid",
+  "offset",
+  "q",
+  "window",
+]);
 
 interface QueryParameterSpec {
   name: string;
@@ -4820,14 +4850,22 @@ const FEED_COMMON_PARAMETERS = [
   },
   {
     name: "since",
+    // The feed-specific opening is written here because it names what the
+    // items ARE, which the vocabulary cannot. The ORDERING half is appended
+    // from `orderingNote`, the same declaration `blockBoundSchema` and
+    // `daySchema` read (#10219) -- a second copy of that sentence is exactly
+    // the drift this epic removes, and 41 published pairs all say it the same
+    // way because only one of them says it.
     description:
-      "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+      "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored." +
+      orderingNote("first"),
     schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.since),
   },
   {
     name: "until",
     description:
-      "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+      "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day." +
+      orderingNote("last"),
     schema: parameterSchema(FEED_QUERY_SCHEMAS.common.shape.until),
   },
   {
@@ -5636,12 +5674,26 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
     "combination with the page size the response actually returned -- prefer " +
     "`cursor` for anything beyond the first few pages, since a row inserted " +
     "mid-scan shifts every later offset.",
-  cursor: () =>
-    "Opaque keyset pagination token. Echo the `next_cursor` from the previous " +
-    "response back VERBATIM -- it encodes an internal sort position, not a " +
-    "row number, so it must never be constructed, incremented, parsed or " +
-    "compared. Omit it for the first page; a response with no `next_cursor` " +
-    "is the last page.",
+  // `cursor` USED TO LIVE HERE and had to leave (#10219).
+  //
+  // Its sentence said "echo the next_cursor back VERBATIM -- it encodes an
+  // internal sort position, not a row number", which is true of the keyset
+  // feeds and flatly false of the ~40 collection routes whose `cursor` is an
+  // integer ROW OFFSET. Telling a caller to echo an offset back verbatim is
+  // precisely the silent skip-or-repeat paging loop the sentence was written to
+  // prevent, published as guidance on the routes that most needed the other
+  // advice.
+  //
+  // This is the failure #10060 named when it called a NAME-keyed description
+  // "structurally unable to be right": one name, two shapes, one sentence. It
+  // could not be fixed by rewording -- only by letting each shape speak for
+  // itself. `numericCursorSchema` and `keysetCursorSchema` each carry their own
+  // sentence, and since #10219 a builder's prose reaches the spec for any
+  // parameter this map does not claim.
+  //
+  // `tests/shared-query-parameter-descriptions.test.ts` now asserts per shape:
+  // an integer cursor must say "offset" and must NOT say "verbatim", and an
+  // opaque one must say the opposite.
   window: (parameter) => {
     const values = parameter.schema?.enum;
     // The allowed windows differ per route (7d/30d, +90d, +1y/all), so they
@@ -5690,6 +5742,7 @@ function withSharedParameterDescription<T extends object>(parameter: T): T {
       minimum?: number;
       enum?: unknown[];
       default?: unknown;
+      description?: unknown;
     };
   };
   if (typeof spec.name !== "string" || spec.description) return parameter;
@@ -6290,13 +6343,31 @@ function route(
  * where that proof gets cashed in: the `schema` object on every published
  * parameter now comes from the Zod, so there is nothing left to keep in step.
  *
- * WHAT STILL COMES FROM THE CALL SITE. Only `description`. A parameter's prose
- * is per-route -- it names what the rows are -- and 135 of the 678 published
- * parameters carry one written at the `route()` call rather than in
- * `SHARED_QUERY_PARAMETER_DESCRIPTIONS`. Taking descriptions from Zod too
- * would move all 135 (`formatSchema()` has one sentence; the routes have
- * three), and that is a contract change worth making deliberately, not one to
- * smuggle into a refactor that claims to change nothing.
+ * WHERE THE PROSE COMES FROM, three sources in precedence order (#10219):
+ *
+ *   1. the route's own inline `description` -- it names what the rows are, and
+ *      135 parameters have one for that reason;
+ *   2. `SHARED_QUERY_PARAMETER_DESCRIPTIONS`, keyed by name;
+ *   3. the BUILDER's `.describe()`, taken from the Zod.
+ *
+ * Rung 3 is new, and #10063 deferred it correctly: that step's whole value was
+ * being a provable no-op, and moving sentences inside it would have made the
+ * proof meaningless. The reason to add it now is measurable -- 310 of 910
+ * published query parameters carried NO description at all, including every
+ * `block_start`, `block_end`, `from` and `to`, which are exactly the ones whose
+ * prose holds something a caller cannot infer. `blockBoundSchema(edge)` knows
+ * it is the first or last end of a range and which way the pair is ordered;
+ * none of that reached `openapi.json` while the builder's sentence was dropped.
+ *
+ * THE BUILDER GOES LAST, NOT SECOND, and that ordering is the whole care in
+ * this change. The first attempt put it above the shared map and would have
+ * published a contract lie on ~130 routes: `limitSchema`'s sentence says an
+ * over-ceiling value "is clamped to the ceiling rather than rejected", which is
+ * true of MCP and false of REST, where it is a 400. The shared map exists
+ * BECAUSE the two surfaces behave differently for that one parameter -- see its
+ * own header, which measured both -- so it has to outrank a builder shared by
+ * both surfaces. A parameter the map does not cover falls through to the
+ * builder, which is where the 310 get their prose.
  *
  * ORDER IS THE ZOD'S. Object keys are authored in the order the route
  * published them, which is what makes this emit an identical parameter list
@@ -6306,6 +6377,20 @@ function route(
  * `validate:route-query-parity` passes -- it fails on any unclassified route --
  * but falling back beats emitting nothing if it ever does.
  */
+/**
+ * The builder's own sentence, lifted out of the emitted schema object.
+ *
+ * `.describe()` lands INSIDE the JSON Schema, and a published parameter carries
+ * its prose at the PARAMETER level. `parameterSchemaFor` strips it from the
+ * schema below, so this is the only chance to keep it.
+ */
+function describedByBuilder(property: Row): string | undefined {
+  const description = property.description;
+  return typeof description === "string" && description.length > 0
+    ? description
+    : undefined;
+}
+
 function queryParametersFromSchema(
   pathValue: string,
   querySpec: ReturnType<typeof normalizeQueryParameters>,
@@ -6327,7 +6412,22 @@ function queryParametersFromSchema(
   }) as Row;
   return Object.entries((emitted.properties ?? {}) as Record<string, Row>).map(
     ([name, property]) => {
-      const description = describedBy.get(name);
+      // All three rungs resolve here, because this is the only point where all
+      // three are still visible: `parameterSchemaFor` strips the builder's
+      // sentence out of the schema object below, so a later pass cannot see it.
+      //
+      // Rung 2 is checked by NAME rather than applied here --
+      // `withSharedParameterDescription` still owns the wording, and it
+      // interpolates each route's own ceiling/enum into it. Asking only
+      // "does the map cover this name" keeps one owner for the sentence, stops
+      // the builder from pre-empting it, and avoids reading the map itself
+      // from a point where it is not yet initialized (see
+      // SHARED_DESCRIPTION_NAMES).
+      const description =
+        describedBy.get(name) ??
+        (SHARED_DESCRIPTION_NAMES.has(name)
+          ? undefined
+          : describedByBuilder(property));
       return {
         name,
         ...(description === undefined ? {} : { description }),

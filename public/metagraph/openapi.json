@@ -57674,7 +57674,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -57700,6 +57700,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -57709,6 +57710,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -57718,6 +57720,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -57727,6 +57730,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -58631,6 +58635,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -58649,7 +58654,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -58659,6 +58664,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "before",
             "required": false,
@@ -60091,6 +60097,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to tx_count.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -60798,6 +60805,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to volume.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -61533,7 +61541,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -61878,7 +61886,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -61887,6 +61895,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -61943,6 +61952,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -61952,6 +61962,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -61961,6 +61972,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -61970,6 +61982,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -62729,6 +62742,7 @@
             }
           },
           {
+            "description": "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
             "in": "query",
             "name": "netuids",
             "required": false,
@@ -62976,7 +62990,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -63767,6 +63781,7 @@
         "operationId": "accountsList",
         "parameters": [
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -64758,6 +64773,7 @@
             }
           },
           {
+            "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
             "in": "query",
             "name": "kind",
             "required": false,
@@ -64777,6 +64793,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -64786,6 +64803,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -64821,7 +64839,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -64961,6 +64979,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -64970,6 +64989,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -65005,7 +65025,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -65156,6 +65176,7 @@
             }
           },
           {
+            "description": "Inclusive first day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -65166,6 +65187,7 @@
             }
           },
           {
+            "description": "Inclusive last day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -65202,7 +65224,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -65474,7 +65496,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -66425,6 +66447,7 @@
             }
           },
           {
+            "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
             "in": "query",
             "name": "direction",
             "required": false,
@@ -66908,6 +66931,7 @@
             }
           },
           {
+            "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
             "in": "query",
             "name": "direction",
             "required": false,
@@ -66921,6 +66945,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -66930,6 +66955,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -66965,7 +66991,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -67218,6 +67244,7 @@
         "operationId": "topHolders",
         "parameters": [
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -68020,7 +68047,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -68046,6 +68073,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -68055,6 +68083,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -68064,6 +68093,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -68073,6 +68103,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -68994,6 +69025,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -69019,6 +69051,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -69063,7 +69096,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -69244,6 +69277,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -69262,7 +69296,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -69272,6 +69306,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "before",
             "required": false,
@@ -70456,6 +70491,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to nakamoto_coefficient.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -70473,6 +70509,7 @@
             }
           },
           {
+            "description": "Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first. Defaults to desc.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -70860,6 +70897,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -70882,6 +70920,7 @@
             }
           },
           {
+            "description": "Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first.",
             "in": "query",
             "name": "order",
             "required": false,
@@ -71176,6 +71215,7 @@
         "operationId": "emissionGateChanges",
         "parameters": [
           {
+            "description": "Restrict the result to this kind. Options are per-tool; see this parameter's enum.",
             "in": "query",
             "name": "kind",
             "required": false,
@@ -71300,6 +71340,7 @@
         "operationId": "chainHolders",
         "parameters": [
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to top1_share.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -72299,6 +72340,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to tx_count.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -73095,6 +73137,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to volume.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -74031,6 +74074,7 @@
         "operationId": "compare",
         "parameters": [
           {
+            "description": "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
             "in": "query",
             "name": "netuids",
             "required": false,
@@ -74553,7 +74597,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -74989,7 +75033,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -75401,7 +75445,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -75755,6 +75799,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -75825,7 +75870,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -75967,6 +76012,7 @@
         "operationId": "endpointPools",
         "parameters": [
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -76043,7 +76089,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -76240,6 +76286,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -76333,7 +76380,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -76531,7 +76578,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -76801,7 +76848,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -76810,6 +76857,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -76866,6 +76914,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -76875,6 +76924,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -76884,6 +76934,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -76893,6 +76944,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -77147,7 +77199,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77156,7 +77208,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77246,7 +77298,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77255,7 +77307,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77335,7 +77387,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77344,7 +77396,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77424,7 +77476,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77433,7 +77485,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77513,7 +77565,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77522,7 +77574,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77612,7 +77664,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77621,7 +77673,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77701,7 +77753,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77710,7 +77762,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77790,7 +77842,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77799,7 +77851,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77879,7 +77931,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77888,7 +77940,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -77978,7 +78030,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -77987,7 +78039,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78067,7 +78119,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78076,7 +78128,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78156,7 +78208,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78165,7 +78217,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78255,7 +78307,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78264,7 +78316,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78364,7 +78416,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78373,7 +78425,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78463,7 +78515,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78472,7 +78524,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78562,7 +78614,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78571,7 +78623,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78651,7 +78703,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78660,7 +78712,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78750,7 +78802,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78759,7 +78811,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78839,7 +78891,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78848,7 +78900,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -78928,7 +78980,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -78937,7 +78989,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -79017,7 +79069,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -79026,7 +79078,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -79126,7 +79178,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -79135,7 +79187,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -79225,7 +79277,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -79234,7 +79286,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -79324,7 +79376,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "since",
             "required": false,
@@ -79333,7 +79385,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "until",
             "required": false,
@@ -79777,7 +79829,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -79940,7 +79992,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -79949,6 +80001,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -79978,6 +80031,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -79987,6 +80041,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -79996,6 +80051,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -80005,6 +80061,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -80184,7 +80241,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -80354,6 +80411,7 @@
             }
           },
           {
+            "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
             "in": "query",
             "name": "kind",
             "required": false,
@@ -80504,6 +80562,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -80570,7 +80629,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -80896,7 +80955,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -81686,6 +81745,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "review_state",
             "required": false,
@@ -81755,7 +81815,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -81922,6 +81982,7 @@
         "operationId": "providers",
         "parameters": [
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -81982,7 +82043,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -82403,7 +82464,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -82877,6 +82938,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "reason_codes",
             "required": false,
@@ -82922,7 +82984,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -83210,7 +83272,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -83484,6 +83546,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "reason_codes",
             "required": false,
@@ -83493,6 +83556,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "review_state",
             "required": false,
@@ -83546,7 +83610,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -83865,6 +83929,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "reason_codes",
             "required": false,
@@ -83951,7 +84016,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -84149,6 +84214,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "review_state",
             "required": false,
@@ -84180,7 +84246,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -84457,7 +84523,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -84690,6 +84756,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -84783,7 +84850,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -84925,6 +84992,7 @@
         "operationId": "rpcPools",
         "parameters": [
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -85001,7 +85069,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -85527,7 +85595,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -85719,7 +85787,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -86324,7 +86392,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -86471,6 +86539,7 @@
             }
           },
           {
+            "description": "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
             "in": "query",
             "name": "netuids",
             "required": false,
@@ -86718,7 +86787,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -87388,6 +87457,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -87413,6 +87483,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -87457,7 +87528,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -88289,6 +88360,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -88382,7 +88454,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -88694,6 +88766,7 @@
             }
           },
           {
+            "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
             "in": "query",
             "name": "kind",
             "required": false,
@@ -88702,6 +88775,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -88711,6 +88785,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -88746,7 +88821,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -88919,7 +88994,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -89105,6 +89180,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "review_state",
             "required": false,
@@ -89136,7 +89212,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -89335,6 +89411,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -89401,7 +89478,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -90288,7 +90365,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -90455,7 +90532,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -92710,6 +92787,7 @@
             }
           },
           {
+            "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
             "in": "query",
             "name": "direction",
             "required": false,
@@ -92962,6 +93040,7 @@
             }
           },
           {
+            "description": "Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`.",
             "in": "query",
             "name": "direction",
             "required": false,
@@ -93350,6 +93429,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -93359,6 +93439,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -93426,7 +93507,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -95034,6 +95115,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to stake.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -95211,7 +95293,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -95220,6 +95302,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block",
             "required": false,
@@ -95249,6 +95332,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "block_start",
             "required": false,
@@ -95258,6 +95342,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "block_end",
             "required": false,
@@ -95267,6 +95352,7 @@
             }
           },
           {
+            "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
             "in": "query",
             "name": "from",
             "required": false,
@@ -95276,6 +95362,7 @@
             }
           },
           {
+            "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
             "in": "query",
             "name": "to",
             "required": false,
@@ -95542,6 +95629,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "provider",
             "required": false,
@@ -95551,6 +95639,7 @@
             }
           },
           {
+            "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
             "in": "query",
             "name": "id",
             "required": false,
@@ -95618,7 +95707,7 @@
             }
           },
           {
-            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -95885,6 +95974,7 @@
         "operationId": "globalValidators",
         "parameters": [
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -96317,6 +96407,7 @@
             }
           },
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to net_staked.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -96356,6 +96447,7 @@
             }
           },
           {
+            "description": "An SS58 account address (47-48 base58 characters). Coldkey or hotkey depending on the tool — see the tool description for which this expects.",
             "in": "query",
             "name": "coldkey",
             "required": false,
@@ -96488,6 +96580,7 @@
         "operationId": "validatorEconomicsRanking",
         "parameters": [
           {
+            "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to earning_floor_cost_tao.",
             "in": "query",
             "name": "sort",
             "required": false,

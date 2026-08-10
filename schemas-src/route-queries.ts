@@ -210,6 +210,7 @@ import {
   netuidSchema,
   offsetSchema,
   orderSchema,
+  feedInstantSchema,
   querySchema,
   SERVING_BOUND,
   sortSchema,
@@ -361,16 +362,21 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
  * different array. What that cost: all 24 published feed paths declare
  * `limit` maximum 50 and nothing enforced it, so `?limit=51` answered 200.
  *
- * `since`/`until` stay plain strings: `src/feeds.ts` accepts a whole UTC day
- * OR an offset-bearing date-time and rejects a malformed one with a message
- * naming which, so this is a case where the handler genuinely knows more than
- * a schema can say -- unlike the bound above it, which is a number.
+ * `since`/`until` carry no PATTERN, for the reason they never did: `src/feeds.ts`
+ * accepts a whole UTC day OR an offset-bearing date-time and rejects a malformed
+ * one with a message naming which, and a published regex would make the router's
+ * derived message preempt that better one on all 24 paths.
+ *
+ * They no longer publish NOTHING, though (#10219). `feedInstantSchema` states the
+ * two accepted forms, which end of the day a bare date resolves to, and the
+ * ordering between the pair -- the three things a caller cannot infer and the
+ * handler was never going to tell them in advance.
  */
 export const FEED_QUERY_SCHEMAS = {
   common: z.object({
     tag: filterTokenSchema().optional(),
-    since: z.string().optional(),
-    until: z.string().optional(),
+    since: feedInstantSchema("first").optional(),
+    until: feedInstantSchema("last").optional(),
     limit: limitSchema(FEED_LIMIT_MAX, FEED_LIMIT_MAX).optional(),
   }),
   /** `/api/v1/feeds/watch` -- the URL-carried watchlist. */

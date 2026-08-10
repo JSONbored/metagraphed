@@ -13555,13 +13555,17 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 author?: string;
                 spec_version?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 min_extrinsics?: number;
                 min_events?: number;
@@ -14321,10 +14325,12 @@ export interface operations {
             query?: {
                 pallet?: string;
                 method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 extrinsic?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 before?: number;
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
@@ -15536,6 +15542,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to tx_count. */
                 sort?: "tx_count" | "total_fee_tao";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
@@ -16109,6 +16116,7 @@ export interface operations {
                 window?: "7d" | "30d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25. */
                 limit?: number;
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to volume. */
                 sort?: "volume" | "count";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -16789,7 +16797,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
@@ -17077,8 +17085,9 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 signer?: string;
                 call_module?: string;
@@ -17086,9 +17095,13 @@ export interface operations {
                 /** @description Requires call_module so the decoded call-args JSON scan stays scoped. */
                 call_hash?: string;
                 success?: "true" | "false";
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -17832,6 +17845,7 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring. */
                 netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
@@ -17860,7 +17874,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
@@ -18790,6 +18804,7 @@ export interface operations {
     accountsList: {
         parameters: {
             query?: {
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake. */
                 sort?: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -19825,16 +19840,19 @@ export interface operations {
     accountEvents: {
         parameters: {
             query?: {
+                /** @description Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind. */
                 kind?: string;
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -19956,13 +19974,15 @@ export interface operations {
     accountExtrinsics: {
         parameters: {
             query?: {
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -20086,13 +20106,15 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Inclusive first day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: string;
+                /** @description Inclusive last day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -20328,7 +20350,7 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -21316,6 +21338,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum. */
                 direction?: "all" | "in" | "out";
             };
             header?: never;
@@ -21802,14 +21825,17 @@ export interface operations {
     accountTransfers: {
         parameters: {
             query?: {
+                /** @description Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum. */
                 direction?: "all" | "sent" | "received";
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -22050,6 +22076,7 @@ export interface operations {
     topHolders: {
         parameters: {
             query?: {
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao. */
                 sort?: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -22960,13 +22987,17 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 author?: string;
                 spec_version?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 min_extrinsics?: number;
                 min_events?: number;
@@ -23884,15 +23915,17 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 confidence?: "low" | "medium" | "high";
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -24025,10 +24058,12 @@ export interface operations {
             query?: {
                 pallet?: string;
                 method?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 extrinsic?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 before?: number;
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
@@ -25273,7 +25308,9 @@ export interface operations {
         parameters: {
             query?: {
                 lens?: "emission" | "stake" | "entity_emission" | "entity_stake" | "validator_stake";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to nakamoto_coefficient. */
                 sort?: "nakamoto_coefficient" | "gini" | "holders" | "top_1pct_share" | "total" | "netuid";
+                /** @description Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first. Defaults to desc. */
                 order?: "asc" | "desc";
                 /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -25713,7 +25750,9 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. */
                 sort?: "final_share" | "emission_share" | "weighted_share" | "gated_share" | "gate_delta" | "distance_to_bar" | "tao_in_emission" | "excess_tao" | "tao_total" | "liquidity_fraction" | "miner_burned" | "netuid";
+                /** @description Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first. */
                 order?: "asc" | "desc";
                 /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
@@ -26015,6 +26054,7 @@ export interface operations {
     emissionGateChanges: {
         parameters: {
             query?: {
+                /** @description Restrict the result to this kind. Options are per-tool; see this parameter's enum. */
                 kind?: "param" | "subnet" | "flow";
                 /** @description Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
@@ -26135,6 +26175,7 @@ export interface operations {
     chainHolders: {
         parameters: {
             query?: {
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to top1_share. */
                 sort?: "top1_share" | "top5_share" | "top10_share" | "top20_share" | "holder_count" | "total_alpha";
                 /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -27205,6 +27246,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to tx_count. */
                 sort?: "tx_count" | "total_fee_tao";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
@@ -27891,6 +27933,7 @@ export interface operations {
                 window?: "7d" | "30d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 25. */
                 limit?: number;
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to volume. */
                 sort?: "volume" | "count";
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -28843,6 +28886,7 @@ export interface operations {
     compare: {
         parameters: {
             query?: {
+                /** @description Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring. */
                 netuids?: string;
                 dimensions?: string;
             };
@@ -29376,7 +29420,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "agent_status" | "blocker_level" | "name" | "netuid" | "priority_score" | "score" | "tier";
@@ -29836,7 +29880,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "name" | "netuid";
@@ -30227,7 +30271,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "alpha_fdv_tao" | "alpha_market_cap_tao" | "alpha_price_change_1d" | "alpha_price_change_1h" | "alpha_price_change_1m" | "alpha_price_change_7d" | "alpha_price_tao" | "block" | "emission_share" | "max_stake_alpha" | "max_uids" | "max_validators" | "miner_count" | "miner_readiness" | "name" | "netuid" | "open_slots" | "registration_cost_tao" | "subnet_volume_tao" | "total_stake_alpha" | "validator_count";
@@ -30516,6 +30560,7 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 severity?: "critical" | "warning" | "info";
@@ -30524,7 +30569,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "detected_at" | "endpoint_id" | "kind" | "last_checked" | "netuid" | "provider" | "severity" | "state" | "status";
@@ -30670,6 +30715,7 @@ export interface operations {
     endpointPools: {
         parameters: {
             query?: {
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
                 min_eligible_count?: number;
@@ -30680,7 +30726,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -30853,6 +30899,7 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
@@ -30864,7 +30911,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -31029,7 +31076,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -31270,8 +31317,9 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 signer?: string;
                 call_module?: string;
@@ -31279,9 +31327,13 @@ export interface operations {
                 /** @description Requires call_module so the decoded call-args JSON scan stays scoped. */
                 call_hash?: string;
                 success?: "true" | "false";
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -31534,9 +31586,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31584,9 +31636,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31632,9 +31684,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31680,9 +31732,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31728,9 +31780,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31778,9 +31830,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31826,9 +31878,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31874,9 +31926,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31922,9 +31974,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -31972,9 +32024,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32020,9 +32072,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32068,9 +32120,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32116,9 +32168,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32169,9 +32221,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32220,9 +32272,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32271,9 +32323,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32322,9 +32374,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32372,9 +32424,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32420,9 +32472,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32468,9 +32520,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32516,9 +32568,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32568,9 +32620,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32618,9 +32670,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -32668,9 +32720,9 @@ export interface operations {
             query?: {
                 /** @description Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array. */
                 tag?: string;
-                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. */
+                /** @description Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound. */
                 since?: string;
-                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. */
+                /** @description Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound. */
                 until?: string;
                 /** @description Maximum items to return (1-50). Defaults to 50. */
                 limit?: number;
@@ -33090,7 +33142,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "coverage_level" | "curation_level" | "gap_count" | "name" | "netuid";
@@ -33223,14 +33275,19 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 call_function?: string;
                 success?: "true" | "false";
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -33366,7 +33423,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "avg_latency_ms" | "degraded_count" | "failed_count" | "last_checked" | "last_ok" | "name" | "netuid" | "ok_count" | "status" | "surface_count" | "unknown_count";
@@ -33496,6 +33553,7 @@ export interface operations {
                 window?: "7d" | "30d" | "90d" | "180d";
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind. */
                 kind?: string;
             };
             header?: never;
@@ -33630,6 +33688,7 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
@@ -33637,7 +33696,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -33914,7 +33973,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "downtime_ms" | "incident_count" | "netuid" | "surface_id";
@@ -34777,6 +34836,7 @@ export interface operations {
                 netuid?: number;
                 subnet_type?: "root" | "application";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 review_state?: string;
                 confidence?: "low" | "medium" | "high";
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
@@ -34786,7 +34846,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "curation_level" | "interface_count" | "missing_critical_count" | "name" | "netuid" | "operational_interface_count" | "profile_level" | "review_state";
@@ -35042,6 +35102,7 @@ export interface operations {
     providers: {
         parameters: {
             query?: {
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 kind?: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
                 authority?: "community" | "official" | "provider-claimed" | "registry-observed";
@@ -35049,7 +35110,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "authority" | "id" | "kind" | "name";
@@ -35327,7 +35388,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -35747,13 +35808,14 @@ export interface operations {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 candidate_api_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 operational_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 reason_codes?: string;
                 recommended_adapter_kind?: "custom-adapter" | "data-artifact-adapter" | "generic-openapi-or-custom" | "stream-adapter";
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_api_count" | "candidate_api_kinds" | "curation_level" | "name" | "netuid" | "operational_kinds" | "operational_surface_count" | "priority_score" | "recommended_adapter_kind";
@@ -35920,7 +35982,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "evidence_action" | "lane" | "name" | "netuid" | "priority_score";
@@ -36081,7 +36143,9 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 reason_codes?: string;
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 review_state?: string;
                 manual_review_required?: "true" | "false";
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
@@ -36090,7 +36154,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "adapter_score" | "candidate_count" | "completeness_score" | "curation_level" | "endpoint_count" | "evidence_action" | "identity_level" | "identity_surface_count" | "lane" | "name" | "netuid" | "operational_interface_count" | "priority_score" | "profile_level" | "review_state" | "stale_candidate_count" | "surface_count" | "verified_candidate_count";
@@ -36302,6 +36366,7 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 profile_level?: "directory-only" | "identity-partial" | "identity-complete" | "operational" | "adapter-backed";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 reason_codes?: string;
                 submission_route?: "direct-candidate-pr" | "adapter-request" | "maintainer-review" | "status-report";
                 target_action?: "submit-new-candidate" | "replace-stale-candidate" | "verify-existing-candidate" | "review-existing-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
@@ -36312,7 +36377,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "auto_review_candidate" | "evidence_action" | "identity_level" | "kind" | "lane" | "manual_review_required" | "name" | "netuid" | "priority_score" | "profile_level" | "submission_route" | "target_action" | "target_type";
@@ -36522,12 +36587,13 @@ export interface operations {
                 netuid?: number;
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 review_state?: string;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -36671,7 +36737,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "completeness_score" | "identity_level" | "identity_promotion_kind_count" | "identity_surface_count" | "live_identity_candidate_kind_count" | "missing_critical_count" | "name" | "native_identity_signal_count" | "native_name_quality" | "netuid" | "priority_score" | "profile_level" | "stale_identity_candidate_kind_count";
@@ -36873,6 +36939,7 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 pool_eligible?: "true" | "false";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
@@ -36884,7 +36951,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -37016,6 +37083,7 @@ export interface operations {
     rpcPools: {
         parameters: {
             query?: {
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 kind?: "subtensor-rpc" | "subtensor-wss" | "archive";
                 min_eligible_count?: number;
@@ -37026,7 +37094,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "eligible_count" | "endpoint_count" | "id" | "kind";
@@ -37603,7 +37671,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -37733,7 +37801,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "netuid" | "slug" | "title" | "type";
@@ -38349,7 +38417,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "path" | "record_count";
@@ -38478,6 +38546,7 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                /** @description Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring. */
                 netuids?: string;
                 coverage_level?: "native-only" | "manifested" | "probed";
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
@@ -38506,7 +38575,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "block" | "candidate_count" | "coverage_level" | "curation_level" | "integration_readiness" | "mechanism_count" | "name" | "netuid" | "participant_count" | "probed_surface_count" | "status" | "subnet_type" | "surface_count" | "tempo";
@@ -39315,15 +39384,17 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 state?: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 confidence?: "low" | "medium" | "high";
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "confidence" | "id" | "kind" | "name" | "netuid" | "provider" | "state";
@@ -40137,6 +40208,7 @@ export interface operations {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
                 layer?: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
                 pool_eligible?: "true" | "false";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 publication_state?: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
                 status?: "ok" | "degraded" | "failed" | "unknown";
@@ -40148,7 +40220,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "kind" | "last_checked" | "latency_ms" | "layer" | "netuid" | "pool_eligible" | "provider" | "publication_state" | "score" | "status";
@@ -40459,14 +40531,17 @@ export interface operations {
     subnetEvents: {
         parameters: {
             query?: {
+                /** @description Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind. */
                 kind?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -40594,7 +40669,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "claim" | "source_url" | "subject" | "verified_at";
@@ -40722,12 +40797,13 @@ export interface operations {
             query?: {
                 curation_level?: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
                 missing_kinds?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 review_state?: string;
                 /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "candidate_count" | "curation_level" | "missing_kinds" | "name" | "netuid" | "priority_score" | "surface_count" | "verified_candidate_count";
@@ -40938,6 +41014,7 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
                 status?: "ok" | "degraded" | "failed" | "unknown";
                 classification?: "auth-required" | "content-mismatch" | "dead" | "live" | "rate-limited" | "redirected" | "timeout" | "transient" | "unsupported" | "unsafe" | "wrong-chain";
@@ -40945,7 +41022,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "classification" | "kind" | "last_checked" | "last_ok" | "latency_ms" | "netuid" | "provider" | "status" | "status_code" | "surface_id" | "verified_at";
@@ -41843,7 +41920,7 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -41969,7 +42046,7 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -44633,6 +44710,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum. */
                 direction?: "all" | "in" | "out";
             };
             header?: never;
@@ -44854,6 +44932,7 @@ export interface operations {
         parameters: {
             query?: {
                 amount?: number;
+                /** @description Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`. */
                 direction?: "stake" | "unstake";
             };
             header?: never;
@@ -45199,7 +45278,9 @@ export interface operations {
         parameters: {
             query?: {
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
@@ -45208,7 +45289,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -46766,6 +46847,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to stake. */
                 sort?: "stake" | "emission" | "validators" | "neurons";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -46920,14 +47002,19 @@ export interface operations {
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset. */
                 cursor?: string;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block?: number;
                 call_function?: string;
                 success?: "true" | "false";
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
+                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
+                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -47166,7 +47253,9 @@ export interface operations {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
                 kind?: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 provider?: string;
+                /** @description Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error. */
                 id?: string;
                 auth_required?: "true" | "false";
                 public_safe?: "true" | "false";
@@ -47175,7 +47264,7 @@ export interface operations {
                 fields?: string;
                 /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
                 limit?: number;
-                /** @description Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page. */
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
                 cursor?: number;
                 /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
                 sort?: "id" | "kind" | "name" | "netuid" | "provider";
@@ -47419,6 +47508,7 @@ export interface operations {
     globalValidators: {
         parameters: {
             query?: {
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count. */
                 sort?: "avg_validator_trust" | "max_validator_trust" | "stake_dominance" | "subnet_count" | "total_emission" | "total_stake" | "uid_count";
                 /** @description Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
@@ -47865,11 +47955,13 @@ export interface operations {
                 basis?: "flow" | "positions";
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to net_staked. */
                 sort?: "net_staked" | "gross_staked" | "last_activity";
                 /** @description Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 20. */
                 limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
                 offset?: number;
+                /** @description An SS58 account address (47-48 base58 characters). Coldkey or hotkey depending on the tool — see the tool description for which this expects. */
                 coldkey?: string;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -48001,6 +48093,7 @@ export interface operations {
     validatorEconomicsRanking: {
         parameters: {
             query?: {
+                /** @description Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to earning_floor_cost_tao. */
                 sort?: "earning_floor_cost_tao" | "permit_floor_cost_tao" | "permit_to_earning_multiple" | "tao_inflow_per_day" | "validator_headroom";
                 /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 50. */
                 limit?: number;
