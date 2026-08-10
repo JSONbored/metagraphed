@@ -103,6 +103,7 @@ export function judgeDeploy(input: {
   behind: number;
   headAgeMs: number;
   graceMs?: number;
+  failure?: DeployReadFailure;
 }): DeployStatus {
   const { config, worker, deployed, ancestor, behind, headAgeMs } = input;
   const graceMs = input.graceMs ?? DEPLOY_GRACE_MS;
@@ -111,10 +112,25 @@ export function judgeDeploy(input: {
     // Not "everything is fine": we could not read Cloudflare's record, which
     // is a different claim from the Worker being current and must not be
     // reported as one.
+    //
+    // SAY WHICH KIND OF UNKNOWN. These three have different owners -- a
+    // maintainer has to fix the token, nobody can fix a hand-deploy from here,
+    // and a transient read is worth ignoring once. Reporting them identically
+    // is how an expired credential sits behind a check that looks like it is
+    // running (#10357).
     return {
       ...base,
       verdict: "unknown",
-      detail: "no deployment record could be read",
+      detail:
+        input.failure === "auth"
+          ? "wrangler could not authenticate -- CLOUDFLARE_API_TOKEN is " +
+            "missing, expired, or lacks Workers Scripts read. Only a " +
+            "maintainer can change repo secrets or token scope"
+          : input.failure === "no-commit-message"
+            ? "the live deployment carries no commit SHA in its message, so " +
+              "it was not deployed by Workers Builds -- a hand-run " +
+              "`wrangler deploy` looks exactly like this"
+            : "the deployment record could not be read",
     };
   }
   if (!ancestor) {
@@ -167,24 +183,52 @@ export function workerName(config: string): string {
 }
 
 /**
+ * Why a read of Cloudflare's deployment record produced no SHA.
+ *
+ * "Could not read it" and "read it, it names no commit" are different
+ * problems with different owners, and the first draft of this script collapsed
+ * both into `null`. That made an expired token report the same verdict as a
+ * Worker deployed by hand -- `unknown` either way, with no way to tell which
+ * from the job output. The older check this replaced (#5538) got that right and
+ * it is the one thing worth carrying over from it.
+ */
+export type DeployReadFailure = "auth" | "unreadable" | "no-commit-message";
+
+/** An auth failure in wrangler's own words. Matched on stderr rather than an
+ * exit code, because `wrangler deployments list` exits 1 for everything. */
+const AUTH_PATTERN =
+  /not logged in|authentication|unauthori[sz]ed|api token|10000|credential/i;
+
+export function classifyDeployReadError(stderr: string): DeployReadFailure {
+  return AUTH_PATTERN.test(stderr) ? "auth" : "unreadable";
+}
+
+/**
  * The commit SHA Cloudflare recorded for the live deployment.
  *
  * Workers Builds puts it in the deployment MESSAGE, so this is Cloudflare's own
  * record rather than anything this repo stamps -- which is what lets the check
  * run without a build-time change and without trusting the Worker.
  */
-function deployedSha(config: string): string | null {
+function deployedSha(
+  config: string,
+): { sha: string } | { failure: DeployReadFailure; stderr: string } {
+  let out: string;
   try {
-    const out = execFileSync(
+    out = execFileSync(
       "npx",
       ["wrangler", "deployments", "list", "--config", config],
-      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
     );
-    const messages = [...out.matchAll(/^Message:\s+([0-9a-f]{7,40})\s*$/gm)];
-    return messages.length ? (messages[messages.length - 1]![1] ?? null) : null;
-  } catch {
-    return null;
+  } catch (error) {
+    const stderr = String(
+      (error as { stderr?: unknown }).stderr ?? (error as Error).message ?? "",
+    );
+    return { failure: classifyDeployReadError(stderr), stderr };
   }
+  const messages = [...out.matchAll(/^Message:\s+([0-9a-f]{7,40})\s*$/gm)];
+  const sha = messages.length ? messages[messages.length - 1]![1] : undefined;
+  return sha ? { sha } : { failure: "no-commit-message", stderr: "" };
 }
 
 const git = (args: string[]) =>
@@ -199,7 +243,8 @@ export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
   const headAgeMs =
     nowMs - Number(git(["log", "-1", "--format=%ct", "origin/main"])) * 1000;
   return WORKER_CONFIGS.map((config) => {
-    const deployed = deployedSha(config);
+    const read = deployedSha(config);
+    const deployed = "sha" in read ? read.sha : null;
     let ancestor = false;
     let behind = 0;
     if (deployed) {
@@ -220,6 +265,7 @@ export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
       ancestor,
       behind,
       headAgeMs,
+      failure: "failure" in read ? read.failure : undefined,
     });
   });
 }
