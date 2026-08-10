@@ -61,7 +61,7 @@ export type AccountBalance = {
 /** One child hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float. */
 export type AccountChildEntry = {
   __typename?: 'AccountChildEntry';
-  child: Scalars['String']['output'];
+  child?: Maybe<Scalars['String']['output']>;
   proportion: Scalars['String']['output'];
   proportion_fraction: Scalars['Float']['output'];
 };
@@ -338,7 +338,7 @@ export type AccountList = {
 
 export type AccountModuleCall = {
   __typename?: 'AccountModuleCall';
-  call_module: Scalars['String']['output'];
+  call_module?: Maybe<Scalars['String']['output']>;
   count: Scalars['Int']['output'];
 };
 
@@ -354,7 +354,7 @@ export type AccountOwnershipTie = {
 /** One parent hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float. */
 export type AccountParentEntry = {
   __typename?: 'AccountParentEntry';
-  parent: Scalars['String']['output'];
+  parent?: Maybe<Scalars['String']['output']>;
   proportion: Scalars['String']['output'];
   proportion_fraction: Scalars['Float']['output'];
 };
@@ -459,11 +459,11 @@ export type AccountPositions = {
 export type AccountPositionsDegraded = {
   __typename?: 'AccountPositionsDegraded';
   /** The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero. */
-  latest_stake_event_at: Scalars['String']['output'];
+  latest_stake_event_at?: Maybe<Scalars['String']['output']>;
   /** `tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make. `positions_unpriceable`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from `positions` and from `total_stake_alpha` rather than reported with a fabricated zero, so the total understates the real holding. */
   reason: Scalars['String']['output'];
   /** The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for. */
-  snapshot_captured_at: Scalars['String']['output'];
+  snapshot_captured_at?: Maybe<Scalars['String']['output']>;
 };
 
 /** One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
@@ -2019,11 +2019,11 @@ export type DeregistrationDerivation = {
 export type DeregistrationTenure = {
   __typename?: 'DeregistrationTenure';
   censored: Scalars['Boolean']['output'];
-  max_blocks: Scalars['Int']['output'];
-  median_blocks: Scalars['Int']['output'];
-  min_blocks: Scalars['Int']['output'];
-  p10_blocks: Scalars['Int']['output'];
-  p90_blocks: Scalars['Int']['output'];
+  max_blocks?: Maybe<Scalars['Int']['output']>;
+  median_blocks?: Maybe<Scalars['Int']['output']>;
+  min_blocks?: Maybe<Scalars['Int']['output']>;
+  p10_blocks?: Maybe<Scalars['Int']['output']>;
+  p90_blocks?: Maybe<Scalars['Int']['output']>;
   sample_count: Scalars['Int']['output'];
 };
 
@@ -2044,9 +2044,9 @@ export type DomainSummary = {
   netuids: Array<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
-  total_emission_share: Scalars['Float']['output'];
+  total_emission_share?: Maybe<Scalars['Float']['output']>;
   /** Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. */
-  total_stake_tao: Scalars['Float']['output'];
+  total_stake_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 export type EconomicsList = {
@@ -2748,7 +2748,7 @@ export type NominatorList = {
   hotkey: Scalars['String']['output'];
   limit: Scalars['Int']['output'];
   /** Total distinct nominating coldkeys in the window, before limit/offset paging. */
-  nominator_count: Scalars['Int']['output'];
+  nominator_count?: Maybe<Scalars['Int']['output']>;
   nominator_gini?: Maybe<Scalars['Float']['output']>;
   nominators: Array<Nominator>;
   offset: Scalars['Int']['output'];
@@ -5261,7 +5261,7 @@ export type SubnetDeregistrationEvent = {
   hotkey: Scalars['String']['output'];
   observed_at: Scalars['String']['output'];
   replaced_by_hotkey: Scalars['String']['output'];
-  tenure_blocks: Scalars['Int']['output'];
+  tenure_blocks?: Maybe<Scalars['Int']['output']>;
   uid: Scalars['Int']['output'];
 };
 
@@ -7387,7 +7387,7 @@ export type AccountBalanceResolvers<ContextType = GqlContext, ParentType extends
 }>;
 
 export type AccountChildEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountChildEntry'] = ResolversParentTypes['AccountChildEntry']> = ResolversObject<{
-  child?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  child?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   proportion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   proportion_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
@@ -7620,7 +7620,7 @@ export type AccountListResolvers<ContextType = GqlContext, ParentType extends Re
 }>;
 
 export type AccountModuleCallResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountModuleCall'] = ResolversParentTypes['AccountModuleCall']> = ResolversObject<{
-  call_module?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  call_module?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -7632,7 +7632,7 @@ export type AccountOwnershipTieResolvers<ContextType = GqlContext, ParentType ex
 }>;
 
 export type AccountParentEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountParentEntry'] = ResolversParentTypes['AccountParentEntry']> = ResolversObject<{
-  parent?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  parent?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   proportion?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   proportion_fraction?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
@@ -7715,9 +7715,9 @@ export type AccountPositionsResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type AccountPositionsDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPositionsDegraded'] = ResolversParentTypes['AccountPositionsDegraded']> = ResolversObject<{
-  latest_stake_event_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  latest_stake_event_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  snapshot_captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  snapshot_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type AccountPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPrometheus'] = ResolversParentTypes['AccountPrometheus']> = ResolversObject<{
@@ -8949,11 +8949,11 @@ export type DeregistrationDerivationResolvers<ContextType = GqlContext, ParentTy
 
 export type DeregistrationTenureResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DeregistrationTenure'] = ResolversParentTypes['DeregistrationTenure']> = ResolversObject<{
   censored?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  max_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  median_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  min_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  p10_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  p90_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  max_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  median_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  min_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  p10_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  p90_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   sample_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -8969,8 +8969,8 @@ export type DomainSummaryResolvers<ContextType = GqlContext, ParentType extends 
   netuids?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  total_emission_share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  total_stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type EconomicsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EconomicsList'] = ResolversParentTypes['EconomicsList']> = ResolversObject<{
@@ -9530,7 +9530,7 @@ export type NominatorListResolvers<ContextType = GqlContext, ParentType extends 
   concentration_complete?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  nominator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  nominator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   nominator_gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   nominators?: Resolver<Array<ResolversTypes['Nominator']>, ParentType, ContextType>;
   offset?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10246,7 +10246,7 @@ export type SubnetDeregistrationEventResolvers<ContextType = GqlContext, ParentT
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   replaced_by_hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  tenure_blocks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tenure_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 

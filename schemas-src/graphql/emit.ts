@@ -46,7 +46,7 @@ import { openApiComponentRegistry } from "../openapi-registry.ts";
 /** The subset of JSON Schema 2020-12 that Zod's emitter actually produces. */
 interface SchemaNode {
   $ref?: string;
-  type?: string;
+  type?: string | string[];
   properties?: Record<string, SchemaNode>;
   required?: string[];
   items?: SchemaNode;
@@ -176,6 +176,35 @@ export interface EmittedTypes {
   nullOnly: string[];
 }
 
+/**
+ * Can this schema's value be `null`?
+ *
+ * `required` and nullability are ORTHOGONAL in JSON Schema, and conflating them
+ * is what made the first version of this emitter publish 797 fields as non-null
+ * that the hand-written SDL correctly published as nullable. `required` means
+ * THE KEY IS PRESENT. A Zod `.nullable()` field is required -- the key is always
+ * there -- and its value may still be null, which the emitted schema states as
+ * `anyOf: [{type: number}, {type: null}]`.
+ *
+ * Reading only `required` therefore promised a non-null `concentration` on a
+ * route that answers `"concentration": null` in production today. GraphQL
+ * enforces non-null at execution: the resolver returning null would not be a
+ * documentation error, it would null the whole parent object and attach an
+ * error to the response.
+ *
+ * `openapi.json` had this right all along -- it publishes both the `anyOf` and
+ * the `required` entry, which together say exactly the true thing.
+ */
+function admitsNull(schema: SchemaNode | undefined): boolean {
+  if (!schema) return false;
+  if (schema.type === "null") return true;
+  if (Array.isArray(schema.type) && schema.type.includes("null")) return true;
+  for (const branch of [...(schema.anyOf ?? []), ...(schema.oneOf ?? [])]) {
+    if (admitsNull(branch)) return true;
+  }
+  return false;
+}
+
 /** A name the GraphQL spec allows: a letter or underscore, then word chars. */
 function isNameable(key: string): boolean {
   return /^[_A-Za-z][_A-Za-z0-9]*$/.test(key);
@@ -240,7 +269,13 @@ export function emitTypes(): EmittedTypes {
             `${typeName}${pascalCase(key)}`,
           );
           fields[key] = {
-            type: required.has(key) ? new GraphQLNonNull(inner) : inner,
+            // BOTH conditions. `required` alone says the key is present, which
+            // is not the same claim as "the value is never null" -- see
+            // `admitsNull`.
+            type:
+              required.has(key) && !admitsNull(raw)
+                ? new GraphQLNonNull(inner)
+                : inner,
             description: raw?.description,
           };
         }
