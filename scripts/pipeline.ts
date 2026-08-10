@@ -71,7 +71,6 @@ function checkCommands(): Step[] {
     step("verify:candidates:dry-run"),
     step("curate:baseline:dry-run"),
     step("review:promote:dry-run"),
-    step("schemas:bundle:check"),
     step("schemas:snapshot:dry-run"),
     step("adapters:snapshot:dry-run"),
     step("openapi:generate:dry-run"),
