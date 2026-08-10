@@ -177,7 +177,7 @@
     "@resvg/resvg-js": "^2.6.2",
     "@scure/sr25519": "^0.2.0",
     "graphql": "^17.0.2",
-    "graphql-ws": "^6.2.0",
+    "graphql-ws": "^6.2.1",
     "pg": "^8.22.0",
     "posthog-node": "^5.44.0",
     "satori": "^0.28.0",
