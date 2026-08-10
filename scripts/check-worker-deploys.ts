@@ -141,7 +141,11 @@ export function judgeDeploy(input: {
     };
   }
   if (behind === 0) {
-    return { ...base, verdict: "ok", detail: "running main's HEAD" };
+    return {
+      ...base,
+      verdict: "ok",
+      detail: "running the newest commit it was asked to build",
+    };
   }
   if (headAgeMs < graceMs) {
     return {
@@ -238,11 +242,101 @@ const git = (args: string[]) =>
     stdio: ["ignore", "pipe", "ignore"],
   }).trim();
 
+/**
+ * How far back to look for a commit that built this Worker.
+ *
+ * Thirty is generous: the longest observed run of commits that rebuild nothing
+ * is a handful of scripts/tests/docs merges. Past it the answer is `unknown`
+ * rather than a guess -- a Worker whose last build is 30 commits back is either
+ * genuinely untouched for a long time or something is wrong with the wiring,
+ * and both deserve a look rather than a green tick.
+ */
+export const BUILD_TARGET_SEARCH_DEPTH = 30;
+
+/**
+ * The newest commit on main that actually produced a build for this Worker.
+ *
+ * NOT `origin/main` HEAD, and this is the correction that matters (#10370).
+ * Workers Builds is PATH-FILTERED: a merge touching only `scripts/`, `tests/`
+ * or `migrations/` rebuilds nothing, so the deployed SHA legitimately sits
+ * behind main -- forever, until something in that Worker's inputs changes.
+ * Measured on main:
+ *
+ *   09517ffa  scripts + tests + migrations  ->  built: wss-lb only
+ *   5524f90f  schemas-src                   ->  built: all four
+ *
+ * Comparing against HEAD therefore reported `stale -- the build did not land`
+ * for a Worker that was correctly never asked to build. A watchdog that fires
+ * during ordinary operation is the #9301 failure, and this one would have hit
+ * it on a large share of merges.
+ *
+ * The target is read from Cloudflare's OWN decision rather than by
+ * reimplementing its path filter: a build leaves a
+ * `Workers Builds: <worker>` check run on the commit, so the newest commit
+ * carrying one is the newest commit this Worker was supposed to deploy.
+ * Duplicating the watch paths here would be a second copy to drift.
+ */
+export function newestCommitWithBuild(
+  worker: string,
+  commits: readonly string[],
+  checkRunsFor: (sha: string) => readonly string[] | null,
+): string | null {
+  for (const sha of commits) {
+    const names = checkRunsFor(sha);
+    // `null` is "could not ask", which is not evidence of "never built" --
+    // keep walking rather than let one transient API failure decide.
+    if (names === null) continue;
+    if (names.includes(`Workers Builds: ${worker}`)) return sha;
+  }
+  return null;
+}
+
+/** The check-run names GitHub records for one commit, or null if unreadable. */
+function checkRunNames(sha: string): readonly string[] | null {
+  try {
+    return execFileSync(
+      "gh",
+      [
+        "api",
+        `repos/JSONbored/metagraphed/commits/${sha}/check-runs`,
+        "--jq",
+        '[.check_runs[].name] | join("\\n")',
+      ],
+      { cwd: repoRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    )
+      .split("\n")
+      .filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
+export function buildTargetSha(
+  worker: string,
+  depth = BUILD_TARGET_SEARCH_DEPTH,
+): string | null {
+  const commits = git([
+    "log",
+    "--format=%H",
+    "-n",
+    String(depth),
+    "origin/main",
+  ])
+    .split("\n")
+    .filter(Boolean);
+  return newestCommitWithBuild(worker, commits, checkRunNames);
+}
+
 export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
   git(["fetch", "origin", "main", "--quiet"]);
-  const headAgeMs =
-    nowMs - Number(git(["log", "-1", "--format=%ct", "origin/main"])) * 1000;
   return WORKER_CONFIGS.map((config) => {
+    const worker = workerName(config);
+    // The commit this Worker was last asked to deploy, falling back to HEAD
+    // when no build is visible in the window -- which keeps the old behaviour
+    // for a repo state this cannot explain, rather than silently passing.
+    const target = buildTargetSha(worker) ?? "origin/main";
+    const targetAgeMs =
+      nowMs - Number(git(["log", "-1", "--format=%ct", target])) * 1000;
     const read = deployedSha(config);
     const deployed = "sha" in read ? read.sha : null;
     let ancestor = false;
@@ -251,20 +345,20 @@ export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
       try {
         git(["merge-base", "--is-ancestor", deployed, "origin/main"]);
         ancestor = true;
-        behind = Number(
-          git(["rev-list", "--count", `${deployed}..origin/main`]),
-        );
+        // Counted to the BUILD TARGET, not to HEAD: commits that rebuilt
+        // nothing for this Worker are not commits it is behind on.
+        behind = Number(git(["rev-list", "--count", `${deployed}..${target}`]));
       } catch {
         ancestor = false;
       }
     }
     return judgeDeploy({
       config,
-      worker: workerName(config),
+      worker,
       deployed,
       ancestor,
       behind,
-      headAgeMs,
+      headAgeMs: targetAgeMs,
       failure: "failure" in read ? read.failure : undefined,
     });
   });

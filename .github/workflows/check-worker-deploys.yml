@@ -30,6 +30,9 @@ on:
 
 permissions:
   contents: read
+  # check-runs, to read which commit Cloudflare actually built for each
+  # Worker -- see buildTargetSha in scripts/check-worker-deploys.ts.
+  checks: read
 
 concurrency:
   group: check-worker-deploys
@@ -40,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,4 +69,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # `gh api` reads the check runs that say which commit each Worker was
+          # last asked to build. The default token is enough -- this is a read
+          # of the repo's own checks, not a secret.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run check:worker-deploys

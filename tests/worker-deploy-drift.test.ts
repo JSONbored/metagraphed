@@ -12,7 +12,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  BUILD_TARGET_SEARCH_DEPTH,
   DEPLOY_GRACE_MS,
+  newestCommitWithBuild,
   WORKER_CONFIGS,
   classifyDeployReadError,
   judgeDeploy,
@@ -183,5 +185,89 @@ describe("classifying wrangler's stderr", () => {
     ]) {
       assert.equal(classifyDeployReadError(stderr), "unreadable", stderr);
     }
+  });
+});
+
+describe("the build target, not main's HEAD (#10370)", () => {
+  // THE FALSE ALARM THIS CORRECTS. Workers Builds is PATH-FILTERED, so a merge
+  // touching only scripts/, tests/ or migrations/ rebuilds nothing and the
+  // deployed SHA legitimately sits behind main until that Worker's own inputs
+  // change. Measured on main:
+  //
+  //   09517ffa  scripts + tests + migrations  ->  built: wss-lb only
+  //   5524f90f  schemas-src                   ->  built: all four
+  //
+  // Comparing against HEAD reported `stale -- the build did not land` for a
+  // Worker that was never asked to build. That is #9301: an alarm during
+  // ordinary operation, which teaches people to ignore the alarm.
+  //
+  // The target is read from Cloudflare's OWN filtering decision -- the
+  // `Workers Builds: <worker>` check run it leaves on a commit -- rather than
+  // by reimplementing its watch paths here, which would be a second copy to
+  // drift from the first.
+  const runs: Record<string, string[]> = {
+    c3: ["test", "Workers Builds: metagraphed-wss-lb"],
+    c2: ["test"],
+    c1: ["test", "Workers Builds: metagraphed-data-api"],
+  };
+  const lookup = (sha: string) => runs[sha] ?? [];
+
+  test("skips commits that did not build this Worker", () => {
+    assert.equal(
+      newestCommitWithBuild("metagraphed-data-api", ["c3", "c2", "c1"], lookup),
+      "c1",
+    );
+  });
+
+  test("takes the newest one that did", () => {
+    assert.equal(
+      newestCommitWithBuild("metagraphed-wss-lb", ["c3", "c2", "c1"], lookup),
+      "c3",
+    );
+  });
+
+  test("a Worker that never built in the window is null, not the newest commit", () => {
+    // Returning c3 here is the tempting shortcut and it is the bug again: it
+    // would call a Worker current because something ELSE built.
+    assert.equal(
+      newestCommitWithBuild(
+        "metagraphed-registry-sync-api",
+        ["c3", "c2", "c1"],
+        lookup,
+      ),
+      null,
+    );
+  });
+
+  test("an unreadable commit is skipped, never treated as `never built`", () => {
+    // null is "could not ask". Letting one transient API failure end the walk
+    // would silently move the target to an older commit.
+    const flaky = (sha: string) => (sha === "c3" ? null : (runs[sha] ?? []));
+    assert.equal(
+      newestCommitWithBuild("metagraphed-wss-lb", ["c3", "c2", "c1"], flaky),
+      null,
+      "wss-lb only built at c3, which was unreadable",
+    );
+    assert.equal(
+      newestCommitWithBuild("metagraphed-data-api", ["c3", "c2", "c1"], flaky),
+      "c1",
+      "and the walk continued past it",
+    );
+  });
+
+  test("an exact name match, not a prefix", () => {
+    // "Workers Builds: metagraphed" must not satisfy "metagraphed-data-api",
+    // nor the reverse -- the main Worker and data-api differ by a suffix.
+    const only = (): string[] => ["Workers Builds: metagraphed"];
+    assert.equal(
+      newestCommitWithBuild("metagraphed-data-api", ["c1"], only),
+      null,
+    );
+    assert.equal(newestCommitWithBuild("metagraphed", ["c1"], only), "c1");
+  });
+
+  test("the search depth is bounded and stated", () => {
+    assert.ok(BUILD_TARGET_SEARCH_DEPTH >= 10);
+    assert.ok(BUILD_TARGET_SEARCH_DEPTH <= 100);
   });
 });
