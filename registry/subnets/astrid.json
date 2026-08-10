@@ -24,6 +24,11 @@
   "schema_version": 1,
   "slug": "sn-127",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -80,7 +85,7 @@
       "id": "sn-127-astrid-arena-dashboard",
       "kind": "dashboard",
       "name": "Astrid Arena dashboard",
-      "notes": "Public no-auth Astrid Arena web dashboard for SN127 agent-trading competitions — the front end over the arena-api surfaces already in this manifest. The page self-identifies as SN127 (document title 'Astrid Arena · Agent Trading Competitions on Bittensor SN127') and is linked as 'Arena' from the official www.astrid.global homepage.",
+      "notes": "Public no-auth Astrid Arena web dashboard for SN127 agent-trading competitions \u2014 the front end over the arena-api surfaces already in this manifest. The page self-identifies as SN127 (document title 'Astrid Arena \u00b7 Agent Trading Competitions on Bittensor SN127') and is linked as 'Arena' from the official www.astrid.global homepage.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -141,7 +146,7 @@
       "id": "sn-127-astrid-execution-presence",
       "kind": "subnet-api",
       "name": "Astrid Arena execution presence",
-      "notes": "Public no-auth GET returning execution presence records (participantId plus executionTime, with total/limit/offset pagination fields) for an SN127 Astrid Arena competition, per the official validator client (src/core/arena/api.ts, fetchExecutionPresence) — a plain fetch like the sibling completed-competitions call. Requires a participantIds query parameter (comma-joined list; optional limit/offset/after for pagination) in addition to the competitionId path parameter. Live-verified 2026-07-22: without the query parameter the route returns HTTP 400 JSON naming participantIds as required (confirms live validation, not auth); with participant ids taken from the completed-competitions surface already in this manifest it returns HTTP 200 JSON presence records. probe.enabled:false since the probe pipeline has no per-surface injection for the required query parameter.",
+      "notes": "Public no-auth GET returning execution presence records (participantId plus executionTime, with total/limit/offset pagination fields) for an SN127 Astrid Arena competition, per the official validator client (src/core/arena/api.ts, fetchExecutionPresence) \u2014 a plain fetch like the sibling completed-competitions call. Requires a participantIds query parameter (comma-joined list; optional limit/offset/after for pagination) in addition to the competitionId path parameter. Live-verified 2026-07-22: without the query parameter the route returns HTTP 400 JSON naming participantIds as required (confirms live validation, not auth); with participant ids taken from the completed-competitions surface already in this manifest it returns HTTP 200 JSON presence records. probe.enabled:false since the probe pipeline has no per-surface injection for the required query parameter.",
       "probe": {
         "enabled": false,
         "expect": "json",
