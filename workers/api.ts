@@ -6888,6 +6888,80 @@ const PROJECTION_ROUTE_HANDLERS: Record<
  * table: `/blocks/summary` must be matched before the `{ref}` detail pattern,
  * or "summary" parses as a block reference.
  */
+/**
+ * The tiered gate on the four chain-detail LOOKUP routes.
+ *
+ * WHY THESE FOUR. `/blocks/{ref}`, its `/events` and `/extrinsics`
+ * sub-resources, and `/extrinsics/{hash}` were the only Postgres-backed routes
+ * on this Worker carrying no limiter at all. Their sibling `/chain-events`
+ * family has gated itself since #8386 (handleChainEventsFamily above), so this
+ * closes a gap in an existing policy rather than inventing a second one: the
+ * same DATA_TIERED_RATE_LIMIT, the same rejection shape, the same
+ * `data_rate_limited` code. A caller meets one contract across the whole family
+ * instead of four ungated routes beside one gated one.
+ *
+ * WHY IT IS WORTH A GATE. Measured against production on 2026-08-10: these four
+ * served ~2.1M requests over 3.4 days with `keyed_count` = 0 on every
+ * api_usage_rollup row -- not "mostly anonymous", entirely anonymous -- while
+ * `chain_detail_blocks` retains ~1800 blocks (chainDetailPruneWindow's floor).
+ * A ref outside that window still costs a Neon round-trip to discover it is
+ * cold, because resolveHotRef (src/chain-detail-hot-tier.ts:177) IS the check.
+ * Enumerating refs therefore converts directly into database wakeups, and the
+ * edge cache cannot absorb it: every distinct ref is its own cache key, so a
+ * walk of the chain is a 100% miss workload by construction. The gate has to
+ * sit ahead of the tier ladder, which is what this placement buys.
+ *
+ * WHY IN THE DISPATCHER. Each of the four is reached from exactly one call site
+ * -- here -- and both the bare and `/{network}/`-prefixed entry points funnel
+ * through this one function, so a single gate covers both without the
+ * double-count that gating at those two call sites would cause. The
+ * chain-events branch below is deliberately NOT routed through this helper: it
+ * applies the identical policy itself, and a second call would consume two
+ * units per request and halve its effective ceiling.
+ *
+ * The two FEEDS (`/blocks`, `/extrinsics`) are deliberately left alone. They
+ * are bounded list reads whose cache key is the query string rather than an
+ * unbounded ref space, they are the block explorer's primary view, and they are
+ * not what the enumeration traffic targets -- gating them would spend the
+ * limiter's budget on the one part of the family that behaves.
+ *
+ * Returns the rejection to serve, or null when the caller may proceed.
+ */
+async function chainDetailRateLimit(
+  request: Request,
+  env: Env,
+  ctx: Ctx,
+  route: string,
+): Promise<Response | null> {
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    DATA_TIERED_RATE_LIMIT,
+  );
+  markRequestAuthTier(request, rateLimit.tier);
+  // Both outcomes, BEFORE the rejection return -- the ordering #8609 established
+  // for chain-events, so a 429 lands in rejected_count rather than going
+  // uncounted entirely.
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(env, ctx, rateLimit.accountId, route, !rateLimit.allowed);
+  }
+  if (rateLimit.allowed) return null;
+  // #8611: a blocked account gets 403 + reason code, not a 429 that invites the
+  // retry storm a block exists to stop. tieredRejectionResponse owns that
+  // distinction; this call site only forwards it.
+  const rejection = tieredRejectionResponse(rateLimit, {
+    code: "data_rate_limited",
+    message: "Too many data API requests from this client; slow down.",
+  })!;
+  return errorResponse(
+    rejection.code,
+    rejection.message,
+    rejection.status,
+    {},
+    rejection.headers,
+  );
+}
+
 async function dispatchChainHistoryRoute(
   request: Request,
   env: Env,
@@ -6901,6 +6975,13 @@ async function dispatchChainHistoryRoute(
   // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
   const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(pathname);
   if (blockExtrinsicsMatch) {
+    const limited = await chainDetailRateLimit(
+      request,
+      env,
+      ctx,
+      "block-extrinsics",
+    );
+    if (limited) return limited;
     return handleBlockExtrinsics(
       request,
       env,
@@ -6911,10 +6992,19 @@ async function dispatchChainHistoryRoute(
   }
   const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(pathname);
   if (blockEventsMatch) {
+    const limited = await chainDetailRateLimit(
+      request,
+      env,
+      ctx,
+      "block-events",
+    );
+    if (limited) return limited;
     return handleBlockEvents(request, env, blockEventsMatch[1], url, chain);
   }
   const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(pathname);
   if (blockDetailMatch) {
+    const limited = await chainDetailRateLimit(request, env, ctx, "block");
+    if (limited) return limited;
     return handleBlock(request, env, blockDetailMatch[1], chain);
   }
   if (BLOCKS_FEED_PATH_PATTERN.test(pathname)) {
@@ -6923,6 +7013,8 @@ async function dispatchChainHistoryRoute(
   // Detail (more specific) before the feed; each pattern is anchored.
   const extrinsicDetailMatch = EXTRINSIC_DETAIL_PATH_PATTERN.exec(pathname);
   if (extrinsicDetailMatch) {
+    const limited = await chainDetailRateLimit(request, env, ctx, "extrinsic");
+    if (limited) return limited;
     return handleExtrinsic(request, env, extrinsicDetailMatch[1], chain);
   }
   if (EXTRINSICS_FEED_PATH_PATTERN.test(pathname)) {
