@@ -95,6 +95,7 @@ import {
   SchemaDriftSurfaceSchema,
 } from "./artifacts/schema-drift.ts";
 import { SurfaceAliasesArtifactSchema } from "./artifacts/surface-aliases.ts";
+import { EntitiesArtifactSchema } from "./artifacts/entities.ts";
 import {
   SubnetVerificationArtifactSchema,
   VerificationArtifactSchema,
@@ -1036,6 +1037,7 @@ register(EndpointPublicationStateSchema, "EndpointPublicationState");
 // The build-published artifacts with no REST route of their own -- see
 // schemas-src/artifacts/'s file headers.
 register(SurfaceAliasesArtifactSchema, "SurfaceAliasesArtifact");
+register(EntitiesArtifactSchema, "EntitiesArtifact");
 register(ReviewQueueArtifactSchema, "ReviewQueueArtifact");
 register(OperationalSurfacesArtifactSchema, "OperationalSurfacesArtifact");
 register(HealthLatestArtifactSchema, "HealthLatestArtifact");
@@ -1336,6 +1338,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "CandidateState",
   "EndpointPublicationState",
   "SurfaceAliasesArtifact",
+  "EntitiesArtifact",
   "ReviewQueueArtifact",
   "OperationalSurfacesArtifact",
   "HealthLatestArtifact",

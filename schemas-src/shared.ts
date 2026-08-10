@@ -113,6 +113,16 @@ export type BittensorNetwork = z.infer<typeof BittensorNetworkSchema>;
  * of a vocabulary with no owner. `validate:schema-vocabularies` could not see
  * either: prettier had wrapped both as `z` then `.enum([...])` on the next
  * line, and the gate's matcher was anchored on `z.enum(`.
+ *
+ * THE OWNER IS schemas/entity.schema.json, not this list (#10483). That file
+ * is what a registry contribution is validated against, so a category it
+ * accepts and this enum does not is a label the registry stores and the API
+ * cannot describe. #10442/#10516 added the four money-map categories there and
+ * not here, and nothing noticed: the drift is invisible until the first
+ * treasury entry exists, at which point `/accounts/{ss58}/entities` serves a
+ * category its own published enum calls invalid. `validate:schema-vocabularies`
+ * now asserts the two match, because the consolidation that gave this
+ * vocabulary an owner never gave it a gate against the JSON Schema half.
  */
 export const ENTITY_CATEGORY_VALUES = [
   "exchange",
@@ -123,9 +133,46 @@ export const ENTITY_CATEGORY_VALUES = [
   "project",
   "operator",
   "other",
+  // The money-map roles (#10440). `owner` is deliberately absent: subnet
+  // ownership is chain-derived from SubnetOwner and must never be declarable.
+  "payment-collector",
+  "treasury",
+  "burn",
+  "multisig",
 ] as const;
 export const EntityCategorySchema = z.enum(ENTITY_CATEGORY_VALUES);
 export type EntityCategory = z.infer<typeof EntityCategorySchema>;
+
+/**
+ * The human-governance axis of a registry SUBMISSION (#10483).
+ *
+ * ONE vocabulary across two registries: a subnet surface's `review.state` and
+ * an entity label's are the same three states, meaning the same three things --
+ * a contribution enters as `community-submitted`, and a maintainer promotes it
+ * to `maintainer-reviewed` or marks it `rejected`. Both
+ * `schemas/entity.schema.json` and `schemas/subnet-manifest.schema.json`
+ * declare it, and it was restated inline at each site with no owner.
+ *
+ * NOT `ReviewStateSchema` in routes/subnet-detail.ts, which is registered as the
+ * published `ReviewState` component and is a DIFFERENT five-value vocabulary --
+ * `unreviewed | machine-generated | maintainer-reviewed | needs-review | stale`,
+ * the CURATION state of a subnet profile. The two share one member
+ * (`maintainer-reviewed`) and one obvious name, which is precisely why this one
+ * is named for the submission rather than for the review: importing the wrong
+ * `ReviewStateSchema` type-checks and silently republishes the other component.
+ *
+ * Distinct again from the machine-verification axis, which the build's prober
+ * owns and no contribution may set.
+ */
+export const SUBMISSION_REVIEW_STATE_VALUES = [
+  "community-submitted",
+  "maintainer-reviewed",
+  "rejected",
+] as const;
+export const SubmissionReviewStateSchema = z.enum(
+  SUBMISSION_REVIEW_STATE_VALUES,
+);
+export type SubmissionReviewState = z.infer<typeof SubmissionReviewStateSchema>;
 
 /**
  * How a callable surface authenticates.

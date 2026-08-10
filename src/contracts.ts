@@ -844,6 +844,12 @@ export const PUBLIC_ARTIFACTS = [
     "ProviderArtifact",
   ),
   artifact(
+    "entities",
+    "/metagraph/entities.json",
+    "Curated address-label registry (#6737/#10483): one entry per ss58 that has cleared docs/nametag-evidence-bar.md, each carrying the source_urls that prove the attribution, plus the money-map roles (treasury, burn, payment-collector, multisig) and the netuid a subnet-scoped label belongs to. There is deliberately no `owner` category — subnet ownership is chain-derived from SubnetOwner and must never be hand-declared, and a `burn` label additionally requires unspendable_proof because a burn is a claim until proven. Built from registry/entities/ minus rejected entries; an empty list is the honest state of a curated layer, not a cold store.",
+    "EntitiesArtifact",
+  ),
+  artifact(
     "provider-endpoints",
     "/metagraph/providers/{slug}/endpoints.json",
     "Endpoint resources for one provider or operator.",

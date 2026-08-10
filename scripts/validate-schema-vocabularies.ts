@@ -227,6 +227,76 @@ for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
   }
 }
 
+// The JSON Schema half (#10483).
+//
+// The mirrors above are Zod-to-Zod. This one crosses a bigger boundary: a
+// registry document is validated against schemas/*.schema.json, while the API
+// that serves it is typed from schemas-src/. When those two disagree about a
+// value set, the registry accepts a document the contract cannot describe --
+// and it fails in the one direction nothing tests, because the invalid value
+// does not exist until somebody writes the first entry using it.
+//
+// That is exactly what happened here. #10442/#10516 added `payment-collector`,
+// `treasury`, `burn` and `multisig` to entity.schema.json's category enum and
+// not to ENTITY_CATEGORY_VALUES. `registry/entities/` is empty, so no document
+// carried one, so every gate passed for as long as the layer stayed unused.
+//
+// THE JSON SCHEMA OWNS THE VOCABULARY. It is what a contribution is validated
+// against, so the Zod enum is the copy and the fix is always to widen the copy.
+const JSON_SCHEMA_MIRRORS: Array<{
+  schemaFile: string;
+  pointer: string[];
+  zodExport: string;
+}> = [
+  {
+    schemaFile: "schemas/entity.schema.json",
+    pointer: ["properties", "category", "enum"],
+    zodExport: "ENTITY_CATEGORY_VALUES",
+  },
+];
+
+const schemaSrcShared =
+  (await import("../schemas-src/shared.ts")) as unknown as Record<
+    string,
+    readonly string[]
+  >;
+
+for (const { schemaFile, pointer, zodExport } of JSON_SCHEMA_MIRRORS) {
+  const raw = JSON.parse(
+    await fs.readFile(path.join(repoRoot, schemaFile), "utf8"),
+  ) as unknown;
+  let node: unknown = raw;
+  for (const key of pointer) {
+    node = (node as Record<string, unknown> | null)?.[key];
+  }
+  const zodValues = schemaSrcShared[zodExport];
+  if (!Array.isArray(node)) {
+    errors.push(
+      `${schemaFile} no longer has an enum at ${pointer.join(".")} — ` +
+        `update JSON_SCHEMA_MIRRORS, or restore the enum.`,
+    );
+    continue;
+  }
+  if (!Array.isArray(zodValues)) {
+    errors.push(
+      `schemas-src/shared.ts no longer exports ${zodExport}, which mirrors ` +
+        `${schemaFile}#${pointer.join(".")}.`,
+    );
+    continue;
+  }
+  const fromSchema = [...(node as string[])].sort().join(",");
+  const fromZod = [...zodValues].sort().join(",");
+  if (fromSchema !== fromZod) {
+    errors.push(
+      `${zodExport} has drifted from ${schemaFile}#${pointer.join(".")}:\n` +
+        `    schemas-src: ${fromZod || "(empty)"}\n` +
+        `    JSON Schema: ${fromSchema || "(empty)"}\n` +
+        `  The JSON Schema OWNS this vocabulary — it is what a registry ` +
+        `contribution is validated against. Widen the Zod copy, not the source.`,
+    );
+  }
+}
+
 if (errors.length > 0) {
   console.error(
     `Schema-vocabulary validation failed with ${errors.length} issue(s):`,
@@ -238,5 +308,6 @@ if (errors.length > 0) {
 console.log(
   `Schema-vocabulary validation passed: ${byVocabulary.size} distinct vocabularies, ` +
     `${duplicated.length} still restated in more than one file (all per-domain coincidences, not debt — see COINCIDENT_BY_DOMAIN); ` +
-    `${Object.keys(MIRRORED_VOCABULARIES).length} cross-boundary mirrors match the collection that owns them.`,
+    `${Object.keys(MIRRORED_VOCABULARIES).length} cross-boundary mirrors match the collection that owns them; ` +
+    `${JSON_SCHEMA_MIRRORS.length} JSON Schema enum(s) match their schemas-src copy.`,
 );
