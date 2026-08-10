@@ -58,6 +58,13 @@
 -- BEGIN/COMMIT. A CONCURRENTLY build that fails leaves an INVALID index behind
 -- that must be dropped before retrying; check with
 --   SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;
+--
+-- The line below is that instruction in a form the runner can read. It was
+-- prose only, and scripts/neon-migrate.ts wrapped this file in BEGIN/COMMIT
+-- anyway -- so it failed on every push for two days and blocked 0012-0015
+-- behind it (#10365). Every statement here is IF NOT EXISTS / IF EXISTS, which
+-- is what makes giving up atomicity safe: a half-applied run is re-runnable.
+-- neon:no-transaction
 
 -- 1. The miss: replace the raw-column index with the expression the query uses.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_chain_detail_extrinsics_hash_lower
