@@ -426,7 +426,10 @@ import {
   scoreUsageAnomalies,
 } from "../src/api-key-abuse.ts";
 import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
-import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
+// FROM THE LEAF, NOT src/mcp-server.ts (#10238). Importing it from there for
+// one number pulled the MCP server, src/graphql.ts and workers/api.ts into
+// this bundle and pushed it over the Worker startup CPU limit.
+import { MCP_TIERED_RATE_LIMIT } from "../src/api-tiers.ts";
 import { createPgSql } from "../src/pg-sql.ts";
 import type { ChainAlertTriggers } from "../generated/db/types.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
