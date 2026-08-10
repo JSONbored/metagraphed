@@ -501,10 +501,17 @@ describe("buildTaoUsdSeries — include_points (#9720)", () => {
   test("NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT", () => {
     // Every summary must be computed over the FULL window either way -- the
     // whole value of the toggle is that dropping the series costs nothing.
-    const withPoints = buildTaoUsdSeries(rows, { window: "24h" });
+    //
+    // Both calls are pinned to ONE instant. `age_ms` is clock-derived, so two
+    // calls on the live clock differ by a millisecond whenever they straddle
+    // one -- which asserts that two Date.now() reads agree, not that the toggle
+    // preserves the measurement. The pin keeps this testing its own claim.
+    const now = () => BASE + 300_000;
+    const withPoints = buildTaoUsdSeries(rows, { window: "24h", now });
     const without = buildTaoUsdSeries(rows, {
       window: "24h",
       includePoints: false,
+      now,
     });
     const { points: _dropped, ...summary } = withPoints as Row;
     assert.deepEqual(without, summary);
@@ -711,5 +718,34 @@ describe("staleness is STATED, not left to the caller (#8601)", () => {
     const out = buildTaoUsdSeries([], { now: () => NOW });
     assert.equal(out.stale, true);
     assert.equal(out.age_ms, null);
+  });
+
+  test("the clock is read ONCE, so `stale` and `age_ms` cannot disagree", () => {
+    // `stale` and `age_ms` are two statements about the same reading. Sampling
+    // the clock per field lets them straddle the bound and contradict each
+    // other -- `stale: false` beside an age ABOVE `stale_after_ms` -- so a
+    // caller re-deriving staleness from the age gets a different answer than
+    // the one the API stated.
+    //
+    // COUNTING THE READS, rather than only asserting the two agree. Agreement
+    // holds whenever both samples land the same side of the bound, which is
+    // almost always -- a consistency-only check passes on the broken code for
+    // any reading that is not within a millisecond of the threshold, which is
+    // precisely how two reads survived here in the first place.
+    let reads = 0;
+    const out = buildTaoUsdSeries([row(TAO_USD_MAX_AGE_MS)], {
+      now: () => {
+        reads++;
+        return NOW;
+      },
+    });
+    assert.equal(reads, 1, `the response sampled the clock ${reads} times`);
+    const age = out.age_ms as number;
+    const bound = out.stale_after_ms as number;
+    assert.equal(
+      out.stale,
+      age > bound,
+      `stale=${String(out.stale)} contradicts age_ms=${age} vs ${bound}`,
+    );
   });
 });

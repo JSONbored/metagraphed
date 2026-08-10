@@ -148,6 +148,16 @@ export function buildTaoUsdSeries(
     now = Date.now,
   }: { window?: unknown; includePoints?: boolean; now?: () => number } = {},
 ): Row {
+  // ONE clock reading for the whole response.
+  //
+  // `stale` and `age_ms` are two statements about the SAME reading, and calling
+  // now() once per field lets them describe different instants. A response can
+  // then say `stale: false` beside an `age_ms` above its own `stale_after_ms` --
+  // internally contradictory, and a caller re-deriving staleness from the age
+  // gets a different answer than the one the API stated. Sampling the clock
+  // once makes that disagreement unrepresentable rather than merely unlikely.
+  const nowMs = now();
+
   const points = (Array.isArray(rows) ? rows : [])
     .map((r) => ({
       observed_at: toIsoOrNull(r?.observed_at),
@@ -197,12 +207,12 @@ export function buildTaoUsdSeries(
     // The bound is the one src/alpha-usd.ts already refuses to multiply by, so
     // "this response says stale" and "no USD figure anywhere on the API" are
     // the same condition rather than two thresholds that can drift apart.
-    stale: newestRow ? isStale(newestRow, now()) : true,
+    stale: newestRow ? isStale(newestRow, nowMs) : true,
     stale_after_ms: TAO_USD_MAX_AGE_MS,
     // How old the newest reading actually is, so a caller can show "3 minutes
     // ago" without re-deriving it -- and so a stale response says HOW stale
     // rather than only that it is.
-    age_ms: newestRow ? readingAgeMs(newestRow, now()) : null,
+    age_ms: newestRow ? readingAgeMs(newestRow, nowMs) : null,
     change_usd: changeUsd,
     // Undefined from a zero base: a rise from 0 is not "infinitely more
     // expensive", it is a change with no meaningful ratio.
