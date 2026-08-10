@@ -65,6 +65,145 @@ export const DECLARED_ARGUMENTS: Readonly<Record<string, string>> = {
   "sudo.to": EPOCH_MS_BOUND,
 };
 
+/**
+ * The published GraphQL type for an argument the route's parameter does not
+ * derive to (#10214).
+ *
+ * `DECLARED_ARGUMENTS` above says an argument's PRESENCE is intentional; this
+ * says its TYPE is. The generator reads it, so an entry here is not an
+ * exemption from a check -- it is the spelling that gets published.
+ */
+export interface DeclaredArgumentType {
+  /** The published GraphQL spelling. */
+  type: string;
+  /** Why the route's own parameter does not derive to it. */
+  reason: string;
+  /** True when the route publishes no such parameter at all. */
+  addedByGraphql?: boolean;
+}
+
+const BOOLEAN_STRING_FORWARDING =
+  'the route publishes a ["true","false"] STRING enum and GraphQL has a ' +
+  "real Boolean, which is the stricter spelling -- but this field's resolver " +
+  "hands the argument to an MCP loader that validates it with " +
+  "`optionalEnum(args, name, BOOLEAN_STRINGS)`, so a JS boolean is rejected " +
+  "where the string is accepted. Moving the spelling means moving the " +
+  "forwarding with it.";
+
+const COMMA_JOINED_LIST =
+  "a query string has no list type, so the route takes the values comma-" +
+  "joined and bounds the arity with a regex. GraphQL has a list, so the SDL " +
+  "takes one and the resolver joins -- the same input, with the arity bound " +
+  "enforced by the schema instead of a pattern.";
+
+export const DECLARED_ARGUMENT_TYPES: Readonly<
+  Record<string, DeclaredArgumentType>
+> = {
+  // ── an epoch-ms bound cannot be an Int ────────────────────────────────────
+  "blocks.from": { type: "String", reason: EPOCH_MS_BOUND },
+  "blocks.to": { type: "String", reason: EPOCH_MS_BOUND },
+  "extrinsics.from": { type: "String", reason: EPOCH_MS_BOUND },
+  "extrinsics.to": { type: "String", reason: EPOCH_MS_BOUND },
+  "sudo.from": { type: "String", reason: EPOCH_MS_BOUND },
+  "sudo.to": { type: "String", reason: EPOCH_MS_BOUND },
+
+  // ── a comma-joined string is a list ───────────────────────────────────────
+  "compare.netuids": { type: "[Int!]!", reason: COMMA_JOINED_LIST },
+  "compare.dimensions": { type: "[String!]", reason: COMMA_JOINED_LIST },
+  "compare_validators.hotkeys": {
+    type: "[String!]!",
+    reason: COMMA_JOINED_LIST,
+  },
+  "rpc_endpoints.fields": { type: "[String!]", reason: COMMA_JOINED_LIST },
+  "endpoints.fields": {
+    type: "[String!]",
+    reason:
+      COMMA_JOINED_LIST +
+      " Kept at all -- unlike the fields whose `fields` is dropped -- because " +
+      "this field's return type carries a JSON member a selection set cannot " +
+      "reach inside, so the caller has no projection without it.",
+    addedByGraphql: true,
+  },
+  "surfaces.fields": {
+    type: "String",
+    reason:
+      "same reason as `endpoints.fields`: the return type is not fully " +
+      "projectable, so REST's projection parameter still has work to do. " +
+      "Spelled String here rather than a list, which is the older of the two " +
+      "spellings on this surface and a difference worth collapsing separately.",
+    addedByGraphql: true,
+  },
+
+  // ── pagination GraphQL owns ───────────────────────────────────────────────
+  "endpoints.cursor": {
+    type: "String",
+    reason:
+      "an OPAQUE id keyset, not REST's integer offset -- the GraphQL-only " +
+      "pagination contract #7920 established for `providers`. Verified live: " +
+      'endpoints(limit:1) answers next_cursor "endpoint-srf-2d3306d2cfa2223e". ' +
+      "Typing it Int to match the route would break the only pagination the " +
+      "field has.",
+  },
+  "validators.cursor": {
+    type: "String",
+    reason:
+      "GraphQL-only pagination. /api/v1/validators publishes sort+limit and " +
+      "400s on cursor; the resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once " +
+      "and paginates in-process, keyed by hotkey. A capability GraphQL adds, " +
+      "not a claim about the route.",
+    addedByGraphql: true,
+  },
+
+  // ── one field, two routes ─────────────────────────────────────────────────
+  "agent_catalog.netuid": {
+    type: "Int",
+    reason:
+      "the field merges TWO routes: netuid absent reads /api/v1/agent-catalog, " +
+      "netuid present reads the sibling detail route " +
+      "/api/v1/agent-catalog/{netuid}, where it is a path parameter. The " +
+      "binding can only name one of the two.",
+    addedByGraphql: true,
+  },
+
+  // ── a true/false enum the resolver's forwarding still expects as text ─────
+  //
+  // `Boolean` is the honest spelling and ~20 sibling arguments already use it
+  // -- but these four reach an MCP loader that validates with
+  // `optionalEnum(args, name, BOOLEAN_STRINGS)`, which wants the STRING
+  // "true". `endpoints.pool_eligible` is Boolean and safe only because ITS
+  // resolver takes a different path (`endpointsListQueryUrl`'s `set()`, which
+  // does `String(value)`). So the spelling cannot move without moving the
+  // forwarding with it, per field -- an input-type change that needs its own
+  // verification rather than a rename inside a generator change.
+  "subnet_endpoints.pool_eligible": {
+    type: "String",
+    reason: BOOLEAN_STRING_FORWARDING,
+  },
+  "review_enrichment_queue.manual_review_required": {
+    type: "String",
+    reason: BOOLEAN_STRING_FORWARDING,
+  },
+  "review_enrichment_targets.auto_review_candidate": {
+    type: "String",
+    reason: BOOLEAN_STRING_FORWARDING,
+  },
+  "review_enrichment_targets.manual_review_required": {
+    type: "String",
+    reason: BOOLEAN_STRING_FORWARDING,
+  },
+
+  // ── the route's own schema is the looser one ──────────────────────────────
+  "subnet_stake_quote.amount": {
+    type: "Float!",
+    reason:
+      "the route DECLARES it optional and REJECTS the request without it -- " +
+      "GET /api/v1/subnets/1/stake-quote answers invalid_amount, `amount` " +
+      "must be a finite number greater than 0`. The SDL's non-null is the " +
+      "honest spelling of what the route does; the route's `.optional()` is a " +
+      "possibility the handler cannot express (#10401).",
+  },
+};
+
 /** Does the route's parse own this field's argument, or does GraphQL? */
 export function isDeclaredDivergence(field: string, argument: string): boolean {
   return `${field}.${argument}` in DECLARED_ARGUMENTS;

@@ -106,6 +106,7 @@
     "validate:graphql-route-parity": "node scripts/validate-graphql-route-parity.ts",
     "validate:graphql-hand-written-checks": "node scripts/validate-graphql-hand-written-checks.ts",
     "validate:graphql-component-parity": "node scripts/validate-graphql-component-parity.ts",
+    "validate:graphql-query-arguments": "node scripts/validate-graphql-query-arguments.ts",
     "validate:published-names": "node scripts/validate-published-names.ts",
     "validate:graphql-tier-parity": "node scripts/validate-graphql-tier-parity.ts",
     "build:openapi-zod": "node scripts/generate-openapi-zod-components.ts",
