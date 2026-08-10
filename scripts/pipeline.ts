@@ -115,6 +115,14 @@ function checkCommands(): Step[] {
     // check lived in the separately path-gated `ui` CI job. Checked here so
     // the PR that causes the drift can see it locally.
     step("validate:ui-docs-drift"),
+    // Same shape, and it was in neither the pipeline nor CI until #10251: the
+    // registry README's catalog section is generated, so a registry change
+    // invalidates it without touching the README.
+    step("validate:readme-catalog"),
+    // Runs in publish-cloudflare.yml / sync-subnets.yml, so it had CI coverage
+    // but no local one -- 0.2s, and an adapter edit is exactly the change a
+    // contributor wants told about before pushing (#10251).
+    step("validate:adapters"),
     step("validate:intake"),
     step("validate:surface"),
     // #8658: runs after the build steps above, so the staged surfaces.json
@@ -210,6 +218,14 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     // check lived in the separately path-gated `ui` CI job. Checked here so
     // the PR that causes the drift can see it locally.
     step("validate:ui-docs-drift"),
+    // Same shape, and it was in neither the pipeline nor CI until #10251: the
+    // registry README's catalog section is generated, so a registry change
+    // invalidates it without touching the README.
+    step("validate:readme-catalog"),
+    // Runs in publish-cloudflare.yml / sync-subnets.yml, so it had CI coverage
+    // but no local one -- 0.2s, and an adapter edit is exactly the change a
+    // contributor wants told about before pushing (#10251).
+    step("validate:adapters"),
     step("validate:intake"),
     step("validate:surface"),
     // #8658: runs after the build steps above, so the staged surfaces.json
