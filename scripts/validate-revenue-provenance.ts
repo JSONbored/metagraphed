@@ -91,6 +91,36 @@ export function checkSurfaceRevenue(
           'provenance "operator-attested" with no source_url — an attestation that cites nothing is an assertion',
       });
     }
+
+    // #10566: a headline-eligible figure must be USD.
+    //
+    // The serving layer sums `amount_usd` against a USD-priced denominator. A
+    // TAO-denominated figure is not a cast into that sum -- it needs the
+    // tao-usd index at each observation's OWN instant, because a month-old
+    // reading priced at today's rate is a different number. ALPHA is worse:
+    // paid in the subnet's own token, it is circular by construction and
+    // #10439 excludes it from external revenue outright.
+    //
+    // Refused at declaration rather than filtered at read, so a non-USD surface
+    // cannot quietly read back as "not observed" -- which is what a filter
+    // alone would produce, and which is indistinguishable from a probe that has
+    // not run. All four eligible surfaces are USD today; this keeps the fifth
+    // from being summed wrong.
+    if (
+      revenue.role === "external-revenue" &&
+      (provenance === "probe-derived" || provenance === "chain-verified") &&
+      revenue.currency !== "USD"
+    ) {
+      out.push({
+        file,
+        subject: id,
+        message:
+          `role "external-revenue" with readable provenance "${provenance}" but currency ` +
+          `"${revenue.currency ?? "unset"}" — the coverage ratio sums USD against a ` +
+          "USD-priced denominator, and converting needs the tao-usd rate at each " +
+          "observation's own instant. Declare the surface operator-attested until that exists.",
+      });
+    }
   }
   return out;
 }

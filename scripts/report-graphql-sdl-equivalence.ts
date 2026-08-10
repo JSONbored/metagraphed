@@ -8,11 +8,20 @@
 // differs from `src/graphql-sdl.ts`.
 //
 // A REPORT, not a gate, and deliberately so. The remaining differences are
-// things to FIX -- 24 fields the SDL under-types as `JSON`, 4 types whose shape
-// lives only in resolver code (#10409) -- and a gate that failed on them would
-// just be red until they are all closed. What a report gives instead is one
-// number per class that can be watched down to zero, at which point the cutover
-// is a no-op rather than a leap.
+// things to FIX, and a gate that failed on them would just be red until they
+// are all closed. What a report gives instead is one number per class that can
+// be watched down to zero, at which point the cutover is a no-op rather than a
+// leap.
+//
+// EVERY NUMBER IT PRINTS IS DERIVED, including the count of what is left. It
+// used to name its own remainder in prose -- "24 fields the SDL under-types as
+// JSON, 4 types whose shape lives only in resolver code (#10409)" -- and both
+// halves rotted: the under-typings are 50 (the scalar-identity check reached
+// projections and paginated views in #10409, counting debt that had never been
+// counted), and `RESOLVER_BUILT_TYPES` is EMPTY, because those four now have
+// schemas in `schemas-src/graphql/graphql-only.ts`. A report that is the
+// answer to "how far is the cutover" cannot carry a hand-written number that
+// disagrees with the checker it points at, so it asks the checker.
 //
 // SEMANTIC, not byte-for-byte. Argument ORDER is not significant in GraphQL and
 // the derived order is the route's, so comparing text would report ~31 fields
@@ -33,7 +42,11 @@ import {
   deriveQueryArguments,
   type OpenApiParameters,
 } from "../schemas-src/graphql/query-arguments.ts";
-import { extractSdl } from "./validate-graphql-component-parity.ts";
+import {
+  checkComponentParity,
+  extractSdl,
+  type OpenApiDocument,
+} from "./validate-graphql-component-parity.ts";
 
 const SDL_PATH = "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
@@ -169,10 +182,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`sdl-equivalence: no SDL template literal in ${SDL_PATH}`);
     process.exit(1);
   }
-  const report = reportEquivalence(
-    sdl,
-    JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as OpenApiParameters,
-  );
+  const openapi = JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as unknown;
+  const report = reportEquivalence(sdl, openapi as OpenApiParameters);
   console.log(
     `sdl-equivalence: ${report.generatedTypes} of ${report.publishedTypes} published object ` +
       `type(s) have a generator source (the Query/Subscription roots excluded); ` +
@@ -180,12 +191,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `${report.queryArgumentsExact} argument list(s) reproduce exactly.`,
   );
   if (!report.missingTypes.length && !report.differences.length) {
+    // Asked, not restated. `undertyped` is the same number
+    // `validate:graphql-component-parity` prints, so the two can never
+    // disagree the way the prose here used to.
+    const { undertyped } = checkComponentParity(
+      sdl,
+      openapi as OpenApiDocument,
+    );
     console.log(
       "\nEvery published type, every Query return type and every derivable\n" +
         "argument list has a source. What remains before the SDL can be\n" +
-        "GENERATED rather than compared is not coverage but content: the JSON\n" +
-        "under-typings `validate:graphql-component-parity` counts, and the four\n" +
-        "resolver-built types in #10409.",
+        "GENERATED rather than compared is not coverage but content: " +
+        `${undertyped} field(s)\n` +
+        "the SDL publishes as opaque `JSON` where the component has a shape.\n" +
+        "Closing one means publishing a named type; the count is the distance.",
     );
   }
   if (report.missingTypes.length) {

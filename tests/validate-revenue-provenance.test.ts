@@ -41,7 +41,13 @@ describe("revenue provenance validator (#10443/#10516)", () => {
     const v = checkSurfaceRevenue(
       subnetWith({
         probe: { enabled: false },
-        revenue: { role: "external-revenue", provenance: "probe-derived" },
+        revenue: {
+          role: "external-revenue",
+          provenance: "probe-derived",
+          // #10566 requires USD on a headline-eligible declaration; declared
+          // here so each test below asserts the ONE rule it is about.
+          currency: "USD",
+        },
       }),
     );
     assert.equal(v.length, 1);
@@ -52,7 +58,13 @@ describe("revenue provenance validator (#10443/#10516)", () => {
     // The registry-wide gap tracked in #5932 — a surface can carry no probe
     // config, which is not the same as probe.enabled being false.
     const surface: Row = {
-      revenue: { role: "external-revenue", provenance: "probe-derived" },
+      revenue: {
+        role: "external-revenue",
+        provenance: "probe-derived",
+        // #10566 requires USD on a headline-eligible declaration; declared
+        // here so each test below asserts the ONE rule it is about.
+        currency: "USD",
+      },
     };
     delete surface.probe;
     const v = checkSurfaceRevenue({
@@ -66,7 +78,13 @@ describe("revenue provenance validator (#10443/#10516)", () => {
     const v = checkSurfaceRevenue(
       subnetWith({
         auth_required: true,
-        revenue: { role: "external-revenue", provenance: "probe-derived" },
+        revenue: {
+          role: "external-revenue",
+          provenance: "probe-derived",
+          // #10566 requires USD on a headline-eligible declaration; declared
+          // here so each test below asserts the ONE rule it is about.
+          currency: "USD",
+        },
       }),
     );
     assert.equal(v.length, 1);
@@ -115,6 +133,77 @@ describe("revenue provenance validator (#10443/#10516)", () => {
       ),
       [],
     );
+  });
+
+  test("a headline-eligible declaration must be USD (#10566)", () => {
+    // The serving layer sums amount_usd against a USD-priced denominator.
+    // Converting TAO needs the rate at each observation's OWN instant, and
+    // ALPHA is circular by construction. Refused at declaration rather than
+    // filtered at read: a filtered surface reads back as "not observed", which
+    // is indistinguishable from a probe that has not run.
+    for (const [currency, provenance] of [
+      ["TAO", "probe-derived"],
+      ["ALPHA", "probe-derived"],
+      ["TAO", "chain-verified"],
+      [undefined, "probe-derived"],
+    ] as const) {
+      const v = checkSurfaceRevenue(
+        subnetWith({
+          revenue: {
+            role: "external-revenue",
+            provenance,
+            ...(currency ? { currency } : {}),
+          },
+        }),
+      );
+      assert.equal(
+        v.length,
+        1,
+        `currency=${currency} provenance=${provenance} should be rejected`,
+      );
+      assert.match(v[0].message, /currency/);
+    }
+  });
+
+  test("a non-headline tier may be denominated in anything", () => {
+    // operator-attested and third-party-reported never reach the sum, so the
+    // unit does not have to be comparable — and refusing them would push a real
+    // declaration out of the registry for no gain.
+    for (const provenance of ["operator-attested", "third-party-reported"]) {
+      assert.deepEqual(
+        checkSurfaceRevenue(
+          subnetWith({
+            auth_required: true,
+            probe: { enabled: false },
+            revenue: {
+              role: "external-revenue",
+              provenance,
+              currency: "TAO",
+              source_url: "https://example.com/revenue",
+            },
+          }),
+        ),
+        [],
+        provenance,
+      );
+    }
+  });
+
+  test("a non-revenue role is not held to the currency rule", () => {
+    // usage-proxy and miner-payout are verdicts about what a surface measures,
+    // not figures anything sums. SN4's payout is denominated in alpha and must
+    // stay recordable.
+    for (const role of ["usage-proxy", "miner-payout", "not-revenue"]) {
+      assert.deepEqual(
+        checkSurfaceRevenue(
+          subnetWith({
+            revenue: { role, provenance: "probe-derived", currency: "ALPHA" },
+          }),
+        ),
+        [],
+        role,
+      );
+    }
   });
 
   test("a protocol subnet account may not carry a money role", () => {

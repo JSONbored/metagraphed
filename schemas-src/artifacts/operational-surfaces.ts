@@ -59,6 +59,23 @@ const OperationalSchemaSourceSchema = z
   })
   .passthrough();
 
+// The declaration the revenue lane reads (#10566), projected verbatim from the
+// subnet manifest's own `revenue` block. Passthrough rather than a restatement
+// of every field: schemas/subnet-manifest.schema.json OWNS this shape, and a
+// second strict copy here would be one more thing to drift.
+const OperationalRevenueSchema = z
+  .object({
+    role: z.string(),
+    provenance: z.string(),
+    currency: z.string().optional(),
+    grain: z.string().optional(),
+    shape: z.string().optional(),
+    fields: z.record(z.string(), z.string()).optional(),
+    excludes: z.array(z.string()).optional(),
+    supersedes: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
 const OperationalSurfaceSchema = z
   .object({
     surface_id: z.string(),
@@ -79,6 +96,9 @@ const OperationalSurfaceSchema = z
     probe: OperationalProbeSchema,
     schema_source: OperationalSchemaSourceSchema.nullable().describe(
       "The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface).",
+    ),
+    revenue: OperationalRevenueSchema.nullable().describe(
+      "What this surface measures about money, or null when it declares nothing (#10566). Carried here because this artifact is already the list of probe-enabled, public-safe surfaces a lane may fetch — the revenue probe needs exactly that set plus the declaration, and enumerating 129 per-subnet artifacts on every tick to rebuild it would be the same list at 129x the cost.",
     ),
   })
   .passthrough();

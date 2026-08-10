@@ -67,6 +67,17 @@ export const SUBNET_HYPERPARAMS_TEMPO_TABLES = ["subnet_hyperparams"] as const;
 /** loadSubnetBurnHistory */
 export const SUBNET_BURN_HISTORY_TABLES = ["subnet_burn_history"] as const;
 
+/** loadRevenueObservations, and the probe lane's own write (#10566).
+ *
+ * Both tables, because the lane writes both in one pass and producerStore gates
+ * on every table it is handed -- declaring only the observations table would
+ * hand the lane a store that can record a figure and not a failure, which is
+ * the one asymmetry this pair exists to avoid. */
+export const REVENUE_OBSERVATION_TABLES = [
+  "revenue_observations",
+  "revenue_probe_failures",
+] as const;
+
 /** loadTaoUsdSeries */
 export const TAO_USD_TABLES = ["tao_usd_index"] as const;
 
