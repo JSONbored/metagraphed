@@ -61,6 +61,26 @@ export interface PgMockController {
   /** A real engine to answer from, when the suite has one. Assigned after
    * construction because `vi.hoisted` runs before anything else in the file. */
   db: DatabaseSync | null;
+  /**
+   * A REAL POSTGRES to answer from, taking precedence over `db` (#10328).
+   *
+   * `db` is node:sqlite, and reaching it costs two translations that only ever
+   * subtract meaning: `toQuestionMarks` rewrites the placeholders, and
+   * tests/helpers/pg-sqlite.ts's `stripPgCasts` DELETES EVERY `::` cast so the
+   * statement will parse. Those casts are load-bearing -- a bare parameter
+   * inside a `VALUES` list has no type context, so Postgres resolves it to
+   * TEXT and the insert into an integer column fails, which took the
+   * hotkey_alpha mirror down twice (#9832, #10000). A suite on the SQLite path
+   * cannot fail on that, because it never sees the cast.
+   *
+   * This seam takes the statement VERBATIM -- same `$n`, same casts, same
+   * column-aliased VALUES relation -- so nothing between the code under test
+   * and the engine can hide a dialect fault.
+   *
+   * Async because pglite is; `MockClient.query` was already async, so the
+   * signature costs nothing. Suites still using `db` are untouched.
+   */
+  postgres: ((text: string, values: unknown[]) => Promise<unknown[]>) | null;
 }
 
 /** `$1, $2, ...` -> `?`, so node:sqlite can parse what Postgres was handed. */
@@ -117,6 +137,7 @@ export function createPgMock() {
     answers: [],
     failNext: null,
     db: null,
+    postgres: null,
     onQuery: null,
   };
 
@@ -145,6 +166,11 @@ export function createPgMock() {
         if (hit) return { rows: answer.rows };
       }
       if (control.rows) return { rows: control.rows };
+      // Postgres first: it needs no translation, so a suite that has one is
+      // asking for the statement to be judged exactly as written.
+      if (control.postgres) {
+        return { rows: await control.postgres(text, values) };
+      }
       if (!control.db) return { rows: [] };
       const statement = control.db.prepare(toQuestionMarks(text));
       const bound = values.map(toSqliteValue) as never[];

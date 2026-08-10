@@ -20,12 +20,11 @@
 // no prune and why the captured_at guard, not request ordering, is what keeps a
 // replay safe.
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
@@ -41,45 +40,42 @@ vi.mock("pg", () => pg.module);
 const { default: worker } = await import("../workers/data-api.ts");
 const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0019_hotkey_alpha.sql",
-  ),
-  "utf8",
-);
-const PASSES_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql",
-  ),
-  "utf8",
-);
-// The write filters against nominator_positions (#9557): only pools some
-// position actually references are stored, so the sink's statement reads that
-// table and the fixture has to provide it.
-const POSITIONS_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0011_nominator_positions.sql",
-  ),
-  "utf8",
-);
-const POSITIONS_INDEX = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0022_nominator_positions_hotkey_netuid.sql",
-  ),
-  "utf8",
-);
+/**
+ * The REAL Neon DDL for every table this route touches (#10328).
+ *
+ * Applied verbatim rather than transliterated into a SQLite fixture. The
+ * fixture could only ever be a second schema to maintain, and it failed
+ * silently in the direction that matters: `hotkey_alpha.netuid` is INTEGER
+ * here, which is the entire reason this lane's upsert carries `::int` casts --
+ * and the SQLite path deleted those casts before the engine saw them.
+ *
+ * 0007 also brings `nominator_positions`, which the write FILTERS against
+ * (#9557): only pools some position actually references are stored, so the
+ * sink's statement reads that table and it has to exist.
+ */
+const MIGRATIONS = [
+  "migrations/neon/0005_remaining_d1_tables.sql",
+  "migrations/neon/0007_hand_created_tables.sql",
+  "migrations/neon/0008_hotkey_alpha.sql",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
+
+/** Tables a test may write, emptied between tests. Named rather than
+ * discovered, so a table added to the migrations without a seed here is a
+ * visible omission rather than silently-shared rows. */
+const SEEDED_TABLES = [
+  "hotkey_alpha",
+  "hotkey_alpha_passes",
+  "nominator_positions",
+];
 
 /** Make (hotkey, netuid) referenced, so a pool for it is stored. */
-function reference(hotkey: string, netuid: number) {
-  db.prepare(
-    "INSERT OR IGNORE INTO nominator_positions" +
+async function reference(hotkey: string, netuid: number) {
+  await db.query(
+    "INSERT INTO nominator_positions" +
       " (coldkey, hotkey, netuid, share_fraction, captured_at)" +
-      " VALUES (?, ?, ?, 1.0, 1)",
-  ).run(`5Cold${hotkey}${netuid}`, hotkey, netuid);
+      " VALUES ($1, $2, $3, 1.0, 1) ON CONFLICT DO NOTHING",
+    [`5Cold${hotkey}${netuid}`, hotkey, netuid],
+  );
 }
 
 const PATH = "/api/v1/internal/hotkey-alpha-sync";
@@ -87,7 +83,7 @@ const SECRET = "test-hotkey-alpha-sync-secret";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 const HOTKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-let db: InstanceType<typeof DatabaseSync>;
+let db: PGlite;
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
@@ -132,34 +128,40 @@ function alphaRow(overrides: Row = {}): Row {
   };
 }
 
-const rows = () =>
-  db
-    .prepare("SELECT * FROM hotkey_alpha ORDER BY hotkey, netuid")
-    .all() as Row[];
+const rows = async () =>
+  (await db.query<Row>("SELECT * FROM hotkey_alpha ORDER BY hotkey, netuid"))
+    .rows;
 
-const passes = () =>
-  db
-    .prepare("SELECT * FROM hotkey_alpha_passes ORDER BY captured_at")
-    .all() as Row[];
+const passes = async () =>
+  (
+    await db.query<Row>(
+      "SELECT * FROM hotkey_alpha_passes ORDER BY captured_at",
+    )
+  ).rows;
 
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
-  db.exec(PASSES_SCHEMA);
-  db.exec(POSITIONS_SCHEMA);
-  db.exec(POSITIONS_INDEX);
+// ONE instance for the file, TRUNCATE between tests. Booting pglite is ~470ms
+// and the schema never varies, so a fresh instance per test would spend the
+// whole run re-applying identical DDL.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
+  await db.exec(`TRUNCATE ${SEEDED_TABLES.join(", ")}`);
   pg.control.queries.length = 0;
   pg.control.failNext = null;
-  // Wrapped rather than handed over raw: this lane's upsert is the one that
-  // carries a FILTER, so its statement is the `(VALUES ...) AS src (cols)` form
-  // with `::int` casts -- neither of which SQLite can parse. See
-  // tests/helpers/pg-sqlite.ts for exactly what is translated and what is not.
-  pg.control.db = sqliteBackedPg(db);
+  // Handed over VERBATIM -- no placeholder rewrite, no cast stripping. This
+  // lane's upsert is the one that carries a FILTER, so its statement is the
+  // `(VALUES ...) AS src (cols)` form with `::int` casts, and both of those
+  // are exactly what the SQLite path could not represent.
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
   // The fixtures below use HOTKEY/HOTKEY_B on the netuids alphaRow() defaults
   // to; referencing them keeps every pre-existing assertion about what lands
   // testing what it was written to test.
   for (const hk of [HOTKEY, HOTKEY_B]) {
-    for (const n of [7, 8, 9, 83]) reference(hk, n);
+    for (const n of [7, 8, 9, 83]) await reference(hk, n);
   }
 });
 
@@ -175,11 +177,11 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       stores: ["neon"],
       pass_total: null,
     });
-    assert.equal(rows().length, 2);
+    assert.equal((await rows()).length, 2);
     // A zero pool IS stored. The producer skips an unread pool, so a zero that
     // arrives is a measured emptiness, not a placeholder -- the distinction
     // the NOT NULL column exists to preserve.
-    assert.equal(rows()[1]!.total_alpha, 0);
+    assert.equal((await rows())[1]!.total_alpha, 0);
   });
 
   test("the same hotkey on two subnets is two rows, not an overwrite", async () => {
@@ -192,9 +194,9 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
         alphaRow({ netuid: 83, total_alpha: 250 }),
       ],
     });
-    assert.equal(rows().length, 2);
+    assert.equal((await rows()).length, 2);
     assert.deepEqual(
-      rows().map((r) => [r.netuid, r.total_alpha]),
+      (await rows()).map((r) => [r.netuid, r.total_alpha]),
       [
         [7, 100],
         [83, 250],
@@ -210,25 +212,25 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     const newer = 1_781_000_000_000;
     await post({ rows: [alphaRow({ total_alpha: 100, captured_at: older })] });
     await post({ rows: [alphaRow({ total_alpha: 300, captured_at: newer })] });
-    assert.equal(rows()[0]!.total_alpha, 300);
+    assert.equal((await rows())[0]!.total_alpha, 300);
     // A pass arrives across many requests and the producer re-sends on
     // failure, so a replayed or out-of-order batch must be a no-op rather than
     // a regression to an older pool size.
     await post({ rows: [alphaRow({ total_alpha: 999, captured_at: older })] });
-    assert.equal(rows()[0]!.total_alpha, 300);
-    assert.equal(rows()[0]!.captured_at, newer);
+    assert.equal((await rows())[0]!.total_alpha, 300);
+    assert.equal((await rows())[0]!.captured_at, newer);
   });
 
   test("accepts a bare array as well as {rows:[...]}", async () => {
     const response = await post([alphaRow()]);
     assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
+    assert.equal((await rows()).length, 1);
   });
 
   test("rejects a missing or wrong token before reading the body", async () => {
     assert.equal((await post({ rows: [alphaRow()] }, null)).status, 401);
     assert.equal((await post({ rows: [alphaRow()] }, "wrong")).status, 401);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("503s when the route is not provisioned", async () => {
@@ -251,7 +253,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     // shape; accepting it would silently drop the field.
     const response = await post({ rows: [alphaRow({ extra: 1 })] });
     assert.equal(response.status, 400);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("rejects a negative, non-finite or non-numeric alpha", async () => {
@@ -270,7 +272,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       400,
       "Infinity",
     );
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("rejects a junk netuid rather than creating a parallel row", async () => {
@@ -280,7 +282,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       const response = await post({ rows: [alphaRow({ netuid: bad })] });
       assert.equal(response.status, 400, String(bad));
     }
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("rejects an empty or oversized hotkey", async () => {
@@ -292,7 +294,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       (await post({ rows: [alphaRow({ hotkey: "5".repeat(200) })] })).status,
       400,
     );
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("rejects a captured_at the staleness guard cannot trust", async () => {
@@ -300,7 +302,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       const response = await post({ rows: [alphaRow({ captured_at: bad })] });
       assert.equal(response.status, 400, String(bad));
     }
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("503s when no store is bound, and only AFTER validating the body", async () => {
@@ -322,7 +324,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     const halfDeclared = env({ NEON_SOLE_STORE_TABLES: "hotkey_alpha" });
     const response = await post({ rows: [alphaRow()] }, SECRET, halfDeclared);
     assert.equal(response.status, 503);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 
   test("502s when the write throws", async () => {
@@ -333,7 +335,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     // than a lost mirror: ok:true here would tell the producer its pools are
     // durable when nothing holds them.
     assert.equal(((await response.json()) as Row).error, "neon write failed");
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 });
 
@@ -355,7 +357,7 @@ describe("pass_total completeness accounting", () => {
       stores: ["neon"],
       pass_total: 1,
     });
-    const [row] = passes();
+    const [row] = await passes();
     assert.equal(row!.expected_rows, 1);
     assert.equal(row!.received_rows, 1);
     assert.ok(row!.completed_at, "a satisfied pass carries a completion stamp");
@@ -366,29 +368,36 @@ describe("pass_total completeness accounting", () => {
     // 140,000 of a declared 364,284 rows landed, every one correct. Pricing
     // over that underprices every coldkey whose pools had not arrived.
     await post({ rows: [alphaRow()], pass_total: 3 });
-    assert.equal(passes()[0]!.received_rows, 1);
+    assert.equal((await passes())[0]!.received_rows, 1);
     assert.equal(
-      passes()[0]!.completed_at,
+      (await passes())[0]!.completed_at,
       null,
       "one of three requests is NOT a complete pass",
     );
 
     await post({ rows: [alphaRow({ netuid: 8 })], pass_total: 3 });
-    assert.equal(passes()[0]!.received_rows, 2);
-    assert.equal(passes()[0]!.completed_at, null);
+    assert.equal((await passes())[0]!.received_rows, 2);
+    assert.equal((await passes())[0]!.completed_at, null);
 
     await post({ rows: [alphaRow({ netuid: 9 })], pass_total: 3 });
-    assert.equal(passes()[0]!.received_rows, 3);
-    assert.ok(passes()[0]!.completed_at, "the closing request stamps it");
+    assert.equal((await passes())[0]!.received_rows, 3);
+    assert.ok(
+      (await passes())[0]!.completed_at,
+      "the closing request stamps it",
+    );
   });
 
   test("a replayed request never un-completes a finished pass", async () => {
     await post({ rows: [alphaRow()], pass_total: 1 });
-    const stamped = passes()[0]!.completed_at;
+    const stamped = (await passes())[0]!.completed_at;
     await post({ rows: [alphaRow()], pass_total: 1 });
-    assert.equal(passes()[0]!.received_rows, 2, "the replay is counted");
     assert.equal(
-      passes()[0]!.completed_at,
+      (await passes())[0]!.received_rows,
+      2,
+      "the replay is counted",
+    );
+    assert.equal(
+      (await passes())[0]!.completed_at,
       stamped,
       "and the original completion stamp is preserved",
     );
@@ -400,14 +409,22 @@ describe("pass_total completeness accounting", () => {
       rows: [alphaRow({ captured_at: 1_790_000_000_000 })],
       pass_total: 2,
     });
-    assert.equal(passes().length, 2, "one row per captured_at");
-    assert.equal(passes()[1]!.completed_at, null, "the newer one is partial");
+    assert.equal((await passes()).length, 2, "one row per captured_at");
+    assert.equal(
+      (await passes())[1]!.completed_at,
+      null,
+      "the newer one is partial",
+    );
   });
 
   test("omitting pass_total writes no tally at all -- the bare-array envelope", async () => {
     await post([alphaRow()]);
-    assert.equal(rows().length, 1);
-    assert.deepEqual(passes(), [], "an undeclared pass is not half-tracked");
+    assert.equal((await rows()).length, 1);
+    assert.deepEqual(
+      await passes(),
+      [],
+      "an undeclared pass is not half-tracked",
+    );
   });
 
   test("rejects a pass_total that is absent-shaped, negative, fractional or absurd", async () => {
@@ -415,7 +432,11 @@ describe("pass_total completeness accounting", () => {
       const response = await post({ rows: [alphaRow()], pass_total: bad });
       assert.equal(response.status, 400, `expected 400 for ${bad}`);
     }
-    assert.equal(rows().length, 0, "no partial write from a rejected batch");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "no partial write from a rejected batch",
+    );
   });
 
   test("rejects a pass_total smaller than the request it arrived with", async () => {
@@ -438,7 +459,7 @@ describe("pass_total completeness accounting", () => {
       pass_total: 5,
     });
     assert.equal(response.status, 400);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 });
 
@@ -465,7 +486,7 @@ describe("only pools some position references are stored", () => {
     assert.equal(response.status, 200);
     assert.equal(((await response.json()) as Row).hotkey_alpha_written, 2);
 
-    const stored = rows();
+    const stored = await rows();
     assert.deepEqual(
       stored.map((r) => r.hotkey),
       [HOTKEY],
@@ -476,14 +497,14 @@ describe("only pools some position references are stored", () => {
   test("a pool becomes storable once a position references it", async () => {
     const later = "5LaterHotkeyGainsANominator0000000000000000000000";
     await post({ rows: [alphaRow({ hotkey: later, netuid: 7 })] });
-    assert.equal(rows().length, 0, "nothing references it yet");
+    assert.equal((await rows()).length, 0, "nothing references it yet");
 
     // Both lanes refresh daily, so a pair that gains a position is picked up on
     // the next pass rather than needing a backfill.
-    reference(later, 7);
+    await reference(later, 7);
     await post({ rows: [alphaRow({ hotkey: later, netuid: 7 })] });
-    assert.equal(rows().length, 1);
-    assert.equal(rows()[0]!.hotkey, later);
+    assert.equal((await rows()).length, 1);
+    assert.equal((await rows())[0]!.hotkey, later);
   });
 
   test("the filter is per (hotkey, netuid), not per hotkey", async () => {
@@ -491,14 +512,14 @@ describe("only pools some position references are stored", () => {
     // on the hotkey alone would store pools for subnets nothing delegates on --
     // and, worse, the composite key means those rows are not overwrites.
     const partial = "5PartialHotkeyOnOneSubnetOnly000000000000000000";
-    reference(partial, 7);
+    await reference(partial, 7);
     await post({
       rows: [
         alphaRow({ hotkey: partial, netuid: 7, total_alpha: 10 }),
         alphaRow({ hotkey: partial, netuid: 42, total_alpha: 20 }),
       ],
     });
-    const stored = rows().filter((r) => r.hotkey === partial);
+    const stored = (await rows()).filter((r) => r.hotkey === partial);
     assert.deepEqual(
       stored.map((r) => r.netuid),
       [7],
@@ -514,9 +535,9 @@ describe("only pools some position references are stored", () => {
       rows: [alphaRow({ netuid: 7 }), alphaRow({ hotkey: orphan, netuid: 7 })],
       pass_total: 2,
     });
-    assert.equal(rows().length, 1, "one stored");
-    assert.equal(passes()[0]!.received_rows, 2, "two received");
-    assert.ok(passes()[0]!.completed_at, "and the pass is complete");
+    assert.equal((await rows()).length, 1, "one stored");
+    assert.equal((await passes())[0]!.received_rows, 2, "two received");
+    assert.ok((await passes())[0]!.completed_at, "and the pass is complete");
   });
 });
 
@@ -542,7 +563,11 @@ describe("routed to the sync queue (metagraphed-infra#348)", () => {
     assert.equal(response.status, 200);
     assert.equal(sent.length, 1);
     assert.equal(sent[0]!.pass_total, 2, "the declaration rides along");
-    assert.equal(rows().length, 0, "the store must not also have been written");
+    assert.equal(
+      (await rows()).length,
+      0,
+      "the store must not also have been written",
+    );
   });
 
   test("a chunk too large for one message is split, not dropped", async () => {
@@ -586,6 +611,6 @@ describe("routed to the sync queue (metagraphed-infra#348)", () => {
       queueEnv(async () => Promise.reject(new Error("over capacity"))),
     );
     assert.equal(response.status, 502);
-    assert.equal(rows().length, 0);
+    assert.equal((await rows()).length, 0);
   });
 });
