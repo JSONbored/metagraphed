@@ -133,7 +133,6 @@ export const DECLARED: Record<string, string> = {
  */
 const JSON_UNDERTYPED: Record<string, string> = {
   "Adapter.snapshot": "AdapterArtifactSnapshot",
-  "BlockEvents.events": "[AccountEvent!]",
   "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
   "BuildSummary.artifact_budget_summary":
     "BuildSummaryArtifactArtifactBudgetSummary",
@@ -154,18 +153,15 @@ const JSON_UNDERTYPED: Record<string, string> = {
   "ComparedValidator.subnet_context":
     "CompareValidatorsArtifactValidatorsSubnetContext",
   "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
-  "SubnetConviction.king": "String",
   "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
   "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
   "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",
-  "SubnetEventSummary.recent_events": "[AccountEvent!]",
   "SubnetHealthIncidents.surfaces": "[HealthIncidentsArtifactSurfaces!]",
   "SubnetHealthPercentiles.surfaces": "[HealthPercentilesArtifactSurfaces!]",
   "SubnetLease.lease": "SubnetLeaseArtifactLease",
   "SubnetLeaseHistory.lease_events": "[SubnetLeaseHistoryArtifactLeaseEvents!]",
   "SubnetOwnershipHistory.ownership_changes":
     "[SubnetOwnershipHistoryArtifactOwnershipChanges!]",
-  "TaoUsdLatest.pools": "[JSON!]",
 };
 
 export interface ParityReport {

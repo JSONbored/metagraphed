@@ -759,7 +759,7 @@ export type BlockEvents = {
   __typename?: 'BlockEvents';
   block_number?: Maybe<Scalars['Int']['output']>;
   event_count: Scalars['Int']['output'];
-  events: Array<Scalars['JSON']['output']>;
+  events: Array<AccountEvent>;
   limit?: Maybe<Scalars['Int']['output']>;
   offset?: Maybe<Scalars['Int']['output']>;
   ref?: Maybe<Scalars['String']['output']>;
@@ -5169,7 +5169,7 @@ export type SubnetConviction = {
   count: Scalars['Int']['output'];
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
-  king?: Maybe<Scalars['JSON']['output']>;
+  king?: Maybe<Scalars['String']['output']>;
   leaderboard: Array<Scalars['JSON']['output']>;
   maturity_rate?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
@@ -5303,7 +5303,7 @@ export type SubnetEventSummary = {
   observed_at?: Maybe<Scalars['String']['output']>;
   recent_event_count: Scalars['Int']['output'];
   /** The bounded newest-first recent-event list. Opaque JSON passed through verbatim. */
-  recent_events: Scalars['JSON']['output'];
+  recent_events: Array<AccountEvent>;
   schema_version: Scalars['Int']['output'];
   total_events: Scalars['Int']['output'];
   /** The resolved window label (7d/30d/90d). */
@@ -6230,7 +6230,7 @@ export type TaoUsdLatest = {
   observed_at?: Maybe<Scalars['String']['output']>;
   pool_count?: Maybe<Scalars['Int']['output']>;
   /** Per-pool provenance as the producer stored it. */
-  pools?: Maybe<Scalars['JSON']['output']>;
+  pools?: Maybe<Array<Scalars['JSON']['output']>>;
   /** Stated even when the price is null -- it is what says why. */
   price_basis?: Maybe<Scalars['String']['output']>;
   usd_per_tao?: Maybe<Scalars['Float']['output']>;
@@ -7904,7 +7904,7 @@ export type BlockDetailResolvers<ContextType = GqlContext, ParentType extends Re
 export type BlockEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockEvents'] = ResolversParentTypes['BlockEvents']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  events?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  events?: Resolver<Array<ResolversTypes['AccountEvent']>, ParentType, ContextType>;
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   offset?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   ref?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10106,7 +10106,7 @@ export type SubnetConcentrationHistoryPointResolvers<ContextType = GqlContext, P
 export type SubnetConvictionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetConviction'] = ResolversParentTypes['SubnetConviction']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  king?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  king?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   leaderboard?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   maturity_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10210,7 +10210,7 @@ export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType ext
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   recent_event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  recent_events?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  recent_events?: Resolver<Array<ResolversTypes['AccountEvent']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_events?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10946,7 +10946,7 @@ export type TaoUsdLatestResolvers<ContextType = GqlContext, ParentType extends R
   eth_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   pool_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  pools?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  pools?: Resolver<Maybe<Array<ResolversTypes['JSON']>>, ParentType, ContextType>;
   price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;

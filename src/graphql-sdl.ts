@@ -2920,7 +2920,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     pool_count: Int
     "Per-pool provenance as the producer stored it."
-    pools: JSON
+    pools: [JSON!]
   }
 
   type TaoUsd {
@@ -3995,7 +3995,7 @@ export const SDL = /* GraphQL */ `
     "Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim."
     event_kinds: JSON!
     "The bounded newest-first recent-event list. Opaque JSON passed through verbatim."
-    recent_events: JSON!
+    recent_events: [AccountEvent!]!
   }
 
   type ExtrinsicList {
@@ -4203,7 +4203,7 @@ export const SDL = /* GraphQL */ `
     queried_at_block: Int
     unlock_rate: Float
     maturity_rate: Float
-    king: JSON
+    king: String
     count: Int!
     leaderboard: [JSON!]!
     """
@@ -4469,7 +4469,7 @@ export const SDL = /* GraphQL */ `
     event_count: Int!
     limit: Int
     offset: Int
-    events: [JSON!]!
+    events: [AccountEvent!]!
   }
 
   "One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows are opaque JSON."
