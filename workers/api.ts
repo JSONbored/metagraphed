@@ -408,7 +408,6 @@ import {
 import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
-import { handleMcpRequest } from "../src/mcp-server.ts";
 import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
@@ -439,7 +438,6 @@ import { resolveEmissionPipelineEconomics } from "../src/emission-pipeline-surfa
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
-import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
   handleAuthorizeRequest,
@@ -4590,6 +4588,16 @@ async function dispatchRequest(
   // treats the two as one route, and the app answering only the bare form is what put
   // an otherwise-correct client on the 405 path.
   if (isMcpEndpointPath(url.pathname)) {
+    // IMPORTED HERE, NOT AT MODULE SCOPE (#10424). src/mcp-server.ts is ~12.5k
+    // lines and this is the ONLY thing api.ts uses from it, so a static import
+    // made every consumer of api.ts pay for the whole MCP server: 23 of the 39
+    // module-mocking tests that reach a heavy module reached it through this
+    // one edge, at ~1.8s of import each because those tests cannot share a
+    // module registry (#8922). Deferring it also takes the parse and evaluate
+    // off the Worker's startup path, where #10238 already showed that what runs
+    // at import is what exceeds the 400ms ceiling -- an MCP request pays for
+    // the module it actually uses, and nothing else does.
+    const { handleMcpRequest } = await import("../src/mcp-server.ts");
     // executionCtx is what lets tool-dispatch telemetry (#6031) drain its
     // capture through waitUntil instead of stranding it on isolate exit.
     return handleMcpRequest(request, env, {
@@ -4746,6 +4754,13 @@ async function dispatchRequest(
     }
     const limited = await graphqlRateLimited(request, env);
     if (limited) return limited;
+    // Deferred for the same reason as the MCP handler above (#10424):
+    // src/graphql.ts is ~10k lines, this is the only thing api.ts uses from
+    // it, and a static import made every consumer of api.ts load the whole
+    // GraphQL surface. Loaded after the rate limiter deliberately -- a
+    // throttled request should not pay to parse a schema it is not going to
+    // execute against.
+    const { handleGraphQLRequest } = await import("../src/graphql.ts");
     return handleGraphQLRequest(request, env, ctx);
   }
 

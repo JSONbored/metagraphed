@@ -742,29 +742,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: shared 1/5
+          - name: shared 1/3
             id: shared-1
-            args: --pass=shared --shard=1/5
+            args: --pass=shared --shard=1/3
             cov: coverage
             junit: ""
-          - name: shared 2/5
+          - name: shared 2/3
             id: shared-2
-            args: --pass=shared --shard=2/5
+            args: --pass=shared --shard=2/3
             cov: coverage
             junit: ""
-          - name: shared 3/5
+          - name: shared 3/3
             id: shared-3
-            args: --pass=shared --shard=3/5
-            cov: coverage
-            junit: ""
-          - name: shared 4/5
-            id: shared-4
-            args: --pass=shared --shard=4/5
-            cov: coverage
-            junit: ""
-          - name: shared 5/5
-            id: shared-5
-            args: --pass=shared --shard=5/5
+            args: --pass=shared --shard=3/3
             cov: coverage
             junit: ""
           - name: mocked 1/2
@@ -926,7 +916,7 @@ jobs:
       # failure this check has always existed to prevent.
       - name: Verify every leg's report arrived
         run: |
-          for f in lcov-shared-1 lcov-shared-2 lcov-shared-3 lcov-shared-4 lcov-shared-5 lcov-mocked-1 lcov-mocked-2; do
+          for f in lcov-shared-1 lcov-shared-2 lcov-shared-3 lcov-mocked-1 lcov-mocked-2; do
             test -s "cov/$f.info" || { echo "missing or empty: cov/$f.info"; exit 1; }
           done
 
@@ -980,7 +970,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-shared-4.info,./cov/lcov-shared-5.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
@@ -999,7 +989,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-shared-4.info,./cov/lcov-shared-5.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
+          files: ./cov/lcov-shared-1.info,./cov/lcov-shared-2.info,./cov/lcov-shared-3.info,./cov/lcov-mocked-1.info,./cov/lcov-mocked-2.info
           disable_search: true
           version: v11.3.1
           override_branch: ${{ github.event.pull_request.head.repo.owner.login }}:${{ github.event.pull_request.head.ref }}
@@ -1012,7 +1002,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-shared-4.xml,./cov/vitest-shared-5.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
@@ -1025,7 +1015,7 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-shared-4.xml,./cov/vitest-shared-5.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
+          files: ./cov/vitest-shared-1.xml,./cov/vitest-shared-2.xml,./cov/vitest-shared-3.xml,./cov/vitest-mocked-1.xml,./cov/vitest-mocked-2.xml
           report_type: test_results
           disable_search: true
           version: v11.3.1
