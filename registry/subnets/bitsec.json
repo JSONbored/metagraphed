@@ -21,6 +21,11 @@
   "name": "Bitsec",
   "netuid": 60,
   "notes": "First maintainer-reviewed pass for SN60 (previously community-seeded/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). Added the missing website and source-repo surfaces. Fixed 3 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full 30-path OpenAPI schema and added 10 new no-auth no-param surfaces spanning agents, analytics, jobs, and projects; excluded /jobs/leaderboard_old (500 live) and /users/validators/me (422 live) since the schema's declared no-auth status doesn't match live behavior.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-60",
   "source_repo": "https://github.com/Bitsec-AI/sandbox",
@@ -235,6 +240,10 @@
       "id": "sn-60-bitsec-jobs-leaderboard",
       "kind": "subnet-api",
       "name": "Bitsec.ai jobs leaderboard",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET /api/jobs/leaderboard on bitsec.ai, returning per-agent scoring records (user, agent, score, completed validator count, hotkey). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
       "probe": {
         "enabled": true,
@@ -271,7 +280,11 @@
       "id": "sn-60-bitsec-jobs-stats",
       "kind": "subnet-api",
       "name": "Bitsec.ai jobs stats",
-      "notes": "Public no-auth GET /api/jobs/stats on bitsec.ai, returning aggregate weekly stats (agents created, top score, real vulnerabilities found, daily prize pool). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET /api/jobs/stats on bitsec.ai, returning aggregate weekly stats (agents created, top score, real vulnerabilities found, daily prize pool). Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. REVENUE ROLE (#10464): not-revenue. `daily_prize_pool` is money the subnet PAYS OUT to competitors, the same outflow shape as SN46's dailyPrizePoolUsd. REVENUE ROLE (#10464): not-revenue. `daily_prize_pool` is money the subnet PAYS OUT to competitors, the same outflow shape as SN46's dailyPrizePoolUsd.",
       "probe": {
         "enabled": true,
         "expect": "json",

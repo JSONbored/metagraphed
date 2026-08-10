@@ -20,6 +20,11 @@
   "slug": "sn-68",
   "status": "active",
   "notes": "First maintainer review for SN68. Added website + source-repo surfaces, fixed 6 missing probe blocks. Diffed the score-share OpenAPI schema for undiscovered public GET endpoints -- the sole no-param candidate was already tracked, nothing new to add.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "social": {
     "x": "https://x.com/metanova_labs"
   },
@@ -90,7 +95,7 @@
       "id": "sn-68-nova-savi-2020-dataset",
       "kind": "data-artifact",
       "name": "NOVA SAVI-2020 molecule library",
-      "notes": "Public Metanova (NOVA, SN68) HuggingFace SAVI-2020 dataset — ~1.5B computationally generated, synthetically-accessible organic compounds (SMILES, drug-likeness scores, single-step routes), the candidate-molecule library NOVA's drug-discovery miners screen against; not gated, chemistry columns only. The metanova-labs/nova README (source) declares the Bittensor subnet and the Metanova HF org owns the dataset.",
+      "notes": "Public Metanova (NOVA, SN68) HuggingFace SAVI-2020 dataset \u2014 ~1.5B computationally generated, synthetically-accessible organic compounds (SMILES, drug-likeness scores, single-step routes), the candidate-molecule library NOVA's drug-discovery miners screen against; not gated, chemistry columns only. The metanova-labs/nova README (source) declares the Bittensor subnet and the Metanova HF org owns the dataset.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -115,7 +120,7 @@
       "id": "sn-68-nova-mol-rxn-db",
       "kind": "data-artifact",
       "name": "NOVA Mol-Rxn-DB combinatorial molecule database",
-      "notes": "Public Metanova (NOVA, SN68) Hugging Face dataset — the combinatorial molecule/reaction database (molecules.sqlite) the subnet's drug-discovery validators screen candidate compounds against. The official metanova-labs/nova install script downloads it directly (install_deps.sh line 57), establishing first-party ownership.",
+      "notes": "Public Metanova (NOVA, SN68) Hugging Face dataset \u2014 the combinatorial molecule/reaction database (molecules.sqlite) the subnet's drug-discovery validators screen candidate compounds against. The official metanova-labs/nova install script downloads it directly (install_deps.sh line 57), establishing first-party ownership.",
       "probe": {
         "enabled": true,
         "expect": "html",

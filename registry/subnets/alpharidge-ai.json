@@ -24,6 +24,11 @@
   "name": "AlphaRidge.ai",
   "netuid": 45,
   "notes": "This subnet was previously tracked under the \"Talisman AI\" identity. On-chain SubnetIdentitiesV3 native_name and description now both point to \"AlphaRidge.ai\" (same team, Team-Rizzo) -- the source repository github.com/Team-Rizzo/talisman-ai now permanently redirects to github.com/Team-Rizzo/alpharidge-ai, and the tracked API host (api.alpharidge.ai) and OpenAPI title (\"Alpharidge AI API\") already used the new branding prior to this pass. File renamed talisman-ai.json -> alpharidge-ai.json to match slugify(name); registered website_url (ai.talisman.xyz) is unchanged on-chain and still live, so kept as-is. Fixed 3 pre-existing surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full API OpenAPI schema (42 paths): internal work-queue, admin, and reporting routes (tweets/telegram/articles unscored+completed, rewards, penalties, blacklist, reports, verdicts, attestation, config/subnet, validators/versions, diagnostics/*) are all 401/403-gated despite the schema declaring no security scheme. Found and added 6 new genuine no-auth public dashboard endpoints: /dashboard/sentiment, /dashboard/miners, /dashboard/assets, /dashboard/validators, /dashboard/preview, and /dashboard/articles/sources.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-45",
   "social": {
@@ -126,6 +131,10 @@
       "id": "sn-45-talisman-dashboard-stats",
       "kind": "data-artifact",
       "name": "AlphaRidge.ai dashboard stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET /dashboard/stats on api.alpharidge.ai returning live SN45 content-analysis totals (tweets/telegram/articles analyzed, latest_analysis_at, sentiment distribution) \u2014 counts advance between successive requests, confirming a genuinely live feed. Documented in the subnet's own OpenAPI spec (already the registered schema_url on the sibling openapi surface) as \"Dashboard Stats\" / \"Public dashboard overview statistics\".",
       "probe": {
         "enabled": true,
