@@ -69,6 +69,8 @@ import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownershi
 import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { SubnetLifecyclePanel } from "@/components/metagraphed/subnet-lifecycle-panel";
 import { SubnetValidatorEconomicsPanel } from "@/components/metagraphed/subnet-validator-economics-panel";
+import { SubnetEmissionPipelineHistoryPanel } from "@/components/metagraphed/subnet-emission-pipeline-history";
+import { SubnetSurfaceHistoryPanel } from "@/components/metagraphed/subnet-surface-history";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -716,6 +718,28 @@ function GovernancePanel({ netuid }: { netuid: number }) {
           {/* #10300: validator-economics and its history were published and
               rendered nowhere. */}
           <SubnetValidatorEconomicsPanel netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="pipeline-history"
+        title="Emission pipeline over time"
+        subtitle="How this subnet's emission share, price and pool moved — and which days were actually measured."
+        info="GET /api/v1/subnets/{netuid}/emission-pipeline/history — the route publishes `point_count` and `distinct_observations` as SEPARATE numbers, and marks each day with `repeats_previous_observation`. A day that repeats carried the previous reading forward rather than taking a new one, so a flat stretch means either the pipeline held steady or the lane did not run. The panel states that gap instead of charting repeats as measurements."
+      >
+        <QueryErrorBoundary>
+          <SubnetEmissionPipelineHistoryPanel netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="surface-history"
+        title="Surface audit trail"
+        subtitle="Every surface added, updated or removed for this subnet, and the commit that did it."
+        info="GET /api/v1/subnets/{netuid}/surface-history — the record behind every surface this registry claims the subnet publishes. `change_count` and `surface_count` are shown separately because one surface can change many times, so collapsing them would let a single surface edited twelve times read as twelve surfaces."
+      >
+        <QueryErrorBoundary>
+          <SubnetSurfaceHistoryPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 

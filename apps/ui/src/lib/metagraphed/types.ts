@@ -4189,6 +4189,150 @@ export interface SubnetValidatorEconomics {
   cap_binding: boolean | null;
 }
 
+/** Registration cost across the network (#10300). */
+export interface ChainBurn {
+  /** How many subnets exist. */
+  subnet_count: number | null;
+  /** How many were actually read. Below subnet_count, the spread is a subset. */
+  read_count: number | null;
+  cheapest_burn_tao: number | null;
+  dearest_burn_tao: number | null;
+  median_burn_tao: number | null;
+  queried_at: string | null;
+  subnets: ChainBurnSubnet[];
+}
+
+export interface ChainBurnSubnet {
+  netuid: number;
+  burn_tao: number | null;
+}
+
+/** Alpha holders across the network (#10300). */
+export interface ChainHolders {
+  subnet_count: number | null;
+  subnets_measured: number | null;
+  /** One account holds the whole subnet's alpha — distinct from a majority. */
+  subnets_with_single_holder: number | null;
+  subnets_with_majority_holder: number | null;
+  median_top1_share: number | null;
+  /** When the subnet set was read. */
+  captured_at: string | null;
+  /** When the holder positions were. These are allowed to differ. */
+  positions_captured_at: string | null;
+  subnets: ChainHolderSubnet[];
+}
+
+export interface ChainHolderSubnet {
+  netuid: number;
+  holder_count: number | null;
+  total_alpha: number | null;
+  top_holder: string | null;
+  top1_share: number | null;
+  top5_share: number | null;
+  top10_share: number | null;
+}
+
+/** Concentration ranked per subnet (#10300). */
+export interface NetworkConcentrationSubnets {
+  lens: string | null;
+  subnet_count: number | null;
+  measured_subnet_count: number | null;
+  median_gini: number | null;
+  median_nakamoto_coefficient: number | null;
+  single_holder_subnet_count: number | null;
+  captured_at: string | null;
+  subnets: NetworkConcentrationSubnet[];
+}
+
+export interface NetworkConcentrationSubnet {
+  netuid: number;
+  gini: number | null;
+  nakamoto_coefficient: number | null;
+  top_1pct_share: number | null;
+  holders: number | null;
+  /** No reading. NOT the same as evenly distributed. */
+  unmeasured: boolean;
+}
+
+/** Network concentration drift (#10300). */
+export interface NetworkConcentrationHistory {
+  window: string | null;
+  point_count: number;
+  oldest_day: string | null;
+  newest_day: string | null;
+  /**
+   * Every builder version present in the window. More than one means points in
+   * this series were computed by different definitions, so a trend across them
+   * compares the definitions, not the network.
+   */
+  builder_versions: number[];
+  points: NetworkConcentrationHistoryPoint[];
+}
+
+export interface NetworkConcentrationHistoryPoint {
+  day: string;
+  builder_version: number | null;
+  neuron_count: number | null;
+  subnet_count: number | null;
+  gini: number | null;
+  nakamoto_coefficient: number | null;
+  top_1pct_share: number | null;
+}
+
+/**
+ * The emission pipeline over time (#10300).
+ *
+ * `distinct_observations` is nullable and deliberately NOT defaulted to
+ * `point_count`: the gap between the two is how a reader tells a pipeline that
+ * did not move from a lane that did not run.
+ */
+export interface SubnetEmissionPipelineHistory {
+  netuid: number | null;
+  window: string | null;
+  point_count: number;
+  distinct_observations: number | null;
+  oldest_day: string | null;
+  newest_day: string | null;
+  /** The first day capture reached — earlier gaps are unwatched, not empty. */
+  first_captured_day: string | null;
+  points: SubnetEmissionPipelinePoint[];
+}
+
+/** One day of the pipeline. */
+export interface SubnetEmissionPipelinePoint {
+  day: string;
+  pipeline_block: number | null;
+  /** True when this day carried the previous reading forward, not measured. */
+  repeats_previous_observation: boolean | null;
+  captured_at: string | null;
+  emission_share: number | null;
+  alpha_price_tao: number | null;
+  tao_in_pool_tao: number | null;
+  tao_in_emission_tao: number | null;
+  miner_burned_fraction: number | null;
+  emission_enabled: boolean | null;
+}
+
+/** A subnet's surface audit trail (#10300). */
+export interface SubnetSurfaceHistory {
+  /** One surface can change many times, so these two are not the same number. */
+  change_count: number;
+  surface_count: number | null;
+  latest_change_at: string | null;
+  changes: SubnetSurfaceChange[];
+}
+
+/** One recorded change to one surface, traceable to the commit that made it. */
+export interface SubnetSurfaceChange {
+  surface_id: string;
+  action: string;
+  kind: string | null;
+  url: string | null;
+  name: string | null;
+  source_commit: string | null;
+  recorded_at: string | null;
+}
+
 /** One day of the same thresholds. */
 export interface SubnetValidatorEconomicsPoint {
   snapshot_date: string;

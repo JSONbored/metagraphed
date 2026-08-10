@@ -9,6 +9,7 @@ import { ChainConcentrationSnapshot } from "@/components/metagraphed/chain-conce
 import { ChainIdleStakeSnapshot } from "@/components/metagraphed/chain-idle-stake-snapshot";
 import { ChainEmissionTrend } from "@/components/metagraphed/chain-emission-trend";
 import { ChainRegistrationEconomics } from "@/components/metagraphed/chain-registration-economics";
+import { ChainNetworkConcentration } from "@/components/metagraphed/chain-network-concentration";
 import { classNames } from "@/lib/metagraphed/format";
 import {
   chainStakeFlowQuery,
@@ -133,6 +134,20 @@ export function ChainAnalyticsPage() {
         <AnalyticsBody />
       </AsyncPanel>
 
+      {/* #10300: four network-wide surfaces that were published and rendered
+          nowhere. Deliberately BELOW the suspense boundary above rather than
+          inside it — the body's six-request budget is a documented property of
+          that section, and these four fetch independently so a slow one cannot
+          hold the sankey back. */}
+      <section className="mt-8">
+        <SectionLabel>Network concentration & entry cost</SectionLabel>
+        <p className="mb-4 mt-1 max-w-3xl mg-type-caption-lg text-ink-muted">
+          What it costs to register, who holds the alpha, and how evenly — each computed over the
+          subnets that were actually read, which these panels state rather than assume.
+        </p>
+        <ChainNetworkConcentration />
+      </section>
+
       <ApiSourceFooter
         paths={[
           "/api/v1/chain/stake-flow",
@@ -141,6 +156,10 @@ export function ChainAnalyticsPage() {
           "/api/v1/chain/idle-stake",
           "/api/v1/economics/trends",
           "/api/v1/economics",
+          "/api/v1/chain/burn",
+          "/api/v1/chain/holders",
+          "/api/v1/chain/concentration/subnets",
+          "/api/v1/chain/concentration/history",
         ]}
       />
     </>
