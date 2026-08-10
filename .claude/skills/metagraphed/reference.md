@@ -193,6 +193,14 @@ the prober's cold-start seed) · `validate` ·
 description changes what it claims to serve — tier, liveness, provenance — versus the merge base
 while its `docs/backend-artifact-contracts.md` bullet stays byte-identical) ·
 `validate:intake` · `validate:surface` · `validate:workflows` ·
+`validate:revenue-provenance` (relationships the surface schema cannot see: a `revenue.provenance`
+of `probe-derived` on a surface whose `probe.enabled` is not true — or which is `auth_required` —
+did not come from a probe; `operator-attested` must carry a `source_url`; and a
+`payment-collector`/`treasury`/`burn`/`multisig` entity role may **never** sit on a PROTOCOL-DERIVED
+subnet account. That last one is the trap: a subnet's own TAO reserve receives large, continuous,
+many-party inbound because that is what buying alpha looks like, so it presents exactly like a
+team's payment collector and an evidence citation for it would be real while the conclusion stays
+wrong — see metagraphed#10448) ·
 `validate:migrations` (unique, gap-free D1 migration prefixes) ·
 `validate:pg-json-binds` (type-directed: a SQL bind whose static type is an array or a structured
 object is REINTERPRETED by node-postgres — an array becomes a Postgres array literal `{"a","b"}`,
