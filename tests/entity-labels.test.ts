@@ -532,4 +532,76 @@ describe("reading owners out of the economics blob (#9313)", () => {
     assert.equal(snap?.captured_at, null);
     assert.deepEqual(snap?.rows, []);
   });
+
+  test("an UNPARSEABLE capture stamp is null, not echoed through", () => {
+    // The stamp is what stops an `owns` tie reading as fresher than its
+    // source, so a value that is not a time must not be published as one.
+    const snap = subnetOwnersFromEconomics({
+      captured_at: "not-a-date",
+      subnets: [],
+    });
+    assert.equal(snap?.captured_at, null);
+  });
+
+  test("owners with no capture stamp still yield ties, dated null", () => {
+    // The snapshot was read (so `owns` is real) but it did not say when. The
+    // tie stands; its `observed_at` says nothing rather than guessing.
+    const data = buildAccountEntities("abc", {
+      owners: {
+        rows: [{ netuid: 3, owner_coldkey: "abc" }],
+        captured_at: null,
+      },
+    });
+    assert.equal(data.ownership_tie_count, 1);
+    assert.equal(data.ownership_ties[0].observed_at, null);
+    assert.equal(data.owners_observed_at, null);
+  });
+
+  test("a netuid arriving as a STRING is accepted; junk is not", () => {
+    // The artifact is an untrusted shape at this boundary. A numeric string is
+    // still a netuid; "abc" and "" are not, and `Number("")` being 0 is exactly
+    // why the empty case cannot go through a plain Number() coercion.
+    const owned = (netuid: unknown) =>
+      buildAccountEntities("abc", {
+        owners: { rows: [{ netuid, owner_coldkey: "abc" }], captured_at: null },
+      }).ownership_ties[0].netuid;
+    assert.equal(owned("64"), 64);
+    assert.equal(owned("abc"), null);
+    assert.equal(owned(""), null);
+    assert.equal(owned(Number.NaN), null);
+    assert.equal(owned(undefined), null);
+  });
+
+  test("a row with no usable netuid still sorts, rather than throwing", () => {
+    // The economics blob is an untrusted shape here. Two rows are needed for
+    // the comparator to run at all, and a null netuid must not take the sort
+    // down with it.
+    const data = buildAccountEntities("abc", {
+      owners: {
+        rows: [
+          { netuid: null, owner_coldkey: "abc" },
+          { netuid: 2, owner_coldkey: "abc" },
+        ],
+        captured_at: null,
+      },
+    });
+    assert.equal(data.ownership_tie_count, 2);
+    assert.deepEqual(
+      data.ownership_ties.map((t) => t.netuid),
+      [null, 2],
+    );
+
+    // The same pair the other way round, so the comparator sees a null on
+    // BOTH sides across the two cases rather than only the left.
+    const reversed = buildAccountEntities("abc", {
+      owners: {
+        rows: [
+          { netuid: 2, owner_coldkey: "abc" },
+          { netuid: null, owner_coldkey: "abc" },
+        ],
+        captured_at: null,
+      },
+    });
+    assert.equal(reversed.ownership_tie_count, 2);
+  });
 });

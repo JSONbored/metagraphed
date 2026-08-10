@@ -11,7 +11,23 @@
 // answered: the ownership record must not disappear because the event stream
 // declined.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+
+// The artifact read is mocked so BOTH of its failure modes are reachable:
+// readArtifact answers `{ ok: false }` for a miss or timeout, and THROWS when
+// the binding it reaches for is absent. They arrive by different paths and both
+// have to land on the same decline.
+const storage = vi.hoisted(() => ({
+  behaviour: { kind: "ok", data: undefined as unknown },
+}));
+vi.mock("../workers/storage.ts", () => ({
+  readArtifact: async () => {
+    if (storage.behaviour.kind === "throws") throw new TypeError("no binding");
+    if (storage.behaviour.kind === "miss") return { ok: false };
+    return { ok: true, data: storage.behaviour.data };
+  },
+}));
+
 import { answerAccountEntities } from "../src/account-entities-answer.ts";
 import type { SubnetOwnerSnapshot } from "../src/entity-labels.ts";
 
@@ -123,5 +139,40 @@ describe("current ownership survives a declining transfer tier", () => {
       { coldTier: declines, owners: async () => owners() },
     );
     assert.equal(data.ownership_tie_count, 1);
+  });
+});
+
+describe("reading the economics artifact (#9313)", () => {
+  const read = async () =>
+    await answerAccountEntities(null, OWNER, null, { coldTier: declines });
+
+  test("a MISS declines rather than inventing an empty ownership set", async () => {
+    storage.behaviour = { kind: "miss", data: undefined };
+    const data = await read();
+    assert.deepEqual(data.ownership_ties, []);
+    assert.equal(data.owners_observed_at, null);
+  });
+
+  test("a THROW declines too -- this route has a schema-stable floor", async () => {
+    // readArtifact does not swallow a missing binding; it throws. Letting that
+    // propagate would turn a degradable read into a 500 on a route documented
+    // to answer an empty payload once every store has declined.
+    storage.behaviour = { kind: "throws", data: undefined };
+    const data = await read();
+    assert.deepEqual(data.ownership_ties, []);
+    assert.equal(data.owners_observed_at, null);
+  });
+
+  test("a readable blob produces the owned ties", async () => {
+    storage.behaviour = {
+      kind: "ok",
+      data: {
+        captured_at: CAPTURED,
+        subnets: [{ netuid: 64, owner_coldkey: OWNER }],
+      },
+    };
+    const data = await read();
+    assert.equal(data.ownership_tie_count, 1);
+    assert.equal(data.owners_observed_at, CAPTURED);
   });
 });

@@ -174,6 +174,28 @@ function numberOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * A netuid, or null -- WITHOUT `Number(null) === 0`.
+ *
+ * numberOrNull above coerces with `Number()`, and `Number(null)` and
+ * `Number("")` are both 0 -- finite, so both pass its guard. On an owner row
+ * from the economics blob that turns "this row has no netuid" into "this
+ * coldkey owns subnet 0", and netuid 0 is ROOT: the silent failure is a
+ * claim on the most consequential subnet there is.
+ *
+ * The transfer path keeps numberOrNull: its rows come from a decoded chain
+ * event that always carries a netuid, so tightening it there would be changing
+ * behaviour nothing exercises. This is for the untrusted artifact shape.
+ */
+function netuidOrNull(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function isoOrNull(value: unknown): string | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -328,7 +350,7 @@ export function buildAccountEntities(
   const ownedTies: OwnershipTie[] = (owners?.rows ?? [])
     .filter((row) => row.owner_coldkey === ss58)
     .map((row) => ({
-      netuid: numberOrNull(row.netuid),
+      netuid: netuidOrNull(row.netuid),
       role: "owns" as const,
       // NOT a block. Current ownership is a state read from storage, and
       // inventing a block for it would date a standing fact to an event.

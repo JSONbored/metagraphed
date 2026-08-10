@@ -129,10 +129,16 @@ function withOwnedTies(
 async function readSubnetOwners(
   env: unknown,
 ): Promise<SubnetOwnerSnapshot | null> {
-  // readArtifact reports `{ ok: false }` on a timeout or throw rather than
-  // rejecting, so a miss lands on the same null as a malformed blob -- both
-  // mean "we could not read who owns what", which is exactly what
-  // `owners_observed_at: null` goes on to say.
-  const artifact = await readArtifact(env as never, ECONOMICS_ARTIFACT);
-  return artifact.ok ? subnetOwnersFromEconomics(artifact.data) : null;
+  // BOTH guards, because they catch different failures. readArtifact reports
+  // `{ ok: false }` for a miss or a timeout -- but it THROWS when the binding
+  // it reaches for is not there at all (`Cannot read properties of null`), and
+  // this route has a documented schema-stable floor that a rejection would turn
+  // into a 500. Every one of those outcomes means the same thing to a caller:
+  // we could not read who owns what, which `owners_observed_at: null` says.
+  try {
+    const artifact = await readArtifact(env as never, ECONOMICS_ARTIFACT);
+    return artifact.ok ? subnetOwnersFromEconomics(artifact.data) : null;
+  } catch {
+    return null;
+  }
 }
