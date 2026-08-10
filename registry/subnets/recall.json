@@ -34,5 +34,10 @@
       "No verified standalone static data artifact yet."
     ]
   },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
   "surfaces": []
 }
