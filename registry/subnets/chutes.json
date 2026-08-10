@@ -446,6 +446,23 @@
       "id": "sn-64-chutes-daily-revenue-summary",
       "kind": "data-artifact",
       "name": "Chutes daily revenue summary",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "probe-derived",
+        "currency": "USD",
+        "grain": "daily",
+        "fields": {
+          "date": "date",
+          "amount": "total_revenue"
+        },
+        "excludes": ["sponsored_inference", "pending_instance_revenue"],
+        "supersedes": [
+          "sn-64-chutes-payments-list",
+          "sn-64-chutes-tao-payment-totals-api"
+        ],
+        "circularity": "external",
+        "source_url": "https://api.chutes.ai/openapi.json"
+      },
       "notes": "Public no-auth JSON daily revenue summary for the Chutes platform (date, new subscriber count, subscription and pay-as-you-go revenue per day); GET /daily_revenue_summary in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/* and /users/growth data-artifacts.",
       "probe": {
         "enabled": true,
@@ -468,6 +485,18 @@
       "id": "sn-64-chutes-invocations-usage",
       "kind": "data-artifact",
       "name": "Chutes per-chute invocation usage",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived",
+        "currency": "USD",
+        "grain": "daily",
+        "fields": {
+          "date": "date",
+          "amount": "usd_amount"
+        },
+        "circularity": "external",
+        "source_url": "https://api.chutes.ai/openapi.json"
+      },
       "notes": "Public no-auth JSON of per-chute invocation usage on the Chutes platform (chute_id, date, usd_amount, invocation_count); GET /invocations/usage in the OpenAPI spec. Distinct endpoint from the subnet's existing /chutes/*, /users/growth, and /daily_revenue_summary data-artifacts.",
       "probe": {
         "enabled": true,
@@ -534,6 +563,10 @@
       "id": "sn-64-chutes-diffusion-stats",
       "kind": "data-artifact",
       "name": "Chutes per-chute diffusion invocation stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth JSON of per-chute diffusion (image-generation) invocation statistics on the Chutes platform (chute_id, name, invocation counts); GET /invocations/stats/diffusion in the OpenAPI spec. The diffusion-model counterpart to the subnet's registered /invocations/usage feed, distinct from the subnet's other data-artifacts.",
       "probe": {
         "enabled": true,
@@ -581,6 +614,10 @@
       "id": "sn-64-chutes-llm-stats-api",
       "kind": "subnet-api",
       "name": "Chutes LLM invocation stats API",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET returning per-chute LLM invocation statistics (chute_id, name, date, total_requests). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /invocations/stats/llm); same host as the existing pricing and bounties surfaces.",
       "probe": {
         "enabled": true,
@@ -678,6 +715,17 @@
       "id": "sn-64-chutes-tao-payment-totals-api",
       "kind": "subnet-api",
       "name": "Chutes TAO payment totals API",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "probe-derived",
+        "currency": "USD",
+        "grain": "cumulative",
+        "fields": {
+          "amount": "total"
+        },
+        "circularity": "external",
+        "source_url": "https://api.chutes.ai/openapi.json"
+      },
       "notes": "Public no-auth GET returning aggregate TAO payment totals (today, this_month, total). Documented in the subnet's own OpenAPI (api.chutes.ai/openapi.json, path /payments/summary/tao); same host as the existing pricing, bounties, fmv, and LLM-stats subnet-api surfaces.",
       "probe": {
         "enabled": true,
@@ -855,6 +903,18 @@
       "id": "sn-64-chutes-payments-list",
       "kind": "data-artifact",
       "name": "Chutes payments list",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "chain-verified",
+        "currency": "USD",
+        "grain": "cumulative",
+        "fields": {
+          "date": "timestamp",
+          "amount": "usd_amount"
+        },
+        "circularity": "external",
+        "source_url": "https://api.chutes.ai/openapi.json"
+      },
       "notes": "Public no-auth GET /payments on api.chutes.ai, returning a list of TAO payment transactions with taostats.io transaction/account links. Discovered via a full diff of the subnet's own OpenAPI schema for undiscovered public GET endpoints. Distinct from the already-tracked /payments/summary/tao aggregate totals.",
       "probe": {
         "enabled": true,
