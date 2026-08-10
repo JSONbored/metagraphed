@@ -21,7 +21,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse, print } from "graphql";
-import type { ObjectTypeDefinitionNode, TypeNode } from "graphql";
+import type {
+  GraphQLObjectType,
+  ObjectTypeDefinitionNode,
+  TypeNode,
+} from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import {
   ALIASED_TYPE_NAMES,
@@ -106,6 +110,115 @@ export function compareQueryBindings(
   return problems;
 }
 
+/** What the SDL walk found: name identities, mirrors, and everything reached. */
+export interface Traversal {
+  /** component -> every published name it MIRRORS under. */
+  computed: Map<string, Set<string>>;
+  /** SDL types reached as a full mirror. */
+  paired: Set<string>;
+  /** Every component the SDL can reach, projections included. */
+  reachable: Set<string>;
+}
+
+/**
+ * Walk the SDL from its route-backed roots and record what it reaches.
+ *
+ * TWO SEED KINDS, and the difference is the whole point. A `mirror` seed
+ * asserts a NAME IDENTITY -- this SDL type is that component under another
+ * name -- and is what the missing/mismatched checks read. A `projection` seed
+ * asserts only that the type is REACHABLE: `AccountSubnet` picks four of
+ * `AccountPortfolioArtifactPositions`' eleven fields, and that component's own
+ * published name is `AccountPortfolioPosition`, so recording the pair would
+ * assert two different types are the same one.
+ *
+ * The projections have to be seeded at all because the walk steps through
+ * SAME-NAMED fields and a paginated view renames its row array --
+ * `BlockList.items` over `BlocksFeedArtifact.blocks`. Without the rename the
+ * walk dead-ends there and never reaches the element component, which is why
+ * five components the SDL genuinely publishes had no registry entry and could
+ * not have had one: naming them read as stale (#10409).
+ *
+ * A pure function over its inputs so a test can drive it with a MUTATED
+ * registry and prove the walk actually reaches what it claims to -- the rest
+ * of this script reads the repo at module load.
+ */
+export function traverse(
+  sdlTypes: ReadonlyMap<string, ObjectTypeDefinitionNode>,
+  generated: ReadonlyMap<string, GraphQLObjectType>,
+  mirrorSeeds: readonly [string, string][],
+  projections: Readonly<Record<string, (typeof PROJECTED_TYPES)[string]>>,
+): Traversal {
+  /** A projection's renamed row array / row count, per published type. */
+  const renamedFields = new Map<string, Map<string, string>>();
+  for (const [published, projection] of Object.entries(projections)) {
+    const renames = new Map<string, string>();
+    if (projection.itemsFrom) renames.set("items", projection.itemsFrom);
+    if (projection.totalFrom) renames.set("total", projection.totalFrom);
+    if (renames.size) renamedFields.set(published, renames);
+  }
+
+  const queue: [string, string, "mirror" | "projection"][] = [
+    ...mirrorSeeds.map(
+      ([sdlName, component]) =>
+        [sdlName, component, "mirror"] as [string, string, "mirror"],
+    ),
+    ...Object.entries(projections).map(
+      ([published, projection]) =>
+        [published, projection.component, "projection"] as [
+          string,
+          string,
+          "projection",
+        ],
+    ),
+  ];
+  const computed = new Map<string, Set<string>>();
+  const paired = new Set<string>();
+  const reachable = new Set<string>();
+  const visited = new Set<string>();
+  while (queue.length) {
+    const [sdlName, componentName, kind] = queue.shift()!;
+    const sdlType = sdlTypes.get(sdlName);
+    const genType = generated.get(componentName);
+    if (!sdlType || !genType) continue;
+    // One visited set for BOTH kinds. Guarding only the mirrors would let a
+    // projection whose descendant is that same projection re-expand forever.
+    const key = `${sdlName}|${componentName}|${kind}`;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    reachable.add(componentName);
+    if (kind === "mirror") {
+      const seen = computed.get(componentName);
+      if (seen) seen.add(sdlName);
+      else computed.set(componentName, new Set([sdlName]));
+      paired.add(sdlName);
+    }
+    const genFields = genType.getFields();
+    const renames = renamedFields.get(sdlName);
+    for (const field of sdlType.fields ?? []) {
+      const child =
+        genFields[renames?.get(field.name.value) ?? field.name.value];
+      if (!child) continue;
+      const childSdl = namedType(field.type);
+      const childGen = generatedName(child.type);
+      if (childGen && sdlTypes.has(childSdl) && generated.has(childGen)) {
+        // A child that is ITSELF a declared projection stays one. Reaching
+        // `Subnet` through `SubnetList.items` -> `SubnetsArtifact.subnets`
+        // says where it comes from, not that it mirrors `SubnetIndexEntry`
+        // field for field -- it publishes four fields the component has not
+        // got and drops twelve it has. Recording it as a mirror would assert
+        // both a name identity that is false and that its PROJECTED_TYPES
+        // entry is stale.
+        queue.push([
+          childSdl,
+          childGen,
+          projections[childSdl] ? "projection" : "mirror",
+        ]);
+      }
+    }
+  }
+  return { computed, paired, reachable };
+}
+
 const sdl = extractSdl(readFileSync(SDL_PATH, "utf8"));
 if (!sdl) {
   console.error(`published-names: no SDL template literal in ${SDL_PATH}`);
@@ -163,36 +276,18 @@ const sdlBindings = (sdlTypes.get("Query")?.fields ?? []).map((field) => {
 });
 
 // ── the pairing, computed the way the parity gate computes it ────────────────
-const queue: [string, string][] = [];
-for (const binding of sdlBindings) {
-  if (!binding.route) continue;
-  const component = dataComponent(binding.route);
-  if (component) queue.push([binding.returnsName, component]);
-}
-/** component -> every published name it is reached under. */
-const computed = new Map<string, Set<string>>();
-const paired = new Set<string>();
-while (queue.length) {
-  const [sdlName, componentName] = queue.shift()!;
-  const sdlType = sdlTypes.get(sdlName);
-  const genType = generated.get(componentName);
-  if (!sdlType || !genType) continue;
-  const seen = computed.get(componentName);
-  if (seen?.has(sdlName)) continue;
-  if (seen) seen.add(sdlName);
-  else computed.set(componentName, new Set([sdlName]));
-  paired.add(sdlName);
-  const genFields = genType.getFields();
-  for (const field of sdlType.fields ?? []) {
-    const child = genFields[field.name.value];
-    if (!child) continue;
-    const childSdl = namedType(field.type);
-    const childGen = generatedName(child.type);
-    if (childGen && sdlTypes.has(childSdl) && generated.has(childGen)) {
-      queue.push([childSdl, childGen]);
-    }
-  }
-}
+const { computed, paired, reachable } = traverse(
+  sdlTypes,
+  generated,
+  sdlBindings.flatMap((binding) => {
+    if (!binding.route) return [];
+    const component = dataComponent(binding.route);
+    return component
+      ? ([[binding.returnsName, component]] as [string, string][])
+      : [];
+  }),
+  PROJECTED_TYPES,
+);
 
 const errors: string[] = [];
 
@@ -242,7 +337,7 @@ if (mismatched.length) {
 }
 
 const stale = Object.keys(PUBLISHED_TYPE_NAMES)
-  .filter((component) => !computed.has(component))
+  .filter((component) => !reachable.has(component))
   .sort();
 if (stale.length) {
   errors.push(

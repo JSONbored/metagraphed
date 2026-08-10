@@ -2329,10 +2329,11 @@ export const SDL = /* GraphQL */ `
     order: String
   }
 
-  "Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence)."
+  "Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation)."
   type CurationList {
     generated_at: String
-    notes: String
+    "A string or a list of strings, depending on the producer -- /api/v1/endpoints serves three. Declared String until #10409, which nulls the whole row on a list: graphql-js' String serializer throws on a non-scalar."
+    notes: JSON
     curation: [JSON!]!
     total: Int!
     returned: Int!
@@ -4532,6 +4533,8 @@ export const SDL = /* GraphQL */ `
     realized_return_1m_as_of: String
     avg_validator_trust: Float
     max_validator_trust: Float
+    "This validator's share of all validator stake, as a fraction. Populated from the global leaderboard, which computes it across the whole validator set; NULL from the single-validator lookup, which has no set to divide by (buildValidatorDetail aggregates one hotkey) -- null means unknown, not zero, the same reading featured and uid_count carry (#10409)."
+    stake_dominance: Float
     captured_at: String
     block_number: Int
     "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet."

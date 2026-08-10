@@ -45,7 +45,7 @@ export const CurationArtifactSchema = ArtifactBaseSchema.extend({
 })
   .passthrough()
   .describe(
-    "Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence).",
+    "Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation).",
   );
 export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
 export const CurationResponseSchema = successEnvelopeSchema(
