@@ -772,3 +772,86 @@ describe("buildSubnetOhlcFromBuckets", () => {
     );
   });
 });
+
+// --- USD overlay on the served route (#10382) ------------------------------
+
+describe("GET /api/v1/subnets/{netuid}/ohlc carries USD", () => {
+  const BUCKET = Date.parse("2026-08-08T00:00:00.000Z");
+  const ohlcTierEnv = () =>
+    ({
+      ...createLocalArtifactEnv(),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            data: {
+              schema_version: 1,
+              netuid: 7,
+              interval: "1h",
+              candles: [
+                {
+                  bucket_start: BUCKET,
+                  bucket_start_iso: new Date(BUCKET).toISOString(),
+                  open: 0.08,
+                  high: 0.09,
+                  low: 0.07,
+                  close: 0.088,
+                  volume_alpha: 100,
+                  volume_tao: 12.5,
+                  event_count: 3,
+                },
+              ],
+              candle_count: 1,
+              root_excluded: false,
+            },
+            generatedAt: null,
+          }),
+      },
+    }) as unknown as Env;
+
+  test("every candle carries the USD keys, even with no index behind them", async () => {
+    // The index is unreachable in this env, which is exactly the case that
+    // must NOT change the shape: a caller mapping `c => c.close_usd` gets a
+    // hole in the line, not an array whose keys moved.
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc"),
+      ohlcTierEnv(),
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.candles.length, 1);
+    const c = body.data.candles[0];
+    // The TAO side is untouched by the overlay.
+    assert.equal(c.close, 0.088);
+    for (const k of [
+      "open_usd",
+      "high_usd",
+      "low_usd",
+      "close_usd",
+      "volume_usd",
+      "usd_per_tao",
+    ]) {
+      assert.ok(k in c, `${k} must be present`);
+      assert.equal(c[k], null, `${k} must be null, never 0`);
+    }
+  });
+
+  test("the route states WHY there is no USD rather than implying none exists", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc"),
+      ohlcTierEnv(),
+      ctx,
+    );
+    const body = await res.json();
+    // "We could not ask the index" is not "the index had nothing to say".
+    assert.equal(body.data.usd_unavailable, "read_failed");
+    assert.equal(body.data.usd_available_from, null);
+    assert.equal(body.data.usd_available_from_iso, null);
+    assert.equal(body.data.priced_candle_count, 0);
+    assert.deepEqual(body.data.field_sources_usd, {
+      kind: "reconstructed",
+      storage: null,
+    });
+  });
+});

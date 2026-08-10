@@ -28,6 +28,19 @@ const EconomicsTrendsDaySchema = z
       ),
     alpha_price_tao_weighted: z.number().nullable().optional(),
     alpha_price_tao_median: z.number().nullable().optional(),
+    // USD (#10382). Null for any day older than tao_usd_index rather than
+    // priced at today's rate -- the alpha history runs ~13 months and the index
+    // ~8 days, so a retroactive rate would be wrong on almost every point while
+    // looking entirely plausible.
+    alpha_price_usd_weighted: z.number().nullable().optional(),
+    alpha_price_usd_median: z.number().nullable().optional(),
+    usd_per_tao: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "The TAO/USD rate this day's _usd fields were multiplied by -- the last reading observed inside that UTC day.",
+      ),
     validator_count: z.int().nullable().optional(),
     miner_count: z.int().nullable().optional(),
     mean_emission_share: z.number().nullable().optional(),
@@ -43,6 +56,31 @@ export const EconomicsTrendsArtifactSchema = z
     window: z.string().nullable(),
     day_count: z.int().min(0),
     days: z.array(EconomicsTrendsDaySchema),
+    usd_available_from: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop.",
+      ),
+    priced_day_count: z.int().min(0).optional(),
+    usd_unavailable: z
+      .enum([
+        "no_index_reading",
+        "index_unpriced",
+        "index_stale",
+        "no_alpha_price",
+        "read_failed",
+      ])
+      .nullable()
+      .optional()
+      .describe(
+        "Why NO day could be priced, or null. `read_failed` means the index could not be queried, which is not a claim about the index itself.",
+      ),
+    field_sources_usd: z
+      .object({ kind: z.literal("reconstructed"), storage: z.null() })
+      .strict()
+      .optional(),
   })
   .passthrough();
 export type EconomicsTrendsArtifact = z.infer<

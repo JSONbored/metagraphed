@@ -411,9 +411,14 @@ describe("handleEconomicsTrends", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,alpha_price_usd_weighted,alpha_price_usd_median,usd_per_tao,validator_count,miner_count,mean_emission_share",
     );
-    assert.equal(lines[1], "2026-06-02,1,300.000000000,0.02,0.02,8,50,0.04");
+    assert.equal(
+      lines[1], // The three empty cells are alpha_price_usd_weighted, alpha_price_usd_median
+      // and usd_per_tao (#10382): 2026-06-02 predates tao_usd_index, so the day
+      // carries NO usd figure rather than one converted at today's rate.
+      "2026-06-02,1,300.000000000,0.02,0.02,,,,8,50,0.04",
+    );
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
@@ -437,7 +442,12 @@ describe("handleEconomicsTrends", () => {
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     const text = await res.text();
     const lines = text.split("\r\n");
-    assert.equal(lines[1], "2026-06-02,1,300.000000000,0.02,0.02,8,50,0.04");
+    assert.equal(
+      lines[1], // The three empty cells are alpha_price_usd_weighted, alpha_price_usd_median
+      // and usd_per_tao (#10382): 2026-06-02 predates tao_usd_index, so the day
+      // carries NO usd figure rather than one converted at today's rate.
+      "2026-06-02,1,300.000000000,0.02,0.02,,,,8,50,0.04",
+    );
   });
 
   test("returns empty/header-only CSV when rollup is cold", async () => {
@@ -451,7 +461,7 @@ describe("handleEconomicsTrends", () => {
     const lines = text.split("\r\n");
     assert.equal(
       lines[0],
-      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,validator_count,miner_count,mean_emission_share",
+      "snapshot_date,subnet_count,total_stake_alpha,alpha_price_tao_weighted,alpha_price_tao_median,alpha_price_usd_weighted,alpha_price_usd_median,usd_per_tao,validator_count,miner_count,mean_emission_share",
     );
     assert.equal(lines.length, 1);
   });

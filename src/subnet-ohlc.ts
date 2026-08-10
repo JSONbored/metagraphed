@@ -112,7 +112,7 @@ function finiteAmount(value: unknown): number | null {
 
 // interval, normalized to a supported key -- never throws, mirrors the
 // module-level clamp/normalize convention documented on OHLC_INTERVALS above.
-function normalizeInterval(interval: unknown): string {
+export function normalizeInterval(interval: unknown): string {
   return typeof interval === "string" && Object.hasOwn(OHLC_INTERVALS, interval)
     ? interval
     : OHLC_INTERVAL_DEFAULT;

@@ -7607,15 +7607,29 @@ export interface components {
             days: {
                 alpha_price_tao_median?: number | null;
                 alpha_price_tao_weighted?: number | null;
+                alpha_price_usd_median?: number | null;
+                alpha_price_usd_weighted?: number | null;
                 mean_emission_share?: number | null;
                 miner_count?: number | null;
                 snapshot_date: string;
                 subnet_count: number;
                 /** @description Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
                 total_stake_alpha?: string | null;
+                /** @description The TAO/USD rate this day's _usd fields were multiplied by -- the last reading observed inside that UTC day. */
+                usd_per_tao?: number | null;
                 validator_count?: number | null;
             }[];
+            field_sources_usd?: {
+                /** @constant */
+                kind: "reconstructed";
+                storage: null;
+            };
+            priced_day_count?: number;
             schema_version: number;
+            /** @description The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop. */
+            usd_available_from?: string | null;
+            /** @description Why NO day could be priced, or null. `read_failed` means the index could not be queried, which is not a claim about the index itself. */
+            usd_unavailable?: ("no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price" | "read_failed") | null;
             window: string | null;
         } & {
             [key: string]: unknown;
@@ -11216,22 +11230,42 @@ export interface components {
                 /** Format: date-time */
                 bucket_start_iso: string;
                 close: number;
+                close_usd: number | null;
                 event_count: number;
                 high: number;
+                high_usd: number | null;
                 low: number;
+                low_usd: number | null;
                 open: number;
+                open_usd: number | null;
+                /** @description The single TAO/USD rate every _usd field on THIS candle was multiplied by -- the last reading observed inside this candle's own bucket. One rate per candle, so the OHLC ordering (high >= open, close, low) survives the conversion. */
+                usd_per_tao: number | null;
                 volume_alpha: number;
                 volume_tao: number;
+                volume_usd: number | null;
             }[];
+            /** @description Every _usd field is RECONSTRUCTED -- the product of a measured alpha price and a measured TAO/USD index, which is our arithmetic and not a chain read. */
+            field_sources_usd: {
+                /** @constant */
+                kind: "reconstructed";
+                storage: null;
+            };
             /**
              * @description The resolved bucket interval (1h/1d).
              * @enum {string}
              */
             interval: "1h" | "1d";
             netuid: number;
+            /** @description How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect. */
+            priced_candle_count: number;
             /** @description True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted. */
             root_excluded: boolean;
             schema_version: number;
+            /** @description Bucket start of the OLDEST candle carrying USD, or null when none does. Published rather than left to be inferred from where the nulls stop, so a caller can render 'USD from <date>' instead of a series that silently changes meaning partway along. */
+            usd_available_from: components["schemas"]["EpochMillis"] | null;
+            usd_available_from_iso: string | null;
+            /** @description Why NO candle could be priced, or null. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; `read_failed` means the index could not be queried at all, which is not a claim about the index. A partially-priced series leaves this null and explains itself through usd_available_from. */
+            usd_unavailable: ("no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price" | "read_failed") | null;
         };
         SubnetOverviewArtifact: {
             contract_version?: string;
@@ -30180,7 +30214,14 @@ export interface operations {
                      *             "subnet_count": 1
                      *           }
                      *         ],
+                     *         "field_sources_usd": {
+                     *           "kind": "reconstructed",
+                     *           "storage": null
+                     *         },
+                     *         "priced_day_count": 1,
                      *         "schema_version": 1,
+                     *         "usd_available_from": "example",
+                     *         "usd_unavailable": "no_index_reading",
                      *         "window": "30d"
                      *       },
                      *       "meta": {
@@ -42750,18 +42791,32 @@ export interface operations {
                      *             "bucket_start": 1,
                      *             "bucket_start_iso": "2026-06-01T00:00:00.000Z",
                      *             "close": 0.5,
+                     *             "close_usd": 0.5,
                      *             "event_count": 1,
                      *             "high": 0.5,
+                     *             "high_usd": 0.5,
                      *             "low": 0.5,
+                     *             "low_usd": 0.5,
                      *             "open": 0.5,
+                     *             "open_usd": 0.5,
+                     *             "usd_per_tao": 0.5,
                      *             "volume_alpha": 0.5,
-                     *             "volume_tao": 0.5
+                     *             "volume_tao": 0.5,
+                     *             "volume_usd": 0.5
                      *           }
                      *         ],
+                     *         "field_sources_usd": {
+                     *           "kind": "reconstructed",
+                     *           "storage": null
+                     *         },
                      *         "interval": "1h",
                      *         "netuid": 7,
+                     *         "priced_candle_count": 1,
                      *         "root_excluded": false,
-                     *         "schema_version": 1
+                     *         "schema_version": 1,
+                     *         "usd_available_from": 1,
+                     *         "usd_available_from_iso": "2026-06-01T00:00:00.000Z",
+                     *         "usd_unavailable": "no_index_reading"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
