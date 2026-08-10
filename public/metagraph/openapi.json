@@ -13674,7 +13674,11 @@
                         "infra",
                         "project",
                         "operator",
-                        "other"
+                        "other",
+                        "payment-collector",
+                        "treasury",
+                        "burn",
+                        "multisig"
                       ],
                       "type": "string"
                     },
@@ -16531,7 +16535,11 @@
                         "infra",
                         "project",
                         "operator",
-                        "other"
+                        "other",
+                        "payment-collector",
+                        "treasury",
+                        "burn",
+                        "multisig"
                       ],
                       "type": "string"
                     },
@@ -30928,6 +30936,162 @@
           "endpoint_count",
           "monitored_count",
           "pool_eligible_count"
+        ],
+        "type": "object"
+      },
+      "EntitiesArtifact": {
+        "additionalProperties": {},
+        "description": "The curated address-label registry (#6737/#10483): one entry per ss58 that has cleared docs/nametag-evidence-bar.md, each carrying the source_urls that prove the attribution. Mirrors the built /metagraph/entities.json.",
+        "properties": {
+          "contract_version": {
+            "type": "string"
+          },
+          "entities": {
+            "description": "Every non-rejected label in registry/entities/, sorted by ss58. An EMPTY array is a real answer, not a cold store: the registry holds only what has cleared the evidence bar, and a curated layer with nothing in it yet is the honest state.",
+            "items": {
+              "additionalProperties": {},
+              "description": "One curated address label. There is deliberately no `owner` category: subnet ownership is chain-derived from SubnetOwner and must never be hand-declared.",
+              "properties": {
+                "category": {
+                  "enum": [
+                    "exchange",
+                    "bridge",
+                    "foundation",
+                    "pool",
+                    "infra",
+                    "project",
+                    "operator",
+                    "other",
+                    "payment-collector",
+                    "treasury",
+                    "burn",
+                    "multisig"
+                  ],
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "description": "The subnet this address belongs to, when the label is subnet-scoped (a treasury, burn address, or payment collector). Omitted for network-wide entities like an exchange.",
+                  "maximum": 65535,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "notes": {
+                  "type": "string"
+                },
+                "review": {
+                  "additionalProperties": {},
+                  "description": "Human-governance axis only, the same shape and meaning as a subnet surface's own `review` block. `rejected` entries are filtered out at build time and never appear here.",
+                  "properties": {
+                    "review_notes": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "enum": [
+                        "community-submitted",
+                        "maintainer-reviewed",
+                        "rejected"
+                      ],
+                      "type": "string"
+                    },
+                    "submitted_at": {
+                      "type": "string"
+                    },
+                    "submitted_by": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "state"
+                  ],
+                  "type": "object"
+                },
+                "schema_version": {
+                  "const": 1,
+                  "type": "number"
+                },
+                "source_urls": {
+                  "description": "Independent public proof that this address belongs to this entity -- not that the entity exists, not that the address exists, but that the two are the same thing. See docs/nametag-evidence-bar.md for what clears the bar.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "ss58": {
+                  "description": "The labeled address, checksum-validated against Bittensor's network prefix at build time and identical to its own filename in registry/entities/.",
+                  "type": "string"
+                },
+                "unspendable_proof": {
+                  "additionalProperties": {},
+                  "description": "Why this address cannot spend what it receives. Required for `category: burn`, because a burn is a CLAIM until proven -- \"the team says they burn here\" is an operator attestation, not a burn.",
+                  "properties": {
+                    "basis": {
+                      "enum": [
+                        "known-black-hole",
+                        "provably-keyless",
+                        "documented-recycle-call"
+                      ],
+                      "type": "string"
+                    },
+                    "evidence_url": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "basis",
+                    "evidence_url"
+                  ],
+                  "type": "object"
+                },
+                "url": {
+                  "description": "The entity's own canonical homepage, for linking the rendered nametag. Distinct from source_urls: a homepage is not proof of address ownership.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "schema_version",
+                "ss58",
+                "name",
+                "category",
+                "source_urls",
+                "review"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "entities"
         ],
         "type": "object"
       },

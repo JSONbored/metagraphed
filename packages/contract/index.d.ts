@@ -4996,7 +4996,7 @@ export interface components {
         /** @description One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
         AccountEntitiesArtifact: {
             labels: ({
-                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
+                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
@@ -5460,7 +5460,7 @@ export interface components {
             first_block?: number | null;
             first_seen_at?: string | null;
             labels?: ({
-                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other") | null;
+                category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
@@ -8092,6 +8092,55 @@ export interface components {
             endpoint_count: number;
             monitored_count: number;
             pool_eligible_count: number;
+        };
+        /** @description The curated address-label registry (#6737/#10483): one entry per ss58 that has cleared docs/nametag-evidence-bar.md, each carrying the source_urls that prove the attribution. Mirrors the built /metagraph/entities.json. */
+        EntitiesArtifact: {
+            contract_version?: string;
+            /** @description Every non-rejected label in registry/entities/, sorted by ss58. An EMPTY array is a real answer, not a cold store: the registry holds only what has cleared the evidence bar, and a curated layer with nothing in it yet is the honest state. */
+            entities: ({
+                /** @enum {string} */
+                category: "exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig";
+                name: string;
+                /** @description The subnet this address belongs to, when the label is subnet-scoped (a treasury, burn address, or payment collector). Omitted for network-wide entities like an exchange. */
+                netuid?: number;
+                notes?: string;
+                /** @description Human-governance axis only, the same shape and meaning as a subnet surface's own `review` block. `rejected` entries are filtered out at build time and never appear here. */
+                review: {
+                    review_notes?: string;
+                    /** @enum {string} */
+                    state: "community-submitted" | "maintainer-reviewed" | "rejected";
+                    submitted_at?: string;
+                    submitted_by?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @constant */
+                schema_version: 1;
+                /** @description Independent public proof that this address belongs to this entity -- not that the entity exists, not that the address exists, but that the two are the same thing. See docs/nametag-evidence-bar.md for what clears the bar. */
+                source_urls: string[];
+                /** @description The labeled address, checksum-validated against Bittensor's network prefix at build time and identical to its own filename in registry/entities/. */
+                ss58: string;
+                /** @description Why this address cannot spend what it receives. Required for `category: burn`, because a burn is a CLAIM until proven -- "the team says they burn here" is an operator attestation, not a burn. */
+                unspendable_proof?: {
+                    /** @enum {string} */
+                    basis: "known-black-hole" | "provably-keyless" | "documented-recycle-call";
+                    evidence_url: string;
+                    note?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+                /** @description The entity's own canonical homepage, for linking the rendered nametag. Distinct from source_urls: a homepage is not proof of address ownership. */
+                url?: string;
+            } & {
+                [key: string]: unknown;
+            })[];
+            generated_at: string;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+        } & {
+            [key: string]: unknown;
         };
         /** @description An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int. */
         EpochMillis: number;

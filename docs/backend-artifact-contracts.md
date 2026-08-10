@@ -25,6 +25,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `/metagraph/providers.json`: provider/source registry.
 - `/metagraph/providers/{slug}.json`: per-provider detail payload. R2-backed.
 - `/metagraph/providers/{slug}/endpoints.json`: endpoint resources for one provider or operator. R2-backed.
+- `/metagraph/entities.json`: curated address-label registry — one entry per ss58 that has cleared `docs/nametag-evidence-bar.md`, each carrying the `source_urls` that prove the attribution, plus the money-map roles (`treasury`, `burn`, `payment-collector`, `multisig`) and the `netuid` a subnet-scoped label belongs to. There is no `owner` category: subnet ownership is chain-derived from `SubnetOwner` and is never hand-declared. An empty list is the honest state of a curated layer, not a cold store.
 - `/metagraph/api-index.json`: Worker API route map and response-envelope contract.
 - `/metagraph/openapi.json`: OpenAPI 3.1 contract for backend API consumers.
 - `/metagraph/types.d.ts`: generated TypeScript definitions for consumers.

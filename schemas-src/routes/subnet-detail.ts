@@ -15,7 +15,11 @@
 // itself (not a shortcut introduced here), matching the issue's own
 // documented-open-map carve-out.
 import { z } from "zod";
-import { HttpUrlSchema, SocialLinksSchema } from "../shared.ts";
+import {
+  HttpUrlSchema,
+  SocialLinksSchema,
+  SubmissionReviewStateSchema,
+} from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
 import {
@@ -582,11 +586,11 @@ export const SurfaceSchema = z
       .object({
         confidence: z.enum(CONFIDENCE_LEVEL_VALUES).optional(),
         review_notes: z.string().optional(),
-        state: z.enum([
-          "community-submitted",
-          "maintainer-reviewed",
-          "rejected",
-        ]),
+        // The SUBMISSION axis, not the curation `ReviewStateSchema` declared
+        // above in this same file. Both were spelled inline here; the two are
+        // different vocabularies that share one member, so the local name
+        // would type-check and publish the wrong enum.
+        state: SubmissionReviewStateSchema,
         submitted_at: z.string().optional(),
         submitted_by: z.string().optional(),
       })

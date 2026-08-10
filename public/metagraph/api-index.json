@@ -29,6 +29,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "entities",
+      "path": "/metagraph/entities.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/EntitiesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "provider-endpoints",
       "path": "/metagraph/providers/{slug}/endpoints.json",
       "retirement": null,
