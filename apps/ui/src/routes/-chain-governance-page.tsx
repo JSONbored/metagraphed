@@ -11,6 +11,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { classNames } from "@/lib/metagraphed/format";
 import { ChainTabActions } from "./-chain-hub";
+import { EmissionGateChanges } from "@/components/metagraphed/emission-gate-changes";
 import { SudoKeyCard, SudoTable, sudoQueryParams } from "./-sudo-index-page";
 import {
   AdminChangesTable,
@@ -120,6 +121,12 @@ export function ChainGovernancePage() {
               <AdminChangesTable />
             </AsyncPanel>
           </div>
+          {/* #10300: the emission-gate change log and the stored randomness
+              rounds were both published and rendered nowhere. Own boundary so
+              a slow live read never blocks the artifact-backed table above. */}
+          <div className="mt-6 min-w-0">
+            <EmissionGateChanges />
+          </div>
         </>
       ) : (
         <>
@@ -139,7 +146,12 @@ export function ChainGovernancePage() {
         paths={
           view === "sudo"
             ? ["/api/v1/sudo", "/api/v1/sudo/key"]
-            : ["/api/v1/governance/config-changes", "/api/v1/network/parameters"]
+            : [
+                "/api/v1/governance/config-changes",
+                "/api/v1/network/parameters",
+                "/api/v1/chain/governance/emission-changes",
+                "/api/v1/network/randomness",
+              ]
         }
         artifacts={
           view === "sudo" ? ["/metagraph/sudo.json"] : ["/metagraph/governance/config-changes.json"]

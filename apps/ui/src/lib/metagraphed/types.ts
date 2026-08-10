@@ -4189,6 +4189,82 @@ export interface SubnetValidatorEconomics {
   cap_binding: boolean | null;
 }
 
+/**
+ * How current our own capture is (#10300).
+ *
+ * `head_age_ms` and the latency percentiles are different measurements: a lane
+ * that stopped an hour ago still reports excellent latency for the blocks it
+ * did write. Fast is not current.
+ */
+export interface IndexerLag {
+  block_count: number | null;
+  /** How far behind the chain head we are. The one that says "current". */
+  head_age_ms: number | null;
+  measured_at: string | null;
+  oldest_block: number | null;
+  newest_block: number | null;
+  newest_observed_at: string | null;
+  /** How long a block takes to land once written. NOT how current we are. */
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  latency_p99_ms: number | null;
+  latency_max_ms: number | null;
+}
+
+/** Why probes fail, and whether the mix is moving (#10300). */
+export interface FailureReasons {
+  window: string | null;
+  days_covered: number | null;
+  total_checks: number | null;
+  failing_checks: number | null;
+  failure_rate: number | null;
+  reasons: FailureReason[];
+}
+
+export interface FailureReason {
+  classification: string;
+  /** Not every classification is a failure. */
+  is_failure: boolean;
+  checks: number | null;
+  /** Share of ALL checks. */
+  share: number | null;
+  /** Share of the FAILING checks. A different denominator. */
+  failure_share: number | null;
+}
+
+/** The emission-gate change log (#10300). */
+export interface EmissionChanges {
+  change_count: number;
+  /** Changes older than capture — they carry a NULL block, not block 0. */
+  predates_capture_count: number | null;
+  latest_change_at: string | null;
+  changes: EmissionChange[];
+}
+
+export interface EmissionChange {
+  kind: string;
+  observed_at: string | null;
+  block_number: number | null;
+  predates_capture: boolean;
+  param: string | null;
+  value: string | null;
+  previous_value: string | null;
+}
+
+/**
+ * Which drand rounds the chain still stores (#10300).
+ *
+ * `stored_round_span` is the operative number: a reveal timelocked to a round
+ * that has aged out of storage can no longer be verified, and the newest round
+ * says nothing about how far back that reach goes.
+ */
+export interface RandomnessStatus {
+  last_stored_round: number | null;
+  oldest_stored_round: number | null;
+  stored_round_span: number | null;
+  queried_at: string | null;
+}
+
 /** Registration cost across the network (#10300). */
 export interface ChainBurn {
   /** How many subnets exist. */

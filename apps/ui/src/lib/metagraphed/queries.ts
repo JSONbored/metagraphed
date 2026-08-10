@@ -236,6 +236,12 @@ import type {
   SubnetEmissionPipelineHistory,
   SubnetEmissionPipelinePoint,
   SubnetSurfaceChange,
+  IndexerLag,
+  FailureReasons,
+  FailureReason,
+  EmissionChanges,
+  EmissionChange,
+  RandomnessStatus,
   ChainBurn,
   ChainBurnSubnet,
   ChainHolders,
@@ -5535,6 +5541,174 @@ function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomic
     emission_gate_open: typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
   };
 }
+
+/**
+ * How current our own capture is (#10300).
+ *
+ * `head_age_ms` and `write_latency_ms` measure DIFFERENT things and the panel
+ * must not blur them: latency is how long a block takes to land once we start
+ * writing it, age is how far behind the chain head we are. A lane that stopped
+ * an hour ago still reports excellent latency for the blocks it did write --
+ * fast is not the same as current, and only the age says which.
+ */
+export const chainIndexerLagQuery = () =>
+  queryOptions({
+    queryKey: k("chain-indexer-lag"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/chain/indexer-lag", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const w = isRecord(d.window) ? d.window : {};
+      const lat = isRecord(d.write_latency_ms) ? d.write_latency_ms : {};
+      return {
+        data: {
+          block_count: firstFiniteNumber(d.block_count) ?? null,
+          head_age_ms: firstFiniteNumber(d.head_age_ms) ?? null,
+          measured_at: firstString(d.measured_at) ?? null,
+          oldest_block: firstFiniteNumber(w.oldest_block) ?? null,
+          newest_block: firstFiniteNumber(w.newest_block) ?? null,
+          newest_observed_at: firstString(w.newest_observed_at) ?? null,
+          latency_p50_ms: firstFiniteNumber(lat.p50) ?? null,
+          latency_p95_ms: firstFiniteNumber(lat.p95) ?? null,
+          latency_p99_ms: firstFiniteNumber(lat.p99) ?? null,
+          latency_max_ms: firstFiniteNumber(lat.max) ?? null,
+        } satisfies IndexerLag,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Why health probes fail, and whether the mix is moving (#10300).
+ *
+ * `share` and `failure_share` have DIFFERENT denominators -- one is the
+ * classification's share of every check, the other its share of the failing
+ * ones -- and `is_failure` marks the classifications that are not failures at
+ * all. Reading any of the three as the others turns a healthy mix into an
+ * alarming one.
+ */
+export const healthFailureReasonsQuery = (window: string) =>
+  queryOptions({
+    queryKey: k("health-failure-reasons", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/health/failure-reasons?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const reasons = (Array.isArray(d.reasons) ? d.reasons : [])
+        .map((raw): FailureReason | null => {
+          if (!isRecord(raw)) return null;
+          const classification = firstString(raw.classification);
+          if (!classification) return null;
+          return {
+            classification,
+            // Unknown is NOT a failure. Defaulting the unknown direction to
+            // "this is a failure" would inflate the failing mix with rows the
+            // API never claimed were failures.
+            is_failure: raw.is_failure === true,
+            checks: firstFiniteNumber(raw.checks) ?? null,
+            share: firstFiniteNumber(raw.share) ?? null,
+            failure_share: firstFiniteNumber(raw.failure_share) ?? null,
+          };
+        })
+        .filter((r): r is FailureReason => r !== null);
+      return {
+        data: {
+          window: firstString(d.window) ?? null,
+          days_covered: firstFiniteNumber(d.days_covered) ?? null,
+          total_checks: firstFiniteNumber(d.total_checks) ?? null,
+          failing_checks: firstFiniteNumber(d.failing_checks) ?? null,
+          failure_rate: firstFiniteNumber(d.failure_rate) ?? null,
+          reasons,
+        } satisfies FailureReasons,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * The emission-gate change log (#10300).
+ *
+ * `predates_capture_count` is published beside `change_count` because a change
+ * older than capture carries a NULL block. Rendering those as block 0 would
+ * date every pre-capture change to genesis, and dropping them would understate
+ * how often the gate has moved.
+ */
+export const emissionChangesQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("emission-changes", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/governance/emission-changes?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const changes = (Array.isArray(d.changes) ? d.changes : [])
+        .map((raw): EmissionChange | null => {
+          if (!isRecord(raw)) return null;
+          const kind = firstString(raw.kind);
+          if (!kind) return null;
+          return {
+            kind,
+            observed_at: firstString(raw.observed_at) ?? null,
+            // NULLABLE ON PURPOSE -- see the note above.
+            block_number: firstFiniteNumber(raw.block_number) ?? null,
+            predates_capture: raw.predates_capture === true,
+            param: firstString(raw.param) ?? null,
+            value: firstString(raw.value) ?? firstFiniteNumber(raw.value)?.toString() ?? null,
+            previous_value:
+              firstString(raw.previous_value) ??
+              firstFiniteNumber(raw.previous_value)?.toString() ??
+              null,
+          };
+        })
+        .filter((c): c is EmissionChange => c !== null);
+      return {
+        data: {
+          change_count: firstFiniteNumber(d.change_count) ?? changes.length,
+          predates_capture_count: firstFiniteNumber(d.predates_capture_count) ?? null,
+          latest_change_at: firstString(d.latest_change_at) ?? null,
+          changes,
+        } satisfies EmissionChanges,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Which drand rounds the chain still stores (#10300).
+ *
+ * `stored_round_span` is the operative number, not `last_stored_round`.
+ * Commit-reveal verifies a reveal against the round it was timelocked to, and
+ * a round that has aged out of storage can no longer be checked -- so how far
+ * back storage reaches is what decides whether an old reveal is still
+ * verifiable, and the newest round says nothing about that.
+ */
+export const networkRandomnessQuery = () =>
+  queryOptions({
+    queryKey: k("network-randomness"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/network/randomness", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          last_stored_round: firstFiniteNumber(d.last_stored_round) ?? null,
+          oldest_stored_round: firstFiniteNumber(d.oldest_stored_round) ?? null,
+          stored_round_span: firstFiniteNumber(d.stored_round_span) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } satisfies RandomnessStatus,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
 
 /**
  * What it costs to register, across every subnet (#10300).
