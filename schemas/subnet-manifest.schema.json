@@ -352,10 +352,92 @@
         "probe": {
           "$ref": "#/$defs/probe"
         },
+        "revenue": {
+          "$ref": "#/$defs/revenue"
+        },
         "notes": {
           "type": "string"
         }
       }
+    },
+    "revenue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "provenance"],
+      "properties": {
+        "role": {
+          "description": "What this surface actually measures. A \"stats\" endpoint is guilty until proven revenue: miner payout is emission (the denominator), and counting it as revenue puts the denominator in the numerator. `not-revenue` and `miner-payout` are successful verdicts, recorded so a false positive is retired rather than re-investigated.",
+          "enum": [
+            "external-revenue",
+            "usage-proxy",
+            "miner-payout",
+            "not-revenue"
+          ]
+        },
+        "provenance": {
+          "description": "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
+          "enum": [
+            "chain-verified",
+            "probe-derived",
+            "operator-attested",
+            "third-party-reported",
+            "proxy-only",
+            "none"
+          ]
+        },
+        "currency": {
+          "description": "Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and reconciles as USD.",
+          "enum": ["USD", "TAO", "ALPHA"]
+        },
+        "grain": {
+          "enum": ["daily", "weekly", "monthly", "cumulative"]
+        },
+        "fields": {
+          "description": "Map of role -> field name in the upstream payload, e.g. {\"date\": \"date\", \"amount\": \"total_revenue\"}.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "excludes": {
+          "description": "Fields present in the payload that are NOT external revenue and must be subtracted, e.g. subnet-funded or unrecognised components.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "supersedes": {
+          "description": "Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "circularity": {
+          "description": "Whether the money originates outside Bittensor. Absent means unknown, never external.",
+          "enum": ["external", "alpha-denominated", "team-funded", "unknown"],
+          "default": "unknown"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "searched_at": {
+          "description": "When absence was established. Required for provenance \"none\": an undated absence is not evidence.",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "provenance": { "const": "none" } },
+            "required": ["provenance"]
+          },
+          "then": { "required": ["searched_at"] }
+        },
+        {
+          "if": {
+            "properties": { "role": { "const": "external-revenue" } },
+            "required": ["role"]
+          },
+          "then": { "required": ["currency", "grain", "fields"] }
+        }
+      ]
     },
     "probe": {
       "type": "object",
