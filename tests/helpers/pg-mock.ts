@@ -64,14 +64,15 @@ export interface PgMockController {
   /**
    * A REAL POSTGRES to answer from, taking precedence over `db` (#10328).
    *
-   * `db` is node:sqlite, and reaching it costs two translations that only ever
-   * subtract meaning: `toQuestionMarks` rewrites the placeholders, and
-   * tests/helpers/pg-sqlite.ts's `stripPgCasts` DELETES EVERY `::` cast so the
-   * statement will parse. Those casts are load-bearing -- a bare parameter
-   * inside a `VALUES` list has no type context, so Postgres resolves it to
-   * TEXT and the insert into an integer column fails, which took the
-   * hotkey_alpha mirror down twice (#9832, #10000). A suite on the SQLite path
-   * cannot fail on that, because it never sees the cast.
+   * `db` is node:sqlite, and reaching it costs a translation that only ever
+   * subtracts meaning: `toQuestionMarks` rewrites the placeholders. A retired
+   * companion, tests/helpers/pg-sqlite.ts, went further and DELETED EVERY `::`
+   * cast so the statement would parse -- and those casts are load-bearing. A
+   * bare parameter inside a `VALUES` list has no type context, so Postgres
+   * resolves it to TEXT and the insert into an integer column fails, which
+   * took the hotkey_alpha mirror down twice (#9832, #10000). A suite on that
+   * path could not fail on it, because it never saw the cast. Every write-path
+   * suite now uses `postgres` instead and the companion is gone.
    *
    * This seam takes the statement VERBATIM -- same `$n`, same casts, same
    * column-aliased VALUES relation -- so nothing between the code under test

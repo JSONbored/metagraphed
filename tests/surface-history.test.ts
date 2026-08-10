@@ -14,10 +14,10 @@
 // tests below therefore exercise both shapes explicitly — a row with the column
 // set, and a row with only the overlay — because in production both exist.
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 
 // `surface_history` is declared Neon's (#10179), so this reader is reached
 // through readStore -> `new Client({ connectionString })`, which no caller can
@@ -43,23 +43,27 @@ import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
-// The real registry DDL, so the table under test is the one production has.
-const SCHEMA = (() => {
-  const sql = fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0001_registry.sql"),
-    "utf8",
-  );
-  const start = sql.indexOf("CREATE TABLE IF NOT EXISTS surface_history");
-  return sql.slice(start, sql.indexOf(");", start) + 2);
-})();
+/**
+ * The real NEON DDL, applied verbatim (#10328).
+ *
+ * `overlay` is TEXT here, which is the point: the loader reads it as
+ * `overlay::jsonb ->> 'key'`, and the SQLite path deleted that cast and then
+ * ASSUMED SQLite's `->>` performed the identical extraction. It is a
+ * reasonable assumption and it was never tested against the engine that
+ * actually runs it -- casting TEXT to jsonb is exactly the kind of operation
+ * whose failure modes (invalid JSON, a non-object, a null) differ between
+ * engines. Running it on Postgres turns the assumption into a result.
+ */
+const MIGRATIONS = ["migrations/neon/0005_remaining_d1_tables.sql"].map((f) =>
+  fs.readFileSync(path.join(process.cwd(), f), "utf8"),
+);
 
 const NETUID = 7;
 const T = 1_785_642_908_000;
 
-let db: InstanceType<typeof DatabaseSync>;
+let db: PGlite;
 
 /** The env a served request gets: Hyperdrive bound and `surface_history`
  * declared Neon's, which is what makes readStore hand back a store at all. */
@@ -79,7 +83,7 @@ const store = () =>
     typeof loadSurfaceHistory
   >[0];
 
-function change({
+async function change({
   surfaceId = null,
   overlayId = "surf-1",
   action = "update",
@@ -102,43 +106,53 @@ function change({
 }> = {}) {
   const overlay: Row = { kind, url, name };
   if (overlayId !== null) overlay.id = overlayId;
-  db.prepare(
+  await db.query(
     `INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit, recorded_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(surfaceId, netuid, action, JSON.stringify(overlay), commit, at);
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [surfaceId, netuid, action, JSON.stringify(overlay), commit, at] as never[],
+  );
 }
 
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
+// ONE instance for the file, TRUNCATE between tests.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
+  // RE-APPLY, not just TRUNCATE. One instance serves the whole file, and a
+  // test below DROPS the table on purpose to reach the failed-read path -- so
+  // "empty the table" is not enough to undo it. The migrations are all
+  // `IF NOT EXISTS`, so this is a no-op on every tick except that one.
+  for (const sql of MIGRATIONS) await db.exec(sql);
+  await db.exec("TRUNCATE surface_history");
   // The double answers from the real registry table rather than canned rows,
   // because half of what is asserted below -- the COALESCE, the ordering, the
   // LIMIT -- is a fact about what an engine did, not about the statement text.
-  // `overlay::jsonb ->> 'k'` reaches an engine that parses it only because
-  // sqliteBackedPg strips the `::jsonb`: SQLite has had `->>` since 3.38 with
-  // the same "a bare label means $.label" rule Postgres uses, so what is left
-  // performs the identical extraction.
-  pg.control.db = sqliteBackedPg(db);
+  // Handed over VERBATIM now, `overlay::jsonb ->> 'k'` included, so the jsonb
+  // extraction is judged by Postgres rather than by SQLite standing in for it.
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
 });
 
 describe("identity survives a missing surface_id column", () => {
   test("recovers the id from the overlay when the column is null", async () => {
     // The shape 8,831 of 8,892 production rows had before 0024, and the shape a
     // pre-migration database still has.
-    change({ surfaceId: null, overlayId: "surf-abc" });
+    await change({ surfaceId: null, overlayId: "surf-abc" });
     const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, "surf-abc");
   });
 
   test("prefers the column when it is set", async () => {
     // A delete row, and every row after the writer fix.
-    change({ surfaceId: "surf-column", overlayId: "surf-overlay" });
+    await change({ surfaceId: "surf-column", overlayId: "surf-overlay" });
     const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, "surf-column");
   });
 
   test("a row with neither is null rather than a fabricated id", async () => {
-    change({ surfaceId: null, overlayId: null });
+    await change({ surfaceId: null, overlayId: null });
     const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, null);
     // It is still a real change, so it is still reported -- just unidentified.
@@ -150,9 +164,9 @@ describe("identity survives a missing surface_id column", () => {
 
 describe("loadSurfaceHistory", () => {
   test("scopes to the subnet, newest first", async () => {
-    change({ at: T, overlayId: "a" });
-    change({ at: T - 1000, overlayId: "b" });
-    change({ at: T + 1000, netuid: 99, overlayId: "other" });
+    await change({ at: T, overlayId: "a" });
+    await change({ at: T - 1000, overlayId: "b" });
+    await change({ at: T + 1000, netuid: 99, overlayId: "other" });
     const rows = await loadSurfaceHistory(store(), NETUID);
     assert.deepEqual(
       rows?.map((r) => r.surface_id),
@@ -161,7 +175,7 @@ describe("loadSurfaceHistory", () => {
   });
 
   test("lifts kind, url and name out of the overlay", async () => {
-    change({
+    await change({
       kind: "openapi",
       url: "https://x.test/openapi.json",
       name: "Spec",
@@ -174,14 +188,16 @@ describe("loadSurfaceHistory", () => {
 
   test("honours the limit", async () => {
     for (let i = 0; i < 5; i += 1)
-      change({ at: T - i * 1000, overlayId: `s${i}` });
+      await change({ at: T - i * 1000, overlayId: `s${i}` });
     const rows = await loadSurfaceHistory(store(), NETUID, { limit: 2 });
     assert.equal(rows?.length, 2);
   });
 
   test("no binding and a failed read both return null", async () => {
     assert.equal(await loadSurfaceHistory(null, NETUID), null);
-    db.exec("DROP TABLE surface_history");
+    // beforeEach re-applies the migrations, so this does not leak into the
+    // rest of the file the way it would with a plain TRUNCATE.
+    await db.exec("DROP TABLE surface_history");
     assert.equal(await loadSurfaceHistory(store(), NETUID), null);
   });
 });
@@ -189,10 +205,10 @@ describe("loadSurfaceHistory", () => {
 describe("buildSurfaceHistory", () => {
   test("counts distinct surfaces, not changes", async () => {
     // The same surface updated three times is ONE surface with three changes.
-    change({ overlayId: "a", at: T });
-    change({ overlayId: "a", at: T - 1 });
-    change({ overlayId: "a", at: T - 2 });
-    change({ overlayId: "b", at: T - 3 });
+    await change({ overlayId: "a", at: T });
+    await change({ overlayId: "a", at: T - 1 });
+    await change({ overlayId: "a", at: T - 2 });
+    await change({ overlayId: "b", at: T - 3 });
     const card = buildSurfaceHistory(
       await loadSurfaceHistory(store(), NETUID),
       NETUID,
@@ -202,7 +218,7 @@ describe("buildSurfaceHistory", () => {
   });
 
   test("keeps a delete, which is the only trace a surface ever existed", async () => {
-    change({ action: "delete", surfaceId: "gone", at: T });
+    await change({ action: "delete", surfaceId: "gone", at: T });
     const card = buildSurfaceHistory(
       await loadSurfaceHistory(store(), NETUID),
       NETUID,
@@ -282,7 +298,8 @@ describe("buildSurfaceHistory", () => {
   test("an omitted options object takes the default limit", async () => {
     // The loader's default-parameter arm, which a fully-specified call never
     // reaches -- and it is what every caller that does not paginate uses.
-    for (let i = 0; i < 3; i += 1) change({ at: T - i, overlayId: `s${i}` });
+    for (let i = 0; i < 3; i += 1)
+      await change({ at: T - i, overlayId: `s${i}` });
     const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.length, 3);
   });
@@ -308,7 +325,7 @@ describe("GET /api/v1/subnets/{netuid}/surface-history", () => {
   };
 
   test("serves the trail", async () => {
-    change({ overlayId: "a", action: "insert" });
+    await change({ overlayId: "a", action: "insert" });
     const data = await body(
       await get(`/api/v1/subnets/${NETUID}/surface-history`),
     );
@@ -362,7 +379,7 @@ describe("GET /api/v1/subnets/{netuid}/surface-history", () => {
 
 describe("subnet_surface_history over GraphQL and MCP", () => {
   test("GraphQL serves the same trail", async () => {
-    change({ overlayId: "a", action: "delete" });
+    await change({ overlayId: "a", action: "delete" });
     const res = await handleGraphQLRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "POST",
@@ -400,7 +417,7 @@ describe("subnet_surface_history over GraphQL and MCP", () => {
   });
 
   test("the MCP tool serves it and clamps its limit", async () => {
-    change({ overlayId: "a" });
+    await change({ overlayId: "a" });
     const tool = MCP_TOOLS.find((t) => t.name === "get_subnet_surface_history");
     assert.ok(tool, "get_subnet_surface_history is not registered");
     const card = (await tool.handler(

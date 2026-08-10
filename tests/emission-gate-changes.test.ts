@@ -16,12 +16,11 @@
 // with old rows while a busy one lost recent ones — and "the newest N changes"
 // would be neither. The ordering test below is what pins that.
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeAll, beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 
 // The serving paths (REST/GraphQL/MCP) reach their store through
 // `new Client(...)` inside src/read-store.ts (#10179), which none of their
@@ -47,18 +46,34 @@ import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
-// The real DDL, so every CHECK constraint (the source enum, the 0/1 booleans,
-// the two-arm shape check on emission_flow_watch) is enforced in fixtures too.
-const SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0005_emission_gate.sql",
-  ),
-  "utf8",
-);
+/**
+ * The real NEON DDL, so every CHECK constraint -- the source enum, the
+ * two-armed shape check on emission_flow_watch -- is the one production
+ * enforces (#10328).
+ *
+ * The fixture this replaced described the same constraints against 0/1
+ * INTEGER columns. They are BOOLEAN here (`predates_capture`, `enabled`,
+ * `previous_enabled`, `is_set`), so the seeds below now pass real booleans:
+ * Postgres rejects an integer for a boolean column outright, which is exactly
+ * the bind node:sqlite refuses in the other direction and the reason the
+ * retired double had to map values at all.
+ */
+const MIGRATIONS = [
+  "migrations/neon/0003_append_only_histories.sql",
+  "migrations/neon/0005_remaining_d1_tables.sql",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
 const T = 1_785_900_000_000;
-let db: InstanceType<typeof DatabaseSync>;
+let db: PGlite;
+
+/** Seed helper: the fixtures read clearly with `?`, and Postgres takes `$n`. */
+const seed = async (sql: string, params: unknown[] = []) => {
+  let i = 0;
+  await db.query(
+    sql.replace(/\?/g, () => `$${++i}`),
+    params as never[],
+  );
+};
 
 function d1() {
   return {
@@ -67,7 +82,9 @@ function d1() {
         bind(...values: unknown[]) {
           return {
             async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
+              return {
+                results: (await db.query(text, values as never[])).rows,
+              };
             },
           };
         },
@@ -81,78 +98,94 @@ function d1() {
  * a controller still holding the previous test's database would answer from a
  * fixture this test never wrote to. */
 const env = () => {
-  pg.control.db = sqliteBackedPg(db);
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
   pg.control.rows = null;
   return pgMockEnv() as unknown as Env;
 };
 
-function param(
+async function param(
   at: number,
   {
     name = "emission_gate_exponent",
     value = 3,
     prev = 2 as number | null,
     source = "governance",
-    predates = 0,
+    predates = false,
     block = 8_000_000 as number | null,
   } = {},
 ) {
-  db.prepare(
+  await seed(
     `INSERT INTO emission_gate_param_history
        (param, value, previous_value, source, block_number, observed_at, predates_capture)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(name, value, prev, source, block, at, predates);
+    [name, value, prev, source, block, at, predates],
+  );
 }
-function subnetSwitch(
+async function subnetSwitch(
   at: number,
   netuid = 7,
-  enabled = 1,
-  prev: number | null = 0,
-  predates = 0,
+  enabled = true,
+  prev: boolean | null = false,
+  predates = false,
 ) {
-  db.prepare(
+  await seed(
     `INSERT INTO subnet_emission_enabled_history
        (netuid, enabled, previous_enabled, block_number, observed_at, predates_capture)
      VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(netuid, enabled, prev, 8_000_000, at, predates);
+    [netuid, enabled, prev, 8_000_000, at, predates],
+  );
 }
 // The table's CHECK is two-armed: ONLY `subnet_ema_tao_flow` may carry a netuid,
 // and it must also carry an ema_block; every other item must have both NULL.
 // Encoding that here rather than passing them independently means a fixture
 // cannot express a row production could not hold -- which is the whole reason
 // this suite loads the real DDL.
-function flow(
+async function flow(
   at: number,
   item: string = "net_tao_flow_enabled",
   netuid: number | null = null,
-  isSet = 0,
+  isSet = false,
 ) {
   const subnetScoped = item === "subnet_ema_tao_flow";
-  db.prepare(
+  await seed(
     `INSERT INTO emission_flow_watch
        (item, netuid, is_set, ema_block, block_number, observed_at, predates_capture)
-     VALUES (?, ?, ?, ?, ?, ?, 0)`,
-  ).run(
-    item,
-    subnetScoped ? (netuid ?? 12) : null,
-    isSet,
-    subnetScoped ? 8_000_000 : null,
-    8_000_000,
-    at,
+     VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
+    [
+      item,
+      subnetScoped ? (netuid ?? 12) : null,
+      isSet,
+      subnetScoped ? 8_000_000 : null,
+      8_000_000,
+      at,
+    ],
   );
 }
 
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
+// ONE instance for the file, TRUNCATE between tests.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
+  // RE-APPLY, not just TRUNCATE: one instance serves the file and a test below
+  // DROPs emission_flow_watch on purpose to reach the degraded read. Every
+  // statement is IF NOT EXISTS, so this is a no-op on every other tick.
+  for (const sql of MIGRATIONS) await db.exec(sql);
+  await db.exec(
+    "TRUNCATE emission_gate_param_history, subnet_emission_enabled_history," +
+      " emission_flow_watch",
+  );
 });
 
 describe("predates_capture is never lost", () => {
   test("a first observation is flagged and counted separately", async () => {
     // The row shape the sampler writes when it first SEES a value: no previous
     // reading, so no change occurred.
-    param(T, { prev: null, predates: 1 });
-    param(T - 1000, { prev: 2, value: 3, predates: 0 });
+    await param(T, { prev: null, predates: true });
+    await param(T - 1000, { prev: 2, value: 3, predates: false });
     const card = buildEmissionChanges(await loadEmissionChanges(d1()));
     const first = (card.changes as Row[])[0];
     assert.equal(first.predates_capture, true);
@@ -164,9 +197,9 @@ describe("predates_capture is never lost", () => {
   });
 
   test("the flag is a boolean on every kind, not just params", async () => {
-    param(T, { predates: 1 });
-    subnetSwitch(T - 1, 7, 1, null, 1);
-    flow(T - 2);
+    await param(T, { predates: true });
+    await subnetSwitch(T - 1, 7, true, null, true);
+    await flow(T - 2);
     const card = buildEmissionChanges(await loadEmissionChanges(d1()));
     for (const c of card.changes as Row[]) {
       assert.equal(typeof c.predates_capture, "boolean");
@@ -177,9 +210,9 @@ describe("predates_capture is never lost", () => {
 
 describe("one feed, three shapes", () => {
   test("each kind carries only its own fields", async () => {
-    param(T);
-    subnetSwitch(T - 1);
-    flow(T - 2, "subnet_ema_tao_flow", 12, 1);
+    await param(T);
+    await subnetSwitch(T - 1);
+    await flow(T - 2, "subnet_ema_tao_flow", 12, true);
     const changes = buildEmissionChanges(await loadEmissionChanges(d1()))
       .changes as Row[];
     const byKind = Object.fromEntries(changes.map((c) => [c.kind, c]));
@@ -229,11 +262,11 @@ describe("one feed, three shapes", () => {
 describe("the feed is unioned, not merged per table", () => {
   test("newest-first ordering holds ACROSS the three tables", async () => {
     // Interleaved on purpose: a per-table merge would group them.
-    param(T - 0);
-    flow(T - 10);
-    subnetSwitch(T - 20);
-    param(T - 30);
-    subnetSwitch(T - 40);
+    await param(T - 0);
+    await flow(T - 10);
+    await subnetSwitch(T - 20);
+    await param(T - 30);
+    await subnetSwitch(T - 40);
     const card = buildEmissionChanges(await loadEmissionChanges(d1()));
     assert.deepEqual(
       (card.changes as Row[]).map((c) => c.kind),
@@ -244,8 +277,8 @@ describe("the feed is unioned, not merged per table", () => {
   test("the limit is the newest N overall, not the newest N of each", async () => {
     // Five params newer than any switch. A per-table top-2 would return 2
     // params AND 2 switches; the union returns the 2 newest, both params.
-    for (let i = 0; i < 5; i += 1) param(T - i);
-    subnetSwitch(T - 100);
+    for (let i = 0; i < 5; i += 1) await param(T - i);
+    await subnetSwitch(T - 100);
     const card = buildEmissionChanges(
       await loadEmissionChanges(d1(), { limit: 2 }),
       { limit: 2 },
@@ -258,9 +291,9 @@ describe("the feed is unioned, not merged per table", () => {
   });
 
   test("?kind= restricts the union to one leg", async () => {
-    param(T);
-    subnetSwitch(T - 1);
-    flow(T - 2);
+    await param(T);
+    await subnetSwitch(T - 1);
+    await flow(T - 2);
     for (const kind of EMISSION_CHANGE_KINDS) {
       const card = buildEmissionChanges(
         await loadEmissionChanges(d1(), { kind }),
@@ -321,7 +354,7 @@ describe("buildEmissionChanges edges", () => {
 
   test("no binding and a failed read both return null", async () => {
     assert.equal(await loadEmissionChanges(null), null);
-    db.exec("DROP TABLE emission_flow_watch");
+    await db.exec("DROP TABLE emission_flow_watch");
     assert.equal(await loadEmissionChanges(d1()), null);
   });
 
@@ -369,8 +402,8 @@ describe("GET /api/v1/chain/governance/emission-changes", () => {
   };
 
   test("serves the feed", async () => {
-    param(T);
-    subnetSwitch(T - 1);
+    await param(T);
+    await subnetSwitch(T - 1);
     const data = await body(
       await get("/api/v1/chain/governance/emission-changes"),
     );
@@ -426,7 +459,7 @@ describe("GET /api/v1/chain/governance/emission-changes", () => {
 
 describe("emission_changes over GraphQL and MCP", () => {
   test("GraphQL serves the same feed", async () => {
-    param(T, { predates: 1, prev: null });
+    await param(T, { predates: true, prev: null });
     const res = await handleGraphQLRequest(
       new Request("https://api.metagraph.sh/api/v1/graphql", {
         method: "POST",
@@ -485,7 +518,7 @@ describe("emission_changes over GraphQL and MCP", () => {
   });
 
   test("the MCP tool warns a model not to overcount", async () => {
-    param(T);
+    await param(T);
     const tool = MCP_TOOLS.find((t) => t.name === "get_emission_changes");
     assert.ok(tool, "get_emission_changes is not registered");
     const card = (await tool.handler(
@@ -499,8 +532,8 @@ describe("emission_changes over GraphQL and MCP", () => {
   });
 
   test("the MCP tool passes its kind filter through", async () => {
-    param(T);
-    subnetSwitch(T - 1);
+    await param(T);
+    await subnetSwitch(T - 1);
     const tool = MCP_TOOLS.find((t) => t.name === "get_emission_changes");
     const card = (await tool!.handler(
       { kind: "subnet" } as never,
