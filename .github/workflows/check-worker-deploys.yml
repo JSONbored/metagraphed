@@ -1,0 +1,68 @@
+name: Check worker deploys
+
+# Is production RUNNING what was merged? (#10238)
+#
+# Workers Builds is the deploy path, and a build that fails on the merge commit
+# leaves main merged and production on the previous version with nothing that
+# reads as an incident: the PR is green, the branch is deleted, and the only
+# symptom is that the fix does not take effect. metagraphed-data-api failed
+# twice on 2026-08-08 and passed on retry with a byte-identical diff, so this is
+# observed rather than hypothetical. Between "landed" and "running" there was no
+# automated relationship at all.
+#
+# WHY THIS IS AN ACTION AND NOT A WORKER CRON, against the standing preference
+# for Worker-native lanes. A Worker that failed to deploy is RUNNING THE
+# PREVIOUS VERSION, so asking it what it is running gets the previous version's
+# answer, confidently. The check has to observe from outside the thing it is
+# checking -- the same reasoning as "a Worker cannot probe its own route", one
+# level up. It also reads Cloudflare's own deployment record rather than
+# anything the Worker reports about itself, which is the other half of the same
+# property.
+#
+# This is not a data lane: it moves no rows and writes no store.
+on:
+  schedule:
+    # Hourly at :47, off every producer minute in wrangler.jsonc so a red run is
+    # never competing with a capture for attention. A build takes minutes, so
+    # hourly is several times finer than the thing being watched.
+    - cron: "47 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-worker-deploys
+  cancel-in-progress: false
+
+jobs:
+  deploys:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # FULL HISTORY: the check asks whether the deployed SHA is an ancestor
+          # of main and how far behind it is, and a shallow clone cannot answer
+          # either -- merge-base would fail on a commit it never fetched and the
+          # verdict would read `forked` on a perfectly current Worker.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Compare every Worker's deployed SHA against main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run check:worker-deploys
