@@ -6263,9 +6263,19 @@ export async function handleBlocks(
         blockStart: routeInt(url, "block_start"),
         blockEnd: routeInt(url, "block_end"),
         // from/to are part of this route's contract too -- a filter the tier
-        // never receives is a filter it silently ignores.
-        from: routeText(url, "from"),
-        to: routeText(url, "to"),
+        // never receives is a filter it silently ignores. `routeInt`, not
+        // `routeText` (#10395): the two are declared `z.int()` like every
+        // sibling bound here, so the parse hands back a NUMBER and the string
+        // accessor answered null on every request -- `routeText`'s own doc
+        // says so ("if a caller reaches for the wrong accessor, the answer is
+        // null rather than a number wearing a string's type"). Measured
+        // against production before the fix: `?to=8000000` and
+        // `?to=1786000000000` both returned the newest blocks unfiltered,
+        // while the same bound on /api/v1/extrinsics -- whose handler forwards
+        // `routeQuery(url)` wholesale rather than per-parameter -- returned an
+        // empty page. A published filter that has never once been applied.
+        from: routeInt(url, "from"),
+        to: routeInt(url, "to"),
         minExtrinsics: routeInt(url, "min_extrinsics"),
         minEvents: routeInt(url, "min_events"),
       } as never,

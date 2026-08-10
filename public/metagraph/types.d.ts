@@ -13364,9 +13364,9 @@ export interface operations {
                 cursor?: string;
                 author?: string;
                 spec_version?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
@@ -16921,9 +16921,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -22813,9 +22813,9 @@ export interface operations {
                 cursor?: string;
                 author?: string;
                 spec_version?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
                 block_start?: number;
@@ -31177,9 +31177,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -33131,9 +33131,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
@@ -46886,9 +46886,9 @@ export interface operations {
                 block_start?: number;
                 /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 block_end?: number;
-                /** @description Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound. */
+                /** @description Inclusive first `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be later than the range's upper bound. */
                 from?: number;
-                /** @description Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound. */
+                /** @description Inclusive last `observed_at` bound, as epoch MILLISECONDS -- not a block height (use block_start/block_end for that). Omit for an unbounded end. Must not be earlier than the range's lower bound. */
                 to?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";

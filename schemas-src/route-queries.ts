@@ -197,6 +197,7 @@ import { NOMINATOR_LIMIT_DEFAULT } from "../src/validator-nominators.ts";
 import { VALIDATOR_ECONOMICS_SORTS } from "../src/validator-economics.ts";
 import {
   blockBoundSchema,
+  observedAtBoundSchema,
   daySchema,
   directionSchema,
   fieldsSchema,
@@ -962,8 +963,8 @@ export const ROUTE_QUERY_SCHEMAS = {
     // DIVERGENCE: the block author is an SS58 and publishes no pattern.
     author: z.string().optional(),
     spec_version: z.int().min(0).optional(),
-    from: blockBoundSchema("first").optional(),
-    to: blockBoundSchema("last").optional(),
+    from: observedAtBoundSchema("first").optional(),
+    to: observedAtBoundSchema("last").optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     min_extrinsics: z.int().min(0).optional(),
@@ -1052,8 +1053,8 @@ export const ROUTE_QUERY_SCHEMAS = {
     success: z.enum(["true", "false"] as const).optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    from: blockBoundSchema("first").optional(),
-    to: blockBoundSchema("last").optional(),
+    from: observedAtBoundSchema("first").optional(),
+    to: observedAtBoundSchema("last").optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/sudo": z.object({
@@ -1068,8 +1069,8 @@ export const ROUTE_QUERY_SCHEMAS = {
     success: z.enum(["true", "false"] as const).optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    from: blockBoundSchema("first").optional(),
-    to: blockBoundSchema("last").optional(),
+    from: observedAtBoundSchema("first").optional(),
+    to: observedAtBoundSchema("last").optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/governance/config-changes": z.object({
@@ -1084,8 +1085,8 @@ export const ROUTE_QUERY_SCHEMAS = {
     success: z.enum(["true", "false"] as const).optional(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    from: blockBoundSchema("first").optional(),
-    to: blockBoundSchema("last").optional(),
+    from: observedAtBoundSchema("first").optional(),
+    to: observedAtBoundSchema("last").optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/runtime": z.object({
