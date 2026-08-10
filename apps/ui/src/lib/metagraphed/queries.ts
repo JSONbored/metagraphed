@@ -236,6 +236,13 @@ import type {
   SubnetEmissionPipelineHistory,
   SubnetEmissionPipelinePoint,
   SubnetSurfaceChange,
+  TopHolders,
+  TopHolder,
+  RootClaim,
+  ValidatorEconomics,
+  ValidatorEconomicsRow,
+  ExcludedSubnet,
+  DomainSummary,
   IndexerLag,
   FailureReasons,
   FailureReason,
@@ -5541,6 +5548,217 @@ function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomic
     emission_gate_open: typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
   };
 }
+
+/**
+ * The network-wide TAO holder leaderboard (#10300).
+ *
+ * `free_tao`, `delegated_tao` and `total_tao` are three different positions,
+ * and the net flows come in three windows because they can disagree -- an
+ * account can be growing over 7d while shrinking over 90d, and showing one
+ * window would let a short bounce read as a trend.
+ */
+export const topHoldersQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("accounts-top-holders", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/accounts/top-holders?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const accounts = (Array.isArray(d.accounts) ? d.accounts : [])
+        .map((raw): TopHolder | null => {
+          if (!isRecord(raw)) return null;
+          const ss58 = firstString(raw.ss58);
+          if (!ss58) return null;
+          return {
+            ss58,
+            free_tao: firstFiniteNumber(raw.free_tao) ?? null,
+            delegated_tao: firstFiniteNumber(raw.delegated_tao) ?? null,
+            total_tao: firstFiniteNumber(raw.total_tao) ?? null,
+            net_flow_7d: firstFiniteNumber(raw.net_flow_7d) ?? null,
+            net_flow_30d: firstFiniteNumber(raw.net_flow_30d) ?? null,
+            net_flow_90d: firstFiniteNumber(raw.net_flow_90d) ?? null,
+          };
+        })
+        .filter((a): a is TopHolder => a !== null);
+      return {
+        data: {
+          account_count: firstFiniteNumber(d.account_count) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+          accounts,
+        } satisfies TopHolders,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One account's root-claim state (#10300).
+ *
+ * `field_sources` is carried through rather than dropped, because it says the
+ * hotkey list is RECONSTRUCTED while the claim type is MEASURED. Those are
+ * different confidences: one was read from chain storage, the other inferred,
+ * and rendering them identically would present an inference as a reading.
+ */
+export const accountRootClaimQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-root-claim", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const claim = isRecord(d.claim_type) ? d.claim_type : {};
+      const sources = isRecord(d.field_sources) ? d.field_sources : {};
+      const hotkeySource = isRecord(sources.hotkeys) ? sources.hotkeys : {};
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          claim_kind: firstString(claim.kind) ?? null,
+          hotkeys: (Array.isArray(d.hotkeys) ? d.hotkeys : [])
+            .map((h) => firstString(h))
+            .filter((h): h is string => h !== undefined),
+          // "reconstructed" vs "measured" -- an inference is not a reading.
+          hotkeys_source: firstString(hotkeySource.kind) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } satisfies RootClaim,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Validator entry economics ranked across subnets (#10300).
+ *
+ * `excluded` rides along with a reason per subnet. A leaderboard that silently
+ * drops the subnets it could not rank reports a subset as the whole -- and the
+ * reasons are the interesting part, because "excluded because it has no
+ * validators" and "excluded because the read failed" are different facts.
+ */
+export const validatorEconomicsQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("validators-economics", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/validators/economics?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const rows = (Array.isArray(d.rows) ? d.rows : [])
+        .map((raw): ValidatorEconomicsRow | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return {
+            netuid,
+            permit_floor_cost_tao: firstFiniteNumber(raw.permit_floor_cost_tao) ?? null,
+            earning_floor_cost_tao: firstFiniteNumber(raw.earning_floor_cost_tao) ?? null,
+            permit_to_earning_multiple: firstFiniteNumber(raw.permit_to_earning_multiple) ?? null,
+            validator_slots_open: firstFiniteNumber(raw.validator_slots_open) ?? null,
+            cap_binding: typeof raw.cap_binding === "boolean" ? raw.cap_binding : null,
+            emission_gate_open:
+              typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
+            degraded_reason: firstString(raw.degraded_reason) ?? null,
+          };
+        })
+        .filter((r): r is ValidatorEconomicsRow => r !== null);
+      const excluded = (Array.isArray(d.excluded) ? d.excluded : [])
+        .map((raw): ExcludedSubnet | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return { netuid, reason: firstString(raw.reason) ?? null };
+        })
+        .filter((e): e is ExcludedSubnet => e !== null);
+      return {
+        data: {
+          total: firstFiniteNumber(d.total) ?? rows.length,
+          tao_weight: firstFiniteNumber(d.tao_weight) ?? null,
+          stake_threshold_units: firstFiniteNumber(d.stake_threshold_units) ?? null,
+          rows,
+          excluded,
+        } satisfies ValidatorEconomics,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Registration and deregistration across every subnet (#10300).
+ *
+ * The network-wide sibling of `/subnets/{netuid}/lifecycle`, and it carries the
+ * same `predates_capture` flag for the same reason: every subnet alive when the
+ * lane first ran was registered before we were watching, so its row has no
+ * block and saying so is the only honest rendering.
+ */
+export const chainSubnetLifecycleQuery = (limit = 30) =>
+  queryOptions({
+    queryKey: k("chain-subnet-lifecycle", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/subnet-lifecycle?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const entries = (Array.isArray(d.entries) ? d.entries : [])
+        .map(normalizeSubnetLifecycleEntry)
+        .filter((e): e is SubnetLifecycleEntry => e !== null);
+      return {
+        data: {
+          entry_count: firstFiniteNumber(d.entry_count) ?? entries.length,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          entries,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One domain's rollup (#10300).
+ *
+ * `/api/v1/domains/{tag}/summary` -- the per-domain detail behind the rollup
+ * table, carrying the emission concentration that the list view has no room
+ * for.
+ */
+export const domainSummaryQuery = (tag: string) =>
+  queryOptions({
+    queryKey: k("domain-summary", tag),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/domains/${encodeURIComponent(tag)}/summary`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const conc = isRecord(d.emission_concentration) ? d.emission_concentration : {};
+      return {
+        data: {
+          domain: firstString(d.domain) ?? tag,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          netuids: (Array.isArray(d.netuids) ? d.netuids : [])
+            .map((n) => firstFiniteNumber(n))
+            .filter((n): n is number => n !== undefined),
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          total_emission_share: firstFiniteNumber(d.total_emission_share) ?? null,
+          emission_gini: firstFiniteNumber(conc.gini) ?? null,
+          emission_nakamoto_coefficient: firstFiniteNumber(conc.nakamoto_coefficient) ?? null,
+        } satisfies DomainSummary,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
 
 /**
  * How current our own capture is (#10300).

@@ -31,6 +31,7 @@ import { PriceAtTx } from "@/components/metagraphed/price-at-tx";
 import { AddressLabelEditor } from "@/components/metagraphed/address-label-editor";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { AccountRootClaim } from "@/components/metagraphed/account-root-claim";
 import {
   EmptyState,
   Skeleton,
@@ -402,6 +403,17 @@ function ValidAccountDetail({ ss58 }: { ss58: string }) {
           info="Depth is limited by how far back daily snapshots reach; it grows as the genesis backfill (#8368) lands."
         >
           <AccountHoldingsHistory ss58={ss58} />
+        </SectionAnchor>
+      )}
+
+      {tab === "holdings" && (
+        <SectionAnchor
+          id="root-claim"
+          title="Root claim"
+          subtitle="What this account's root stake would do in a swap, and which hotkeys it reaches."
+          info="GET /api/v1/accounts/{ss58}/root-claim — the payload's own `field_sources` marks the claim type as MEASURED (read from SubtensorModule.RootClaimType) and the hotkey list as RECONSTRUCTED (inferred from other state). The panel shows that provenance beside the figure it qualifies rather than rendering an inference with the authority of a reading."
+        >
+          <AccountRootClaim ss58={ss58} />
         </SectionAnchor>
       )}
 

@@ -4189,6 +4189,72 @@ export interface SubnetValidatorEconomics {
   cap_binding: boolean | null;
 }
 
+/** The network-wide TAO holder leaderboard (#10300). */
+export interface TopHolders {
+  account_count: number | null;
+  captured_at: string | null;
+  accounts: TopHolder[];
+}
+
+export interface TopHolder {
+  ss58: string;
+  /** Free, delegated and total are three different positions. */
+  free_tao: number | null;
+  delegated_tao: number | null;
+  total_tao: number | null;
+  /** Three windows, because they can disagree. */
+  net_flow_7d: number | null;
+  net_flow_30d: number | null;
+  net_flow_90d: number | null;
+}
+
+/** One account's root-claim state (#10300). */
+export interface RootClaim {
+  ss58: string;
+  claim_kind: string | null;
+  hotkeys: string[];
+  /** "measured" or "reconstructed" — an inference is not a reading. */
+  hotkeys_source: string | null;
+  queried_at: string | null;
+}
+
+/** Validator entry economics ranked across subnets (#10300). */
+export interface ValidatorEconomics {
+  total: number;
+  tao_weight: number | null;
+  stake_threshold_units: number | null;
+  rows: ValidatorEconomicsRow[];
+  /** Subnets that could NOT be ranked, each with why. */
+  excluded: ExcludedSubnet[];
+}
+
+export interface ValidatorEconomicsRow {
+  netuid: number;
+  permit_floor_cost_tao: number | null;
+  earning_floor_cost_tao: number | null;
+  permit_to_earning_multiple: number | null;
+  validator_slots_open: number | null;
+  cap_binding: boolean | null;
+  emission_gate_open: boolean | null;
+  degraded_reason: string | null;
+}
+
+export interface ExcludedSubnet {
+  netuid: number;
+  reason: string | null;
+}
+
+/** One domain's rollup (#10300). */
+export interface DomainSummary {
+  domain: string;
+  subnet_count: number | null;
+  netuids: number[];
+  total_stake_tao: number | null;
+  total_emission_share: number | null;
+  emission_gini: number | null;
+  emission_nakamoto_coefficient: number | null;
+}
+
 /**
  * How current our own capture is (#10300).
  *

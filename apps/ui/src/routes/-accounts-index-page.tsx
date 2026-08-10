@@ -10,6 +10,7 @@ import { TOP_ACTIVE_ACCOUNTS_WINDOW_DAYS } from "@/components/metagraphed/top-ac
 import { ActionBar, ShareButton } from "@jsonbored/ui-kit";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { Ss58Inspector } from "@/components/metagraphed/ss58-inspector";
+import { TopHoldersPanel } from "@/components/metagraphed/top-holders-panel";
 import { YourPositionsPanel } from "@/components/metagraphed/your-positions-panel";
 import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
 import { useWallet } from "@/hooks/use-wallet";
@@ -161,11 +162,22 @@ export function AccountsPage() {
           Decode any SS58 address&apos;s network prefix and public key, and verify its checksum —
           useful for catching a mistyped or wrong-network address before sending to it.
         </p>
+        {/* #10300: the network-wide holder leaderboard was published and
+            rendered nowhere. */}
+        <section className="mt-8">
+          <TopHoldersPanel />
+        </section>
+
         <Ss58Inspector />
       </Panel>
 
       <ApiSourceFooter
-        paths={["/api/v1/accounts/{ss58}", "/api/v1/accounts", "/api/v1/chain/signers"]}
+        paths={[
+          "/api/v1/accounts/{ss58}",
+          "/api/v1/accounts",
+          "/api/v1/chain/signers",
+          "/api/v1/accounts/top-holders",
+        ]}
       />
     </AppShell>
   );
