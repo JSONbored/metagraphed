@@ -278,12 +278,37 @@ const JSON_SCHEMA_MIRRORS: Array<{
   },
 ];
 
+/**
+ * Every mirror module, imported by LITERAL specifier.
+ *
+ * `await import(module)` with a variable reads better and is invisible to
+ * static analysis: knip resolves a literal specifier and nothing else, so the
+ * moment this stopped being one, `schemas-src/shared.ts` went from "reached
+ * from an entry" to 18 unreferenced type exports and
+ * validate:unreferenced-exports counted 898 against its 880 ceiling (#10292).
+ * The table above stays the declaration; this is only how it is loaded.
+ */
+const MIRROR_MODULE_LOADERS: Record<string, () => Promise<unknown>> = {
+  "../schemas-src/shared.ts": () => import("../schemas-src/shared.ts"),
+  "../schemas-src/routes/subnet-detail.ts": () =>
+    import("../schemas-src/routes/subnet-detail.ts"),
+};
+
 const mirrorModules = new Map<string, Record<string, readonly string[]>>();
 for (const { module } of JSON_SCHEMA_MIRRORS) {
   if (mirrorModules.has(module)) continue;
+  const load = MIRROR_MODULE_LOADERS[module];
+  if (!load) {
+    // A new mirror whose module was added to the table but not here would
+    // otherwise throw a bare TypeError at the call below.
+    throw new Error(
+      `${module} is named by JSON_SCHEMA_MIRRORS but has no entry in ` +
+        `MIRROR_MODULE_LOADERS -- add one, with a literal import specifier.`,
+    );
+  }
   mirrorModules.set(
     module,
-    (await import(module)) as unknown as Record<string, readonly string[]>,
+    (await load()) as unknown as Record<string, readonly string[]>,
   );
 }
 
