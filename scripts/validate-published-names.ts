@@ -19,7 +19,8 @@
 // generator reads all three, and all three are frozen extracts that only the
 // SDL can currently prove right.
 import { readFileSync } from "node:fs";
-import { parse } from "graphql";
+import { fileURLToPath } from "node:url";
+import { parse, print } from "graphql";
 import type { ObjectTypeDefinitionNode, TypeNode } from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import {
@@ -36,6 +37,74 @@ import {
 
 const SDL_PATH = "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
+
+/** One Query field as the SDL declares it. */
+export interface SdlBinding {
+  field: string;
+  route: string | null;
+  /** The full spelling, nullability included -- `SubnetList!`. */
+  returns: string;
+  description: string;
+}
+
+/**
+ * Every way the registry's Query bindings stop describing the SDL.
+ *
+ * A pure function over both lists so a test can drive it with a MUTATED
+ * registry and prove each check actually fails -- the rest of this script
+ * reads the repo at module load, and a gate only ever run against a passing
+ * tree proves nothing.
+ */
+export function compareQueryBindings(
+  sdlBindings: readonly SdlBinding[],
+  declaredList: readonly {
+    field: string;
+    route: string | null;
+    returns: string;
+    description: string;
+  }[],
+): string[] {
+  const declaredBindings = new Map(
+    declaredList.map((binding) => [binding.field, binding]),
+  );
+  const problems: string[] = [];
+  for (const binding of sdlBindings) {
+    const declared = declaredBindings.get(binding.field);
+    if (!declared) {
+      problems.push(`${binding.field} -- in the SDL, not in QUERY_BINDINGS`);
+      continue;
+    }
+    if (declared.route !== binding.route) {
+      problems.push(
+        `${binding.field} mirrors ${binding.route ?? "no route"}, the registry says ${declared.route ?? "no route"}`,
+      );
+    }
+    // The FULL spelling, nullability included: `SubnetList` and `SubnetList!`
+    // are different promises, and the generator emits whichever the registry
+    // says. Comparing bare names let a `!` drift silently.
+    if (declared.returns !== binding.returns) {
+      problems.push(
+        `${binding.field} returns ${binding.returns}, the registry says ${declared.returns}`,
+      );
+    }
+    // The published prose. It is the registry's copy that gets emitted, so a
+    // description edited in the SDL and not here would be silently reverted at
+    // the next generation -- which is exactly the drift this file exists to
+    // stop, one field lower down.
+    if (declared.description !== binding.description) {
+      problems.push(
+        `${binding.field} -- the SDL's description and the registry's differ`,
+      );
+    }
+  }
+  const sdlFieldNames = new Set(sdlBindings.map((binding) => binding.field));
+  for (const binding of declaredList) {
+    if (!sdlFieldNames.has(binding.field)) {
+      problems.push(`${binding.field} -- in QUERY_BINDINGS, not in the SDL`);
+    }
+  }
+  return problems;
+}
 
 const sdl = extractSdl(readFileSync(SDL_PATH, "utf8"));
 if (!sdl) {
@@ -85,7 +154,11 @@ const sdlBindings = (sdlTypes.get("Query")?.fields ?? []).map((field) => {
   return {
     field: field.name.value,
     route: mirrors ? mirrors[1].replace(/\.$/, "") : null,
-    returns: namedType(field.type),
+    /** The bare name, for the component pairing below. */
+    returnsName: namedType(field.type),
+    /** The full spelling, nullability included -- what the registry declares. */
+    returns: print(field.type),
+    description: field.description?.value ?? "",
   };
 });
 
@@ -94,7 +167,7 @@ const queue: [string, string][] = [];
 for (const binding of sdlBindings) {
   if (!binding.route) continue;
   const component = dataComponent(binding.route);
-  if (component) queue.push([binding.returns, component]);
+  if (component) queue.push([binding.returnsName, component]);
 }
 /** component -> every published name it is reached under. */
 const computed = new Map<string, Set<string>>();
@@ -189,37 +262,7 @@ if (staleAlias.length) {
 }
 
 // ── the Query bindings ───────────────────────────────────────────────────────
-const declaredBindings = new Map(
-  QUERY_BINDINGS.map((binding) => [binding.field, binding]),
-);
-const bindingProblems: string[] = [];
-for (const binding of sdlBindings) {
-  const declared = declaredBindings.get(binding.field);
-  if (!declared) {
-    bindingProblems.push(
-      `${binding.field} -- in the SDL, not in QUERY_BINDINGS`,
-    );
-    continue;
-  }
-  if (declared.route !== binding.route) {
-    bindingProblems.push(
-      `${binding.field} mirrors ${binding.route ?? "no route"}, the registry says ${declared.route ?? "no route"}`,
-    );
-  }
-  if (declared.returns !== binding.returns) {
-    bindingProblems.push(
-      `${binding.field} returns ${binding.returns}, the registry says ${declared.returns}`,
-    );
-  }
-}
-const sdlFieldNames = new Set(sdlBindings.map((binding) => binding.field));
-for (const binding of QUERY_BINDINGS) {
-  if (!sdlFieldNames.has(binding.field)) {
-    bindingProblems.push(
-      `${binding.field} -- in QUERY_BINDINGS, not in the SDL`,
-    );
-  }
-}
+const bindingProblems = compareQueryBindings(sdlBindings, QUERY_BINDINGS);
 if (bindingProblems.length) {
   errors.push(
     `${bindingProblems.length} Query binding(s) that no longer describe the SDL:\n` +
@@ -276,7 +319,13 @@ if (projectedButReached.length) {
   );
 }
 
+// Reporting and the exit code are the SCRIPT's, not the module's: importing
+// this file to reach `compareQueryBindings` must not end the importing process
+// -- a test that a gate can fail cannot run inside a gate that exits.
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+
 if (errors.length) {
+  if (!isMain) throw new Error(errors.join("\n"));
   console.error(
     `Published-name validation failed with ${errors.length} issue(s):`,
   );
@@ -284,11 +333,12 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(
-  `Published-name validation passed: ${Object.keys(PUBLISHED_TYPE_NAMES).length} component name(s), ` +
-    `${new Set(Object.values(PUBLISHED_TYPE_NAMES)).size} published type(s), ` +
-    `${QUERY_BINDINGS.length} Query binding(s), ` +
-    `${Object.keys(PROJECTED_TYPES).length} declared projection(s), ` +
-    `${RESOLVER_BUILT_TYPES.length} resolver-built type(s), ` +
-    `${Object.keys(ALIASED_TYPE_NAMES).length} declared alias(es).`,
-);
+if (isMain)
+  console.log(
+    `Published-name validation passed: ${Object.keys(PUBLISHED_TYPE_NAMES).length} component name(s), ` +
+      `${new Set(Object.values(PUBLISHED_TYPE_NAMES)).size} published type(s), ` +
+      `${QUERY_BINDINGS.length} Query binding(s), ` +
+      `${Object.keys(PROJECTED_TYPES).length} declared projection(s), ` +
+      `${RESOLVER_BUILT_TYPES.length} resolver-built type(s), ` +
+      `${Object.keys(ALIASED_TYPE_NAMES).length} declared alias(es).`,
+  );

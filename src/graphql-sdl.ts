@@ -981,7 +981,9 @@ export const SDL = /* GraphQL */ `
     subnet_recycled(netuid: Int!, network: Network): SubnetRecycled
     "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
     subnet_burn(netuid: Int!, network: Network): SubnetBurn
+    "Every subnet's live registration/burn cost in one response, ranked cheapest-first -- the cross-subnet companion to subnet_burn, which answers the same question one subnet at a time. Served from a single chain read, so an RPC failure resolves the card with nulls rather than a GraphQL error. Mirrors GET /api/v1/chain/burn."
     chain_burn(network: Network): ChainBurn
+    "One subnet's registration-cost series: how the burn has moved, captured every 15 minutes. The live cards answer what it costs; this answers whether it is getting more expensive. window is 24h|7d|30d|90d. A subnet with no captured points resolves to an empty series, never null. Mirrors GET /api/v1/subnets/{netuid}/burn/history."
     subnet_burn_history(netuid: Int!, window: String): SubnetBurnHistory!
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
     subnet_turnover(
