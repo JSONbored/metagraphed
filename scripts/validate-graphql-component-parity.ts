@@ -25,6 +25,17 @@
 // gate in the repo. A `Float` over an `Int` is still allowed, in both checks,
 // because a widening loses nothing.
 //
+// #10377 closed that on the MIRRORS only. The projection pass, which is the
+// one that reaches the 39 resolver-built and 25 paginated types, kept
+// comparing nullability and Int-narrowing and nothing else -- so on a third of
+// the published surface a `String` over an object still read as agreement,
+// which is where it matters most: a projection is exactly the place a resolver
+// reshapes a value and can reshape it into the wrong type. Running the same
+// comparison there (#10409) found `Validator.stake_dominance`, a field
+// /api/v1/validators serves and GraphQL could not select, and `CurationList.
+// notes` published as `String` over a `string | string[]` union -- the shape
+// that nulls the whole row, and /api/v1/endpoints serves the list form.
+//
 // HOW THE PAIRS ARE FOUND -- derived, not declared. Each Query field carries a
 // `Mirrors GET /api/v1/...` annotation; the route's OpenAPI response names the
 // component its `data` refs. That seeds SDL-type <-> component pairs, which
@@ -36,6 +47,8 @@ import { readFileSync } from "node:fs";
 import { parse } from "graphql";
 import { GraphQLList, GraphQLNonNull, GraphQLObjectType } from "graphql";
 import type {
+  FieldDefinitionNode,
+  GraphQLField,
   GraphQLOutputType,
   ObjectTypeDefinitionNode,
   TypeNode,
@@ -130,9 +143,15 @@ export const DECLARED: Record<string, string> = {
  * THE LIST ONLY SHRINKS. An entry whose field is no longer under-typed fails,
  * and an under-typed field with no entry fails -- so the count is a live
  * measure of the distance left to the generated schema, and cannot drift up.
+ *
+ * It went 24 -> 51 in #10409, which is not drift: the scalar-identity check
+ * had only ever run on the MIRRORS, and 27 of these sit on a projection or a
+ * paginated view, where nothing had compared a type to a type. The debt did
+ * not grow -- half of it had simply never been counted.
  */
 const JSON_UNDERTYPED: Record<string, string> = {
   "Adapter.snapshot": "AdapterArtifactSnapshot",
+  "BlockChainEvents.events": "[AccountEvent!]",
   "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
   "BuildSummary.artifact_budget_summary":
     "BuildSummaryArtifactArtifactBudgetSummary",
@@ -153,6 +172,36 @@ const JSON_UNDERTYPED: Record<string, string> = {
   "ComparedValidator.subnet_context":
     "CompareValidatorsArtifactValidatorsSubnetContext",
   "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
+  "CurationList.curation": "[CurationArtifactCuration!]",
+  "EndpointPoolList.pools": "[RpcPool!]",
+  "EvidenceList.claims": "[EvidenceClaim!]",
+  "EvidenceList.summary": "EvidenceLedgerArtifactSummary",
+  "GapsList.gaps": "[GapsArtifactGaps!]",
+  "GlobalIncidents.summary": "GlobalIncidentsArtifactSummary",
+  "HealthHistory.summary": "HealthProbeSummary",
+  "HealthHistory.surfaces": "[HealthHistoryArtifactSurfaces!]",
+  "IncidentList.incidents": "[EndpointIncident!]",
+  "IncidentList.summary": "EndpointIncidentsArtifactSummary",
+  "PoolList.pools": "[RpcPool!]",
+  "ProfileList.profiles": "[SubnetProfile!]",
+  "ReviewAdapterCandidateList.candidates": "[ReviewAdapterCandidate!]",
+  "ReviewEnrichmentEvidenceList.entries":
+    "[ReviewEnrichmentEvidenceArtifactEntries!]",
+  "ReviewEnrichmentEvidenceList.notes": "String",
+  "ReviewEnrichmentQueueList.notes": "String",
+  "ReviewEnrichmentQueueList.queue": "[ReviewEnrichmentQueueArtifactQueue!]",
+  "ReviewEnrichmentTargetList.notes": "String",
+  "ReviewEnrichmentTargetList.targets":
+    "[ReviewEnrichmentTargetsArtifactTargets!]",
+  "ReviewGapPriorityList.priorities": "[ReviewGapPriority!]",
+  "ReviewProfileCompletenessList.profiles":
+    "[ReviewProfileCompletenessArtifactProfiles!]",
+  "ReviewProfileCompletenessList.summary":
+    "ReviewProfileCompletenessArtifactSummary",
+  "SearchDocumentList.documents": "[SearchArtifactDocuments!]",
+  "SearchIndexList.documents": "[SearchIndexArtifactDocuments!]",
+  "SourceSnapshotList.sources": "[SourceSnapshotsArtifactSources!]",
+  "SourceSnapshotList.summary": "SourceSnapshotsArtifactSummary",
   "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
   "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
   "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",
@@ -265,6 +314,86 @@ function generatedTypeName(type: GraphQLOutputType): string | null {
 }
 
 /**
+ * The SDL's published shape for a field against the emitted one -- `null` when
+ * they are the same type, otherwise both spellings.
+ *
+ * SCALAR IDENTITY, the check that closes #10377's blind spot: until it existed,
+ * `String` against `JSON` read as agreement, so 348 fields could be retyped
+ * `JSON` and no gate in the repo would have said anything.
+ *
+ * The two name systems are reconciled through PUBLISHED_TYPE_NAMES: the
+ * component `SubnetIndexEntry` is published as `Subnet`, and comparing raw ids
+ * would report all 300-odd mirrors as mismatched.
+ *
+ * A WIDENING is not a divergence. `Float` over `Int` accepts every value the
+ * component can hold, and 13 fields declare it deliberately for a computed
+ * value (`mean_ms`, `stability_score`, the percentiles) whose component happens
+ * to hold whole numbers today. The dangerous direction -- `Int` over `Float`,
+ * which on GraphQL's 32-bit Int errors on every epoch-millisecond value -- is a
+ * separate check at both call sites.
+ *
+ * Extracted from the mirror pass so the PROJECTION pass gets it too. It never
+ * had it: the projections were checked for nullability and Int-narrowing only,
+ * so on 39 types -- every paginated view, every resolver-flattened card -- a
+ * `String` over an object read as agreement exactly the way #10377 described.
+ */
+function shapeDivergence(
+  sdlNode: FieldDefinitionNode,
+  genField: GraphQLField<unknown, unknown>,
+  publishedAs: (component: string) => ReadonlySet<string>,
+): { published: string; wanted: string } | null {
+  const sdlSide = sdlLeaf(sdlNode.type);
+  const genSide = generatedLeaf(genField.type);
+  const names = publishedAs(genSide.name);
+  if (
+    sdlSide.list === genSide.list &&
+    (names.has(sdlSide.name) || (sdlSide.name === "Float" && names.has("Int")))
+  ) {
+    return null;
+  }
+  const written = (side: { name: string; list: boolean }, name: string) =>
+    side.list ? `[${name}!]` : name;
+  return {
+    published: written(sdlSide, sdlSide.name),
+    wanted: written(
+      genSide,
+      PUBLISHED_TYPE_NAMES[genSide.name] ?? genSide.name,
+    ),
+  };
+}
+
+/**
+ * Every name the published SDL may legitimately spell an emitted component
+ * under: its own, its `PUBLISHED_TYPE_NAMES` name, its alias, and every
+ * projection declared over it.
+ *
+ * The PROJECTION route is what the mirror pass never needed and the projection
+ * pass cannot do without: `SubnetsArtifact.subnets` emits `[SubnetIndexEntry!]`
+ * and the SDL publishes `[Subnet!]`, which is not a rename -- it is
+ * `PROJECTED_TYPES.Subnet`, declared with the component it picks from. Reading
+ * only the rename map would report all 39 projections as mismatched.
+ */
+function publishedNameResolver(
+  projectedTypesMap: Readonly<Record<string, (typeof PROJECTED_TYPES)[string]>>,
+): (component: string) => ReadonlySet<string> {
+  const byComponent = new Map<string, Set<string>>();
+  const add = (component: string, name: string) => {
+    const seen = byComponent.get(component);
+    if (seen) seen.add(name);
+    else byComponent.set(component, new Set([name]));
+  };
+  for (const [published, projection] of Object.entries(projectedTypesMap))
+    add(projection.component, published);
+  return (component: string) => {
+    const names = new Set(byComponent.get(component) ?? []);
+    names.add(PUBLISHED_TYPE_NAMES[component] ?? component);
+    const alias = ALIASED_TYPE_NAMES[component];
+    if (alias) names.add(alias);
+    return names;
+  };
+}
+
+/**
  * Compare a GraphQL SDL against the Zod components its types mirror.
  *
  * Takes the SDL text and the OpenAPI document rather than reading them, so a
@@ -284,6 +413,7 @@ export function checkComponentParity(
     if (def.kind === "ObjectTypeDefinition") sdlTypes.set(def.name.value, def);
   }
   const { types: generated } = emitTypes();
+  const publishedAs = publishedNameResolver(projectedTypesMap);
 
   /** The component a route's `data` property refs. */
   const dataComponent = (route: string): string | null => {
@@ -419,38 +549,12 @@ export function checkComponentParity(
                 `${componentName} emits ${genScalar}`,
             );
           }
-          // SCALAR IDENTITY -- the blind spot that hid the whole enum->JSON
-          // class (#10377). Until this, `String` against `JSON` read as
-          // agreement, so 348 fields could be retyped `JSON` and no gate would
-          // have said anything.
-          //
-          // The two name systems are reconciled through PUBLISHED_TYPE_NAMES:
-          // the component `SubnetIndexEntry` is published as `Subnet`, and
-          // comparing raw ids would report all 300-odd mirrors as mismatched.
-          const sdlSide = sdlLeaf(sdlNode.type);
-          const genSide = generatedLeaf(genField.type);
-          const genPublished =
-            PUBLISHED_TYPE_NAMES[genSide.name] ?? genSide.name;
+          // SCALAR IDENTITY -- see `shapeDivergence`.
           const key = `${sdlName}.${name}`;
-          const sameShape =
-            sdlSide.list === genSide.list &&
-            (sdlSide.name === genPublished ||
-              // The one component published under a second name.
-              sdlSide.name === ALIASED_TYPE_NAMES[genSide.name] ||
-              // A WIDENING, left alone here for the same reason the narrowing
-              // check above states: a Float accepts every integer, and 13
-              // fields declare it deliberately for a computed value
-              // (`mean_ms`, `stability_score`, the percentiles) whose
-              // component happens to hold whole numbers today. The dangerous
-              // direction -- Int over Float -- is the check above.
-              (sdlSide.name === "Float" && genPublished === "Int"));
-          if (!sameShape) {
-            const written = (
-              side: { name: string; list: boolean },
-              n: string,
-            ) => (side.list ? `[${n}!]` : n);
-            const wanted = written(genSide, genPublished);
-            if (sdlSide.name === "JSON") {
+          const divergence = shapeDivergence(sdlNode, genField, publishedAs);
+          if (divergence) {
+            const { published, wanted } = divergence;
+            if (published.replace(/[![\]]/g, "") === "JSON") {
               // UNDER-typing: the SDL publishes an opaque blob where the
               // component has a shape. Not a runtime fault -- JSON serializes
               // anything -- but a caller cannot select into it, which is the
@@ -473,7 +577,7 @@ export function checkComponentParity(
               // is the dangerous direction: graphql-js' String serializer
               // throws on a non-scalar and nulls the surrounding object.
               violations.push(
-                `${key} -- the SDL declares ${written(sdlSide, sdlSide.name)}, ` +
+                `${key} -- the SDL declares ${published}, ` +
                   `${componentName} emits ${wanted}`,
               );
             }
@@ -547,12 +651,13 @@ export function checkComponentParity(
         continue;
       }
       projectedFields += 1;
-      // Same two checks the mirrors get. A projection publishing a non-null
-      // over a nullable component field is the response-shaped outage: one
-      // null and graphql-js nulls the whole surrounding object.
+      // The same THREE checks the mirrors get. A projection publishing a
+      // non-null over a nullable component field is the response-shaped
+      // outage: one null and graphql-js nulls the whole surrounding object.
+      const key = `${sdlName}.${name}`;
       if (sdlIsNonNull(field.type) && !generatedIsNonNull(genField.type)) {
         violations.push(
-          `${sdlName}.${name} -- the SDL declares it non-null, ` +
+          `${key} -- the SDL declares it non-null, ` +
             `${projection.component} says it is nullable`,
         );
       }
@@ -561,9 +666,33 @@ export function checkComponentParity(
         generatedScalarName(genField.type) === "Float"
       ) {
         violations.push(
-          `${sdlName}.${name} -- the SDL declares Int, ` +
+          `${key} -- the SDL declares Int, ` +
             `${projection.component} emits Float`,
         );
+      }
+      // Scalar identity. The projections did not have this check until
+      // #10409, which is the same hole #10377 closed for the mirrors, left
+      // open on the 39 types nothing else reaches -- and it is where it
+      // matters most, because a projection is exactly the place a resolver
+      // reshapes a value and can reshape it into the wrong type.
+      const divergence = shapeDivergence(field, genField, publishedAs);
+      if (divergence) {
+        const { published, wanted } = divergence;
+        if (published.replace(/[![\]]/g, "") === "JSON") {
+          if (JSON_UNDERTYPED[key] === wanted) undertypedMatched.add(key);
+          else
+            violations.push(
+              `${key} -- the SDL declares JSON, ${projection.component} ` +
+                `emits ${wanted}; declare it in JSON_UNDERTYPED or publish the type`,
+            );
+        } else if (declared[key]) {
+          matched.add(key);
+        } else {
+          violations.push(
+            `${key} -- the SDL declares ${published}, ` +
+              `${projection.component} emits ${wanted}`,
+          );
+        }
       }
     }
     for (const name of added) {

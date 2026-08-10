@@ -1887,7 +1887,7 @@ export type Contracts = {
   type_definitions_url?: Maybe<Scalars['String']['output']>;
 };
 
-/** Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
+/** Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation). */
 export type CurationList = {
   __typename?: 'CurationList';
   curation: Array<Scalars['JSON']['output']>;
@@ -1895,7 +1895,8 @@ export type CurationList = {
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
-  notes?: Maybe<Scalars['String']['output']>;
+  /** A string or a list of strings, depending on the producer -- /api/v1/endpoints serves three. Declared String until #10409, which nulls the whole row on a list: graphql-js' String serializer throws on a non-scalar. */
+  notes?: Maybe<Scalars['JSON']['output']>;
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
@@ -6343,6 +6344,8 @@ export type Validator = {
   realized_return_1w_as_of?: Maybe<Scalars['String']['output']>;
   root_stake_tao?: Maybe<Scalars['Float']['output']>;
   schema_version?: Maybe<Scalars['Int']['output']>;
+  /** This validator's share of all validator stake, as a fraction. Populated from the global leaderboard, which computes it across the whole validator set; NULL from the single-validator lookup, which has no set to divide by (buildValidatorDetail aggregates one hotkey) -- null means unknown, not zero, the same reading featured and uid_count carry (#10409). */
+  stake_dominance?: Maybe<Scalars['Float']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
   /** Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet. */
   subnets: Array<ValidatorSubnet>;
@@ -8791,7 +8794,7 @@ export type CurationListResolvers<ContextType = GqlContext, ParentType extends R
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -11032,6 +11035,7 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   realized_return_1w_as_of?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   root_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stake_dominance?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ValidatorSubnet']>, ParentType, ContextType>;
   take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;

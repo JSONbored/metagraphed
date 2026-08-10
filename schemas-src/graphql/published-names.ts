@@ -91,6 +91,13 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AccountEventsArtifact: "AccountEvents",
   AccountExtrinsicsArtifact: "AccountExtrinsics",
   AccountExtrinsicsArtifactExtrinsics: "Extrinsic",
+  // The same row shape reached three ways -- an account's extrinsics, the
+  // global feed, and one extrinsic's detail -- published under one name. All
+  // three components emit the identical twelve fields; naming only the first
+  // left the other two reading as a type mismatch the moment the projection
+  // pass started comparing types at all (#10409).
+  ExtrinsicsFeedArtifactExtrinsics: "Extrinsic",
+  ExtrinsicDetailArtifactExtrinsic: "Extrinsic",
   AccountHistoryArtifact: "AccountHistory",
   AccountHistoryArtifactDays: "AccountDay",
   AccountIdentityArtifact: "AccountIdentity",
@@ -101,6 +108,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AccountParentsArtifactSubnetsEntries: "AccountParentEntry",
   AccountPortfolioArtifact: "AccountPortfolio",
   AccountPortfolioArtifactPositions: "AccountPortfolioPosition",
+  AccountsListArtifactAccountsSubnets: "AccountSubnet",
   AccountPositionHistoryArtifact: "AccountPositionHistory",
   AccountPositionHistoryArtifactPoints: "AccountPositionHistoryPoint",
   AccountPositionsArtifact: "AccountPositions",
@@ -136,6 +144,8 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AdapterArtifact: "Adapter",
   BlockDetailArtifact: "BlockDetail",
   BlockDetailArtifactBlock: "Block",
+  // Field for field the same eight as the detail component.
+  BlocksFeedArtifactBlocks: "Block",
   BlockEventsArtifact: "BlockEvents",
   BlockExtrinsicsArtifact: "BlockExtrinsics",
   BlocksFeedArtifact: "BlockList",
@@ -387,8 +397,23 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   UptimeArtifactSurfacesDaysLatencyMs: "UptimeLatency",
   UptimeArtifactSurfacesReliability: "UptimeReliability",
   ValidatorDetailArtifact: "Validator",
+  // `validatorNode` (src/graphql.ts) normalizes the two producers into one
+  // published shape on purpose: the list entry names its timestamps
+  // latest_captured_at/latest_block_number and the detail aggregate names
+  // them captured_at/block_number. Where they genuinely differ -- featured,
+  // uid_count and stake_dominance are list-only -- the SDL publishes them
+  // nullable and documents the null, rather than declaring two types.
+  GlobalValidatorsArtifactValidators: "Validator",
   ValidatorDetailArtifactColdkeyIdentity: "Identity",
   ValidatorDetailArtifactSubnets: "ValidatorSubnet",
+  // The list producer's nested rows, reachable only once the traversal steps
+  // through `ValidatorList.items` (#10409). The identity is field for field
+  // the detail's; the membership row is the leaderboard's compact five, a
+  // subset of the detail's eighteen -- one published type over two producers,
+  // which is what `ValidatorSubnet`'s own SDL comment already describes. Both
+  // fields the SDL declares non-null (netuid, uid) are non-null on both sides.
+  GlobalValidatorsArtifactValidatorsColdkeyIdentity: "Identity",
+  GlobalValidatorsArtifactValidatorsSubnets: "ValidatorSubnet",
   ValidatorEconomicsExclusion: "ValidatorEconomicsExclusion",
   ValidatorEconomicsHistoryPoint: "ValidatorEconomicsHistoryPoint",
   ValidatorEconomicsRankingArtifact: "ValidatorEconomicsRanking",
@@ -2031,6 +2056,10 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
     dropped: ["ref", "limit", "offset"],
   },
   AccountEntry: { component: "AccountsListArtifactAccounts", added: [] },
+  // Two producers, one published type, and the ACCOUNTS-LIST one is the whole
+  // of it: `AccountsListArtifactAccountsSubnets` emits exactly the four fields
+  // `AccountSubnet` declares, so the projection below (which drops seven of
+  // the portfolio's eleven) is the same four seen from the other side.
   AccountSubnet: {
     component: "AccountPortfolioArtifactPositions",
     added: [],
@@ -2379,13 +2408,13 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
  *
  * THIS LIST IS THE DEBT, and only it: everything in `PROJECTED_TYPES` gets
  * checked field by field, and everything here is taken on trust. It was 15
- * when #10371 split the two, 8 after the projections were declared, and 5
+ * when #10371 split the two, 8 after the projections were declared, and 4
  * now that the three with a component behind them moved across -- `SubnetList`
  * and `ProviderList` page over `SubnetsArtifact`/`ProvidersArtifact`, and
  * `GlobalHealth` flattens `HealthSummaryArtifact`. Anything that picks its
  * fields from a component belongs there, not here.
  *
- * Why each of the five is still here, and what closing it would take:
+ * Why each of the four is still here, and what closing it would take:
  *
  *   OpportunityBoards       six boards of OpportunityEntry, assembled from a
  *                           leaderboard read. No artifact has this shape.

@@ -7446,7 +7446,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @description Network-wide public evidence ledger page. Mirrors GET /api/v1/evidence (and MCP list_evidence). */
+        /** @description Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation). */
         CurationArtifact: {
             contract_version?: string;
             curation: {

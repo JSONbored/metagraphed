@@ -256,7 +256,7 @@ describe("scalar identity", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.undertyped, 24);
+    assert.equal(report.undertyped, 51);
   });
 
   test("it FAILS when a field is retyped to a different scalar", () => {
@@ -297,7 +297,7 @@ describe("scalar identity", () => {
   });
 
   test("a CLOSED under-typing makes its declaration stale, so the list shrinks", () => {
-    // `Adapter.snapshot` is one of the 24 still open. Publishing the shape its
+    // `Adapter.snapshot` is one of the 51 still open. Publishing the shape its
     // component already describes has to make the declaration stale, or the
     // list would keep an entry for a gap that no longer exists.
     const fixed = inType(
@@ -311,7 +311,7 @@ describe("scalar identity", () => {
       report.stale.includes("Adapter.snapshot"),
       `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
     );
-    assert.equal(report.undertyped, 23);
+    assert.equal(report.undertyped, 50);
   });
 
   test("a Float over an Int component field is a WIDENING and stays allowed", () => {
@@ -423,6 +423,67 @@ describe("paginated views", () => {
         v.startsWith("GlobalIncidents -- pages over GlobalIncidentsArtifact"),
       ),
       `expected the undeclared view to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  // ── scalar identity, on the projections too (#10409) ──────────────────────
+  //
+  // The mirror pass got this in #10377 and the projection pass did not, so on
+  // 39 resolver-built and 25 paginated types a `String` over an object read as
+  // agreement -- the same blind spot, left open on a third of the surface.
+  // These drive the PROJECTION side specifically: a mutation that only the
+  // projection pass can reach must still be reported.
+  test("it FAILS when a PROJECTION retypes a field to a different scalar", () => {
+    const broken = inType(
+      sdl,
+      "Subnet",
+      /^ {4}netuid: Int!\n/m,
+      "    netuid: String!\n",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some(
+        (v) =>
+          v.startsWith("Subnet.netuid -- the SDL declares String") &&
+          v.includes("SubnetIndexEntry emits Int"),
+      ),
+      `expected the retyped projection field to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("it FAILS on a NEW under-typing inside a projection", () => {
+    const broken = inType(
+      sdl,
+      "Subnet",
+      /^ {4}netuid: Int!\n/m,
+      "    netuid: JSON\n",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some(
+        (v) =>
+          v.startsWith("Subnet.netuid -- the SDL declares JSON") &&
+          v.includes("declare it in JSON_UNDERTYPED or publish the type"),
+      ),
+      `expected the new projection under-typing to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a projection's published type name resolves through PROJECTED_TYPES", () => {
+    // `SubnetsArtifact.subnets` emits `[SubnetIndexEntry!]` and the SDL
+    // publishes `[Subnet!]`. That is not a rename -- it is the projection
+    // declared over it, and reading only PUBLISHED_TYPE_NAMES would report
+    // every one of the 39 as a type mismatch. Dropping the declaration must
+    // make the pair unresolvable again.
+    const { Subnet: _dropped, ...withoutSubnet } = PROJECTED_TYPES;
+    const report = checkComponentParity(sdl, openapi, DECLARED, withoutSubnet);
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith(
+          "SubnetList.items -- the SDL declares [Subnet!], SubnetsArtifact emits [SubnetIndexEntry!]",
+        ),
+      ),
+      `expected the unresolvable name to be reported, got: ${report.violations.join("; ")}`,
     );
   });
 });

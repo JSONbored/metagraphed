@@ -4,12 +4,23 @@
 //
 // Every test here mutates one side and asserts the mismatch is reported. The
 // gate's own run against the real tree only ever proves it passes.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { parse } from "graphql";
+import type { ObjectTypeDefinitionNode } from "graphql";
 import {
   compareQueryBindings,
+  traverse,
   type SdlBinding,
 } from "../scripts/validate-published-names.ts";
-import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
+import { extractSdl } from "../scripts/validate-graphql-component-parity.ts";
+import { emitTypes } from "../schemas-src/graphql/emit.ts";
+import {
+  PROJECTED_TYPES,
+  QUERY_BINDINGS,
+} from "../schemas-src/graphql/published-names.ts";
+
+const fullSdl = extractSdl(readFileSync("src/graphql-sdl.ts", "utf8"))!;
 
 const sdl: SdlBinding[] = [
   {
@@ -103,5 +114,79 @@ describe("the real registry", () => {
         `Mirrors GET ${binding.route}`,
       );
     }
+  });
+});
+
+// ── the SDL traversal (#10409) ───────────────────────────────────────────────
+//
+// The walk decides what the staleness check can see, and it stepped only
+// through SAME-NAMED fields -- so a paginated view, which renames its row
+// array, dead-ended and its element component was unreachable. Five components
+// the SDL genuinely publishes could not be named for that reason: the entry
+// read as stale. These drive the walk with a mutated registry, because run
+// against the passing tree it only ever proves it passes.
+describe("traverse", () => {
+  const sdlTypes = new Map(
+    parse(fullSdl).definitions.flatMap((def) =>
+      def.kind === "ObjectTypeDefinition"
+        ? ([[def.name.value, def]] as [string, ObjectTypeDefinitionNode][])
+        : [],
+    ),
+  );
+  const { types: generated } = emitTypes();
+  const seeds: [string, string][] = [["BlockList", "BlocksFeedArtifact"]];
+
+  it("reaches an element component THROUGH a paginated view's rename", () => {
+    const { reachable, computed } = traverse(
+      sdlTypes,
+      generated,
+      seeds,
+      PROJECTED_TYPES,
+    );
+    expect(reachable.has("BlocksFeedArtifactBlocks")).toBe(true);
+    expect([...(computed.get("BlocksFeedArtifactBlocks") ?? [])]).toEqual([
+      "Block",
+    ]);
+  });
+
+  it("does NOT reach it when the rename is undeclared", () => {
+    // `itemsFrom` is the only thing connecting `BlockList.items` to
+    // `BlocksFeedArtifact.blocks`. Without it the walk stops at the view.
+    const { itemsFrom: _dropped, ...withoutRename } = PROJECTED_TYPES.BlockList;
+    const { reachable } = traverse(sdlTypes, generated, seeds, {
+      ...PROJECTED_TYPES,
+      BlockList: withoutRename,
+    });
+    expect(reachable.has("BlocksFeedArtifactBlocks")).toBe(false);
+  });
+
+  it("a projection seed is reachable but is NOT a name identity", () => {
+    // `AccountSubnet` PICKS four of AccountPortfolioArtifactPositions' eleven
+    // fields; that component publishes as `AccountPortfolioPosition`. Recording
+    // the seed pair would assert the two names are the same type.
+    const { reachable, computed, paired } = traverse(
+      sdlTypes,
+      generated,
+      [],
+      PROJECTED_TYPES,
+    );
+    expect(reachable.has("AccountPortfolioArtifactPositions")).toBe(true);
+    expect(computed.get("AccountPortfolioArtifactPositions")).toBeUndefined();
+    expect(paired.has("AccountSubnet")).toBe(false);
+  });
+
+  it("terminates on a projection whose descendant is itself a projection", () => {
+    // One visited set for BOTH seed kinds. Guarding only the mirrors let a
+    // projection re-expand every time it was re-enqueued.
+    const { reachable } = traverse(sdlTypes, generated, [], {
+      ...PROJECTED_TYPES,
+      SubnetList: {
+        component: "SubnetsArtifact",
+        itemsFrom: "subnets",
+        added: [],
+      },
+      Subnet: { component: "SubnetIndexEntry", added: [], dropped: [] },
+    });
+    expect(reachable.has("SubnetIndexEntry")).toBe(true);
   });
 });
