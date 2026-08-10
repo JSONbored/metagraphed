@@ -15,7 +15,7 @@ name: UI Preview Deploy
 # preview domain there is no URL to visit, so uploaded fork code is not reachable at all; the
 # boundary holds a fortiori, and would still hold unchanged if a preview domain were restored.
 #
-# Required repo secrets (already present — used by publish-cloudflare.yml / check-worker-deploy-drift.yml):
+# Required repo secrets (already present — used by publish-cloudflare.yml / check-worker-deploys.yml):
 #   CLOUDFLARE_API_TOKEN   — token with "Workers Scripts:Edit" on the account
 #   CLOUDFLARE_ACCOUNT_ID  — the Cloudflare account id that owns metagraphed-ui
 

@@ -53,7 +53,7 @@
 # Deployments API reference + wrangler's own CLI source -- `workers/message`/
 # `workers/tag`/`workers/triggered_by` are the only Workers deployment
 # annotations that actually exist; `workers/commit_hash`
-# scripts/check-worker-deploy-drift.ts previously checked was never a real
+# scripts/check-worker-deploys.ts reads was never a real
 # one, that key only exists on Cloudflare Pages' unrelated deploy command)
 # so that scheduled drift check can read the live commit directly.
 #
