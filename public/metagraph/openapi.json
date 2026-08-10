@@ -40969,34 +40969,13 @@
                 "type": "integer"
               },
               "max": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
+                "type": "number"
               },
               "mean": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
+                "type": "number"
               },
               "min": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
+                "type": "number"
               },
               "p10": {
                 "anyOf": [
@@ -41049,6 +41028,12 @@
                 ]
               }
             },
+            "required": [
+              "count",
+              "mean",
+              "min",
+              "max"
+            ],
             "type": "object"
           },
           {

@@ -10036,10 +10036,10 @@ export interface components {
         };
         /** @description Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network). */
         ScoreDistribution: ({
-            count?: number;
-            max?: number | null;
-            mean?: number | null;
-            min?: number | null;
+            count: number;
+            max: number;
+            mean: number;
+            min: number;
             p10?: number | null;
             p25?: number | null;
             p50?: number | null;
