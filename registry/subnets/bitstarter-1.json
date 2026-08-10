@@ -46,6 +46,11 @@
   },
   "source_repo": "https://github.com/AlphaCoreBittensor/alphacore",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -179,7 +184,7 @@
       "id": "sn-91-alphacore-task-config",
       "kind": "data-artifact",
       "name": "AlphaCore task-generation config",
-      "notes": "Public no-auth static YAML data file committed in SN91 Bitstarter's official AlphaCoreBittensor/alphacore repository — the validator's task-generation configuration (providers, resource families, and task banks) loaded by the TaskGenerationPipeline via ALPHACORE_CONFIG to construct miner tasks. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo.",
+      "notes": "Public no-auth static YAML data file committed in SN91 Bitstarter's official AlphaCoreBittensor/alphacore repository \u2014 the validator's task-generation configuration (providers, resource families, and task banks) loaded by the TaskGenerationPipeline via ALPHACORE_CONFIG to construct miner tasks. Served read-only via raw.githubusercontent from the same official repo already registered as the subnet's source-repo.",
       "provider": "alphacore",
       "public_safe": true,
       "review": {

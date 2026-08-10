@@ -41,6 +41,11 @@
   "slug": "actual",
   "source_repo": null,
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -106,7 +111,7 @@
       "id": "sn-95-actual-model-registry-index",
       "kind": "data-artifact",
       "name": "Actual model registry public index",
-      "notes": "Public no-auth machine-readable JSON index of the SN95 Actual model registry, served at models.actual.inc/index.json (schemaVersion \"actual.modelRegistry.publicIndex.v1\", carrying generatedAt and a registry object of available GGUF models). This is the machine-readable counterpart to the browser-facing models.actual.inc/ registry page already registered — a distinct URL returning structured JSON rather than HTML. Verified 200 application/json.",
+      "notes": "Public no-auth machine-readable JSON index of the SN95 Actual model registry, served at models.actual.inc/index.json (schemaVersion \"actual.modelRegistry.publicIndex.v1\", carrying generatedAt and a registry object of available GGUF models). This is the machine-readable counterpart to the browser-facing models.actual.inc/ registry page already registered \u2014 a distinct URL returning structured JSON rather than HTML. Verified 200 application/json.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -131,7 +136,7 @@
       "id": "sn-95-actual-llms-txt",
       "kind": "data-artifact",
       "name": "Actual Computer llms.txt agent index",
-      "notes": "Public no-auth machine-readable llms.txt served at actual.inc/llms.txt for SN95 Actual Computer — an agent/LLM-facing Markdown runbook describing the private-inference product (install one binary, authorize a device, get OpenAI/Anthropic-compatible local APIs) and pointing to the install, register, and model-registry resources; content begins '# Actual Computer'. Distinct from the model-registry surfaces (a different URL and a text/markdown artifact). A companion llms-full.txt exists at the same host.",
+      "notes": "Public no-auth machine-readable llms.txt served at actual.inc/llms.txt for SN95 Actual Computer \u2014 an agent/LLM-facing Markdown runbook describing the private-inference product (install one binary, authorize a device, get OpenAI/Anthropic-compatible local APIs) and pointing to the install, register, and model-registry resources; content begins '# Actual Computer'. Distinct from the model-registry surfaces (a different URL and a text/markdown artifact). A companion llms-full.txt exists at the same host.",
       "probe": {
         "enabled": true,
         "expect": "any",

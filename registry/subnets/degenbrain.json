@@ -26,6 +26,11 @@
   "schema_version": 1,
   "slug": "sn-90",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["openapi", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -119,7 +124,7 @@
       "id": "sn-90-degenbrain-resolutions-api",
       "kind": "subnet-api",
       "name": "DegenBrain resolutions API",
-      "notes": "Public, unauthenticated read endpoint of the SN90 DegenBrain Brain-API — past and ongoing prediction-statement resolutions. Documented (security: none) in the API's OpenAPI spec at /openapi.json. Distinct from the registered /api/markets/pending endpoint.",
+      "notes": "Public, unauthenticated read endpoint of the SN90 DegenBrain Brain-API \u2014 past and ongoing prediction-statement resolutions. Documented (security: none) in the API's OpenAPI spec at /openapi.json. Distinct from the registered /api/markets/pending endpoint.",
       "probe": {
         "enabled": true,
         "expect": "json",
