@@ -226,6 +226,27 @@ describe("declared projections (#10214)", () => {
     );
   });
 
+  test("a resolver-added field's declared TYPE is checked against the SDL", () => {
+    // The type is declared here because nothing else knows it -- a
+    // resolver-added field has no component to read a shape from. An unchecked
+    // spelling would make the generator emit a field the schema never had.
+    const report = checkComponentParity(sdl, openapi, DECLARED, {
+      ...PROJECTED_TYPES,
+      GlobalHealth: {
+        ...PROJECTED_TYPES.GlobalHealth,
+        added: { ...PROJECTED_TYPES.GlobalHealth.added, status: "Int!" },
+      },
+    });
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith(
+          "GlobalHealth.status -- declared as resolver-added Int!, the SDL publishes",
+        ),
+      ),
+      `expected the wrong spelling to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
   test("a stale `added` entry fails, so the list can only shrink", () => {
     // OpportunityEntry declares `validator_headroom` as resolver-added. Remove
     // it from the SDL and the declaration has to go too -- otherwise `added`

@@ -1844,10 +1844,17 @@ export interface ProjectedType {
   readonly component: string;
   /**
    * Fields the resolver adds that the component does not supply -- an
-   * association it resolves separately, or a value it computes. Declared so a
-   * typo'd or invented field is a failure rather than a silent extra.
+   * association it resolves separately, or a value it computes -- each with
+   * the type it publishes.
+   *
+   * The TYPE is here rather than only in the SDL because the generator has to
+   * emit these fields and nothing else knows their shape: they have no
+   * component to read one from. Declaring only the NAME made a typo'd or
+   * invented field a failure, which is half of it; declaring the type is what
+   * lets the SDL stop being the source (#10214). The spelling is checked
+   * against the SDL, so it cannot drift while both exist.
    */
-  readonly added: readonly string[];
+  readonly added: Readonly<Record<string, string>>;
   /**
    * Component fields the view deliberately does not republish, each of which
    * must BE a component field (a typo fails) and must be ABSENT from the SDL
@@ -1896,7 +1903,9 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   // "30d" are not valid GraphQL field names.
   SubnetTrajectoryDelta: {
     component: "SubnetTrajectoryDelta",
-    added: ["window"],
+    added: {
+      window: "String!",
+    },
     dropped: [],
   },
   // ── the three that DO have a component behind them (#10404) ───────────────
@@ -1909,7 +1918,10 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   SubnetList: {
     component: "SubnetsArtifact",
     itemsFrom: "subnets",
-    added: ["total", "next_cursor"],
+    added: {
+      total: "Int!",
+      next_cursor: "String",
+    },
     dropped: [
       "contract_version",
       "generated_at",
@@ -1922,7 +1934,10 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   ProviderList: {
     component: "ProvidersArtifact",
     itemsFrom: "providers",
-    added: ["total", "next_cursor"],
+    added: {
+      total: "Int!",
+      next_cursor: "String",
+    },
     dropped: ["contract_version", "generated_at", "notes", "schema_version"],
   },
   // A flattened card: the artifact's own fields plus the counts the resolver
@@ -1931,23 +1946,28 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   // nine it computes stay declared.
   GlobalHealth: {
     component: "HealthSummaryArtifact",
-    added: [
-      "status",
-      "ok_count",
-      "degraded_count",
-      "failed_count",
-      "unknown_count",
-      "avg_latency_ms",
-      "latency_sample_count",
-      "last_checked",
-      "last_ok",
-      "surface_count",
-    ],
+    added: {
+      status: "String",
+      ok_count: "Int",
+      degraded_count: "Int",
+      failed_count: "Int",
+      unknown_count: "Int",
+      avg_latency_ms: "Int",
+      latency_sample_count: "Int",
+      last_checked: "String",
+      last_ok: "String",
+      surface_count: "Int",
+    },
     dropped: ["contract_version", "schema_version", "global", "source"],
   },
   Subnet: {
     component: "SubnetIndexEntry",
-    added: ["health", "economics", "surfaces", "endpoints"],
+    added: {
+      health: "SubnetHealth",
+      economics: "SubnetEconomics",
+      surfaces: "[Surface!]!",
+      endpoints: "[Endpoint!]!",
+    },
     dropped: [
       "block",
       "candidate_count",
@@ -1980,12 +2000,15 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   Provider: {
     component: "Provider",
-    added: ["subnets", "endpoints"],
+    added: {
+      subnets: "[Subnet!]!",
+      endpoints: "[Endpoint!]!",
+    },
     dropped: ["schema_version", "social", "team_url", "cluster_id"],
   },
   Surface: {
     component: "Surface",
-    added: [],
+    added: {},
     dropped: [
       "auth",
       "curation_level",
@@ -1999,7 +2022,7 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   Endpoint: {
     component: "EndpointResource",
-    added: [],
+    added: {},
     dropped: [
       "archive_support",
       "chain",
@@ -2018,10 +2041,12 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
       "reliability_grade",
     ],
   },
-  SubnetHealth: { component: "HealthSubnetSummary", added: [] },
+  SubnetHealth: { component: "HealthSubnetSummary", added: {} },
   OpportunityEntry: {
     component: "SubnetEconomics",
-    added: ["validator_headroom"],
+    added: {
+      validator_headroom: "Int",
+    },
     dropped: [
       "alpha_fdv_tao",
       "alpha_in_emission",
@@ -2053,15 +2078,15 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   ExtrinsicDetail: {
     component: "ExtrinsicDetailArtifact",
-    added: [],
+    added: {},
     dropped: ["schema_version", "events"],
   },
   BlockChainEvents: {
     component: "BlockEventsArtifact",
-    added: [],
+    added: {},
     dropped: ["ref", "limit", "offset"],
   },
-  AccountEntry: { component: "AccountsListArtifactAccounts", added: [] },
+  AccountEntry: { component: "AccountsListArtifactAccounts", added: {} },
   // ── the three that had NO component until #10409 ─────────────────────────
   //
   // Each has one now, in schemas-src/graphql/graphql-only.ts, so each is
@@ -2071,17 +2096,17 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   // parity gate until the SDL publishes it.
   OpportunityBoards: {
     component: "OpportunityBoards",
-    added: [],
+    added: {},
     dropped: [],
   },
   EmissionGateChange: {
     component: "EmissionGateChange",
-    added: [],
+    added: {},
     dropped: [],
   },
   ChainEvent: {
     component: "ChainFirehoseEvent",
-    added: [],
+    added: {},
     dropped: [],
   },
   // Two producers, one published type, and the ACCOUNTS-LIST one is the whole
@@ -2090,7 +2115,7 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   // the portfolio's eleven) is the same four seen from the other side.
   AccountSubnet: {
     component: "AccountPortfolioArtifactPositions",
-    added: [],
+    added: {},
     dropped: [
       "role",
       "active",
@@ -2122,32 +2147,35 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
     component: "AccountsListArtifact",
     itemsFrom: "accounts",
     totalFrom: "account_count",
-    added: [],
+    added: {},
     dropped: ["schema_version", "limit"],
   },
   BlockList: {
     component: "BlocksFeedArtifact",
     itemsFrom: "blocks",
     totalFrom: "block_count",
-    added: [],
+    added: {},
     dropped: ["schema_version", "limit", "offset"],
   },
   CurationList: {
     component: "CurationArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version"],
   },
   EconomicsList: {
     component: "EconomicsArtifact",
-    added: ["total", "next_cursor"],
+    added: {
+      total: "Int!",
+      next_cursor: "String",
+    },
     dropped: [
       "contract_version",
       "generated_at",
@@ -2162,7 +2190,10 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   EndpointList: {
     component: "EndpointsArtifact",
     itemsFrom: "endpoints",
-    added: ["total", "next_cursor"],
+    added: {
+      total: "Int!",
+      next_cursor: "String",
+    },
     dropped: [
       "contract_version",
       "generated_at",
@@ -2176,15 +2207,15 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   EndpointPoolList: {
     component: "EndpointPoolsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: [
       "contract_version",
       "schema_version",
@@ -2195,61 +2226,61 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   EvidenceList: {
     component: "EvidenceLedgerArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "notes"],
   },
   ExtrinsicList: {
     component: "ExtrinsicsFeedArtifact",
     itemsFrom: "extrinsics",
     totalFrom: "extrinsic_count",
-    added: [],
+    added: {},
     dropped: ["schema_version", "limit", "offset"],
   },
   GapsList: {
     component: "GapsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version"],
   },
   GlobalIncidents: {
     component: "GlobalIncidentsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["min_incident_samples"],
   },
   HealthHistory: {
     component: "HealthHistoryArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: [
       "contract_version",
       "generated_at",
@@ -2262,29 +2293,29 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   IncidentList: {
     component: "EndpointIncidentsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version", "source"],
   },
   PoolList: {
     component: "RpcPoolsArtifact",
-    added: [
-      "operational_observed_at",
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      operational_observed_at: "String",
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: [
       "contract_version",
       "schema_version",
@@ -2295,16 +2326,16 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   ProfileList: {
     component: "SubnetProfilesArtifact",
-    added: [
-      "captured_at",
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      captured_at: "String",
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: [
       "contract_version",
       "generated_at",
@@ -2315,118 +2346,132 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   ReviewAdapterCandidateList: {
     component: "ReviewAdapterCandidatesArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version", "summary"],
   },
   ReviewEnrichmentEvidenceList: {
     component: "ReviewEnrichmentEvidenceArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version", "summary"],
   },
   ReviewEnrichmentQueueList: {
     component: "ReviewEnrichmentQueueArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version", "summary"],
   },
   ReviewEnrichmentTargetList: {
     component: "ReviewEnrichmentTargetsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version", "groups", "summary"],
   },
   ReviewGapPriorityList: {
     component: "ReviewGapPrioritiesArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version"],
   },
   ReviewProfileCompletenessList: {
     component: "ReviewProfileCompletenessArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "schema_version"],
   },
   SearchDocumentList: {
     component: "SearchArtifact",
     totalFrom: "document_count",
-    added: ["next_cursor"],
+    added: {
+      next_cursor: "String",
+    },
     dropped: ["contract_version", "generated_at", "notes", "schema_version"],
   },
   SearchIndexList: {
     component: "SearchIndexArtifact",
     totalFrom: "document_count",
-    added: ["returned", "limit", "cursor", "next_cursor", "sort", "order"],
+    added: {
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "notes", "schema_version"],
   },
   SourceSnapshotList: {
     component: "SourceSnapshotsArtifact",
-    added: [
-      "total",
-      "returned",
-      "limit",
-      "cursor",
-      "next_cursor",
-      "sort",
-      "order",
-    ],
+    added: {
+      total: "Int!",
+      returned: "Int!",
+      limit: "Int!",
+      cursor: "Int!",
+      next_cursor: "Int",
+      sort: "String",
+      order: "String",
+    },
     dropped: ["contract_version", "notes"],
   },
   SurfaceList: {
     component: "SurfacesArtifact",
     itemsFrom: "surfaces",
-    added: ["total", "next_cursor"],
+    added: {
+      total: "Int!",
+      next_cursor: "String",
+    },
     dropped: ["contract_version", "generated_at", "notes", "schema_version"],
   },
   ValidatorList: {
     component: "GlobalValidatorsArtifact",
     itemsFrom: "validators",
     totalFrom: "validator_count",
-    added: ["next_cursor"],
+    added: {
+      next_cursor: "String",
+    },
     dropped: ["schema_version", "limit"],
   },
 };
