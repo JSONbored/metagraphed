@@ -3478,6 +3478,11 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
           website_url: "https://www.404.xyz/",
           authority: "community",
           social: { x: "https://x.com/404gen_" },
+          // Required since #10214, and present on all 137 rows the builder
+          // emits -- `enrichedProviders` computes it for every provider, an
+          // empty array for one with no surfaces. The fixture had omitted it,
+          // which is why the schema could claim `.optional()` unchallenged.
+          netuids: [17],
         },
       ],
     };

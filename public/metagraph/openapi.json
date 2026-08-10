@@ -6920,6 +6920,9 @@
                 "id": "example-subnet",
                 "kind": "data-provider",
                 "name": "Example Subnet",
+                "netuids": [
+                  7
+                ],
                 "schema_version": 1,
                 "website_url": "https://api.metagraph.sh/example"
               }
@@ -36075,7 +36078,8 @@
           "name",
           "kind",
           "website_url",
-          "authority"
+          "authority",
+          "netuids"
         ],
         "type": "object"
       },

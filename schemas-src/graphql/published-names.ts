@@ -1180,36 +1180,83 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   { field: "sudo", route: "/api/v1/sudo", returns: "ExtrinsicList" },
 ];
 
+/** A published type the resolver PROJECTS from a component (#10214). */
+export interface ProjectedType {
+  /** The component it picks its fields from. */
+  readonly component: string;
+  /**
+   * Fields the resolver adds that the component does not supply -- an
+   * association it resolves separately, or a value it computes. Declared so a
+   * typo'd or invented field is a failure rather than a silent extra.
+   */
+  readonly added: readonly string[];
+}
+
+/**
+ * Published types assembled BY a resolver FROM a component.
+ *
+ * These were all listed as `RESOLVER_BUILT_TYPES` -- "no component behind
+ * them" -- which was true of the shape and false of the fields: 141 of their
+ * fields are picked straight from a component that already exists, and eleven
+ * of the fifteen types add nothing at all.
+ *
+ * The distinction is load-bearing because it decides whether anything checks
+ * them. `validate-graphql-component-parity` pairs a type with its component by
+ * traversing from Query's `Mirrors GET` annotations, and a resolver-built type
+ * has no such annotation to traverse from -- so **all fifteen were reached by
+ * exactly zero gates**, and an over-promise in any of them (the class that
+ * nulled `SelfHealthLane.detail` on every request, #10215) was invisible.
+ *
+ * A projection is NOT a mirror: it deliberately publishes a subset, so the
+ * mirror rule "every component field must appear" does not apply to it. What
+ * does apply is every rule about the fields it DOES publish -- nullability and
+ * scalar narrowing -- and that is what the projection pass now checks.
+ */
+export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
+  Subnet: {
+    component: "SubnetIndexEntry",
+    added: ["health", "economics", "surfaces", "endpoints"],
+  },
+  Provider: { component: "Provider", added: ["subnets", "endpoints"] },
+  Surface: { component: "Surface", added: [] },
+  Endpoint: { component: "EndpointResource", added: [] },
+  SubnetHealth: { component: "HealthSubnetSummary", added: [] },
+  OpportunityEntry: {
+    component: "SubnetDetailArtifactEconomics",
+    added: ["validator_headroom"],
+  },
+  ScoreDistribution: {
+    component: "ChainYieldArtifactDistribution",
+    added: ["p50"],
+  },
+  ExtrinsicDetail: { component: "ExtrinsicDetailArtifact", added: [] },
+  ChainBurn: { component: "ChainBurnArtifact", added: [] },
+  SubnetBurnHistory: { component: "SubnetBurnHistoryArtifact", added: [] },
+  SubnetBurnHistoryPoint: { component: "SubnetBurnHistoryPoint", added: [] },
+  ChainBurnEntry: { component: "ChainBurnEntry", added: [] },
+  BlockChainEvents: { component: "BlockEventsArtifact", added: [] },
+  AccountEntry: { component: "AccountsListArtifactAccounts", added: [] },
+  AccountSubnet: { component: "AccountPortfolioArtifactPositions", added: [] },
+};
+
 /**
  * Types a resolver builds, with no component behind them.
  *
  * A pagination view (`{items, total, next_cursor}`) is the resolver's shape,
- * not a mirror of the artifact it pages over, and the eight static readers
- * above return hand-shaped cards. The generator emits these from the resolver
- * side; the component emitter never sees them.
+ * not a mirror of the artifact it pages over, and the remaining entries are
+ * hand-shaped cards. The generator emits these from the resolver side; the
+ * component emitter never sees them.
+ *
+ * Anything that picks its fields from a component belongs in `PROJECTED_TYPES`
+ * instead, where it gets checked.
  */
 export const RESOLVER_BUILT_TYPES: readonly string[] = [
   "SubnetList",
-  "Subnet",
   "ProviderList",
-  "Provider",
-  "Surface",
-  "Endpoint",
   "GlobalHealth",
-  "SubnetHealth",
   "OpportunityBoards",
-  "OpportunityEntry",
   "SubnetTrajectoryDelta",
   "EmissionGateChange",
-  "ScoreDistribution",
-  "ExtrinsicDetail",
-  "ChainBurn",
-  "SubnetBurnHistory",
-  "SubnetBurnHistoryPoint",
-  "ChainBurnEntry",
-  "BlockChainEvents",
-  "AccountEntry",
-  "AccountSubnet",
   "Subscription",
   "ChainEvent",
 ];

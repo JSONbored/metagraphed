@@ -74,7 +74,13 @@ export const ProviderSchema = z
     authority: AuthoritySchema,
     public_notes: z.string().optional(),
     notes: z.string().optional(),
-    netuids: z.array(z.int().min(0)).optional(),
+    // Required, not optional (#10214). `scripts/build-artifacts.ts`'s
+    // enrichedProviders sets `netuids` on EVERY provider it emits -- an empty
+    // array for one with no surfaces, never an absent key -- so `.optional()`
+    // published a possibility the producer cannot express. GraphQL had it
+    // right (`[Int]!`) and the component disagreed; nothing compared them
+    // until the projection pass.
+    netuids: z.array(z.int().min(0)),
     subnet_count: z.int().min(0).optional(),
     surface_count: z.int().min(0).optional(),
     endpoint_count: z.int().min(0).optional(),

@@ -26,6 +26,7 @@ import {
   ALIASED_TYPE_NAMES,
   PUBLISHED_TYPE_NAMES,
   QUERY_BINDINGS,
+  PROJECTED_TYPES,
   RESOLVER_BUILT_TYPES,
 } from "../schemas-src/graphql/published-names.ts";
 import {
@@ -229,20 +230,30 @@ if (bindingProblems.length) {
   );
 }
 
-// ── the resolver-built list ──────────────────────────────────────────────────
+// ── the resolver-built list, and the projections ─────────────────────────────
+//
+// A type the traversal cannot reach has to be accounted for by ONE of two
+// declarations: `PROJECTED_TYPES` if it picks its fields from a component (and
+// is therefore checked field-by-field by validate-graphql-component-parity),
+// or `RESOLVER_BUILT_TYPES` if the resolver shapes it from nothing. Splitting
+// them matters because only the first is checked: everything in the second is
+// taken on trust, so that list is the debt and should only shrink.
+const projected = new Set(Object.keys(PROJECTED_TYPES));
 const unpaired = [...sdlTypes.keys()]
   .filter((name) => name !== "Query" && !paired.has(name))
   .sort();
 const declaredResolverBuilt = [...RESOLVER_BUILT_TYPES].sort();
 const missingResolverBuilt = unpaired.filter(
-  (name) => !declaredResolverBuilt.includes(name),
+  (name) => !declaredResolverBuilt.includes(name) && !projected.has(name),
 );
 const staleResolverBuilt = declaredResolverBuilt.filter(
   (name) => !unpaired.includes(name),
 );
+const bothLists = declaredResolverBuilt.filter((name) => projected.has(name));
+const projectedButReached = [...projected].filter((name) => paired.has(name));
 if (missingResolverBuilt.length) {
   errors.push(
-    `${missingResolverBuilt.length} SDL type(s) no component reaches and RESOLVER_BUILT_TYPES does not list:\n` +
+    `${missingResolverBuilt.length} SDL type(s) no component reaches, and neither PROJECTED_TYPES nor RESOLVER_BUILT_TYPES accounts for:\n` +
       missingResolverBuilt.map((name) => `    ${name}`).join("\n"),
   );
 }
@@ -250,6 +261,18 @@ if (staleResolverBuilt.length) {
   errors.push(
     `${staleResolverBuilt.length} RESOLVER_BUILT_TYPES entr(y/ies) now reached from a component -- delete them:\n` +
       staleResolverBuilt.map((name) => `    ${name}`).join("\n"),
+  );
+}
+if (bothLists.length) {
+  errors.push(
+    `${bothLists.length} type(s) in BOTH PROJECTED_TYPES and RESOLVER_BUILT_TYPES -- a type is one or the other:\n` +
+      bothLists.map((name) => `    ${name}`).join("\n"),
+  );
+}
+if (projectedButReached.length) {
+  errors.push(
+    `${projectedButReached.length} PROJECTED_TYPES entr(y/ies) the traversal now reaches as a full mirror -- delete them:\n` +
+      projectedButReached.map((name) => `    ${name}`).join("\n"),
   );
 }
 
@@ -265,6 +288,7 @@ console.log(
   `Published-name validation passed: ${Object.keys(PUBLISHED_TYPE_NAMES).length} component name(s), ` +
     `${new Set(Object.values(PUBLISHED_TYPE_NAMES)).size} published type(s), ` +
     `${QUERY_BINDINGS.length} Query binding(s), ` +
+    `${Object.keys(PROJECTED_TYPES).length} declared projection(s), ` +
     `${RESOLVER_BUILT_TYPES.length} resolver-built type(s), ` +
     `${Object.keys(ALIASED_TYPE_NAMES).length} declared alias(es).`,
 );
