@@ -396,6 +396,13 @@ jobs:
           npm run validate:published-names
           npm run validate:graphql-tier-parity
           npm run validate:committed-seed
+          # Both of these were reachable only from the LOCAL gate, so a
+          # contract-only PR -- the exact PR that invalidates them -- got no CI
+          # coverage at all (#10251). They live in this step rather than the
+          # `ui` job because that job is gated on a path filter that matches
+          # neither schemas-src/ nor public/metagraph/openapi.json.
+          npm run validate:ui-docs-drift
+          npm run validate:readme-catalog
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
       # committed fallback (dist/metagraph-r2/metagraph/*), and every post-build validator below reads
