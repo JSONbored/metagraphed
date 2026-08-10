@@ -29,6 +29,12 @@
   "slug": "sn-81",
   "source_repo": "https://github.com/one-covenant/grail",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "openapi"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:billing, docs:pricing, docs:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -152,7 +158,7 @@
       "id": "sn-81-grail-grafana-openapi",
       "kind": "openapi",
       "name": "Grail Grafana HTTP API OpenAPI",
-      "notes": "Public no-auth OpenAPI 3 schema (title \"Grafana HTTP API.\") served at grail-grafana.tplr.ai/public/openapi3.json — the same host already registered as this file's dashboard and subnet-api (health) surfaces. Same operator (one-covenant / tplr.ai) and identical publish convention already accepted for the sibling Templar (SN3) subnet's Grafana OpenAPI surface (grafana.tplr.ai/public/openapi3.json).",
+      "notes": "Public no-auth OpenAPI 3 schema (title \"Grafana HTTP API.\") served at grail-grafana.tplr.ai/public/openapi3.json \u2014 the same host already registered as this file's dashboard and subnet-api (health) surfaces. Same operator (one-covenant / tplr.ai) and identical publish convention already accepted for the sibling Templar (SN3) subnet's Grafana OpenAPI surface (grafana.tplr.ai/public/openapi3.json).",
       "probe": {
         "enabled": true,
         "expect": "json",

@@ -31,6 +31,12 @@
       "The natix-network-org/roadwork Hugging Face dataset and its rows API, previously public, now return HTTP 401 (auth required) as of 2026-07-15 -- corrected auth_required to true on both surfaces and disabled their probes rather than removing them, since they document a real official artifact that may become public again."
     ]
   },
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (docs:billing, docs:pricing, docs:subscription). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "id": "sn-72-natix-website",
@@ -212,7 +218,7 @@
         "state": "community-submitted",
         "submitted_by": "galuis116"
       },
-      "notes": "Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset — machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the HF dataset webpage surface above. Previously filled the file's gap note for a verified safe public subnet API endpoint; now gated along with the parent dataset. Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15, same gating as the parent roadwork dataset; was public at last review (2026-06-08). Probing disabled since it will always fail while gated."
+      "notes": "Hugging Face Datasets Server rows API for the official StreetVision roadwork dataset \u2014 machine-readable JSON (schema + row records with image/id/width/height/scene metadata), a distinct callable endpoint from the HF dataset webpage surface above. Previously filled the file's gap note for a verified safe public subnet API endpoint; now gated along with the parent dataset. Now returns HTTP 401 (Hugging Face auth required) as of 2026-07-15, same gating as the parent roadwork dataset; was public at last review (2026-06-08). Probing disabled since it will always fail while gated."
     },
     {
       "auth_required": false,
@@ -220,7 +226,7 @@
       "id": "sn-72-natix-whitepaper-llms-txt",
       "kind": "data-artifact",
       "name": "NATIX whitepaper docs llms.txt index",
-      "notes": "Public no-auth machine-readable llms.txt index of the official StreetVision by NATIX (SN72) whitepaper documentation, served at docs.natix.network — the same official docs domain already registered as the sn-72-natix-whitepaper-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the NATIX docs (Executive Summary, Introduction, Problem, Solution, xNodes, etc.) for LLM/agent ingestion; content begins '# NATIX Network Whitepaper'. Distinct from the HTML whitepaper docs page (a different URL and a machine-readable text/markdown artifact).",
+      "notes": "Public no-auth machine-readable llms.txt index of the official StreetVision by NATIX (SN72) whitepaper documentation, served at docs.natix.network \u2014 the same official docs domain already registered as the sn-72-natix-whitepaper-docs surface and as the file's docs_url. Provides an agent-consumable Markdown map of the NATIX docs (Executive Summary, Introduction, Problem, Solution, xNodes, etc.) for LLM/agent ingestion; content begins '# NATIX Network Whitepaper'. Distinct from the HTML whitepaper docs page (a different URL and a machine-readable text/markdown artifact).",
       "provider": "natix",
       "public_safe": true,
       "review": {
