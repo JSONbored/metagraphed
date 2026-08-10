@@ -60,29 +60,37 @@ describe("revenueSourcesFor", () => {
     assert.equal(sources[0].surface_id, "sn-64-chutes-daily-revenue-summary");
   });
 
-  test("no observation yet means amount_usd null, not zero", () => {
+  test("a declaration carries no figure of its own", () => {
+    // #10565: this used to stamp one scalar amount per surface, which is the
+    // shape that made a window unrepresentable — one number cannot answer
+    // "the last 7 days" for a daily feed. Resolving a declaration against its
+    // observation series belongs to revenue-serving.ts, where the grain and
+    // supersedes rules live.
     const [s] = revenueSourcesFor(SURFACES);
     assert.equal(s.amount_usd, null);
-    assert.equal(s.response_hash, null);
+    assert.equal(s.contributes, false);
   });
 
-  test("an observation is attached with its hash and stamp", () => {
-    const [s] = revenueSourcesFor(
-      SURFACES,
-      new Map([
-        [
-          "sn-64-chutes-daily-revenue-summary",
-          {
-            amount_usd: 11668,
-            response_hash: "sha256:abc",
-            observed_at: "2026-08-10T00:00:00Z",
-          },
-        ],
-      ]),
-    );
-    assert.equal(s.amount_usd, 11668);
-    assert.equal(s.response_hash, "sha256:abc");
-    assert.equal(s.observed_at, "2026-08-10T00:00:00Z");
+  test("supersedes is carried through, not dropped", () => {
+    // The registry has declared this since #10441 and the composition layer
+    // never read it; summing the subsets put SN64's headline 200x over.
+    const [s] = revenueSourcesFor([
+      {
+        id: "daily-summary",
+        revenue: {
+          role: "external-revenue",
+          provenance: "probe-derived",
+          grain: "daily",
+          supersedes: ["payments-list", "tao-totals"],
+        },
+      },
+    ]);
+    assert.deepEqual(s.supersedes, ["payments-list", "tao-totals"]);
+  });
+
+  test("a declaration with no supersedes leaves it undefined, not empty", () => {
+    const [s] = revenueSourcesFor(SURFACES);
+    assert.equal(s.supersedes, undefined);
   });
 
   test("a half-built declaration falls back rather than emitting undefined", () => {
@@ -130,7 +138,16 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       surfaces: SURFACES,
       usd_per_tao: 204.03,
       observations: new Map([
-        ["sn-64-chutes-daily-revenue-summary", { amount_usd: 11668 }],
+        [
+          "sn-64-chutes-daily-revenue-summary",
+          [
+            {
+              surface_id: "sn-64-chutes-daily-revenue-summary",
+              period: "2026-08-10",
+              amount_usd: 11668,
+            },
+          ],
+        ],
       ]),
     });
     assert.ok(Math.abs((r.subsidy_multiple as number) - 8.0) < 0.05);
@@ -162,7 +179,16 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       surfaces: SURFACES,
       usd_per_tao: null,
       observations: new Map([
-        ["sn-64-chutes-daily-revenue-summary", { amount_usd: 11668 }],
+        [
+          "sn-64-chutes-daily-revenue-summary",
+          [
+            {
+              surface_id: "sn-64-chutes-daily-revenue-summary",
+              period: "2026-08-10",
+              amount_usd: 11668,
+            },
+          ],
+        ],
       ]),
     });
     assert.equal(r.emission.usd, 0);

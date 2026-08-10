@@ -6785,14 +6785,24 @@ export interface components {
                 revenue_usd: number | null;
                 searched_at?: string | null;
                 sources: {
-                    /** @description Null when the surface declares revenue but nothing has been read from it — an auth-gated endpoint, or a probe that has not run. */
+                    /** @description The figure for the requested window, or null. Null when the surface declares revenue but nothing has been read from it (an auth-gated endpoint, or a probe that has not run), when its grain cannot form the window, or when the window is only partly observed — a partial sum presented as a whole window understates. */
                     amount_usd: number | null;
+                    /** @description Whether this surface's figure reached `revenue_usd`. Published per source so a caller can see WHY a subnet with visible figures reports a null headline, instead of inferring it. */
+                    contributes: boolean;
                     currency: string;
+                    /** @description Null when it contributed; otherwise why it did not — superseded, provenance not headline-eligible, not observed, or a grain that cannot span the window. */
+                    excluded_reason: string | null;
                     grain: string;
                     observed_at?: string | null;
+                    /** @description How many the window requires at this surface's grain. Absent when the grain carries no period at all (a cumulative total) or does not divide the window. */
+                    periods_expected?: number;
+                    /** @description How many distinct periods were seen for this surface within the window. */
+                    periods_observed?: number;
                     /** @enum {string} */
                     provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
                     response_hash?: string | null;
+                    /** @description Surface ids this one subsumes. A subsumed surface is reported here with its own figure and NEVER contributes to `revenue_usd` — SN64 publishes both an all-channel daily total and a TAO-channel subset of it, and summing the two inflates the headline. */
+                    supersedes?: string[];
                     surface_id: string;
                 }[];
                 /** @description emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero — dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable. */
@@ -11898,14 +11908,24 @@ export interface components {
                 revenue_usd: number | null;
                 searched_at?: string | null;
                 sources: {
-                    /** @description Null when the surface declares revenue but nothing has been read from it — an auth-gated endpoint, or a probe that has not run. */
+                    /** @description The figure for the requested window, or null. Null when the surface declares revenue but nothing has been read from it (an auth-gated endpoint, or a probe that has not run), when its grain cannot form the window, or when the window is only partly observed — a partial sum presented as a whole window understates. */
                     amount_usd: number | null;
+                    /** @description Whether this surface's figure reached `revenue_usd`. Published per source so a caller can see WHY a subnet with visible figures reports a null headline, instead of inferring it. */
+                    contributes: boolean;
                     currency: string;
+                    /** @description Null when it contributed; otherwise why it did not — superseded, provenance not headline-eligible, not observed, or a grain that cannot span the window. */
+                    excluded_reason: string | null;
                     grain: string;
                     observed_at?: string | null;
+                    /** @description How many the window requires at this surface's grain. Absent when the grain carries no period at all (a cumulative total) or does not divide the window. */
+                    periods_expected?: number;
+                    /** @description How many distinct periods were seen for this surface within the window. */
+                    periods_observed?: number;
                     /** @enum {string} */
                     provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
                     response_hash?: string | null;
+                    /** @description Surface ids this one subsumes. A subsumed surface is reported here with its own figure and NEVER contributes to `revenue_usd` — SN64 publishes both an all-channel daily total and a TAO-channel subset of it, and summing the two inflates the headline. */
+                    supersedes?: string[];
                     surface_id: string;
                 }[];
                 /** @description emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero — dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable. */
@@ -27304,7 +27324,9 @@ export interface operations {
                      *             "sources": [
                      *               {
                      *                 "amount_usd": 0.5,
+                     *                 "contributes": false,
                      *                 "currency": "example",
+                     *                 "excluded_reason": "example",
                      *                 "grain": "example",
                      *                 "provenance": "chain-verified",
                      *                 "surface_id": "example"
@@ -44991,7 +45013,9 @@ export interface operations {
                      *           "sources": [
                      *             {
                      *               "amount_usd": 0.5,
+                     *               "contributes": false,
                      *               "currency": "example",
+                     *               "excluded_reason": "example",
                      *               "grain": "example",
                      *               "provenance": "chain-verified",
                      *               "surface_id": "example"
