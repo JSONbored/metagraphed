@@ -29939,11 +29939,18 @@
             "type": "number"
           },
           "source": {
-            "enum": [
-              "endpoint-resource-probes",
-              "rpc-endpoint-probes"
-            ],
-            "type": "string"
+            "anyOf": [
+              {
+                "enum": [
+                  "endpoint-resource-probes",
+                  "rpc-endpoint-probes"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

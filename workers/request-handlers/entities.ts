@@ -45,7 +45,10 @@ import {
 } from "../responses.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
-import { validateResponseTripwire } from "../../src/response-validation-tripwire.ts";
+import {
+  ResponseSchemaDriftError,
+  validateResponseTripwire,
+} from "../../src/response-validation-tripwire.ts";
 import {
   analyticsQueryError,
   markPostgresTierFallbackResponse,
@@ -3263,7 +3266,10 @@ export async function handleSubnetStakeQuote(
   env: Env,
   netuid: number,
   url: URL,
-  ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
+  // Kept in the signature for the caller, unused since the response tripwire
+  // stopped running under `waitUntil` -- it throws on drift now, and a throw
+  // from a background task ships the bad body anyway.
+  _ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
 ) {
   const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
@@ -3299,13 +3305,28 @@ export async function handleSubnetStakeQuote(
   // "subnet-stake-quote" would never actually fire despite being one of the
   // 5 declared-covered pilot routes. See src/response-validation-tripwire.ts.
   if ((env.METAGRAPH_VALIDATE_RESPONSES as string) === "true") {
-    ctx?.waitUntil?.(
-      validateResponseTripwire("subnet-stake-quote", {
-        ok: true,
-        schema_version: 1,
-        ...envelopePayload,
-      }),
-    );
+    // AWAITED for the same reason as handleApiRequest's call: the tripwire
+    // throws on drift, and a throw from `waitUntil` ships the bad body anyway.
+    try {
+      await validateResponseTripwire(
+        "subnet-stake-quote",
+        { ok: true, schema_version: 1, ...envelopePayload },
+        "/metagraph/subnets/{netuid}/stake-quote.json",
+      );
+    } catch (err) {
+      if (err instanceof ResponseSchemaDriftError) {
+        console.error(
+          "[METAGRAPH_VALIDATE_RESPONSES] subnet-stake-quote refused:",
+          err.detail,
+        );
+        return errorResponse(
+          "response_schema_drift",
+          "The subnet-stake-quote response did not match its published schema and was not served.",
+          500,
+        );
+      }
+      throw err;
+    }
   }
   return envelopeResponse(request, envelopePayload, "short");
 }

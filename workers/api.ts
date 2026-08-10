@@ -438,7 +438,10 @@ import { resolveEmissionPipelineEconomics } from "../src/emission-pipeline-surfa
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
-import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
+import {
+  ResponseSchemaDriftError,
+  validateResponseTripwire,
+} from "../src/response-validation-tripwire.ts";
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
@@ -8019,20 +8022,36 @@ async function handleApiRequest(
   // is the ONLY cost paid on every request; the schema import + parse only
   // happen once it's flipped on, and via waitUntil so it never adds latency
   // to the real response. See src/response-validation-tripwire.ts.
-  // `as string`: wrangler types this literally as `"false"` (its committed
-  // wrangler.jsonc default), not `string` -- true for every other
-  // METAGRAPH_*-flag var too, but they all default "true" so comparing
-  // against the SAME literal never trips the "no overlap" check this one
-  // does. A preview/staging environment override still sets the real
-  // runtime value to "true"; only the static type is too narrow.
+  // `as string`: wrangler types a var as the LITERAL its wrangler.jsonc sets,
+  // not `string`, so the static type is narrower than the runtime value an
+  // environment override can carry. The cast is what lets this read the real
+  // value rather than the committed default.
   if ((env.METAGRAPH_VALIDATE_RESPONSES as string) === "true") {
-    ctx?.waitUntil?.(
-      validateResponseTripwire(matched.id, {
-        ok: true,
-        schema_version: 1,
-        ...envelopePayload,
-      }),
-    );
+    // AWAITED, not `waitUntil`. The tripwire throws on drift, and a throw from
+    // a background task is an unhandled rejection that ships the bad body
+    // anyway -- the whole point is that a response the published contract does
+    // not describe never reaches a caller. Costs one parse per request while
+    // the flag is on; that is the trade the flag exists to make.
+    try {
+      await validateResponseTripwire(
+        matched.id,
+        { ok: true, schema_version: 1, ...envelopePayload },
+        matched.artifactPath,
+      );
+    } catch (err) {
+      if (err instanceof ResponseSchemaDriftError) {
+        console.error(
+          `[METAGRAPH_VALIDATE_RESPONSES] ${matched.id} refused:`,
+          err.detail,
+        );
+        return errorResponse(
+          "response_schema_drift",
+          `The ${matched.id} response did not match its published schema and was not served.`,
+          500,
+        );
+      }
+      throw err;
+    }
   }
   const response = await envelopeResponse(
     request,

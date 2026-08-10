@@ -199,7 +199,15 @@ export type EndpointIncidentsArtifact = z.infer<
 // buildEndpointPoolArtifact() is the one function that produces both.
 
 export const EndpointPoolsArtifactSchema = ArtifactBaseSchema.extend({
-  source: z.enum(["endpoint-resource-probes", "rpc-endpoint-probes"]),
+  // NULLABLE because the producer answers null, verified against production:
+  // `endpoint_pools(limit: 3) { source }` returns `"source": null` today. The
+  // enum was declared required, which is a claim the route does not keep --
+  // and the direction that matters, because GraphQL enforces non-null at
+  // execution and the generated schema would have published `String!` here,
+  // nulling the whole answer on every request (#10214).
+  source: z
+    .enum(["endpoint-resource-probes", "rpc-endpoint-probes"])
+    .nullable(),
   disabled_proxy_contract: DisabledProxyContractSchema.optional(),
   eligibility_policy: EndpointEligibilityPolicySchema.optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),
