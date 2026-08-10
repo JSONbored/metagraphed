@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts and src/pg-statement-client.ts -- neither of which a
@@ -3271,22 +3270,31 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     // End to end minus the network: a stubbed RPC chain on globalThis.fetch,
     // the REAL sync handler, and a REAL sqlite loaded with the emission-gate
     // migration -- the same wiring production runs, one tick.
-    const { DatabaseSync } = await import("node:sqlite");
+    const { PGlite } = await import("@electric-sql/pglite");
     const fs = await import("node:fs");
-    const db = new DatabaseSync(":memory:");
-    db.exec(
-      fs.readFileSync(
-        "tests/fixtures/sqlite-schema/0005_emission_gate.sql",
-        "utf8",
-      ),
-    );
-    // The sqlite fixture stands BEHIND the pg double rather than being handed
-    // to the handler: producerStore builds its own `createPgStatementClient` handle from
-    // env.HYPERDRIVE, so there is nothing to inject. sqliteBackedPg translates
-    // the statement text the writer emits; pg-mock maps the binds -- the gate
-    // lane writes real booleans now (#10112) and node:sqlite takes no boolean
-    // at all, while this migration's CHECKs are written against 0/1.
-    pg.control.db = sqliteBackedPg(db);
+    const db = new PGlite();
+    // BOTH migrations: the lane appends to emission_gate_param_history (0003)
+    // and reads emission_flow_watch (0005). The retired SQLite fixture carried
+    // the pair in one file; on the real DDL they live apart, and omitting the
+    // second one fails the write rather than the read -- the lane declines the
+    // whole tick.
+    for (const f of [
+      "migrations/neon/0003_append_only_histories.sql",
+      "migrations/neon/0005_remaining_d1_tables.sql",
+    ])
+      await db.exec(fs.readFileSync(f, "utf8"));
+    // REAL POSTGRES, on the real Neon DDL, standing behind the pg double --
+    // producerStore builds its own `createPgStatementClient` handle from
+    // env.HYPERDRIVE, so there is nothing to inject (#10328).
+    //
+    // This is the case that most needed it. The SQLite fixture this replaced
+    // carried CHECK constraints written against 0/1, while the gate lane has
+    // written REAL BOOLEANS since #10112 -- node:sqlite takes no boolean at
+    // all, so the double had to map the binds before the fixture would accept
+    // them. The suite was therefore asserting that a translated write
+    // satisfied a constraint production does not have.
+    pg.control.postgres = async (text, values) =>
+      (await db.query(text, values as never[])).rows;
     pg.control.rows = null;
     pg.control.answers = [];
     pg.control.failNext = null;
@@ -3322,10 +3330,12 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
       // First observation writes one history row PER gate parameter (bar,
       // quantile, exponent, halvings) -- proof the differs ran against the
       // real store, not merely that the handler returned 200.
-      const rows = db
-        .prepare("SELECT count(*) AS n FROM emission_gate_param_history")
-        .get() as { n: number };
-      assert.equal(rows.n, 4);
+      const rows = (
+        await db.query<{ n: number }>(
+          "SELECT count(*) AS n FROM emission_gate_param_history",
+        )
+      ).rows[0]!;
+      assert.equal(Number(rows.n), 4);
     } finally {
       globalThis.fetch = realFetch;
     }
