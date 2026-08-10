@@ -36,9 +36,43 @@
         "infra",
         "project",
         "operator",
-        "other"
+        "other",
+        "payment-collector",
+        "treasury",
+        "burn",
+        "multisig"
       ],
-      "description": "What kind of entity this address belongs to. `operator` and `other` predate #8372's widening and are retained so existing labels stay valid; prefer the more specific categories (`infra` over `operator`, or the exact fit over `other`) for new entries."
+      "description": "What kind of entity this address belongs to. `operator` and `other` predate #8372's widening and are retained so existing labels stay valid; prefer the more specific categories (`infra` over `operator`, or the exact fit over `other`) for new entries. The money-map categories (#10442/#10483) carry a higher bar: `payment-collector` and `treasury` must not be a protocol-derived account (a subnet's own TAO reserve receives large, real, many-party inflow and looks exactly like a collector -- see #10516), and `burn` additionally requires `unspendable_proof`. There is deliberately no `owner` category: subnet ownership is chain-derived from SubnetOwner and must never be hand-declared."
+    },
+    "netuid": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535,
+      "description": "The subnet this address belongs to, when the label is subnet-scoped (a subnet's treasury, burn address, or payment collector). Omitted for network-wide entities like an exchange."
+    },
+    "unspendable_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basis", "evidence_url"],
+      "description": "Why this address cannot spend what it receives. Required for `category: burn`, because a burn is a CLAIM until proven -- \"the team says they burn here\" is an operator attestation, not a burn.",
+      "properties": {
+        "basis": {
+          "enum": [
+            "known-black-hole",
+            "provably-keyless",
+            "documented-recycle-call"
+          ],
+          "description": "How unspendability is established. An address with no observed outbound is NOT a basis -- absence of spending is not inability to spend."
+        },
+        "evidence_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
     },
     "notes": {
       "type": "string"
@@ -80,5 +114,22 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "category": { "const": "burn" } },
+        "required": ["category"]
+      },
+      "then": { "required": ["unspendable_proof"] }
+    },
+    {
+      "if": {
+        "required": ["unspendable_proof"]
+      },
+      "then": {
+        "properties": { "category": { "const": "burn" } }
+      }
+    }
+  ]
 }
