@@ -424,6 +424,7 @@ jobs:
           # here rather than drifting up one PR at a time, which is how the
           # gap went 30 -> 35 with nothing watching.
           npm run validate:ui-route-coverage
+          npm run validate:untyped-db-reads
           npm run validate:readme-catalog
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
