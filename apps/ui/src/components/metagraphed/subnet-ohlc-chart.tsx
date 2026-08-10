@@ -4,7 +4,8 @@ import { subnetOhlcQuery } from "@/lib/metagraphed/queries";
 import { CandlestickMini, type CandlestickDatum } from "@jsonbored/ui-kit";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { classNames, formatTao } from "@/lib/metagraphed/format";
+import { classNames, formatTao, formatUsdApprox } from "@/lib/metagraphed/format";
+import { alphaUsdCoverage } from "@/lib/metagraphed/alpha-usd.functions";
 
 // Lookback windows offered as pills. "max" is 365d, the server's own clamp
 // ceiling for ?days= (see subnetOhlcQuery's params doc) -- naming it "max"
@@ -131,6 +132,18 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
   }
 
   const latest = data?.candles[data.candles.length - 1];
+  // What the response STATES about its own USD coverage (#10385) -- never
+  // inferred by counting nulls in the candle array. The TAO series runs the
+  // full window and the USD series starts when the TAO/USD index does, so a
+  // chart that showed both without qualifying the shorter one would invite a
+  // comparison the data does not support.
+  const usd = alphaUsdCoverage(data);
+  // The product of the candle's own close and the rate published ON that
+  // candle -- the same number the API already computed as close_usd, formatted
+  // with the existing helper rather than a second one. Per-candle, so a
+  // historical close is never shown at today's rate.
+  const latestUsd =
+    usd.available && latest ? formatUsdApprox(latest.close, latest.usd_per_tao) : null;
 
   return (
     <div className="space-y-3">
@@ -166,10 +179,17 @@ export function SubnetOhlcChart({ netuid }: { netuid: number }) {
             </span>
             {latest ? (
               <span>
-                latest close {fmtOhlcPrice(latest.close)} τ/α · vol {formatTao(latest.volume_tao)}
+                latest close {fmtOhlcPrice(latest.close)} τ/α
+                {latestUsd ? ` (${latestUsd})` : ""} · vol {formatTao(latest.volume_tao)}
               </span>
             ) : null}
           </div>
+          {/* The USD boundary, rendered only when it differs from the TAO
+              window. A caption on a fully-covered chart is noise, and noise is
+              what stops captions being read on the charts that need them. */}
+          {usd.caption ? (
+            <div className="mt-1 mg-type-data-sm text-ink-muted">{usd.caption}</div>
+          ) : null}
         </Panel>
       )}
     </div>
