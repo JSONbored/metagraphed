@@ -55,6 +55,10 @@ import {
 } from "../src/usage-telemetry.ts";
 import { resolveClientIp } from "./config.ts";
 import {
+  CHAIN_FIREHOSE_PUBLISHED_TABLES,
+  CHAIN_FIREHOSE_TABLES,
+} from "../src/chain-firehose-topics.ts";
+import {
   GRAPHQL_MAX_COMPLEXITY,
   GRAPHQL_MAX_QUERY_BYTES,
   GRAPHQL_MAX_DEPTH,
@@ -69,30 +73,15 @@ import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
-// Matched the retired notify_chain_firehose() Postgres trigger (#9426) --
-// the only four tables it ever fires `table:` for. account_events (#4984
-// prerequisite) carries netuid/hotkey/coldkey/amount_tao directly, unlike
-// the other three -- the alerter's trigger conditions need those columns
-// without a per-event Postgres round-trip.
-export const CHAIN_FIREHOSE_TABLES = new Set([
-  "blocks",
-  "extrinsics",
-  "chain_events",
-  "account_events",
-]);
-
-// #9583: of the four topics above, only `blocks` has a producer today. The
-// box-side relay that fed all four died with Postgres (#9426) and the head
-// poller that replaced it (#204) publishes the blocks lane alone -- decoding
-// the other three needs runtime metadata, which is the Containers indexer's
-// job (#209), and a Worker faking them from undecoded bytes would serve wrong
-// data.
-//
-// A topic filter is still ACCEPTED for all four, because a producer arriving
-// later must not require a client change. But a subscriber that asks only for
-// unpublished topics gets a well-formed stream that never emits, which is
-// indistinguishable from a quiet chain -- so say so once, at connect.
-export const CHAIN_FIREHOSE_PUBLISHED_TABLES = new Set(["blocks"]);
+// The topic vocabulary moved to src/chain-firehose-topics.ts (#10238) -- see
+// that file for why. Re-exported here so nothing that already imports it from
+// the hub had to change; new callers should take it from the leaf, which does
+// not drag this Durable Object (and through it GraphQL and the MCP server)
+// into their bundle.
+export {
+  CHAIN_FIREHOSE_TABLES,
+  CHAIN_FIREHOSE_PUBLISHED_TABLES,
+} from "../src/chain-firehose-topics.ts";
 
 /**
  * Requested topics that no producer currently publishes, sorted for a stable

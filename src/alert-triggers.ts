@@ -20,7 +20,11 @@ import {
   isPublicWebhookUrl,
   timingSafeEqual,
 } from "./webhooks.ts";
-import { CHAIN_FIREHOSE_TABLES } from "../workers/chain-firehose-hub.ts";
+// FROM THE LEAF (#10238). Importing this from workers/chain-firehose-hub.ts
+// pulled that Durable Object -- and the GraphQL schema and MCP server it
+// imports -- into every bundle reaching alert-triggers, which is what put
+// metagraphed-data-api over the Worker startup CPU limit.
+import { CHAIN_FIREHOSE_TABLES } from "./chain-firehose-topics.ts";
 
 // Anti-abuse gate on trigger CREATION (public but shared-secret-gated,
 // mirroring METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN's exact role) -- every

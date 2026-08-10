@@ -24,7 +24,10 @@
 // tests/api-tiers.test.ts asserts every envVar below exists in wrangler.jsonc
 // with the limit its policy claims, so that mismatch cannot come back.
 
-import type { RateLimitTierPolicy } from "../workers/tiered-rate-limit.ts";
+import type {
+  RateLimitTierPolicy,
+  TieredRateLimitConfig,
+} from "../workers/tiered-rate-limit.ts";
 
 /**
  * Per-minute ceiling as a multiple of the surface's existing keyed limit.
@@ -89,3 +92,39 @@ export function buildTierPolicies(
     ]),
   ) as Record<ApiTier, RateLimitTierPolicy>;
 }
+
+/**
+ * The MCP surface's tiered rate-limit policy.
+ *
+ * #8520: anonymous callers keep the existing MCP_RATE_LIMITER ceiling (100/60s,
+ * IP-keyed, unchanged); a caller presenting a valid mg_... key gets the 5x
+ * MCP_RATE_LIMITER_KEYED tier, keyed by account id via the SEPARATE binding --
+ * never the same binding at a different number.
+ *
+ * HERE RATHER THAN IN src/mcp-server.ts, which is where it lived (#10238).
+ * workers/data-api.ts imports it for ONE number, and that import dragged
+ * mcp-server -- and through it src/graphql.ts and workers/api.ts -- into
+ * data-api's bundle, pushing it over the Worker STARTUP CPU limit. Measured:
+ * cutting that edge and one other took data-api from 1072 KiB gzip / ~600 ms
+ * module init to 377 KiB / ~220 ms.
+ *
+ * This module is the right home anyway: buildTierPolicies is already here, and
+ * a rate-limit ceiling is tier configuration rather than protocol handling.
+ * mcp-server.ts re-exports it so nothing else had to change.
+ */
+export const MCP_TIERED_RATE_LIMIT: TieredRateLimitConfig = {
+  anonymous: { envVar: "MCP_RATE_LIMITER", limit: 100, windowSeconds: 60 },
+  // Fallback for a valid key on a tier not priced below -- never an outage.
+  keyed: { envVar: "MCP_RATE_LIMITER_KEYED", limit: 500, windowSeconds: 60 },
+  // #8608: the ceilings as code, one entry per rpc_accounts.tier. Until now
+  // every key got the single `keyed` policy regardless of tier, so a paid
+  // account and a free one were throttled identically -- the tier was resolved
+  // by validateApiKey and then discarded.
+  //
+  // `free` reuses MCP_RATE_LIMITER_KEYED at its existing 500/min, so nobody
+  // holding a key today loses headroom. `community` and `paid` get bindings of
+  // their OWN -- see the note on buildTierPolicies for why sharing one is not
+  // an option.
+  tiers: buildTierPolicies("MCP_RATE_LIMITER", 500),
+  keyPrefix: "mcp",
+};
