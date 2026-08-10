@@ -21,6 +21,7 @@
 // fully orphaned as of this batch.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EpochMillisSchema } from "../shared.ts";
 
 const ChainEventSchema = z
   .object({
@@ -36,7 +37,7 @@ const ChainEventSchema = z
       .optional(),
     phase: z.string().nullable().optional(),
     extrinsic_index: z.int().nullable().optional(),
-    observed_at: z.int().nullable().optional(),
+    observed_at: EpochMillisSchema.nullable().optional(),
     // #8525: deterministic human-readable action sentence for this event's
     // pallet.method, or null when no template matches -- never a
     // guessed/partial sentence.

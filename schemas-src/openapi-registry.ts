@@ -59,6 +59,7 @@ import {
   HealthStatusSchema,
   PartnershipMetadataSchema,
   PartnershipTierSchema,
+  EpochMillisSchema,
   ScoreDistributionSchema,
   SubnetStatusSchema,
   SubnetTypeSchema,
@@ -789,6 +790,12 @@ register(ValidatorNominatorsArtifactSchema, "ValidatorNominatorsArtifact");
 // of $ref'ing the hand-edited component, so it no longer counts.)
 register(ConcentrationMetricsSchema, "ConcentrationMetrics");
 register(ScoreDistributionSchema, "ScoreDistribution");
+// An epoch-MILLISECOND instant (#10386). Registered so the schema STATES the
+// fact rather than leaving it to a field name: `z.int()` stamps the JS
+// safe-integer ceiling on every integer, count and instant alike, so the type
+// alone cannot tell one from the other, and GraphQL's Int is 32-bit. The
+// GraphQL emitter maps this id to Float; a `z.int()` stays Int.
+register(EpochMillisSchema, "EpochMillis");
 
 // Batch 8 (#8062) additions. Only the 18 top-level route artifacts (each
 // required -- schemaRefForArtifactPath binds its route to exactly this

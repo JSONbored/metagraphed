@@ -18661,9 +18661,7 @@
                 "observed_at": {
                   "anyOf": [
                     {
-                      "maximum": 9007199254740991,
-                      "minimum": -9007199254740991,
-                      "type": "integer"
+                      "$ref": "#/components/schemas/EpochMillis"
                     },
                     {
                       "type": "null"
@@ -21891,9 +21889,7 @@
                 "observed_at": {
                   "anyOf": [
                     {
-                      "maximum": 9007199254740991,
-                      "minimum": -9007199254740991,
-                      "type": "integer"
+                      "$ref": "#/components/schemas/EpochMillis"
                     },
                     {
                       "type": "null"
@@ -30202,6 +30198,12 @@
         ],
         "type": "object"
       },
+      "EpochMillis": {
+        "description": "An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int.",
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "type": "integer"
+      },
       "ErrorEnvelope": {
         "additionalProperties": false,
         "properties": {
@@ -31977,9 +31979,7 @@
                         "type": "integer"
                       },
                       "ended_at": {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
+                        "$ref": "#/components/schemas/EpochMillis"
                       },
                       "failed_samples": {
                         "maximum": 9007199254740991,
@@ -31987,9 +31987,7 @@
                         "type": "integer"
                       },
                       "started_at": {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
+                        "$ref": "#/components/schemas/EpochMillis"
                       }
                     },
                     "required": [
@@ -32835,9 +32833,7 @@
                         "type": "integer"
                       },
                       "ended_at": {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
+                        "$ref": "#/components/schemas/EpochMillis"
                       },
                       "failed_samples": {
                         "maximum": 9007199254740991,
@@ -32845,9 +32841,7 @@
                         "type": "integer"
                       },
                       "started_at": {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
+                        "$ref": "#/components/schemas/EpochMillis"
                       }
                     },
                     "required": [
@@ -39756,9 +39750,8 @@
                   "type": "integer"
                 },
                 "ts": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
+                  "$ref": "#/components/schemas/EpochMillis",
+                  "description": "Bucket start, as epoch milliseconds."
                 }
               },
               "required": [
@@ -39778,9 +39771,7 @@
               "end": {
                 "anyOf": [
                   {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/EpochMillis"
                   },
                   {
                     "type": "null"
@@ -39797,9 +39788,7 @@
                       "end": {
                         "anyOf": [
                           {
-                            "maximum": 9007199254740991,
-                            "minimum": -9007199254740991,
-                            "type": "integer"
+                            "$ref": "#/components/schemas/EpochMillis"
                           },
                           {
                             "type": "null"
@@ -39809,9 +39798,7 @@
                       "start": {
                         "anyOf": [
                           {
-                            "maximum": 9007199254740991,
-                            "minimum": -9007199254740991,
-                            "type": "integer"
+                            "$ref": "#/components/schemas/EpochMillis"
                           },
                           {
                             "type": "null"
@@ -39840,9 +39827,7 @@
                     "end": {
                       "anyOf": [
                         {
-                          "maximum": 9007199254740991,
-                          "minimum": -9007199254740991,
-                          "type": "integer"
+                          "$ref": "#/components/schemas/EpochMillis"
                         },
                         {
                           "type": "null"
@@ -39857,9 +39842,7 @@
                     "start": {
                       "anyOf": [
                         {
-                          "maximum": 9007199254740991,
-                          "minimum": -9007199254740991,
-                          "type": "integer"
+                          "$ref": "#/components/schemas/EpochMillis"
                         },
                         {
                           "type": "null"
@@ -39880,9 +39863,7 @@
               "start": {
                 "anyOf": [
                   {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/EpochMillis"
                   },
                   {
                     "type": "null"
@@ -40016,9 +39997,7 @@
           "observed_at": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "$ref": "#/components/schemas/EpochMillis"
               },
               {
                 "type": "null"
@@ -47585,10 +47564,8 @@
               "additionalProperties": false,
               "properties": {
                 "bucket_start": {
-                  "description": "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int.",
-                  "maximum": 9007199254740991,
-                  "minimum": -9007199254740991,
-                  "type": "integer"
+                  "$ref": "#/components/schemas/EpochMillis",
+                  "description": "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int."
                 },
                 "bucket_start_iso": {
                   "format": "date-time",

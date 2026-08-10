@@ -5915,7 +5915,7 @@ export interface components {
                 event_index: number | null;
                 extrinsic_index?: number | null;
                 method: string | null;
-                observed_at?: number | null;
+                observed_at?: components["schemas"]["EpochMillis"] | null;
                 pallet: string | null;
                 phase?: string | null;
                 /** @description Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
@@ -6443,7 +6443,7 @@ export interface components {
                 event_index: number | null;
                 extrinsic_index?: number | null;
                 method: string | null;
-                observed_at?: number | null;
+                observed_at?: components["schemas"]["EpochMillis"] | null;
                 pallet: string | null;
                 phase?: string | null;
                 summary?: string | null;
@@ -7935,6 +7935,8 @@ export interface components {
             monitored_count: number;
             pool_eligible_count: number;
         };
+        /** @description An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int. */
+        EpochMillis: number;
         ErrorEnvelope: {
             data: null;
             error: {
@@ -8254,9 +8256,9 @@ export interface components {
                 incident_count: number;
                 incidents: ({
                     duration_ms: number;
-                    ended_at: number;
+                    ended_at: components["schemas"]["EpochMillis"];
                     failed_samples: number;
-                    started_at: number;
+                    started_at: components["schemas"]["EpochMillis"];
                 } & {
                     [key: string]: unknown;
                 })[];
@@ -8400,9 +8402,9 @@ export interface components {
                 incident_count: number;
                 incidents: ({
                     duration_ms: number;
-                    ended_at: number;
+                    ended_at: components["schemas"]["EpochMillis"];
                     failed_samples: number;
-                    started_at: number;
+                    started_at: components["schemas"]["EpochMillis"];
                 } & {
                     [key: string]: unknown;
                 })[];
@@ -9800,34 +9802,35 @@ export interface components {
                 avg_latency_ms: number | null;
                 errors: number;
                 requests: number;
-                ts: number;
+                /** @description Bucket start, as epoch milliseconds. */
+                ts: components["schemas"]["EpochMillis"];
             } & {
                 [key: string]: unknown;
             })[];
             /** @description What the answer is actually about, as opposed to what window was asked for. */
             coverage: {
                 /** @description Epoch ms of the newest measured event across every contributing store, or null when nothing was measured. */
-                end: number | null;
+                end: components["schemas"]["EpochMillis"] | null;
                 /** @description The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function. */
                 latency_percentiles: ({
-                    end: number | null;
-                    start: number | null;
+                    end: components["schemas"]["EpochMillis"] | null;
+                    start: components["schemas"]["EpochMillis"] | null;
                 } & {
                     [key: string]: unknown;
                 }) | null;
                 /** @description One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers. */
                 segments: ({
                     /** @description Epoch ms of this store's newest measured event in the window. */
-                    end: number | null;
+                    end: components["schemas"]["EpochMillis"] | null;
                     /** @description Which store measured it: analytics-engine (live capture) or lakehouse (frozen history). */
                     source: string;
                     /** @description Epoch ms of this store's oldest measured event in the window. */
-                    start: number | null;
+                    start: components["schemas"]["EpochMillis"] | null;
                 } & {
                     [key: string]: unknown;
                 })[];
                 /** @description Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured. */
-                start: number | null;
+                start: components["schemas"]["EpochMillis"] | null;
             } & {
                 [key: string]: unknown;
             };
@@ -9858,7 +9861,7 @@ export interface components {
              * @description When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.
              * @example 1786099339000
              */
-            observed_at?: number | null;
+            observed_at?: components["schemas"]["EpochMillis"] | null;
             schema_version: number;
             source: string;
             /** @description Window-total rollup for RPC reverse-proxy traffic. */
@@ -11209,7 +11212,7 @@ export interface components {
             candle_count: number;
             candles: {
                 /** @description Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. */
-                bucket_start: number;
+                bucket_start: components["schemas"]["EpochMillis"];
                 /** Format: date-time */
                 bucket_start_iso: string;
                 close: number;
