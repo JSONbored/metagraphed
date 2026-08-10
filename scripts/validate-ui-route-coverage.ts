@@ -42,13 +42,22 @@ import { repoRoot } from "./lib.ts";
 /**
  * The most unrendered routes allowed. THE CEILING ONLY FALLS.
  *
- * Measured 2026-08-10 against 219 non-feed mainnet GET routes -- by running
- * this check, not by subtracting feeds from a total by hand, which is how the
- * first value here came out one too low. Lower it when
- * you render one -- that is the whole point, and a PR that renders a surface
- * without lowering it fails here rather than leaving the number stale.
+ * NOW ZERO (#10300). Every published non-feed GET route is referenced by
+ * apps/ui, so this has stopped being a ratchet with slack in it and become a
+ * flat rule: a new route that nothing renders fails CI. That is the gate
+ * #10300 asked for -- "fails when a NEW route lands with no UI reference" --
+ * and it is only enforceable because the backlog it was measuring is gone.
+ *
+ * Measured by RUNNING this check, never by subtracting feeds from a total by
+ * hand, which is how the first value here came out one too low.
+ *
+ * If a route genuinely should not be rendered, this is the wrong place to say
+ * so: raising the ceiling would hide every other gap behind one number. Add it
+ * to a named exemption with a reason instead, so what is exempt stays legible
+ * -- an undifferentiated allowance is exactly the shape that let this reach 35
+ * with nothing watching.
  */
-export const MAX_UNRENDERED_ROUTES = 25;
+export const MAX_UNRENDERED_ROUTES = 0;
 
 /** Feed routes: consumed by feed readers, not by our UI. */
 const FEED_PREFIX = "/api/v1/feeds/";
@@ -155,7 +164,10 @@ function main(): void {
   }
 
   console.log(
-    `UI route coverage: ${routes.length - unrendered.length}/${routes.length} published route(s) rendered, ` +
-      `${unrendered.length} not (at the ceiling; feeds excluded, their consumer is external).`,
+    MAX_UNRENDERED_ROUTES === 0
+      ? `UI route coverage: all ${routes.length} published route(s) are rendered ` +
+          `(feeds excluded, their consumer is external).`
+      : `UI route coverage: ${routes.length - unrendered.length}/${routes.length} published route(s) rendered, ` +
+          `${unrendered.length} not (at the ceiling; feeds excluded, their consumer is external).`,
   );
 }

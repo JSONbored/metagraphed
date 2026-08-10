@@ -4189,6 +4189,64 @@ export interface SubnetValidatorEconomics {
   cap_binding: boolean | null;
 }
 
+/**
+ * The registry's own intake pipeline (#10300).
+ *
+ * Each stage carries a `*_reachable` flag so an unavailable stage renders as
+ * unknown rather than as zero — a stage that could not be read is not a stage
+ * with nothing in it.
+ */
+export interface RegistryPipeline {
+  candidates_reachable: boolean;
+  candidate_count: number;
+  /** Replaced by a better source — a pipeline success, not a rejection. */
+  superseded_count: number;
+  curation_reachable: boolean;
+  curated_subnet_count: number;
+  gap_total: number;
+  profiles_reachable: boolean;
+  profile_count: number;
+  snapshots_reachable: boolean;
+  source_count: number | null;
+  verification_result_count: number | null;
+  sources: SourceSnapshot[];
+  generated_at: string | null;
+}
+
+export interface SourceSnapshot {
+  id: string;
+  kind: string | null;
+  /** Two captures with the same hash saw the same bytes. A date cannot say that. */
+  hash: string | null;
+  captured_at: string | null;
+  record_count: number | null;
+}
+
+/** One crowdloan (#10300). */
+export interface Crowdloan {
+  crowdloan_id: number;
+  creator: string | null;
+  cap_tao: number | null;
+  raised_tao: number | null;
+  percent_raised: number | null;
+  contributors_count: number | null;
+  end: number | null;
+  /** Met the cap and SETTLED are different states. */
+  finalized: boolean;
+  /** Whether the raised funds execute a call on release. */
+  has_dispatch_call: boolean;
+  target_address: string | null;
+}
+
+/** One surface's fixture lookup (#10300). An absent fixture is an answer. */
+export interface FixtureLookup {
+  surface_id: string;
+  available: boolean;
+  captured_at: string | null;
+  response_status: number | null;
+  reason: string | null;
+}
+
 /** The network-wide TAO holder leaderboard (#10300). */
 export interface TopHolders {
   account_count: number | null;

@@ -34,7 +34,8 @@ function IndexerLagCard() {
   if (isLoading) return <Skeleton className="h-[120px] w-full" />;
   if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const l = data?.data;
-  if (!l) return <EmptyState title="No lag reading" description="Capture lag has not been measured." />;
+  if (!l)
+    return <EmptyState title="No lag reading" description="Capture lag has not been measured." />;
 
   return (
     <Panel as="section" dense>
@@ -66,7 +67,9 @@ function IndexerLagCard() {
         />
       </div>
       {l.measured_at ? (
-        <p className="mt-3 mg-type-label text-ink-muted">Measured {formatRelative(l.measured_at)}.</p>
+        <p className="mt-3 mg-type-label text-ink-muted">
+          Measured {formatRelative(l.measured_at)}.
+        </p>
       ) : null}
     </Panel>
   );
@@ -78,7 +81,12 @@ function FailureMixCard() {
   if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
   const f = data?.data;
   if (!f || f.reasons.length === 0) {
-    return <EmptyState title="No probe classifications" description="Nothing classified in this window." />;
+    return (
+      <EmptyState
+        title="No probe classifications"
+        description="Nothing classified in this window."
+      />
+    );
   }
 
   const failing = rankedFailures(f.reasons);
@@ -87,8 +95,16 @@ function FailureMixCard() {
     <Panel as="section" dense>
       <h3 className="mb-3 mg-type-label text-ink-muted">Why probes fail · {f.window}</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
-        <Figure label="checks" value={formatNumber(f.total_checks)} hint="Probe checks run in this window." />
-        <Figure label="failing" value={formatNumber(f.failing_checks)} hint="Of those, how many failed." />
+        <Figure
+          label="checks"
+          value={formatNumber(f.total_checks)}
+          hint="Probe checks run in this window."
+        />
+        <Figure
+          label="failing"
+          value={formatNumber(f.failing_checks)}
+          hint="Of those, how many failed."
+        />
         <Figure
           label="failure rate"
           value={f.failure_rate == null ? "—" : `${formatNumber(f.failure_rate * 100)}%`}

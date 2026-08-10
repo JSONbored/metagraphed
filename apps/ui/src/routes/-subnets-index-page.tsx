@@ -328,11 +328,7 @@ export function SubnetsPage() {
                 "/api/v1/chain/deregistrations",
                 "/api/v1/economics",
               ]
-            : [
-                "/api/v1/subnets",
-                "/api/v1/domains",
-                "/api/v1/chain/subnet-lifecycle",
-              ]
+            : ["/api/v1/subnets", "/api/v1/domains", "/api/v1/chain/subnet-lifecycle"]
         }
         artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />

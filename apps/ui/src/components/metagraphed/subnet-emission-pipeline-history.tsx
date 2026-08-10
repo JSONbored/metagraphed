@@ -53,9 +53,7 @@ export function SubnetEmissionPipelineHistoryPanel({ netuid }: { netuid: number 
         <Figure
           label="emission share"
           value={
-            latest?.emission_share == null
-              ? "—"
-              : `${formatNumber(latest.emission_share * 100)}%`
+            latest?.emission_share == null ? "—" : `${formatNumber(latest.emission_share * 100)}%`
           }
           hint="This subnet's share of network emission on the newest day."
         />

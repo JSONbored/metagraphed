@@ -30,10 +30,7 @@ describe("ranking the failure classifications", () => {
   it("ranks by share OF THE FAILURES, not of all checks", () => {
     // `dns` is a bigger slice of all traffic but a smaller slice of the
     // failures. "Why do probes fail" asks the second question.
-    const out = rankedFailures([
-      reason("dns", true, 0.2, 0.9),
-      reason("timeout", true, 0.8, 0.05),
-    ]);
+    const out = rankedFailures([reason("dns", true, 0.2, 0.9), reason("timeout", true, 0.8, 0.05)]);
     expect(out[0].classification).toBe("timeout");
   });
 

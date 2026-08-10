@@ -12,10 +12,7 @@ import type {
   SubnetEmissionPipelinePoint,
 } from "@/lib/metagraphed/types";
 
-const point = (
-  day: string,
-  repeats: boolean | null,
-): SubnetEmissionPipelinePoint => ({
+const point = (day: string, repeats: boolean | null): SubnetEmissionPipelinePoint => ({
   day,
   pipeline_block: 1,
   repeats_previous_observation: repeats,

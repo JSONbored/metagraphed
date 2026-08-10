@@ -3,6 +3,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useEffect, useState } from "react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { RegistryPipelinePanel } from "@/components/metagraphed/registry-pipeline-panel";
 import {
   ExternalLink,
   TableState,
@@ -105,6 +106,22 @@ export function GapsPage() {
         <AsyncPanel height="lg">
           <OpenGapsSection />
         </AsyncPanel>
+
+        {/* #10300: /candidates, /curation, /profiles and /source-snapshots were
+            all published and rendered nowhere. The issue listed them as
+            "plausibly API-only... but it should be a recorded decision, because
+            right now 'no page exists' and 'no page should exist' are
+            indistinguishable from the outside". This is that decision, made the
+            other way -- they are the four stages of registry intake, and this
+            is the console where someone asks where it has stalled. */}
+        <PageSection
+          id="registry-pipeline"
+          eyebrow="Intake"
+          title="Registry pipeline"
+          description="Discovered, curated, profiled — and the snapshot of what each source actually said."
+        >
+          <RegistryPipelinePanel />
+        </PageSection>
 
         <PageSection
           id="profile-completeness"

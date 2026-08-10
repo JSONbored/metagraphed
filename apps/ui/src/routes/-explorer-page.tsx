@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { CrowdloansPanel } from "@/components/metagraphed/crowdloans-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
@@ -314,12 +315,25 @@ export function ExplorerPage() {
               </AsyncPanel>
             </TimeRangeProvider>
           </section>
+
+          {/* #10300: /crowdloans and /crowdloans/{id} were published and
+              rendered nowhere. Chain-level state that belongs beside the rest
+              of it. Expanding a row reads the by-id route, which is where the
+              `exists` flag lives. */}
+          <section className="mt-10">
+            <SectionHeading
+              title="Crowdloans"
+              intro="On-chain crowdloans — raised against cap, and whether they have actually settled."
+            />
+            <CrowdloansPanel />
+          </section>
         </>
       )}
 
       <ApiSourceFooter
         paths={[
           "/api/v1/blocks",
+          "/api/v1/crowdloans",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",

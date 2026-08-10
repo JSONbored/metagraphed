@@ -80,15 +80,11 @@ describe("capturesDiverge", () => {
   const t = (iso: string) => iso;
 
   it("minutes apart is noise", () => {
-    expect(
-      capturesDiverge(t("2026-08-10T09:00:00Z"), t("2026-08-10T09:05:00Z")),
-    ).toBe(false);
+    expect(capturesDiverge(t("2026-08-10T09:00:00Z"), t("2026-08-10T09:05:00Z"))).toBe(false);
   });
 
   it("past the threshold the two halves describe different moments", () => {
-    expect(
-      capturesDiverge(t("2026-08-10T09:00:00Z"), t("2026-08-10T11:00:00Z")),
-    ).toBe(true);
+    expect(capturesDiverge(t("2026-08-10T09:00:00Z"), t("2026-08-10T11:00:00Z"))).toBe(true);
   });
 
   it("is symmetric — order does not decide", () => {

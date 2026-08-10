@@ -90,14 +90,20 @@ export function DomainSummaryCard({ tag }: { tag: string }) {
   return (
     <Panel as="section" dense>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-        <Figure label="subnets" value={formatNumber(d.subnet_count)} hint={`Subnets classified under ${d.domain}.`} />
-        <Figure label="stake" value={formatTao(d.total_stake_tao)} hint="Total stake across the domain's subnets." />
+        <Figure
+          label="subnets"
+          value={formatNumber(d.subnet_count)}
+          hint={`Subnets classified under ${d.domain}.`}
+        />
+        <Figure
+          label="stake"
+          value={formatTao(d.total_stake_tao)}
+          hint="Total stake across the domain's subnets."
+        />
         <Figure
           label="emission share"
           value={
-            d.total_emission_share == null
-              ? "—"
-              : `${formatNumber(d.total_emission_share * 100)}%`
+            d.total_emission_share == null ? "—" : `${formatNumber(d.total_emission_share * 100)}%`
           }
           hint="This domain's combined share of network emission."
         />

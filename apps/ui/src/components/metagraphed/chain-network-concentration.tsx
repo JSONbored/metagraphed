@@ -57,9 +57,21 @@ function BurnSpread() {
     <Panel as="section" dense>
       <h3 className="mb-3 mg-type-label text-ink-muted">Registration cost across subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
-        <Figure label="cheapest" value={formatTao(b.cheapest_burn_tao)} hint="Lowest current registration cost across the subnets read." />
-        <Figure label="median" value={formatTao(b.median_burn_tao)} hint="Median registration cost — the typical price of entry." />
-        <Figure label="dearest" value={formatTao(b.dearest_burn_tao)} hint="Highest current registration cost." />
+        <Figure
+          label="cheapest"
+          value={formatTao(b.cheapest_burn_tao)}
+          hint="Lowest current registration cost across the subnets read."
+        />
+        <Figure
+          label="median"
+          value={formatTao(b.median_burn_tao)}
+          hint="Median registration cost — the typical price of entry."
+        />
+        <Figure
+          label="dearest"
+          value={formatTao(b.dearest_burn_tao)}
+          hint="Highest current registration cost."
+        />
       </div>
       {dearest.length > 0 ? (
         <ul className="mt-4 space-y-1">
@@ -137,9 +149,21 @@ function ConcentrationRanking() {
     <Panel as="section" dense>
       <h3 className="mb-3 mg-type-label text-ink-muted">Most concentrated subnets</h3>
       <div className="grid grid-cols-3 gap-x-6 gap-y-3">
-        <Figure label="median gini" value={formatNumber(c.median_gini)} hint="Median inequality of stake across subnets. 0 is even, 1 is one holder." />
-        <Figure label="median nakamoto" value={formatNumber(c.median_nakamoto_coefficient)} hint="How many accounts it typically takes to reach a controlling share." />
-        <Figure label="single-holder" value={formatNumber(c.single_holder_subnet_count)} hint="Subnets whose stake sits with one account." />
+        <Figure
+          label="median gini"
+          value={formatNumber(c.median_gini)}
+          hint="Median inequality of stake across subnets. 0 is even, 1 is one holder."
+        />
+        <Figure
+          label="median nakamoto"
+          value={formatNumber(c.median_nakamoto_coefficient)}
+          hint="How many accounts it typically takes to reach a controlling share."
+        />
+        <Figure
+          label="single-holder"
+          value={formatNumber(c.single_holder_subnet_count)}
+          hint="Subnets whose stake sits with one account."
+        />
       </div>
       {ranked.length > 0 ? (
         <ul className="mt-4 space-y-1">
@@ -184,8 +208,16 @@ function ConcentrationDrift() {
       <h3 className="mb-3 mg-type-label text-ink-muted">Concentration drift · {hist.window}</h3>
       <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Figure label="days" value={formatNumber(hist.point_count)} hint="Days in the series." />
-        <Figure label="gini then" value={formatNumber(first?.gini)} hint={`Stake gini on ${hist.oldest_day ?? "the oldest day"}.`} />
-        <Figure label="gini now" value={formatNumber(last?.gini)} hint={`Stake gini on ${hist.newest_day ?? "the newest day"}.`} />
+        <Figure
+          label="gini then"
+          value={formatNumber(first?.gini)}
+          hint={`Stake gini on ${hist.oldest_day ?? "the oldest day"}.`}
+        />
+        <Figure
+          label="gini now"
+          value={formatNumber(last?.gini)}
+          hint={`Stake gini on ${hist.newest_day ?? "the newest day"}.`}
+        />
         <Figure
           label="nakamoto now"
           value={formatNumber(last?.nakamoto_coefficient)}
@@ -206,15 +238,7 @@ function ConcentrationDrift() {
   );
 }
 
-function Figure({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
+function Figure({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div title={hint}>
       <div className="mg-type-label text-ink-muted">{label}</div>

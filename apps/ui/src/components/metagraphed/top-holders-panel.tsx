@@ -81,10 +81,7 @@ export function TopHoldersPanel() {
                   {formatTao(a.delegated_tao)}
                 </td>
                 <td className="py-1 text-right tabular-nums text-ink">{formatTao(a.total_tao)}</td>
-                <td
-                  className="py-1 text-right tabular-nums text-ink"
-                  title={flowTooltip(a)}
-                >
+                <td className="py-1 text-right tabular-nums text-ink" title={flowTooltip(a)}>
                   {formatTao(a.net_flow_30d)}
                   {flowsDisagree(a) ? (
                     <span className="ml-1 text-ink-muted" aria-label="flow windows disagree">
@@ -109,11 +106,9 @@ export function TopHoldersPanel() {
 /** All three windows, so one number is never mistaken for the direction. */
 export function flowTooltip(a: TopHolder): string {
   const part = (label: string, v: number | null) => `${label}: ${v == null ? "—" : formatTao(v)}`;
-  return [
-    part("7d", a.net_flow_7d),
-    part("30d", a.net_flow_30d),
-    part("90d", a.net_flow_90d),
-  ].join(" · ");
+  return [part("7d", a.net_flow_7d), part("30d", a.net_flow_30d), part("90d", a.net_flow_90d)].join(
+    " · ",
+  );
 }
 
 /**

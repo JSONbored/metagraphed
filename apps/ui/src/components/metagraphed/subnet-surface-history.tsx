@@ -43,7 +43,9 @@ export function SubnetSurfaceHistoryPanel({ netuid }: { netuid: number }) {
       <p className="mb-3 mg-type-data-sm text-ink-muted">
         {formatNumber(h.change_count)} recorded change
         {h.change_count === 1 ? "" : "s"}
-        {h.surface_count == null ? "" : ` across ${formatNumber(h.surface_count)} surface${h.surface_count === 1 ? "" : "s"}`}
+        {h.surface_count == null
+          ? ""
+          : ` across ${formatNumber(h.surface_count)} surface${h.surface_count === 1 ? "" : "s"}`}
         {h.latest_change_at ? ` · latest ${formatRelative(h.latest_change_at)}` : ""}
       </p>
 

@@ -62,7 +62,10 @@ export function ValidatorEconomicsRanking() {
               >
                 earning floor
               </th>
-              <th className="py-1 text-right font-normal" title="How far above the permit floor the earning floor sits.">
+              <th
+                className="py-1 text-right font-normal"
+                title="How far above the permit floor the earning floor sits."
+              >
                 ×
               </th>
               <th className="py-1 text-right font-normal">slots</th>

@@ -1,5 +1,5 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
-import { apiFetch, type ApiResult, type QueryParams } from "./client";
+import { apiFetch, ApiError, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
@@ -236,6 +236,10 @@ import type {
   SubnetEmissionPipelineHistory,
   SubnetEmissionPipelinePoint,
   SubnetSurfaceChange,
+  RegistryPipeline,
+  SourceSnapshot,
+  Crowdloan,
+  FixtureLookup,
   TopHolders,
   TopHolder,
   RootClaim,
@@ -5550,6 +5554,227 @@ function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomic
 }
 
 /**
+ * The registry's own intake pipeline (#10300).
+ *
+ * `/api/v1/candidates`, `/api/v1/curation`, `/api/v1/profiles` and
+ * `/api/v1/source-snapshots` were all published and rendered nowhere. They are
+ * the four stages of how a surface gets into this registry, and #10300's point
+ * about them is the one that matters: "no page exists" and "no page should
+ * exist" are indistinguishable from outside. This is the page.
+ */
+export const registryPipelineQuery = () =>
+  queryOptions({
+    queryKey: k("registry-pipeline"),
+    queryFn: async ({ signal }) => {
+      // Four independent reads. `allSettled`, not `all`: one stage being
+      // unavailable must not blank the other three -- a pipeline view whose
+      // whole point is showing where things stall would be useless if any
+      // stalled stage took the view down with it.
+      const [candidates, curation, profiles, snapshots] = await Promise.allSettled([
+        apiFetch<Record<string, unknown>>("/api/v1/candidates", { signal }),
+        apiFetch<Record<string, unknown>>("/api/v1/curation", { signal }),
+        apiFetch<Record<string, unknown>>("/api/v1/profiles", { signal }),
+        apiFetch<Record<string, unknown>>("/api/v1/source-snapshots", { signal }),
+      ]);
+      const body = (r: PromiseSettledResult<{ data: unknown }>): Record<string, unknown> =>
+        r.status === "fulfilled" && isRecord(r.value.data) ? r.value.data : {};
+      const ok = (r: PromiseSettledResult<unknown>) => r.status === "fulfilled";
+
+      const cand = body(candidates);
+      const cur = body(curation);
+      const prof = body(profiles);
+      const snap = body(snapshots);
+      const snapSummary = isRecord(snap.summary) ? snap.summary : {};
+
+      const candidateRows = Array.isArray(cand.candidates) ? cand.candidates : [];
+      const curationRows = Array.isArray(cur.curation) ? cur.curation : [];
+
+      return {
+        data: {
+          candidates_reachable: ok(candidates),
+          candidate_count: candidateRows.length,
+          // A SUPERSEDED candidate is not a rejected one -- it was replaced by
+          // a better source, which is a success of the pipeline rather than a
+          // failure, and folding the two together would make intake look worse
+          // than it is.
+          superseded_count: candidateRows.filter(
+            (c) => isRecord(c) && firstString(c.superseded_by) !== undefined,
+          ).length,
+          curation_reachable: ok(curation),
+          curated_subnet_count: curationRows.length,
+          // TWO LADDERS, not one. `coverage_level` is how much we have;
+          // `curation_level` is how much of it a human has vouched for. A
+          // subnet can be rich and unvouched, or thin and fully reviewed.
+          gap_total: curationRows.reduce(
+            (n, c) => n + (isRecord(c) ? (firstFiniteNumber(c.gap_count) ?? 0) : 0),
+            0,
+          ),
+          profiles_reachable: ok(profiles),
+          profile_count: Array.isArray(prof.profiles) ? prof.profiles.length : 0,
+          snapshots_reachable: ok(snapshots),
+          source_count: firstFiniteNumber(snapSummary.source_count) ?? null,
+          verification_result_count:
+            firstFiniteNumber(snapSummary.verification_result_count) ?? null,
+          sources: (Array.isArray(snap.sources) ? snap.sources : [])
+            .map((raw): SourceSnapshot | null => {
+              if (!isRecord(raw)) return null;
+              const id = firstString(raw.id);
+              if (!id) return null;
+              return {
+                id,
+                kind: firstString(raw.kind) ?? null,
+                // The hash is what makes a snapshot auditable rather than
+                // merely dated -- two captures with the same hash saw the same
+                // bytes, which a timestamp alone cannot tell you.
+                hash: firstString(raw.hash) ?? null,
+                captured_at: firstString(raw.captured_at) ?? null,
+                record_count: firstFiniteNumber(raw.record_count) ?? null,
+              };
+            })
+            .filter((s): s is SourceSnapshot => s !== null),
+          generated_at: firstString(snap.generated_at) ?? firstString(cand.generated_at) ?? null,
+        } satisfies RegistryPipeline,
+        meta: undefined,
+        url: undefined,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
+/**
+ * Every crowdloan on chain (#10300).
+ *
+ * `percent_raised` and `finalized` are separate states and the panel must not
+ * conflate them: a crowdloan at 100% that has not been finalized has met its
+ * cap but not settled, which is a different thing to be looking at than one
+ * that has.
+ */
+export const crowdloansQuery = () =>
+  queryOptions({
+    queryKey: k("crowdloans"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/crowdloans", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const crowdloans = (Array.isArray(d.crowdloans) ? d.crowdloans : [])
+        .map(normalizeCrowdloan)
+        .filter((c): c is Crowdloan => c !== null);
+      return {
+        data: {
+          crowdloan_count: firstFiniteNumber(d.crowdloan_count) ?? crowdloans.length,
+          crowdloans,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One crowdloan by id (#10300).
+ *
+ * `exists` is published in the BODY at 200 rather than signalled as a 404,
+ * because "there is no crowdloan 47" is a fact about the chain, not a failed
+ * request. The panel renders that as an answer instead of an error.
+ */
+export const crowdloanQuery = (id: number) =>
+  queryOptions({
+    queryKey: k("crowdloan", id),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/crowdloans/${id}`, { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          crowdloan_id: firstFiniteNumber(d.crowdloan_id) ?? id,
+          exists: d.exists === true,
+          crowdloan: normalizeCrowdloan(d.crowdloan),
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeCrowdloan(raw: unknown): Crowdloan | null {
+  if (!isRecord(raw)) return null;
+  const id = firstFiniteNumber(raw.crowdloan_id);
+  if (id === undefined) return null;
+  return {
+    crowdloan_id: id,
+    creator: firstString(raw.creator) ?? null,
+    cap_tao: firstFiniteNumber(raw.cap_tao) ?? null,
+    raised_tao: firstFiniteNumber(raw.raised_tao) ?? null,
+    percent_raised: firstFiniteNumber(raw.percent_raised) ?? null,
+    contributors_count: firstFiniteNumber(raw.contributors_count) ?? null,
+    end: firstFiniteNumber(raw.end) ?? null,
+    // Met the cap and SETTLED are different states.
+    finalized: raw.finalized === true,
+    // Whether the raised funds execute a call on release. A crowdloan that
+    // dispatches is doing something a plain transfer is not.
+    has_dispatch_call: raw.has_dispatch_call === true,
+    target_address: firstString(raw.target_address) ?? null,
+  };
+}
+
+/**
+ * One surface's captured fixture (#10300).
+ *
+ * A fixture that is MISSING says why -- the list route publishes a `status` and
+ * a `reason` per surface, and "we never captured this" is a different fact from
+ * "the capture failed with a 500". The lookup returns the artifact when it
+ * exists and the stated absence when it does not, rather than an error either
+ * way.
+ */
+export const fixtureQuery = (surfaceId: string) =>
+  queryOptions({
+    queryKey: k("fixture", surfaceId),
+    queryFn: async ({ signal }) => {
+      try {
+        const res = await apiFetch<Record<string, unknown>>(
+          `/api/v1/fixtures/${encodeURIComponent(surfaceId)}`,
+          { signal },
+        );
+        const d = isRecord(res.data) ? res.data : {};
+        return {
+          data: {
+            surface_id: surfaceId,
+            available: true,
+            captured_at: firstString(d.captured_at) ?? null,
+            response_status: firstFiniteNumber(d.response_status) ?? null,
+            reason: null,
+          } satisfies FixtureLookup,
+          meta: res.meta,
+          url: res.url,
+        };
+      } catch (err) {
+        // An absent fixture is an ANSWER, not a failure. The route 404s on a
+        // surface it never captured, and surfacing that as a thrown error
+        // would make "we have not captured this yet" indistinguishable from
+        // "the API is broken" -- which is the exact confusion #10222 fixed for
+        // lane health.
+        const status = err instanceof ApiError ? err.status : null;
+        if (status === 404) {
+          return {
+            data: {
+              surface_id: surfaceId,
+              available: false,
+              captured_at: null,
+              response_status: null,
+              reason: "No fixture has been captured for this surface.",
+            } satisfies FixtureLookup,
+            meta: undefined,
+            url: undefined,
+          };
+        }
+        throw err;
+      }
+    },
+    staleTime: STALE_LONG,
+    retry: false,
+  });
+
+/**
  * The network-wide TAO holder leaderboard (#10300).
  *
  * `free_tao`, `delegated_tao` and `total_tao` are three different positions,
@@ -5982,10 +6207,9 @@ export const chainHoldersQuery = (limit = 20) =>
   queryOptions({
     queryKey: k("chain-holders", limit),
     queryFn: async ({ signal }) => {
-      const res = await apiFetch<Record<string, unknown>>(
-        `/api/v1/chain/holders?limit=${limit}`,
-        { signal },
-      );
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/chain/holders?limit=${limit}`, {
+        signal,
+      });
       const d = isRecord(res.data) ? res.data : {};
       const net = isRecord(d.network) ? d.network : {};
       const subnets = (Array.isArray(d.subnets) ? d.subnets : [])
