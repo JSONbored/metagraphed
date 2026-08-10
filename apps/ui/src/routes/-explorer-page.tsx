@@ -315,20 +315,23 @@ export function ExplorerPage() {
               </AsyncPanel>
             </TimeRangeProvider>
           </section>
-
-          {/* #10300: /crowdloans and /crowdloans/{id} were published and
-              rendered nowhere. Chain-level state that belongs beside the rest
-              of it. Expanding a row reads the by-id route, which is where the
-              `exists` flag lives. */}
-          <section className="mt-10">
-            <SectionHeading
-              title="Crowdloans"
-              intro="On-chain crowdloans — raised against cap, and whether they have actually settled."
-            />
-            <CrowdloansPanel />
-          </section>
         </>
       )}
+
+      {/* #10300: /crowdloans and /crowdloans/{id} were published and rendered
+          nowhere. OUTSIDE the `showAnalytics` disclosure on purpose -- that
+          block defaults to closed, so mounting here would have satisfied the
+          route-coverage sweep while leaving the surface effectively unseen,
+          which is the rubber stamp #10300 warned the gate must not become.
+          Crowdloans are chain state, not analytics, so they belong in the
+          always-rendered body. */}
+      <section className="mt-10">
+        <SectionHeading
+          title="Crowdloans"
+          intro="On-chain crowdloans — raised against cap, and whether they have actually settled."
+        />
+        <CrowdloansPanel />
+      </section>
 
       <ApiSourceFooter
         paths={[
