@@ -49,10 +49,10 @@ describe("the read dispatcher", () => {
       `expected at least the three known dispatcher blocks, found ${dispatches.length}`,
     );
     // The store is bound to a local now (#10162), because each block has to
-    // test it for undefined before dispatching -- routeStore answers "no store
+    // test it for undefined before dispatching -- routeRunner answers "no store
     // at all" rather than handing back a runner over an absent binding. So the
     // first argument is `store`, and what this checks is that `store` in each
-    // block came FROM routeStore and nowhere else.
+    // block came FROM routeRunner and nowhere else.
     const offenders = dispatches
       .filter(([, , firstArg]) => firstArg.trim() !== "store")
       .map(([, name, firstArg]) => `${name} <- ${firstArg.trim()}`);
@@ -60,7 +60,7 @@ describe("the read dispatcher", () => {
       offenders,
       [],
       "a dispatcher block dispatched on something other than the `store` " +
-        "local that routeStore fills, so its store choice bypassed the gate",
+        "local that routeRunner fills, so its store choice bypassed the gate",
     );
     const bindings = [...body.matchAll(/const store = ([^;]+);/g)].map(
       ([, expr]) => expr.trim(),
@@ -71,9 +71,9 @@ describe("the read dispatcher", () => {
       `${dispatches.length} dispatcher blocks but ${bindings.length} store bindings`,
     );
     assert.deepEqual(
-      bindings.filter((expr) => expr !== "routeStore(env, ctx, url)"),
+      bindings.filter((expr) => expr !== "routeRunner(env, ctx)"),
       [],
-      "a `store` local was filled from something other than routeStore; " +
+      "a `store` local was filled from something other than routeRunner; " +
         "its route's NEON_READ_ROUTE_TABLES entry would be read by nothing",
     );
   });
@@ -87,27 +87,31 @@ describe("the read dispatcher", () => {
     assert.equal(
       direct,
       0,
-      "the dispatcher constructs a runner directly; routeStore is the only " +
+      "the dispatcher constructs a runner directly; routeRunner is the only " +
         "place that should decide, so the gate cannot be skipped by one block",
     );
   });
 
-  test("routeStore still gates on the flag, not the binding's presence", () => {
-    // #9704: reading `env.HYPERDRIVE && ...` alone meant binding Hyperdrive
-    // for a WRITE pilot silently moved a READ onto a store nothing had written
-    // to, and it served a two-day-old snapshot until the binding was pulled.
-    // "The binding exists" and "this route should read Neon" are different
-    // questions and both must be answered yes.
+  test("an unbound HYPERDRIVE yields no runner at all", () => {
+    // WHAT THIS TEST USED TO SAY. `routeStore` had to gate on the FLAG and not
+    // on the binding's presence, because #9704: reading `env.HYPERDRIVE && ...`
+    // alone meant provisioning Hyperdrive for a WRITE pilot silently moved a
+    // READ onto a store nothing had written to, and it served a two-day-old
+    // snapshot until the binding was pulled.
+    //
+    // That flag is deleted (#10051). The lesson was about two stores -- a read
+    // could land on the WRONG one -- and there is one now, so the flag could
+    // only refuse a route, never misdirect it.
+    //
+    // The half that survives is #10162's: an absent binding must produce
+    // `undefined`, so the caller answers 503, rather than a runner over a
+    // connection that is not there. That is still a live distinction, because
+    // the failure it prevents is an exception mid-handler instead of a status.
     const fn = SOURCE.slice(
-      SOURCE.indexOf("function routeStore("),
-      SOURCE.indexOf("export function neonServesRoute("),
+      SOURCE.indexOf("function routeRunner("),
+      SOURCE.indexOf("\n}", SOURCE.indexOf("function routeRunner(")),
     );
     assert.match(fn, /env\.HYPERDRIVE/);
-    assert.match(fn, /neonServesRoute\(/);
-    // And an unmatched route gets NOTHING, rather than a runner over a store
-    // its NEON_READ_ROUTE_TABLES entry never named. With one store left this is
-    // the only remaining way for the gate to be bypassed: returning a handle
-    // unconditionally would make `neonServesRoute` decorative.
-    assert.match(fn, /return undefined;/);
+    assert.match(fn, /undefined/);
   });
 });

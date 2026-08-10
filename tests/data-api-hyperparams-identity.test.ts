@@ -463,7 +463,7 @@ test("a COLD hyperparams table answers 503 so the cold-tier fallback runs", asyn
 // pinned it is deleted rather than rewritten -- the main Worker still consults
 // the flag to decide whether to FORWARD here, which is a different assertion in
 // a different suite. What replaces it as this route's gate is
-// NEON_READ_ROUTE_TABLES, asserted below.
+// the dispatcher's own runner, which is Postgres unconditionally (#10051).
 
 test("GET /subnets/:netuid/hyperparameters/history pages newest-first with a keyset cursor", async () => {
   await postHyperparams([hyperparamsSyncRow()]);
@@ -578,24 +578,6 @@ test("a matched read with no store answers 503, and a query failure an opaque 50
     ((await broken.json()) as Row).error,
     "data query failed",
     "the catch envelope never leaks DB detail",
-  );
-});
-
-test("a read route declines unless its OWN table is read-enabled", async () => {
-  // routeStore consults neonServesRoute, which requires every table the route
-  // reads to be named in NEON_READ_LANES. That gate is what stopped an
-  // un-migrated table being served from a store that did not hold it, and with
-  // D1 gone it is the ONLY thing between a route and a 503 -- an unmapped or
-  // un-enabled route no longer quietly stays on an older store, it declines.
-  await postIdentity([identitySyncRow()]);
-  const res = await call(
-    req("/api/v1/accounts/5Alice/identity"),
-    env({ NEON_READ_LANES: "subnet_hyperparams" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal(
-    ((await res.json()) as Row).error,
-    "no store bound for this route",
   );
 });
 

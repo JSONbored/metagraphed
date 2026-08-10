@@ -354,32 +354,15 @@ function parseLaneList(raw: unknown): Set<string> {
   );
 }
 
-/**
- * Which lanes READ from Neon. A separate flag from the write list, on purpose.
- *
- * THE CONFLATION IS WHAT BROKE THE PILOT. The read gate used to be "is
- * HYPERDRIVE bound", so binding the config for a WRITE pilot silently moved a
- * READ -- and `GET /api/v1/accounts/{ss58}/subnets/{netuid}/history` began
- * serving a store nothing had ever written to. "The binding exists" and "this
- * route should read Neon" are different questions and now have different
- * answers.
- *
- * Defaults to empty, so the binding can come back for the writer without any
- * read following it.
- */
-export function neonReadLanes(
-  env: Record<string, unknown> | null | undefined,
-): Set<string> {
-  return parseLaneList(env?.NEON_READ_LANES);
-}
-
-/** Whether `lane`'s reads should be served from Neon on this deployment. */
-export function neonReadEnabled(
-  env: Record<string, unknown> | null | undefined,
-  lane: string,
-): boolean {
-  return neonReadLanes(env).has(lane);
-}
+// NEON_READ_LANES lived here: which lanes READ from Neon, as opposed to the
+// write list above. It existed to keep two questions apart -- "is HYPERDRIVE
+// bound" and "should this route read Neon" -- because conflating them once
+// moved a read onto a store nothing had written to (#9704).
+//
+// Both questions had answers while D1 held the other copy. Since #10179 there
+// is no other copy, so the second one collapses into the first and the flag
+// could only ever refuse a read, never redirect it. Deleted in #10051 with
+// the route map and the gate in workers/data-api.ts that consulted it.
 
 /** Whether `lane` should mirror into Neon on this deployment. */
 export function neonDualWriteEnabled(
@@ -394,9 +377,10 @@ export function neonDualWriteEnabled(
  *
  * A FOURTH flag, and the one the other three are converging on. The existing
  * vocabulary all describes a table that lives in D1 and is being shadowed:
- * NEON_DUAL_WRITE_LANES says new writes also reach Neon, NEON_BACKFILL_LANES
- * says older ones do too, NEON_READ_LANES says reads are served from the copy.
- * Every one of them presumes a D1 original still exists.
+ * NEON_DUAL_WRITE_LANES said new writes also reach Neon, NEON_BACKFILL_LANES
+ * that older ones do too, NEON_READ_LANES that reads are served from the copy.
+ * Every one of them presumed a D1 original still exists, which is why the last
+ * two are already gone.
  *
  * That vocabulary does not fit the tables that move by having their WRITER
  * repointed. The user-state tier is the worked example: ten tables, ~1,200

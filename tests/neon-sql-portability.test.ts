@@ -1,5 +1,4 @@
-// No SQL that a Neon read flag can reach is allowed to be store-specific
-// (#9791).
+// No SQL these routes can execute is allowed to be store-specific (#9791).
 //
 // ## What this exists to have caught
 //
@@ -42,7 +41,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
-import { NEON_READ_ROUTE_TABLES } from "../workers/data-api.ts";
 
 interface Rule {
   pattern: RegExp;
@@ -120,10 +118,12 @@ const SQLITE_ONLY: readonly Rule[] = [
  * Columns D1 stores as INTEGER 0/1 and Neon declares BOOLEAN.
  *
  * This is NOT a dialect difference -- both stores would accept both spellings
- * against a column of the matching type. It is a SCHEMA difference, and the
- * authority for the list is the mirror itself: `NEON_BACKFILL_PLANS[*].booleans`
- * in src/neon-backfill.ts names exactly the columns it converts with
- * `Boolean(value)` on the way in, which is why Neon's side of them is BOOLEAN.
+ * against a column of the matching type. It is a SCHEMA difference. The
+ * authority WAS the mirror's `NEON_BACKFILL_PLANS[*].booleans`, which named the
+ * columns it wrapped in `Boolean(value)` on the way in; src/neon-backfill.ts is
+ * deleted (#10166) and the surviving authorities are the write plans that still
+ * declare `booleans:`, which the test at the foot of this file derives from the
+ * files rather than from this list.
  *
  * Kept in sync by a test below rather than by hand.
  */
@@ -267,7 +267,7 @@ function stripComments(source: string): string {
  * Every D1 route matcher in workers/data-api.ts, concatenated.
  *
  * NOT just matchNeuronsD1Route. Scanning one function was sufficient only
- * while every route in NEON_READ_ROUTE_TABLES lived in it, and the moment
+ * while every movable route lived in it, and the moment
  * `/subnets/{n}/hyperparameters/history` and `/accounts/{ss58}/identity-history`
  * moved, their SQL sat in matchHyperparamsIdentityD1Route where no scan
  * reached it (#9947). Discovering the matchers by NAME rather than listing
@@ -322,21 +322,27 @@ describe("Neon-movable SQL is portable", () => {
     );
   });
 
-  test("no route the read map may move contains store-specific SQL", () => {
-    // THE GATE. A route in NEON_READ_ROUTE_TABLES is one the flag can send to
-    // Postgres, so its SQL has to run there.
+  test("no route in the matchers contains store-specific SQL", () => {
+    // THE GATE. This used to scan only the routes NEON_READ_ROUTE_TABLES said
+    // the read flag COULD move to Postgres, because the rest were still on
+    // SQLite and a SQLite-only construct was correct there.
+    //
+    // Both the flag and the map are gone (#10051) and every route in these
+    // matchers runs on Postgres unconditionally, so the filter is dropped
+    // rather than replaced -- the scan now covers strictly more than it did.
+    // Removing a gate's input is the usual way a scanning check quietly stops
+    // checking; widening it to everything is the one direction that cannot.
     const problems: string[] = [];
     for (const { path, block } of routeBlocks()) {
-      if (!NEON_READ_ROUTE_TABLES.some((r) => r.pattern.test(path))) continue;
       for (const v of violations(block, ALL_RULES))
         problems.push(`${path}: ${v}`);
     }
     assert.deepEqual(
       problems,
       [],
-      "these routes can be sent to Neon by NEON_READ_LANES but their SQL is " +
-        "store-specific. On Postgres they do not error visibly -- they return " +
-        `an EMPTY result at 200 OK (#9791):\n${problems.join("\n")}`,
+      "these routes run on Postgres but their SQL is store-specific. It does " +
+        "not error visibly there -- it returns an EMPTY result at 200 OK " +
+        `(#9791):\n${problems.join("\n")}`,
     );
   });
 
@@ -412,18 +418,38 @@ describe("Neon-movable SQL is portable", () => {
     assert.deepEqual(problems, [], problems.join("\n"));
   });
 
-  test("the scan actually covers every route the read map may move", () => {
-    // The matcher scans ONE function. That is only sufficient while every
-    // route in NEON_READ_ROUTE_TABLES is dispatched from it -- and the map is
-    // the thing that grows as tables move off D1 (#9787 has 46 to go).
-    // Without this, adding a route whose handler lives elsewhere silently
-    // shrinks the scan's coverage to nothing in particular, and it would still
-    // report green.
+  test("every matcher the dispatcher consults is one the scan reads", () => {
+    // WHAT THIS REPLACED, AND WHY THE HAZARD OUTLIVED IT. This used to assert
+    // that every route in NEON_READ_ROUTE_TABLES was dispatched from a scanned
+    // function -- the map being the list that grew as tables moved off D1.
+    // #10051 deleted the map, and deleting a gate's input is the ordinary way
+    // a scanning check starts passing on nothing.
     //
-    // Compare on a CONCRETE PATH, not on regex source: the dispatcher spells
-    // the parameterised routes with capture groups (`(\d+)`) and the map
-    // without them, so the two sources never match textually even when they
-    // describe the same route.
+    // The hazard it guarded is still live and does not need the map to state:
+    // matcherSource() finds matchers by NAME (`match*D1Route`), so a route
+    // dispatched from a function named anything else is invisible to every
+    // scan in this file while looking perfectly normal at the call site.
+    // Asserting from the dispatcher's own call sites closes that without
+    // depending on a list anyone maintains by hand.
+    const src = readFileSync("workers/data-api.ts", "utf8");
+    const dispatched = [...src.matchAll(/=\s*(match\w+)\(url\)/g)].map(
+      (m) => m[1]!,
+    );
+    assert.ok(
+      dispatched.length >= 3,
+      `only ${dispatched.length} dispatched matchers found -- the extraction ` +
+        `stopped working, so this test is passing on nothing`,
+    );
+    const scanned = new Set(
+      [...src.matchAll(/^function (match\w*D1Route)\b/gm)].map((m) => m[1]!),
+    );
+    assert.deepEqual(
+      dispatched.filter((name) => !scanned.has(name)),
+      [],
+      "the dispatcher routes through these matchers but matcherSource() does " +
+        "not read them, so their SQL is scanned by nothing in this file",
+    );
+
     const body = matcherSource();
     const guards = [
       // `if (url.pathname === "...")`
@@ -450,21 +476,6 @@ describe("Neon-movable SQL is portable", () => {
       guards.length >= 12,
       `only ${guards.length} route guards extracted -- the extraction stopped ` +
         `working, so this test is passing on nothing`,
-    );
-
-    const uncovered = NEON_READ_ROUTE_TABLES.filter(({ pattern }) => {
-      const path = pattern.source
-        .replace(/^\^|\$$/g, "")
-        .replace(/\\\//g, "/")
-        .replace(/\[\^\/\]\+/g, "5Abc")
-        .replace(/\\d\+/g, "7");
-      return !guards.some((matches) => matches(path));
-    });
-    assert.deepEqual(
-      uncovered.map((u) => u.pattern.source),
-      [],
-      "these read-map routes are not dispatched from the scanned function, so " +
-        "the portability scan does not see their SQL",
     );
   });
 });

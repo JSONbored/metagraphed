@@ -66,7 +66,7 @@ const STORE_AWARE = [
  *
  * TWO WAYS to qualify, and missing the second made this over-report:
  *
- *   1. it SELECTS a store   -- observationsReadDb / createPgSql / routeStore
+ *   1. it SELECTS a store   -- observationsReadDb / createPgSql / routeRunner
  *   2. it takes an INJECTED runner -- `ObservationsReadDb`, a `D1Runner`, or a
  *      bare `(sql, params) => rows` parameter
  *
@@ -76,7 +76,7 @@ const STORE_AWARE = [
  * account-stake-moves are all group 2 and were all reported as blockers.
  */
 const SELECTS_A_STORE =
-  /observationsReadDb|createPgSql|routeStore|neonOwnsTable|neonReadLanes|ObservationsReadDb|D1Runner|d1:\s*\(\s*\n?\s*sql/;
+  /observationsReadDb|createPgSql|routeRunner|neonOwnsTable|ObservationsReadDb|D1Runner|d1:\s*\(\s*\n?\s*sql/;
 
 /**
  * Files that name an observation table in SQL but cannot reach Neon.
@@ -213,7 +213,7 @@ describe("observation flip readiness", () => {
     // Non-vacuous guard for the assertion above. A scanner broken to match
     // nothing would make "every side reader is ported" trivially true, which is
     // the exact failure mode this whole file exists to prevent one layer down.
-    const selects = /observationsReadDb|createPgSql|routeStore/;
+    const selects = /observationsReadDb|createPgSql|routeRunner/;
     const hardWired = `const db = env.METAGRAPH_HEALTH_DB;
       await db.prepare("SELECT netuid FROM subnet_snapshots").all();`;
     assert.equal(selects.test(hardWired), false);
