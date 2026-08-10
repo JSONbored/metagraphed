@@ -651,16 +651,6 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
   return m.rows.every((r) => r !== null && typeof r === "object");
 }
 
-/** How a message was disposed of, so a batch's outcome is reportable rather
- * than inferred from an absence of errors. */
-export interface SyncBatchOutcome {
-  acked: number;
-  /** Retried by the queue -- transient, may yet succeed. */
-  retried: number;
-  /** Acked despite failing, because retrying could not help. */
-  rejected: number;
-}
-
 /**
  * Split a batch into what should be written, retried, and rejected.
  *

@@ -55,7 +55,6 @@ export interface EmissionChangesDb {
 
 /** The three change kinds, which are also the `?kind=` filter's vocabulary. */
 export const EMISSION_CHANGE_KINDS = ["param", "subnet", "flow"] as const;
-export type EmissionChangeKind = (typeof EMISSION_CHANGE_KINDS)[number];
 
 /** How a parameter value came to be, per 0005's CHECK constraint. */
 export const EMISSION_PARAM_SOURCES = [

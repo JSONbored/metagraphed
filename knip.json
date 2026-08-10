@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "workers/api.entry.ts",
+    "workers/data-api.ts",
+    "workers/chain-firehose-hub.ts",
+    "workers/mcp-session-hub.ts",
+    "workers/alerter-hub.ts",
+    "workers/registry-sync-api.ts",
+    "workers/wss-lb.ts",
+    "src/mcp-server.ts",
+    "schemas-src/openapi-registry.ts",
+    "scripts/*.ts",
+    "scripts/lib/*.ts",
+    "tests/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "workers/**/*.ts",
+    "schemas-src/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "ignore": ["generated/**", "public/**", "dist/**", "apps/**"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": [],
+  "includeEntryExports": false
+}

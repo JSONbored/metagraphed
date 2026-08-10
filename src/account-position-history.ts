@@ -52,11 +52,6 @@
 // day-to-day for one (account, netuid) pair (a hotkey re-registering at a new
 // UID slot, or a coldkey key-rotation), so those travel with each point.
 
-// SELECT list for one (account, netuid) day of account_position_daily.
-export const ACCOUNT_POSITION_DAILY_READ_COLUMNS =
-  "snapshot_date, captured_at, uid, coldkey, active, validator_permit, " +
-  "rank, trust, incentive, dividends, stake_tao, emission_tao";
-
 // 1 TAO = 1e9 rao; round tao + yield outputs to that precision (matches
 // account-portfolio.ts's round9 — each module owns its own copy, this
 // codebase's established convention for these small numeric coercions).

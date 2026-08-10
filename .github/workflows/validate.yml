@@ -682,6 +682,12 @@ jobs:
       - name: Validate unreferenced modules
         run: npm run validate:unreferenced-modules
 
+      # The export half of the same question (#10292). A ratchet rather than a
+      # pass/fail: 880 today, almost all of them contract component names the
+      # registry links by string, which no static tool can follow.
+      - name: Validate unreferenced exports
+        run: npm run validate:unreferenced-exports
+
       # Module-level mutable state in src/ and workers/ must register a reset
       # (src/module-state-registry.ts), or it leaks across test files once the
       # coverage pass runs with `isolate: false` (#8922). Static scan of the
