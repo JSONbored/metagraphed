@@ -25,6 +25,11 @@
   "name": "Numinous",
   "netuid": 6,
   "notes": "Reviewed overlay for SN6 Numinous. The public API exposes Swagger UI, a machine-readable OpenAPI 3.1 schema, and a read-only health endpoint. The OpenAPI schema documents 20 total paths; 3 are tracked here (health, leaderboard, benchmarks/baseline). Of the remaining 17: 3 explicitly require an API key (forecasters/predictions, internal/liveuamap/events, internal/liveuamap/regions) and are correctly gated; the other 14 are per-miner (miner_uid + miner_hotkey, sometimes also event_id/version_id/run_id) or per-query (free-text \"question\") lookups with no stable canonical parameter value to probe against -- unlike this file's leaderboard/benchmarks endpoints, which need none. Not tracked as surfaces: a hardcoded miner_uid would silently go stale the moment that specific miner deregisters, misrepresenting an API problem that doesn't exist.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "numinous",
   "social": {
@@ -192,7 +197,7 @@
       "id": "sn-6-numinous-api-v1-aggregated-scores",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 aggregated scores",
-      "notes": "GET /api/v1/aggregated-scores on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/aggregated-scores on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -214,7 +219,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey predictions active",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/predictions/active on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/predictions/active on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -236,7 +241,7 @@
       "id": "sn-6-numinous-api-v1-agents-versionid-code",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 agents by version_id code",
-      "notes": "GET /api/v1/agents/{version_id}/code on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/agents/{version_id}/code on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -258,7 +263,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-agents",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey agents",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -280,7 +285,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-agents-versionid-code",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey agents by version_id code",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents/{version_id}/code on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/agents/{version_id}/code on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -302,7 +307,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-historical-ranking",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey historical ranking",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/historical-ranking on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/historical-ranking on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -324,7 +329,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-runs-eventid",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey runs by event_id",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{event_id} on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{event_id} on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -346,7 +351,7 @@
       "id": "sn-6-numinous-api-v1-miners-mineruid-minerhotkey-runs-runid-logs",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miners by miner_uid by miner_hotkey runs by run_id logs",
-      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{run_id}/logs on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Not individually curled — same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miners/{miner_uid}/{miner_hotkey}/runs/{run_id}/logs on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 same no-auth shape as the verified `sn-6-numinous-api-v1-miners-mineruid-minerhotkey-predictions-active` sibling. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -368,7 +373,7 @@
       "id": "sn-6-numinous-api-v1-miner-reasonings",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 miner reasonings",
-      "notes": "GET /api/v1/miner-reasonings on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey, event_id. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/miner-reasonings on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Required query: miner_uid, miner_hotkey, event_id. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -416,7 +421,7 @@
       "id": "sn-6-numinous-api-v1-forecasters-prediction-jobs-predictionid",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 forecasters prediction jobs by prediction_id",
-      "notes": "GET /api/v1/forecasters/prediction-jobs/{prediction_id} on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/forecasters/prediction-jobs/{prediction_id} on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21 with a placeholder value: HTTP 200 or a clean validation error (e.g. UUID-parsing 422), confirming the route is real, not an auth gate. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -490,7 +495,7 @@
       "id": "sn-6-numinous-api-v1-causal-drivers",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 causal drivers",
-      "notes": "GET /api/v1/causal-drivers/ on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/causal-drivers/ on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -512,7 +517,7 @@
       "id": "sn-6-numinous-api-v1-deep-research",
       "kind": "subnet-api",
       "name": "Numinous GET api v1 deep research",
-      "notes": "GET /api/v1/deep-research/ on api.numinouslabs.io — public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in — already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
+      "notes": "GET /api/v1/deep-research/ on api.numinouslabs.io \u2014 public, no auth declared in the OpenAPI schema. Required query: question. Live-verified 2026-07-21: an unparameterized request returns HTTP 422 listing the exact required query fields, not an auth error. probe.enabled:false is the safer default here: an auto-probe with no query params would just 422. Registered with the fixed base url, no query string baked in \u2014 already callable today via call_subnet_surface's own query argument. Registered per the registry's full-API-parity policy (metagraphed#7022).",
       "probe": {
         "enabled": false,
         "expect": "json",

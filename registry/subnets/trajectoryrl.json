@@ -39,6 +39,11 @@
   "name": "TrajectoryRL",
   "netuid": 11,
   "notes": "Reviewed overlay for SN11 TrajectoryRL using the official website, docs, leaderboard, live, winners, benchmark pages, and source repository. Common API/OpenAPI/Swagger paths currently return 404 and are not promoted as operational API surfaces. Two community-submitted surfaces (api-docs, subnet-api) had no probe config at all -- not disabled, just absent, meaning they were silently excluded from operational-surfaces.json / live health tracking despite being valid public endpoints (see #5932 for the registry-wide scope of this class of gap). Both confirmed live and given probe configs matching their sibling surfaces' conventions.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-11",
   "social": {
@@ -207,7 +212,11 @@
       "id": "sn-11-trajectoryrl-subnet-api",
       "kind": "subnet-api",
       "name": "TrajectoryRL network stats API",
-      "notes": "Public read-only REST JSON endpoint reporting SN11 network totals (reports, LLM calls, tokens, cost); no auth. Documented in the official trajrl API client.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public read-only REST JSON endpoint reporting SN11 network totals (reports, LLM calls, tokens, cost); no auth. Documented in the official trajrl API client. REVENUE ROLE (#10463): not-revenue. `totalCostUsd` is what the subnet SPENDS on LLM calls -- an expense, the opposite sign from revenue. A money figure is not automatically a revenue figure. REVENUE ROLE (#10463): not-revenue. `totalCostUsd` is what the subnet SPENDS on LLM calls -- an expense, the opposite sign from revenue. A money figure is not automatically a revenue figure.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -231,7 +240,7 @@
       "id": "sn-11-trajectoryrl-miners",
       "kind": "data-artifact",
       "name": "TrajectoryRL miner directory",
-      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON — aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface.",
+      "notes": "Public no-auth GET returning the TrajectoryRL (SN11) miner directory as JSON \u2014 aggregate counters (total / active / qualified miner counts, validator count) plus a per-miner array of 256 rows carrying uid, name, incentive, score, rank, activity flags, and latest-model fields. Served on trajrl.com, the subnet's own registered domain (same host as the existing website and /api/stats subnet-api), and distinct from that aggregate-only stats surface.",
       "probe": {
         "enabled": true,
         "expect": "json",
