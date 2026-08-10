@@ -37,6 +37,48 @@ import { repoRoot } from "./lib.ts";
 // is gone.
 
 /** Detects any API that manipulates the module registry for its own file. */
+// WHICH PASS, AND WHICH SLICE OF IT (#10414).
+//
+// Default: both passes, sequentially -- unchanged, because that is what a
+// developer runs locally and what `npm run test:ci` has always meant.
+//
+// CI now asks for one pass at a time so they can run on separate runners: the
+// two share nothing, and running them in sequence made a 320s pass wait on a
+// 158s one for no reason. `--shard=i/n` slices the shared pass further; vitest
+// partitions by file, and Codecov merges the reports by commit SHA exactly as
+// it already merges the two passes' separate uploads.
+//
+// The PARTITION is still computed from the source on every run. Sharding
+// changes how many runners share the work, never which files are mocking
+// files -- a hand-listed partition is the contamination #8922 removed.
+const argOf = (flag: string): string | null => {
+  const hit = process.argv.slice(2).find((a) => a.startsWith(`${flag}=`));
+  return hit ? hit.slice(flag.length + 1) : null;
+};
+const PASS = argOf("--pass");
+const SHARD = argOf("--shard");
+
+if (PASS !== null && PASS !== "shared" && PASS !== "mocked") {
+  console.error(
+    `run-ci-tests: --pass must be "shared" or "mocked", got "${PASS}".`,
+  );
+  process.exit(1);
+}
+// A shard of the mocking pass would be a silent no-op on the wrong pass rather
+// than an error, so it is refused: 71 files do not need slicing, and asking for
+// it means the caller believes something untrue about what is running.
+if (SHARD !== null && PASS !== "shared") {
+  console.error(
+    "run-ci-tests: --shard applies to --pass=shared only (the mocking pass is " +
+      "71 files and is not worth slicing).",
+  );
+  process.exit(1);
+}
+if (SHARD !== null && !/^[1-9]\d*\/[1-9]\d*$/.test(SHARD)) {
+  console.error(`run-ci-tests: --shard must look like i/n, got "${SHARD}".`);
+  process.exit(1);
+}
+
 const MODULE_MOCKING = /\bvi\.(mock|doMock|unmock|resetModules)\s*\(/;
 
 const testsDir = path.join(repoRoot, "tests");
@@ -115,34 +157,41 @@ function runPass(label: string, args: string[], suffix: string): void {
 }
 
 // Pass 1 -- the bulk, one shared module registry per worker.
-runPass(
-  `shared registry (${testFiles.length - mockingFiles.length} files)`,
-  [
-    ...BASE,
-    "--coverage",
-    "--isolate=false",
-    ...NO_PER_PASS_THRESHOLDS,
-    ...excludeArgs(mockingFiles),
-  ],
-  "",
-);
+if (PASS === null || PASS === "shared") {
+  runPass(
+    `shared registry (${testFiles.length - mockingFiles.length} files${SHARD ? `, shard ${SHARD}` : ""})`,
+    [
+      ...BASE,
+      "--coverage",
+      "--isolate=false",
+      ...NO_PER_PASS_THRESHOLDS,
+      ...(SHARD ? [`--shard=${SHARD}`] : []),
+      ...excludeArgs(mockingFiles),
+    ],
+    "",
+  );
+}
 
 // Pass 2 -- the module-mocking files, each with its own registry. Coverage
 // lands in its own directory so pass 1's report is not overwritten; CI uploads
 // both to Codecov, which merges them.
-runPass(
-  `module-mocking, isolated (${mockingFiles.length} files)`,
-  [
-    ...BASE,
-    "--coverage",
-    "--coverage.reportsDirectory=coverage-mocked",
-    ...NO_PER_PASS_THRESHOLDS,
-    ...mockingFiles.map((name) => `tests/${name}`),
-  ],
-  "-mocked",
-);
+if (PASS === null || PASS === "mocked") {
+  runPass(
+    `module-mocking, isolated (${mockingFiles.length} files)`,
+    [
+      ...BASE,
+      "--coverage",
+      "--coverage.reportsDirectory=coverage-mocked",
+      ...NO_PER_PASS_THRESHOLDS,
+      ...mockingFiles.map((name) => `tests/${name}`),
+    ],
+    "-mocked",
+  );
+}
 
 console.log(
-  `\nrun-ci-tests: both passes green (${mockingFiles.length} isolated, ` +
-    `${testFiles.length - mockingFiles.length} shared).`,
+  PASS === null
+    ? `\nrun-ci-tests: both passes green (${mockingFiles.length} isolated, ` +
+        `${testFiles.length - mockingFiles.length} shared).`
+    : `\nrun-ci-tests: ${PASS} pass green${SHARD ? ` (shard ${SHARD})` : ""}.`,
 );

@@ -168,17 +168,24 @@ for (const workflow of workflows) {
     const codecovSteps = workflowSteps(content).filter((step) =>
       step.block.includes("uses: codecov/codecov-action@"),
     );
+    // Matched on `lcov.info` / `vitest*.xml` rather than the exact former
+    // paths: the uploads are matrix-driven since #10414
+    // (`./${{ matrix.cov }}/lcov.info`), and a gate keyed to a literal path
+    // goes silently blind the moment the path becomes an expression — it
+    // stops finding ANY upload and reports the split as missing, which is the
+    // opposite of what it checks. The rule is "a coverage upload exists on
+    // both the token and tokenless paths", not "the path is spelled this way".
     const coverageUploads = codecovSteps.filter((step) =>
-      step.block.includes("./coverage/lcov.info"),
+      step.block.includes("lcov.info"),
     );
     const tokenless = codecovSteps.filter(
       (step) => !step.block.includes("secrets.CODECOV_TOKEN"),
     );
     const tokenlessCoverage = tokenless.filter((step) =>
-      step.block.includes("./coverage/lcov.info"),
+      step.block.includes("lcov.info"),
     );
-    const tokenlessResults = tokenless.filter((step) =>
-      step.block.includes("vitest.xml"),
+    const tokenlessResults = tokenless.filter(
+      (step) => step.block.includes("vitest") && step.block.includes(".xml"),
     );
     check(
       content.includes(
