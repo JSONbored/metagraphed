@@ -1449,7 +1449,7 @@ async function handleSubnetHyperparamsSync(
   const historySql = createPgSql(env.HYPERDRIVE, ctx);
   try {
     // Latest hash per netuid.
-    const latest = await historySql`
+    const latest = await historySql<Record<string, unknown>>`
       SELECT h.netuid AS netuid, h.hyperparams_hash AS hyperparams_hash
       FROM subnet_hyperparams_history h
       JOIN (
@@ -1781,7 +1781,7 @@ async function handleAccountIdentitySync(
   const historySql = createPgSql(env.HYPERDRIVE, ctx);
   try {
     // Latest hash per account.
-    const latest = await historySql`
+    const latest = await historySql<Record<string, unknown>>`
       SELECT h.account AS account, h.identity_hash AS identity_hash
       FROM account_identity_history h
       JOIN (
@@ -3048,19 +3048,16 @@ function numberOrNull(v: unknown) {
  * chain_alert_triggers ...\`` -- and gets `generated/db/types.ts`, which is
  * introspected from Neon rather than assumed.
  */
-type D1SqlRows<Row = Record<string, unknown>> = Row[];
+type D1SqlRows<Row> = Row[];
 interface D1Sql {
-  <Row = Record<string, unknown>>(
+  <Row>(
     strings: TemplateStringsArray,
     ...values: unknown[]
   ): Promise<D1SqlRows<Row>>;
   /** Positional-placeholder escape hatch, mirroring postgres.js's
-   * sql.unsafe(text, params) -- used only where the statement text is built
+   * sql.unsafe<Record<string, unknown>>(text, params) -- used only where the statement text is built
    * dynamically (the matched-write-back's `IN (?, ?, ...)` expansion). */
-  unsafe<Row = Record<string, unknown>>(
-    text: string,
-    values?: unknown[],
-  ): Promise<D1SqlRows<Row>>;
+  unsafe<Row>(text: string, values?: unknown[]): Promise<D1SqlRows<Row>>;
 }
 
 /**
@@ -3485,7 +3482,7 @@ async function handleAlertTriggerCreate(
 
   return withAlertTriggersSql(env, ctx, async (sql) => {
     if (ownerSs58) {
-      const counted = await sql`
+      const counted = await sql<Record<string, unknown>>`
         SELECT COUNT(*) AS count FROM chain_alert_triggers
         WHERE owner_ss58 = ${ownerSs58} AND active`;
       if (Number(counted[0]?.count ?? 0) >= WATCH_TRIGGERS_MAX_PER_ADDRESS) {
@@ -3503,7 +3500,7 @@ async function handleAlertTriggerCreate(
     const ownerToken = generateAlertTriggerOwnerToken();
     const now = Date.now();
     const v = validated.value;
-    const [row] = await sql`
+    const [row] = await sql<Record<string, unknown>>`
       INSERT INTO chain_alert_triggers
         (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, active, owner_ss58, created_at, updated_at)
       VALUES (
@@ -3605,7 +3602,7 @@ async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
   }
   const v = validated.value;
   const now = Date.now();
-  const [row] = await sql`
+  const [row] = await sql<Record<string, unknown>>`
     UPDATE chain_alert_triggers SET
       name = ${v.name},
       table_filter = ${jsonColumn(v.tableFilter)},
@@ -3667,7 +3664,9 @@ async function handleAlertTriggerDelete(
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
     const authError = requireAlertTriggerOwner(request, existing.owner_token);
     if (authError) return authError;
-    await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
+    await sql<
+      Record<string, unknown>
+    >`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
     return writeJson({ id, deleted: true });
   });
 }
@@ -3777,7 +3776,7 @@ async function handleAlertTriggersMatchedWriteback(
     for (let i = 0; i < ids.length; i += CHUNK) {
       const slice = ids.slice(i, i + CHUNK);
       const placeholders = slice.map(() => "?").join(", ");
-      const updated = await sql.unsafe(
+      const updated = await sql.unsafe<Record<string, unknown>>(
         `UPDATE chain_alert_triggers
          SET match_count = match_count + 1,
              last_matched_at = ?
@@ -3859,7 +3858,7 @@ async function handleAlertTriggersDeliveryLogWrite(
               ALERT_DELIVERY_RESPONSE_SNIPPET_MAX_BYTES,
             )
           : null;
-      await sql`
+      await sql<Record<string, unknown>>`
         INSERT INTO chain_alert_deliveries
           (trigger_id, delivered_at, success, status_code, retry_count, response_snippet)
         VALUES (
@@ -3870,7 +3869,7 @@ async function handleAlertTriggersDeliveryLogWrite(
       triggerIds.add(String(r.trigger_id));
     }
     for (const triggerId of triggerIds) {
-      await sql`
+      await sql<Record<string, unknown>>`
         DELETE FROM chain_alert_deliveries
         WHERE trigger_id = ${triggerId}
           AND id NOT IN (
@@ -3971,7 +3970,7 @@ async function handleWatchTriggersList(
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT * FROM chain_alert_triggers
       WHERE owner_ss58 = ${auth.ss58}
       ORDER BY created_at DESC`;
@@ -4025,12 +4024,15 @@ async function handleWatchTriggerDelete(
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const [existing] =
-      await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
+    const [existing] = await sql<
+      Record<string, unknown>
+    >`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
       return writeJson({ error: "no such trigger" }, 404);
     }
-    await sql`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
+    await sql<
+      Record<string, unknown>
+    >`DELETE FROM chain_alert_triggers WHERE id = ${id}`;
     return writeJson({ id, deleted: true });
   });
 }
@@ -4047,12 +4049,13 @@ async function handleWatchTriggerDeliveries(
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const [existing] =
-      await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
+    const [existing] = await sql<
+      Record<string, unknown>
+    >`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
       return writeJson({ error: "no such trigger" }, 404);
     }
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT * FROM chain_alert_deliveries
       WHERE trigger_id = ${id}
       ORDER BY delivered_at DESC
@@ -4132,7 +4135,7 @@ async function handleWatchPushSubscriptionsList(
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
   return withAlertTriggersSql(env, ctx, async (sql) => {
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT id, endpoint, user_agent, created_at, last_used_at
       FROM watch_push_subscriptions
       WHERE address = ${auth.ss58}
@@ -4196,7 +4199,7 @@ async function handleWatchPushSubscriptionCreate(
     // device cap, and the taker's alert triggers start pushing to a browser
     // that never subscribed to them. Ownership is the thing being enforced
     // here -- existence alone is not enough.
-    const existing = await sql`
+    const existing = await sql<Record<string, unknown>>`
       SELECT id, address FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
     const owner = existing[0]?.address as string | undefined;
 
@@ -4211,7 +4214,7 @@ async function handleWatchPushSubscriptionCreate(
     // same browser reissues the same endpoint, so charging it again would
     // make a routine key rotation look like "device limit reached".
     if (existing.length === 0) {
-      const count = await sql`
+      const count = await sql<Record<string, unknown>>`
         SELECT COUNT(*) AS n FROM watch_push_subscriptions
         WHERE address = ${auth.ss58}`;
       const n = Number(count[0]?.n ?? 0);
@@ -4225,7 +4228,7 @@ async function handleWatchPushSubscriptionCreate(
       }
     }
 
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       INSERT INTO watch_push_subscriptions
         (address, endpoint, p256dh, auth, user_agent, created_at)
       VALUES (${auth.ss58}, ${endpoint}, ${p256dh}, ${authKey}, ${userAgent}, ${now})
@@ -4264,7 +4267,7 @@ async function handleWatchPushSubscriptionDelete(
   return withAlertTriggersSql(env, ctx, async (sql) => {
     // Scoped by address: another address' id returns the same 404 a
     // nonexistent one does (the anti-oracle posture the trigger routes use).
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       DELETE FROM watch_push_subscriptions
       WHERE id = ${id} AND address = ${auth.ss58}
       RETURNING id`;
@@ -4311,13 +4314,13 @@ async function handleInternalPushSubscription(
     const endpoint = url.searchParams.get("endpoint") || "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
     return withAlertTriggersSql(env, ctx, async (sql) => {
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT endpoint, p256dh, auth FROM watch_push_subscriptions
         WHERE endpoint = ${endpoint}`;
       const row = rows[0];
       if (!row) return writeJson({ subscription: null });
       // Best-effort liveness stamp so the device list can show "last used".
-      await sql`
+      await sql<Record<string, unknown>>`
         UPDATE watch_push_subscriptions SET last_used_at = ${Date.now()}
         WHERE endpoint = ${endpoint}`;
       return writeJson({
@@ -4340,7 +4343,9 @@ async function handleInternalPushSubscription(
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
     return withAlertTriggersSql(env, ctx, async (sql) => {
-      await sql`DELETE FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
+      await sql<
+        Record<string, unknown>
+      >`DELETE FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
       // Idempotent: pruning an already-pruned device is a success, not a 404
       // -- the caller is fire-and-forget and must never see a spurious error.
       return writeJson({ pruned: true });
@@ -4557,7 +4562,7 @@ async function handleWalletVerify(
   }
   return withAccountsSql(env, ctx, async (sql) => {
     const now = Date.now();
-    const [account] = await sql`
+    const [account] = await sql<Record<string, unknown>>`
       INSERT INTO rpc_accounts (ss58, created_at, last_login_at)
       VALUES (${ss58}, ${now}, ${now})
       ON CONFLICT (ss58) DO UPDATE SET last_login_at = ${now}
@@ -4698,7 +4703,7 @@ async function handleGithubAccountUpsert(
   }
   return withAccountsSql(env, ctx, async (sql) => {
     const now = Date.now();
-    const [account] = await sql`
+    const [account] = await sql<Record<string, unknown>>`
       INSERT INTO github_accounts (github_user_id, github_login, created_at, last_login_at)
       VALUES (${githubUserId}, ${githubLogin}, ${now}, ${now})
       ON CONFLICT (github_user_id) DO UPDATE
@@ -4786,8 +4791,9 @@ async function handleAccountKeyCreate(
     // (rpc_accounts.tier, default 'free') -- no invite code anymore: every
     // wallet-connected account can self-serve a key immediately, and gets
     // promoted later via the internal tier-promotion route below.
-    const [account] =
-      await sql`SELECT id, tier FROM rpc_accounts WHERE id = ${session.accountId}`;
+    const [account] = await sql<
+      Record<string, unknown>
+    >`SELECT id, tier FROM rpc_accounts WHERE id = ${session.accountId}`;
     if (!account) return writeJson({ error: "no such account" }, 404);
 
     const minted = await createUnkeyKey(env, {
@@ -4799,7 +4805,7 @@ async function handleAccountKeyCreate(
     }
 
     const now = Date.now();
-    await sql`
+    await sql<Record<string, unknown>>`
       INSERT INTO api_keys
         (unkey_key_id, owner_contact, tier, account_id, created_at)
       VALUES (
@@ -4833,7 +4839,7 @@ async function handleAccountKeysList(
   );
   if (sessionError) return sessionError;
   return withAccountsSql(env, ctx, async (sql) => {
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at, last_used_at
       FROM api_keys
       WHERE account_id = ${session.accountId}
@@ -4864,7 +4870,7 @@ async function handleAccountKeyRevoke(
     // would (no existence oracle across accounts, same posture as
     // requireAlertTriggerOwner), and we never touch Unkey for a key this
     // session doesn't own.
-    const [row] = await sql`
+    const [row] = await sql<Record<string, unknown>>`
       SELECT unkey_key_id FROM api_keys
       WHERE unkey_key_id = ${keyId}
         AND account_id = ${session.accountId}
@@ -4881,7 +4887,9 @@ async function handleAccountKeyRevoke(
     if (!revoked.ok) {
       return writeJson({ error: "revoke failed; try again" }, 502);
     }
-    await sql`UPDATE api_keys SET revoked_at = ${Date.now()} WHERE unkey_key_id = ${keyId}`;
+    await sql<
+      Record<string, unknown>
+    >`UPDATE api_keys SET revoked_at = ${Date.now()} WHERE unkey_key_id = ${keyId}`;
     return writeJson({ key_id: keyId, revoked: true });
   });
 }
@@ -4934,7 +4942,9 @@ async function handleApiKeyVerify(
   }
   if (result.valid) {
     void withAccountsSql(env, ctx, async (sql) => {
-      await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
+      await sql<
+        Record<string, unknown>
+      >`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
     });
   }
   return writeJson({
@@ -4993,7 +5003,7 @@ async function handleApiKeyUsageIncrement(
   try {
     await withAccountsSql(env, ctx, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
-      await sql`
+      await sql<Record<string, unknown>>`
         INSERT INTO api_key_usage_daily
           (account_id, day, route, request_count, rejected_count)
         VALUES (
@@ -5086,7 +5096,7 @@ async function handleApiQuotaSpend(
     // reject path reads the unchanged balance in a follow-up SELECT --
     // enforcement is still the single guarded statement, only the 429's
     // advisory `spent` readout could in principle race a concurrent spend.)
-    const attempt = await sql`
+    const attempt = await sql<Record<string, unknown>>`
       INSERT INTO api_quota_daily (account_id, day, units_spent, updated_at)
       VALUES (${accountId}, ${day}, ${cost}, ${now})
       ON CONFLICT (account_id, day) DO UPDATE
@@ -5098,7 +5108,7 @@ async function handleApiQuotaSpend(
     if (spent != null) {
       return applyQuotaSpend(Number(spent) - cost, cost, limit, now);
     }
-    const [current] = await sql`
+    const [current] = await sql<Record<string, unknown>>`
       SELECT units_spent FROM api_quota_daily
       WHERE account_id = ${accountId} AND day = ${day}`;
     return applyQuotaSpend(Number(current?.units_spent ?? 0), cost, limit, now);
@@ -5173,7 +5183,7 @@ async function handleUsageRollupIncrement(
         ) {
           continue;
         }
-        await sql`
+        await sql<Record<string, unknown>>`
           INSERT INTO api_usage_rollup
             (day, route_family, cost_shape, request_count, keyed_count)
           VALUES (${day}, ${family}, ${shape}, ${count}, ${keyed})
@@ -5224,7 +5234,7 @@ async function handleUsageRollupRead(
   const result = await withAccountsSql(env, ctx, async (sql) => {
     const rows =
       groupBy === "shape"
-        ? await sql`
+        ? await sql<Record<string, unknown>>`
             SELECT cost_shape,
                    SUM(request_count) AS request_count,
                    SUM(keyed_count) AS keyed_count
@@ -5232,7 +5242,7 @@ async function handleUsageRollupRead(
             WHERE day >= ${since}
             GROUP BY cost_shape
             ORDER BY SUM(request_count) DESC`
-        : await sql`
+        : await sql<Record<string, unknown>>`
             SELECT route_family, cost_shape,
                    SUM(request_count) AS request_count,
                    SUM(keyed_count) AS keyed_count
@@ -5314,11 +5324,11 @@ async function handleAccountTierPromote(
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
   return withAccountsSql(env, ctx, async (sql) => {
-    const [account] = await sql`
+    const [account] = await sql<Record<string, unknown>>`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
 
-    const keys = await sql`
+    const keys = await sql<Record<string, unknown>>`
       SELECT unkey_key_id FROM api_keys
       WHERE account_id = ${account.id} AND revoked_at IS NULL`;
     const results = await Promise.all(
@@ -5327,7 +5337,7 @@ async function handleAccountTierPromote(
       ),
     );
     const failedCount = results.filter((r) => !r.ok).length;
-    await sql`
+    await sql<Record<string, unknown>>`
       UPDATE api_keys SET tier = ${tier}
       WHERE account_id = ${account.id} AND revoked_at IS NULL`;
 
@@ -5354,7 +5364,7 @@ const API_KEY_BLOCK_TOKEN_HEADER = "x-api-key-block-token";
  * source of truth and the next refresh will pick it up.
  */
 async function refreshBlocklistSnapshot(env: Env, sql: D1Sql) {
-  const rows = await sql`
+  const rows = await sql<Record<string, unknown>>`
     SELECT account_id, reason_code, blocked_at
     FROM api_key_blocks
     WHERE unblocked_at IS NULL
@@ -5444,7 +5454,7 @@ async function handleApiKeyBlock(
     // unique index: blocking an already-blocked account is a no-op rather than
     // an error, so an ops action that gets retried or double-clicked stays
     // idempotent instead of 500ing.
-    const [row] = await sql`
+    const [row] = await sql<Record<string, unknown>>`
       INSERT INTO api_key_blocks
         (account_id, reason_code, note, blocked_at, blocked_by)
       VALUES (${accountId}, ${reasonCode}, ${note}, ${Date.now()}, ${blockedBy})
@@ -5487,7 +5497,7 @@ async function handleApiKeyUnblock(
     );
   }
   return withAccountsSql(env, ctx, async (sql) => {
-    const [row] = await sql`
+    const [row] = await sql<Record<string, unknown>>`
       UPDATE api_key_blocks
       SET unblocked_at = ${Date.now()}, unblocked_note = ${note.slice(0, 2000)}
       WHERE account_id = ${accountId} AND unblocked_at IS NULL
@@ -5523,12 +5533,12 @@ async function handleApiKeyAnomalies(
     .toISOString()
     .slice(0, 10);
   return withAccountsSql(env, ctx, async (sql) => {
-    const usage = await sql`
+    const usage = await sql<Record<string, unknown>>`
       SELECT account_id, day, route, request_count
       FROM api_key_usage_daily
       WHERE day >= ${since}
       ORDER BY account_id, day`;
-    const blocked = await sql`
+    const blocked = await sql<Record<string, unknown>>`
       SELECT account_id, reason_code FROM api_key_blocks
       WHERE unblocked_at IS NULL`;
     const blockedBy = new Map(
@@ -5602,7 +5612,7 @@ async function handleAccountKeyStatus(
   );
   if (sessionError) return sessionError;
   return withAccountsSql(env, ctx, async (sql) => {
-    const [row] = await sql`
+    const [row] = await sql<Record<string, unknown>>`
       SELECT reason_code, blocked_at FROM api_key_blocks
       WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
       LIMIT 1`;
@@ -5638,7 +5648,7 @@ async function handleAccountKeyUsage(
     )
       .toISOString()
       .slice(0, 10);
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT day, route, request_count, rejected_count
       FROM api_key_usage_daily
       WHERE account_id = ${session.accountId} AND day >= ${since}
@@ -5670,7 +5680,7 @@ async function handleAccountKeyUsage(
     // parallel total from api_key_usage_daily, which counts requests while the
     // quota counts COST UNITS and would disagree by construction.
     const today = new Date().toISOString().slice(0, 10);
-    const [quotaRow] = await sql`
+    const [quotaRow] = await sql<Record<string, unknown>>`
       SELECT units_spent FROM api_quota_daily
       WHERE account_id = ${session.accountId} AND day = ${today}`;
     const unitsSpent = Number(quotaRow?.units_spent ?? 0) || 0;
@@ -5678,7 +5688,7 @@ async function handleAccountKeyUsage(
     // change without re-issuing a key (#8608), so reading it from the session
     // would show a stale ceiling after a promotion. rpc_accounts.tier is the
     // same column the gate's own key lookup resolves against.
-    const [accountRow] = await sql`
+    const [accountRow] = await sql<Record<string, unknown>>`
       SELECT tier FROM rpc_accounts WHERE id = ${session.accountId}`;
     const tier = typeof accountRow?.tier === "string" ? accountRow.tier : null;
     // The account's own tier ceiling, from the same config the gate enforces.
@@ -5870,7 +5880,9 @@ async function loadSubnetTemposD1(
   env: Env,
 ): Promise<Map<number, number>> {
   try {
-    const rows = await sql`SELECT netuid, tempo FROM subnet_hyperparams`;
+    const rows = await sql<
+      Record<string, unknown>
+    >`SELECT netuid, tempo FROM subnet_hyperparams`;
     return tempoByNetuid(rows as Array<Record<string, unknown>>);
   } catch (err) {
     console.error("subnet_hyperparams tempo query failed:", err);
@@ -5884,7 +5896,7 @@ async function loadAlphaPricesByNetuidD1(
   env: Env,
 ): Promise<Map<number, number | null>> {
   try {
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao,
         s.tao_in_pool_tao AS tao_in_pool_tao, s.alpha_in_pool AS alpha_in_pool
       FROM subnet_snapshots s
@@ -5968,7 +5980,7 @@ async function loadNominatorCountsD1(
     // LEFT JOIN from the permitted set, not an inner read of the counts table:
     // the rows with no match are precisely the ones the zero-fill is about, so
     // they have to survive the query to be seen at all.
-    const rows = await sql`
+    const rows = await sql<Record<string, unknown>>`
       SELECT n.hotkey AS hotkey,
              c.nominator_count AS nominator_count,
              (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
@@ -5999,7 +6011,7 @@ async function loadNominatorCountD1(
   env: Env,
 ): Promise<number | null> {
   try {
-    const rows = await sql.unsafe(
+    const rows = await sql.unsafe<Record<string, unknown>>(
       "SELECT ? AS hotkey," +
         " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
         " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at",
@@ -6066,7 +6078,7 @@ async function loadRealizedStakeBaselinesD1(
           SELECT hotkey, stake_tao AS baseline_stake_tao,
             snapshot_date AS baseline_date
           FROM ranked WHERE rn = 1`;
-        return sql.unsafe(
+        return sql.unsafe<Record<string, unknown>>(
           text,
           hotkey ? [hotkey, cutoff, floor] : [cutoff, floor],
         );
@@ -6182,8 +6194,12 @@ export async function neuronDailyWindowBounds(
 ): Promise<{ startDate: string | null; endDate: string | null }> {
   const maxRows =
     netuid == null
-      ? await sql`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily`
-      : await sql`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ${netuid}`;
+      ? await sql<
+          Record<string, unknown>
+        >`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily`
+      : await sql<
+          Record<string, unknown>
+        >`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ${netuid}`;
   const endDate = (maxRows[0]?.end_date ?? null) as string | null;
   if (endDate == null) return { startDate: null, endDate: null };
 
@@ -6193,11 +6209,19 @@ export async function neuronDailyWindowBounds(
   const minRows =
     netuid == null
       ? cutoff == null
-        ? await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily`
-        : await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE snapshot_date >= ${cutoff}`
+        ? await sql<
+            Record<string, unknown>
+          >`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily`
+        : await sql<
+            Record<string, unknown>
+          >`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE snapshot_date >= ${cutoff}`
       : cutoff == null
-        ? await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid}`
-        : await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}`;
+        ? await sql<
+            Record<string, unknown>
+          >`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid}`
+        : await sql<
+            Record<string, unknown>
+          >`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}`;
   return {
     startDate: (minRows[0]?.start_date ?? null) as string | null,
     endDate,
@@ -6218,11 +6242,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const validatorsOnly =
         url.searchParams.get("validator_permit") === "true";
       const rows = validatorsOnly
-        ? await sql.unsafe(
+        ? await sql.unsafe<Record<string, unknown>>(
             `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY uid`,
             [netuid],
           )
-        : await sql.unsafe(
+        : await sql.unsafe<Record<string, unknown>>(
             `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
             [netuid],
           );
@@ -6250,14 +6274,14 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       // the same reason the neurons reads above use it for NEURON_COLUMNS.
       // Hand-transcribing the list here is what dropped `take` (#9523).
       const rows = cutoff
-        ? await sql.unsafe(
+        ? await sql.unsafe<Record<string, unknown>>(
             `SELECT ${NEURON_DAILY_READ_COLUMNS}
           FROM neuron_daily
           WHERE netuid = ? AND uid = ? AND snapshot_date >= ?
           ORDER BY snapshot_date DESC LIMIT ?`,
             [netuid, uid, cutoff, MAX_HISTORY_POINTS],
           )
-        : await sql.unsafe(
+        : await sql.unsafe<Record<string, unknown>>(
             `SELECT ${NEURON_DAILY_READ_COLUMNS}
           FROM neuron_daily
           WHERE netuid = ? AND uid = ?
@@ -6284,7 +6308,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
     return async (sql) => {
       const netuid = Number(neuronDetail[1]);
       const uid = Number(neuronDetail[2]);
-      const rows = await sql.unsafe(
+      const rows = await sql.unsafe<Record<string, unknown>>(
         `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND uid = ? LIMIT 1`,
         [netuid, uid],
       );
@@ -6303,7 +6327,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (subnetValidators) {
     return async (sql) => {
       const netuid = Number(subnetValidators[1]);
-      const rows = await sql.unsafe(
+      const rows = await sql.unsafe<Record<string, unknown>>(
         `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY stake_tao DESC, uid ASC`,
         [netuid],
       );
@@ -6348,7 +6372,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           : null;
       if (netuid != null) {
         const scopedRows = cutoff
-          ? await sql`
+          ? await sql<Record<string, unknown>>`
             SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
               nd.netuid AS netuid, nd.uid AS uid,
               nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
@@ -6363,7 +6387,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
               ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
             WHERE nd.hotkey = ${hotkey} AND nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
             ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-          : await sql`
+          : await sql<Record<string, unknown>>`
             SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
               nd.netuid AS netuid, nd.uid AS uid,
               nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
@@ -6390,7 +6414,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         );
       }
       const rows = cutoff
-        ? await sql`
+        ? await sql<Record<string, unknown>>`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
             SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_stake_tao,
             SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_emission_tao
@@ -6399,7 +6423,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
             ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
           WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = TRUE AND nd.snapshot_date >= ${cutoff}
           GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-        : await sql`
+        : await sql<Record<string, unknown>>`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
             SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_stake_tao,
             SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_emission_tao
@@ -6449,7 +6473,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         tempos,
         identityByColdkey,
       ] = await Promise.all([
-        sql`
+        sql<Record<string, unknown>>`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
@@ -6457,7 +6481,9 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         loadAlphaPricesByNetuidD1(sql, env),
         loadNominatorCountsD1(sql, env),
         loadSubnetTemposD1(sql, env),
-        loadIdentityByColdkeyMap((s, p) => sql.unsafe(s, p)),
+        loadIdentityByColdkeyMap((s, p) =>
+          sql.unsafe<Record<string, unknown>>(s, p),
+        ),
       ]);
       return json(
         buildGlobalValidators(rows, {
@@ -6489,7 +6515,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         tempos,
         identityByColdkey,
       ] = await Promise.all([
-        sql.unsafe(
+        sql.unsafe<Record<string, unknown>>(
           `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
           [hotkey],
         ),
@@ -6497,7 +6523,9 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         loadAlphaPricesByNetuidD1(sql, env),
         loadNominatorCountD1(sql, hotkey, env),
         loadSubnetTemposD1(sql, env),
-        loadIdentityByColdkeyMap((s, p) => sql.unsafe(s, p)),
+        loadIdentityByColdkeyMap((s, p) =>
+          sql.unsafe<Record<string, unknown>>(s, p),
+        ),
       ]);
       return json(
         buildValidatorDetail(rows, hotkey, {
@@ -6524,7 +6552,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         CONCENTRATION_HISTORY_WINDOWS,
         DEFAULT_CONCENTRATION_HISTORY_WINDOW,
       );
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT snapshot_date, stake_tao, emission_tao
         FROM neuron_daily
         WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
@@ -6549,7 +6577,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (subnetConcentration) {
     return async (sql) => {
       const netuid = Number(subnetConcentration[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT stake_tao, emission_tao, coldkey, validator_permit, captured_at
         FROM neurons WHERE netuid = ${netuid}`;
       return json(buildConcentration(rows, netuid));
@@ -6568,7 +6596,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         PERFORMANCE_HISTORY_WINDOWS,
         DEFAULT_PERFORMANCE_HISTORY_WINDOW,
       );
-      const rows = await sql.unsafe(
+      const rows = await sql.unsafe<Record<string, unknown>>(
         `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS}
         FROM neuron_daily
         WHERE netuid = ? AND snapshot_date >= ?
@@ -6595,7 +6623,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (subnetPerformance) {
     return async (sql) => {
       const netuid = Number(subnetPerformance[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, captured_at
         FROM neurons WHERE netuid = ${netuid}`;
       return json(buildSubnetPerformance(rows, netuid));
@@ -6605,7 +6633,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/chain/concentration
   if (url.pathname === "/api/v1/chain/concentration") {
     return async (sql) => {
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
         FROM neurons`;
       return json(buildChainConcentration(rows));
@@ -6629,7 +6657,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitMax: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
       });
       if ("error" in query) return json({ error: query.error }, 400);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
         FROM neurons`;
       return json(buildSubnetConcentrationRanking(rows, query));
@@ -6639,7 +6667,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/chain/performance
   if (url.pathname === "/api/v1/chain/performance") {
     return async (sql) => {
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT incentive, dividends, trust, consensus, validator_trust, active, validator_permit, netuid, captured_at
         FROM neurons`;
       return json(buildChainPerformance(rows));
@@ -6653,7 +6681,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (subnetIdleStake) {
     return async (sql) => {
       const netuid = Number(subnetIdleStake[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT stake_tao, dividends, captured_at FROM neurons WHERE netuid = ${netuid}`;
       return json(buildSubnetIdleStake(rows, netuid));
     };
@@ -6662,7 +6690,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/chain/idle-stake
   if (url.pathname === "/api/v1/chain/idle-stake") {
     return async (sql) => {
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT stake_tao, dividends, netuid, captured_at FROM neurons`;
       return json(buildChainIdleStake(rows));
     };
@@ -6671,7 +6699,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/chain/yield
   if (url.pathname === "/api/v1/chain/yield") {
     return async (sql) => {
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT validator_permit, stake_tao, emission_tao, netuid, captured_at
         FROM neurons WHERE netuid != 0`;
       return json(buildChainYield(rows));
@@ -6691,7 +6719,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         YIELD_HISTORY_WINDOWS,
         DEFAULT_YIELD_HISTORY_WINDOW,
       );
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT snapshot_date, validator_permit, stake_tao, emission_tao
         FROM neuron_daily
         WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
@@ -6714,7 +6742,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (subnetYield) {
     return async (sql) => {
       const netuid = Number(subnetYield[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT uid, hotkey, validator_permit, stake_tao, emission_tao, captured_at, block_number
         FROM neurons WHERE netuid = ${netuid} ORDER BY uid`;
       return json(buildSubnetYield(rows, netuid));
@@ -6728,7 +6756,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (acctPortfolio) {
     return async (sql, env) => {
       const ss58 = decodeURIComponent(acctPortfolio[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT netuid, uid, stake_tao, emission_tao, rank, trust, incentive, dividends, validator_permit, active, captured_at
         FROM neurons WHERE hotkey = ${ss58} ORDER BY netuid`;
       const priceByNetuid = await loadAlphaPricesByNetuidD1(sql, env);
@@ -6744,7 +6772,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (acctSubnets) {
     return async (sql) => {
       const ss58 = decodeURIComponent(acctSubnets[1]);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT netuid, uid, stake_tao, validator_permit, active FROM neurons
         WHERE hotkey = ${ss58} ORDER BY netuid`;
       return json(buildAccountSubnets(rows, ss58));
@@ -6767,12 +6795,12 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         DEFAULT_HISTORY_WINDOW,
       );
       const rows = cutoff
-        ? await sql`
+        ? await sql<Record<string, unknown>>`
           SELECT snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
           FROM account_position_daily
           WHERE account = ${ss58} AND netuid = ${netuid} AND snapshot_date >= ${cutoff}
           ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-        : await sql`
+        : await sql<Record<string, unknown>>`
           SELECT snapshot_date, captured_at, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao
           FROM account_position_daily
           WHERE account = ${ss58} AND netuid = ${netuid}
@@ -6799,7 +6827,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           ? ACCOUNTS_LIST_LIMIT_DEFAULT
           : Number(limitRaw);
       const [rows, priceByNetuid] = await Promise.all([
-        sql`
+        sql<Record<string, unknown>>`
           SELECT netuid, uid, hotkey, coldkey, validator_permit, emission_tao, stake_tao, block_number, captured_at
           FROM neurons WHERE hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
@@ -6830,14 +6858,14 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       // validator_permit is already INTEGER 0/1 here, so the Postgres
       // branch's ::int cast simply disappears.
       const rows = cutoff
-        ? await sql`
+        ? await sql<Record<string, unknown>>`
           SELECT snapshot_date, COUNT(*) AS neuron_count,
             SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
           FROM neuron_daily
           WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
           GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-        : await sql`
+        : await sql<Record<string, unknown>>`
           SELECT snapshot_date, COUNT(*) AS neuron_count,
             SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
@@ -6875,7 +6903,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
       let rows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
-        rows = await sql`
+        rows = await sql<Record<string, unknown>>`
           SELECT snapshot_date, netuid, hotkey, validator_permit
           FROM neuron_daily
           WHERE validator_permit = TRUE AND snapshot_date IN (${startDate}, ${endDate})`;
@@ -6913,7 +6941,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const rows =
         startDate == null || endDate == null
           ? []
-          : await sql`
+          : await sql<Record<string, unknown>>`
             SELECT snapshot_date, uid, hotkey, validator_permit
             FROM neuron_daily
             WHERE netuid = ${netuid} AND snapshot_date IN (${startDate}, ${endDate})
@@ -6952,7 +6980,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       let startRows: Row[] = [];
       let endRows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
-        const rows = await sql`
+        const rows = await sql<Record<string, unknown>>`
           SELECT netuid, snapshot_date, COUNT(*) AS neuron_count,
             SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
@@ -7027,7 +7055,7 @@ function matchHealthStatusD1Route(url: URL): NeuronsD1RouteHandler | null {
   return async (sql) => {
     const since = Number(url.searchParams.get("since"));
     const cutoff = Number.isFinite(since) && since > 0 ? since : 0;
-    const rows = await sql.unsafe(
+    const rows = await sql.unsafe<Record<string, unknown>>(
       `SELECT ${HEALTH_STATUS_LIVE_D1_READ_COLUMNS}
        FROM surface_status
        WHERE last_checked >= ?
@@ -7050,7 +7078,9 @@ async function d1TableHasRows(
     | "account_identity"
     | "account_identity_history",
 ): Promise<boolean> {
-  const rows = await sql.unsafe(`SELECT 1 AS one FROM ${table} LIMIT 1`);
+  const rows = await sql.unsafe<Record<string, unknown>>(
+    `SELECT 1 AS one FROM ${table} LIMIT 1`,
+  );
   return rows.length > 0;
 }
 
@@ -7074,7 +7104,7 @@ function matchHyperparamsIdentityD1Route(
   if (subnetHyperparams) {
     return async (sql) => {
       const netuid = Number(subnetHyperparams[1]);
-      const rows = await sql.unsafe(
+      const rows = await sql.unsafe<Record<string, unknown>>(
         `SELECT ${SUBNET_HYPERPARAMS_D1_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
         [netuid],
       );
@@ -7101,14 +7131,14 @@ function matchHyperparamsIdentityD1Route(
       const offset = clampRequestOffset(url.searchParams.get("offset"));
       const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
       const rows = cursor
-        ? await sql.unsafe(
+        ? await sql.unsafe<Record<string, unknown>>(
             `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
              FROM subnet_hyperparams_history
              WHERE netuid = ? AND (observed_at, id) < (?, ?)
              ORDER BY observed_at DESC, id DESC LIMIT ?`,
             [netuid, cursor[0], cursor[1], limit],
           )
-        : await sql.unsafe(
+        : await sql.unsafe<Record<string, unknown>>(
             `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
              FROM subnet_hyperparams_history
              WHERE netuid = ?
@@ -7143,7 +7173,7 @@ function matchHyperparamsIdentityD1Route(
   if (acctIdentity) {
     return async (sql) => {
       const ss58 = decodeURIComponent(acctIdentity[1]);
-      const rows = await sql.unsafe(
+      const rows = await sql.unsafe<Record<string, unknown>>(
         `SELECT ${ACCOUNT_IDENTITY_D1_READ_COLUMNS} FROM account_identity WHERE account = ?`,
         [ss58],
       );
@@ -7167,14 +7197,14 @@ function matchHyperparamsIdentityD1Route(
       const offset = clampRequestOffset(url.searchParams.get("offset"));
       const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
       const rows = cursor
-        ? await sql.unsafe(
+        ? await sql.unsafe<Record<string, unknown>>(
             `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
              FROM account_identity_history
              WHERE account = ? AND (observed_at, id) < (?, ?)
              ORDER BY observed_at DESC, id DESC LIMIT ?`,
             [ss58, cursor[0], cursor[1], limit],
           )
-        : await sql.unsafe(
+        : await sql.unsafe<Record<string, unknown>>(
             `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
              FROM account_identity_history
              WHERE account = ?
@@ -7607,7 +7637,7 @@ export async function writeTaoUsdIndexRow(
     return { inserted: false, skipped: true, reason: "no store bound" };
   }
   const sql = createPgSql(env.HYPERDRIVE, ctx);
-  const written = await sql`
+  const written = await sql<Record<string, unknown>>`
     INSERT INTO tao_usd_index
       (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
     VALUES (

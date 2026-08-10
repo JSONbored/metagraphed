@@ -77,22 +77,25 @@ types.setTypeParser(INT8_OID, (value: string) => {
  * hand-written coercion that stands between Postgres and the first typed value
  * everywhere else.
  *
- * The default keeps this a widening: not one of the ~150 existing call sites
- * changes meaning, and a site opts in by naming its row.
+ * NO DEFAULT, as of #10311. It defaulted to `Record<string, unknown>` so the
+ * ~150 existing call sites would not change meaning, and five of them ever
+ * opted in -- a migration that asks each site to volunteer decays, because the
+ * next read is written untyped and nothing says so. Without the default a read
+ * cannot compile without naming its row, and one that genuinely cannot has to
+ * write `sql<Record<string, unknown>>`: a DECLARED escape hatch, counted by
+ * `validate:untyped-db-reads` and driven down, rather than a silent default
+ * that cannot be counted at all.
  */
-export type PgSqlRows<Row = Record<string, unknown>> = Row[];
+export type PgSqlRows<Row> = Row[];
 
 export interface PgSql {
-  <Row = Record<string, unknown>>(
+  <Row>(
     strings: TemplateStringsArray,
     ...values: unknown[]
   ): Promise<PgSqlRows<Row>>;
   /** For the rare statement whose TEXT is built dynamically. Mirrors
    * D1Sql.unsafe so a caller can move between stores unchanged. */
-  unsafe<Row = Record<string, unknown>>(
-    text: string,
-    values?: unknown[],
-  ): Promise<PgSqlRows<Row>>;
+  unsafe<Row>(text: string, values?: unknown[]): Promise<PgSqlRows<Row>>;
 }
 
 /** The Hyperdrive binding's shape, structurally, so tests can hand a plain
@@ -136,12 +139,15 @@ export function createPgSql(
   clientFactory: (connectionString: string) => Client = (connectionString) =>
     new Client({ connectionString }),
 ): PgSql {
-  const run = async (text: string, values: unknown[]): Promise<PgSqlRows> => {
+  const run = async (
+    text: string,
+    values: unknown[],
+  ): Promise<PgSqlRows<Record<string, unknown>>> => {
     const client = clientFactory(hyperdrive.connectionString);
     await client.connect();
     try {
       const result = await client.query(text, values);
-      return (result.rows ?? []) as PgSqlRows;
+      return (result.rows ?? []) as PgSqlRows<Record<string, unknown>>;
     } finally {
       // Returned to Hyperdrive's pool without the response waiting on it. NOT
       // awaited: a slow teardown must not become the caller's latency, and a
@@ -167,10 +173,7 @@ export function createPgSql(
   // third path -- this one -- was not. A statement that already uses `$n` and
   // no `?` passes through unchanged, so applying it here is not a behaviour
   // change for any caller that was already correct.
-  sql.unsafe = (<Row = Record<string, unknown>>(
-    text: string,
-    values: unknown[] = [],
-  ) =>
+  sql.unsafe = (<Row>(text: string, values: unknown[] = []) =>
     run(toPositionalPlaceholders(text), values) as Promise<
       PgSqlRows<Row>
     >) as PgSql["unsafe"];
@@ -223,7 +226,10 @@ export function createPgQuestionMarkRunner(
   hyperdrive: HyperdriveLike,
   ctx: WaitUntilLike,
   clientFactory?: (connectionString: string) => Client,
-): (sql: string, params: unknown[]) => Promise<PgSqlRows> {
+): (
+  sql: string,
+  params: unknown[],
+) => Promise<PgSqlRows<Record<string, unknown>>> {
   const sql = createPgSql(hyperdrive, ctx, clientFactory);
   return (text: string, params: unknown[] = []) =>
     sql.unsafe(toPositionalPlaceholders(text), params);

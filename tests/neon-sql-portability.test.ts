@@ -353,9 +353,15 @@ describe("Neon-movable SQL is portable", () => {
     // line you can go fix. Both are kept because they fail on different
     // things: a statement built by concatenation is invisible here and caught
     // above, and a construct in a comment-adjacent block is caught here.
-    const statements = [...matcherSource().matchAll(/sql`([^`]*)`/g)].map(
-      (m) => m[1]!,
-    );
+    // The row type is OPTIONAL in this pattern because the tag carries one
+    // now: #10311 inverted the default, so every statement in the matcher is
+    // spelled `sql<Row>` rather than bare `sql`. Matching only the bare form
+    // found 0 of 70 and the guard below is the only reason that surfaced --
+    // a source-scanning gate goes blind on a spelling change, not on a logic
+    // change, so it must admit every spelling the tag actually has.
+    const statements = [
+      ...matcherSource().matchAll(/sql(?:<[^`]*>)?`([^`]*)`/g),
+    ].map((m) => m[1]!);
     assert.ok(
       statements.length >= 10,
       `only ${statements.length} tagged statements found -- the extraction ` +
