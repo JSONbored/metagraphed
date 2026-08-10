@@ -12141,6 +12141,42 @@ export interface components {
             quality_signals?: components["schemas"]["SurfaceQualitySignals"];
             rate_limit?: components["schemas"]["SurfaceRateLimit"];
             rate_limit_notes?: string;
+            revenue?: {
+                /**
+                 * @description Whether the money originates outside Bittensor. Absent means unknown, never external.
+                 * @enum {string}
+                 */
+                circularity?: "external" | "alpha-denominated" | "team-funded" | "unknown";
+                /**
+                 * @description Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and its values reconcile as USD.
+                 * @enum {string}
+                 */
+                currency?: "USD" | "TAO" | "ALPHA";
+                /** @description Fields present in the payload that are NOT external revenue and must be subtracted -- subnet-funded or unrecognised components. */
+                excludes?: string[];
+                /** @description Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}. */
+                fields?: {
+                    [key: string]: string;
+                };
+                /** @enum {string} */
+                grain?: "daily" | "weekly" | "monthly" | "cumulative";
+                /**
+                 * @description Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.
+                 * @enum {string}
+                 */
+                provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                /**
+                 * @description What this surface actually measures. A 'stats' endpoint is guilty until proven revenue: miner payout is emission -- the denominator -- and counting it as revenue puts the denominator in the numerator.
+                 * @enum {string}
+                 */
+                role: "external-revenue" | "usage-proxy" | "miner-payout" | "not-revenue";
+                /** @description When absence was established. Required for provenance 'none': an undated absence is not evidence. */
+                searched_at?: string;
+                /** Format: uri */
+                source_url?: string;
+                /** @description Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice. */
+                supersedes?: string[];
+            };
             review?: {
                 /** @enum {string} */
                 confidence?: "low" | "medium" | "high";
