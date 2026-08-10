@@ -50,16 +50,30 @@ import type { FiatPriceBasis } from "./tao-usd-index.ts";
  */
 export const TAO_USD_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
-/** Why a USD figure could not be produced. Every value is a stated outcome. */
-export type AlphaUsdUnavailable =
-  /** No TAO/USD reading at all -- the index has never written, or the read failed. */
-  | "no_index_reading"
-  /** A reading exists and carries no price: ADR 0025's `insufficient_pools`. */
-  | "index_unpriced"
-  /** The newest reading is older than TAO_USD_MAX_AGE_MS. */
-  | "index_stale"
-  /** The alpha side is missing. A subnet with no price is not one priced at 0. */
-  | "no_alpha_price";
+/**
+ * Why a USD figure could not be produced. Every value is a stated outcome.
+ *
+ * A TUPLE, with the type derived from it, so the schemas can import the same
+ * values rather than restating them -- a union declared here and re-typed in
+ * two schema files is three places that can disagree about what we are willing
+ * to say, and validate:schema-vocabularies exists to stop exactly that.
+ *
+ * - `no_index_reading` -- no TAO/USD reading at all; the index has never
+ *   written, or the read found nothing.
+ * - `index_unpriced` -- a reading exists and carries no price: ADR 0025's
+ *   `insufficient_pools`. A published decline, never a price of zero.
+ * - `index_stale` -- the newest reading is older than TAO_USD_MAX_AGE_MS.
+ * - `no_alpha_price` -- the alpha side is missing. A subnet with no price is
+ *   not one priced at 0.
+ */
+export const ALPHA_USD_UNAVAILABLE = [
+  "no_index_reading",
+  "index_unpriced",
+  "index_stale",
+  "no_alpha_price",
+] as const;
+
+export type AlphaUsdUnavailable = (typeof ALPHA_USD_UNAVAILABLE)[number];
 
 /** The newest TAO/USD reading, in the shape `latest` already publishes. */
 export interface TaoUsdReading {

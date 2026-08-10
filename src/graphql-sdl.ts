@@ -3761,7 +3761,7 @@ export const SDL = /* GraphQL */ `
     usd_available_from: Float
     usd_available_from_iso: String
     "How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect."
-    priced_candle_count: Int!
+    priced_candle_count: Int
     "Why NO candle could be priced, or null. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; read_failed means the index could not be queried at all."
     usd_unavailable: String
     field_sources_usd: JSON

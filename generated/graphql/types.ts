@@ -5579,7 +5579,7 @@ export type SubnetOhlc = {
   interval?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
   /** How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect. */
-  priced_candle_count: Scalars['Int']['output'];
+  priced_candle_count?: Maybe<Scalars['Int']['output']>;
   /** True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted. */
   root_excluded: Scalars['Boolean']['output'];
   schema_version: Scalars['Int']['output'];
@@ -10382,7 +10382,7 @@ export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends Res
   field_sources_usd?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   interval?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  priced_candle_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priced_candle_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   root_excluded?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   usd_available_from?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;

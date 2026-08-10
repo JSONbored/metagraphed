@@ -5,6 +5,7 @@
 // components it replaces.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { SERIES_USD_UNAVAILABLE } from "../../src/alpha-usd-history.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const ECONOMICS_TRENDS_WINDOW_VALUES = [
@@ -65,13 +66,7 @@ export const EconomicsTrendsArtifactSchema = z
       ),
     priced_day_count: z.int().min(0).optional(),
     usd_unavailable: z
-      .enum([
-        "no_index_reading",
-        "index_unpriced",
-        "index_stale",
-        "no_alpha_price",
-        "read_failed",
-      ])
+      .enum(SERIES_USD_UNAVAILABLE)
       .nullable()
       .optional()
       .describe(

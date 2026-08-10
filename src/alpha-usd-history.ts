@@ -62,6 +62,7 @@
 
 import {
   ALPHA_USD_FIELD_SOURCE,
+  ALPHA_USD_UNAVAILABLE,
   alphaUsd,
   type AlphaUsdUnavailable,
   type TaoUsdReading,
@@ -86,6 +87,22 @@ export interface TaoUsdBucketDb {
  * is never the binding constraint on a legitimate read -- it is the backstop
  * that keeps a malformed bucketMs from selecting the whole table.
  */
+/**
+ * Every reason a SERIES may carry no USD, including the one only a series has.
+ *
+ * `read_failed` is not an AlphaUsdUnavailable: those describe what the index
+ * SAID, and this one says we never got to ask. Kept distinct because "the index
+ * declined to price this window" and "we could not reach the index" send an
+ * operator to different places.
+ *
+ * Derived from ALPHA_USD_UNAVAILABLE rather than retyped, so a new reason there
+ * appears here automatically.
+ */
+export const SERIES_USD_UNAVAILABLE = [
+  ...ALPHA_USD_UNAVAILABLE,
+  "read_failed",
+] as const;
+
 export const TAO_USD_BUCKET_CAP = 2500;
 
 /**

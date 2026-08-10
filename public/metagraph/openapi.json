@@ -10101,18 +10101,12 @@
                 "bucket_start": 1,
                 "bucket_start_iso": "2026-06-01T00:00:00.000Z",
                 "close": 0.5,
-                "close_usd": 0.5,
                 "event_count": 1,
                 "high": 0.5,
-                "high_usd": 0.5,
                 "low": 0.5,
-                "low_usd": 0.5,
                 "open": 0.5,
-                "open_usd": 0.5,
-                "usd_per_tao": 0.5,
                 "volume_alpha": 0.5,
-                "volume_tao": 0.5,
-                "volume_usd": 0.5
+                "volume_tao": 0.5
               }
             ],
             "field_sources_usd": {
@@ -47770,13 +47764,7 @@
                 "close",
                 "volume_alpha",
                 "volume_tao",
-                "event_count",
-                "open_usd",
-                "high_usd",
-                "low_usd",
-                "close_usd",
-                "volume_usd",
-                "usd_per_tao"
+                "event_count"
               ],
               "type": "object"
             },
@@ -47876,12 +47864,7 @@
           "interval",
           "candles",
           "candle_count",
-          "root_excluded",
-          "usd_available_from",
-          "usd_available_from_iso",
-          "priced_candle_count",
-          "usd_unavailable",
-          "field_sources_usd"
+          "root_excluded"
         ],
         "type": "object"
       },
