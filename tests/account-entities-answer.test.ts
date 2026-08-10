@@ -31,7 +31,12 @@ vi.mock("../workers/storage.ts", () => ({
 import { answerAccountEntities } from "../src/account-entities-answer.ts";
 import type { SubnetOwnerSnapshot } from "../src/entity-labels.ts";
 
-const OWNER = "5FRYKhbmT3ijhFVDMHUvBrqLKteLBSb6JqPCvB3NfWaVbxpe";
+// Chutes' REAL owner coldkey, and it resolves: the address #9313 quoted
+// (5FRYKhbmT3ij…, same eight-char prefix) fails SS58 checksum validation,
+// so the endpoint answers invalid_ss58 for it rather than any tie count.
+// A fixture that cannot exist invites a test that validates addresses to
+// pass for the wrong reason.
+const OWNER = "5FRYKhbmfXPDoHdUUDMx27E3HuMvAzwjzFMMq3rNurUhAyS9";
 const CAPTURED = "2026-08-10T09:26:12.433Z";
 
 const owners = (): SubnetOwnerSnapshot => ({
