@@ -62,6 +62,9 @@
     "notes": {
       "type": "string"
     },
+    "revenue_search": {
+      "$ref": "#/$defs/revenue_search"
+    },
     "curation": {
       "$ref": "#/$defs/curation"
     },
@@ -76,19 +79,19 @@
     },
     "exchange_listings": {
       "type": "array",
-      "description": "Centralized-exchange listings where this subnet's token trades (Taostats-parity metadata, #6274). Display-only registry metadata like `social` — not a live-verified surface, so it carries no probe/verification machinery.",
+      "description": "Centralized-exchange listings where this subnet's token trades (Taostats-parity metadata, #6274). Display-only registry metadata like `social` \u2014 not a live-verified surface, so it carries no probe/verification machinery.",
       "items": {
         "$ref": "#/$defs/exchange_listing"
       }
     },
     "contact": {
       "type": "string",
-      "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) — sanitized at build via subnetContact. Display-only; never feeds completeness."
+      "description": "Curated operator support contact (email or public URL, harvested from SubnetIdentitiesV3 subnet_contact) \u2014 sanitized at build via subnetContact. Display-only; never feeds completeness."
     },
     "social": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Curated social links — wins over on-chain extraction (#745). Display-only; never feeds completeness.",
+      "description": "Curated social links \u2014 wins over on-chain extraction (#745). Display-only; never feeds completeness.",
       "properties": {
         "x": {
           "type": "string",
@@ -226,7 +229,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["state"],
-          "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY — machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
+          "description": "Per-surface HUMAN review/governance state for the single-file contribution model: a surface enters as \"community-submitted\"; a maintainer promotes it to \"maintainer-reviewed\" or marks it \"rejected\". Human-governance axis ONLY \u2014 machine verification + freshness (live or stale) is the separate probe-derived `verification` overlay (health, last_verified_at, incidents); subnet-level curation has its own `curation.review_state`.",
           "properties": {
             "state": {
               "enum": ["community-submitted", "maintainer-reviewed", "rejected"]
@@ -256,7 +259,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["requests", "window"],
-          "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only — metagraphed does not enforce it and it never feeds completeness.",
+          "description": "Structured, curated rate-limit metadata for a callable surface (#747). Integration-only \u2014 metagraphed does not enforce it and it never feeds completeness.",
           "properties": {
             "requests": {
               "type": "integer",
@@ -287,7 +290,7 @@
           "type": ["object", "null"],
           "additionalProperties": false,
           "required": ["scheme"],
-          "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only — never a real secret; integration-only, never feeds completeness.",
+          "description": "Structured, caller-actionable auth detail (#746): how to pass a credential. Derived from the OpenAPI securitySchemes when present, else curated. Placeholders only \u2014 never a real secret; integration-only, never feeds completeness.",
           "properties": {
             "scheme": {
               "enum": [
@@ -311,7 +314,9 @@
             },
             "names": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "minItems": 1,
               "description": "For scheme:signature only: every header/query-param/body-field name the caller must supply as a complete bundle, e.g. [\"X-Hotkey\", \"X-Timestamp\", \"X-Signature\"]. Mutually exclusive with `name`."
             },
@@ -395,17 +400,23 @@
         "fields": {
           "description": "Map of role -> field name in the upstream payload, e.g. {\"date\": \"date\", \"amount\": \"total_revenue\"}.",
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "excludes": {
           "description": "Fields present in the payload that are NOT external revenue and must be subtracted, e.g. subnet-funded or unrecognised components.",
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "supersedes": {
           "description": "Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice.",
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "circularity": {
           "description": "Whether the money originates outside Bittensor. Absent means unknown, never external.",
@@ -425,20 +436,32 @@
       "allOf": [
         {
           "if": {
-            "properties": { "provenance": { "const": "none" } },
+            "properties": {
+              "provenance": {
+                "const": "none"
+              }
+            },
             "required": ["provenance"]
           },
-          "then": { "required": ["searched_at"] }
+          "then": {
+            "required": ["searched_at"]
+          }
         },
         {
           "if": {
             "properties": {
-              "role": { "const": "external-revenue" },
-              "provenance": { "enum": ["chain-verified", "probe-derived"] }
+              "role": {
+                "const": "external-revenue"
+              },
+              "provenance": {
+                "enum": ["chain-verified", "probe-derived"]
+              }
             },
             "required": ["role", "provenance"]
           },
-          "then": { "required": ["currency", "grain", "fields"] }
+          "then": {
+            "required": ["currency", "grain", "fields"]
+          }
         }
       ]
     },
@@ -509,7 +532,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tier", "since"],
-      "description": "Display/placement metadata — e.g. a featured-pilot slot on the homepage. Distinct from `authority` and `curation.level`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
+      "description": "Display/placement metadata \u2014 e.g. a featured-pilot slot on the homepage. Distinct from `authority` and `curation.level`, which are trust signals only and never drive placement (docs/adr/0008-subnet-data-model.md).",
       "properties": {
         "tier": {
           "enum": ["pilot"]
@@ -603,6 +626,43 @@
         "redirect_target": {
           "type": ["string", "null"],
           "format": "uri"
+        }
+      }
+    },
+    "revenue_search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["searched_at", "outcome", "checked"],
+      "description": "Whether this subnet has been searched for external revenue, and when. A subnet with no revenue-shaped surface has nowhere to put a per-surface `revenue` block, so an undated silence is indistinguishable from nobody having looked. This is the subnet-level record that makes an absence evidence.",
+      "properties": {
+        "searched_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the search was run. An absence with no date is not evidence."
+        },
+        "outcome": {
+          "enum": ["none-found", "surfaces-declared"],
+          "description": "`none-found` asserts no external-revenue surface exists; `surfaces-declared` says at least one does. Cross-checked against the surfaces themselves, so the summary cannot drift from the data."
+        },
+        "checked": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "website",
+              "docs",
+              "openapi",
+              "dashboard",
+              "source-repo",
+              "blog",
+              "explorer"
+            ]
+          },
+          "description": "Where the search actually looked. Without this, \"we searched\" is unfalsifiable and nobody else can re-run it."
+        },
+        "notes": {
+          "type": "string"
         }
       }
     }

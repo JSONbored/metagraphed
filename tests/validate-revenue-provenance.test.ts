@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   checkEntityRole,
+  checkRevenueSearch,
   checkSurfaceRevenue,
   collectViolations,
 } from "../scripts/validate-revenue-provenance.ts";
@@ -162,6 +163,67 @@ describe("revenue provenance validator (#10443/#10516)", () => {
       violations
         .map((v) => `${v.file}: ${v.subject} — ${v.message}`)
         .join("\n"),
+    );
+  });
+});
+
+describe("revenue_search cross-check (#10543)", () => {
+  function withSearch(outcome: string, revenueRole?: string): Row {
+    const surface: Row = { id: "sn-64-x", auth_required: false };
+    if (revenueRole) {
+      surface.revenue = { role: revenueRole, provenance: "probe-derived" };
+      surface.probe = { enabled: true };
+    }
+    return {
+      netuid: 64,
+      surfaces: [surface],
+      revenue_search: {
+        searched_at: "2026-08-10T00:00:00Z",
+        outcome,
+        checked: ["website", "docs"],
+      },
+    };
+  }
+
+  test("a subnet with no search record is not the validator's business", () => {
+    assert.deepEqual(checkRevenueSearch({ netuid: 1, surfaces: [] }), []);
+    assert.deepEqual(checkRevenueSearch({}), []);
+  });
+
+  test("none-found agrees with a subnet declaring no revenue", () => {
+    assert.deepEqual(checkRevenueSearch(withSearch("none-found")), []);
+    // A usage-proxy or miner-payout surface is not external revenue, so it
+    // does not contradict none-found — that distinction is the whole point of
+    // the role vocabulary.
+    assert.deepEqual(
+      checkRevenueSearch(withSearch("none-found", "miner-payout")),
+      [],
+    );
+    assert.deepEqual(
+      checkRevenueSearch(withSearch("none-found", "usage-proxy")),
+      [],
+    );
+  });
+
+  test("none-found is REJECTED once a surface declares external revenue", () => {
+    // The stale-summary case: searched in March, revenue surface added in
+    // August, and the subnet keeps asserting it has none.
+    const v = checkRevenueSearch(withSearch("none-found", "external-revenue"));
+    assert.equal(v.length, 1);
+    assert.match(v[0].message, /none-found/);
+    assert.match(v[0].message, /sn-64-x/);
+  });
+
+  test("surfaces-declared is REJECTED when nothing declares external revenue", () => {
+    const v = checkRevenueSearch(withSearch("surfaces-declared"));
+    assert.equal(v.length, 1);
+    assert.match(v[0].message, /surfaces-declared/);
+  });
+
+  test("surfaces-declared agrees with a real declaration", () => {
+    assert.deepEqual(
+      checkRevenueSearch(withSearch("surfaces-declared", "external-revenue")),
+      [],
     );
   });
 });

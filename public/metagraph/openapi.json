@@ -9152,6 +9152,13 @@
               "probed_surface_count": 1,
               "provenance": {},
               "registered_at_block": 5000000,
+              "revenue_search": {
+                "checked": [
+                  "website"
+                ],
+                "outcome": "none-found",
+                "searched_at": "2026-06-01T00:00:00.000Z"
+              },
               "slug": "example-subnet",
               "social": {},
               "source_repo": "https://api.metagraph.sh/example",
@@ -10912,6 +10919,13 @@
               "probed_surface_count": 1,
               "provenance": {},
               "registered_at_block": 5000000,
+              "revenue_search": {
+                "checked": [
+                  "website"
+                ],
+                "outcome": "none-found",
+                "searched_at": "2026-06-01T00:00:00.000Z"
+              },
               "slug": "example-subnet",
               "social": {},
               "source_repo": "https://api.metagraph.sh/example",
@@ -43955,6 +43969,49 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "revenue_search": {
+            "additionalProperties": false,
+            "properties": {
+              "checked": {
+                "description": "Where the search actually looked. Without it, \"we searched\" is unfalsifiable and nobody else can re-run it.",
+                "items": {
+                  "enum": [
+                    "website",
+                    "docs",
+                    "openapi",
+                    "dashboard",
+                    "source-repo",
+                    "blog",
+                    "explorer"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "outcome": {
+                "description": "Cross-checked against the surfaces themselves, so the summary cannot drift from the data it summarises.",
+                "enum": [
+                  "none-found",
+                  "surfaces-declared"
+                ],
+                "type": "string"
+              },
+              "searched_at": {
+                "description": "An absence with no date is not evidence.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "checked",
+              "outcome",
+              "searched_at"
+            ],
+            "type": "object"
           },
           "slug": {
             "type": "string"

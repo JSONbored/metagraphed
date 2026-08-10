@@ -208,3 +208,75 @@ describe("subnet-manifest revenue block (#10441)", () => {
     assert.ok(!def.enum.includes("external-assumed"));
   });
 });
+
+describe("subnet-level revenue_search (#10543)", () => {
+  function manifestWith(search?: Json): Json {
+    const doc = manifest() as Record<string, unknown>;
+    if (search !== undefined) doc.revenue_search = search;
+    return doc as Json;
+  }
+  const GOOD: Json = {
+    searched_at: "2026-08-10T00:00:00Z",
+    outcome: "none-found",
+    checked: ["website", "docs", "source-repo"],
+  };
+
+  test("accepts a complete search record", () => {
+    assert.equal(
+      validate(manifestWith(GOOD)),
+      true,
+      errorsFor(manifestWith(GOOD)).join("; "),
+    );
+  });
+
+  test("stays optional", () => {
+    assert.equal(validate(manifestWith()), true);
+  });
+
+  test("all three of searched_at, outcome and checked are required", () => {
+    for (const key of ["searched_at", "outcome", "checked"]) {
+      const partial = { ...(GOOD as Record<string, unknown>) };
+      delete partial[key];
+      assert.equal(
+        validate(manifestWith(partial as Json)),
+        false,
+        `accepted a record missing ${key}`,
+      );
+    }
+  });
+
+  test("`checked` may not be empty", () => {
+    // An empty list would let a subnet claim it was searched while naming
+    // nowhere it looked — unfalsifiable, and the exact thing this field is for.
+    assert.equal(
+      validate(
+        manifestWith({
+          ...(GOOD as Record<string, unknown>),
+          checked: [],
+        } as Json),
+      ),
+      false,
+    );
+  });
+
+  test("rejects an outcome or source outside the vocabulary", () => {
+    assert.equal(
+      validate(
+        manifestWith({
+          ...(GOOD as Record<string, unknown>),
+          outcome: "maybe",
+        } as Json),
+      ),
+      false,
+    );
+    assert.equal(
+      validate(
+        manifestWith({
+          ...(GOOD as Record<string, unknown>),
+          checked: ["vibes"],
+        } as Json),
+      ),
+      false,
+    );
+  });
+});
