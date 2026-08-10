@@ -32,7 +32,7 @@ import {
   DisabledProxyContractSchema,
   EndpointEligibilityPolicySchema,
 } from "./endpoint-pool-policy.ts";
-import { HttpUrlSchema } from "../shared.ts";
+import { EpochMillisSchema, HttpUrlSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { BittensorNetworkSchema, HealthStatusSchema } from "../shared.ts";
@@ -346,7 +346,7 @@ const RpcUsageNetworkRowSchema = z
 
 const RpcUsageBucketSchema = z
   .object({
-    ts: z.int().min(0),
+    ts: EpochMillisSchema.describe("Bucket start, as epoch milliseconds."),
     requests: z.int().min(0),
     errors: z.int().min(0),
     avg_latency_ms: z.int().nullable(),
@@ -362,8 +362,8 @@ const RpcUsageBucketSchema = z
 // publishing only `window` is what let a two-hour answer ship labelled `7d`.
 const RpcUsageCoverageRangeSchema = z
   .object({
-    start: z.int().nullable(),
-    end: z.int().nullable(),
+    start: EpochMillisSchema.nullable(),
+    end: EpochMillisSchema.nullable(),
   })
   .passthrough()
   .describe("An epoch-ms span.");
@@ -375,36 +375,24 @@ const RpcUsageCoverageSegmentSchema = z
       .describe(
         "Which store measured it: analytics-engine (live capture) or lakehouse (frozen history).",
       ),
-    start: z
-      .int()
-      .nullable()
-      .describe(
-        "Epoch ms of this store's oldest measured event in the window.",
-      ),
-    end: z
-      .int()
-      .nullable()
-      .describe(
-        "Epoch ms of this store's newest measured event in the window.",
-      ),
+    start: EpochMillisSchema.nullable().describe(
+      "Epoch ms of this store's oldest measured event in the window.",
+    ),
+    end: EpochMillisSchema.nullable().describe(
+      "Epoch ms of this store's newest measured event in the window.",
+    ),
   })
   .passthrough()
   .describe("One store's contribution to an rpc_usage answer.");
 
 const RpcUsageCoverageSchema = z
   .object({
-    start: z
-      .int()
-      .nullable()
-      .describe(
-        "Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured.",
-      ),
-    end: z
-      .int()
-      .nullable()
-      .describe(
-        "Epoch ms of the newest measured event across every contributing store, or null when nothing was measured.",
-      ),
+    start: EpochMillisSchema.nullable().describe(
+      "Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured.",
+    ),
+    end: EpochMillisSchema.nullable().describe(
+      "Epoch ms of the newest measured event across every contributing store, or null when nothing was measured.",
+    ),
     segments: z
       .array(RpcUsageCoverageSegmentSchema)
       .describe(
@@ -439,9 +427,7 @@ export const RpcUsageArtifactSchema = z
     // example carries a real stamp rather than a bare `1`, because the unit is
     // the whole point of the field and a placeholder integer teaches a reader
     // nothing about it.
-    observed_at: z
-      .int()
-      .nullable()
+    observed_at: EpochMillisSchema.nullable()
       .optional()
       .describe(
         "When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.",

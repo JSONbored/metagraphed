@@ -11,6 +11,32 @@
 import { z } from "zod";
 import { QUERY_ENUMS } from "./query-enums.ts";
 
+/**
+ * An epoch-MILLISECOND instant, published as an integer (#10386).
+ *
+ * Registered as its own component so the schema STATES that a field is an
+ * instant instead of leaving it to a spelling. GraphQL's `Int` is 32-bit
+ * signed and every real epoch-ms value overflows it -- 1786323600000 against
+ * a ceiling of 2147483647 -- and a non-null `Int` carrying one raises on
+ * every request and nulls its whole surrounding object (#10215, which
+ * `EndpointIncidentWindow.started_at` shipped with until it was found by
+ * hand). `schemas-src/graphql/emit.ts` maps this component id to `Float`.
+ *
+ * The type alone cannot tell: `z.int()` stamps the JS safe-integer ceiling on
+ * every integer, count and instant alike, so "maximum exceeds Int32" is true
+ * of all of them. The emitter stood a `/_at$/` name test in for the missing
+ * fact, which rescued 7 fields and missed 8 that production proves overflow
+ * -- `candles[].bucket_start` on 1371 of 1371 observed candles, and the six
+ * `rpc-usage` coverage bounds. Use this schema for an instant; a DURATION
+ * (`duration_ms`, `age_ms`) is a span, not an instant, and stays `z.int()`.
+ */
+export const EpochMillisSchema = z
+  .int()
+  .min(0)
+  .describe(
+    "An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int.",
+  );
+
 /** One vocabulary, owned by the leaf module so routes AND tools can import it
  * without the cycle that owning it on a route would create (#9799). */
 export const NATIVE_NAME_QUALITY_VALUES = [

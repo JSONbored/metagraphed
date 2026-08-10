@@ -35,7 +35,7 @@
 // dedicated, route-local HealthSubnetSurfaceSchema instead.
 import { z } from "zod";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
-import { HealthStatusSchema } from "../shared.ts";
+import { EpochMillisSchema, HealthStatusSchema } from "../shared.ts";
 import { ClassificationSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { HealthSubnetSummarySchema } from "./health.ts";
 import { HEALTH_TREND_WINDOW_VALUES } from "../../src/route-limits.ts";
@@ -180,8 +180,8 @@ export type BulkHealthTrendsQuery = z.infer<typeof BulkHealthTrendsQuerySchema>;
 
 const GlobalIncidentEntrySchema = z
   .object({
-    started_at: z.int(),
-    ended_at: z.int(),
+    started_at: EpochMillisSchema,
+    ended_at: EpochMillisSchema,
     // #8824: (ended_at - started_at) + PROBE_CADENCE_MS -- the observed
     // failed span plus one probe cadence, since the outage began sometime in
     // the interval before started_at and ended sometime in the interval
@@ -350,8 +350,8 @@ export type HealthSurface = z.infer<typeof HealthSurfaceSchema>;
 
 const HealthIncidentEntrySchema = z
   .object({
-    started_at: z.int(),
-    ended_at: z.int(),
+    started_at: EpochMillisSchema,
+    ended_at: EpochMillisSchema,
     // #8824: (ended_at - started_at) + PROBE_CADENCE_MS -- the observed
     // failed span plus one probe cadence, since the outage began sometime in
     // the interval before started_at and ended sometime in the interval

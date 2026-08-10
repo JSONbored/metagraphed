@@ -91,6 +91,29 @@ export function componentSchemas(): Record<string, SchemaNode> {
   return generated.schemas as Record<string, SchemaNode>;
 }
 
+/**
+ * Registered components that are a SCALAR in GraphQL, not an object type.
+ *
+ * `EpochMillis` is an epoch-millisecond instant. GraphQL's `Int` is 32-bit
+ * signed and every real epoch-ms value overflows it -- 1786323600000 against a
+ * ceiling of 2147483647 -- so a non-null `Int` carrying one raises on every
+ * request and nulls its whole surrounding object (#10215). Publishing it as
+ * `Float` is the only spelling GraphQL has for the value, which is what the
+ * hand-written SDL always did.
+ *
+ * This replaces a `/_at$/` test on the field name (#10386). The name was
+ * standing in for a fact the schema never stated -- `z.int()` stamps the JS
+ * safe-integer ceiling on every integer, count and instant alike, so
+ * "maximum exceeds Int32" is true of all of them and the type genuinely
+ * cannot tell. The heuristic rescued 7 fields and missed 8 that production
+ * proves overflow, `SubnetOhlcArtifact.candles[].bucket_start` on 1371 of
+ * 1371 observed candles among them. A DURATION (`duration_ms`, `age_ms`) is a
+ * span rather than an instant and stays `z.int()` -> `Int`.
+ */
+const SCALAR_COMPONENTS: Readonly<Record<string, GraphQLScalarType>> = {
+  EpochMillis: GraphQLFloat,
+};
+
 /** `#/components/schemas/Foo` -> `Foo`; anything else -> null. */
 function refName(node: SchemaNode): string | null {
   const ref = node?.$ref;
@@ -297,6 +320,10 @@ export function emitTypes(): EmittedTypes {
 
     const ref = refName(node);
     if (ref) {
+      // Before resolving: a few registered components ARE a GraphQL scalar,
+      // and which one is a fact about the component rather than its shape.
+      const scalar = SCALAR_COMPONENTS[ref];
+      if (scalar) return scalar;
       const target = resolve(ref);
       if (!target) return JSONScalar;
       // A registered component is not necessarily an OBJECT. The registry
@@ -357,30 +384,14 @@ export function emitTypes(): EmittedTypes {
       return GraphQLString;
     }
 
-    // An INSTANT is a Float, not an Int. GraphQL's Int is 32-bit and every
-    // epoch-millisecond value overflows it -- 1786228205841 against a ceiling
-    // of 2147483647 -- so a non-null one nulls its whole parent list on every
-    // request. The hand-written SDL did exactly that on
-    // `EndpointIncidentWindow.started_at`/`ended_at`, unnoticed until #10215
-    // executed the fields; this is the rule that stops the generated SDL
-    // reintroducing it.
-    //
-    // Keyed on the FIELD NAME because the type cannot tell: `z.int()` stamps
-    // the JS safe-integer ceiling on every integer, count and instant alike,
-    // so "maximum exceeds Int32" is true of all of them. `_at` on an integer
-    // means an epoch value on this surface -- verified: the two that exist are
-    // the two that were broken. A DURATION (`duration_ms`, `age_ms`) is a span
-    // rather than an instant and stays an Int unless separately declared
-    // beyond the range.
-    //
-    // Off `path`, whose last segment IS the field name. #10269 tested
-    // `fallbackName` instead, which is the name a NESTED OBJECT would be given
-    // (`ChainEventsFeedArtifactEventsObservedAt`) and never ends in `_at` --
-    // so the rule shipped inert and the SDL fix in that change was doing all
-    // the work. The gate below is what caught it.
-    if (node.type === "integer") {
-      return /_at$/.test(path) ? GraphQLFloat : GraphQLInt;
-    }
+    // An INSTANT is a Float, not an Int -- but that is decided ABOVE, by the
+    // `EpochMillis` component, not here. Until #10386 this branch tested the
+    // field name (`/_at$/`) because a bare `z.int()` cannot say whether it
+    // holds a count or an epoch. The name rescued 7 fields and missed 8 that
+    // production proves overflow Int32, so the fact moved into the schema.
+    // Everything reaching this line is a plain integer: a count, a block
+    // height, a netuid, a duration in ms.
+    if (node.type === "integer") return GraphQLInt;
     if (node.type === "number") return GraphQLFloat;
     if (node.type === "boolean") return GraphQLBoolean;
     if (node.type === "string") return GraphQLString;

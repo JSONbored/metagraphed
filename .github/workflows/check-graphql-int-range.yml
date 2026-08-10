@@ -1,0 +1,69 @@
+name: Check GraphQL Int range
+
+# Does any field GraphQL publishes as `Int` carry a value Int cannot hold?
+# (#10386)
+#
+# GraphQL's Int is 32-bit signed. An epoch-millisecond value overflows it, and
+# a non-null Int carrying one raises on every request and nulls its whole
+# surrounding object -- what `EndpointIncidentWindow.started_at` did from the
+# day the surface shipped until someone read the SDL (#10215).
+#
+# No static gate can see it. `z.int()` stamps the JS safe-integer ceiling on
+# every integer, so the declared maximum says nothing; `openapi.json` accepts
+# the value; and the component-parity gate deliberately allows Float-over-Int
+# as a widening. Only the real values expose the overflow, so this measures
+# them: every published GET route, walked beside the emitted GraphQL type.
+#
+# Out of band rather than in CI, for the same reason its four conformance
+# siblings are: it needs production data, and a check that cannot run on a
+# pull request should not pretend to.
+on:
+  schedule:
+    # Daily, and LAST of the daily sweeps so none of them is hitting the same
+    # Worker at once: check-response-conformance 06:41, check-mcp-conformance
+    # 07:17, check-graphql-conformance 07:53, check-cross-surface-values 08:31,
+    # check-operation-latency 09:23, then this.
+    - cron: "59 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-graphql-int-range
+  cancel-in-progress: false
+
+jobs:
+  int-range:
+    name: Measure every published value against GraphQL's Int
+    runs-on: ubuntu-latest
+    # ~200 routes with a 15s pause every 20 to stay under the anonymous rate
+    # limit is ~4 minutes; the ceiling leaves room for backoff without letting
+    # a hung fetch hold a runner all day.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Measure every published value against GraphQL's Int
+        run: |
+          node scripts/check-graphql-int-range.ts | tee int-range.log
+          {
+            echo '## GraphQL Int range'
+            echo '```'
+            cat int-range.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

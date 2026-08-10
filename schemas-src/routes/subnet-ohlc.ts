@@ -4,14 +4,17 @@
 // hand-edited SubnetOhlcArtifact/SubnetOhlcCandle components it replaces.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EpochMillisSchema } from "../shared.ts";
 
 const SubnetOhlcCandleSchema = z
   .object({
-    bucket_start: z
-      .int()
-      .describe(
-        "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int.",
-      ),
+    // EpochMillis, not z.int(): the description already SAID "a Float, since
+    // epoch-ms exceeds GraphQL's 32-bit Int" and the emitter published Int
+    // anyway, because prose is not a fact a generator can read (#10386).
+    // Production serves 1786323600000 here on 1371 of 1371 observed candles.
+    bucket_start: EpochMillisSchema.describe(
+      "Bucket start as epoch milliseconds -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int.",
+    ),
     bucket_start_iso: z.iso.datetime(),
     open: z.number(),
     high: z.number(),
