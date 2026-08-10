@@ -10,7 +10,9 @@
 // resolve, and it prints a clean bill of health forever.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, test } from "vitest";
 
 const SCRIPT = "scripts/validate-graphql-route-parity.ts";
@@ -133,5 +135,46 @@ describe("graphql route parity gate", () => {
     const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
     const annotations = [...sdl.matchAll(/Mirrors GET \/api\/v1\//g)].length;
     assert.ok(annotations > 200, `only ${annotations} route annotations left`);
+  });
+});
+
+// ── the network twin, in the reverse direction (#10394) ──────────────────────
+//
+// The forward rule exempts a `network` ARGUMENT because the twin path is how
+// that parameter is spelled. The reverse loop could not represent the opposite
+// -- a route with a twin whose Query field takes no `network` -- because on the
+// twin `network` is `in: "path"` and on the base path it does not appear at
+// all. Twenty fields sat in that blind spot: testnet reachable over REST,
+// unreachable over GraphQL, and the gate reporting zero divergences.
+describe("the network twin's reverse check", () => {
+  test("FAILS when a field drops the network argument its route twins", () => {
+    const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
+    // `blocks` mirrors /api/v1/blocks, which has a /api/v1/{network}/blocks
+    // twin. Removing its argument must be reported, not passed over.
+    const broken = sdl.replace(
+      "\n      network: Network\n    ): BlockList!",
+      "\n    ): BlockList!",
+    );
+    assert.notEqual(broken, sdl, "the fixture argument must exist to remove");
+    const path = join(mkdtempSync(join(tmpdir(), "sdl-")), "graphql-sdl.ts");
+    writeFileSync(path, broken);
+    assert.throws(
+      () =>
+        execFileSync("node", [SCRIPT], {
+          encoding: "utf8",
+          env: { ...process.env, GRAPHQL_SDL_PATH: path },
+        }),
+      (err: unknown) => {
+        const e = err as { stdout?: string; stderr?: string };
+        const output = `${e.stdout ?? ""}\n${e.stderr ?? ""}`;
+        assert.match(output, /blocks\.network/);
+        assert.match(output, /has a \/\{network\}\/ twin/);
+        return true;
+      },
+    );
+  });
+
+  test("the real SDL passes it -- all twenty forward the argument", () => {
+    assert.match(run(), /0 divergence\(s\)/);
   });
 });

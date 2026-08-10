@@ -22,7 +22,11 @@ import { DECLARED_ARGUMENTS } from "../schemas-src/graphql/argument-divergences.
 
 type Json = Record<string, unknown>;
 
-const SDL_PATH = "src/graphql-sdl.ts";
+// Overridable so a test can run the whole gate against a MUTATED schema and
+// watch it reject. A gate only ever run against a passing tree proves it runs,
+// not that it can fail -- and the failure mode of a schema comparison is
+// silence, which is exactly what this file's header warns about.
+const SDL_PATH = process.env.GRAPHQL_SDL_PATH || "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
 
 /**
@@ -459,6 +463,26 @@ for (const field of queryType.fields) {
       key,
       detail: `SDL types ${arg.name} as ${arg.type} but ${route} publishes ${jsonTypes.join("|")}`,
     });
+  }
+
+  // The `network` twin, in the direction the loop below structurally cannot
+  // see. On the twin path `network` is `in: "path"`, and on the base path it
+  // does not appear at all, so "the route has a twin and the field takes no
+  // network argument" was unrepresentable -- the forward rule above exempts a
+  // `network` argument BECAUSE the twin is how it is spelled, and the reverse
+  // check needed the same knowledge and did not have it. Twenty fields sat in
+  // that blind spot: testnet was reachable over REST and unreachable over
+  // GraphQL, and the gate reported zero divergences (#10394).
+  if (hasNetworkTwin(route) && !declaredArguments.has("network")) {
+    const key = `${field.name}.network`;
+    if (key in DECLARED_MISSING_ARGUMENTS) {
+      suppressedArguments.add(key);
+    } else {
+      argumentFindings.push({
+        key,
+        detail: `${route} has a /{network}/ twin and the SDL takes no network argument, so testnet is unreachable here`,
+      });
+    }
   }
 
   for (const [name, parameter] of published) {

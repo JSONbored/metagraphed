@@ -38,30 +38,13 @@ const OPENAPI_PATH = "public/metagraph/openapi.json";
  * argument. Closing one means adding the argument AND network-scoping the
  * resolver's tier read, which is #10394's work, not the generator's.
  *
- * THE LIST ONLY SHRINKS -- an entry whose field now takes `network` fails.
+ * THE LIST ONLY SHRINKS -- an entry whose field now takes `network` fails --
+ * and it is EMPTY as of #10394: all twenty forward the argument to their tier
+ * read AND to the cold-tier fallback below it, so the ladder cannot answer
+ * mainnet under a testnet label. A new entry here is a field that mirrors a
+ * route with a `/{network}/` twin and cannot reach it.
  */
-export const DECLARED_MISSING_NETWORK: readonly string[] = [
-  "block",
-  "block_events",
-  "block_extrinsics",
-  "blocks",
-  "blocks_summary",
-  "chain_activity",
-  "chain_alpha_volume",
-  "chain_calls",
-  "chain_deregistrations",
-  "chain_fees",
-  "chain_registrations",
-  "chain_signers",
-  "chain_stake_flow",
-  "chain_stake_moves",
-  "chain_stake_transfers",
-  "chain_transfer_pairs",
-  "chain_transfers",
-  "coverage",
-  "economics",
-  "extrinsics",
-];
+export const DECLARED_MISSING_NETWORK: readonly string[] = [];
 
 export interface ArgumentReport {
   /** Fields whose argument list the routes reproduce exactly. */

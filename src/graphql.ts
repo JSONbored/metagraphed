@@ -424,7 +424,12 @@ import {
   buildSubnetBurnHistory,
   loadSubnetBurnHistory,
 } from "./subnet-burn-history.ts";
-import { chainNetworkFromChainName } from "./chain-network.ts";
+import {
+  DEFAULT_CHAIN_NETWORK,
+  chainNetworkFromChainName,
+  networkScopedRoute,
+  type ChainNetworkId,
+} from "./chain-network.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
 import { loadAccountRootClaim } from "./account-root-claim.ts";
@@ -765,6 +770,8 @@ import type {
   QueryAgent_CatalogArgs,
   QueryBlockArgs,
   QueryBlocksArgs,
+  QueryCoverageArgs,
+  QueryBlocks_SummaryArgs,
   QueryBlock_Chain_EventsArgs,
   QueryBlock_EventsArgs,
   QueryBlock_ExtrinsicsArgs,
@@ -1685,18 +1692,34 @@ function loadLiveHealth(context: GqlContext) {
 // Economics blob, preferring the fresh KV tier over the committed R2 artifact —
 // the same source REST (/api/v1/economics, registry leaderboards) serves, so the
 // GraphQL rows and opportunity boards never lag it. Null when both are cold.
-function loadEconomics(context: GqlContext) {
-  return once(context, LIVE_ECONOMICS_KEY, async () => {
-    const live = await resolveLiveEconomics({
-      readHealthKv,
-      env: context.env,
-      contractVersion: contractVersion(context.env),
-    });
-    // Spot on every row (#9408 completion), on whichever tier answered.
-    if (Array.isArray(live?.data?.subnets)) {
-      return withSpotPricedEconomics(live.data as Row);
+function loadEconomics(
+  context: GqlContext,
+  // #10394: which chain's card. The memo key carries it too -- sharing one
+  // entry between the two networks would serve whichever asked first.
+  network?: "finney" | "test",
+) {
+  const testnet = network === "test";
+  const key = testnet ? `${LIVE_ECONOMICS_KEY}:test` : LIVE_ECONOMICS_KEY;
+  return once(context, key, async () => {
+    // The live economics KV is written by the mainnet cron and carries no
+    // network column, so off mainnet there is no live tier to prefer -- the
+    // network's own artifact is the whole answer. Same asymmetry
+    // `answerBlockDetail` applies to the D1 hot tier.
+    if (!testnet) {
+      const live = await resolveLiveEconomics({
+        readHealthKv,
+        env: context.env,
+        contractVersion: contractVersion(context.env),
+      });
+      // Spot on every row (#9408 completion), on whichever tier answered.
+      if (Array.isArray(live?.data?.subnets)) {
+        return withSpotPricedEconomics(live.data as Row);
+      }
     }
-    const res = await readArtifact(context.env, ARTIFACT.economics);
+    const res = await readArtifact(
+      context.env,
+      networkArtifactPath(ARTIFACT.economics, network),
+    );
     return res.ok ? withSpotPricedEconomics(res.data as Row) : null;
   });
 }
@@ -1731,9 +1754,13 @@ function postgresTierRequest(
   context: GqlContext,
   pathname: string,
   params?: Row,
+  // #10394: which chain's rows to read. Mainnet keeps the base path, so every
+  // existing caller is unchanged; testnet reaches the `/api/v1/{network}/…`
+  // twin the router already serves and REST callers already use.
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
   const pgUrl = new URL((context.request as Request).url);
-  pgUrl.pathname = pathname;
+  pgUrl.pathname = networkScopedRoute(pathname, network);
   pgUrl.search = params ? params.toString() : "";
   return new Request(pgUrl);
 }
@@ -4095,7 +4122,10 @@ const rootValue = {
     // it. An invalid filter/sort is a GraphQL BAD_USER_INPUT error, not a silently
     // substituted default. The cursor is REST's positional offset, like every other
     // applyQueryFilters-backed list field.
-    const data = await loadEconomics(context);
+    const data = await loadEconomics(
+      context,
+      (args.network ?? undefined) as "finney" | "test" | undefined,
+    );
     const queryUrl = new URL("https://graphql.internal/economics");
     for (const [name, value] of [
       ["netuid", args?.netuid],
@@ -4674,10 +4704,19 @@ const rootValue = {
     return loadCurationList(mcpCtx(context), args, { readArtifact });
   },
 
-  async coverage(_args: unknown, context: GqlContext) {
+  async coverage({ network }: QueryCoverageArgs, context: GqlContext) {
     // Same baked artifact the REST /api/v1/coverage route + get_coverage MCP
     // tool read; GraphQL degrades to null when cold, like agent_resources.
-    return loadArtifact(context, "/metagraph/coverage.json");
+    // Network-scoped the way `subnets` and every MCP artifact read are: the
+    // testnet card lives in its own keyspace, so a `network: test` query cannot
+    // be answered from mainnet's (#10394).
+    return loadArtifact(
+      context,
+      networkArtifactPath(
+        "/metagraph/coverage.json",
+        (network ?? undefined) as "finney" | "test" | undefined,
+      ),
+    );
   },
 
   schemas(_args: unknown, context: GqlContext) {
@@ -5332,6 +5371,7 @@ const rootValue = {
 
   async extrinsics(
     {
+      network,
       limit,
       offset,
       cursor,
@@ -5376,7 +5416,12 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/extrinsics", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/extrinsics",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
       // The extrinsics cold tier REST and MCP both read (#9540).
@@ -5386,20 +5431,24 @@ const rootValue = {
       // the filter and serving unfiltered rows under a filtered label -- the
       // same gate REST's handleExtrinsics and MCP's list_extrinsics apply.
       ((callHash == null
-        ? await loadExtrinsicFeedColdTier(context.env, {
-            limit: safeLimit,
-            offset: safeOffset,
-            cursor,
-            signer,
-            module: callModule,
-            callFunction,
-            success,
-            block,
-            blockStart,
-            blockEnd,
-            from,
-            to,
-          })
+        ? await loadExtrinsicFeedColdTier(
+            context.env,
+            {
+              limit: safeLimit,
+              offset: safeOffset,
+              cursor,
+              signer,
+              module: callModule,
+              callFunction,
+              success,
+              block,
+              blockStart,
+              blockEnd,
+              from,
+              to,
+            },
+            chainNetworkFromChainName(network),
+          )
         : null) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
@@ -5718,6 +5767,7 @@ const rootValue = {
 
   async blocks(
     {
+      network,
       limit,
       offset,
       cursor,
@@ -5758,26 +5808,35 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/blocks", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/blocks",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_BLOCKS_SOURCE",
       )) as Row | null) ??
       // The blocks cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier does the filtering -- the empty builder below
       // ignores them, which is why reaching it silently dropped a filtered
       // query's meaning as well as its rows.
-      ((await loadBlockFeedColdTier(context.env, {
-        limit: safeLimit,
-        offset: safeOffset,
-        cursor,
-        author,
-        specVersion,
-        blockStart,
-        blockEnd,
-        from,
-        to,
-        minExtrinsics,
-        minEvents,
-      } as never)) as Row | null) ??
+      ((await loadBlockFeedColdTier(
+        context.env,
+        {
+          limit: safeLimit,
+          offset: safeOffset,
+          cursor,
+          author,
+          specVersion,
+          blockStart,
+          blockEnd,
+          from,
+          to,
+          minExtrinsics,
+          minEvents,
+        } as never,
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildBlockFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -5790,7 +5849,10 @@ const rootValue = {
     };
   },
 
-  async blocks_summary(_args: unknown, context: GqlContext) {
+  async blocks_summary(
+    { network }: QueryBlocks_SummaryArgs,
+    context: GqlContext,
+  ) {
     // #5664: same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildBlocksSummary([])
     // fallback contract handleBlocksSummary uses. blocks' D1 write path is retired
     // (#4909) so a cold Postgres tier is the steady state -- the empty builder
@@ -5799,11 +5861,21 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/blocks/summary"),
+        postgresTierRequest(
+          context,
+          "/api/v1/blocks/summary",
+          undefined,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_BLOCKS_SOURCE",
       )) as Row | null) ??
-      // #9146: same blocks-summary projection REST and MCP read.
-      ((await loadBlocksSummaryFromArtifact(context.env)) as Row | null) ??
+      // #9146: same blocks-summary projection REST and MCP read -- on the SAME
+      // chain as the tier above, because a fallback that changed network would
+      // answer mainnet under a testnet label (#10394).
+      ((await loadBlocksSummaryFromArtifact(
+        context.env,
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildBlocksSummary([]);
     return {
       schema_version: data.schema_version ?? 1,
@@ -5854,18 +5926,22 @@ const rootValue = {
     };
   },
 
-  async block({ ref }: QueryBlockArgs, context: GqlContext) {
+  async block({ ref, network }: QueryBlockArgs, context: GqlContext) {
+    const chain = chainNetworkFromChainName(network);
     const data =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
           context,
           `/api/v1/blocks/${encodeURIComponent(ref)}`,
+          undefined,
+          chain,
         ),
         "METAGRAPH_BLOCKS_SOURCE",
       )) as Row | null) ??
-      // The block cold tier REST and MCP both read (#9540).
-      ((await loadBlockColdTier(context.env, ref)) as Row | null) ??
+      // The block cold tier REST and MCP both read (#9540), on the SAME chain
+      // as the tier above (#10394).
+      ((await loadBlockColdTier(context.env, ref, chain)) as Row | null) ??
       buildBlock(undefined, ref);
     return {
       schema_version: data.schema_version ?? null,
@@ -5881,7 +5957,7 @@ const rootValue = {
   // /blocks/:ref/{extrinsics,events} routes wrap their body in `{ data }` (unlike
   // the flat /blocks/:ref route), so the tier result is destructured accordingly.
   async block_extrinsics(
-    { ref, limit, offset }: QueryBlock_ExtrinsicsArgs,
+    { ref, limit, offset, network }: QueryBlock_ExtrinsicsArgs,
     context: GqlContext,
   ) {
     const safeLimit =
@@ -5901,6 +5977,7 @@ const rootValue = {
         context,
         `/api/v1/blocks/${encodeURIComponent(ref)}/extrinsics`,
         params,
+        chainNetworkFromChainName(network),
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as Row | null) ?? {
@@ -5911,19 +5988,29 @@ const rootValue = {
       // there would state "this block has no extrinsics", which is the confident
       // zero this whole change exists to remove.
       data: gapAwareBlockDetail(
-        await answerBlockDetail(context.env, ref, {
-          hot: (height) =>
-            loadBlockExtrinsicsHotTier(context.env, ref, height, {
-              limit: safeLimit,
-              offset: safeOffset,
-            }),
-          cold: () =>
-            loadBlockExtrinsicsColdTier(context.env, ref, {
-              limit: safeLimit,
-              offset: safeOffset,
-            }),
-          isEmpty: isEmptyExtrinsicPayload,
-        }),
+        await answerBlockDetail(
+          context.env,
+          ref,
+          {
+            hot: (height) =>
+              loadBlockExtrinsicsHotTier(context.env, ref, height, {
+                limit: safeLimit,
+                offset: safeOffset,
+              }),
+            cold: () =>
+              loadBlockExtrinsicsColdTier(context.env, ref, {
+                limit: safeLimit,
+                offset: safeOffset,
+              }),
+            isEmpty: isEmptyExtrinsicPayload,
+          },
+          // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --
+          // blocks_head and the whole hot path are written by the mainnet
+          // firehose poller and carry no network column -- so a testnet ref
+          // resolves from that chain's lakehouse instead of being looked up in
+          // mainnet's D1 (#10394).
+          chainNetworkFromChainName(network),
+        ),
         () =>
           buildBlockExtrinsics([], ref, null, {
             limit: safeLimit,
@@ -5935,7 +6022,7 @@ const rootValue = {
   },
 
   async block_events(
-    { ref, limit, offset }: QueryBlock_EventsArgs,
+    { ref, limit, offset, network }: QueryBlock_EventsArgs,
     context: GqlContext,
   ) {
     const safeLimit =
@@ -5955,6 +6042,7 @@ const rootValue = {
         context,
         `/api/v1/blocks/${encodeURIComponent(ref)}/events`,
         params,
+        chainNetworkFromChainName(network),
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as Row | null) ?? {
@@ -5965,19 +6053,29 @@ const rootValue = {
       // there would state "this block has no events", which is the confident
       // zero this whole change exists to remove.
       data: gapAwareBlockDetail(
-        await answerBlockDetail(context.env, ref, {
-          hot: (height) =>
-            loadBlockEventsHotTier(context.env, ref, height, {
-              limit: safeLimit,
-              offset: safeOffset,
-            }),
-          cold: () =>
-            loadBlockEventsColdTier(context.env, ref, {
-              limit: safeLimit,
-              offset: safeOffset,
-            }),
-          isEmpty: isEmptyEventPayload,
-        }),
+        await answerBlockDetail(
+          context.env,
+          ref,
+          {
+            hot: (height) =>
+              loadBlockEventsHotTier(context.env, ref, height, {
+                limit: safeLimit,
+                offset: safeOffset,
+              }),
+            cold: () =>
+              loadBlockEventsColdTier(context.env, ref, {
+                limit: safeLimit,
+                offset: safeOffset,
+              }),
+            isEmpty: isEmptyEventPayload,
+          },
+          // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --
+          // blocks_head and the whole hot path are written by the mainnet
+          // firehose poller and carry no network column -- so a testnet ref
+          // resolves from that chain's lakehouse instead of being looked up in
+          // mainnet's D1 (#10394).
+          chainNetworkFromChainName(network),
+        ),
         () =>
           buildBlockEvents([], ref, null, {
             limit: safeLimit,
@@ -7815,7 +7913,7 @@ const rootValue = {
   },
 
   async chain_activity(
-    { window }: QueryChain_ActivityArgs,
+    { network, window }: QueryChain_ActivityArgs,
     context: GqlContext,
   ) {
     // Checked against the window enum the ROUTE publishes, not against
@@ -7839,7 +7937,12 @@ const rootValue = {
     const data = trimChainActivityToWindow(
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/activity", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/activity",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as ReturnType<typeof buildChainActivity> | null) ??
         // The projection tier REST reads (#9540). Window-based like REST's
@@ -7847,9 +7950,13 @@ const rootValue = {
         // get_chain_activity uses -- that tool takes a block count and answers a
         // different question, so borrowing its loader would change this
         // resolver's contract rather than fill it.
-        ((await loadChainActivityFromArtifact(context.env, {
-          window: label,
-        })) as ReturnType<typeof buildChainActivity> | null) ??
+        ((await loadChainActivityFromArtifact(
+          context.env,
+          {
+            window: label,
+          },
+          chainNetworkFromChainName(network),
+        )) as ReturnType<typeof buildChainActivity> | null) ??
         buildChainActivity({ window: label }),
       days,
     );
@@ -7872,6 +7979,7 @@ const rootValue = {
 
   async chain_calls(
     {
+      network,
       window,
       group_by: groupBy,
       limit,
@@ -7913,7 +8021,12 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/calls", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/calls",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
       // The projection tier REST and MCP both read (#9540). callModule is
@@ -7921,12 +8034,16 @@ const rootValue = {
       // by contract (its value space is not precomputed), so passing it keeps
       // GraphQL's answer identical to REST's instead of quietly serving the
       // unfiltered mix under a filtered label.
-      ((await loadChainCallsFromArtifact(context.env, {
-        window: label,
-        groupBy: requestedGroupBy,
-        limit: safeLimit,
-        callModule,
-      })) as Row | null) ??
+      ((await loadChainCallsFromArtifact(
+        context.env,
+        {
+          window: label,
+          groupBy: requestedGroupBy,
+          limit: safeLimit,
+          callModule,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainCalls({ window: label, groupBy: requestedGroupBy });
     return {
       schema_version: data.schema_version ?? 1,
@@ -7945,7 +8062,7 @@ const rootValue = {
   },
 
   async chain_fees(
-    { window, limit, call_module: callModule }: QueryChain_FeesArgs,
+    { network, window, limit, call_module: callModule }: QueryChain_FeesArgs,
     context: GqlContext,
   ) {
     // Checked against the window enum the ROUTE publishes, not against
@@ -7975,16 +8092,25 @@ const rootValue = {
     const data = trimChainFeesToWindow(
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/fees", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/fees",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as ReturnType<typeof buildChainFees> | null) ??
         // The projection tier REST and MCP both read (#9540); same
         // declines-a-scoped-call contract as chain_calls above.
-        ((await loadChainFeesFromArtifact(context.env, {
-          window: label,
-          limit: safeLimit,
-          callModule,
-        })) as ReturnType<typeof buildChainFees> | null) ??
+        ((await loadChainFeesFromArtifact(
+          context.env,
+          {
+            window: label,
+            limit: safeLimit,
+            callModule,
+          },
+          chainNetworkFromChainName(network),
+        )) as ReturnType<typeof buildChainFees> | null) ??
         buildChainFees({ window: label }),
       days,
     );
@@ -8174,7 +8300,7 @@ const rootValue = {
   },
 
   async chain_deregistrations(
-    { window, limit }: QueryChain_DeregistrationsArgs,
+    { network, window, limit }: QueryChain_DeregistrationsArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW;
@@ -8202,15 +8328,24 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/deregistrations", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/deregistrations",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // #9307: same UID-reuse derivation REST's handleChainDeregistrations
       // reads, then the same MARKED empty when nothing derived it.
-      ((await loadChainDeregistrationsFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainDeregistrationsFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       (markDeregistrationsNotDerived(
         buildChainDeregistrations([], {
           window: requestedWindow,
@@ -8235,7 +8370,7 @@ const rootValue = {
   },
 
   async chain_registrations(
-    { window, limit }: QueryChain_RegistrationsArgs,
+    { network, window, limit }: QueryChain_RegistrationsArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
@@ -8260,15 +8395,24 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/registrations", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/registrations",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // #9146: same chain-registrations projection REST reads, so the two
       // surfaces cannot report different registration activity.
-      ((await loadChainRegistrationsFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainRegistrationsFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainRegistrations([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -8346,7 +8490,13 @@ const rootValue = {
   },
 
   async chain_signers(
-    { window, limit, sort, call_module: callModule }: QueryChain_SignersArgs,
+    {
+      network,
+      window,
+      limit,
+      sort,
+      call_module: callModule,
+    }: QueryChain_SignersArgs,
     context: GqlContext,
   ) {
     // Checked against the window enum the ROUTE publishes, not against
@@ -8387,7 +8537,12 @@ const rootValue = {
     // fallback goes straight to the pure builder with no rows, never a live D1 query.
     const tier = await tryPostgresTier(
       context.env,
-      postgresTierRequest(context, "/api/v1/chain/signers", params),
+      postgresTierRequest(
+        context,
+        "/api/v1/chain/signers",
+        params,
+        chainNetworkFromChainName(network),
+      ),
       "METAGRAPH_EXTRINSICS_SOURCE",
     );
     const data =
@@ -8396,12 +8551,16 @@ const rootValue = {
       // loader declines a pallet-scoped call itself (serving the unfiltered
       // leaderboard under a filtered label would be a wrong answer), so
       // call_module is passed through rather than gated here.
-      ((await loadChainSignersFromArtifact(context.env, {
-        window: label,
-        sort,
-        limit: safeLimit,
-        callModule,
-      })) as Row | null) ??
+      ((await loadChainSignersFromArtifact(
+        context.env,
+        {
+          window: label,
+          sort,
+          limit: safeLimit,
+          callModule,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainSigners({
         window: label,
         sort: sort ?? undefined,
@@ -8476,7 +8635,7 @@ const rootValue = {
   },
 
   async chain_alpha_volume(
-    { limit }: QueryChain_Alpha_VolumeArgs,
+    { network, limit }: QueryChain_Alpha_VolumeArgs,
     context: GqlContext,
   ) {
     const safeLimit = clampLimit(limit, {
@@ -8494,16 +8653,25 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/alpha-volume", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/alpha-volume",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier REST and MCP both read (#9540); without it this
       // resolver's whole answer was the empty card below. The market-cap index
       // rides along so vol_mcap_ratio is not null on GraphQL alone (#9526).
-      ((await loadChainAlphaVolumeFromArtifact(context.env, {
-        limit: safeLimit,
-        marketCapByNetuid: await resolveMarketCapIndex(context.env),
-      })) as Row | null) ??
+      ((await loadChainAlphaVolumeFromArtifact(
+        context.env,
+        {
+          limit: safeLimit,
+          marketCapByNetuid: await resolveMarketCapIndex(context.env),
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainAlphaVolume([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
@@ -8549,7 +8717,7 @@ const rootValue = {
   },
 
   async chain_stake_flow(
-    { window, limit }: QueryChain_Stake_FlowArgs,
+    { network, window, limit }: QueryChain_Stake_FlowArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_FLOW_WINDOW;
@@ -8572,16 +8740,25 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/stake-flow", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/stake-flow",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
       // guarantees we reach it -- a confident zero, with no error to say so.
-      ((await loadChainStakeFlowFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainStakeFlowFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainStakeFlow([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -8608,7 +8785,7 @@ const rootValue = {
   },
 
   async chain_stake_moves(
-    { window, limit }: QueryChain_Stake_MovesArgs,
+    { network, window, limit }: QueryChain_Stake_MovesArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_MOVES_WINDOW;
@@ -8631,16 +8808,25 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/stake-moves", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/stake-moves",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
       // guarantees we reach it -- a confident zero, with no error to say so.
-      ((await loadChainStakeMovesFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainStakeMovesFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainStakeMoves([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -8661,7 +8847,7 @@ const rootValue = {
   },
 
   async chain_stake_transfers(
-    { window, limit }: QueryChain_Stake_TransfersArgs,
+    { network, window, limit }: QueryChain_Stake_TransfersArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW;
@@ -8687,16 +8873,25 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/stake-transfers", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/stake-transfers",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier REST and MCP both read (#9540). Without this rung
       // the ladder below is the whole answer, and the retired flag above
       // guarantees we reach it -- a confident zero, with no error to say so.
-      ((await loadChainStakeTransfersFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainStakeTransfersFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainStakeTransfers([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -8717,7 +8912,7 @@ const rootValue = {
   },
 
   async chain_transfer_pairs(
-    { window, sort, limit }: QueryChain_Transfer_PairsArgs,
+    { network, window, sort, limit }: QueryChain_Transfer_PairsArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW;
@@ -8749,15 +8944,24 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/transfer-pairs", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/transfer-pairs",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier (#9146) REST reads and this field skipped.
-      ((await loadChainTransferPairsFromArtifact(context.env, {
-        window: requestedWindow,
-        sort,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainTransferPairsFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          sort,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainTransferPairs({
         window: requestedWindow,
         sort,
@@ -8780,7 +8984,7 @@ const rootValue = {
   },
 
   async chain_transfers(
-    { window, limit }: QueryChain_TransfersArgs,
+    { network, window, limit }: QueryChain_TransfersArgs,
     context: GqlContext,
   ) {
     const requestedWindow = window ?? DEFAULT_CHAIN_TRANSFER_WINDOW;
@@ -8804,7 +9008,12 @@ const rootValue = {
     const data =
       ((await tryPostgresTier(
         context.env,
-        postgresTierRequest(context, "/api/v1/chain/transfers", params),
+        postgresTierRequest(
+          context,
+          "/api/v1/chain/transfers",
+          params,
+          chainNetworkFromChainName(network),
+        ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
       // The projection tier (#9146): a cron recomputes this window's scorecard
@@ -8814,10 +9023,14 @@ const rootValue = {
       // same window in the same second, and without a degraded marker to say
       // so. The three fields left off when #9146 landed are exactly the three
       // that disagreed: this, chain_transfer_pairs and chain_signers.
-      ((await loadChainTransfersFromArtifact(context.env, {
-        window: requestedWindow,
-        limit: safeLimit,
-      })) as Row | null) ??
+      ((await loadChainTransfersFromArtifact(
+        context.env,
+        {
+          window: requestedWindow,
+          limit: safeLimit,
+        },
+        chainNetworkFromChainName(network),
+      )) as Row | null) ??
       buildChainTransfers({
         window: requestedWindow,
         observedAt: await loadObservedAt(context),
