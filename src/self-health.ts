@@ -22,7 +22,6 @@ import { laneSilenceThresholdMs } from "./lane-alarm.ts";
 import { laneSilenceCadenceMs } from "./producer-cadence.ts";
 
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
-export type SelfHealthComponent = (typeof SELF_HEALTH_COMPONENTS)[number];
 
 /** One row of the 90-day rollup.
  *

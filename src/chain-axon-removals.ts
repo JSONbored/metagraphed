@@ -16,9 +16,6 @@ import {
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
 
-// The account_events kind emitted when a neuron's announced axon endpoint is removed on a subnet.
-export const AXON_REMOVAL_EVENT_KIND = "AxonInfoRemoved";
-
 export const CHAIN_AXON_REMOVALS_LIMIT_DEFAULT = 20;
 export const CHAIN_AXON_REMOVALS_LIMIT_MAX = 100;
 

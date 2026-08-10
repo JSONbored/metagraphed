@@ -26,9 +26,6 @@
 // compared against, which are cap-limited and reservoir-smoothed per block.
 // The AGGREGATE identity is unaffected and holds to ~1e-7. See #8749.
 
-/** Blocks between gate-bar recomputations. `EMISSION_BAR_UPDATE_INTERVAL`. */
-export const EMISSION_BAR_UPDATE_INTERVAL = 360;
-
 /** `EmissionGateExponent` unset means the runtime default h = 3, not 0. */
 export const DEFAULT_EMISSION_GATE_EXPONENT = 3;
 
