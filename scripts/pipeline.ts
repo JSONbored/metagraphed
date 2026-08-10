@@ -117,6 +117,12 @@ function checkCommands(): Step[] {
     // check lived in the separately path-gated `ui` CI job. Checked here so
     // the PR that causes the drift can see it locally.
     step("validate:ui-docs-drift"),
+    // The unrendered-route ceiling (#10300). Sibling of validate:ui-docs-drift
+    // and here for the same reason: a route lands in a BACKEND PR that never
+    // touches apps/ui, so the gap it opens is invisible to the change that
+    // caused it. Reads API_ROUTES against apps/ui sources -- no network, no
+    // build artifacts.
+    step("validate:ui-route-coverage"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.
@@ -222,6 +228,12 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     // check lived in the separately path-gated `ui` CI job. Checked here so
     // the PR that causes the drift can see it locally.
     step("validate:ui-docs-drift"),
+    // The unrendered-route ceiling (#10300). Sibling of validate:ui-docs-drift
+    // and here for the same reason: a route lands in a BACKEND PR that never
+    // touches apps/ui, so the gap it opens is invisible to the change that
+    // caused it. Reads API_ROUTES against apps/ui sources -- no network, no
+    // build artifacts.
+    step("validate:ui-route-coverage"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.
