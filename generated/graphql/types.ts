@@ -182,6 +182,8 @@ export type AccountDeregistrations = {
 export type AccountEntities = {
   __typename?: 'AccountEntities';
   labels: Array<AccountEntityLabel>;
+  /** When the CURRENT-ownership half was captured, or null when no owner snapshot could be read (#9313). Null is load-bearing: it separates "we could not read who owns what" from "this coldkey owns nothing", which are the same empty list without it. An owns tie is never fresher than this stamp. */
+  owners_observed_at?: Maybe<Scalars['String']['output']>;
   ownership_tie_count: Scalars['Int']['output'];
   ownership_ties: Array<AccountOwnershipTie>;
   schema_version: Scalars['Int']['output'];
@@ -7464,6 +7466,7 @@ export type AccountDeregistrationsResolvers<ContextType = GqlContext, ParentType
 
 export type AccountEntitiesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountEntities'] = ResolversParentTypes['AccountEntities']> = ResolversObject<{
   labels?: Resolver<Array<ResolversTypes['AccountEntityLabel']>, ParentType, ContextType>;
+  owners_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ownership_tie_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ownership_ties?: Resolver<Array<ResolversTypes['AccountOwnershipTie']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

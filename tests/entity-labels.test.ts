@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildAccountEntities,
+  subnetOwnersFromEconomics,
   entityLabelsIndex,
   labelsForSs58,
   resolveAddress,
@@ -430,5 +431,105 @@ describe("resolveAddress -- the reserved private-label layer (#8484)", () => {
     assert.equal(resolved.display, "Main coldkey");
     assert.equal(resolved.source, "private");
     assert.equal(resolved.ss58, SS58);
+  });
+});
+
+// CURRENT OWNERSHIP (#9313).
+//
+// The transfer stream holds exactly ONE SubnetOwnerChanged event chain-wide,
+// because ownership is established at registration and only ever moves by
+// conviction contest. Reading it alone answered `ownership_ties: 0` for
+// coldkeys that demonstrably own a subnet -- a confident empty, which reads to
+// a caller as "this address owns nothing" rather than "we did not look".
+describe("current subnet ownership (#9313)", () => {
+  const OWNER = "5FRYKhbmT3ijhFVDMHUvBrqLKteLBSb6JqPCvB3NfWaVbxpe";
+  const CAPTURED = "2026-08-10T09:26:12.433Z";
+  const owners = () => ({
+    rows: [
+      { netuid: 64, owner_coldkey: OWNER },
+      { netuid: 7, owner_coldkey: "someone-else" },
+      { netuid: 12, owner_coldkey: OWNER },
+    ],
+    captured_at: CAPTURED,
+  });
+
+  test("an owner of a subnet gets a tie -- the bug this closes", () => {
+    const data = buildAccountEntities(OWNER, {
+      entities: [],
+      owners: owners(),
+    });
+    assert.equal(data.ownership_tie_count, 2);
+    assert.deepEqual(
+      data.ownership_ties.map((t) => t.netuid),
+      [12, 64],
+    );
+    assert.ok(data.ownership_ties.every((t) => t.role === "owns"));
+  });
+
+  test("`owns` carries a NULL block, never 0", () => {
+    // Current ownership is a state read from storage. A 0 would date every
+    // owner's tie to genesis, which is the same mistake predates_capture
+    // exists to stop elsewhere.
+    const data = buildAccountEntities(OWNER, { owners: owners() });
+    assert.equal(data.ownership_ties[0].block_number, null);
+    assert.equal(data.ownership_ties[0].observed_at, CAPTURED);
+  });
+
+  test("an `owns` tie is never fresher than the capture behind it", () => {
+    const data = buildAccountEntities(OWNER, { owners: owners() });
+    assert.equal(data.owners_observed_at, CAPTURED);
+  });
+
+  test("OWNING NOTHING and NOT LOOKING are different answers", () => {
+    // Both produce an empty tie list; only `owners_observed_at` tells them
+    // apart, which is the whole reason the field exists.
+    const ownsNothing = buildAccountEntities("nobody", { owners: owners() });
+    assert.deepEqual(ownsNothing.ownership_ties, []);
+    assert.equal(ownsNothing.owners_observed_at, CAPTURED);
+
+    const notRead = buildAccountEntities("nobody", { owners: null });
+    assert.deepEqual(notRead.ownership_ties, []);
+    assert.equal(notRead.owners_observed_at, null);
+  });
+
+  test("state comes before history, and neither reorders the other", () => {
+    const data = buildAccountEntities(NEW_COLDKEY_SS58, {
+      owners: {
+        rows: [{ netuid: 99, owner_coldkey: NEW_COLDKEY_SS58 }],
+        captured_at: CAPTURED,
+      },
+      ownershipRows: [ownershipRow()],
+    });
+    assert.deepEqual(
+      data.ownership_ties.map((t) => t.role),
+      ["owns", "gained_ownership"],
+    );
+    assert.equal(data.ownership_tie_count, 2);
+  });
+});
+
+describe("reading owners out of the economics blob (#9313)", () => {
+  test("takes the per-subnet owner and the capture stamp", () => {
+    const snap = subnetOwnersFromEconomics({
+      captured_at: "2026-08-10T09:26:12.433Z",
+      subnets: [{ netuid: 64, owner_coldkey: "abc" }],
+    });
+    assert.equal(snap?.rows.length, 1);
+    assert.equal(snap?.captured_at, "2026-08-10T09:26:12.433Z");
+  });
+
+  test("a blob with no subnets array is NULL, not an empty snapshot", () => {
+    // Null means "could not read who owns what". An empty snapshot would claim
+    // we read the set and it was empty -- which would publish a non-null
+    // `owners_observed_at` over an answer nothing backed.
+    assert.equal(subnetOwnersFromEconomics({}), null);
+    assert.equal(subnetOwnersFromEconomics(null), null);
+    assert.equal(subnetOwnersFromEconomics({ subnets: "nope" }), null);
+  });
+
+  test("a missing capture stamp is null rather than invented", () => {
+    const snap = subnetOwnersFromEconomics({ subnets: [] });
+    assert.equal(snap?.captured_at, null);
+    assert.deepEqual(snap?.rows, []);
   });
 });
