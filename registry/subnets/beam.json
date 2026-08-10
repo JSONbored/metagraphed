@@ -20,6 +20,11 @@
   "name": "Beam",
   "netuid": 105,
   "notes": "First maintainer review for SN105. Corrected source_repo from a generic Beam-Network org repositories-listing page to the specific Beam-Network/beam repo already cited throughout the file's existing surfaces. Added website + source-repo surfaces. Diffed the 53-path BeamCore OpenAPI schema and live-tested every no-param candidate: most declare no security but are actually 401-gated in practice; only 2 genuinely public routes were promoted.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-105",
   "social": {
@@ -446,6 +451,11 @@
       "id": "sn-105-beam-jobs",
       "kind": "subnet-api",
       "name": "Beam GET jobs",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://beamcore.b1m.ai/openapi.json"
+      },
       "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /jobs on beamcore.b1m.ai. The OpenAPI schema declares no security on this operation, but the route is gated in practice \u2014 live-verified 2026-07-21: an unauthenticated request returns HTTP 401 {\"error\":\"authentication required\"}. Already flagged as auth-gated by this file's own gap_notes; Registered per the registry's full-API-parity policy (metagraphed#7116) with auth_required:true.",
       "probe": {
         "enabled": false,

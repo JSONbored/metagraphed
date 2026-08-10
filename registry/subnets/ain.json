@@ -19,6 +19,11 @@
   "name": "ain",
   "netuid": 69,
   "notes": "Reviewed overlay for SN69 ain (Herald). Website and source repository now verified live and tracked as surfaces (heraldmedia.ai, HeraldMedia/herald) -- both were previously flagged as unverified. Fixed 2 missing probe blocks (#5932). No first-party API, OpenAPI schema, or docs site beyond the README has been found.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "ain",
   "source_repo": "https://github.com/HeraldMedia/herald",
@@ -471,6 +476,10 @@
       "id": "sn-69-ain-api-public-stats",
       "kind": "subnet-api",
       "name": "ain (Herald) public stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET /public/stats on api.heraldmedia.ai, documented in the subnet's own OpenAPI schema with optional network/netuid query params, neither required. Live-verified 2026-07-21 (~21:35 UTC) (no params): HTTP 200 JSON.",
       "probe": {
         "enabled": true,

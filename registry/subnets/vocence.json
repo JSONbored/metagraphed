@@ -18,6 +18,11 @@
   "name": "Vocence",
   "netuid": 78,
   "notes": "First maintainer review for SN78. Added website + source-repo surfaces, fixed 3 missing probe blocks. Diffed the OpenAPI schema for undiscovered public GET endpoints -- confirmed the entire developer API is auth-gated except the already-tracked /health route.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-78",
   "status": "active",
@@ -38,7 +43,6 @@
       "provider": "vocence",
       "public_safe": true,
       "source_urls": ["https://www.vocence.ai/"],
-      "source_urls": ["https://www.vocence.ai/"],
       "url": "https://www.vocence.ai/"
     },
     {
@@ -56,7 +60,6 @@
       },
       "provider": "vocence",
       "public_safe": true,
-      "source_urls": ["https://github.com/vocence-78/vocence"],
       "source_urls": ["https://github.com/vocence-78/vocence"],
       "url": "https://github.com/vocence-78/vocence"
     },
@@ -237,6 +240,11 @@
       "id": "sn-78-vocence-api-account-usage",
       "kind": "subnet-api",
       "name": "Vocence account usage stats (auth-gated)",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.vocence.ai/openapi.json"
+      },
       "notes": "GET /v1/account/usage on api.vocence.ai \u2014 auth-gated per the same bearer-enforced pattern spot-verified on GET /v1/account, GET /v1/voices/builtin, and GET /v1/agents/templates (all HTTP 401 without bearer, 2026-07-21); not individually re-verified (pattern is consistent across the full API). probe.enabled:false.",
       "probe": {
         "enabled": false,

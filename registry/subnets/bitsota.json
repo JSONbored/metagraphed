@@ -20,6 +20,11 @@
   "name": "Bitsota",
   "netuid": 94,
   "notes": "First maintainer review for SN94. Added website + source-repo surfaces, fixed 4 missing probe blocks. Diffed the OpenAPI schema for undiscovered public GET endpoints -- added 3 new surfaces; 2 candidates turned out to be auth-gated despite the schema saying otherwise.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-94",
   "social": {
@@ -899,6 +904,11 @@
       "id": "sn-94-bitsota-validator-jobs-claim",
       "kind": "subnet-api",
       "name": "Bitsota validator jobs claim",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
       "notes": "Claim Validator Job Route operation on the Bitsota autoresearch coordinator API (POST /api/v1/validator/jobs/claim), declared in the subnet's own OpenAPI spec at https://autoresearch.bitsota.com/openapi.json. The spec declares no security for it, but it is a state-changing POST and not probe-safe, so the probe is disabled and no auth requirement is asserted without evidence.",
       "probe": {
         "enabled": false,

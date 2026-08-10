@@ -34,6 +34,11 @@
   "name": "Verathos",
   "netuid": 96,
   "notes": "Reviewed overlay for SN96 using the official Verathos website, docs, source repository, public OpenAPI schema, chat app, and model-list API. Website and docs reject HEAD but serve normally through GET, so probes use GET for those surfaces.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-96",
   "source_repo": "https://github.com/verathos-ai/verathos",
@@ -365,6 +370,10 @@
       "id": "sn-96-verathos-network-stats",
       "kind": "subnet-api",
       "name": "Verathos network stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET returning live per-miner network stats (address, ss58_address, uid, endpoint, model_id). Documented in the validator proxy's own OpenAPI schema (path /v1/network/stats).",
       "probe": {
         "enabled": true,
@@ -607,6 +616,10 @@
       "id": "sn-96-verathos-usage-timeseries",
       "kind": "data-artifact",
       "name": "Verathos network usage timeseries",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET /v1/network/usage-timeseries on api.verathos.ai returning aggregate request/token-volume buckets over time (range, bucket_seconds, per-bucket requests/tokens). Documented in the validator-proxy OpenAPI schema on the same host as the existing network-stats surface.",
       "probe": {
         "enabled": true,
@@ -1438,6 +1451,11 @@
       "id": "sn-96-verathos-v1-usage",
       "kind": "subnet-api",
       "name": "Verathos v1/usage",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.verathos.ai/openapi.json"
+      },
       "notes": "Auth-gated (Phase 3 credential passthrough, not built yet) GET /v1/usage on api.verathos.ai -- from sn-96-verathos-validator-proxy-openapi.  Registered per metagraphed#7108 reopen.",
       "probe": {
         "enabled": false,
