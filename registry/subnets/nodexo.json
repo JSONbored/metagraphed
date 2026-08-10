@@ -42,6 +42,12 @@
   },
   "source_repo": "https://github.com/nodexo-ai/nodexo",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (website:billing). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,

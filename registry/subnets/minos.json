@@ -28,6 +28,11 @@
   "source_repo": "https://github.com/minos-protocol/minos_subnet",
   "status": "active",
   "website_url": "https://theminos.ai/",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,

@@ -29,6 +29,11 @@
   "slug": "sn-111",
   "source_repo": "https://github.com/oneoneone-io/subnet-111",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -126,7 +131,7 @@
       "id": "sn-111-oneoneone-generic-synapse-protocol",
       "kind": "data-artifact",
       "name": "oneoneone GenericSynapse protocol definition",
-      "notes": "Public no-auth Bittensor synapse protocol for SN111 oneoneone miner–validator communication. Defines the GenericSynapse request/response shape (type_id, metadata, timeout, responses) used by the validator forward pass to dispatch data-fetch tasks to miners. Pinned to an immutable commit.",
+      "notes": "Public no-auth Bittensor synapse protocol for SN111 oneoneone miner\u2013validator communication. Defines the GenericSynapse request/response shape (type_id, metadata, timeout, responses) used by the validator forward pass to dispatch data-fetch tasks to miners. Pinned to an immutable commit.",
       "probe": {
         "enabled": true,
         "expect": "any",

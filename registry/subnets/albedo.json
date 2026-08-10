@@ -24,6 +24,11 @@
   "source_repo": "https://github.com/unarbos/albedo",
   "status": "active",
   "website_url": "https://albedo.tech",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -103,7 +108,7 @@
       "id": "sn-97-albedo-dashboard",
       "kind": "dashboard",
       "name": "Albedo king-of-the-hill benchmark dashboard",
-      "notes": "Public no-auth web dashboard for SN97 Albedo at albedo.tech — the subnet's king-of-the-hill benchmark board showing the current reigning model and weight holders, dataset mix, live benchmarks, the submission queue, run history, and failures. The page links back to the official unarbos/albedo source repository. Distinct host from the chat.albedo.tech API and s3.hippius.com data surfaces.",
+      "notes": "Public no-auth web dashboard for SN97 Albedo at albedo.tech \u2014 the subnet's king-of-the-hill benchmark board showing the current reigning model and weight holders, dataset mix, live benchmarks, the submission queue, run history, and failures. The page links back to the official unarbos/albedo source repository. Distinct host from the chat.albedo.tech API and s3.hippius.com data surfaces.",
       "probe": {
         "enabled": true,
         "expect": "html",
