@@ -29,8 +29,10 @@
 // Out of band, like its siblings: it needs production, and a check that cannot
 // run on a pull request should not pretend to.
 import { buildSchema } from "graphql";
+import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import { API_ROUTES, FEED_ROUTES } from "../src/contracts.ts";
 import { SDL } from "../src/graphql-sdl.ts";
+import { MCP_TOOL_ROUTES } from "../src/mcp-route-map.ts";
 import { planAll, type FieldPlan } from "./check-graphql-conformance.ts";
 import { argumentsForRequired, concreteRoute } from "./conformance-subjects.ts";
 
@@ -72,75 +74,71 @@ const BUDGET_MS = Number(process.env.LATENCY_BUDGET_MS ?? 5000);
 const STALE_MARGIN = 0.5;
 
 /**
- * Operations known to exceed the budget, each with the issue that owns it.
+ * Reads known to exceed the budget, each with the issue that owns it.
  *
- * The list must SHRINK: an entry whose operation now answers well under budget
- * (see STALE_MARGIN) fails this script, so a fix cannot leave a stale exemption
- * behind -- the same idiom the MCP input-parity, vocabulary and cross-surface
- * gates use.
+ * KEYED BY THE READ, not by (surface, operation) -- see `family()` below for
+ * why. The previous list was keyed per surface and held 30 entries that are
+ * 15 reads; re-scoring the recorded 2026-08-10 run under this keying turned
+ * 12 over-budget operations into 5 undeclared reads and 3 "stale" entries
+ * into 0, because every one of those three had a sibling surface still over
+ * the line in the same sweep.
  *
- * SEEDED FROM A REAL RUN, 2026-08-09, not from reading the code, and the
- * milliseconds are recorded so the next reader can see whether an entry is
- * drifting rather than merely present. All 30 belong to #10312, and they are
- * not 30 independent problems: 21 of them are the ACCOUNT family and its
- * mirrors on the other two surfaces -- the same read, timed three times.
+ * The list must SHRINK: an entry whose read now answers well under budget on
+ * EVERY surface (see STALE_MARGIN) fails this script, so a fix cannot leave a
+ * stale exemption behind -- the same idiom the MCP input-parity, vocabulary
+ * and cross-surface gates use.
+ *
+ * SEEDED FROM A REAL RUN, 2026-08-10, not from reading the code. Each entry
+ * records the worst surface and the full spread, so the next reader can see
+ * both how slow the read is and how much the three surfaces disagree -- the
+ * spread is the evidence that one sample per surface is noise around one
+ * underlying cost, not three independent measurements.
+ *
+ * All 20 belong to #10312, and they are not 20 independent problems: the
+ * account family and the extrinsics/chain-event reads are the lakehouse
+ * access path (#9789), one root cause wearing most of these hats.
  */
 const DECLARED: Record<string, string> = {
-  "graphql:account_transfers":
-    "#10312 -- 12590ms on the run that seeded this list",
-  "graphql:account_counterparties":
-    "#10312 -- 11986ms on the run that seeded this list",
-  "graphql:account_history":
-    "#10312 -- 10227ms on the run that seeded this list",
-  "graphql:validator_nominators":
-    "#10312 -- 8348ms on the run that seeded this list",
-  "graphql:account_extrinsics":
-    "#10312 -- 6822ms on the run that seeded this list",
-  "graphql:account_events": "#10312 -- 6122ms on the run that seeded this list",
-  "graphql:subnet_weight_setters":
-    "#10312 -- 5306ms on the run that seeded this list",
-  "mcp:get_account_counterparties":
-    "#10312 -- 15416ms on the run that seeded this list",
-  "mcp:get_account_history":
-    "#10312 -- 11670ms on the run that seeded this list",
-  "mcp:get_account_transfers":
-    "#10312 -- 9877ms on the run that seeded this list",
-  "mcp:get_subnet_weight_setters":
-    "#10312 -- 7760ms on the run that seeded this list",
-  "mcp:get_account": "#10312 -- 7481ms on the run that seeded this list",
-  "mcp:get_validator_nominators":
-    "#10312 -- 7299ms on the run that seeded this list",
-  "mcp:get_subnet_ownership_history":
-    "#10312 -- 7231ms on the run that seeded this list",
-  "mcp:get_sudo": "#10312 -- 6973ms on the run that seeded this list",
-  "mcp:get_account_stake_flow":
-    "#10312 -- 5907ms on the run that seeded this list",
-  "mcp:get_account_events": "#10312 -- 5512ms on the run that seeded this list",
-  "mcp:get_subnet_events": "#10312 -- 5295ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/transfers":
-    "#10312 -- 11101ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/history":
-    "#10312 -- 9038ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}":
-    "#10312 -- 7855ms on the run that seeded this list",
-  "rest:/api/v1/subnets/{netuid}/event-summary":
-    "#10312 -- 7798ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/extrinsics":
-    "#10312 -- 7464ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/counterparties":
-    "#10312 -- 6760ms on the run that seeded this list",
-  "rest:/api/v1/subnets/{netuid}/events":
-    "#10312 -- 6700ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/events":
-    "#10312 -- 6548ms on the run that seeded this list",
-  "rest:/api/v1/subnets/{netuid}/ohlc":
-    "#10312 -- 6428ms on the run that seeded this list",
-  "rest:/api/v1/accounts/{ss58}/weight-setters":
-    "#10312 -- 6366ms on the run that seeded this list",
-  "rest:/api/v1/validators/{hotkey}/nominators":
-    "#10312 -- 6095ms on the run that seeded this list",
-  "rest:/api/v1/subnets/{netuid}/ownership-history":
-    "#10312 -- 5642ms on the run that seeded this list",
+  "/api/v1/accounts/{ss58}":
+    "#10312 -- 8832ms worst of 3 surface(s) on 2026-08-10 (graphql 8832ms, mcp 5717ms, rest 5205ms)",
+  "/api/v1/accounts/{ss58}/counterparties":
+    "#10312 -- 11541ms worst of 3 surface(s) on 2026-08-10 (rest 11541ms, mcp 7921ms, graphql 6753ms)",
+  "/api/v1/accounts/{ss58}/events":
+    "#10312 -- 6939ms worst of 3 surface(s) on 2026-08-10 (graphql 6939ms, mcp 5683ms, rest 4848ms)",
+  "/api/v1/accounts/{ss58}/extrinsics":
+    "#10312 -- 8711ms worst of 3 surface(s) on 2026-08-10 (graphql 8711ms, rest 5753ms, mcp 4452ms)",
+  "/api/v1/accounts/{ss58}/history":
+    "#10312 -- 7442ms worst of 3 surface(s) on 2026-08-10 (mcp 7442ms, rest 6788ms, graphql 6444ms)",
+  "/api/v1/accounts/{ss58}/stake-flow":
+    "#10312 -- 5196ms worst of 3 surface(s) on 2026-08-10 (graphql 5196ms, rest 4260ms, mcp 2927ms)",
+  "/api/v1/accounts/{ss58}/transfers":
+    "#10312 -- 7568ms worst of 3 surface(s) on 2026-08-10 (rest 7568ms, graphql 6709ms, mcp 6264ms)",
+  "/api/v1/accounts/{ss58}/weight-setters":
+    "#10312 -- 8366ms worst of 3 surface(s) on 2026-08-10 (rest 8366ms, graphql 1878ms, mcp 1600ms)",
+  "/api/v1/blocks/{ref}/extrinsics":
+    "#10312 -- 12789ms worst of 3 surface(s) on 2026-08-10 (graphql 12789ms, rest 1611ms, mcp 743ms)",
+  "/api/v1/extrinsics":
+    "#10312 -- 11320ms worst of 3 surface(s) on 2026-08-10 (mcp 11320ms, graphql 6413ms, rest 4897ms)",
+  "/api/v1/governance/config-changes":
+    "#10312 -- 11201ms worst of 3 surface(s) on 2026-08-10 (graphql 11201ms, rest 7767ms, mcp 3648ms)",
+  "/api/v1/subnets/{netuid}/event-summary":
+    "#10312 -- 3831ms worst of 3 surface(s) on 2026-08-10 (mcp 3831ms, graphql 3368ms, rest 3235ms)",
+  "/api/v1/subnets/{netuid}/events":
+    "#10312 -- 3683ms worst of 3 surface(s) on 2026-08-10 (graphql 3683ms, mcp 3283ms, rest 3243ms)",
+  "/api/v1/subnets/{netuid}/ohlc":
+    "#10312 -- 6159ms worst of 3 surface(s) on 2026-08-10 (rest 6159ms, mcp 5931ms, graphql 4755ms)",
+  "/api/v1/subnets/{netuid}/ownership-history":
+    "#10312 -- 6498ms worst of 3 surface(s) on 2026-08-10 (mcp 6498ms, rest 4655ms, graphql 4349ms)",
+  "/api/v1/subnets/{netuid}/registrations":
+    "#10312 -- 5775ms worst of 3 surface(s) on 2026-08-10 (mcp 5775ms, graphql 2287ms, rest 2196ms)",
+  "/api/v1/subnets/{netuid}/stake-moves":
+    "#10312 -- 8383ms worst of 3 surface(s) on 2026-08-10 (mcp 8383ms, graphql 1634ms, rest 1418ms)",
+  "/api/v1/subnets/{netuid}/weights/setters":
+    "#10312 -- 3827ms worst of 3 surface(s) on 2026-08-10 (rest 3827ms, mcp 2355ms, graphql 1485ms)",
+  "/api/v1/sudo":
+    "#10312 -- 5408ms worst of 3 surface(s) on 2026-08-10 (graphql 5408ms, rest 5025ms, mcp 1613ms)",
+  "/api/v1/validators/{hotkey}/nominators":
+    "#10312 -- 10364ms worst of 3 surface(s) on 2026-08-10 (graphql 10364ms, rest 6164ms, mcp 5035ms)",
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -177,6 +175,52 @@ export interface LatencyReport {
 
 export const key = (timing: Pick<Timing, "surface" | "operation">): string =>
   `${timing.surface}:${timing.operation}`;
+
+/** GraphQL field -> the route it mirrors, from the same table the SDL is built from. */
+const FIELD_ROUTES = new Map(
+  QUERY_BINDINGS.map((binding) => [binding.field, binding.route]),
+);
+
+/**
+ * The READ behind an operation -- what latency is actually a property of.
+ *
+ * One read is published on up to three surfaces, and this sweep takes ONE
+ * sample of each. Those three samples are three noisy draws of one underlying
+ * cost, not three independent measurements, so keying the ledger by
+ * `surface:operation` makes the exemption list churn on which surface happened
+ * to be slow that morning. Measured, on the recorded 2026-08-10 run scored
+ * against the list seeded one day earlier:
+ *
+ *   - all 12 over-budget operations were new, and 7 of them were another
+ *     surface's instance of a read already declared;
+ *   - 3 entries read as STALE while a sibling surface of the same read was
+ *     over the line in the same sweep. `/api/v1/sudo` is the clean case:
+ *     mcp 1613ms (stale -> "delete the entry"), rest 5025ms and graphql
+ *     5408ms (over budget). Deleting that declaration would have been the
+ *     ledger instructing us to forget a read that is still slow.
+ *
+ * Keyed by the read instead, the same run scores 15 declared families, 5
+ * undeclared, and 0 stale.
+ *
+ * DERIVED, never hand-listed: REST names its own route, MCP tools carry
+ * `MCP_TOOL_ROUTES` and GraphQL fields carry `QUERY_BINDINGS` -- the two maps
+ * the input-parity and SDL gates already read, so a tool or field that changes
+ * which route it mirrors moves here with it.
+ *
+ * When a surface's operation mirrors no route -- a tool that composes several
+ * reads, a field that reads a static artifact -- it falls back to
+ * `surface:operation`. That is not a gap: an operation with no shared read has
+ * no siblings to be confused with, so per-surface keying is already correct
+ * for it.
+ */
+export function family(timing: Pick<Timing, "surface" | "operation">): string {
+  if (timing.surface === "rest") return timing.operation;
+  const route =
+    timing.surface === "mcp"
+      ? MCP_TOOL_ROUTES[timing.operation]?.route
+      : FIELD_ROUTES.get(timing.operation);
+  return route ?? key(timing);
+}
 
 /** A 4xx says the question was wrong; anything else here is the answer's fault. */
 const classify = (status: number): Answer =>
@@ -368,18 +412,24 @@ export async function run(): Promise<LatencyReport> {
 export function summarise(timings: Timing[]): LatencyReport {
   const overBudget = timings.filter(
     (timing) =>
-      timing.answer === "ok" && timing.ms > BUDGET_MS && !DECLARED[key(timing)],
+      timing.answer === "ok" &&
+      timing.ms > BUDGET_MS &&
+      !DECLARED[family(timing)],
   );
-  // An entry stays warranted while its operation is still anywhere near the
-  // line, and an operation this run could not ASK keeps its entry too -- a 4xx
-  // from a bad subject is not evidence the operation got faster.
+  // An entry stays warranted while its read is still anywhere near the line ON
+  // ANY SURFACE, and an operation this run could not ASK keeps its entry too --
+  // a 4xx from a bad subject is not evidence the read got faster.
+  //
+  // "any surface" is the half that per-operation keying got wrong: a read is
+  // only fixed when every surface serving it comes in comfortably under, and
+  // one fast draw out of three is noise, not a fix.
   const stillSlow = new Set(
     timings
       .filter(
         (timing) =>
           timing.answer !== "ok" || timing.ms > BUDGET_MS * STALE_MARGIN,
       )
-      .map(key)
+      .map(family)
       .filter((name) => DECLARED[name]),
   );
   return {
@@ -441,12 +491,27 @@ export function formatReport(report: LatencyReport): string {
     }
   }
   if (report.overBudget.length > 0) {
+    // Grouped by read, because that is the unit a declaration is written in --
+    // printing twelve lines for five reads is what made the previous list get
+    // seeded three times over.
+    const byFamily = new Map<string, Timing[]>();
+    for (const timing of report.overBudget) {
+      const name = family(timing);
+      const group = byFamily.get(name) ?? [];
+      group.push(timing);
+      byFamily.set(name, group);
+    }
     lines.push(
       "",
-      `${report.overBudget.length} over the ${BUDGET_MS}ms budget:`,
+      `${report.overBudget.length} call(s) over the ${BUDGET_MS}ms budget, across ${byFamily.size} undeclared read(s):`,
     );
-    for (const timing of report.overBudget) {
-      lines.push(`  ${timing.ms}ms  ${timing.surface}  ${timing.operation}`);
+    for (const [name, group] of byFamily) {
+      const worst = Math.max(...group.map((timing) => timing.ms));
+      const spread = group
+        .sort((a, b) => b.ms - a.ms)
+        .map((timing) => `${timing.surface} ${timing.ms}ms`)
+        .join(", ");
+      lines.push(`  ${worst}ms  ${name}  (${spread})`);
     }
   }
   if (report.stale.length > 0) {
