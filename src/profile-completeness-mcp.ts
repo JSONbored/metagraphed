@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/review/profile-completeness.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListProfileCompletenessInputSchema,
   ListProfileCompletenessOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const PROFILE_COMPLETENESS_ARTIFACT =
   "/metagraph/review/profile-completeness.json";
@@ -229,14 +229,9 @@ export const LIST_PROFILE_COMPLETENESS_MCP_TOOL = {
     "identity_promotion_kinds, or native_name_quality; sort with sort + order; " +
     "and page with limit (1-100) / cursor. Use it to find high-value profile " +
     "contributions. Mirrors GET /api/v1/review/profile-completeness.",
-  inputSchema: z.toJSONSchema(ListProfileCompletenessInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListProfileCompletenessInputSchema),
 };
 
-export const LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_PROFILE_COMPLETENESS_OUTPUT_SCHEMA = outputJsonSchema(
   ListProfileCompletenessOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

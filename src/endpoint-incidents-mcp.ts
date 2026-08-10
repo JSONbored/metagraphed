@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/endpoint-incidents.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListEndpointIncidentsInputSchema,
   ListEndpointIncidentsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const ENDPOINT_INCIDENTS_ARTIFACT = "/metagraph/endpoint-incidents.json";
 
@@ -223,14 +223,9 @@ export const LIST_ENDPOINT_INCIDENTS_MCP_TOOL = {
     "with sort + order; and page with limit (1-100) / cursor. Complements " +
     "list_endpoints (the full catalog) and get_global_incidents (registry-wide " +
     "operational incidents). Mirrors GET /api/v1/endpoint-incidents.",
-  inputSchema: z.toJSONSchema(ListEndpointIncidentsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListEndpointIncidentsInputSchema),
 };
 
-export const LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA = outputJsonSchema(
   ListEndpointIncidentsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

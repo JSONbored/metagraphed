@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/adapter-candidates.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -11,6 +10,7 @@ import {
   ListAdapterCandidatesInputSchema,
   ListAdapterCandidatesOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const ADAPTER_CANDIDATES_ARTIFACT =
   "/metagraph/review/adapter-candidates.json";
@@ -231,14 +231,9 @@ export const LIST_ADAPTER_CANDIDATES_MCP_TOOL = {
     "sort with sort + order; and page with limit (1-100) / cursor. Complements " +
     "get_adapter (one adapter by slug) and list_enrichment_queue (full enrichment lanes). " +
     "Mirrors GET /api/v1/review/adapter-candidates.",
-  inputSchema: z.toJSONSchema(ListAdapterCandidatesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListAdapterCandidatesInputSchema),
 };
 
-export const LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_ADAPTER_CANDIDATES_OUTPUT_SCHEMA = outputJsonSchema(
   ListAdapterCandidatesOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/candidates/{netuid}.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetCandidatesInputSchema,
   ListSubnetCandidatesOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const CANDIDATE_SORT_FIELDS = API_QUERY_COLLECTIONS.candidates.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -224,14 +224,9 @@ export const LIST_SUBNET_CANDIDATES_MCP_TOOL = {
     "with limit (1-100) / cursor. Distinct from get_subnet_candidates (raw " +
     "artifact dump) and list_candidates (network-wide catalog). Mirrors " +
     "GET /api/v1/subnets/{netuid}/candidates.",
-  inputSchema: z.toJSONSchema(ListSubnetCandidatesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetCandidatesInputSchema),
 };
 
-export const LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetCandidatesOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

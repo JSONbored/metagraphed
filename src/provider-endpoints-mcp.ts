@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/providers/{slug}/endpoints.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { PROVIDER_ENDPOINTS_LIMIT_DEFAULT } from "./route-limits.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
@@ -13,6 +12,7 @@ import {
   ListProviderEndpointsInputSchema,
   ListProviderEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const PROVIDER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -284,14 +284,9 @@ export const LIST_PROVIDER_ENDPOINTS_MCP_TOOL = {
     "cursor. The per-provider view of list_endpoints (the network-wide catalog). " +
     "Complements get_provider_detail (identity + optional endpoints attachment). " +
     "Mirrors GET /api/v1/providers/{slug}/endpoints.",
-  inputSchema: z.toJSONSchema(ListProviderEndpointsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListProviderEndpointsInputSchema),
 };
 
-export const LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA = outputJsonSchema(
   ListProviderEndpointsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

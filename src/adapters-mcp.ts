@@ -2,12 +2,12 @@
 // Serves the baked /metagraph/adapters/{slug}.json artifact (adapter-backed
 // public metrics for one subnet slug).
 
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
   GetAdapterInputSchema,
   GetAdapterOutputSchema,
 } from "../schemas-src/mcp-tools/get-adapter.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const ADAPTER_SLUG_PATTERN = /^[a-z0-9-]+$/;
 
@@ -99,14 +99,9 @@ export const GET_ADAPTER_MCP_TOOL = {
     "captured adapter snapshot, extension metadata, and netuid linkage. Use it " +
     "after list_candidates or get_subnet to inspect how a subnet's public metrics " +
     "are adapter-projected. Mirrors GET /api/v1/adapters/{slug}.",
-  inputSchema: z.toJSONSchema(GetAdapterInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetAdapterInputSchema),
 };
 
-export const GET_ADAPTER_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_ADAPTER_OUTPUT_SCHEMA = outputJsonSchema(
   GetAdapterOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

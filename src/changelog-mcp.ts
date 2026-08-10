@@ -2,12 +2,12 @@
 // Serves the baked /metagraph/changelog.json artifact (publish-time artifact,
 // subnet, and coverage diffs).
 
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
   GetChangelogInputSchema,
   GetChangelogOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const CHANGELOG_ARTIFACT = "/metagraph/changelog.json";
 
@@ -69,14 +69,9 @@ export const GET_CHANGELOG_MCP_TOOL = {
     "previous publish. Use it to see what changed between registry publishes " +
     "before drilling into registry_summary or list_enrichment_targets. Mirrors " +
     "GET /api/v1/changelog.",
-  inputSchema: z.toJSONSchema(GetChangelogInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetChangelogInputSchema),
 };
 
-export const GET_CHANGELOG_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_CHANGELOG_OUTPUT_SCHEMA = outputJsonSchema(
   GetChangelogOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

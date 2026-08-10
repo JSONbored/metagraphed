@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/gap-priorities.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -11,6 +10,7 @@ import {
   ListReviewGapsInputSchema,
   ListReviewGapsOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const REVIEW_GAPS_ARTIFACT = "/metagraph/review/gap-priorities.json";
 
@@ -201,14 +201,9 @@ export const LIST_REVIEW_GAPS_MCP_TOOL = {
     "or review_state; sort with sort + order; and page with limit (1-100) / cursor. " +
     "Distinct from list_gaps (interface facet reports at GET /api/v1/gaps) and " +
     "get_subnet_gaps (one subnet's detailed gap artifact). Mirrors GET /api/v1/review/gaps.",
-  inputSchema: z.toJSONSchema(ListReviewGapsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListReviewGapsInputSchema),
 };
 
-export const LIST_REVIEW_GAPS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_REVIEW_GAPS_OUTPUT_SCHEMA = outputJsonSchema(
   ListReviewGapsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

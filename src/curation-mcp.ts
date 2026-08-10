@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/curation.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListCurationInputSchema,
   ListCurationOutputSchema,
 } from "../schemas-src/mcp-tools/curation-and-gaps.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const CURATION_ARTIFACT = "/metagraph/curation.json";
 
@@ -205,14 +205,9 @@ export const LIST_CURATION_MCP_TOOL = {
     "curation_level, source counts, and review posture for every active subnet. " +
     "Filter by netuid, coverage_level, or curation_level, sort with sort + " +
     "order, and page with limit (1-100) / cursor. Mirrors GET /api/v1/curation.",
-  inputSchema: z.toJSONSchema(ListCurationInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListCurationInputSchema),
 };
 
-export const LIST_CURATION_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_CURATION_OUTPUT_SCHEMA = outputJsonSchema(
   ListCurationOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

@@ -5,12 +5,12 @@
 import { emptyStatusCounts } from "./endpoint-score.ts";
 import type { HealthStatus } from "../schemas-src/shared.ts";
 
-import { z } from "zod";
 import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.ts";
 import {
   GetNetworkHealthInputSchema,
   GetNetworkHealthOutputSchema,
 } from "../schemas-src/mcp-tools/get-network-health.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export interface UnknownGlobalHealth {
   schema_version: 1;
@@ -87,12 +87,9 @@ export const GET_NETWORK_HEALTH_MCP_TOOL = {
     "from the ~15-minute health prober (KV health:current → D1 surface_status). " +
     "Use it for a network-wide health snapshot before drilling into " +
     "get_subnet_health or get_health_trends. Mirrors GET /api/v1/health.",
-  inputSchema: z.toJSONSchema(GetNetworkHealthInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetNetworkHealthInputSchema),
 };
 
-export const GET_NETWORK_HEALTH_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_NETWORK_HEALTH_OUTPUT_SCHEMA = outputJsonSchema(
   GetNetworkHealthOutputSchema,
-  { target: "draft-2020-12" },
 );

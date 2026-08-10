@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/source-snapshots.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListSourceSnapshotsInputSchema,
   ListSourceSnapshotsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const SOURCE_SNAPSHOTS_ARTIFACT = "/metagraph/source-snapshots.json";
 
@@ -197,14 +197,9 @@ export const LIST_SOURCE_SNAPSHOTS_MCP_TOOL = {
     "(1-100) / cursor. Use it to detect when a source's underlying data " +
     "changed (hash drift) or to see how many records each source contributed. " +
     "Mirrors GET /api/v1/source-snapshots.",
-  inputSchema: z.toJSONSchema(ListSourceSnapshotsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSourceSnapshotsInputSchema),
 };
 
-export const LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA = outputJsonSchema(
   ListSourceSnapshotsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

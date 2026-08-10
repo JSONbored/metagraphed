@@ -3,7 +3,6 @@
 // /metagraph/candidates.json artifact (mirrors gaps-mcp.ts for GET /api/v1/gaps).
 
 import { CANDIDATES_LIMIT_MAX } from "./route-limits.ts";
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -11,6 +10,7 @@ import {
   ListCandidatesInputSchema,
   ListCandidatesOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const CANDIDATES_ARTIFACT = "/metagraph/candidates.json";
 
@@ -225,14 +225,9 @@ export const LIST_CANDIDATES_MCP_TOOL = {
     "Filter by netuid/kind/provider/state/id/confidence, sort with sort + order, " +
     "and page with limit (1-1000) / cursor — the full catalog can be large. " +
     "Mirrors GET /api/v1/candidates.",
-  inputSchema: z.toJSONSchema(ListCandidatesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListCandidatesInputSchema),
 };
 
-export const LIST_CANDIDATES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_CANDIDATES_OUTPUT_SCHEMA = outputJsonSchema(
   ListCandidatesOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );
