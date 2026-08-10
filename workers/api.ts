@@ -2673,13 +2673,22 @@ async function dispatchScheduled(
             // handing it over directly would bind a cache key into a clock.
             readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
             contractVersion: contractVersion(env),
-            readArtifact: async () => {
-              const artifact = await readArtifact(
-                env,
-                "/metagraph/economics.json",
-              );
-              return artifact?.ok ? artifact.data : null;
-            },
+            // NO ARTIFACT FALLBACK, deliberately. The published
+            // /metagraph/economics.json cannot produce a ranking -- measured
+            // 2026-08-10, it carries `moving_price_pinned` and NOTHING ELSE
+            // this needs:
+            //
+            //   chain_state.network_immunity_period   absent
+            //   subnets[].registered_at_block         null
+            //   subnets[].subnet_mechanism            null
+            //
+            // Only the live KV blob (meta.source: live-cron-prober) has them,
+            // which is why /api/v1/chain/deregistration-ranking answers from
+            // it. Passing a fallback that provably cannot succeed would mean an
+            // `economics_unavailable` verdict has two possible causes and the
+            // operator has to rule one out; with KV as the only source it has
+            // exactly one.
+            readArtifact: async () => null,
           }),
       },
     );

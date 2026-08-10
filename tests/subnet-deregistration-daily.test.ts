@@ -355,3 +355,83 @@ describe("the lane", () => {
     );
   });
 });
+
+describe("the published artifact cannot feed this lane", () => {
+  // MEASURED against https://api.metagraph.sh/metagraph/economics.json on
+  // 2026-08-10. The artifact carries `moving_price_pinned` and NONE of the
+  // other three inputs a ranking needs:
+  //
+  //   chain_state keys: block, block_hash, emission_bar_quantile,
+  //                     emission_gate_bar, emission_gate_exponent,
+  //                     total_issuance_tao      <- no network_immunity_period
+  //   subnets[].registered_at_block  null
+  //   subnets[].subnet_mechanism     null
+  //
+  // Only the live KV blob (meta.source: live-cron-prober) has them, which is
+  // why /api/v1/chain/deregistration-ranking answers 112 ranked / 16 immune
+  // from it while the artifact would answer nothing.
+  //
+  // The lane is therefore wired to KV with NO artifact fallback: a fallback
+  // that provably cannot succeed would give `economics_unavailable` two
+  // possible causes and make an operator rule one out. This test is here so
+  // that re-adding the fallback -- which looks like an obvious robustness
+  // improvement -- fails rather than quietly doing nothing.
+  const publishedArtifactShape = {
+    chain_state: {
+      block: 8_805_503,
+      block_hash: "0x5280512b",
+      emission_bar_quantile: 0.75,
+      emission_gate_bar: 0.007511840648689622,
+      emission_gate_exponent: null,
+      total_issuance_tao: 1,
+    },
+    subnets: Array.from({ length: 129 }, (_, i) => ({
+      netuid: i,
+      moving_price_pinned: 0.08837078302167356,
+      registered_at_block: null,
+      subnet_mechanism: null,
+    })),
+  };
+
+  test("yields null -- there is no ranking to store", () => {
+    assert.equal(
+      deregistrationDailyRows(publishedArtifactShape, DATE, T),
+      null,
+      "the artifact must not be treated as a usable source",
+    );
+  });
+
+  test("and the one missing field alone is enough to refuse", () => {
+    // Adding the two per-subnet fields is still not sufficient: without
+    // network_immunity_period the ordering is a DIFFERENT ordering that looks
+    // identical, which is the #10285 argument for refusing rather than
+    // approximating.
+    const withSubnetFields = {
+      ...publishedArtifactShape,
+      subnets: publishedArtifactShape.subnets.map((s) => ({
+        ...s,
+        registered_at_block: 1_000_000,
+        subnet_mechanism: 1,
+      })),
+    };
+    assert.equal(deregistrationDailyRows(withSubnetFields, DATE, T), null);
+  });
+
+  test("the KV blob's shape DOES work, which is the contrast", () => {
+    const live = {
+      chain_state: {
+        block: 8_805_503,
+        network_immunity_period: 864_000,
+      },
+      subnets: publishedArtifactShape.subnets.map((s) => ({
+        ...s,
+        registered_at_block: 1_000_000,
+        subnet_mechanism: 1,
+      })),
+    };
+    const rows = deregistrationDailyRows(live, DATE, T);
+    assert.ok(rows, "the live blob must project");
+    assert.equal(rows.length, 129);
+    assert.equal(rows[0]!.network_immunity_period, 864_000);
+  });
+});
