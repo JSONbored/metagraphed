@@ -7250,7 +7250,7 @@ function normalizeQueryParameters(queryParameters: QueryParametersInput) {
   };
 }
 
-function schemaRefForArtifactPath(artifactPath: string) {
+export function schemaRefForArtifactPath(artifactPath: string) {
   const contract = PUBLIC_ARTIFACTS.find((entry) =>
     pathTemplatesMatch(entry.path, artifactPath),
   );

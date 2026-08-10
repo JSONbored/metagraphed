@@ -7896,8 +7896,7 @@ export interface components {
             }[];
             /** @constant */
             schema_version: 1;
-            /** @enum {string} */
-            source: "endpoint-resource-probes" | "rpc-endpoint-probes";
+            source: ("endpoint-resource-probes" | "rpc-endpoint-probes") | null;
         } & {
             [key: string]: unknown;
         };

@@ -516,8 +516,20 @@ import {
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
+/**
+ * Every registered component, by the id it publishes under.
+ *
+ * The Zod registry answers "what id does this schema have"; this answers the
+ * reverse, which is what a caller holding only a NAME needs -- the response
+ * tripwire resolves a route's artifact contract to a component id and has to
+ * get back the schema to parse against. Populated by `register` itself, so it
+ * cannot fall behind the registry it mirrors (#10214).
+ */
+export const COMPONENT_SCHEMAS_BY_ID = new Map<string, z.ZodType>();
+
 const register = (schema: z.ZodType, id: string) => {
   openApiComponentRegistry.add(schema, { id });
+  COMPONENT_SCHEMAS_BY_ID.set(id, schema);
 };
 
 register(SubnetsArtifactSchema, "SubnetsArtifact");
