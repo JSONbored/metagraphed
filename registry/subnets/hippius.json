@@ -147,8 +147,7 @@
       "schema_status": "machine-readable",
       "schema_url": "https://api.hippius.com/swagger.json",
       "source_urls": ["https://api.hippius.com/swagger"],
-      "url": "https://api.hippius.com/swagger.json",
-      "notes": ". Live-verified 2026-07-22: GET returns Swagger 2.0 JSON (title Hippius API)."
+      "url": "https://api.hippius.com/swagger.json"
     },
     {
       "auth_required": false,
@@ -231,7 +230,11 @@
       "id": "sn-75-hippius-tao-price",
       "kind": "data-artifact",
       "name": "Hippius TAO price feed",
-      "notes": "Public no-auth GET /api/billing/latest-tao-price/ on api.hippius.com returning the latest TAO market snapshot (price_usd, market_cap, volume_24h, percent_change_24h, circulating_supply). Documented in the subnet swagger.json OpenAPI spec (schema declares no security) on the same host as the existing models/registry surfaces.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET /api/billing/latest-tao-price/ on api.hippius.com returning the latest TAO market snapshot (price_usd, market_cap, volume_24h, percent_change_24h, circulating_supply). Documented in the subnet swagger.json OpenAPI spec (schema declares no security) on the same host as the existing models/registry surfaces. REVENUE ROLE (#10458): not-revenue. /billing/latest-tao-price/ is a TAO price feed that happens to sit under /billing/ -- the path is the only thing revenue-shaped about it.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -326,7 +329,12 @@
       "id": "sn-75-hippius-subnet-api",
       "kind": "subnet-api",
       "name": "Hippius billing subscriptions",
-      "notes": "Account billing subscriptions.",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.hippius.com/swagger.json"
+      },
+      "notes": "Account billing subscriptions. REVENUE ROLE (#10458): external-revenue but operator-attested, not readable. Hippius runs real Stripe subscriptions and a credit ledger; every one of those endpoints answers 401 unauthenticated, so the figures are declared by the operator's own schema and cannot be probed. No number may be published from this.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -349,6 +357,11 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com",
       "kind": "subnet-api",
       "name": "Hippius billing transactions",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.hippius.com/swagger.json"
+      },
       "notes": "Account billing transaction history.",
       "provider": "hippius",
       "public_safe": true,
@@ -372,6 +385,11 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-2",
       "kind": "subnet-api",
       "name": "Hippius Stripe subscription plans",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.hippius.com/swagger.json"
+      },
       "notes": "Stripe subscription-plan catalog for the caller's account.",
       "provider": "hippius",
       "public_safe": true,
@@ -464,7 +482,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-6",
       "kind": "subnet-api",
       "name": "Hippius billing subscription detail",
-      "notes": "Path-param template (id) — per-subscription detail; same auth gate as the verified /billing/subscriptions/ collection.",
+      "notes": "Path-param template (id) \u2014 per-subscription detail; same auth gate as the verified /billing/subscriptions/ collection.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -510,7 +528,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-8",
       "kind": "subnet-api",
       "name": "Hippius VM instance detail",
-      "notes": "Path-param template (instance_id) — per-instance detail; same auth gate as the verified /vm/instances/ collection.",
+      "notes": "Path-param template (instance_id) \u2014 per-instance detail; same auth gate as the verified /vm/instances/ collection.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -625,7 +643,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-13",
       "kind": "subnet-api",
       "name": "Hippius bucket objects",
-      "notes": "Path-param template (name) — objects in a bucket; same auth gate as the verified /objectstore/buckets/ collection.",
+      "notes": "Path-param template (name) \u2014 objects in a bucket; same auth gate as the verified /objectstore/buckets/ collection.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
@@ -786,6 +804,11 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-20",
       "kind": "subnet-api",
       "name": "Hippius container-registry usage",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "operator-attested",
+        "source_url": "https://api.hippius.com/swagger.json"
+      },
       "notes": "Container-registry usage metrics.",
       "provider": "hippius",
       "public_safe": true,
@@ -1009,7 +1032,7 @@
       "id": "sn-75-hippius-subnet-api-api-hippius-com-30",
       "kind": "subnet-api",
       "name": "Hippius container-registry namespace check",
-      "notes": "Public namespace-availability check; required query param `name`. Live-verified 2026-07-22: a bare GET returns HTTP 400 {\"error\":\"name parameter is required\"} (reaches the handler with no auth), NOT the 401 the rest of /registry/* returns — so it is public, correcting #7088's auth-gated classification.",
+      "notes": "Public namespace-availability check; required query param `name`. Live-verified 2026-07-22: a bare GET returns HTTP 400 {\"error\":\"name parameter is required\"} (reaches the handler with no auth), NOT the 401 the rest of /registry/* returns \u2014 so it is public, correcting #7088's auth-gated classification.",
       "provider": "hippius",
       "public_safe": true,
       "review": {
