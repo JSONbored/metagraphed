@@ -50,15 +50,21 @@ export const AccountEntitiesArtifactSchema = z
       z
         .object({
           netuid: z.int().nullable(),
-          role: z.enum(["gained_ownership", "lost_ownership"]),
+          role: z.enum(["owns", "gained_ownership", "lost_ownership"]),
           block_number: z.int().nullable().optional(),
           observed_at: z.string().nullable().optional(),
         })
         .passthrough()
         .describe(
-          "One SubnetOwnerChanged transfer tying this `coldkey` to a subnet, either as the gaining or losing side, newest first.",
+          "One tie between this `coldkey` and a subnet. `owns` is CURRENT ownership read from the economics tier's `owner_coldkey` (measured from SubtensorModule.SubnetOwner) and carries a NULL `block_number`, because it is a state rather than an event -- these come first, by netuid. `gained_ownership`/`lost_ownership` are SubnetOwnerChanged transfers, newest first, and there is exactly ONE such event in all of chain history: ownership is established at registration and only ever moved by conviction contest, which is why reading the transfer stream alone reported no ties for coldkeys that plainly own a subnet (#9313).",
         ),
     ),
+    owners_observed_at: z
+      .string()
+      .nullable()
+      .describe(
+        'When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp.',
+      ),
   })
   .passthrough()
   .describe(

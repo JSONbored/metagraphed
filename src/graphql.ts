@@ -7031,6 +7031,12 @@ const rootValue = {
       labels,
       ownership_tie_count: data.ownership_tie_count ?? 0,
       ownership_ties: data.ownership_ties || [],
+      // #9313: this object is built field by field, so a new one on the
+      // composer does NOT arrive here by itself -- it would resolve to null on
+      // every request, which for this field means "we could not read who owns
+      // what". Defaulted to null explicitly rather than left out, because that
+      // is the honest value when the composer genuinely had no snapshot.
+      owners_observed_at: data.owners_observed_at ?? null,
     };
   },
 

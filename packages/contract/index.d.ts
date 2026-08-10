@@ -4970,13 +4970,15 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            /** @description When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
+            owners_observed_at: string | null;
             ownership_tie_count: number;
             ownership_ties: ({
                 block_number?: number | null;
                 netuid: number | null;
                 observed_at?: string | null;
                 /** @enum {string} */
-                role: "gained_ownership" | "lost_ownership";
+                role: "owns" | "gained_ownership" | "lost_ownership";
             } & {
                 [key: string]: unknown;
             })[];
@@ -19638,11 +19640,12 @@ export interface operations {
                      *         "labels": [
                      *           {}
                      *         ],
+                     *         "owners_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "ownership_tie_count": 1,
                      *         "ownership_ties": [
                      *           {
                      *             "netuid": 7,
-                     *             "role": "gained_ownership"
+                     *             "role": "owns"
                      *           }
                      *         ],
                      *         "schema_version": 1,

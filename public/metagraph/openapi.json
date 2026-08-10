@@ -281,11 +281,12 @@
             "labels": [
               {}
             ],
+            "owners_observed_at": "2026-06-01T00:00:00.000Z",
             "ownership_tie_count": 1,
             "ownership_ties": [
               {
                 "netuid": 7,
-                "role": "gained_ownership"
+                "role": "owns"
               }
             ],
             "schema_version": 1,
@@ -13544,6 +13545,17 @@
             },
             "type": "array"
           },
+          "owners_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes \"we could not read who owns what\" from \"this address owns nothing\", which are the same empty list without it. An `owns` tie is never fresher than this stamp."
+          },
           "ownership_tie_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -13552,7 +13564,7 @@
           "ownership_ties": {
             "items": {
               "additionalProperties": {},
-              "description": "One SubnetOwnerChanged transfer tying this `coldkey` to a subnet, either as the gaining or losing side, newest first.",
+              "description": "One tie between this `coldkey` and a subnet. `owns` is CURRENT ownership read from the economics tier's `owner_coldkey` (measured from SubtensorModule.SubnetOwner) and carries a NULL `block_number`, because it is a state rather than an event -- these come first, by netuid. `gained_ownership`/`lost_ownership` are SubnetOwnerChanged transfers, newest first, and there is exactly ONE such event in all of chain history: ownership is established at registration and only ever moved by conviction contest, which is why reading the transfer stream alone reported no ties for coldkeys that plainly own a subnet (#9313).",
               "properties": {
                 "block_number": {
                   "anyOf": [
@@ -13590,6 +13602,7 @@
                 },
                 "role": {
                   "enum": [
+                    "owns",
                     "gained_ownership",
                     "lost_ownership"
                   ],
@@ -13618,7 +13631,8 @@
           "ss58",
           "labels",
           "ownership_tie_count",
-          "ownership_ties"
+          "ownership_ties",
+          "owners_observed_at"
         ],
         "type": "object"
       },
