@@ -1216,6 +1216,12 @@ export const SDL = /* GraphQL */ `
     window: String
     day_count: Int!
     days: [EconomicsTrendsDay!]!
+    "The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop."
+    usd_available_from: String
+    priced_day_count: Int
+    "Why NO day could be priced, or null. read_failed means the index could not be queried, which is not a claim about the index itself."
+    usd_unavailable: String
+    field_sources_usd: JSON
   }
 
   "One UTC day of network-wide economics aggregated across every subnet with a snapshot that day. Sums are null only when no subnet reported a value that day."
@@ -1226,6 +1232,11 @@ export const SDL = /* GraphQL */ `
     total_stake_alpha: String
     alpha_price_tao_weighted: Float
     alpha_price_tao_median: Float
+    "USD twins, null for any day older than tao_usd_index."
+    alpha_price_usd_weighted: Float
+    alpha_price_usd_median: Float
+    "The TAO/USD rate this day's _usd fields were multiplied by -- the last reading observed inside that UTC day."
+    usd_per_tao: Float
     validator_count: Int
     miner_count: Int
     mean_emission_share: Float
@@ -3727,6 +3738,14 @@ export const SDL = /* GraphQL */ `
     volume_alpha: Float
     volume_tao: Float
     event_count: Int!
+    "USD twins, null for a candle older than tao_usd_index rather than converted at today's rate."
+    open_usd: Float
+    high_usd: Float
+    low_usd: Float
+    close_usd: Float
+    volume_usd: Float
+    "The single TAO/USD rate every _usd field on THIS candle was multiplied by -- the last reading observed inside this candle's own bucket. One rate per candle, so the OHLC ordering survives the conversion."
+    usd_per_tao: Float
   }
 
   "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope."
@@ -3740,6 +3759,14 @@ export const SDL = /* GraphQL */ `
     candle_count: Int!
     "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
     root_excluded: Boolean!
+    "Bucket start of the OLDEST candle carrying USD, or null when none does -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. Published so a caller can render 'USD from <date>' rather than infer the boundary from where the nulls stop."
+    usd_available_from: Float
+    usd_available_from_iso: String
+    "How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect."
+    priced_candle_count: Int
+    "Why NO candle could be priced, or null. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; read_failed means the index could not be queried at all."
+    usd_unavailable: String
+    field_sources_usd: JSON
   }
 
   "Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers."

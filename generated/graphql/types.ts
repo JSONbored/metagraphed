@@ -1955,7 +1955,13 @@ export type EconomicsTrends = {
   __typename?: 'EconomicsTrends';
   day_count: Scalars['Int']['output'];
   days: Array<EconomicsTrendsDay>;
+  field_sources_usd?: Maybe<Scalars['JSON']['output']>;
+  priced_day_count?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
+  /** The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop. */
+  usd_available_from?: Maybe<Scalars['String']['output']>;
+  /** Why NO day could be priced, or null. read_failed means the index could not be queried, which is not a claim about the index itself. */
+  usd_unavailable?: Maybe<Scalars['String']['output']>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1964,12 +1970,17 @@ export type EconomicsTrendsDay = {
   __typename?: 'EconomicsTrendsDay';
   alpha_price_tao_median?: Maybe<Scalars['Float']['output']>;
   alpha_price_tao_weighted?: Maybe<Scalars['Float']['output']>;
+  alpha_price_usd_median?: Maybe<Scalars['Float']['output']>;
+  /** USD twins, null for any day older than tao_usd_index. */
+  alpha_price_usd_weighted?: Maybe<Scalars['Float']['output']>;
   mean_emission_share?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
   subnet_count: Scalars['Int']['output'];
   /** Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float. */
   total_stake_alpha?: Maybe<Scalars['String']['output']>;
+  /** The TAO/USD rate this day's _usd fields were multiplied by -- the last reading observed inside that UTC day. */
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -5565,12 +5576,20 @@ export type SubnetOhlc = {
   /** How many candles the WINDOW holds, not how many this page carries. A limit narrows the candle list from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
   candle_count: Scalars['Int']['output'];
   candles: Array<SubnetOhlcCandle>;
+  field_sources_usd?: Maybe<Scalars['JSON']['output']>;
   /** The resolved bucket interval (1h/1d). */
   interval?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
+  /** How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect. */
+  priced_candle_count?: Maybe<Scalars['Int']['output']>;
   /** True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted. */
   root_excluded: Scalars['Boolean']['output'];
   schema_version: Scalars['Int']['output'];
+  /** Bucket start of the OLDEST candle carrying USD, or null when none does -- a Float, since epoch-ms exceeds GraphQL's 32-bit Int. Published so a caller can render 'USD from <date>' rather than infer the boundary from where the nulls stop. */
+  usd_available_from?: Maybe<Scalars['Float']['output']>;
+  usd_available_from_iso?: Maybe<Scalars['String']['output']>;
+  /** Why NO candle could be priced, or null. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; read_failed means the index could not be queried at all. */
+  usd_unavailable?: Maybe<Scalars['String']['output']>;
 };
 
 export type SubnetOhlcCandle = {
@@ -5579,12 +5598,20 @@ export type SubnetOhlcCandle = {
   bucket_start: Scalars['Float']['output'];
   bucket_start_iso?: Maybe<Scalars['String']['output']>;
   close?: Maybe<Scalars['Float']['output']>;
+  close_usd?: Maybe<Scalars['Float']['output']>;
   event_count: Scalars['Int']['output'];
   high?: Maybe<Scalars['Float']['output']>;
+  high_usd?: Maybe<Scalars['Float']['output']>;
   low?: Maybe<Scalars['Float']['output']>;
+  low_usd?: Maybe<Scalars['Float']['output']>;
   open?: Maybe<Scalars['Float']['output']>;
+  /** USD twins, null for a candle older than tao_usd_index rather than converted at today's rate. */
+  open_usd?: Maybe<Scalars['Float']['output']>;
+  /** The single TAO/USD rate every _usd field on THIS candle was multiplied by -- the last reading observed inside this candle's own bucket. One rate per candle, so the OHLC ordering survives the conversion. */
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
   volume_alpha?: Maybe<Scalars['Float']['output']>;
   volume_tao?: Maybe<Scalars['Float']['output']>;
+  volume_usd?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
@@ -8760,18 +8787,25 @@ export type EconomicsSummaryResolvers<ContextType = GqlContext, ParentType exten
 export type EconomicsTrendsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EconomicsTrends'] = ResolversParentTypes['EconomicsTrends']> = ResolversObject<{
   day_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   days?: Resolver<Array<ResolversTypes['EconomicsTrendsDay']>, ParentType, ContextType>;
+  field_sources_usd?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  priced_day_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  usd_available_from?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type EconomicsTrendsDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EconomicsTrendsDay'] = ResolversParentTypes['EconomicsTrendsDay']> = ResolversObject<{
   alpha_price_tao_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   alpha_price_tao_weighted?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_price_usd_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_price_usd_weighted?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   mean_emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -10347,22 +10381,33 @@ export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType ex
 export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlc'] = ResolversParentTypes['SubnetOhlc']> = ResolversObject<{
   candle_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   candles?: Resolver<Array<ResolversTypes['SubnetOhlcCandle']>, ParentType, ContextType>;
+  field_sources_usd?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   interval?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priced_candle_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   root_excluded?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  usd_available_from?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_available_from_iso?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetOhlcCandleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlcCandle'] = ResolversParentTypes['SubnetOhlcCandle']> = ResolversObject<{
   bucket_start?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   bucket_start_iso?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   close?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  close_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   high?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  high_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   low?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  low_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   open?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  open_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   volume_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnershipHistory'] = ResolversParentTypes['SubnetOwnershipHistory']> = ResolversObject<{

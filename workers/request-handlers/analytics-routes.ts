@@ -77,7 +77,16 @@ import {
   buildDomainSummary,
 } from "../../src/domain-summary.ts";
 import { readStore } from "../../src/read-store.ts";
-import { LEADERBOARD_TABLES } from "../../src/read-store-tables.ts";
+import {
+  LEADERBOARD_TABLES,
+  TAO_USD_TABLES,
+} from "../../src/read-store-tables.ts";
+import {
+  loadTaoUsdBuckets,
+  taoUsdBucketMap,
+  withAlphaUsdTrendDays,
+} from "../../src/alpha-usd-history.ts";
+import { DAY_MS } from "../config.ts";
 
 type HealthMetaKvReader = (
   env: Env,
@@ -105,6 +114,13 @@ const ECONOMICS_TRENDS_CSV_COLUMNS = [
   "total_stake_alpha",
   "alpha_price_tao_weighted",
   "alpha_price_tao_median",
+  // USD siblings (#10382). Carried in CSV as well as JSON: a CSV that dropped
+  // them would be a quietly different answer to the same question, and the
+  // export is the format most likely to be charted offline -- where a missing
+  // column is least visible.
+  "alpha_price_usd_weighted",
+  "alpha_price_usd_median",
+  "usd_per_tao",
   "validator_count",
   "miner_count",
   "mean_emission_share",
@@ -332,6 +348,29 @@ export async function handleEconomicsTrends(
     isFallback =
       !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation;
+  }
+  // USD per day (#10382), overlaid BEFORE the CSV branch so both formats carry
+  // the same answer. Each day is priced by a reading from inside that UTC day;
+  // a day older than the index carries null rather than today's rate applied
+  // retroactively across thirteen months of history.
+  const trendDays = Array.isArray(data?.days)
+    ? (data.days as Record<string, unknown>[])
+    : [];
+  if (trendDays.length) {
+    // Days arrive newest-first, so the OLDEST is the last element -- that is
+    // the floor of the window the index has to cover.
+    const oldest = trendDays[trendDays.length - 1]?.snapshot_date;
+    const sinceMs = Date.parse(`${String(oldest)}T00:00:00.000Z`);
+    const usdRows = await loadTaoUsdBuckets(
+      readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
+        typeof loadTaoUsdBuckets
+      >[0],
+      { sinceMs: Number.isFinite(sinceMs) ? sinceMs : 0, bucketMs: DAY_MS },
+    );
+    data = withAlphaUsdTrendDays(
+      data as unknown as Record<string, unknown>,
+      usdRows === null ? null : taoUsdBucketMap(usdRows),
+    ) as typeof data;
   }
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(

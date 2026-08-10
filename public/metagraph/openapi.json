@@ -4963,7 +4963,14 @@
                 "subnet_count": 1
               }
             ],
+            "field_sources_usd": {
+              "kind": "reconstructed",
+              "storage": null
+            },
+            "priced_day_count": 1,
             "schema_version": 1,
+            "usd_available_from": "example",
+            "usd_unavailable": "no_index_reading",
             "window": "30d"
           },
           "meta": {
@@ -10102,10 +10109,18 @@
                 "volume_tao": 0.5
               }
             ],
+            "field_sources_usd": {
+              "kind": "reconstructed",
+              "storage": null
+            },
             "interval": "1h",
             "netuid": 7,
+            "priced_candle_count": 1,
             "root_excluded": false,
-            "schema_version": 1
+            "schema_version": 1,
+            "usd_available_from": 1,
+            "usd_available_from_iso": "2026-06-01T00:00:00.000Z",
+            "usd_unavailable": "no_index_reading"
           },
           "meta": {
             "artifact_path": "example",
@@ -28489,6 +28504,26 @@
                     }
                   ]
                 },
+                "alpha_price_usd_median": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "alpha_price_usd_weighted": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "mean_emission_share": {
                   "anyOf": [
                     {
@@ -28531,6 +28566,17 @@
                   ],
                   "description": "Lossless fixed 9-decimal (rao-precision) TAO string, summed across every subnet reporting that day -- exceeds the exact-double ceiling as a JSON number, so it is served as a string rather than Float."
                 },
+                "usd_per_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The TAO/USD rate this day's _usd fields were multiplied by -- the last reading observed inside that UTC day."
+                },
                 "validator_count": {
                   "anyOf": [
                     {
@@ -28552,10 +28598,61 @@
             },
             "type": "array"
           },
+          "field_sources_usd": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "reconstructed",
+                "type": "string"
+              },
+              "storage": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "kind",
+              "storage"
+            ],
+            "type": "object"
+          },
+          "priced_day_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "schema_version": {
             "maximum": 9007199254740991,
             "minimum": -9007199254740991,
             "type": "integer"
+          },
+          "usd_available_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop."
+          },
+          "usd_unavailable": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_index_reading",
+                  "index_unpriced",
+                  "index_stale",
+                  "no_alpha_price",
+                  "read_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why NO day could be priced, or null. `read_failed` means the index could not be queried, which is not a claim about the index itself."
           },
           "window": {
             "anyOf": [
@@ -47575,6 +47672,16 @@
                 "close": {
                   "type": "number"
                 },
+                "close_usd": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "event_count": {
                   "maximum": 9007199254740991,
                   "minimum": 0,
@@ -47583,11 +47690,52 @@
                 "high": {
                   "type": "number"
                 },
+                "high_usd": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "low": {
                   "type": "number"
                 },
+                "low_usd": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "open": {
                   "type": "number"
+                },
+                "open_usd": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "usd_per_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The single TAO/USD rate every _usd field on THIS candle was multiplied by -- the last reading observed inside this candle's own bucket. One rate per candle, so the OHLC ordering (high >= open, close, low) survives the conversion."
                 },
                 "volume_alpha": {
                   "minimum": 0,
@@ -47595,6 +47743,16 @@
                 },
                 "volume_tao": {
                   "type": "number"
+                },
+                "volume_usd": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -47612,6 +47770,24 @@
             },
             "type": "array"
           },
+          "field_sources_usd": {
+            "additionalProperties": false,
+            "description": "Every _usd field is RECONSTRUCTED -- the product of a measured alpha price and a measured TAO/USD index, which is our arithmetic and not a chain read.",
+            "properties": {
+              "kind": {
+                "const": "reconstructed",
+                "type": "string"
+              },
+              "storage": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "kind",
+              "storage"
+            ],
+            "type": "object"
+          },
           "interval": {
             "description": "The resolved bucket interval (1h/1d).",
             "enum": [
@@ -47625,6 +47801,12 @@
             "minimum": 0,
             "type": "integer"
           },
+          "priced_candle_count": {
+            "description": "How many candles carry USD. A gap against candle_count is the TAO series outrunning the TAO/USD index, not a defect.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "root_excluded": {
             "description": "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted.",
             "type": "boolean"
@@ -47633,6 +47815,47 @@
             "maximum": 9007199254740991,
             "minimum": -9007199254740991,
             "type": "integer"
+          },
+          "usd_available_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EpochMillis"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Bucket start of the OLDEST candle carrying USD, or null when none does. Published rather than left to be inferred from where the nulls stop, so a caller can render 'USD from <date>' instead of a series that silently changes meaning partway along."
+          },
+          "usd_available_from_iso": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usd_unavailable": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_index_reading",
+                  "index_unpriced",
+                  "index_stale",
+                  "no_alpha_price",
+                  "read_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why NO candle could be priced, or null. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; `read_failed` means the index could not be queried at all, which is not a claim about the index. A partially-priced series leaves this null and explains itself through usd_available_from."
           }
         },
         "required": [

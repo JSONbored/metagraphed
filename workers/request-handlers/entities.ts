@@ -375,7 +375,17 @@ import {
 } from "../../src/stake-flow.ts";
 import { buildAlphaVolume } from "../../src/alpha-volume.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "../../src/subnet-alpha-volume-artifact.ts";
-import { buildSubnetOhlc } from "../../src/subnet-ohlc.ts";
+import {
+  buildSubnetOhlc,
+  normalizeInterval,
+  OHLC_INTERVALS,
+} from "../../src/subnet-ohlc.ts";
+import {
+  loadTaoUsdBuckets,
+  ohlcUsdWindowStart,
+  taoUsdBucketMap,
+  withAlphaUsdCandles,
+} from "../../src/alpha-usd-history.ts";
 import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
@@ -4065,10 +4075,38 @@ export async function handleSubnetOhlc(
       }),
       generatedAt: null,
     };
+  // USD per candle (#10382). Overlaid HERE, after the tier resolves, so the
+  // Postgres tier, the lakehouse cold tier and the empty fallback all gain it
+  // from one place -- and so the shared candle assembler, which GraphQL and MCP
+  // also call, keeps the shape those surfaces already publish.
+  //
+  // Each candle is priced by a reading from ITS OWN bucket; one older than the
+  // index carries null rather than today's rate applied backwards. See
+  // src/alpha-usd-history.ts for why that distinction is structural.
+  // normalizeInterval is the assembler's OWN normalizer, so the rate buckets
+  // and the candle buckets cannot disagree about what "1d" means.
+  const bucketMs = OHLC_INTERVALS[normalizeInterval(interval)];
+  // Null means there is nothing to price -- root (netuid 0) and a cold store
+  // both yield empty candles, and querying the index for a window no point
+  // falls in is a round trip whose rows nobody would read.
+  const sinceMs = ohlcUsdWindowStart(data as Record<string, unknown>);
+  const usdRows =
+    sinceMs === null
+      ? []
+      : await loadTaoUsdBuckets(
+          readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
+            typeof loadTaoUsdBuckets
+          >[0],
+          { sinceMs, bucketMs },
+        );
   return envelopeResponse(
     request,
     {
-      data,
+      data: withAlphaUsdCandles(
+        data as Record<string, unknown>,
+        usdRows === null ? null : taoUsdBucketMap(usdRows),
+        bucketMs,
+      ),
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/ohlc.json`,
