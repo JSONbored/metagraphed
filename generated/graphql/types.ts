@@ -2174,6 +2174,8 @@ export type EndpointIncident = {
   provider?: Maybe<Scalars['String']['output']>;
   reason?: Maybe<Scalars['String']['output']>;
   severity?: Maybe<Scalars['String']['output']>;
+  /** How the incident was derived. Always probe-derived: the health prober owns this surface and no hand-set incident exists. Served by /api/v1/endpoint-incidents on every row -- verified live -- and not selectable here until the generator surfaced the omission (#10214). */
+  source?: Maybe<Scalars['String']['output']>;
   state?: Maybe<Scalars['String']['output']>;
   status?: Maybe<Scalars['String']['output']>;
   subnet_name?: Maybe<Scalars['String']['output']>;
@@ -9018,6 +9020,7 @@ export type EndpointIncidentResolvers<ContextType = GqlContext, ParentType exten
   provider?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   severity?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   state?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
