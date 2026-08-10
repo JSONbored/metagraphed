@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { GraphQLObjectType } from "graphql";
 import { emitTypes, pascalCase } from "../schemas-src/graphql/emit.ts";
+import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
 import {
   checkComponentParity,
   extractSdl,
@@ -152,6 +153,89 @@ describe("graphql component parity gate (#10214)", () => {
     assert.ok(
       report.projections.some((p) => p.startsWith("EndpointList ")),
       `expected EndpointList among the projections, got ${report.projections.join(", ")}`,
+    );
+  });
+});
+
+/** Rewrite one field inside ONE named type, so a fixture cannot land on a
+ * same-named field in another type and quietly test nothing. */
+function inType(
+  source: string,
+  typeName: string,
+  find: RegExp,
+  replace: string,
+): string {
+  const start = source.search(new RegExp(`^ {2}type ${typeName} \\{$`, "m"));
+  assert.notEqual(start, -1, `no type ${typeName} in the SDL`);
+  const end = source.indexOf("\n  }\n", start) + "\n  }\n".length;
+  const block = source.slice(start, end);
+  const rewritten = block.replace(find, replace);
+  assert.notEqual(rewritten, block, `${find} did not match inside ${typeName}`);
+  return source.slice(0, start) + rewritten + source.slice(end);
+}
+
+describe("declared projections (#10214)", () => {
+  test("every declared projection is checked, and against real fields", () => {
+    const report = checkComponentParity(sdl, openapi);
+    assert.deepEqual(report.violations, []);
+    assert.equal(
+      report.projectedTypes,
+      Object.keys(PROJECTED_TYPES).length,
+      "every declaration must be reached -- a skipped one is unchecked",
+    );
+    // These 15 types were reached by ZERO gates before this pass: the mirror
+    // traversal seeds from Query's `Mirrors GET` annotations and a
+    // resolver-built type has none, so nothing ever compared their fields.
+    assert.ok(
+      report.projectedFields > 100,
+      `only ${report.projectedFields} projected fields compared`,
+    );
+  });
+
+  test("it FAILS when a projection promises non-null over a nullable field", () => {
+    // The response-shaped outage this pass exists for: graphql-js cannot hold
+    // a null in a non-null position, so it nulls the whole surrounding object
+    // and attaches an error. `Surface.status` is nullable in its component.
+    const broken = inType(
+      sdl,
+      "Surface",
+      /^ {4}status: String$/m,
+      "    status: String!",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some((v) => /the SDL declares it non-null/.test(v)),
+      `expected a non-null violation, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("it FAILS on a field neither the component nor `added` supplies", () => {
+    const broken = inType(
+      sdl,
+      "Surface",
+      /^ {2}type Surface \{$/m,
+      "  type Surface {\n    invented_field: String",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith("Surface.invented_field -- neither"),
+      ),
+      `expected the invented field to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a stale `added` entry fails, so the list can only shrink", () => {
+    // ScoreDistribution declares `p50` as resolver-added. Remove it from the
+    // SDL and the declaration has to go too -- otherwise `added` accumulates
+    // permissions for fields that no longer exist.
+    const broken = inType(sdl, "ScoreDistribution", /^ {4}p50: Float\n/m, "");
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith("ScoreDistribution.p50 -- declared as resolver-added"),
+      ),
+      `expected the stale added entry to be reported, got: ${report.violations.join("; ")}`,
     );
   });
 });

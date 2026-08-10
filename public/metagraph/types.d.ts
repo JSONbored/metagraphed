@@ -9025,7 +9025,7 @@ export interface components {
             kind: components["schemas"]["ProviderKind"];
             logo_url?: string;
             name: string;
-            netuids?: number[];
+            netuids: number[];
             notes?: string;
             public_notes?: string;
             /** @constant */
@@ -34853,6 +34853,9 @@ export interface operations {
                      *             "id": "example-subnet",
                      *             "kind": "data-provider",
                      *             "name": "Example Subnet",
+                     *             "netuids": [
+                     *               7
+                     *             ],
                      *             "schema_version": 1,
                      *             "website_url": "https://api.metagraph.sh/example"
                      *           }

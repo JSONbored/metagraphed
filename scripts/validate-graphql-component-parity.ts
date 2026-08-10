@@ -33,6 +33,7 @@ import type {
   TypeNode,
 } from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
+import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
 
 /** Only the sliver of the OpenAPI document this gate reads. */
 export interface OpenApiDocument {
@@ -96,6 +97,9 @@ export interface ParityReport {
   comparedTypes: number;
   comparedFields: number;
   projections: string[];
+  /** Declared projections checked -- see `PROJECTED_TYPES` (#10214). */
+  projectedTypes: number;
+  projectedFields: number;
 }
 
 /** Pull the SDL out of the TypeScript template literal that holds it. */
@@ -226,6 +230,8 @@ export function checkComponentParity(
   const matched = new Set<string>();
   let comparedTypes = 0;
   let comparedFields = 0;
+  let projectedTypes = 0;
+  let projectedFields = 0;
 
   for (const [sdlName, components] of paired) {
     const sdlFields = new Set(
@@ -304,12 +310,83 @@ export function checkComponentParity(
     }
   }
 
+  // ── the declared projections ─────────────────────────────────────────────
+  //
+  // A projection PICKS a subset of its component, so the mirror rule "every
+  // component field must appear" is not its rule. Every rule about the fields
+  // it does publish still is -- and until #10214 nothing applied them, because
+  // the traversal above only reaches a type through a `Mirrors GET` annotation
+  // and a resolver-built type has none. All fifteen were reached by zero
+  // gates.
+  for (const [sdlName, projection] of Object.entries(PROJECTED_TYPES)) {
+    const sdlType = sdlTypes.get(sdlName);
+    const genType = generated.get(projection.component);
+    if (!sdlType) {
+      violations.push(
+        `${sdlName} -- PROJECTED_TYPES declares it, the SDL has no such type`,
+      );
+      continue;
+    }
+    if (!genType) {
+      violations.push(
+        `${sdlName} -- projects ${projection.component}, which no component emits`,
+      );
+      continue;
+    }
+    projectedTypes += 1;
+    const genFields = genType.getFields();
+    const added = new Set(projection.added);
+    const usedAdded = new Set<string>();
+    for (const field of sdlType.fields ?? []) {
+      const name = field.name.value;
+      const genField = genFields[name];
+      if (!genField) {
+        if (added.has(name)) usedAdded.add(name);
+        else
+          violations.push(
+            `${sdlName}.${name} -- neither ${projection.component} nor the ` +
+              `declared \`added\` list supplies it`,
+          );
+        continue;
+      }
+      projectedFields += 1;
+      // Same two checks the mirrors get. A projection publishing a non-null
+      // over a nullable component field is the response-shaped outage: one
+      // null and graphql-js nulls the whole surrounding object.
+      if (sdlIsNonNull(field.type) && !generatedIsNonNull(genField.type)) {
+        violations.push(
+          `${sdlName}.${name} -- the SDL declares it non-null, ` +
+            `${projection.component} says it is nullable`,
+        );
+      }
+      if (
+        sdlScalarName(field.type) === "Int" &&
+        generatedScalarName(genField.type) === "Float"
+      ) {
+        violations.push(
+          `${sdlName}.${name} -- the SDL declares Int, ` +
+            `${projection.component} emits Float`,
+        );
+      }
+    }
+    for (const name of added) {
+      if (!usedAdded.has(name)) {
+        violations.push(
+          `${sdlName}.${name} -- declared as resolver-added, but the SDL ` +
+            `no longer publishes it (or ${projection.component} now supplies it)`,
+        );
+      }
+    }
+  }
+
   return {
     violations,
     stale: Object.keys(declared).filter((key) => !matched.has(key)),
     comparedTypes,
     comparedFields,
     projections,
+    projectedTypes,
+    projectedFields,
   };
 }
 
@@ -328,7 +405,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(
     `graphql-component-parity: ${report.comparedTypes} mirror type(s), ` +
       `${report.comparedFields} field(s) compared, ` +
-      `${report.projections.length} resolver-built projection(s) skipped.`,
+      `${report.projectedTypes} declared projection(s) (${report.projectedFields} field(s)), ` +
+      `${report.projections.length} pagination view(s) skipped.`,
   );
   if (report.violations.length) {
     console.error(
