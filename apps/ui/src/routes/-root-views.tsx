@@ -368,7 +368,12 @@ export function RootComponent() {
  * Pure CSS animation — does not re-render the rest of the tree.
  */
 function RouteTransitionBar() {
-  const isLoading = useRouterState({ select: (s) => s.isLoading || s.isTransitioning });
+  // RouterState carried `isTransitioning` in router-core 1.171.15 and no longer
+  // does in 1.171.21: the router-level transition store is gone (what survives
+  // is Link's own local one), and `isLoading` is now derived as
+  // `status === "pending"` -- the whole router-busy signal the two flags
+  // together used to approximate.
+  const isLoading = useRouterState({ select: (s) => s.isLoading });
   return (
     <div
       aria-hidden
