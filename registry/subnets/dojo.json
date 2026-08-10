@@ -25,6 +25,12 @@
   "slug": "sn-52",
   "source_repo": "https://github.com/tensorplex-labs/dojo",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "openapi", "website"],
+    "notes": "Its OpenAPI declares /miner/subscription-keys -- API auth keys for miners, not paid subscriptions. The word is the only thing revenue-shaped about it."
+  },
   "surfaces": [
     {
       "auth_required": false,

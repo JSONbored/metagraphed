@@ -27,6 +27,11 @@
   "slug": "sn-55",
   "source_repo": "https://github.com/genomesio/subnet-niome",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -94,7 +99,7 @@
       "id": "sn-55-niome-data-artifact",
       "kind": "data-artifact",
       "name": "NIOME miner scores dataset",
-      "notes": "Public no-auth GET returning SN55 NIOME's per-miner scoring dataset as JSON — an items[] array of scored genome-annotation submissions (annotation_score, f1_score, final_score, VCF score, per-submission log and timestamps) produced by the validator. Served on niome-api.genomes.io (the subnet's official API host) and declared as MINER_SCORE_URL alongside the already-registered TASK_URL in the official genomesio/subnet-niome validator constants. Distinct from the existing tasks surface — this is the scored-output dataset, not the task feed.",
+      "notes": "Public no-auth GET returning SN55 NIOME's per-miner scoring dataset as JSON \u2014 an items[] array of scored genome-annotation submissions (annotation_score, f1_score, final_score, VCF score, per-submission log and timestamps) produced by the validator. Served on niome-api.genomes.io (the subnet's official API host) and declared as MINER_SCORE_URL alongside the already-registered TASK_URL in the official genomesio/subnet-niome validator constants. Distinct from the existing tasks surface \u2014 this is the scored-output dataset, not the task feed.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -118,7 +123,7 @@
       "id": "sn-55-niome-wandb",
       "kind": "dashboard",
       "name": "NIOME Weights & Biases dashboard",
-      "notes": "Public Weights & Biases project the SN55 NIOME validators log to (wandb.ai/genomes/niome) — live validation runs and metrics. Entity 'genomes' and project 'niome' are the defaults set in the official genomesio/subnet-niome validator config (niome_subnet/utils/config.py), and wandb.init is called from neurons/validator.py. Publicly readable via the W&B API. Distinct host from the niome-api.genomes.io API.",
+      "notes": "Public Weights & Biases project the SN55 NIOME validators log to (wandb.ai/genomes/niome) \u2014 live validation runs and metrics. Entity 'genomes' and project 'niome' are the defaults set in the official genomesio/subnet-niome validator config (niome_subnet/utils/config.py), and wandb.init is called from neurons/validator.py. Publicly readable via the W&B API. Distinct host from the niome-api.genomes.io API.",
       "probe": {
         "enabled": true,
         "expect": "html",
