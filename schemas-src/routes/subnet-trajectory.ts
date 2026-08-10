@@ -12,13 +12,20 @@ import { successEnvelopeSchema } from "../envelope.ts";
  * (`to` minus `from`), not a level -- a negative `tao_in_pool_tao` means the
  * pool shrank over the window, and the two dates say which two observations
  * were subtracted. */
-const SubnetTrajectoryDeltaSchema = z
+export const SubnetTrajectoryDeltaSchema = z
   .object({
     from_date: z.string(),
     to_date: z.string(),
-    completeness_score: z.number().nullable().optional(),
-    surface_count: z.number().nullable().optional(),
-    endpoint_count: z.number().nullable().optional(),
+    // `z.int()`, matching the POINT schema above rather than the `z.number()`
+    // this used to declare (#10404). The two describe the same three fields --
+    // a point's value and a difference of two of them -- and `src/health-
+    // serving.ts` runs every point through `roundInt()` before `diff()`
+    // subtracts a pair, so a fractional delta is unreachable. GraphQL had it
+    // right (`Int`) and the component disagreed; nothing compared them while
+    // the type sat in RESOLVER_BUILT_TYPES.
+    completeness_score: z.int().nullable().optional(),
+    surface_count: z.int().nullable().optional(),
+    endpoint_count: z.int().nullable().optional(),
     tao_in_pool_tao: z.number().nullable().optional(),
     alpha_in_pool: z.number().nullable().optional(),
     alpha_out_pool: z.number().nullable().optional(),

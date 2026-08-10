@@ -1817,6 +1817,25 @@ export interface ProjectedType {
    * typo'd or invented field is a failure rather than a silent extra.
    */
   readonly added: readonly string[];
+  /**
+   * Component fields the view deliberately does not republish, each of which
+   * must BE a component field (a typo fails) and must be ABSENT from the SDL
+   * (a stale entry fails). So the list only shrinks, and a field quietly
+   * disappearing from a published type is a failure rather than a silence.
+   *
+   * Absent on the projections that drop nothing.
+   */
+  readonly dropped?: readonly string[];
+  /**
+   * The component field a paginated view's `items` array renames (#10404).
+   *
+   * `BlockList.items` IS `BlocksFeedArtifact.blocks` -- one field under two
+   * names, not a dropped one and an invented one. Declaring the rename is what
+   * lets the element type be compared at all.
+   */
+  readonly itemsFrom?: string;
+  /** The component row count a paginated view's `total` renames (#10404). */
+  readonly totalFrom?: string;
 }
 
 /**
@@ -1840,41 +1859,546 @@ export interface ProjectedType {
  * scalar narrowing -- and that is what the projection pass now checks.
  */
 export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
+  // The `deltas` record's VALUE, registered as its own component so the
+  // published type has something to be compared against (#10404). `window` is
+  // the record's KEY, which the resolver lifts into the row because "7d" and
+  // "30d" are not valid GraphQL field names.
+  SubnetTrajectoryDelta: {
+    component: "SubnetTrajectoryDelta",
+    added: ["window"],
+    dropped: [],
+  },
+  // ── the three that DO have a component behind them (#10404) ───────────────
+  //
+  // `subnets` and `providers` are the two Query fields with `route: null` --
+  // they read a published artifact directly rather than mirroring an
+  // /api/v1 route -- so the traversal cannot reach their list types and both
+  // sat in RESOLVER_BUILT_TYPES, unchecked. The projection pass does not need
+  // the traversal: naming the component is enough.
+  SubnetList: {
+    component: "SubnetsArtifact",
+    itemsFrom: "subnets",
+    added: ["total", "next_cursor"],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "network",
+      "source",
+    ],
+  },
+  ProviderList: {
+    component: "ProvidersArtifact",
+    itemsFrom: "providers",
+    added: ["total", "next_cursor"],
+    dropped: ["contract_version", "generated_at", "notes", "schema_version"],
+  },
+  // A flattened card: the artifact's own fields plus the counts the resolver
+  // derives from `global.status_counts`, which is a record GraphQL cannot
+  // name. The five it takes straight from the component are checked now; the
+  // nine it computes stay declared.
+  GlobalHealth: {
+    component: "HealthSummaryArtifact",
+    added: [
+      "status",
+      "ok_count",
+      "degraded_count",
+      "failed_count",
+      "unknown_count",
+      "avg_latency_ms",
+      "latency_sample_count",
+      "last_checked",
+      "last_ok",
+      "surface_count",
+    ],
+    dropped: ["contract_version", "schema_version", "global", "source"],
+  },
   Subnet: {
     component: "SubnetIndexEntry",
     added: ["health", "economics", "surfaces", "endpoints"],
+    dropped: [
+      "block",
+      "candidate_count",
+      "contact",
+      "contact_present",
+      "dashboard_url",
+      "derived_categories",
+      "derived_description",
+      "discord",
+      "discord_url",
+      "github_commits_weekly",
+      "github_languages",
+      "github_last_push_at",
+      "github_stars",
+      "github_releases",
+      "github_unreachable",
+      "mechanism_count",
+      "native_name",
+      "native_name_quality",
+      "native_slug",
+      "participant_count",
+      "partnership",
+      "registered_at_block",
+      "registry_observed_count",
+      "social",
+      "source_repo",
+      "tempo",
+      "updated_at",
+    ],
   },
-  Provider: { component: "Provider", added: ["subnets", "endpoints"] },
-  Surface: { component: "Surface", added: [] },
-  Endpoint: { component: "EndpointResource", added: [] },
+  Provider: {
+    component: "Provider",
+    added: ["subnets", "endpoints"],
+    dropped: ["schema_version", "social", "team_url", "cluster_id"],
+  },
+  Surface: {
+    component: "Surface",
+    added: [],
+    dropped: [
+      "auth",
+      "curation_level",
+      "probe",
+      "quality_signals",
+      "rate_limit",
+      "rate_limit_notes",
+      "review",
+      "verification",
+    ],
+  },
+  Endpoint: {
+    component: "EndpointResource",
+    added: [],
+    dropped: [
+      "archive_support",
+      "chain",
+      "error",
+      "health_stale",
+      "method_support",
+      "method_tested",
+      "monitoring_policy",
+      "observed_at",
+      "pool_eligibility_reasons",
+      "publication_state",
+      "rate_limit_notes",
+      "rpc_method_count",
+      "score_reasons",
+      "reliability_score",
+      "reliability_grade",
+    ],
+  },
   SubnetHealth: { component: "HealthSubnetSummary", added: [] },
   OpportunityEntry: {
     component: "SubnetDetailArtifactEconomics",
     added: ["validator_headroom"],
+    dropped: [
+      "alpha_fdv_tao",
+      "alpha_in_emission",
+      "alpha_out_emission",
+      "alpha_in_pool",
+      "alpha_market_cap_tao",
+      "alpha_out_pool",
+      "alpha_price_change_1h",
+      "alpha_price_change_1m",
+      "spot_price_tao",
+      "block",
+      "emission_enabled",
+      "excess_tao",
+      "first_emission_block",
+      "max_stake_alpha",
+      "miner_readiness",
+      "miner_burned_fraction",
+      "owner_coldkey",
+      "owner_hotkey",
+      "subnet_volume_tao",
+      "subtoken_enabled",
+      "moving_price_pinned",
+      "registration_allowed_pinned",
+      "registered_at_block",
+      "subnet_mechanism",
+      "tao_in_emission_tao",
+      "tao_in_pool_tao",
+    ],
   },
-  ExtrinsicDetail: { component: "ExtrinsicDetailArtifact", added: [] },
-  BlockChainEvents: { component: "BlockEventsArtifact", added: [] },
+  ExtrinsicDetail: {
+    component: "ExtrinsicDetailArtifact",
+    added: [],
+    dropped: ["schema_version", "events"],
+  },
+  BlockChainEvents: {
+    component: "BlockEventsArtifact",
+    added: [],
+    dropped: ["ref", "limit", "offset"],
+  },
   AccountEntry: { component: "AccountsListArtifactAccounts", added: [] },
-  AccountSubnet: { component: "AccountPortfolioArtifactPositions", added: [] },
+  AccountSubnet: {
+    component: "AccountPortfolioArtifactPositions",
+    added: [],
+    dropped: [
+      "role",
+      "active",
+      "rank",
+      "trust",
+      "incentive",
+      "dividends",
+      "yield",
+    ],
+  },
+
+  // ── paginated views (#10404) ──────────────────────────────────────────────
+  //
+  // These 25 were SKIPPED wholesale by the parity gate, on the rule "two or
+  // more pagination fields the component lacks means this is a view, not a
+  // mirror". True of the paging and false of everything else: 158
+  // non-pagination fields sat behind that skip, 94 of them component fields
+  // the view does not publish. Most are the artifact envelope
+  // (schema_version/contract_version/generated_at/notes), which a view has no
+  // reason to republish -- but `EndpointList.health_source`,
+  // `GlobalIncidents.min_incident_samples` and `EconomicsList.field_sources`
+  // are the caveats that say whether a number was measured, and dropping them
+  // is the confident-zeros class (#9803) reached through the one door nothing
+  // was looking at.
+  //
+  // Declared as projections instead, so every rule a projection gets applies
+  // to them and a NEW drop is a failure.
+  AccountList: {
+    component: "AccountsListArtifact",
+    itemsFrom: "accounts",
+    totalFrom: "account_count",
+    added: [],
+    dropped: ["schema_version", "limit"],
+  },
+  BlockList: {
+    component: "BlocksFeedArtifact",
+    itemsFrom: "blocks",
+    totalFrom: "block_count",
+    added: [],
+    dropped: ["schema_version", "limit", "offset"],
+  },
+  CurationList: {
+    component: "CurationArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version"],
+  },
+  EconomicsList: {
+    component: "EconomicsArtifact",
+    added: ["total", "next_cursor"],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "captured_at",
+      "network",
+      "chain_state",
+      "field_sources",
+    ],
+  },
+  EndpointList: {
+    component: "EndpointsArtifact",
+    itemsFrom: "endpoints",
+    added: ["total", "next_cursor"],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "source",
+      "operational_observed_at",
+      "health_source",
+      "summary",
+    ],
+  },
+  EndpointPoolList: {
+    component: "EndpointPoolsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: [
+      "contract_version",
+      "schema_version",
+      "disabled_proxy_contract",
+      "eligibility_policy",
+      "provider_scores",
+    ],
+  },
+  EvidenceList: {
+    component: "EvidenceLedgerArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "notes"],
+  },
+  ExtrinsicList: {
+    component: "ExtrinsicsFeedArtifact",
+    itemsFrom: "extrinsics",
+    totalFrom: "extrinsic_count",
+    added: [],
+    dropped: ["schema_version", "limit", "offset"],
+  },
+  GapsList: {
+    component: "GapsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version"],
+  },
+  GlobalIncidents: {
+    component: "GlobalIncidentsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["min_incident_samples"],
+  },
+  HealthHistory: {
+    component: "HealthHistoryArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "source",
+      "probe_started_at",
+      "probe_finished_at",
+    ],
+  },
+  IncidentList: {
+    component: "EndpointIncidentsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version", "source"],
+  },
+  PoolList: {
+    component: "RpcPoolsArtifact",
+    added: [
+      "operational_observed_at",
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: [
+      "contract_version",
+      "schema_version",
+      "disabled_proxy_contract",
+      "eligibility_policy",
+      "provider_scores",
+    ],
+  },
+  ProfileList: {
+    component: "SubnetProfilesArtifact",
+    added: [
+      "captured_at",
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: [
+      "contract_version",
+      "generated_at",
+      "notes",
+      "schema_version",
+      "summary",
+    ],
+  },
+  ReviewAdapterCandidateList: {
+    component: "ReviewAdapterCandidatesArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version", "summary"],
+  },
+  ReviewEnrichmentEvidenceList: {
+    component: "ReviewEnrichmentEvidenceArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version", "summary"],
+  },
+  ReviewEnrichmentQueueList: {
+    component: "ReviewEnrichmentQueueArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version", "summary"],
+  },
+  ReviewEnrichmentTargetList: {
+    component: "ReviewEnrichmentTargetsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version", "groups", "summary"],
+  },
+  ReviewGapPriorityList: {
+    component: "ReviewGapPrioritiesArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version"],
+  },
+  ReviewProfileCompletenessList: {
+    component: "ReviewProfileCompletenessArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "schema_version"],
+  },
+  SearchDocumentList: {
+    component: "SearchArtifact",
+    totalFrom: "document_count",
+    added: ["next_cursor"],
+    dropped: ["contract_version", "generated_at", "notes", "schema_version"],
+  },
+  SearchIndexList: {
+    component: "SearchIndexArtifact",
+    totalFrom: "document_count",
+    added: ["returned", "limit", "cursor", "next_cursor", "sort", "order"],
+    dropped: ["contract_version", "notes", "schema_version"],
+  },
+  SourceSnapshotList: {
+    component: "SourceSnapshotsArtifact",
+    added: [
+      "total",
+      "returned",
+      "limit",
+      "cursor",
+      "next_cursor",
+      "sort",
+      "order",
+    ],
+    dropped: ["contract_version", "notes"],
+  },
+  SurfaceList: {
+    component: "SurfacesArtifact",
+    itemsFrom: "surfaces",
+    added: ["total", "next_cursor"],
+    dropped: ["contract_version", "generated_at", "notes", "schema_version"],
+  },
+  ValidatorList: {
+    component: "GlobalValidatorsArtifact",
+    itemsFrom: "validators",
+    totalFrom: "validator_count",
+    added: ["next_cursor"],
+    dropped: ["schema_version", "limit"],
+  },
 };
 
 /**
  * Types a resolver builds, with no component behind them.
  *
- * A pagination view (`{items, total, next_cursor}`) is the resolver's shape,
- * not a mirror of the artifact it pages over, and the remaining entries are
- * hand-shaped cards. The generator emits these from the resolver side; the
- * component emitter never sees them.
+ * THIS LIST IS THE DEBT, and only it: everything in `PROJECTED_TYPES` gets
+ * checked field by field, and everything here is taken on trust. It was 15
+ * when #10371 split the two, 8 after the projections were declared, and 5
+ * now that the three with a component behind them moved across -- `SubnetList`
+ * and `ProviderList` page over `SubnetsArtifact`/`ProvidersArtifact`, and
+ * `GlobalHealth` flattens `HealthSummaryArtifact`. Anything that picks its
+ * fields from a component belongs there, not here.
  *
- * Anything that picks its fields from a component belongs in `PROJECTED_TYPES`
- * instead, where it gets checked.
+ * Why each of the five is still here, and what closing it would take:
+ *
+ *   OpportunityBoards       six boards of OpportunityEntry, assembled from a
+ *                           leaderboard read. No artifact has this shape.
+ *   EmissionGateChange      the flattened form of a three-arm union
+ *                           (param/subnet/flow), each arm carrying only its
+ *                           own fields. GraphQL could express it as a union;
+ *                           the SDL chose one type with everything nullable.
+ *   Subscription            a root type, not a component.
+ *   ChainEvent              the subscription payload -- the #4980 NOTIFY
+ *                           shape, which no REST route serves.
  */
 export const RESOLVER_BUILT_TYPES: readonly string[] = [
-  "SubnetList",
-  "ProviderList",
-  "GlobalHealth",
   "OpportunityBoards",
-  "SubnetTrajectoryDelta",
   "EmissionGateChange",
   "Subscription",
   "ChainEvent",

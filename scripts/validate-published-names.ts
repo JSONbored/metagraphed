@@ -293,7 +293,38 @@ const staleResolverBuilt = declaredResolverBuilt.filter(
   (name) => !unpaired.includes(name),
 );
 const bothLists = declaredResolverBuilt.filter((name) => projected.has(name));
-const projectedButReached = [...projected].filter((name) => paired.has(name));
+// A projection the traversal reaches AS A FULL MIRROR is a stale declaration:
+// the parity gate compares it field-for-field and the entry does nothing. A
+// PAGINATED view is reached too and is NOT stale -- the traversal is how the
+// parity gate pairs it, and it stays a projection because it publishes a
+// subset under its own paging (#10404). The test is the parity gate's own:
+// does it add two or more pagination fields its component lacks?
+const PAGINATION_FIELDS = new Set([
+  "items",
+  "total",
+  "returned",
+  "limit",
+  "cursor",
+  "next_cursor",
+  "sort",
+  "order",
+  "offset",
+]);
+const isPaginatedView = (name: string): boolean => {
+  const projection = PROJECTED_TYPES[name];
+  const genType = projection && generated.get(projection.component);
+  if (!genType) return false;
+  const componentFields = new Set(Object.keys(genType.getFields()));
+  const added = (sdlTypes.get(name)?.fields ?? []).filter(
+    (field) =>
+      PAGINATION_FIELDS.has(field.name.value) &&
+      !componentFields.has(field.name.value),
+  );
+  return added.length >= 2;
+};
+const projectedButReached = [...projected].filter(
+  (name) => paired.has(name) && !isPaginatedView(name),
+);
 if (missingResolverBuilt.length) {
   errors.push(
     `${missingResolverBuilt.length} SDL type(s) no component reaches, and neither PROJECTED_TYPES nor RESOLVER_BUILT_TYPES accounts for:\n` +

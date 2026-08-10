@@ -10097,7 +10097,7 @@ export interface components {
         }) | null;
         SearchArtifact: {
             contract_version?: string;
-            document_count?: number;
+            document_count: number;
             /** @description Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON. */
             documents: {
                 artifact_path: string;
@@ -10124,7 +10124,7 @@ export interface components {
         /** @description Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index). */
         SearchIndexArtifact: {
             contract_version?: string;
-            document_count?: number;
+            document_count: number;
             documents: {
                 artifact_path: string;
                 categories?: string[];
@@ -11779,18 +11779,7 @@ export interface components {
         SubnetTrajectoryArtifact: {
             /** @description Latest-vs-window-ago deltas -- one entry per window (7d, 30d) that has a prior point to compare against; empty when the series is too short. */
             deltas: {
-                [key: string]: ({
-                    alpha_in_pool?: number | null;
-                    alpha_out_pool?: number | null;
-                    completeness_score?: number | null;
-                    endpoint_count?: number | null;
-                    from_date: string;
-                    surface_count?: number | null;
-                    tao_in_pool_tao?: number | null;
-                    to_date: string;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                [key: string]: components["schemas"]["SubnetTrajectoryDelta"] | null;
             };
             netuid: number;
             point_count: number;
@@ -11812,6 +11801,18 @@ export interface components {
                 [key: string]: unknown;
             })[];
             schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        SubnetTrajectoryDelta: {
+            alpha_in_pool?: number | null;
+            alpha_out_pool?: number | null;
+            completeness_score?: number | null;
+            endpoint_count?: number | null;
+            from_date: string;
+            surface_count?: number | null;
+            tao_in_pool_tao?: number | null;
+            to_date: string;
         } & {
             [key: string]: unknown;
         };

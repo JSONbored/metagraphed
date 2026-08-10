@@ -41370,6 +41370,7 @@
         "required": [
           "generated_at",
           "schema_version",
+          "document_count",
           "documents"
         ],
         "type": "object"
@@ -41469,6 +41470,7 @@
         "required": [
           "generated_at",
           "schema_version",
+          "document_count",
           "documents"
         ],
         "type": "object"
@@ -50569,80 +50571,7 @@
             "additionalProperties": {
               "anyOf": [
                 {
-                  "additionalProperties": {},
-                  "properties": {
-                    "alpha_in_pool": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "alpha_out_pool": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "completeness_score": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "endpoint_count": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "from_date": {
-                      "type": "string"
-                    },
-                    "surface_count": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "tao_in_pool_tao": {
-                      "anyOf": [
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "null"
-                        }
-                      ]
-                    },
-                    "to_date": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "from_date",
-                    "to_date"
-                  ],
-                  "type": "object"
+                  "$ref": "#/components/schemas/SubnetTrajectoryDelta"
                 },
                 {
                   "type": "null"
@@ -50823,6 +50752,88 @@
           "point_count",
           "points",
           "deltas"
+        ],
+        "type": "object"
+      },
+      "SubnetTrajectoryDelta": {
+        "additionalProperties": {},
+        "properties": {
+          "alpha_in_pool": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_out_pool": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completeness_score": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endpoint_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_date": {
+            "type": "string"
+          },
+          "surface_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_in_pool_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_date": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_date",
+          "to_date"
         ],
         "type": "object"
       },

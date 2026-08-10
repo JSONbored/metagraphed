@@ -177,7 +177,14 @@ const SearchDocumentSchema = z
   .strict();
 
 export const SearchArtifactSchema = ArtifactBaseSchema.extend({
-  document_count: z.int().min(0).optional(),
+  // Required, not optional (#10404). BOTH builders --
+  // `scripts/build-artifacts.ts`'s search index and its slim companion --
+  // set `document_count: documents.length` unconditionally, and
+  // `scripts/validate.ts` asserts the two agree, so there is no path that
+  // omits it. GraphQL had it right (`total: Int!`) and the component
+  // disagreed; nothing compared them until the paginated views stopped being
+  // skipped. Production serves 3768 on both routes.
+  document_count: z.int().min(0),
   documents: z
     .array(SearchDocumentSchema)
     .describe(
@@ -204,7 +211,14 @@ const SearchIndexDocumentSchema = z
   .strict();
 
 export const SearchIndexArtifactSchema = ArtifactBaseSchema.extend({
-  document_count: z.int().min(0).optional(),
+  // Required, not optional (#10404). BOTH builders --
+  // `scripts/build-artifacts.ts`'s search index and its slim companion --
+  // set `document_count: documents.length` unconditionally, and
+  // `scripts/validate.ts` asserts the two agree, so there is no path that
+  // omits it. GraphQL had it right (`total: Int!`) and the component
+  // disagreed; nothing compared them until the paginated views stopped being
+  // skipped. Production serves 3768 on both routes.
+  document_count: z.int().min(0),
   documents: z.array(SearchIndexDocumentSchema),
 }).describe(
   "Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index).",
