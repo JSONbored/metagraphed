@@ -4,6 +4,7 @@ import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
 import { WebhookSubscriptionManager } from "@/components/metagraphed/webhook-subscription-manager";
 import { ApiKeysManager } from "@/components/metagraphed/api-keys-manager";
 import { AlertsManager } from "@/components/metagraphed/alerts-manager";
+import { AlertTriggerLookup } from "@/components/metagraphed/alert-trigger-lookup";
 import { WatchlistPortability } from "@/components/metagraphed/watchlist-portability";
 import { AddressLabelPortability } from "@/components/metagraphed/address-label-portability";
 import { InstallAppRow } from "@/components/metagraphed/install-app-row";
@@ -32,6 +33,12 @@ export function SettingsPage() {
       <AddressLabelPortability />
       <ApiKeysManager />
       <AlertsManager />
+      {/* #10300: the UI could always CREATE an alert trigger and never read one
+          back, so "is it still active, and has it ever fired" had no answer.
+          GET /api/v1/alerts/triggers/{id} was published and rendered nowhere. */}
+      <div className="mt-6">
+        <AlertTriggerLookup />
+      </div>
       <WebhookSubscriptionManager />
       <ApiSourceFooter
         paths={["/api/v1/webhooks/subscriptions", "/api/v1/keys", "/api/v1/watch/triggers"]}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshCw, Pause, Play, ChevronDown, ChevronRight, ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { CaptureCurrencyPanel } from "@/components/metagraphed/capture-currency-panel";
 import { StaleBanner } from "@/components/metagraphed/states";
 import { AsyncPanel, PageMasthead, Panel } from "@/components/metagraphed/primitives";
 import { IncidentCard } from "@/components/metagraphed/incident-card";
@@ -176,6 +177,22 @@ export function HealthPage() {
           </AsyncPanel>
         </PageSection>
 
+        {/* #10300: /chain/indexer-lag and /health/failure-reasons were both
+            published and rendered nowhere. The ops console is their home --
+            "how current is our capture, and what is failing behind it" is the
+            question this page exists to answer. */}
+        <PageSection
+          id="capture-currency"
+          eyebrow="Capture"
+          title="Capture currency & failure mix"
+          description="How far behind the chain head our indexing is, and what is actually going wrong with the probes."
+          className={sectionRing("capture-currency")}
+        >
+          <AsyncPanel height="md">
+            <CaptureCurrencyPanel />
+          </AsyncPanel>
+        </PageSection>
+
         <PageSection
           id="incidents"
           eyebrow="Incidents"
@@ -190,7 +207,13 @@ export function HealthPage() {
       </main>
 
       <ApiSourceFooter
-        paths={["/api/v1/health", "/api/v1/freshness", "/api/v1/endpoint-incidents"]}
+        paths={[
+          "/api/v1/health",
+          "/api/v1/freshness",
+          "/api/v1/endpoint-incidents",
+          "/api/v1/chain/indexer-lag",
+          "/api/v1/health/failure-reasons",
+        ]}
       />
     </AppShell>
   );

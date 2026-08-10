@@ -31,6 +31,7 @@ import {
 } from "@/components/metagraphed/primitives";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { NetworkSubnetLifecycle } from "@/components/metagraphed/network-subnet-lifecycle";
 import { EmptyState, Skeleton, StatUnavailable } from "@/components/metagraphed/states";
 import { statPhase } from "@/lib/metagraphed/stat-phase";
 import {
@@ -308,6 +309,14 @@ export function SubnetsPage() {
               it costs nothing to the reader who came for the table, and its
               query doesn't fire until opened. */}
           <SubnetsDomainsTaxonomy />
+          {/* #10300: network-wide registration/deregistration was published
+              and rendered nowhere. It belongs beside the registry table --
+              "which subnets came and went" is the same question the table
+              answers as a snapshot. */}
+          <section className="mt-8">
+            <h2 className="mb-2 mg-type-label text-ink-muted">Registration churn</h2>
+            <NetworkSubnetLifecycle />
+          </section>
         </>
       )}
       <ApiSourceFooter
@@ -319,7 +328,7 @@ export function SubnetsPage() {
                 "/api/v1/chain/deregistrations",
                 "/api/v1/economics",
               ]
-            : ["/api/v1/subnets", "/api/v1/domains"]
+            : ["/api/v1/subnets", "/api/v1/domains", "/api/v1/chain/subnet-lifecycle"]
         }
         artifacts={search.section === "rankings" ? undefined : ["/metagraph/subnets.json"]}
       />

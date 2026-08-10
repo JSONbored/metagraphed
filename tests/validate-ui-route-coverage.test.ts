@@ -96,11 +96,17 @@ describe("the ratchet", () => {
     ]);
   });
 
-  test("the ceiling is a number someone measured, not a round one", () => {
-    // 25 came from running the check. The first value here was 24, arrived at
-    // by subtracting feeds from a total by hand, and it was wrong -- the check
-    // caught its own author.
-    assert.equal(MAX_UNRENDERED_ROUTES, 25);
+  test("the ceiling is ZERO -- every published route is rendered (#10300)", () => {
+    // It was 25, measured by running the check (the first value was 24,
+    // arrived at by subtracting feeds from a total by hand, and wrong -- the
+    // check caught its own author). #10300 closed the remaining gap, so this
+    // stopped being a ratchet with slack in it and became a flat rule: a new
+    // route that nothing renders fails CI.
+    //
+    // Asserted here as well as in the script so RAISING it is a visible test
+    // change rather than a one-character edit. A ceiling that can drift up
+    // quietly is not a ratchet.
+    assert.equal(MAX_UNRENDERED_ROUTES, 0);
   });
 
   test("an empty source means every route is unrendered, not zero", () => {

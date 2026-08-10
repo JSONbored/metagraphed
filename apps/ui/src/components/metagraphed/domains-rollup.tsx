@@ -1,8 +1,8 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { domainsQuery, subnetsQuery } from "@/lib/metagraphed/queries";
+import { domainsQuery, subnetsQuery, domainSummaryQuery } from "@/lib/metagraphed/queries";
 import { formatNumber, formatTao } from "@/lib/metagraphed/format";
 import { BrandIcon } from "@jsonbored/ui-kit";
 import type { Domain, Subnet } from "@/lib/metagraphed/types";
@@ -78,6 +78,25 @@ function DomainRow({
 }) {
   const c = domain.emission_concentration;
   const panelId = `domain-detail-${domain.domain}`;
+
+  // #10300: /api/v1/domains/{tag}/summary was published and rendered nowhere.
+  //
+  // It is the AUTHORITATIVE per-domain record; the rollup list is a projection
+  // that currently happens to carry the same fields. Reading the detail here
+  // is the list/detail split done properly -- the expanded panel stops
+  // depending on the list projection continuing to carry everything forever,
+  // and if the two ever diverge this is the one that is right.
+  //
+  // Deliberately `enabled: open`, so a reader who never expands a row pays
+  // nothing, matching the taxonomy's own lazy-query design. Every value falls
+  // back to the list, so a failed detail read is a no-op rather than an
+  // emptied panel.
+  const { data: detail } = useQuery({ ...domainSummaryQuery(domain.domain), enabled: open });
+  const d = detail?.data;
+  const stakeTao = d?.total_stake_tao ?? domain.total_stake_tao;
+  const emissionShare = d?.total_emission_share ?? domain.total_emission_share;
+  const nakamoto = d?.emission_nakamoto_coefficient ?? c?.nakamoto_coefficient;
+  const gini = d?.emission_gini ?? c?.gini;
   return (
     <li>
       <button
@@ -113,10 +132,10 @@ function DomainRow({
       {open ? (
         <div id={panelId} className="space-y-4 px-4 pb-4 pt-1">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
-            <Metric label="Total stake" value={formatTao(domain.total_stake_tao)} />
-            <Metric label="Emission share" value={pct(domain.total_emission_share)} />
-            <Metric label="Nakamoto coeff." value={formatNumber(c?.nakamoto_coefficient)} />
-            <Metric label="Gini" value={ratio(c?.gini)} />
+            <Metric label="Total stake" value={formatTao(stakeTao)} />
+            <Metric label="Emission share" value={pct(emissionShare)} />
+            <Metric label="Nakamoto coeff." value={formatNumber(nakamoto)} />
+            <Metric label="Gini" value={ratio(gini)} />
             <Metric label="HHI (normalized)" value={ratio(c?.hhi_normalized)} />
             <Metric label="Top-10% share" value={pct(c?.top_10pct_share)} />
             <Metric label="Top-20% share" value={pct(c?.top_20pct_share)} />

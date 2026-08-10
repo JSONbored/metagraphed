@@ -11,6 +11,7 @@ import {
   type FilterChipItem,
 } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { FixtureLookupPanel } from "@/components/metagraphed/registry-pipeline-panel";
 import { StateBlock } from "@/components/metagraphed/states/state-block";
 import { ApisTabActions } from "./-apis-hub";
 import { EvidencePanel } from "@/components/metagraphed/evidence-panel";
@@ -120,8 +121,16 @@ export function SurfacesPage() {
           <SectionHeading title="Evidence & sources" />
           <EvidencePanel />
         </section>
+        {/* #10300: /api/v1/fixtures/{surface_id} was published and rendered
+            nowhere. An absent fixture is an ANSWER, not an error. */}
+        <section className="mt-section">
+          <FixtureLookupPanel />
+        </section>
       </TimeRangeProvider>
-      <ApiSourceFooter paths={["/api/v1/surfaces"]} artifacts={["/metagraph/surfaces.json"]} />
+      <ApiSourceFooter
+        paths={["/api/v1/surfaces", "/api/v1/fixtures/{surface_id}"]}
+        artifacts={["/metagraph/surfaces.json"]}
+      />
     </>
   );
 }

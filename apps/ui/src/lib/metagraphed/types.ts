@@ -4170,3 +4170,391 @@ export interface DeregistrationStanding {
   immune_until_block: number | null;
   blocks_until_prunable: number | null;
 }
+
+/** What holding a permit, and earning, cost on one subnet (#10300). */
+export interface SubnetValidatorEconomics {
+  netuid: number | null;
+  permit_floor_cost_tao: number | null;
+  earning_floor_cost_tao: number | null;
+  /** How many times the permit floor the earning floor is. */
+  permit_to_earning_multiple: number | null;
+  max_validators: number | null;
+  validator_slots_open: number | null;
+  /** Permitted, active and earning are THREE DIFFERENT SETS, never collapsed. */
+  permitted: number | null;
+  active: number | null;
+  earning: number | null;
+  median_take: number | null;
+  /** True when the validator cap, not the stake floor, is holding entry back. */
+  cap_binding: boolean | null;
+}
+
+/**
+ * The registry's own intake pipeline (#10300).
+ *
+ * Each stage carries a `*_reachable` flag so an unavailable stage renders as
+ * unknown rather than as zero — a stage that could not be read is not a stage
+ * with nothing in it.
+ *
+ * NO TOTAL HERE IS AN ARRAY LENGTH OF A TRUNCATED LIST. `candidate_count` comes
+ * from source-snapshots' server-computed summary; the sample lists are fetched
+ * bounded and are NOT counted. `/api/v1/candidates` accepts `?limit=` and
+ * publishes no total, so counting a limited fetch would report the limit.
+ */
+export interface RegistryPipeline {
+  candidates_reachable: boolean;
+  /** Server-computed, from source-snapshots. Never a sample's length. */
+  candidate_count: number | null;
+  /** A BOUNDED sample, for display only. Never counted. */
+  recent_candidates: PipelineSample[];
+  curation_reachable: boolean;
+  /** Curation is fetched whole, so this length is the real count. */
+  curated_subnet_count: number;
+  /** A sum over EVERY curated subnet — a sum over a truncated list is wrong. */
+  gap_total: number;
+  profiles_reachable: boolean;
+  /** A BOUNDED sample, for display only. Never counted. */
+  recent_profiles: PipelineSample[];
+  snapshots_reachable: boolean;
+  source_count: number | null;
+  verification_result_count: number | null;
+  sources: SourceSnapshot[];
+  generated_at: string | null;
+}
+
+/** One row of a bounded sample list. Display only — never a population. */
+export interface PipelineSample {
+  id: string;
+  name: string | null;
+  detail: string | null;
+}
+
+export interface SourceSnapshot {
+  id: string;
+  kind: string | null;
+  /** Two captures with the same hash saw the same bytes. A date cannot say that. */
+  hash: string | null;
+  captured_at: string | null;
+  record_count: number | null;
+}
+
+/** One crowdloan (#10300). */
+export interface Crowdloan {
+  crowdloan_id: number;
+  creator: string | null;
+  cap_tao: number | null;
+  raised_tao: number | null;
+  percent_raised: number | null;
+  contributors_count: number | null;
+  end: number | null;
+  /** Met the cap and SETTLED are different states. */
+  finalized: boolean;
+  /** Whether the raised funds execute a call on release. */
+  has_dispatch_call: boolean;
+  target_address: string | null;
+}
+
+/** One surface's fixture lookup (#10300). An absent fixture is an answer. */
+export interface FixtureLookup {
+  surface_id: string;
+  available: boolean;
+  captured_at: string | null;
+  response_status: number | null;
+  reason: string | null;
+}
+
+/** The network-wide TAO holder leaderboard (#10300). */
+export interface TopHolders {
+  account_count: number | null;
+  captured_at: string | null;
+  accounts: TopHolder[];
+}
+
+export interface TopHolder {
+  ss58: string;
+  /** Free, delegated and total are three different positions. */
+  free_tao: number | null;
+  delegated_tao: number | null;
+  total_tao: number | null;
+  /** Three windows, because they can disagree. */
+  net_flow_7d: number | null;
+  net_flow_30d: number | null;
+  net_flow_90d: number | null;
+}
+
+/** One account's root-claim state (#10300). */
+export interface RootClaim {
+  ss58: string;
+  claim_kind: string | null;
+  hotkeys: string[];
+  /** "measured" or "reconstructed" — an inference is not a reading. */
+  hotkeys_source: string | null;
+  queried_at: string | null;
+}
+
+/** Validator entry economics ranked across subnets (#10300). */
+export interface ValidatorEconomics {
+  total: number;
+  tao_weight: number | null;
+  stake_threshold_units: number | null;
+  rows: ValidatorEconomicsRow[];
+  /** Subnets that could NOT be ranked, each with why. */
+  excluded: ExcludedSubnet[];
+}
+
+export interface ValidatorEconomicsRow {
+  netuid: number;
+  permit_floor_cost_tao: number | null;
+  earning_floor_cost_tao: number | null;
+  permit_to_earning_multiple: number | null;
+  validator_slots_open: number | null;
+  cap_binding: boolean | null;
+  emission_gate_open: boolean | null;
+  degraded_reason: string | null;
+}
+
+export interface ExcludedSubnet {
+  netuid: number;
+  reason: string | null;
+}
+
+/** One domain's rollup (#10300). */
+export interface DomainSummary {
+  domain: string;
+  subnet_count: number | null;
+  netuids: number[];
+  total_stake_tao: number | null;
+  total_emission_share: number | null;
+  emission_gini: number | null;
+  emission_nakamoto_coefficient: number | null;
+}
+
+/**
+ * How current our own capture is (#10300).
+ *
+ * `head_age_ms` and the latency percentiles are different measurements: a lane
+ * that stopped an hour ago still reports excellent latency for the blocks it
+ * did write. Fast is not current.
+ */
+export interface IndexerLag {
+  block_count: number | null;
+  /** How far behind the chain head we are. The one that says "current". */
+  head_age_ms: number | null;
+  measured_at: string | null;
+  oldest_block: number | null;
+  newest_block: number | null;
+  newest_observed_at: string | null;
+  /** How long a block takes to land once written. NOT how current we are. */
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  latency_p99_ms: number | null;
+  latency_max_ms: number | null;
+}
+
+/** Why probes fail, and whether the mix is moving (#10300). */
+export interface FailureReasons {
+  window: string | null;
+  days_covered: number | null;
+  total_checks: number | null;
+  failing_checks: number | null;
+  failure_rate: number | null;
+  reasons: FailureReason[];
+}
+
+export interface FailureReason {
+  classification: string;
+  /** Not every classification is a failure. */
+  is_failure: boolean;
+  checks: number | null;
+  /** Share of ALL checks. */
+  share: number | null;
+  /** Share of the FAILING checks. A different denominator. */
+  failure_share: number | null;
+}
+
+/** The emission-gate change log (#10300). */
+export interface EmissionChanges {
+  change_count: number;
+  /** Changes older than capture — they carry a NULL block, not block 0. */
+  predates_capture_count: number | null;
+  latest_change_at: string | null;
+  changes: EmissionChange[];
+}
+
+export interface EmissionChange {
+  kind: string;
+  observed_at: string | null;
+  block_number: number | null;
+  predates_capture: boolean;
+  param: string | null;
+  value: string | null;
+  previous_value: string | null;
+}
+
+/**
+ * Which drand rounds the chain still stores (#10300).
+ *
+ * `stored_round_span` is the operative number: a reveal timelocked to a round
+ * that has aged out of storage can no longer be verified, and the newest round
+ * says nothing about how far back that reach goes.
+ */
+export interface RandomnessStatus {
+  last_stored_round: number | null;
+  oldest_stored_round: number | null;
+  stored_round_span: number | null;
+  queried_at: string | null;
+}
+
+/** Registration cost across the network (#10300). */
+export interface ChainBurn {
+  /** How many subnets exist. */
+  subnet_count: number | null;
+  /** How many were actually read. Below subnet_count, the spread is a subset. */
+  read_count: number | null;
+  cheapest_burn_tao: number | null;
+  dearest_burn_tao: number | null;
+  median_burn_tao: number | null;
+  queried_at: string | null;
+  subnets: ChainBurnSubnet[];
+}
+
+export interface ChainBurnSubnet {
+  netuid: number;
+  burn_tao: number | null;
+}
+
+/** Alpha holders across the network (#10300). */
+export interface ChainHolders {
+  subnet_count: number | null;
+  subnets_measured: number | null;
+  /** One account holds the whole subnet's alpha — distinct from a majority. */
+  subnets_with_single_holder: number | null;
+  subnets_with_majority_holder: number | null;
+  median_top1_share: number | null;
+  /** When the subnet set was read. */
+  captured_at: string | null;
+  /** When the holder positions were. These are allowed to differ. */
+  positions_captured_at: string | null;
+  subnets: ChainHolderSubnet[];
+}
+
+export interface ChainHolderSubnet {
+  netuid: number;
+  holder_count: number | null;
+  total_alpha: number | null;
+  top_holder: string | null;
+  top1_share: number | null;
+  top5_share: number | null;
+  top10_share: number | null;
+}
+
+/** Concentration ranked per subnet (#10300). */
+export interface NetworkConcentrationSubnets {
+  lens: string | null;
+  subnet_count: number | null;
+  measured_subnet_count: number | null;
+  median_gini: number | null;
+  median_nakamoto_coefficient: number | null;
+  single_holder_subnet_count: number | null;
+  captured_at: string | null;
+  subnets: NetworkConcentrationSubnet[];
+}
+
+export interface NetworkConcentrationSubnet {
+  netuid: number;
+  gini: number | null;
+  nakamoto_coefficient: number | null;
+  top_1pct_share: number | null;
+  holders: number | null;
+  /** No reading. NOT the same as evenly distributed. */
+  unmeasured: boolean;
+}
+
+/** Network concentration drift (#10300). */
+export interface NetworkConcentrationHistory {
+  window: string | null;
+  point_count: number;
+  oldest_day: string | null;
+  newest_day: string | null;
+  /**
+   * Every builder version present in the window. More than one means points in
+   * this series were computed by different definitions, so a trend across them
+   * compares the definitions, not the network.
+   */
+  builder_versions: number[];
+  points: NetworkConcentrationHistoryPoint[];
+}
+
+export interface NetworkConcentrationHistoryPoint {
+  day: string;
+  builder_version: number | null;
+  neuron_count: number | null;
+  subnet_count: number | null;
+  gini: number | null;
+  nakamoto_coefficient: number | null;
+  top_1pct_share: number | null;
+}
+
+/**
+ * The emission pipeline over time (#10300).
+ *
+ * `distinct_observations` is nullable and deliberately NOT defaulted to
+ * `point_count`: the gap between the two is how a reader tells a pipeline that
+ * did not move from a lane that did not run.
+ */
+export interface SubnetEmissionPipelineHistory {
+  netuid: number | null;
+  window: string | null;
+  point_count: number;
+  distinct_observations: number | null;
+  oldest_day: string | null;
+  newest_day: string | null;
+  /** The first day capture reached — earlier gaps are unwatched, not empty. */
+  first_captured_day: string | null;
+  points: SubnetEmissionPipelinePoint[];
+}
+
+/** One day of the pipeline. */
+export interface SubnetEmissionPipelinePoint {
+  day: string;
+  pipeline_block: number | null;
+  /** True when this day carried the previous reading forward, not measured. */
+  repeats_previous_observation: boolean | null;
+  captured_at: string | null;
+  emission_share: number | null;
+  alpha_price_tao: number | null;
+  tao_in_pool_tao: number | null;
+  tao_in_emission_tao: number | null;
+  miner_burned_fraction: number | null;
+  emission_enabled: boolean | null;
+}
+
+/** A subnet's surface audit trail (#10300). */
+export interface SubnetSurfaceHistory {
+  /** One surface can change many times, so these two are not the same number. */
+  change_count: number;
+  surface_count: number | null;
+  latest_change_at: string | null;
+  changes: SubnetSurfaceChange[];
+}
+
+/** One recorded change to one surface, traceable to the commit that made it. */
+export interface SubnetSurfaceChange {
+  surface_id: string;
+  action: string;
+  kind: string | null;
+  url: string | null;
+  name: string | null;
+  source_commit: string | null;
+  recorded_at: string | null;
+}
+
+/** One day of the same thresholds. */
+export interface SubnetValidatorEconomicsPoint {
+  snapshot_date: string;
+  permit_floor_alpha: number | null;
+  earning_floor_alpha: number | null;
+  validators_permitted: number | null;
+  validators_earning: number | null;
+  emission_gate_open: boolean | null;
+}

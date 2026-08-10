@@ -20,6 +20,7 @@ import {
   TableSkeleton,
 } from "@/components/metagraphed/primitives";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { ValidatorEconomicsRanking } from "@/components/metagraphed/validator-economics-ranking";
 import { EmptyState, StaleBanner, Skeleton } from "@/components/metagraphed/states";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { validatorsQuery } from "@/lib/metagraphed/queries";
@@ -94,7 +95,12 @@ export function ValidatorsPage() {
       >
         <ValidatorsDirectory density={density} onDensityChange={onDensityChange} />
       </AsyncPanel>
-      <ApiSourceFooter paths={["/api/v1/validators"]} />
+      {/* #10300: the cross-subnet "where is it cheapest to start validating"
+          ranking was published and rendered nowhere. */}
+      <section className="mt-8">
+        <ValidatorEconomicsRanking />
+      </section>
+      <ApiSourceFooter paths={["/api/v1/validators", "/api/v1/validators/economics"]} />
       <ValidatorsCompareDrawer />
     </AppShell>
   );

@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQueries } from "@tanstack/react-query";
 import { useState } from "react";
 import { Activity, Boxes, ChevronDown, Coins, Layers, UserPlus, Zap } from "lucide-react";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
+import { CrowdloansPanel } from "@/components/metagraphed/crowdloans-panel";
 import { EmptyState, ErrorState, Skeleton } from "@/components/metagraphed/states";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import {
@@ -317,9 +318,25 @@ export function ExplorerPage() {
         </>
       )}
 
+      {/* #10300: /crowdloans and /crowdloans/{id} were published and rendered
+          nowhere. OUTSIDE the `showAnalytics` disclosure on purpose -- that
+          block defaults to closed, so mounting here would have satisfied the
+          route-coverage sweep while leaving the surface effectively unseen,
+          which is the rubber stamp #10300 warned the gate must not become.
+          Crowdloans are chain state, not analytics, so they belong in the
+          always-rendered body. */}
+      <section className="mt-10">
+        <SectionHeading
+          title="Crowdloans"
+          intro="On-chain crowdloans — raised against cap, and whether they have actually settled."
+        />
+        <CrowdloansPanel />
+      </section>
+
       <ApiSourceFooter
         paths={[
           "/api/v1/blocks",
+          "/api/v1/crowdloans",
           "/api/v1/chain/activity",
           "/api/v1/chain/fees",
           "/api/v1/chain/calls",

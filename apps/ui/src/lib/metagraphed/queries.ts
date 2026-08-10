@@ -1,5 +1,5 @@
 import { queryOptions, infiniteQueryOptions } from "@tanstack/react-query";
-import { apiFetch, type ApiResult, type QueryParams } from "./client";
+import { apiFetch, ApiError, type ApiResult, type QueryParams } from "./client";
 import { getNetwork } from "./config";
 import { blockRefPathSegment } from "./blocks";
 import { extrinsicHashPathSegment } from "./extrinsics";
@@ -231,6 +231,37 @@ import type {
   SubnetOwnershipHistory,
   SubnetLeaseState,
   SubnetLifecycleEntry,
+  SubnetValidatorEconomics,
+  SubnetValidatorEconomicsPoint,
+  SubnetEmissionPipelineHistory,
+  SubnetEmissionPipelinePoint,
+  SubnetSurfaceChange,
+  RegistryPipeline,
+  PipelineSample,
+  SourceSnapshot,
+  Crowdloan,
+  FixtureLookup,
+  TopHolders,
+  TopHolder,
+  RootClaim,
+  ValidatorEconomics,
+  ValidatorEconomicsRow,
+  ExcludedSubnet,
+  DomainSummary,
+  IndexerLag,
+  FailureReasons,
+  FailureReason,
+  EmissionChanges,
+  EmissionChange,
+  RandomnessStatus,
+  ChainBurn,
+  ChainBurnSubnet,
+  ChainHolders,
+  ChainHolderSubnet,
+  NetworkConcentrationSubnets,
+  NetworkConcentrationSubnet,
+  NetworkConcentrationHistory,
+  NetworkConcentrationHistoryPoint,
   DeregistrationStanding,
   SubnetLeaseTerms,
   SubnetLeaseHistory,
@@ -5439,6 +5470,1054 @@ export function normalizeSubnetLeaseState(netuid: number, raw: unknown): SubnetL
     leased,
     lease: normalizeSubnetLeaseTerms(d.lease),
     queried_at: firstString(d.queried_at) ?? null,
+  };
+}
+
+/**
+ * What it costs to hold a validator permit on this subnet, and to earn (#10300).
+ *
+ * PERMIT AND EARNING ARE DIFFERENT THRESHOLDS and the gap between them is the
+ * point: holding a permit does not mean earning, so the route publishes both
+ * floors and the multiple between them rather than one "validator cost".
+ */
+export const subnetValidatorEconomicsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-validator-economics", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/validator-economics`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetValidatorEconomics(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/** The same thresholds over time, so a reader sees which way they are moving. */
+export const subnetValidatorEconomicsHistoryQuery = (netuid: number, window: string) =>
+  queryOptions({
+    queryKey: k("subnet-validator-economics-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ points?: unknown }>(
+        `/api/v1/subnets/${netuid}/validator-economics/history?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      const raw = isRecord(res.data) ? res.data.points : null;
+      const points = (Array.isArray(raw) ? raw : [])
+        .map(normalizeValidatorEconomicsPoint)
+        .filter((p): p is SubnetValidatorEconomicsPoint => p !== null);
+      return { data: points, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetValidatorEconomics(raw: unknown): SubnetValidatorEconomics | null {
+  if (!isRecord(raw)) return null;
+  const composition = isRecord(raw.composition) ? raw.composition : {};
+  const takes = isRecord(raw.takes) ? raw.takes : {};
+  return {
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    permit_floor_cost_tao: firstFiniteNumber(raw.permit_floor_cost_tao) ?? null,
+    earning_floor_cost_tao: firstFiniteNumber(raw.earning_floor_cost_tao) ?? null,
+    permit_to_earning_multiple: firstFiniteNumber(raw.permit_to_earning_multiple) ?? null,
+    max_validators: firstFiniteNumber(raw.max_validators) ?? null,
+    validator_slots_open: firstFiniteNumber(raw.validator_slots_open) ?? null,
+    // Three DIFFERENT sets, never collapsed: permitted, active and earning
+    // answer "how many validators does this subnet have" three defensible ways.
+    permitted: firstFiniteNumber(composition.permitted) ?? null,
+    active: firstFiniteNumber(composition.active) ?? null,
+    earning: firstFiniteNumber(composition.earning) ?? null,
+    median_take: firstFiniteNumber(takes.median) ?? null,
+    // `cap_binding` is the one that changes what a reader should do: slots open
+    // is meaningless when the cap is what is holding entry back.
+    cap_binding: typeof raw.cap_binding === "boolean" ? raw.cap_binding : null,
+  };
+}
+
+function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomicsPoint | null {
+  if (!isRecord(raw)) return null;
+  // A point with no date cannot be placed on a timeline, so it is dropped
+  // rather than rendered at an arbitrary position.
+  const date = firstString(raw.snapshot_date);
+  if (date === null || date === undefined) return null;
+  return {
+    snapshot_date: date,
+    permit_floor_alpha: firstFiniteNumber(raw.permit_floor_alpha) ?? null,
+    earning_floor_alpha: firstFiniteNumber(raw.earning_floor_alpha) ?? null,
+    validators_permitted: firstFiniteNumber(raw.validators_permitted) ?? null,
+    validators_earning: firstFiniteNumber(raw.validators_earning) ?? null,
+    emission_gate_open: typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
+  };
+}
+
+/**
+ * The registry's own intake pipeline (#10300).
+ *
+ * `/api/v1/candidates`, `/api/v1/curation`, `/api/v1/profiles` and
+ * `/api/v1/source-snapshots` were all published and rendered nowhere. They are
+ * the four stages of how a surface gets into this registry, and #10300's point
+ * about them is the one that matters: "no page exists" and "no page should
+ * exist" are indistinguishable from outside. This is the page.
+ *
+ * ## THE COUNT DOES NOT COME FROM AN ARRAY LENGTH
+ *
+ * `/api/v1/candidates` is 3.6MB unlimited, and it accepts `?limit=` -- but NO
+ * total survives the trim. The response is `{candidates, generated_at, notes,
+ * schema_version}`, so a limited fetch counted by `candidates.length` silently
+ * reports the LIMIT as the total. Fetching it whole just to count it would be
+ * 3.6MB for one number, and adding a limit later would quietly make that number
+ * wrong -- the exact "confident wrong figure" this whole panel is about.
+ *
+ * So the total comes from `source-snapshots`, whose `summary.candidate_count`
+ * is server-computed (2,184, verified equal to the full array on 2026-08-10) in
+ * a 17KB payload, and the list routes are fetched BOUNDED as samples. Nothing
+ * here derives a total from a list it truncated.
+ */
+const PIPELINE_SAMPLE = 12;
+
+export const registryPipelineQuery = () =>
+  queryOptions({
+    queryKey: k("registry-pipeline"),
+    queryFn: async ({ signal }) => {
+      // Four independent reads. `allSettled`, not `all`: one stage being
+      // unavailable must not blank the other three -- a pipeline view whose
+      // whole point is showing where things stall would be useless if any
+      // stalled stage took the view down with it.
+      const [candidates, curation, profiles, snapshots] = await Promise.allSettled([
+        apiFetch<Record<string, unknown>>(`/api/v1/candidates?limit=${PIPELINE_SAMPLE}`, {
+          signal,
+        }),
+        apiFetch<Record<string, unknown>>("/api/v1/curation", { signal }),
+        apiFetch<Record<string, unknown>>(`/api/v1/profiles?limit=${PIPELINE_SAMPLE}`, { signal }),
+        apiFetch<Record<string, unknown>>("/api/v1/source-snapshots", { signal }),
+      ]);
+      const body = (r: PromiseSettledResult<{ data: unknown }>): Record<string, unknown> =>
+        r.status === "fulfilled" && isRecord(r.value.data) ? r.value.data : {};
+      const ok = (r: PromiseSettledResult<unknown>) => r.status === "fulfilled";
+
+      const cand = body(candidates);
+      const cur = body(curation);
+      const prof = body(profiles);
+      const snap = body(snapshots);
+      const snapSummary = isRecord(snap.summary) ? snap.summary : {};
+
+      // Curation is fetched WHOLE (158KB) because `gap_total` is a sum over
+      // every curated subnet -- a sum over a truncated list is not a smaller
+      // sum, it is a wrong one.
+      const curationRows = Array.isArray(cur.curation) ? cur.curation : [];
+
+      return {
+        data: {
+          candidates_reachable: ok(candidates),
+          // From the SERVER's own total, never from the sample above.
+          candidate_count: firstFiniteNumber(snapSummary.candidate_count) ?? null,
+          recent_candidates: (Array.isArray(cand.candidates) ? cand.candidates : [])
+            .map((raw): PipelineSample | null => {
+              if (!isRecord(raw)) return null;
+              const id = firstString(raw.id);
+              if (!id) return null;
+              return {
+                id,
+                name: firstString(raw.name) ?? firstString(raw.subnet_name) ?? null,
+                detail: firstString(raw.state) ?? null,
+              };
+            })
+            .filter((c): c is PipelineSample => c !== null),
+          curation_reachable: ok(curation),
+          curated_subnet_count: curationRows.length,
+          // TWO LADDERS, not one. `coverage_level` is how much we have;
+          // `curation_level` is how much of it a human has vouched for. A
+          // subnet can be rich and unvouched, or thin and fully reviewed.
+          gap_total: curationRows.reduce(
+            (n, c) => n + (isRecord(c) ? (firstFiniteNumber(c.gap_count) ?? 0) : 0),
+            0,
+          ),
+          profiles_reachable: ok(profiles),
+          recent_profiles: (Array.isArray(prof.profiles) ? prof.profiles : [])
+            .map((raw): PipelineSample | null => {
+              if (!isRecord(raw)) return null;
+              const netuid = firstFiniteNumber(raw.netuid);
+              if (netuid === undefined) return null;
+              const score = firstFiniteNumber(raw.completeness_score);
+              return {
+                id: `sn-${netuid}`,
+                name: firstString(raw.name) ?? `SN${netuid}`,
+                // ALREADY A PERCENTAGE (0-100, measured 25..97 across a live
+                // sample on 2026-08-10), not a 0..1 ratio like every other
+                // share on this API. Multiplying by 100 here rendered
+                // "9000% complete" -- caught by checking a real payload rather
+                // than assuming this field matched its neighbours.
+                detail: score === undefined ? null : `${Math.round(score)}% complete`,
+              };
+            })
+            .filter((p): p is PipelineSample => p !== null),
+          snapshots_reachable: ok(snapshots),
+          source_count: firstFiniteNumber(snapSummary.source_count) ?? null,
+          verification_result_count:
+            firstFiniteNumber(snapSummary.verification_result_count) ?? null,
+          sources: (Array.isArray(snap.sources) ? snap.sources : [])
+            .map((raw): SourceSnapshot | null => {
+              if (!isRecord(raw)) return null;
+              const id = firstString(raw.id);
+              if (!id) return null;
+              return {
+                id,
+                kind: firstString(raw.kind) ?? null,
+                // The hash is what makes a snapshot auditable rather than
+                // merely dated -- two captures with the same hash saw the same
+                // bytes, which a timestamp alone cannot tell you.
+                hash: firstString(raw.hash) ?? null,
+                captured_at: firstString(raw.captured_at) ?? null,
+                record_count: firstFiniteNumber(raw.record_count) ?? null,
+              };
+            })
+            .filter((s): s is SourceSnapshot => s !== null),
+          generated_at: firstString(snap.generated_at) ?? firstString(cand.generated_at) ?? null,
+        } satisfies RegistryPipeline,
+        meta: undefined,
+        url: undefined,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
+/**
+ * Every crowdloan on chain (#10300).
+ *
+ * `percent_raised` and `finalized` are separate states and the panel must not
+ * conflate them: a crowdloan at 100% that has not been finalized has met its
+ * cap but not settled, which is a different thing to be looking at than one
+ * that has.
+ */
+export const crowdloansQuery = () =>
+  queryOptions({
+    queryKey: k("crowdloans"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/crowdloans", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const crowdloans = (Array.isArray(d.crowdloans) ? d.crowdloans : [])
+        .map(normalizeCrowdloan)
+        .filter((c): c is Crowdloan => c !== null);
+      return {
+        data: {
+          crowdloan_count: firstFiniteNumber(d.crowdloan_count) ?? crowdloans.length,
+          crowdloans,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One crowdloan by id (#10300).
+ *
+ * `exists` is published in the BODY at 200 rather than signalled as a 404,
+ * because "there is no crowdloan 47" is a fact about the chain, not a failed
+ * request. The panel renders that as an answer instead of an error.
+ */
+export const crowdloanQuery = (id: number) =>
+  queryOptions({
+    queryKey: k("crowdloan", id),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/crowdloans/${id}`, { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          crowdloan_id: firstFiniteNumber(d.crowdloan_id) ?? id,
+          exists: d.exists === true,
+          crowdloan: normalizeCrowdloan(d.crowdloan),
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeCrowdloan(raw: unknown): Crowdloan | null {
+  if (!isRecord(raw)) return null;
+  const id = firstFiniteNumber(raw.crowdloan_id);
+  if (id === undefined) return null;
+  return {
+    crowdloan_id: id,
+    creator: firstString(raw.creator) ?? null,
+    cap_tao: firstFiniteNumber(raw.cap_tao) ?? null,
+    raised_tao: firstFiniteNumber(raw.raised_tao) ?? null,
+    percent_raised: firstFiniteNumber(raw.percent_raised) ?? null,
+    contributors_count: firstFiniteNumber(raw.contributors_count) ?? null,
+    end: firstFiniteNumber(raw.end) ?? null,
+    // Met the cap and SETTLED are different states.
+    finalized: raw.finalized === true,
+    // Whether the raised funds execute a call on release. A crowdloan that
+    // dispatches is doing something a plain transfer is not.
+    has_dispatch_call: raw.has_dispatch_call === true,
+    target_address: firstString(raw.target_address) ?? null,
+  };
+}
+
+/**
+ * One surface's captured fixture (#10300).
+ *
+ * A fixture that is MISSING says why -- the list route publishes a `status` and
+ * a `reason` per surface, and "we never captured this" is a different fact from
+ * "the capture failed with a 500". The lookup returns the artifact when it
+ * exists and the stated absence when it does not, rather than an error either
+ * way.
+ */
+export const fixtureQuery = (surfaceId: string) =>
+  queryOptions({
+    queryKey: k("fixture", surfaceId),
+    queryFn: async ({ signal }) => {
+      try {
+        const res = await apiFetch<Record<string, unknown>>(
+          `/api/v1/fixtures/${encodeURIComponent(surfaceId)}`,
+          { signal },
+        );
+        const d = isRecord(res.data) ? res.data : {};
+        return {
+          data: {
+            surface_id: surfaceId,
+            available: true,
+            captured_at: firstString(d.captured_at) ?? null,
+            response_status: firstFiniteNumber(d.response_status) ?? null,
+            reason: null,
+          } satisfies FixtureLookup,
+          meta: res.meta,
+          url: res.url,
+        };
+      } catch (err) {
+        // An absent fixture is an ANSWER, not a failure. The route 404s on a
+        // surface it never captured, and surfacing that as a thrown error
+        // would make "we have not captured this yet" indistinguishable from
+        // "the API is broken" -- which is the exact confusion #10222 fixed for
+        // lane health.
+        const status = err instanceof ApiError ? err.status : null;
+        if (status === 404) {
+          return {
+            data: {
+              surface_id: surfaceId,
+              available: false,
+              captured_at: null,
+              response_status: null,
+              reason: "No fixture has been captured for this surface.",
+            } satisfies FixtureLookup,
+            meta: undefined,
+            url: undefined,
+          };
+        }
+        throw err;
+      }
+    },
+    staleTime: STALE_LONG,
+    retry: false,
+  });
+
+/**
+ * The network-wide TAO holder leaderboard (#10300).
+ *
+ * `free_tao`, `delegated_tao` and `total_tao` are three different positions,
+ * and the net flows come in three windows because they can disagree -- an
+ * account can be growing over 7d while shrinking over 90d, and showing one
+ * window would let a short bounce read as a trend.
+ */
+export const topHoldersQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("accounts-top-holders", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/accounts/top-holders?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const accounts = (Array.isArray(d.accounts) ? d.accounts : [])
+        .map((raw): TopHolder | null => {
+          if (!isRecord(raw)) return null;
+          const ss58 = firstString(raw.ss58);
+          if (!ss58) return null;
+          return {
+            ss58,
+            free_tao: firstFiniteNumber(raw.free_tao) ?? null,
+            delegated_tao: firstFiniteNumber(raw.delegated_tao) ?? null,
+            total_tao: firstFiniteNumber(raw.total_tao) ?? null,
+            net_flow_7d: firstFiniteNumber(raw.net_flow_7d) ?? null,
+            net_flow_30d: firstFiniteNumber(raw.net_flow_30d) ?? null,
+            net_flow_90d: firstFiniteNumber(raw.net_flow_90d) ?? null,
+          };
+        })
+        .filter((a): a is TopHolder => a !== null);
+      return {
+        data: {
+          account_count: firstFiniteNumber(d.account_count) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+          accounts,
+        } satisfies TopHolders,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One account's root-claim state (#10300).
+ *
+ * `field_sources` is carried through rather than dropped, because it says the
+ * hotkey list is RECONSTRUCTED while the claim type is MEASURED. Those are
+ * different confidences: one was read from chain storage, the other inferred,
+ * and rendering them identically would present an inference as a reading.
+ */
+export const accountRootClaimQuery = (ss58: string) =>
+  queryOptions({
+    queryKey: k("account-root-claim", ss58),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/accounts/${encodeURIComponent(ss58)}/root-claim`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const claim = isRecord(d.claim_type) ? d.claim_type : {};
+      const sources = isRecord(d.field_sources) ? d.field_sources : {};
+      const hotkeySource = isRecord(sources.hotkeys) ? sources.hotkeys : {};
+      return {
+        data: {
+          ss58: firstString(d.ss58) ?? ss58,
+          claim_kind: firstString(claim.kind) ?? null,
+          hotkeys: (Array.isArray(d.hotkeys) ? d.hotkeys : [])
+            .map((h) => firstString(h))
+            .filter((h): h is string => h !== undefined),
+          // "reconstructed" vs "measured" -- an inference is not a reading.
+          hotkeys_source: firstString(hotkeySource.kind) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } satisfies RootClaim,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Validator entry economics ranked across subnets (#10300).
+ *
+ * `excluded` rides along with a reason per subnet. A leaderboard that silently
+ * drops the subnets it could not rank reports a subset as the whole -- and the
+ * reasons are the interesting part, because "excluded because it has no
+ * validators" and "excluded because the read failed" are different facts.
+ */
+export const validatorEconomicsQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("validators-economics", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/validators/economics?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const rows = (Array.isArray(d.rows) ? d.rows : [])
+        .map((raw): ValidatorEconomicsRow | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return {
+            netuid,
+            permit_floor_cost_tao: firstFiniteNumber(raw.permit_floor_cost_tao) ?? null,
+            earning_floor_cost_tao: firstFiniteNumber(raw.earning_floor_cost_tao) ?? null,
+            permit_to_earning_multiple: firstFiniteNumber(raw.permit_to_earning_multiple) ?? null,
+            validator_slots_open: firstFiniteNumber(raw.validator_slots_open) ?? null,
+            cap_binding: typeof raw.cap_binding === "boolean" ? raw.cap_binding : null,
+            emission_gate_open:
+              typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
+            degraded_reason: firstString(raw.degraded_reason) ?? null,
+          };
+        })
+        .filter((r): r is ValidatorEconomicsRow => r !== null);
+      const excluded = (Array.isArray(d.excluded) ? d.excluded : [])
+        .map((raw): ExcludedSubnet | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return { netuid, reason: firstString(raw.reason) ?? null };
+        })
+        .filter((e): e is ExcludedSubnet => e !== null);
+      return {
+        data: {
+          total: firstFiniteNumber(d.total) ?? rows.length,
+          tao_weight: firstFiniteNumber(d.tao_weight) ?? null,
+          stake_threshold_units: firstFiniteNumber(d.stake_threshold_units) ?? null,
+          rows,
+          excluded,
+        } satisfies ValidatorEconomics,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Registration and deregistration across every subnet (#10300).
+ *
+ * The network-wide sibling of `/subnets/{netuid}/lifecycle`, and it carries the
+ * same `predates_capture` flag for the same reason: every subnet alive when the
+ * lane first ran was registered before we were watching, so its row has no
+ * block and saying so is the only honest rendering.
+ */
+export const chainSubnetLifecycleQuery = (limit = 30) =>
+  queryOptions({
+    queryKey: k("chain-subnet-lifecycle", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/subnet-lifecycle?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const entries = (Array.isArray(d.entries) ? d.entries : [])
+        .map(normalizeSubnetLifecycleEntry)
+        .filter((e): e is SubnetLifecycleEntry => e !== null);
+      return {
+        data: {
+          entry_count: firstFiniteNumber(d.entry_count) ?? entries.length,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          entries,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * One domain's rollup (#10300).
+ *
+ * `/api/v1/domains/{tag}/summary` -- the per-domain detail behind the rollup
+ * table, carrying the emission concentration that the list view has no room
+ * for.
+ */
+export const domainSummaryQuery = (tag: string) =>
+  queryOptions({
+    queryKey: k("domain-summary", tag),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/domains/${encodeURIComponent(tag)}/summary`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const conc = isRecord(d.emission_concentration) ? d.emission_concentration : {};
+      return {
+        data: {
+          domain: firstString(d.domain) ?? tag,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          netuids: (Array.isArray(d.netuids) ? d.netuids : [])
+            .map((n) => firstFiniteNumber(n))
+            .filter((n): n is number => n !== undefined),
+          total_stake_tao: firstFiniteNumber(d.total_stake_tao) ?? null,
+          total_emission_share: firstFiniteNumber(d.total_emission_share) ?? null,
+          emission_gini: firstFiniteNumber(conc.gini) ?? null,
+          emission_nakamoto_coefficient: firstFiniteNumber(conc.nakamoto_coefficient) ?? null,
+        } satisfies DomainSummary,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
+/**
+ * How current our own capture is (#10300).
+ *
+ * `head_age_ms` and `write_latency_ms` measure DIFFERENT things and the panel
+ * must not blur them: latency is how long a block takes to land once we start
+ * writing it, age is how far behind the chain head we are. A lane that stopped
+ * an hour ago still reports excellent latency for the blocks it did write --
+ * fast is not the same as current, and only the age says which.
+ */
+export const chainIndexerLagQuery = () =>
+  queryOptions({
+    queryKey: k("chain-indexer-lag"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/chain/indexer-lag", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const w = isRecord(d.window) ? d.window : {};
+      const lat = isRecord(d.write_latency_ms) ? d.write_latency_ms : {};
+      return {
+        data: {
+          block_count: firstFiniteNumber(d.block_count) ?? null,
+          head_age_ms: firstFiniteNumber(d.head_age_ms) ?? null,
+          measured_at: firstString(d.measured_at) ?? null,
+          oldest_block: firstFiniteNumber(w.oldest_block) ?? null,
+          newest_block: firstFiniteNumber(w.newest_block) ?? null,
+          newest_observed_at: firstString(w.newest_observed_at) ?? null,
+          latency_p50_ms: firstFiniteNumber(lat.p50) ?? null,
+          latency_p95_ms: firstFiniteNumber(lat.p95) ?? null,
+          latency_p99_ms: firstFiniteNumber(lat.p99) ?? null,
+          latency_max_ms: firstFiniteNumber(lat.max) ?? null,
+        } satisfies IndexerLag,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_SHORT,
+  });
+
+/**
+ * Why health probes fail, and whether the mix is moving (#10300).
+ *
+ * `share` and `failure_share` have DIFFERENT denominators -- one is the
+ * classification's share of every check, the other its share of the failing
+ * ones -- and `is_failure` marks the classifications that are not failures at
+ * all. Reading any of the three as the others turns a healthy mix into an
+ * alarming one.
+ */
+export const healthFailureReasonsQuery = (window: string) =>
+  queryOptions({
+    queryKey: k("health-failure-reasons", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/health/failure-reasons?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const reasons = (Array.isArray(d.reasons) ? d.reasons : [])
+        .map((raw): FailureReason | null => {
+          if (!isRecord(raw)) return null;
+          const classification = firstString(raw.classification);
+          if (!classification) return null;
+          return {
+            classification,
+            // Unknown is NOT a failure. Defaulting the unknown direction to
+            // "this is a failure" would inflate the failing mix with rows the
+            // API never claimed were failures.
+            is_failure: raw.is_failure === true,
+            checks: firstFiniteNumber(raw.checks) ?? null,
+            share: firstFiniteNumber(raw.share) ?? null,
+            failure_share: firstFiniteNumber(raw.failure_share) ?? null,
+          };
+        })
+        .filter((r): r is FailureReason => r !== null);
+      return {
+        data: {
+          window: firstString(d.window) ?? null,
+          days_covered: firstFiniteNumber(d.days_covered) ?? null,
+          total_checks: firstFiniteNumber(d.total_checks) ?? null,
+          failing_checks: firstFiniteNumber(d.failing_checks) ?? null,
+          failure_rate: firstFiniteNumber(d.failure_rate) ?? null,
+          reasons,
+        } satisfies FailureReasons,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * The emission-gate change log (#10300).
+ *
+ * `predates_capture_count` is published beside `change_count` because a change
+ * older than capture carries a NULL block. Rendering those as block 0 would
+ * date every pre-capture change to genesis, and dropping them would understate
+ * how often the gate has moved.
+ */
+export const emissionChangesQuery = (limit = 25) =>
+  queryOptions({
+    queryKey: k("emission-changes", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/governance/emission-changes?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const changes = (Array.isArray(d.changes) ? d.changes : [])
+        .map((raw): EmissionChange | null => {
+          if (!isRecord(raw)) return null;
+          const kind = firstString(raw.kind);
+          if (!kind) return null;
+          return {
+            kind,
+            observed_at: firstString(raw.observed_at) ?? null,
+            // NULLABLE ON PURPOSE -- see the note above.
+            block_number: firstFiniteNumber(raw.block_number) ?? null,
+            predates_capture: raw.predates_capture === true,
+            param: firstString(raw.param) ?? null,
+            value: firstString(raw.value) ?? firstFiniteNumber(raw.value)?.toString() ?? null,
+            previous_value:
+              firstString(raw.previous_value) ??
+              firstFiniteNumber(raw.previous_value)?.toString() ??
+              null,
+          };
+        })
+        .filter((c): c is EmissionChange => c !== null);
+      return {
+        data: {
+          change_count: firstFiniteNumber(d.change_count) ?? changes.length,
+          predates_capture_count: firstFiniteNumber(d.predates_capture_count) ?? null,
+          latest_change_at: firstString(d.latest_change_at) ?? null,
+          changes,
+        } satisfies EmissionChanges,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Which drand rounds the chain still stores (#10300).
+ *
+ * `stored_round_span` is the operative number, not `last_stored_round`.
+ * Commit-reveal verifies a reveal against the round it was timelocked to, and
+ * a round that has aged out of storage can no longer be checked -- so how far
+ * back storage reaches is what decides whether an old reveal is still
+ * verifiable, and the newest round says nothing about that.
+ */
+export const networkRandomnessQuery = () =>
+  queryOptions({
+    queryKey: k("network-randomness"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/network/randomness", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      return {
+        data: {
+          last_stored_round: firstFiniteNumber(d.last_stored_round) ?? null,
+          oldest_stored_round: firstFiniteNumber(d.oldest_stored_round) ?? null,
+          stored_round_span: firstFiniteNumber(d.stored_round_span) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+        } satisfies RandomnessStatus,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * What it costs to register, across every subnet (#10300).
+ *
+ * `subnet_count` and `read_count` are DIFFERENT numbers: the first is how many
+ * subnets exist, the second how many were actually read for this answer. A
+ * spread computed over a partial read is a real answer about a subset, and
+ * presenting it as "the network" would be the confident-zero mistake in its
+ * cheapest form.
+ */
+export const chainBurnQuery = () =>
+  queryOptions({
+    queryKey: k("chain-burn"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/chain/burn", { signal });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = (Array.isArray(d.subnets) ? d.subnets : [])
+        .map((raw): ChainBurnSubnet | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return { netuid, burn_tao: firstFiniteNumber(raw.burn_tao) ?? null };
+        })
+        .filter((s): s is ChainBurnSubnet => s !== null);
+      return {
+        data: {
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          // NOT defaulted to subnet_count. That default would assert full
+          // coverage, which is the single claim this field exists to check.
+          read_count: firstFiniteNumber(d.read_count) ?? null,
+          cheapest_burn_tao: firstFiniteNumber(d.cheapest_burn_tao) ?? null,
+          dearest_burn_tao: firstFiniteNumber(d.dearest_burn_tao) ?? null,
+          median_burn_tao: firstFiniteNumber(d.median_burn_tao) ?? null,
+          queried_at: firstString(d.queried_at) ?? null,
+          subnets,
+        } satisfies ChainBurn,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Who holds the alpha, across every subnet (#10300).
+ *
+ * TWO capture stamps, kept apart. `captured_at` is when the subnet set was
+ * read; `positions_captured_at` is when the holder positions were. They can
+ * differ, and showing one as "the" timestamp would date a holder distribution
+ * by when its subnet list was refreshed.
+ */
+export const chainHoldersQuery = (limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-holders", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/chain/holders?limit=${limit}`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const net = isRecord(d.network) ? d.network : {};
+      const subnets = (Array.isArray(d.subnets) ? d.subnets : [])
+        .map((raw): ChainHolderSubnet | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return {
+            netuid,
+            holder_count: firstFiniteNumber(raw.holder_count) ?? null,
+            total_alpha: firstFiniteNumber(raw.total_alpha) ?? null,
+            top_holder: firstString(raw.top_holder) ?? null,
+            top1_share: firstFiniteNumber(raw.top1_share) ?? null,
+            top5_share: firstFiniteNumber(raw.top5_share) ?? null,
+            top10_share: firstFiniteNumber(raw.top10_share) ?? null,
+          };
+        })
+        .filter((s): s is ChainHolderSubnet => s !== null);
+      return {
+        data: {
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          subnets_measured: firstFiniteNumber(net.subnets_measured) ?? null,
+          // A subnet whose alpha sits with ONE account. Published separately
+          // from "majority holder" because they are different severities.
+          subnets_with_single_holder: firstFiniteNumber(net.subnets_with_single_holder) ?? null,
+          subnets_with_majority_holder: firstFiniteNumber(net.subnets_with_majority_holder) ?? null,
+          median_top1_share: firstFiniteNumber(net.median_top1_share) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+          positions_captured_at: firstString(d.positions_captured_at) ?? null,
+          subnets,
+        } satisfies ChainHolders,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Concentration ranked per subnet (#10300).
+ *
+ * `unmeasured` rides along per subnet, and `measured_subnet_count` beside
+ * `subnet_count`, because a subnet with no concentration reading is not a
+ * subnet with even distribution -- and a ranking that silently drops the
+ * unmeasured ones reports a leaderboard over a subset as one over the network.
+ */
+export const chainConcentrationSubnetsQuery = (limit = 20) =>
+  queryOptions({
+    queryKey: k("chain-concentration-subnets", limit),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/concentration/subnets?limit=${limit}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const net = isRecord(d.network) ? d.network : {};
+      const subnets = (Array.isArray(d.subnets) ? d.subnets : [])
+        .map((raw): NetworkConcentrationSubnet | null => {
+          if (!isRecord(raw)) return null;
+          const netuid = firstFiniteNumber(raw.netuid);
+          if (netuid === undefined) return null;
+          return {
+            netuid,
+            gini: firstFiniteNumber(raw.gini) ?? null,
+            nakamoto_coefficient: firstFiniteNumber(raw.nakamoto_coefficient) ?? null,
+            top_1pct_share: firstFiniteNumber(raw.top_1pct_share) ?? null,
+            holders: firstFiniteNumber(raw.holders) ?? null,
+            // Unknown counts as UNMEASURED, never as measured. Defaulting the
+            // unknown direction to "we looked" is how a gap becomes a finding.
+            unmeasured: raw.unmeasured === true || raw.unmeasured === undefined,
+          };
+        })
+        .filter((s): s is NetworkConcentrationSubnet => s !== null);
+      return {
+        data: {
+          lens: firstString(d.lens) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          measured_subnet_count: firstFiniteNumber(d.measured_subnet_count) ?? null,
+          median_gini: firstFiniteNumber(net.median_gini) ?? null,
+          median_nakamoto_coefficient: firstFiniteNumber(net.median_nakamoto_coefficient) ?? null,
+          single_holder_subnet_count: firstFiniteNumber(net.single_holder_subnet_count) ?? null,
+          captured_at: firstString(d.captured_at) ?? null,
+          subnets,
+        } satisfies NetworkConcentrationSubnets,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/**
+ * Network concentration drift (#10300).
+ *
+ * `builder_versions` is the load-bearing field. Points computed by different
+ * builder versions are different computations, so a trend drawn across a
+ * version change is a comparison between two definitions rather than a movement
+ * in the thing being measured. The route publishes every version present in the
+ * window so a reader can see when that has happened.
+ */
+export const chainConcentrationHistoryQuery = (window: string) =>
+  queryOptions({
+    queryKey: k("chain-concentration-history", window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/chain/concentration/history?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const points = (Array.isArray(d.points) ? d.points : [])
+        .map((raw): NetworkConcentrationHistoryPoint | null => {
+          if (!isRecord(raw)) return null;
+          const day = firstString(raw.day);
+          if (!day) return null;
+          const stake = isRecord(raw.stake) ? raw.stake : {};
+          return {
+            day,
+            builder_version: firstFiniteNumber(raw.builder_version) ?? null,
+            neuron_count: firstFiniteNumber(raw.neuron_count) ?? null,
+            subnet_count: firstFiniteNumber(raw.subnet_count) ?? null,
+            gini: firstFiniteNumber(stake.gini) ?? null,
+            nakamoto_coefficient: firstFiniteNumber(stake.nakamoto_coefficient) ?? null,
+            top_1pct_share: firstFiniteNumber(stake.top_1pct_share) ?? null,
+          };
+        })
+        .filter((p): p is NetworkConcentrationHistoryPoint => p !== null);
+      return {
+        data: {
+          window: firstString(d.window) ?? null,
+          point_count: firstFiniteNumber(d.point_count) ?? points.length,
+          oldest_day: firstString(d.oldest_day) ?? null,
+          newest_day: firstString(d.newest_day) ?? null,
+          builder_versions: (Array.isArray(d.builder_versions) ? d.builder_versions : [])
+            .map((v) => firstFiniteNumber(v))
+            .filter((v): v is number => v !== undefined),
+          points,
+        } satisfies NetworkConcentrationHistory,
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
+/**
+ * The emission pipeline over time (#10300).
+ *
+ * `point_count` and `distinct_observations` are DIFFERENT numbers, and the gap
+ * between them is the whole reason this surface publishes both. A day whose
+ * `repeats_previous_observation` is true carried the previous reading forward
+ * rather than measuring a new one -- so a flat stretch of the series can mean
+ * "the pipeline did not move" or "the lane did not run", and only this flag
+ * tells the two apart. Charting every point as a measurement would render the
+ * second as the first.
+ */
+export const subnetEmissionPipelineHistoryQuery = (netuid: number, window: string) =>
+  queryOptions({
+    queryKey: k("subnet-emission-pipeline-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/emission-pipeline/history?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      return {
+        data: normalizeEmissionPipelineHistory(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeEmissionPipelineHistory(raw: unknown): SubnetEmissionPipelineHistory {
+  const d = isRecord(raw) ? raw : {};
+  const points = (Array.isArray(d.points) ? d.points : [])
+    .map(normalizeEmissionPipelinePoint)
+    .filter((p): p is SubnetEmissionPipelinePoint => p !== null);
+  return {
+    netuid: firstFiniteNumber(d.netuid) ?? null,
+    window: firstString(d.window) ?? null,
+    point_count: firstFiniteNumber(d.point_count) ?? points.length,
+    // NOT defaulted to point_count. Falling back to the number of points would
+    // assert every day was independently observed, which is the one claim this
+    // field exists to let a reader check.
+    distinct_observations: firstFiniteNumber(d.distinct_observations) ?? null,
+    oldest_day: firstString(d.oldest_day) ?? null,
+    newest_day: firstString(d.newest_day) ?? null,
+    first_captured_day: firstString(d.first_captured_day) ?? null,
+    points,
+  };
+}
+
+function normalizeEmissionPipelinePoint(raw: unknown): SubnetEmissionPipelinePoint | null {
+  if (!isRecord(raw)) return null;
+  const day = firstString(raw.day);
+  if (!day) return null;
+  return {
+    day,
+    pipeline_block: firstFiniteNumber(raw.pipeline_block) ?? null,
+    // A carried-forward day, not a fresh reading. Defaulting the unknown
+    // direction to `false` would silently promote it to a measurement.
+    repeats_previous_observation:
+      typeof raw.repeats_previous_observation === "boolean"
+        ? raw.repeats_previous_observation
+        : null,
+    captured_at: firstString(raw.captured_at) ?? null,
+    emission_share: firstFiniteNumber(raw.emission_share) ?? null,
+    alpha_price_tao: firstFiniteNumber(raw.alpha_price_tao) ?? null,
+    tao_in_pool_tao: firstFiniteNumber(raw.tao_in_pool_tao) ?? null,
+    tao_in_emission_tao: firstFiniteNumber(raw.tao_in_emission_tao) ?? null,
+    miner_burned_fraction: firstFiniteNumber(raw.miner_burned_fraction) ?? null,
+    emission_enabled: typeof raw.emission_enabled === "boolean" ? raw.emission_enabled : null,
+  };
+}
+
+/**
+ * A subnet's surface audit trail (#10300).
+ *
+ * Newest first. Every row is an `action` on a `surface_id` at a `recorded_at`,
+ * with the `source_commit` that carried it -- which is what makes this an audit
+ * trail rather than a changelog: a claim about a surface can be traced to the
+ * commit that made it.
+ */
+export const subnetSurfaceHistoryQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-surface-history", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/surface-history`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const changes = (Array.isArray(d.changes) ? d.changes : [])
+        .map(normalizeSurfaceChange)
+        .filter((c): c is SubnetSurfaceChange => c !== null);
+      return {
+        data: {
+          // `change_count` and `surface_count` are different: one surface can
+          // change many times, so collapsing them would overstate breadth.
+          change_count: firstFiniteNumber(d.change_count) ?? changes.length,
+          surface_count: firstFiniteNumber(d.surface_count) ?? null,
+          latest_change_at: firstString(d.latest_change_at) ?? null,
+          changes,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_LONG,
+  });
+
+function normalizeSurfaceChange(raw: unknown): SubnetSurfaceChange | null {
+  if (!isRecord(raw)) return null;
+  const surfaceId = firstString(raw.surface_id);
+  const action = firstString(raw.action);
+  if (!surfaceId || !action) return null;
+  return {
+    surface_id: surfaceId,
+    action,
+    kind: firstString(raw.kind) ?? null,
+    url: firstString(raw.url) ?? null,
+    name: firstString(raw.name) ?? null,
+    source_commit: firstString(raw.source_commit) ?? null,
+    recorded_at: firstString(raw.recorded_at) ?? null,
   };
 }
 
