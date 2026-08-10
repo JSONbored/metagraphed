@@ -1,0 +1,268 @@
+[
+  {
+    "table": "blocks",
+    "field_id": 1,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 2,
+    "column": "block_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 3,
+    "column": "parent_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 4,
+    "column": "author",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 5,
+    "column": "extrinsic_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 6,
+    "column": "event_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 7,
+    "column": "spec_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "blocks",
+    "field_id": 8,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 1,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 2,
+    "column": "extrinsic_index",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 3,
+    "column": "extrinsic_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 4,
+    "column": "signer",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 5,
+    "column": "call_module",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 6,
+    "column": "call_function",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 7,
+    "column": "success",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 8,
+    "column": "fee_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 9,
+    "column": "tip_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 10,
+    "column": "call_args",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "extrinsics",
+    "field_id": 11,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 1,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 2,
+    "column": "event_index",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 3,
+    "column": "pallet",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 4,
+    "column": "method",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 5,
+    "column": "args",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 6,
+    "column": "phase",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 7,
+    "column": "extrinsic_index",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "chain_events",
+    "field_id": 8,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 1,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 2,
+    "column": "event_index",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 3,
+    "column": "extrinsic_index",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 4,
+    "column": "event_kind",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 5,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 6,
+    "column": "coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 7,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 8,
+    "column": "uid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 9,
+    "column": "amount_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 10,
+    "column": "alpha_amount",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_events",
+    "field_id": 11,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  }
+]

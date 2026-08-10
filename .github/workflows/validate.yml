@@ -385,6 +385,7 @@ jobs:
         run: |
           npm run validate:contract-drift
           npm run validate:db-types-drift
+          npm run validate:lakehouse-types-drift
           npm run validate:schema-enums
           npm run validate:openapi-examples
           npm run validate:generated-client
