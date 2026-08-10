@@ -127,7 +127,11 @@
       "id": "sn-43-graphite-ai-subnet-api",
       "kind": "subnet-api",
       "name": "Graphite SN43 subnet stats API",
-      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet. Live-verified 2026-07-21: GET https://api.graphite-ai.net/api/v1/stats/subnet -> HTTP 200 application/json (netuid 43, total_registered/validators/miners counts, total_alpha_stake, updated_at).",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public, unauthenticated JSON endpoint on Graphite's official SN43 API (api.graphite-ai.net) returning the live subnet-43 metagraph aggregate: netuid, total registered neurons, validator/miner counts, total alpha stake, and an availability flag. Documented in the subnet's OpenAPI spec as GET /api/v1/stats/subnet. Live-verified 2026-07-21: GET https://api.graphite-ai.net/api/v1/stats/subnet -> HTTP 200 application/json (netuid 43, total_registered/validators/miners counts, total_alpha_stake, updated_at). REVENUE ROLE (#10453): not-revenue. Despite the /stats/ path this returns total_alpha_stake, validator/miner counts and registration totals -- subnet structure, not money. REVENUE ROLE (#10453): not-revenue. Despite the /stats/ path this returns total_alpha_stake, validator/miner counts and registration totals -- subnet structure, not money.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -169,7 +173,11 @@
         "https://api.graphite-ai.net/openapi.json",
         "https://api.graphite-ai.net/docs"
       ],
-      "url": "https://api.graphite-ai.net/api/v1/stats/coverage"
+      "url": "https://api.graphite-ai.net/api/v1/stats/coverage",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      }
     },
     {
       "auth_required": false,
@@ -202,6 +210,10 @@
       "id": "sn-43-graphite-miners-stats-api",
       "kind": "subnet-api",
       "name": "Graphite miner stats API",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET returning per-miner contribution counts and last contribution timestamps (uid, contributions, last_contribution_at). Documented in the subnet's own OpenAPI (api.graphite-ai.net/openapi.json, path /api/v1/miners/stats, public tag); same host as existing stats and health surfaces.",
       "probe": {
         "enabled": true,
@@ -335,7 +347,12 @@
       "id": "sn-43-graphite-billing-checkout",
       "kind": "subnet-api",
       "name": "Graphite SN43 billing checkout (POST, public)",
-      "notes": "POST /api/v1/billing/checkout -- payment-provider checkout entry point, publicly reachable. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST with an empty JSON body returns HTTP 400 JSON asking for a valid email (live input validation, no auth gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.graphite-ai.net/openapi.json"
+      },
+      "notes": "POST /api/v1/billing/checkout -- payment-provider checkout entry point, publicly reachable. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST with an empty JSON body returns HTTP 400 JSON asking for a valid email (live input validation, no auth gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation). REVENUE ROLE (#10453): not-revenue. Live GET answers 405 Method Not Allowed -- POST-only billing plumbing. Its existence is evidence Graphite has paying customers, but no readable revenue figure is exposed, so nothing here can be counted. REVENUE ROLE (#10453): not-revenue. Live GET answers 405 Method Not Allowed -- POST-only billing plumbing. Its existence is evidence Graphite has paying customers, but no readable revenue figure is exposed, so nothing here can be counted.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -357,6 +374,11 @@
       "id": "sn-43-graphite-billing-webhook",
       "kind": "subnet-api",
       "name": "Graphite SN43 billing webhook (POST, public)",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.graphite-ai.net/openapi.json"
+      },
       "notes": "POST /api/v1/billing/webhook -- publicly reachable callback endpoint that is only meaningful for the payment provider's own signed callbacks. Live-verified 2026-07-22 (~08:17 UTC): an unauthenticated POST returns HTTP 400 JSON rejecting the payload signature (a payload-integrity check, not a credential gate). probe.enabled:false: the registry probe pipeline only supports GET/HEAD (the linked issue asks for probe.enabled:true for this group, but the probe schema cannot represent a POST operation).",
       "probe": {
         "enabled": false,
@@ -523,6 +545,11 @@
       "id": "sn-43-graphite-graph-stats",
       "kind": "subnet-api",
       "name": "Graphite SN43 graph stats (auth-gated)",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.graphite-ai.net/openapi.json"
+      },
       "notes": "GET /api/v1/graph/stats -- knowledge-graph statistics. The schema declares no security scheme for it; live-verified 2026-07-22 (~08:17 UTC): HTTP 401 JSON naming the required credential and pointing to the public portal page for free customer access. probe.enabled:false per the linked issue's guidance for the auth-gated set.",
       "probe": {
         "enabled": false,
