@@ -958,6 +958,10 @@
       // the twice-hourly cadence would cost 79 GB/day for windows measured in
       // weeks -- see TOP_HOLDERS_FLOW_CRON in workers/config.ts.
       "34 1 * * *",
+      // 05:17 daily = the deregistration-input series (#10296). See
+      // SUBNET_DEREGISTRATION_DAILY_CRON in workers/config.ts: dispatch keys on
+      // this LITERAL string, so it must match that constant exactly.
+      "17 5 * * *",
       // 3,13,... = the 10-minute emission-gate sampler (#8748/#8750), moved
       // off its GitHub Actions schedule -- offset from :0-based grids so it
       // never stacks on the */5 raw-capture tick's busiest minute.

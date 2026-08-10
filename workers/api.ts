@@ -434,6 +434,8 @@ import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { runRegistryResyncLane } from "../src/registry-resync-lane.ts";
 import { runDailySeriesCoverageWatchdog } from "../src/daily-series-coverage-watchdog.ts";
 import { runSubnetLifecycleLane } from "../src/subnet-lifecycle.ts";
+import { runSubnetDeregistrationDailyLane } from "../src/subnet-deregistration-daily.ts";
+import { resolveEmissionPipelineEconomics } from "../src/emission-pipeline-surface.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
@@ -517,6 +519,7 @@ import {
   CHAIN_CONCENTRATION_ROLLUP_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_FLOW_CRON,
+  SUBNET_DEREGISTRATION_DAILY_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
   HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
@@ -2153,6 +2156,8 @@ function cronLabel(cron: string): string {
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
     return "account-balances-staleness-watchdog";
   if (cron === TOP_HOLDERS_FLOW_CRON) return "top-holders-flow";
+  if (cron === SUBNET_DEREGISTRATION_DAILY_CRON)
+    return "subnet-deregistration-daily";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -2645,6 +2650,38 @@ async function dispatchScheduled(
     // watchdog:chain-detail-staleness, the project's alert channel.
     return runChainDetailStalenessWatchdog(
       env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === SUBNET_DEREGISTRATION_DAILY_CRON) {
+    // #10296: one row per subnet per day of what the deregistration ranking is
+    // computed FROM. It stores the four MEASURED inputs, never the derived
+    // rank -- so a later correction to the ranking rule reaches the whole
+    // series instead of leaving it a record of the old rule's answers.
+    //
+    // Reads the same economics blob the live route does, so there is no
+    // producer change and no new chain read. Never throws: a capture lane that
+    // could take down the cron it shares would be worse than a gap.
+    return runSubnetDeregistrationDailyLane(
+      env as unknown as Record<string, unknown>,
+      {
+        ctx,
+        readEconomics: () =>
+          resolveEmissionPipelineEconomics({
+            env,
+            // Wrapped rather than passed by reference: readEconomicsCurrentKv's
+            // second parameter is `now`, not the `key` this seam declares, and
+            // handing it over directly would bind a cache key into a clock.
+            readHealthKv: (e: Env) => readEconomicsCurrentKv(e),
+            contractVersion: contractVersion(env),
+            readArtifact: async () => {
+              const artifact = await readArtifact(
+                env,
+                "/metagraph/economics.json",
+              );
+              return artifact?.ok ? artifact.data : null;
+            },
+          }),
+      },
     );
   }
   if (cron === TOP_HOLDERS_FLOW_CRON) {

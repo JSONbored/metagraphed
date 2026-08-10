@@ -371,6 +371,26 @@ export const PROJECTION_LANES_CRON = "11,41 * * * *";
 // on the LITERAL cron string, so this must be unique here as well as matching
 // a wrangler.jsonc `triggers.crons` entry.
 export const TOP_HOLDERS_FLOW_CRON = "34 1 * * *";
+
+/**
+ * Daily capture of the deregistration ranking's MEASURED inputs (#10296).
+ *
+ * The current ranking is computed per request and stored nowhere, so a caller
+ * sees today's answer and nothing else -- and a single day's rank is noise. One
+ * row per subnet per day makes it a trajectory.
+ *
+ * 05:17 UTC. Daily, because the inputs move on the scale the immunity window
+ * does rather than per block, and a finer cadence would store the same
+ * observation repeatedly -- `pinned_block` already records which observation a
+ * row is, so nothing is gained by sampling faster than the economics sweep
+ * pins. Minute 17 is used by no other cron in this file, hourly ones included,
+ * and dispatch keys on the LITERAL string, so it must stay unique here AND
+ * match a wrangler.jsonc `triggers.crons` entry.
+ *
+ * ~2h after the 03:26 leg of LIVE_ECONOMICS_REFRESH_CRON, which is fine: the
+ * lane records the block it read rather than assuming freshness.
+ */
+export const SUBNET_DEREGISTRATION_DAILY_CRON = "17 5 * * *";
 // The live-economics refresh, moved off .github/workflows/refresh-economics.yml
 // -- the last GitHub Actions data lane. Same 3-hourly cadence that workflow
 // ran (it was `41 */3 * * *`), on minute :26, which is the nearest free minute:
