@@ -9,14 +9,14 @@
 // conclusion, because the alternative to 1,135 decisions is not "no gate" --
 // it is a RATCHET. The count goes in one place, it fails when it grows, and it
 // fails when it falls without being lowered. Nobody has to adjudicate 880
-// symbols today, and nobody can add the 881st without saying so.
+// symbols today, and nobody can add the 753rd without saying so.
 //
 // ## What the number is made of, measured 2026-08-10
 //
-// 880 after the deletions in this branch (1,135 at filing). Where they live is
-// the whole story:
+// 752 after #10582 (1,135 at filing, 880 when this gate landed). Where they
+// live is the whole story:
 //
-//   874  schemas-src/**   the contract's type vocabulary
+//   746  schemas-src/**   the contract's type vocabulary
 //     6  src/**           the actual residue, in four files
 //
 // The schema layer's exports are not orphans in the ordinary sense. 250 of them
@@ -25,15 +25,10 @@
 // `src/contracts.ts` AS A STRING. knip cannot see a linkage made by name
 // through a registry, and no static tool can.
 //
-// The other ~624 are mostly `export const XResponseSchema =
-// successEnvelopeSchema(XArtifactSchema)`: 164 of them, of which 128 are
-// referenced nowhere at all and 36 only by one spot-check test. Nothing in the
-// serving path reads any of them, because
-// `src/response-validation-tripwire.ts` COMPOSES the envelope itself from the
-// registry (`successEnvelopeSchema(component)`) rather than importing the
-// precomputed alias. They are a second declaration of the same fact, which is
-// the exact shape this epic exists to remove -- and deleting them is a change
-// of its own, not something to bundle behind a gate.
+// The 164 precomputed `XResponseSchema` envelopes that made up most of the
+// rest are GONE (#10582): nothing in the serving path read them, because
+// `src/response-validation-tripwire.ts` composes the envelope itself from the
+// registry. That is where 880 -> 752 came from.
 //
 // ## Why the count is not zero, and why that is not a failure
 //
@@ -59,9 +54,10 @@ import { repoRoot } from "./lib.ts";
 /**
  * The most unreferenced exports allowed. THE CEILING ONLY FALLS.
  *
- * 880 after this branch's deletions. Lower it whenever exports are removed.
+ * 752 after #10582 deleted the 164 precomputed response envelopes. Lower it
+ * whenever exports are removed.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 880;
+export const MAX_UNREFERENCED_EXPORTS: number = 752;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {
