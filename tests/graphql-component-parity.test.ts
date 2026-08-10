@@ -238,7 +238,9 @@ describe("declared projections (#10214)", () => {
     const report = checkComponentParity(broken, openapi);
     assert.ok(
       report.violations.some((v) =>
-        v.startsWith("OpportunityEntry.validator_headroom -- declared as resolver-added"),
+        v.startsWith(
+          "OpportunityEntry.validator_headroom -- declared as resolver-added",
+        ),
       ),
       `expected the stale added entry to be reported, got: ${report.violations.join("; ")}`,
     );
