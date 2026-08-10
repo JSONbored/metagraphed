@@ -592,7 +592,14 @@ describe("withUsageTelemetry", () => {
     assert.equal(event.errorCode, "internal_error");
     // Drained through waitUntil alongside the usage event, never awaited on a
     // path that is already failing.
-    assert.equal(ctx.scheduled.length, 2);
+    //
+    // THREE, not two, since tracing became outcome-aware: the usage event, the
+    // $exception, and now a failure SPAN. This env sets no trace sample rate
+    // (no test does -- see src/tracing.ts's header for why), which used to
+    // mean rate 0 and therefore no span on any outcome. shouldRecordTraceSpan
+    // ignores the rate for `ok: false`, so the one class of request worth a
+    // trace is the one class that no longer depends on winning a dice roll.
+    assert.equal(ctx.scheduled.length, 3);
   });
 
   test("captures nothing when the handler returns a 5xx rather than throwing", async () => {

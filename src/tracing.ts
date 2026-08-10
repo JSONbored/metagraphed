@@ -30,6 +30,8 @@
 // even without parent/child nesting.
 
 import {
+  admitExceptionCapture,
+  admitExceptionCaptureShared,
   isUsageTelemetryConfigured,
   resolvePostHogHost,
 } from "./usage-telemetry.ts";
@@ -117,6 +119,70 @@ export function shouldSampleTrace(
   surface?: "mcp",
 ): boolean {
   return Math.random() < tracesSampleRate(env, surface);
+}
+
+/**
+ * Internal machine-to-machine plumbing, excluded from SUCCESS spans exactly
+ * as workers/api.ts's usageRouteLabel excludes it from usage events (#9005).
+ *
+ * Measured 2026-08-10: `/api/v1/internal/usage-rollup` was 2,657 of the
+ * data-api Worker's ~2,900 spans over 2.6 days -- 92% of that Worker's entire
+ * trace volume, and ~32K spans/month, for a route no customer calls and
+ * nobody reads a latency percentile for. #9005 drew this exact line for the
+ * usage lane ("internal machine-to-machine plumbing is not API usage by
+ * anyone") and the trace lane simply never got it.
+ *
+ * FAILURES ARE UNAFFECTED, deliberately, and for #9005's own stated reason:
+ * "a failing internal ingest must stay visible". This suppresses the
+ * successful-timing span, not the error span -- shouldRecordTraceSpan only
+ * consults it on the `ok` branch.
+ */
+export function isUntracedInternalRoute(name: string): boolean {
+  return name.startsWith("/api/v1/internal/");
+}
+
+/** Namespaces the trace lane's storm keys away from $exception's, so a route
+ * that both throws and emits a failed span cannot silence one via the other.
+ */
+export const TRACE_STORM_FINGERPRINT_PREFIX = "trace:";
+
+/**
+ * Outcome-aware span admission: a FAILURE is never sampled away, a success
+ * rolls the surface's dice.
+ *
+ * WHY THE FLAT DICE WAS WRONG. shouldSampleTrace is a bare
+ * `Math.random() < rate` gate with no notion of how the operation ENDED, so a
+ * 1% rate discards 99% of failures as surely as it discards 99% of successes.
+ * That is the opposite of the same decision one module over:
+ * usage-telemetry.ts's resolveUsageSampleRate returns 1 for `ok: false`
+ * because failures "are a rounding error by volume and the entire point of
+ * the dataset when something breaks; dropping 80% of a rare failure is how an
+ * incident becomes invisible". Tracing never got that rule, so the two lanes
+ * disagreed about the same request.
+ *
+ * WHY THIS IS ALSO THE CHEAPER GATE. Measured 2026-08-10, spans bill against
+ * PostHog's AI Observability allocation (100K events/month free), NOT the 1M
+ * product-analytics one that wrangler.data.jsonc's rate arithmetic was sized
+ * against -- a 10x budgeting error that put the project at ~112K spans/month
+ * against a 100K tier. Successes are the entire overage; failures are a
+ * rounding error. Biasing the sample toward the failures buys back the tier
+ * AND raises error fidelity to 1.0 at the same time.
+ *
+ * WHY "NEVER SAMPLED" STILL NEEDS A CEILING. An unsampled failure stream is
+ * precisely the shape admitMcpRefusalCapture exists to contain: "a client
+ * hammering the rate limiter produces one refusal per request; that is the
+ * shape that spent a month's event budget in two days". So `ok: false` is
+ * admitted here and then BOUNDED in recordTraceSpan by the same two-tier
+ * storm guard $exception uses -- this function returning true is permission
+ * to try, not a promise to emit.
+ */
+export function shouldRecordTraceSpan(
+  env: Env | null | undefined,
+  span: { name: string; ok: boolean; surface?: "mcp" },
+): boolean {
+  if (!span.ok) return true;
+  if (isUntracedInternalRoute(span.name)) return false;
+  return shouldSampleTrace(env, span.surface);
 }
 
 function randomHex(byteLength: number): string {
@@ -219,6 +285,10 @@ export function otlpTraceExportRequest(span: TraceSpanInput) {
 export interface RecordTraceSpanDeps {
   /** Injectable fetch (tests). */
   fetch?: typeof fetch;
+  /** Injectable cross-isolate storm gate, mirroring RecordUsageEventDeps --
+   * "was it held by the FLEET-wide gate" is otherwise indistinguishable from
+   * "was it held locally", and that distinction is the whole point. */
+  admitShared?: typeof admitExceptionCaptureShared;
 }
 
 /**
@@ -234,6 +304,24 @@ export async function recordTraceSpan(
 ): Promise<boolean> {
   try {
     if (!isUsageTelemetryConfigured(env)) return false;
+
+    // The ceiling shouldRecordTraceSpan defers to. Only failures reach it:
+    // successes were already thinned by the sample rate, and throttling them
+    // on top would bias the latency percentiles toward whichever route
+    // happened to win a window.
+    //
+    // TWO GATES, IN THIS ORDER, copied from recordExceptionEvent (#9900). The
+    // local map is a no-I/O fast path; the shared gate is the one that
+    // actually bounds a fleet-wide storm, because the local map is
+    // per-isolate and a recycled isolate always looks like a first sighting.
+    // Local first so a burst inside one isolate never reaches KV at all.
+    if (!span.ok) {
+      const fingerprint = `${TRACE_STORM_FINGERPRINT_PREFIX}${span.name}`;
+      if (admitExceptionCapture(env, fingerprint) === null) return false;
+      const admitShared = deps.admitShared ?? admitExceptionCaptureShared;
+      if ((await admitShared(env, fingerprint)) === null) return false;
+    }
+
     const token = String(
       (env as Record<string, unknown> | null | undefined)
         ?.POSTHOG_PROJECT_TOKEN,

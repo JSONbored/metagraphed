@@ -342,7 +342,29 @@
     // registry-sync-api, whose own sampled branches were dead code as a
     // result. Both now set their own measured rate (0.01 and 1 respectively);
     // see those configs for the arithmetic. This line governs api.ts alone.
-    "POSTHOG_TRACES_SAMPLE_RATE_MCP": "1",
+    //
+    // 1 -> 0.25. THE DENOMINATOR ABOVE IS WRONG, and that is the whole story.
+    // "~56K spans/month against a 1M/month free tier" is correct arithmetic
+    // against the wrong allocation: spans do NOT bill as product analytics.
+    // PostHog bills generations, spans and traces against AI Observability --
+    // 100K events/month free (posthog.com/ai-observability/pricing), 10x
+    // smaller than the tier every rate in #9000/#9466 was sized against. So
+    // "5.6% of the budget" was really 56% of it, from this one line.
+    //
+    // MEASURED 2026-08-10, over the billing cycle that just closed: 19,077
+    // spans total, metagraphed-api's mcp.tool/* running ~1,900/day and rising
+    // (~57K/month against 100K), with data-api's internal-route leak -- now
+    // excluded in src/tracing.ts -- taking ~32K more. Projected consumption
+    // for the new cycle was ~112% of the tier before this change.
+    //
+    // 0.25 -> ~475 spans/day -> ~14K/month, ~14% of the tier. The sample is
+    // thinner per tool (~12/day across ~40 tools) but it is no longer the
+    // only thing between an incident and silence: shouldRecordTraceSpan keeps
+    // EVERY failed tool call regardless of this rate, bounded by the storm
+    // guard rather than by dice. Sampling successes is now purely a question
+    // of how tight the latency percentiles need to be -- which is the question
+    // a sample rate should have been answering all along.
+    "POSTHOG_TRACES_SAMPLE_RATE_MCP": "0.25",
     // usage_event sampling, sized against the 1M/MONTH free tier. See
     // src/usage-telemetry.ts's sampling header for the mechanism (and for
     // what is never sampled: failures and MCP tool calls).

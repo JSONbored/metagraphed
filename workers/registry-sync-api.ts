@@ -34,7 +34,7 @@ import {
   newSpanId,
   newTraceId,
   recordTraceSpan,
-  shouldSampleTrace,
+  shouldRecordTraceSpan,
 } from "../src/tracing.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
@@ -336,14 +336,11 @@ export default {
     // fire exactly never. captureRegistrySyncError already covers the write
     // path's own catch (:543); this covers everything that escapes it, which
     // until now reached only Cloudflare's logs.
-    if (!shouldSampleTrace(env)) {
-      try {
-        return await dispatchRegistrySyncRequest(request, env);
-      } catch (error) {
-        await captureRegistrySyncError(error, env);
-        throw error;
-      }
-    }
+    // The pre-dispatch sampling branch collapsed into the single path below
+    // for the same reason as workers/data-api.ts: the keep/drop decision is
+    // outcome-aware now (shouldRecordTraceSpan) and `ok` is only known in the
+    // finally. captureRegistrySyncError still runs on every escape, exactly
+    // as it did from the unsampled branch this replaces.
     const startedAt = Date.now();
     const route = "registry-sync";
     let ok = true;
@@ -356,16 +353,18 @@ export default {
       await captureRegistrySyncError(error, env);
       throw error;
     } finally {
-      await recordTraceSpan(env, {
-        traceId: newTraceId(),
-        spanId: newSpanId(),
-        name: route,
-        startTimeMs: startedAt,
-        endTimeMs: Date.now(),
-        ok,
-        serviceName: "metagraphed-registry-sync-api",
-        attributes: { route },
-      });
+      if (shouldRecordTraceSpan(env, { name: route, ok })) {
+        await recordTraceSpan(env, {
+          traceId: newTraceId(),
+          spanId: newSpanId(),
+          name: route,
+          startTimeMs: startedAt,
+          endTimeMs: Date.now(),
+          ok,
+          serviceName: "metagraphed-registry-sync-api",
+          attributes: { route },
+        });
+      }
     }
   },
 };

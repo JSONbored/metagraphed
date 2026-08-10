@@ -594,11 +594,26 @@ test("captures a write failure as a PostHog $exception (previously only console.
   } finally {
     globalThis.fetch = original;
   }
-  expect(calls.length).toBe(1);
-  expect(calls[0].event).toBe("$exception");
-  expect(calls[0].properties.route).toBe("registry-sync");
-  expect(calls[0].properties.error_code).toBe("internal_error");
-  expect(calls[0].properties.$exception_list[0].value).toBe("connection reset");
+  // TWO captures, not one, since tracing became outcome-aware: the $exception
+  // and an OTLP failure span. This env sets no trace sample rate, which used
+  // to mean the 502 below produced no span at all -- shouldRecordTraceSpan
+  // ignores the rate for `ok: false`. Matched by SHAPE rather than index so
+  // the assertion doesn't quietly depend on which capture drains first.
+  expect(calls.length).toBe(2);
+  const exception = calls.find((call) => call.event === "$exception") as Row;
+  const trace = calls.find((call) => call.resourceSpans !== undefined) as Row;
+  expect(exception).toBeDefined();
+  expect(exception.properties.route).toBe("registry-sync");
+  expect(exception.properties.error_code).toBe("internal_error");
+  expect(exception.properties.$exception_list[0].value).toBe(
+    "connection reset",
+  );
+  expect(trace).toBeDefined();
+  const span = trace.resourceSpans[0].scopeSpans[0].spans[0];
+  expect(span.name).toBe("registry-sync");
+  // OTLP status 2 == ERROR. The span records the same outcome the $exception
+  // does, which is the point of keeping failures unsampled in both lanes.
+  expect(span.status.code).toBe(2);
 });
 
 // metagraphed#7768: PostHog distributed tracing -- one root span per

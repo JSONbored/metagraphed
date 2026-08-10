@@ -351,7 +351,34 @@
     // usage_event can only measure from the outside (that timing includes the
     // DATA_API subrequest, so tier latency is currently unattributable).
     // Re-derive from measurement -- not estimate -- if volume shape moves.
-    "POSTHOG_TRACES_SAMPLE_RATE": "0.01",
+    //
+    // 0.01 -> 0.002, because the headroom line above is off by 10x. Spans are
+    // NOT product-analytics events: PostHog bills generations, spans and
+    // traces against AI Observability, 100K events/month free
+    // (posthog.com/ai-observability/pricing). There is no "~600K spans/month
+    // of headroom" -- the entire allocation is 100K, so "0.01 -> 310K/month at
+    // peak" was never 'fits', it was 3.1x the whole tier from this Worker
+    // alone. 0.02 was rejected for being 620K; both numbers were compared
+    // against a budget that does not exist.
+    //
+    // MEASURED 2026-08-10: 2,657 of this Worker's ~2,900 spans over 2.6 days
+    // were /api/v1/internal/usage-rollup -- 92% of its trace volume spent on
+    // machine-to-machine plumbing. src/tracing.ts now excludes internal routes
+    // from SUCCESS spans (#9005's line, finally drawn for the trace lane), so
+    // most of that is gone before this rate is even consulted.
+    //
+    // 0.002 re-derived against the REAL tier and the SAME peak this comment
+    // already refuses to size below:
+    //
+    //   peak 1,032,820 req/day x 0.002  ->  ~2.1K spans/day, ~64K/month
+    //   current  49,670 req/day x 0.002 ->  ~10 spans/day
+    //
+    // The peak case now fits inside 100K alongside MCP's ~14K; the current
+    // case is admittedly thin. That trade is only acceptable because the
+    // sample no longer carries the incident signal: shouldRecordTraceSpan
+    // keeps every 5xx and every uncaught fault at rate 1, storm-guarded. This
+    // rate governs latency percentiles on healthy traffic and nothing else.
+    "POSTHOG_TRACES_SAMPLE_RATE": "0.002",
   },
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,
