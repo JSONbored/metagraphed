@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/evidence-ledger.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListEvidenceInputSchema,
   ListEvidenceOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const EVIDENCE_LEDGER_ARTIFACT = "/metagraph/evidence-ledger.json";
 
@@ -197,14 +197,9 @@ export const LIST_EVIDENCE_MCP_TOOL = {
     "source_url, and support_summary; sort with sort + order; project with " +
     "fields; and page with limit (1-100) / cursor. Distinct from " +
     "list_subnet_evidence (one subnet's claims). Mirrors GET /api/v1/evidence.",
-  inputSchema: z.toJSONSchema(ListEvidenceInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListEvidenceInputSchema),
 };
 
-export const LIST_EVIDENCE_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_EVIDENCE_OUTPUT_SCHEMA = outputJsonSchema(
   ListEvidenceOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

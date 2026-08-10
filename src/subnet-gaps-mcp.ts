@@ -3,7 +3,6 @@
 // as the REST route over the baked /metagraph/review/gaps/{netuid}.json
 // artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetGapsInputSchema,
   ListSubnetGapsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-summary-gaps.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 // The REST route pages this artifact through the review-gap-priorities
 // collection (rows live under `priorities`), not the network-wide `gaps`
@@ -219,14 +219,9 @@ export const LIST_SUBNET_GAPS_MCP_TOOL = {
     "or review_state; sort with sort + order; and page with limit (1-100) / " +
     "cursor. Distinct from get_subnet_gaps (raw artifact dump, which also " +
     "carries the enrichment queue). Mirrors GET /api/v1/subnets/{netuid}/gaps.",
-  inputSchema: z.toJSONSchema(ListSubnetGapsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetGapsInputSchema),
 };
 
-export const LIST_SUBNET_GAPS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_GAPS_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetGapsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

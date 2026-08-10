@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/review/enrichment-evidence.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -11,6 +10,7 @@ import {
   ListEnrichmentEvidenceInputSchema,
   ListEnrichmentEvidenceOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const ENRICHMENT_EVIDENCE_ARTIFACT =
   "/metagraph/review/enrichment-evidence.json";
@@ -234,14 +234,9 @@ export const LIST_ENRICHMENT_EVIDENCE_MCP_TOOL = {
     "sort with sort + order; and page with limit (1-100) / cursor. Distinct from " +
     "list_enrichment_queue (prioritized queue summary) and get_subnet_evidence " +
     "(one subnet's live evidence). Mirrors GET /api/v1/review/enrichment-evidence.",
-  inputSchema: z.toJSONSchema(ListEnrichmentEvidenceInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListEnrichmentEvidenceInputSchema),
 };
 
-export const LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_ENRICHMENT_EVIDENCE_OUTPUT_SCHEMA = outputJsonSchema(
   ListEnrichmentEvidenceOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

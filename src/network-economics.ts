@@ -2,7 +2,6 @@
 // Pure orchestration over resolveLiveEconomics + applyQueryFilters; MCP/REST
 // handlers keep tier precedence and envelope wiring.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -15,6 +14,7 @@ import {
   GetEconomicsInputSchema,
   GetEconomicsOutputSchema,
 } from "../schemas-src/mcp-tools/get-economics.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const ECONOMICS_SORT_FIELDS = API_QUERY_COLLECTIONS.economics.sort_fields;
 
@@ -217,12 +217,9 @@ export const GET_ECONOMICS_MCP_TOOL = {
     "snapshot. Filter by netuid or registration_allowed, search by name/slug " +
     "(q), sort with sort + order, and page with limit (1-1000) / cursor. " +
     "Mirrors GET /api/v1/economics.",
-  inputSchema: z.toJSONSchema(GetEconomicsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetEconomicsInputSchema),
 };
 
-export const GET_ECONOMICS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_ECONOMICS_OUTPUT_SCHEMA = outputJsonSchema(
   GetEconomicsOutputSchema,
-  { target: "draft-2020-12" },
 );

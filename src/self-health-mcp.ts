@@ -62,7 +62,6 @@
 // resolver, the tests below pin them tier-for-tier -- that pin is the only
 // thing standing between here and a fifth repeat.
 
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
 import { loadSelfHealthNeon } from "./self-health-neon.ts";
@@ -75,6 +74,7 @@ import {
   GetSelfHealthInputSchema,
   GetSelfHealthOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const SELF_HEALTH_ARTIFACT = "/metagraph/self-health.json";
 
@@ -238,14 +238,9 @@ export const GET_SELF_HEALTH_MCP_TOOL = {
     "ratios, plus the rolled-up operational/degraded/outage verdict. Scoped " +
     "strictly to our own surfaces -- never third-party subnet health (that is " +
     "get_health). Mirrors GET /api/v1/self-health.",
-  inputSchema: z.toJSONSchema(GetSelfHealthInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetSelfHealthInputSchema),
 };
 
-export const GET_SELF_HEALTH_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_SELF_HEALTH_OUTPUT_SCHEMA = outputJsonSchema(
   GetSelfHealthOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

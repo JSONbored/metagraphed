@@ -4,7 +4,6 @@
 // blobs) — the same subnet/surface/provider corpus search_subnets reads but
 // without its subnet-only filter, and unlike list_search_index it keeps tokens.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -13,6 +12,7 @@ import {
   ListSearchInputSchema,
   ListSearchOutputSchema,
 } from "../schemas-src/mcp-tools/search-documents.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const SEARCH_ARTIFACT = "/metagraph/search.json";
 
@@ -192,14 +192,9 @@ export const LIST_SEARCH_MCP_TOOL = {
     "providers even when the AI layer semantic_search depends on is not configured. " +
     "Unlike list_search_index, which serves the slim variant without token blobs, " +
     "this keeps the full documents. Use semantic_search for meaning-based discovery.",
-  inputSchema: z.toJSONSchema(ListSearchInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSearchInputSchema),
 };
 
-export const LIST_SEARCH_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SEARCH_OUTPUT_SCHEMA = outputJsonSchema(
   ListSearchOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

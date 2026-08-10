@@ -8,7 +8,6 @@
 // mirrors provider-endpoints-mcp.ts (endpoints collection filters) and
 // rpc-pools-mcp.ts (live overlay before filter).
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -18,6 +17,7 @@ import {
   ListRpcEndpointsInputSchema,
   ListRpcEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const RPC_ENDPOINTS_ARTIFACT = "/metagraph/rpc-endpoints.json";
 
@@ -326,14 +326,9 @@ export const LIST_RPC_ENDPOINTS_MCP_TOOL = {
     "with limit / cursor. This is the full-catalog view; use " +
     "get_best_rpc_endpoint instead to pick one live-healthy endpoint. " +
     "Mirrors GET /api/v1/rpc/endpoints.",
-  inputSchema: z.toJSONSchema(ListRpcEndpointsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListRpcEndpointsInputSchema),
 };
 
-export const LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA = outputJsonSchema(
   ListRpcEndpointsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

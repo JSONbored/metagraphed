@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/evidence/{netuid}.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetEvidenceInputSchema,
   ListSubnetEvidenceOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-registry-lists.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const CLAIM_SORT_FIELDS = API_QUERY_COLLECTIONS.claims.sort_fields;
 
@@ -204,14 +204,9 @@ export const LIST_SUBNET_EVIDENCE_MCP_TOOL = {
     "cursor. Distinct from get_subnet_evidence (raw artifact dump) and " +
     "list_evidence (network-wide ledger). Mirrors " +
     "GET /api/v1/subnets/{netuid}/evidence.",
-  inputSchema: z.toJSONSchema(ListSubnetEvidenceInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetEvidenceInputSchema),
 };
 
-export const LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetEvidenceOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

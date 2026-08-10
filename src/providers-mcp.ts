@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/providers.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListProvidersInputSchema,
   ListProvidersOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const PROVIDERS_ARTIFACT = "/metagraph/providers.json";
 
@@ -195,14 +195,9 @@ export const LIST_PROVIDERS_MCP_TOOL = {
     "project with fields; and page with limit (1-100) / cursor. This is the list " +
     "counterpart to get_provider_detail (one provider by slug). Mirrors " +
     "GET /api/v1/providers.",
-  inputSchema: z.toJSONSchema(ListProvidersInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListProvidersInputSchema),
 };
 
-export const LIST_PROVIDERS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_PROVIDERS_OUTPUT_SCHEMA = outputJsonSchema(
   ListProvidersOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

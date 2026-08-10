@@ -2,7 +2,6 @@
 // GET /api/v1/health/history/{date}. Artifact-backed list-query over dated
 // health/history snapshots with health-surfaces filters.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
@@ -11,6 +10,7 @@ import {
   GetHealthHistoryInputSchema,
   GetHealthHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-health-history.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const HEALTH_SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;
@@ -198,12 +198,9 @@ export const GET_HEALTH_HISTORY_MCP_TOOL = {
     "classification; sort with sort + order; page with limit (1-1000) / cursor. " +
     "Use get_network_health for the live rollup and get_health_trends for the " +
     "7d/30d matrix. Mirrors GET /api/v1/health/history/{date}.",
-  inputSchema: z.toJSONSchema(GetHealthHistoryInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetHealthHistoryInputSchema),
 };
 
-export const GET_HEALTH_HISTORY_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_HEALTH_HISTORY_OUTPUT_SCHEMA = outputJsonSchema(
   GetHealthHistoryOutputSchema,
-  { target: "draft-2020-12" },
 );

@@ -2,12 +2,12 @@
 // Serves the baked /metagraph/contracts.json artifact (public artifact
 // contract metadata for registry consumers).
 
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
   GetContractsInputSchema,
   GetContractsOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const CONTRACTS_ARTIFACT = "/metagraph/contracts.json";
 
@@ -68,14 +68,9 @@ export const GET_CONTRACTS_MCP_TOOL = {
     "artifact path, storage tier, schema reference, and consumer notes. Use it " +
     "to discover which artifacts exist and how to read them before calling " +
     "get_api_schema or list_schemas. Mirrors GET /api/v1/contracts.",
-  inputSchema: z.toJSONSchema(GetContractsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetContractsInputSchema),
 };
 
-export const GET_CONTRACTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_CONTRACTS_OUTPUT_SCHEMA = outputJsonSchema(
   GetContractsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

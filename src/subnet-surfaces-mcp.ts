@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/surfaces/{netuid}.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetSurfacesInputSchema,
   ListSubnetSurfacesOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields;
@@ -228,14 +228,9 @@ export const LIST_SUBNET_SURFACES_MCP_TOOL = {
     "Filter by kind, provider, or id; sort with sort + order; and page with " +
     "limit (1-100) / cursor. The filtered sibling of get_subnet_surfaces (raw " +
     "artifact dump). Mirrors GET /api/v1/subnets/{netuid}/surfaces.",
-  inputSchema: z.toJSONSchema(ListSubnetSurfacesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetSurfacesInputSchema),
 };
 
-export const LIST_SUBNET_SURFACES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_SURFACES_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetSurfacesOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

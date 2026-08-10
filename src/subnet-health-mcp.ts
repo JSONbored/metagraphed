@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/health/subnets/{netuid}.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetHealthInputSchema,
   ListSubnetHealthOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const HEALTH_SORT_FIELDS = API_QUERY_COLLECTIONS["health-surfaces"].sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -221,14 +221,9 @@ export const LIST_SUBNET_HEALTH_MCP_TOOL = {
     "or classification; sort with sort + order; and page with limit (1-100) / " +
     "cursor. The filtered sibling of get_subnet_health (raw artifact dump). " +
     "Mirrors GET /api/v1/subnets/{netuid}/health.",
-  inputSchema: z.toJSONSchema(ListSubnetHealthInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetHealthInputSchema),
 };
 
-export const LIST_SUBNET_HEALTH_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_HEALTH_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetHealthOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

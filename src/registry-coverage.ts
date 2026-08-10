@@ -1,12 +1,12 @@
 // Registry coverage loader for MCP parity on GET /api/v1/coverage.
 // Serves the baked /metagraph/coverage.json artifact (surface counts,
 // completeness aggregate, domain breakdown).
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
   GetCoverageInputSchema,
   GetCoverageOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const REGISTRY_COVERAGE_ARTIFACT = "/metagraph/coverage.json";
 
@@ -69,14 +69,9 @@ export const GET_COVERAGE_MCP_TOOL = {
     "Use for a fast registry-wide coverage snapshot before drilling into " +
     "list_enrichment_targets (coverage-depth queue) or registry_summary. " +
     "Mirrors GET /api/v1/coverage.",
-  inputSchema: z.toJSONSchema(GetCoverageInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetCoverageInputSchema),
 };
 
-export const GET_COVERAGE_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_COVERAGE_OUTPUT_SCHEMA = outputJsonSchema(
   GetCoverageOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/endpoint-pools.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListEndpointPoolsInputSchema,
   ListEndpointPoolsOutputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const ENDPOINT_POOLS_ARTIFACT = "/metagraph/endpoint-pools.json";
 
@@ -229,14 +229,9 @@ export const LIST_ENDPOINT_POOLS_MCP_TOOL = {
     "min_/max_endpoint_count, sort with sort + order, and page with limit (1-100) / " +
     "cursor. Complements list_endpoints (individual resources) and list_rpc_pools " +
     "(Bittensor RPC proxy pools). Mirrors GET /api/v1/endpoint-pools.",
-  inputSchema: z.toJSONSchema(ListEndpointPoolsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListEndpointPoolsInputSchema),
 };
 
-export const LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA = outputJsonSchema(
   ListEndpointPoolsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

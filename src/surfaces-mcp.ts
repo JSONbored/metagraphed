@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/surfaces.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListSurfacesInputSchema,
   ListSurfacesOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-1.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const SURFACES_ARTIFACT = "/metagraph/surfaces.json";
 
@@ -223,14 +223,9 @@ export const LIST_SURFACES_MCP_TOOL = {
     "fields; and page with limit (1-100) / cursor. Distinct from " +
     "get_subnet_surfaces (one subnet's raw artifact dump). Mirrors " +
     "GET /api/v1/surfaces.",
-  inputSchema: z.toJSONSchema(ListSurfacesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSurfacesInputSchema),
 };
 
-export const LIST_SURFACES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SURFACES_OUTPUT_SCHEMA = outputJsonSchema(
   ListSurfacesOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/review/enrichment-targets.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListReviewEnrichmentTargetsInputSchema,
   ListReviewEnrichmentTargetsOutputSchema,
 } from "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const REVIEW_ENRICHMENT_TARGETS_ARTIFACT =
   "/metagraph/review/enrichment-targets.json";
@@ -289,14 +289,9 @@ export const LIST_REVIEW_ENRICHMENT_TARGETS_MCP_TOOL = {
     "(1-100) / cursor. Distinct from list_enrichment_targets (coverage-depth scorecard) " +
     "and list_enrichment_queue (prioritized queue summary). Mirrors " +
     "GET /api/v1/review/enrichment-targets.",
-  inputSchema: z.toJSONSchema(ListReviewEnrichmentTargetsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListReviewEnrichmentTargetsInputSchema),
 };
 
-export const LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_REVIEW_ENRICHMENT_TARGETS_OUTPUT_SCHEMA = outputJsonSchema(
   ListReviewEnrichmentTargetsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

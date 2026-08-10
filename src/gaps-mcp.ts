@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/gaps.json artifact.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListGapsInputSchema,
   ListGapsOutputSchema,
 } from "../schemas-src/mcp-tools/curation-and-gaps.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const GAPS_ARTIFACT = "/metagraph/gaps.json";
 
@@ -201,11 +201,7 @@ export const LIST_GAPS_MCP_TOOL = {
     "or curation_level, sort with sort + order, and page with limit (1-100) / " +
     "cursor. Use get_subnet_gaps for one subnet's contributor enrichment queue. " +
     "Mirrors GET /api/v1/gaps.",
-  inputSchema: z.toJSONSchema(ListGapsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListGapsInputSchema),
 };
 
-export const LIST_GAPS_OUTPUT_SCHEMA = z.toJSONSchema(ListGapsOutputSchema, {
-  target: "draft-2020-12",
-});
+export const LIST_GAPS_OUTPUT_SCHEMA = outputJsonSchema(ListGapsOutputSchema);

@@ -2,7 +2,6 @@
 // GET /api/v1/subnets/{netuid}/profile. Artifact-backed list-query over
 // profiles.json and per-netuid profile detail snapshots.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -13,6 +12,7 @@ import {
   GetSubnetProfileInputSchema,
   GetSubnetProfileOutputSchema,
 } from "../schemas-src/mcp-tools/profiles.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const PROFILES_SORT_FIELDS = API_QUERY_COLLECTIONS.profiles.sort_fields;
 
@@ -223,9 +223,7 @@ export const LIST_PROFILES_MCP_TOOL = {
     "review_state, confidence, or profile_level; search by name/slug/project " +
     "(q); sort with sort + order; page with limit (1-1000) / cursor. Mirrors " +
     "GET /api/v1/profiles.",
-  inputSchema: z.toJSONSchema(ListProfilesInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListProfilesInputSchema),
 };
 
 export const GET_SUBNET_PROFILE_MCP_TOOL = {
@@ -236,17 +234,13 @@ export const GET_SUBNET_PROFILE_MCP_TOOL = {
     "score, curation and review metadata, native identity signals, surface " +
     "counts, and contributor-facing enrichment context. Mirrors " +
     "GET /api/v1/subnets/{netuid}/profile.",
-  inputSchema: z.toJSONSchema(GetSubnetProfileInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetSubnetProfileInputSchema),
 };
 
-export const LIST_PROFILES_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_PROFILES_OUTPUT_SCHEMA = outputJsonSchema(
   ListProfilesOutputSchema,
-  { target: "draft-2020-12" },
 );
 
-export const GET_SUBNET_PROFILE_OUTPUT_SCHEMA = z.toJSONSchema(
+export const GET_SUBNET_PROFILE_OUTPUT_SCHEMA = outputJsonSchema(
   GetSubnetProfileOutputSchema,
-  { target: "draft-2020-12" },
 );

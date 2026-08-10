@@ -2,7 +2,6 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/search-index.json artifact (slim documents without token blobs).
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
@@ -10,6 +9,7 @@ import {
   ListSearchIndexInputSchema,
   ListSearchIndexOutputSchema,
 } from "../schemas-src/mcp-tools/search-documents.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const SEARCH_INDEX_ARTIFACT = "/metagraph/search-index.json";
 
@@ -210,14 +210,9 @@ export const LIST_SEARCH_INDEX_MCP_TOOL = {
     "order; project with fields; and page with limit (1-100) / cursor. Use " +
     "semantic_search for meaning-based discovery or search_subnets for keyword " +
     "subnet lookup. Mirrors GET /api/v1/search-index.",
-  inputSchema: z.toJSONSchema(ListSearchIndexInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSearchIndexInputSchema),
 };
 
-export const LIST_SEARCH_INDEX_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SEARCH_INDEX_OUTPUT_SCHEMA = outputJsonSchema(
   ListSearchIndexOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

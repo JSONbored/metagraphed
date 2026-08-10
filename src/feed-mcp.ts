@@ -12,7 +12,6 @@
 // wiring instead of a second path that would bypass the module's
 // injected-KV convention (see mcp-server.ts's header comment).
 
-import { z } from "zod";
 import { FILTER_TEXT_MAX_LENGTH } from "../schemas-src/query-params.ts";
 import {
   FEED_MAX_ITEMS,
@@ -34,6 +33,7 @@ import {
   GetFeedInputSchema,
   GetFeedOutputSchema,
 } from "../schemas-src/mcp-tools/feed.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export { FEED_KINDS };
 const ENRICHMENT_QUEUE_ARTIFACT = "/metagraph/review/enrichment-queue.json";
@@ -276,11 +276,7 @@ export const GET_FEED_MCP_TOOL = {
     "runtime upgrade activity -- subtensor releases, observed mainnet/testnet " +
     "spec-version changes, and BIT documents -- and reports observed states " +
     "only: no deploy date is predicted, because none is published.",
-  inputSchema: z.toJSONSchema(GetFeedInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetFeedInputSchema),
 };
 
-export const GET_FEED_OUTPUT_SCHEMA = z.toJSONSchema(GetFeedOutputSchema, {
-  target: "draft-2020-12",
-});
+export const GET_FEED_OUTPUT_SCHEMA = outputJsonSchema(GetFeedOutputSchema);

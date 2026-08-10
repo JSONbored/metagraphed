@@ -7,7 +7,6 @@
 // endpoint-pools-mcp.ts (the generalized sibling collection), which has no
 // live-overlay step of its own.
 
-import { z } from "zod";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
@@ -17,6 +16,7 @@ import {
   ListRpcPoolsInputSchema,
   ListRpcPoolsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 
@@ -256,14 +256,9 @@ export const LIST_RPC_POOLS_MCP_TOOL = {
     "list_rpc_endpoints (the individual endpoints), get_best_rpc_endpoint (the " +
     "pick-one shortcut), and list_endpoint_pools (the generalized sibling). " +
     "Mirrors GET /api/v1/rpc/pools.",
-  inputSchema: z.toJSONSchema(ListRpcPoolsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListRpcPoolsInputSchema),
 };
 
-export const LIST_RPC_POOLS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_RPC_POOLS_OUTPUT_SCHEMA = outputJsonSchema(
   ListRpcPoolsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );

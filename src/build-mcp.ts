@@ -2,12 +2,12 @@
 // Serves the baked /metagraph/build-summary.json artifact (artifact inventory,
 // counts, and publish metadata).
 
-import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import {
   GetBuildInputSchema,
   GetBuildOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 export const BUILD_SUMMARY_ARTIFACT = "/metagraph/build-summary.json";
 
@@ -65,11 +65,7 @@ export const GET_BUILD_MCP_TOOL = {
     "subnet/provider/surface totals, coverage rollup, and publish metadata. " +
     "Use it to inspect the latest registry publish footprint before drilling " +
     "into get_changelog or get_freshness. Mirrors GET /api/v1/build.",
-  inputSchema: z.toJSONSchema(GetBuildInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(GetBuildInputSchema),
 };
 
-export const GET_BUILD_OUTPUT_SCHEMA = z.toJSONSchema(GetBuildOutputSchema, {
-  target: "draft-2020-12",
-});
+export const GET_BUILD_OUTPUT_SCHEMA = outputJsonSchema(GetBuildOutputSchema);

@@ -3,7 +3,6 @@
 // transforms as the REST route over the baked
 // /metagraph/endpoints/{netuid}.json artifact.
 
-import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -12,6 +11,7 @@ import {
   ListSubnetEndpointsInputSchema,
   ListSubnetEndpointsOutputSchema,
 } from "../schemas-src/mcp-tools/subnet-scoped-lists.ts";
+import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
 
 const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
@@ -261,14 +261,9 @@ export const LIST_SUBNET_ENDPOINTS_MCP_TOOL = {
     "sort with sort + order; and page with limit (1-100) / cursor. Distinct from " +
     "get_subnet_endpoints (raw artifact dump) and list_endpoints (network-wide " +
     "catalog). Mirrors GET /api/v1/subnets/{netuid}/endpoints.",
-  inputSchema: z.toJSONSchema(ListSubnetEndpointsInputSchema, {
-    target: "draft-2020-12",
-  }),
+  inputSchema: inputJsonSchema(ListSubnetEndpointsInputSchema),
 };
 
-export const LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA = z.toJSONSchema(
+export const LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA = outputJsonSchema(
   ListSubnetEndpointsOutputSchema,
-  {
-    target: "draft-2020-12",
-  },
 );
