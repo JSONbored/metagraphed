@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { API_ROUTES } from "../src/contracts.ts";
 import {
@@ -144,5 +145,57 @@ describe("the live smoke supplies every required query param (#9663)", () => {
     for (const [routePath] of REQUIRES) {
       assert.ok(paths.has(routePath), `${routePath} is no longer a route`);
     }
+  });
+});
+
+describe("the entry point runs after every declaration", () => {
+  // WHY THE 214 TESTS ABOVE CANNOT CATCH THIS. They all import
+  // scripts/smoke-live-api.ts and call liveSmokeApiRoutes -- and importing a
+  // module RUNS IT TO COMPLETION first, so by the time any of them calls
+  // anything, every `const` is initialised. The hazard is the opposite order:
+  // the script invokes runLiveSmoke at MODULE SCOPE, so it executes while
+  // later declarations are still in their temporal dead zone.
+  //
+  // On 2026-08-08 that killed the production publish gate for two days.
+  // `CALLER_OWNED_ROUTE_IDS` was declared at line 646 and read at 622, and the
+  // run died with `ReferenceError: Cannot access ... before initialization` on
+  // every attempt. These 214 tests were green throughout, and the retry wrapper
+  // reported it as "edge cache may still be revalidating".
+  //
+  // MY FIRST ATTEMPT AT THIS TEST WAS VACUOUS and is worth recording. It
+  // spawned the script against a closed port and asserted the output carried no
+  // ReferenceError -- which passed on the BROKEN file, because the first thing
+  // runLiveSmoke does is a network call, and pointing at a dead host makes it
+  // throw long before it reaches the line that would have crashed. A subprocess
+  // that reproduces the bug needs the network to WORK, which is not a unit test.
+  //
+  // So this asserts the STRUCTURE instead: the invocation must come after the
+  // last top-level declaration. That is the invariant the fix established, it
+  // is checkable without running anything, and it fails on the broken file.
+  const source = readFileSync("scripts/smoke-live-api.ts", "utf8");
+
+  test("the invocation is below every top-level const and let", () => {
+    const call = source.indexOf("await runLiveSmoke()");
+    assert.notEqual(call, -1, "the entry-point call was not found -- renamed?");
+
+    const declarations = [...source.matchAll(/^(?:const|let) \w+/gm)];
+    // Anchored on the one that actually broke, not only on a count. Four is
+    // the real number today and a bare `>= 4` would survive the scan silently
+    // matching something else; requiring CALLER_OWNED_ROUTE_IDS by name ties
+    // this to the incident it exists for.
+    assert.ok(
+      declarations.some((d) => d[0].includes("CALLER_OWNED_ROUTE_IDS")),
+      `the scan did not find CALLER_OWNED_ROUTE_IDS among ${declarations.length} ` +
+        `top-level declarations -- it stopped working, so this assertion is ` +
+        `passing on nothing`,
+    );
+    const last = declarations[declarations.length - 1]!;
+    assert.ok(
+      call > last.index,
+      `\`await runLiveSmoke()\` is at ${call} but a top-level declaration ` +
+        `(${last[0]}) is at ${last.index}. Everything below the call is in its ` +
+        `temporal dead zone when it runs -- move the call to the foot of the ` +
+        `file, not the declaration up.`,
+    );
   });
 });
