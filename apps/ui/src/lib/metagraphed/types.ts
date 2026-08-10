@@ -4195,22 +4195,38 @@ export interface SubnetValidatorEconomics {
  * Each stage carries a `*_reachable` flag so an unavailable stage renders as
  * unknown rather than as zero — a stage that could not be read is not a stage
  * with nothing in it.
+ *
+ * NO TOTAL HERE IS AN ARRAY LENGTH OF A TRUNCATED LIST. `candidate_count` comes
+ * from source-snapshots' server-computed summary; the sample lists are fetched
+ * bounded and are NOT counted. `/api/v1/candidates` accepts `?limit=` and
+ * publishes no total, so counting a limited fetch would report the limit.
  */
 export interface RegistryPipeline {
   candidates_reachable: boolean;
-  candidate_count: number;
-  /** Replaced by a better source — a pipeline success, not a rejection. */
-  superseded_count: number;
+  /** Server-computed, from source-snapshots. Never a sample's length. */
+  candidate_count: number | null;
+  /** A BOUNDED sample, for display only. Never counted. */
+  recent_candidates: PipelineSample[];
   curation_reachable: boolean;
+  /** Curation is fetched whole, so this length is the real count. */
   curated_subnet_count: number;
+  /** A sum over EVERY curated subnet — a sum over a truncated list is wrong. */
   gap_total: number;
   profiles_reachable: boolean;
-  profile_count: number;
+  /** A BOUNDED sample, for display only. Never counted. */
+  recent_profiles: PipelineSample[];
   snapshots_reachable: boolean;
   source_count: number | null;
   verification_result_count: number | null;
   sources: SourceSnapshot[];
   generated_at: string | null;
+}
+
+/** One row of a bounded sample list. Display only — never a population. */
+export interface PipelineSample {
+  id: string;
+  name: string | null;
+  detail: string | null;
 }
 
 export interface SourceSnapshot {

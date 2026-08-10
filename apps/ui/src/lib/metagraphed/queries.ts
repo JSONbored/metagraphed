@@ -237,6 +237,7 @@ import type {
   SubnetEmissionPipelinePoint,
   SubnetSurfaceChange,
   RegistryPipeline,
+  PipelineSample,
   SourceSnapshot,
   Crowdloan,
   FixtureLookup,
@@ -5561,7 +5562,23 @@ function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomic
  * the four stages of how a surface gets into this registry, and #10300's point
  * about them is the one that matters: "no page exists" and "no page should
  * exist" are indistinguishable from outside. This is the page.
+ *
+ * ## THE COUNT DOES NOT COME FROM AN ARRAY LENGTH
+ *
+ * `/api/v1/candidates` is 3.6MB unlimited, and it accepts `?limit=` -- but NO
+ * total survives the trim. The response is `{candidates, generated_at, notes,
+ * schema_version}`, so a limited fetch counted by `candidates.length` silently
+ * reports the LIMIT as the total. Fetching it whole just to count it would be
+ * 3.6MB for one number, and adding a limit later would quietly make that number
+ * wrong -- the exact "confident wrong figure" this whole panel is about.
+ *
+ * So the total comes from `source-snapshots`, whose `summary.candidate_count`
+ * is server-computed (2,184, verified equal to the full array on 2026-08-10) in
+ * a 17KB payload, and the list routes are fetched BOUNDED as samples. Nothing
+ * here derives a total from a list it truncated.
  */
+const PIPELINE_SAMPLE = 12;
+
 export const registryPipelineQuery = () =>
   queryOptions({
     queryKey: k("registry-pipeline"),
@@ -5571,9 +5588,11 @@ export const registryPipelineQuery = () =>
       // whole point is showing where things stall would be useless if any
       // stalled stage took the view down with it.
       const [candidates, curation, profiles, snapshots] = await Promise.allSettled([
-        apiFetch<Record<string, unknown>>("/api/v1/candidates", { signal }),
+        apiFetch<Record<string, unknown>>(`/api/v1/candidates?limit=${PIPELINE_SAMPLE}`, {
+          signal,
+        }),
         apiFetch<Record<string, unknown>>("/api/v1/curation", { signal }),
-        apiFetch<Record<string, unknown>>("/api/v1/profiles", { signal }),
+        apiFetch<Record<string, unknown>>(`/api/v1/profiles?limit=${PIPELINE_SAMPLE}`, { signal }),
         apiFetch<Record<string, unknown>>("/api/v1/source-snapshots", { signal }),
       ]);
       const body = (r: PromiseSettledResult<{ data: unknown }>): Record<string, unknown> =>
@@ -5586,20 +5605,28 @@ export const registryPipelineQuery = () =>
       const snap = body(snapshots);
       const snapSummary = isRecord(snap.summary) ? snap.summary : {};
 
-      const candidateRows = Array.isArray(cand.candidates) ? cand.candidates : [];
+      // Curation is fetched WHOLE (158KB) because `gap_total` is a sum over
+      // every curated subnet -- a sum over a truncated list is not a smaller
+      // sum, it is a wrong one.
       const curationRows = Array.isArray(cur.curation) ? cur.curation : [];
 
       return {
         data: {
           candidates_reachable: ok(candidates),
-          candidate_count: candidateRows.length,
-          // A SUPERSEDED candidate is not a rejected one -- it was replaced by
-          // a better source, which is a success of the pipeline rather than a
-          // failure, and folding the two together would make intake look worse
-          // than it is.
-          superseded_count: candidateRows.filter(
-            (c) => isRecord(c) && firstString(c.superseded_by) !== undefined,
-          ).length,
+          // From the SERVER's own total, never from the sample above.
+          candidate_count: firstFiniteNumber(snapSummary.candidate_count) ?? null,
+          recent_candidates: (Array.isArray(cand.candidates) ? cand.candidates : [])
+            .map((raw): PipelineSample | null => {
+              if (!isRecord(raw)) return null;
+              const id = firstString(raw.id);
+              if (!id) return null;
+              return {
+                id,
+                name: firstString(raw.name) ?? firstString(raw.subnet_name) ?? null,
+                detail: firstString(raw.state) ?? null,
+              };
+            })
+            .filter((c): c is PipelineSample => c !== null),
           curation_reachable: ok(curation),
           curated_subnet_count: curationRows.length,
           // TWO LADDERS, not one. `coverage_level` is how much we have;
@@ -5610,7 +5637,24 @@ export const registryPipelineQuery = () =>
             0,
           ),
           profiles_reachable: ok(profiles),
-          profile_count: Array.isArray(prof.profiles) ? prof.profiles.length : 0,
+          recent_profiles: (Array.isArray(prof.profiles) ? prof.profiles : [])
+            .map((raw): PipelineSample | null => {
+              if (!isRecord(raw)) return null;
+              const netuid = firstFiniteNumber(raw.netuid);
+              if (netuid === undefined) return null;
+              const score = firstFiniteNumber(raw.completeness_score);
+              return {
+                id: `sn-${netuid}`,
+                name: firstString(raw.name) ?? `SN${netuid}`,
+                // ALREADY A PERCENTAGE (0-100, measured 25..97 across a live
+                // sample on 2026-08-10), not a 0..1 ratio like every other
+                // share on this API. Multiplying by 100 here rendered
+                // "9000% complete" -- caught by checking a real payload rather
+                // than assuming this field matched its neighbours.
+                detail: score === undefined ? null : `${Math.round(score)}% complete`,
+              };
+            })
+            .filter((p): p is PipelineSample => p !== null),
           snapshots_reachable: ok(snapshots),
           source_count: firstFiniteNumber(snapSummary.source_count) ?? null,
           verification_result_count:

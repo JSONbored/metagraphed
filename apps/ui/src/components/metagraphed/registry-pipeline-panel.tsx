@@ -4,6 +4,7 @@ import { registryPipelineQuery, fixtureQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, ErrorState } from "@/components/metagraphed/states";
 import { formatNumber, formatRelative } from "@/lib/metagraphed/format";
+import type { PipelineSample } from "@/lib/metagraphed/types";
 
 const SOURCES_SHOWN = 8;
 
@@ -25,6 +26,10 @@ const SOURCES_SHOWN = 8;
  * renders as unknown, never as zero: "no candidates" and "the candidates route
  * is down" are opposite findings, and a pipeline view that showed both as 0
  * would be worse than no view at all.
+ *
+ * THE COUNTS ARE NOT SAMPLE LENGTHS. The candidate total is the server's own,
+ * and the lists below it are bounded samples that are never counted -- see the
+ * query for why that distinction is load-bearing rather than fussy.
  */
 export function RegistryPipelinePanel() {
   const { data, isLoading, isError, error, refetch } = useQuery(registryPipelineQuery());
@@ -41,15 +46,12 @@ export function RegistryPipelinePanel() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <Stage
             label="candidates"
-            reachable={p.candidates_reachable}
+            // Gated on SNAPSHOTS, not candidates: this total comes from the
+            // source-snapshot summary, so it is that route's reachability that
+            // decides whether the number can be shown.
+            reachable={p.snapshots_reachable}
             value={formatNumber(p.candidate_count)}
-            hint="Discovered surfaces awaiting verification."
-          />
-          <Stage
-            label="superseded"
-            reachable={p.candidates_reachable}
-            value={formatNumber(p.superseded_count)}
-            hint="Candidates replaced by a better source. NOT rejections — a supersede is the pipeline working, so it is counted apart from failures."
+            hint="Discovered surfaces awaiting verification. Server-computed total — the list below is a bounded sample and is deliberately not counted."
           />
           <Stage
             label="curated subnets"
@@ -58,15 +60,31 @@ export function RegistryPipelinePanel() {
             hint="Subnets with a curation record. `coverage_level` (how much we have) and `curation_level` (how much a human vouched for) are two different ladders."
           />
           <Stage
-            label="profiles"
-            reachable={p.profiles_reachable}
-            value={formatNumber(p.profile_count)}
-            hint="Subnets with a built profile."
+            label="open gaps"
+            reachable={p.curation_reachable}
+            value={formatNumber(p.gap_total)}
+            hint="Interface gaps summed across EVERY curated subnet — the curation route is fetched whole for this, because a sum over a truncated list is not a smaller sum, it is a wrong one."
+          />
+          <Stage
+            label="verification results"
+            reachable={p.snapshots_reachable}
+            value={formatNumber(p.verification_result_count)}
+            hint="Recorded verification outcomes behind those candidates."
           />
         </div>
-        <p className="mt-3 mg-type-label text-ink-muted">
-          {formatNumber(p.gap_total)} open interface gaps across the curated subnets.
-        </p>
+
+        <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <SampleList
+            title="Latest candidates"
+            reachable={p.candidates_reachable}
+            rows={p.recent_candidates}
+          />
+          <SampleList
+            title="Latest profiles"
+            reachable={p.profiles_reachable}
+            rows={p.recent_profiles}
+          />
+        </div>
       </Panel>
 
       <Panel as="section" dense>
@@ -107,6 +125,48 @@ export function RegistryPipelinePanel() {
           </p>
         )}
       </Panel>
+    </div>
+  );
+}
+
+/**
+ * A bounded sample of one stage's rows.
+ *
+ * Headed "latest N", never "N of M" and never a total: these lists are fetched
+ * with a limit and the route publishes no population, so any count derived here
+ * would be the limit wearing a total's clothes.
+ */
+function SampleList({
+  title,
+  reachable,
+  rows,
+}: {
+  title: string;
+  reachable: boolean;
+  rows: readonly PipelineSample[];
+}) {
+  return (
+    <div>
+      <h4 className="mb-1 mg-type-label text-ink-muted">
+        {title}
+        {reachable && rows.length > 0 ? ` · latest ${rows.length}` : ""}
+      </h4>
+      {!reachable ? (
+        <p className="mg-type-data-sm text-ink-muted">Unreadable — unknown, not empty.</p>
+      ) : rows.length === 0 ? (
+        <p className="mg-type-data-sm text-ink-muted">None returned.</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {rows.map((r) => (
+            <li key={r.id} className="flex gap-2 mg-type-data-sm">
+              <span className="min-w-0 flex-1 truncate text-ink">{r.name ?? r.id}</span>
+              {r.detail ? (
+                <span className="shrink-0 mg-type-label text-ink-muted">{r.detail}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
