@@ -44820,8 +44820,8 @@ export interface operations {
     };
     subnetStakeQuote: {
         parameters: {
-            query?: {
-                amount?: number;
+            query: {
+                amount: number;
                 /** @description Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`. */
                 direction?: "stake" | "unstake";
             };

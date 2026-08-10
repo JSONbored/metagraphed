@@ -91992,7 +91992,7 @@
           {
             "in": "query",
             "name": "amount",
-            "required": false,
+            "required": true,
             "schema": {
               "exclusiveMinimum": 0,
               "type": "number"

@@ -17,6 +17,7 @@ import {
   buildContractsArtifact,
   buildOpenApiArtifact,
   compileRoutePattern,
+  isRequiredQueryParameter,
 } from "../src/contracts.ts";
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
 import { FIELDS_PATTERN } from "../schemas-src/query-params.ts";
@@ -606,5 +607,41 @@ describe("public contract registry", () => {
         `${entry.path}: warn ${entry.warn_bytes} is not below fail ${entry.fail_bytes}`,
       );
     }
+  });
+});
+
+describe("which query parameters the spec calls required (#10401)", () => {
+  // openapi.json hardcoded `required: false` for every query parameter. That
+  // was true of all 103 route schemas for as long as every one was optional --
+  // and it would have silently republished `stake-quote.amount` as optional
+  // the moment that stopped being true, with `npm run build` producing no diff
+  // for validate:contract-drift to catch.
+  const STAKE_QUOTE = { path: "/api/v1/subnets/{netuid}/stake-quote" };
+
+  test("a required parameter is reported required", () => {
+    assert.equal(isRequiredQueryParameter(STAKE_QUOTE, "amount"), true);
+  });
+
+  test("a DEFAULTED parameter is optional, not required", () => {
+    // The direction a "does it have .optional()" check gets wrong: `direction`
+    // has no `.optional()` marker, it has a default -- so it accepts being
+    // absent, and publishing it as mandatory would demand a value nobody has
+    // to send. Asking the schema to parse `undefined` gets this right for free.
+    assert.equal(isRequiredQueryParameter(STAKE_QUOTE, "direction"), false);
+  });
+
+  test("a parameter with no schema entry is reported OPTIONAL", () => {
+    // The safe direction. Routes can declare parameters without a Zod object,
+    // and inventing a requirement for one would fail requests the handler
+    // accepts -- a spec that rejects valid calls is worse than one that is
+    // merely silent about a bound.
+    assert.equal(
+      isRequiredQueryParameter(STAKE_QUOTE, "not_a_parameter"),
+      false,
+    );
+    assert.equal(
+      isRequiredQueryParameter({ path: "/api/v1/nope" }, "amount"),
+      false,
+    );
   });
 });

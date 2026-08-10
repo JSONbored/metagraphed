@@ -560,7 +560,19 @@ export const ROUTE_QUERY_SCHEMAS = {
     limit: limitSchema(MAX_CANDLES, MAX_CANDLES).optional(),
   }),
   "/api/v1/subnets/{netuid}/stake-quote": z.object({
-    amount: z.number().gt(0).optional(),
+    // THE ONLY REQUIRED QUERY PARAMETER ON THE API (#10401).
+    //
+    // It was `.optional()` while the handler rejected every request without it,
+    // so the contract published a possibility that could not be exercised --
+    // the divergence #10214's generator found by comparing this against
+    // GraphQL's honest `amount: Float!`.
+    //
+    // Being the first required one is not incidental: src/route-query.ts's
+    // violation reporting was written when every field was optional, and its
+    // "the failing key is always one the caller supplied" invariant does not
+    // survive a required field being ABSENT. That path is fixed and tested
+    // alongside this change rather than left to be discovered.
+    amount: z.number().gt(0),
     direction: stakeActionSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/validator-economics/history": z.object({

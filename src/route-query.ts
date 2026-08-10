@@ -661,6 +661,8 @@ function firstViolation(
     const parameter = String(issue.path[0] ?? "");
     if (!issues.has(parameter)) issues.set(parameter, issue);
   }
+  // Supplied keys first, in the CALLER'S order, so a request with two mistakes
+  // is told about the one they wrote first.
   for (const key of params.keys()) {
     const issue = issues.get(key);
     if (issue)
@@ -669,9 +671,19 @@ function firstViolation(
         message: messageFor(key, schemas, issue, params.get(key)),
       };
   }
-  /* v8 ignore next 3 -- every issue path is a key that came from the URL, so
-     the loop above always finds one; this is the type system's exit, not a
-     reachable branch. */
+  // A REQUIRED FIELD THAT WAS NEVER SENT (#10401).
+  //
+  // This was `/* v8 ignore */`-ed as "the type system's exit, not a reachable
+  // branch", and that was true for exactly as long as every query field was
+  // optional: a violation could only come from a value the caller supplied, so
+  // its path was always a key in the URL. `stake-quote.amount` is the first
+  // required parameter on the API, and a missing one produces an issue whose
+  // path is in NO key -- the loop above finds nothing and lands here.
+  //
+  // `params.get()` returns null for the absent key, which messageFor already
+  // renders as the bound alone rather than appending `Received: "null"` -- so
+  // the caller is told what the parameter must be, not what they failed to
+  // send.
   const [parameter, issue] = [...issues][0] ?? ["", undefined];
   return {
     parameter,
@@ -752,6 +764,19 @@ function boundFor(
     if (typeof minimum === "number") {
       return `${parameter} must be ${noun} of at least ${minimum}.`;
     }
+    // EXCLUSIVE lower bound (#10401). `z.number().gt(0)` publishes
+    // `exclusiveMinimum`, not `minimum`, and reading only the inclusive
+    // keywords meant `?amount=0` was answered "amount must be a number" -- a
+    // sentence that is false about the value the caller sent and says nothing
+    // about why it was refused. It matters more now that `amount` is required:
+    // this is the message a caller gets for the route's main failure.
+    //
+    // Only the lower bound is handled, because `amount` is the only parameter
+    // on the surface with an exclusive bound of any kind. An exclusiveMaximum
+    // arm would be a branch nothing can reach or test.
+    if (typeof json.exclusiveMinimum === "number") {
+      return `${parameter} must be ${noun} greater than ${json.exclusiveMinimum}.`;
+    }
     return `${parameter} must be ${noun}.`;
   }
   if (json.type === "boolean") return `${parameter} must be true or false.`;
@@ -774,6 +799,8 @@ interface PublishedShape {
   enum?: unknown[];
   minimum?: number;
   maximum?: number;
+  /** `z.number().gt(x)` publishes this, NOT `minimum` (#10401). */
+  exclusiveMinimum?: number;
   maxLength?: number;
   pattern?: string;
   format?: string;
