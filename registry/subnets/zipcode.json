@@ -115,7 +115,11 @@
       "id": "sn-46-zipcode-subnet-api",
       "kind": "subnet-api",
       "name": "Zipcode dashboard stats API",
-      "notes": "Public no-auth dashboard endpoint for SN46 network statistics, scores, emissions, and prize pool data.",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth dashboard endpoint for SN46 network statistics, scores, emissions, and prize pool data. REVENUE ROLE (#10454): usage-proxy. Carries dailyPrizePoolUsd, which is money the subnet PAYS OUT to competitors, not money it takes in; model counts and top scores are usage. REVENUE ROLE (#10454): usage-proxy. Carries dailyPrizePoolUsd, which is money the subnet PAYS OUT to competitors, not money it takes in; model counts and top scores are usage.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -165,7 +169,11 @@
       "id": "sn-46-zipcode-emissions-api",
       "kind": "subnet-api",
       "name": "Zipcode daily emissions API",
-      "notes": "Public no-auth GET /api/dashboard/stats/emissions on zipcode.ai returning SN46 daily TAO emissions and block height. Documented in the subnet OpenAPI on the same host as existing dashboard surfaces.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET /api/dashboard/stats/emissions on zipcode.ai returning SN46 daily TAO emissions and block height. Documented in the subnet OpenAPI on the same host as existing dashboard surfaces. REVENUE ROLE (#10454): not-revenue by construction -- the payload is {dailyEmissions, subnet, blockHeight}. This is the coverage ratio's DENOMINATOR and must never be read as its numerator. REVENUE ROLE (#10454): not-revenue by construction -- the payload is {dailyEmissions, subnet, blockHeight}. This is the coverage ratio's DENOMINATOR and must never be read as its numerator.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -211,14 +219,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-billing-checkout",
       "kind": "subnet-api",
       "name": "Zipcode POST api billing checkout",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/billing/checkout on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/billing/checkout on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -239,14 +247,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-billing-portal",
       "kind": "subnet-api",
       "name": "Zipcode POST api billing portal",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/billing/portal on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/billing/portal on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -267,13 +275,18 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-billing-summary",
       "kind": "subnet-api",
       "name": "Zipcode GET api billing summary",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://zipcode.ai/openapi.json"
+      },
       "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/billing/summary on zipcode.ai. Live-verified 2026-07-21: HTTP 401 {\"ok\":false,\"error\":\"Unauthorized\",\"message\":\"Valid PortalUser authentication required. Please log in.\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
@@ -296,7 +309,7 @@
       "id": "sn-46-zipcode-api-dashboard-auth-validation-set",
       "kind": "subnet-api",
       "name": "Zipcode GET api dashboard auth validation set",
-      "notes": "GET /api/dashboard/auth/validation-set on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide) — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Registered per the registry's full-API-parity policy (metagraphed#7060) even though it now is.",
+      "notes": "GET /api/dashboard/auth/validation-set on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide) \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Registered per the registry's full-API-parity policy (metagraphed#7060) even though it now is.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -318,7 +331,7 @@
       "id": "sn-46-zipcode-api-dashboard-models-uid",
       "kind": "subnet-api",
       "name": "Zipcode GET api dashboard models by uid",
-      "notes": "GET /api/dashboard/models/{uid} on zipcode.ai — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "GET /api/dashboard/models/{uid} on zipcode.ai \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -340,7 +353,7 @@
       "id": "sn-46-zipcode-api-dashboard-models-uid-validations-date",
       "kind": "subnet-api",
       "name": "Zipcode GET api dashboard models by uid validations by date",
-      "notes": "GET /api/dashboard/models/{uid}/validations/{date} on zipcode.ai — public, no auth declared in the OpenAPI schema. Not individually curled — no `security` declared in the OpenAPI schema, same as the verified public endpoints above. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "GET /api/dashboard/models/{uid}/validations/{date} on zipcode.ai \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 no `security` declared in the OpenAPI schema, same as the verified public endpoints above. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -362,7 +375,7 @@
       "id": "sn-46-zipcode-api-dashboard-models-uid-validations",
       "kind": "subnet-api",
       "name": "Zipcode GET api dashboard models by uid validations",
-      "notes": "GET /api/dashboard/models/{uid}/validations on zipcode.ai — public, no auth declared in the OpenAPI schema. Not individually curled — no `security` declared in the OpenAPI schema, same as the verified public endpoints above. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) — the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "GET /api/dashboard/models/{uid}/validations on zipcode.ai \u2014 public, no auth declared in the OpenAPI schema. Not individually curled \u2014 no `security` declared in the OpenAPI schema, same as the verified public endpoints above. Path-param endpoint (needs Phase 2 schema-aware execution, not built yet) \u2014 the URL's %7B...%7D segment is the URI-encoded form of a literal {param} template (raw unescaped braces fail this repo's url format:\"uri\" schema check). Registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -384,7 +397,7 @@
       "id": "sn-46-zipcode-api-geocode",
       "kind": "subnet-api",
       "name": "Zipcode GET api geocode",
-      "notes": "GET /api/geocode on zipcode.ai — public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Registered per the registry's full-API-parity policy (metagraphed#7060) even though it now is.",
+      "notes": "GET /api/geocode on zipcode.ai \u2014 public, no auth declared in the OpenAPI schema. Live-verified 2026-07-21. Registered per the registry's full-API-parity policy (metagraphed#7060) even though it now is.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -405,7 +418,7 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
@@ -433,14 +446,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-api-keys-keyid-reveal",
       "kind": "subnet-api",
       "name": "Zipcode POST api portal projects by projectId api keys by keyId reveal",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/api-keys/{keyId}/reveal on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/api-keys/{keyId}/reveal on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -461,14 +474,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-api-keys-keyid-revoke",
       "kind": "subnet-api",
       "name": "Zipcode POST api portal projects by projectId api keys by keyId revoke",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/api-keys/{keyId}/revoke on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/api-keys/{keyId}/revoke on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -489,14 +502,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets-assetid",
       "kind": "subnet-api",
       "name": "Zipcode DELETE api portal projects by projectId chats by chatId assets by assetId",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) DELETE /api/portal/projects/{projectId}/chats/{chatId}/assets/{assetId} on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) DELETE /api/portal/projects/{projectId}/chats/{chatId}/assets/{assetId} on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -517,14 +530,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets-bulk-upload",
       "kind": "subnet-api",
       "name": "Zipcode POST api portal projects by projectId chats by chatId assets bulk upload",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/assets/bulk-upload on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/assets/bulk-upload on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -545,14 +558,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets-features",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects by projectId chats by chatId assets features",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets/features on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets/features on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -573,14 +586,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets-from-address",
       "kind": "subnet-api",
       "name": "Zipcode POST api portal projects by projectId chats by chatId assets from address",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/assets/from-address on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/assets/from-address on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -601,14 +614,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects by projectId chats by chatId assets",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -629,14 +642,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-assets-stats",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects by projectId chats by chatId assets stats",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets/stats on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/assets/stats on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -657,14 +670,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid",
       "kind": "subnet-api",
       "name": "Zipcode PATCH api portal projects by projectId chats by chatId",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PATCH /api/portal/projects/{projectId}/chats/{chatId} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PATCH /api/portal/projects/{projectId}/chats/{chatId} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -685,14 +698,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-scrape-batch-jobid",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects by projectId chats by chatId scrape batch by jobId",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/scrape-batch/{jobId} on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats/{chatId}/scrape-batch/{jobId} on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -713,14 +726,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats-chatid-scrape-batch",
       "kind": "subnet-api",
       "name": "Zipcode POST api portal projects by projectId chats by chatId scrape batch",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/scrape-batch on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/portal/projects/{projectId}/chats/{chatId}/scrape-batch on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -741,14 +754,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid-chats",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects by projectId chats",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects/{projectId}/chats on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -769,14 +782,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects-projectid",
       "kind": "subnet-api",
       "name": "Zipcode PATCH api portal projects by projectId",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PATCH /api/portal/projects/{projectId} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PATCH /api/portal/projects/{projectId} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -797,14 +810,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-portal-projects",
       "kind": "subnet-api",
       "name": "Zipcode GET api portal projects",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"ok\":false,\"error\":\"Unauthorized\",\"message\":\"Valid PortalUser authentication required. Please log in.\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/portal/projects on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Live-verified 2026-07-21: HTTP 401 {\"ok\":false,\"error\":\"Unauthorized\",\"message\":\"Valid PortalUser authentication required. Please log in.\"}. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -825,14 +838,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-bathrooms-id",
       "kind": "subnet-api",
       "name": "Zipcode PUT api v1 real estate asset by assetId bathrooms by id",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/bathrooms/{id} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/bathrooms/{id} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -853,14 +866,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-bathrooms",
       "kind": "subnet-api",
       "name": "Zipcode GET api v1 real estate asset by assetId bathrooms",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/bathrooms on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/bathrooms on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -881,14 +894,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-bedrooms-id",
       "kind": "subnet-api",
       "name": "Zipcode PUT api v1 real estate asset by assetId bedrooms by id",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/bedrooms/{id} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/bedrooms/{id} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -909,14 +922,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-bedrooms",
       "kind": "subnet-api",
       "name": "Zipcode GET api v1 real estate asset by assetId bedrooms",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/bedrooms on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/bedrooms on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -937,14 +950,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-kitchens-id",
       "kind": "subnet-api",
       "name": "Zipcode PUT api v1 real estate asset by assetId kitchens by id",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/kitchens/{id} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/kitchens/{id} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -965,14 +978,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-kitchens",
       "kind": "subnet-api",
       "name": "Zipcode GET api v1 real estate asset by assetId kitchens",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/kitchens on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/kitchens on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -993,14 +1006,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-living-rooms-id",
       "kind": "subnet-api",
       "name": "Zipcode PUT api v1 real estate asset by assetId living rooms by id",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/living-rooms/{id} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId}/living-rooms/{id} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1021,14 +1034,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid-living-rooms",
       "kind": "subnet-api",
       "name": "Zipcode GET api v1 real estate asset by assetId living rooms",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/living-rooms on zipcode.ai (this path also supports POST — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/asset/{assetId}/living-rooms on zipcode.ai (this path also supports POST \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1049,14 +1062,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset-assetid",
       "kind": "subnet-api",
       "name": "Zipcode PUT api v1 real estate asset by assetId",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId} on zipcode.ai (this path also supports DELETE — same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) PUT /api/v1/real_estate/asset/{assetId} on zipcode.ai (this path also supports DELETE \u2014 same auth boundary, not registered as a separate surface since the url would collide). Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1077,14 +1090,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-asset",
       "kind": "subnet-api",
       "name": "Zipcode POST api v1 real estate asset",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/v1/real_estate/asset on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/v1/real_estate/asset on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1105,14 +1118,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-evaluate-features",
       "kind": "subnet-api",
       "name": "Zipcode POST api v1 real estate evaluate features",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/v1/real_estate/evaluate/features on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) POST /api/v1/real_estate/evaluate/features on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1133,14 +1146,14 @@
         "location": "header",
         "name": "Authorization",
         "scheme": "api-key",
-        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) — either is accepted per-operation."
+        "scopes_note": "Derived from the subnet's own OpenAPI securitySchemes: PortalJWT (`Authorization: JWT <token>`, or cookie `payload-token` for browser sessions) or PortalApiKey (`Authorization: Bearer <token>`, or `x-api-key`/`x-resi-key` headers) \u2014 either is accepted per-operation."
       },
       "auth_required": true,
       "authority": "community",
       "id": "sn-46-zipcode-api-v1-real-estate-evaluate-results-id",
       "kind": "subnet-api",
       "name": "Zipcode GET api v1 real estate evaluate results by id",
-      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/evaluate/results/{id} on zipcode.ai. Not individually curled at this volume — same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
+      "notes": "Auth-gated (PortalUser session auth, Phase 3 credential passthrough, not built yet) GET /api/v1/real_estate/evaluate/results/{id} on zipcode.ai. Not individually curled at this volume \u2014 same declared `PortalJWT`/`PortalApiKey` security scheme as the verified `sn-46-zipcode-api-billing-summary` (401, same message), and the OpenAPI schema's own `security` field names the scheme explicitly. Path/method/shape from the subnet's own OpenAPI schema; registered per the registry's full-API-parity policy (metagraphed#7060) even though it isn't callable by the anonymous Phase-1 call_subnet_surface tool today.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1162,7 +1175,7 @@
       "id": "sn-46-zipcode-api-docs",
       "kind": "subnet-api",
       "name": "Zipcode combined OpenAPI docs",
-      "notes": "Public GET /api/docs on zipcode.ai — combined OpenAPI spec entry point from metagraphed#7060 additional scope (distinct from the openapi-kind sn-46-zipcode-openapi and sn-46-zipcode-dashboard-openapi surfaces). Live-verified 2026-07-21: HTTP 302 redirect to /openapi.json; following the redirect yields byte-identical content to sn-46-zipcode-openapi. Registered as its own callable route per JSONbored reopen — catalog everything the subnet exposes.",
+      "notes": "Public GET /api/docs on zipcode.ai \u2014 combined OpenAPI spec entry point from metagraphed#7060 additional scope (distinct from the openapi-kind sn-46-zipcode-openapi and sn-46-zipcode-dashboard-openapi surfaces). Live-verified 2026-07-21: HTTP 302 redirect to /openapi.json; following the redirect yields byte-identical content to sn-46-zipcode-openapi. Registered as its own callable route per JSONbored reopen \u2014 catalog everything the subnet exposes.",
       "probe": {
         "enabled": true,
         "expect": "any",
