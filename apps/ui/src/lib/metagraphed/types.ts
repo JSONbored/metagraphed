@@ -2196,6 +2196,19 @@ export interface SubnetOhlcCandle {
   volume_alpha: number;
   volume_tao: number;
   event_count: number;
+  /** USD twins (#10382), priced by a TAO/USD reading from THIS candle's own
+   * bucket. Null for a candle older than the index rather than converted at
+   * today's rate -- a retroactive rate renders perfectly and is wrong at every
+   * point but the last. Optional because the MCP tool serves the same builder
+   * without the handler's overlay. */
+  open_usd?: number | null;
+  high_usd?: number | null;
+  low_usd?: number | null;
+  close_usd?: number | null;
+  volume_usd?: number | null;
+  /** The single rate every _usd field on this candle used. One per candle, so
+   * the OHLC ordering survives the conversion. */
+  usd_per_tao?: number | null;
 }
 
 /** OHLC price/volume candlesticks for one subnet (#5655), bucketed by
@@ -2208,6 +2221,14 @@ export interface SubnetOhlc {
   interval: "1h" | "1d";
   candles: SubnetOhlcCandle[];
   root_excluded: boolean;
+  /** Where USD coverage begins, published rather than left to be inferred from
+   * where the nulls stop. The TAO series runs the full window; the USD series
+   * starts when the TAO/USD index does. */
+  usd_available_from?: number | null;
+  usd_available_from_iso?: string | null;
+  priced_candle_count?: number | null;
+  /** Why NO candle could be priced, or null. A stated decline, never a zero. */
+  usd_unavailable?: string | null;
 }
 
 /** One hotkey's current standing in a subnet's ownership contest (#6638),
