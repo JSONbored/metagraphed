@@ -163,7 +163,8 @@
     "curation:brief": "node scripts/curation-brief.ts",
     "curation:stale-notes": "node scripts/stale-gap-notes.ts",
     "curation:identity-divergence": "node scripts/identity-field-divergence.ts",
-    "endpoint:brief": "node scripts/endpoint-ops-brief.ts"
+    "endpoint:brief": "node scripts/endpoint-ops-brief.ts",
+    "validate:ui-route-coverage": "node scripts/validate-ui-route-coverage.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.3",
