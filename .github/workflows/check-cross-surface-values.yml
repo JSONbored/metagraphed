@@ -54,6 +54,7 @@ jobs:
         run: npm ci
 
       - name: Compare the three surfaces
+        shell: bash
         run: |
           node scripts/check-cross-surface-values.ts | tee cross-surface.log
           {

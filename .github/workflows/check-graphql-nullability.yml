@@ -64,6 +64,7 @@ jobs:
         run: npm ci
 
       - name: Probe every generated non-null against production
+        shell: bash
         run: |
           node scripts/check-graphql-nullability.ts | tee nullability.log
           {

@@ -1,6 +1,8 @@
 import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
+import { parse as parseYaml } from "yaml";
 import { repoRoot } from "./lib.ts";
+import { pipedLogSteps } from "./workflow-pipe-status.ts";
 import {
   OBSERVABILITY_TOKEN_ENV,
   buildStepScripts,
@@ -59,6 +61,9 @@ check(
   "scripts/build.ts's productionSteps() no longer declares any instrumented script as a nodeStep() -- either the step list moved (so the publish build is no longer checked) or the instrumentation was dropped",
 );
 
+/** How many steps piped a report into `tee` -- see the rule in the loop. */
+let pipedLogStepCount = 0;
+
 for (const workflow of workflows) {
   const content = await fs.readFile(path.join(workflowRoot, workflow), "utf8");
   check(
@@ -76,6 +81,17 @@ for (const workflow of workflows) {
     workflow,
     "must not mask failures with continue-on-error",
   );
+  // The sibling of the rule above: the other way a workflow keeps running a
+  // check while discarding its verdict. See scripts/workflow-pipe-status.ts
+  // for what it cost (#10564) and why `shell: bash` is the fix.
+  for (const step of pipedLogSteps(parseYaml(content))) {
+    pipedLogStepCount += 1;
+    check(
+      step.preservesStatus,
+      workflow,
+      `step "${step.name}" pipes into \`tee\`, so the script's exit status is discarded -- declare \`shell: bash\` (Actions' opt-in to \`-eo pipefail\`) or \`set -o pipefail\` in the run block`,
+    );
+  }
   check(
     !/\$\{\{\s*github\.event\.(issue|comment|pull_request)\.(body|title)/.test(
       content,
@@ -390,6 +406,18 @@ for (const workflow of workflows) {
   }
 }
 
+// The same vacuous-pass guard the observability rule carries. `pipedLogSteps`
+// reads a PARSED workflow, so a YAML shape change (a step list that stops being
+// a sequence, a `run:` that becomes a mapping) would silently yield nothing and
+// every workflow would satisfy the pipe rule by finding no pipes at all. The
+// sweeps are the population it exists for, so if they ever stop being visible
+// the rule has to fail rather than pass.
+check(
+  pipedLogStepCount > 0,
+  "scripts/validate-workflows.ts",
+  "found no run steps piping into `tee` -- the scan is broken, so the exit-status rule above proves nothing",
+);
+
 if (errors.length > 0) {
   console.error(`Workflow validation failed with ${errors.length} issue(s):`);
   for (const error of errors) {
@@ -398,7 +426,9 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-console.log(`Validated ${workflows.length} workflow file(s).`);
+console.log(
+  `Validated ${workflows.length} workflow file(s); ${pipedLogStepCount} step(s) pipe a report into \`tee\` and preserve its exit status.`,
+);
 
 function check(condition: unknown, workflow: string, message: string): void {
   if (!condition) {
