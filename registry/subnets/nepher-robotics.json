@@ -405,7 +405,7 @@
       "id": "sn-49-nepher-evaluations-api",
       "kind": "subnet-api",
       "name": "Nepher tournament evaluations API",
-      "notes": "Public no-auth GET /api/v1/evaluations — per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
+      "notes": "Public no-auth GET /api/v1/evaluations \u2014 per-agent evaluation records (score and tournament) from the SN49 tournament API. Documented in the subnet's openapi.json and served on the same tournament-api.nepher.ai host as the subnet's registered API surfaces.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -427,7 +427,7 @@
       "id": "sn-49-nepher-common-config",
       "kind": "data-artifact",
       "name": "Nepher common configuration",
-      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners — it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
+      "notes": "Public no-auth machine-readable common_config.yaml from the official SN49 Nepher Robotics repository (nepher-ai/nepher-subnet), pinned to an immutable commit. The project-maintained shared configuration for all Nepher validators and miners \u2014 it declares the subnet (network finney, subnet_uid 49) and the tournament API endpoint and related network settings. Static YAML artifact self-identifying as SN49.",
       "probe": {
         "enabled": true,
         "expect": "any",
@@ -470,7 +470,11 @@
       "id": "sn-49-nepher-tournament-pricing",
       "kind": "subnet-api",
       "name": "Nepher tournament alpha/TAO pricing API",
-      "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET /api/v1/tournaments/pricing?subnet_uid=49 on the tournament backend, returning live alpha_to_tao and tao_to_usd conversion rates for SN49. The subnet_uid query parameter is this subnet's own permanent netuid (49), not an ephemeral/resolving value, so it is a stable canonical URL. Discovered via a full diff of the tournament API's own OpenAPI schema for undiscovered public GET endpoints. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty. REVENUE ROLE (#10455): not-revenue. The payload is {alpha_to_tao, tao_to_usd} -- an exchange-rate feed named 'pricing', with no amount and no counterparty.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -4400,6 +4404,11 @@
       "id": "sn-49-nepher-api-v1-users-me-dashboard-stats",
       "kind": "subnet-api",
       "name": "Nepher api v1 users me dashboard stats",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://tournament-api.nepher.ai/openapi.json"
+      },
       "notes": "Auth-gated tournament API route GET /api/v1/users/me/dashboard-stats on tournament-api.nepher.ai -- from the SN49 Nepher OpenAPI schema (138 paths). Registered per metagraphed#7062 full-API-parity policy. probe.enabled:false -- not suitable for anonymous recurring probes.",
       "provider": "nepher-robotics",
       "public_safe": true,
