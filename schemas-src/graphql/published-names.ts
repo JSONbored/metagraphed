@@ -1851,6 +1851,15 @@ export interface ProjectedType {
  * scalar narrowing -- and that is what the projection pass now checks.
  */
 export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
+  // The `deltas` record's VALUE, registered as its own component so the
+  // published type has something to be compared against (#10404). `window` is
+  // the record's KEY, which the resolver lifts into the row because "7d" and
+  // "30d" are not valid GraphQL field names.
+  SubnetTrajectoryDelta: {
+    component: "SubnetTrajectoryDelta",
+    added: ["window"],
+    dropped: [],
+  },
   // ── the three that DO have a component behind them (#10404) ───────────────
   //
   // `subnets` and `providers` are the two Query fields with `route: null` --
@@ -2372,11 +2381,6 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
  *
  *   OpportunityBoards       six boards of OpportunityEntry, assembled from a
  *                           leaderboard read. No artifact has this shape.
- *   SubnetTrajectoryDelta   the artifact keys `deltas` by window ('7d'/'30d'),
- *                           which are not valid GraphQL field names, so the
- *                           resolver turns the record into a list carrying
- *                           `window`. Modelling the record's VALUE as a named
- *                           Zod schema would close it.
  *   EmissionGateChange      the flattened form of a three-arm union
  *                           (param/subnet/flow), each arm carrying only its
  *                           own fields. GraphQL could express it as a union;
@@ -2387,7 +2391,6 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
  */
 export const RESOLVER_BUILT_TYPES: readonly string[] = [
   "OpportunityBoards",
-  "SubnetTrajectoryDelta",
   "EmissionGateChange",
   "Subscription",
   "ChainEvent",

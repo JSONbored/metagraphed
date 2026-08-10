@@ -247,7 +247,10 @@ import {
   SubnetYieldHistoryArtifactSchema,
 } from "./routes/subnet-yield.ts";
 import { SubnetMoversArtifactSchema } from "./routes/subnet-movers.ts";
-import { SubnetTrajectoryArtifactSchema } from "./routes/subnet-trajectory.ts";
+import {
+  SubnetTrajectoryArtifactSchema,
+  SubnetTrajectoryDeltaSchema,
+} from "./routes/subnet-trajectory.ts";
 import {
   SubnetLeaseArtifactSchema,
   SubnetLeaseHistoryArtifactSchema,
@@ -659,6 +662,12 @@ register(SubnetYieldArtifactSchema, "SubnetYieldArtifact");
 register(SubnetYieldHistoryArtifactSchema, "SubnetYieldHistoryArtifact");
 register(SubnetMoversArtifactSchema, "SubnetMoversArtifact");
 register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
+// The VALUE of the `deltas` record (#10404). The record itself is keyed by
+// window and stays JSON in GraphQL -- "7d"/"30d" are not field names -- but
+// the value has a fixed shape, and registering it is what lets the published
+// `SubnetTrajectoryDelta` type be compared against something instead of
+// sitting in RESOLVER_BUILT_TYPES where nothing checks it.
+register(SubnetTrajectoryDeltaSchema, "SubnetTrajectoryDelta");
 register(SubnetLeaseArtifactSchema, "SubnetLeaseArtifact");
 register(SubnetLeaseHistoryArtifactSchema, "SubnetLeaseHistoryArtifact");
 register(CrowdloansArtifactSchema, "CrowdloansArtifact");
