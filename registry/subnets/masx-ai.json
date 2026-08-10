@@ -29,6 +29,11 @@
   "slug": "masx-ai",
   "source_repo": null,
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
   "surfaces": [
     {
       "auth_required": false,

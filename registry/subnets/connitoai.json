@@ -29,6 +29,11 @@
   },
   "source_repo": "https://github.com/Connito-AI/Connito",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["openapi", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
