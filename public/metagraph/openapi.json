@@ -22350,6 +22350,228 @@
         ],
         "type": "object"
       },
+      "ChainFirehoseEvent": {
+        "additionalProperties": false,
+        "description": "One live chain event as the firehose broadcasts it. Only the fields relevant to the event's table are populated.",
+        "properties": {
+          "amount_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "account_events only"
+          },
+          "block_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "blocks only"
+          },
+          "block_number": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "call_function": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "extrinsics only"
+          },
+          "call_module": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "extrinsics only"
+          },
+          "coldkey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "account_events only"
+          },
+          "event_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "blocks only"
+          },
+          "event_index": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "chain_events / account_events (event index within the block)"
+          },
+          "event_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "account_events only -- the curated kind (e.g. Transfer, StakeAdded)"
+          },
+          "extrinsic_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "blocks only"
+          },
+          "extrinsic_index": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "extrinsics only"
+          },
+          "hotkey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "account_events only"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "chain_events only"
+          },
+          "netuid": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "account_events only"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pallet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "chain_events only"
+          },
+          "signer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "extrinsics only"
+          },
+          "success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "extrinsics only"
+          },
+          "table": {
+            "description": "Which source table this event came from.",
+            "enum": [
+              "blocks",
+              "extrinsics",
+              "chain_events",
+              "account_events"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "block_number"
+        ],
+        "type": "object"
+      },
       "ChainHoldersArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -28131,421 +28353,7 @@
           },
           "subnets": {
             "items": {
-              "additionalProperties": false,
-              "properties": {
-                "alpha_fdv_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_in_emission": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_in_pool": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_market_cap_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_out_emission": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_out_pool": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "alpha_price_change_1d": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227)."
-                },
-                "alpha_price_change_1h": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227)."
-                },
-                "alpha_price_change_1m": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227)."
-                },
-                "alpha_price_change_7d": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227)."
-                },
-                "alpha_price_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that."
-                },
-                "block": {
-                  "anyOf": [
-                    {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "emission_enabled": {
-                  "anyOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "emission_share": {
-                  "anyOf": [
-                    {
-                      "maximum": 1,
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "excess_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "first_emission_block": {
-                  "anyOf": [
-                    {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "max_stake_alpha": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "max_uids": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "max_validators": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "miner_burned_fraction": {
-                  "anyOf": [
-                    {
-                      "maximum": 1,
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "miner_count": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "miner_readiness": {
-                  "anyOf": [
-                    {
-                      "maximum": 100,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "moving_price_pinned": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "name": {
-                  "type": "string"
-                },
-                "netuid": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "open_slots": {
-                  "anyOf": [
-                    {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "owner_coldkey": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "owner_hotkey": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "registered_at_block": {
-                  "anyOf": [
-                    {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one."
-                },
-                "registration_allowed": {
-                  "type": "boolean"
-                },
-                "registration_allowed_pinned": {
-                  "anyOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "registration_cost_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "slug": {
-                  "type": "string"
-                },
-                "spot_price_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average."
-                },
-                "subnet_mechanism": {
-                  "anyOf": [
-                    {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom."
-                },
-                "subnet_volume_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "subtoken_enabled": {
-                  "anyOf": [
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "tao_in_emission_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "tao_in_pool_tao": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "total_stake_alpha": {
-                  "anyOf": [
-                    {
-                      "type": "number"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "validator_count": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "alpha_fdv_tao",
-                "alpha_in_pool",
-                "alpha_market_cap_tao",
-                "alpha_out_pool",
-                "alpha_price_tao",
-                "emission_share",
-                "max_stake_alpha",
-                "max_uids",
-                "max_validators",
-                "miner_count",
-                "name",
-                "netuid",
-                "owner_coldkey",
-                "owner_hotkey",
-                "registration_allowed",
-                "registration_cost_tao",
-                "slug",
-                "subnet_volume_tao",
-                "tao_in_pool_tao",
-                "total_stake_alpha",
-                "validator_count"
-              ],
-              "type": "object"
+              "$ref": "#/components/schemas/SubnetEconomics"
             },
             "type": "array"
           },
@@ -28895,6 +28703,143 @@
           "item",
           "netuid",
           "is_set"
+        ],
+        "type": "object"
+      },
+      "EmissionGateChange": {
+        "additionalProperties": false,
+        "description": "One recorded change to the emission gate. Shape varies by kind: a param entry has no netuid, a subnet entry has no numeric value.",
+        "properties": {
+          "block_number": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_set": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "param",
+              "subnet",
+              "flow"
+            ],
+            "type": "string"
+          },
+          "netuid": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_at": {
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+            "type": "string"
+          },
+          "param": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "predates_capture": {
+            "type": "boolean"
+          },
+          "previous_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "governance",
+                  "runtime_recomputed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "observed_at",
+          "block_number",
+          "predates_capture"
         ],
         "type": "object"
       },
@@ -35820,6 +35765,74 @@
           "surface_count",
           "kinds",
           "surfaces"
+        ],
+        "type": "object"
+      },
+      "OpportunityBoards": {
+        "additionalProperties": false,
+        "description": "The economic opportunity boards, ranked. The same ranking /api/v1/registry/leaderboards serves, re-keyed to GraphQL field names.",
+        "properties": {
+          "biggest_alpha_gain_1d": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "biggest_alpha_gain_7d": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "cheapest_registration": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "highest_emission": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "open_slots": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "validator_headroom": {
+            "items": {
+              "$ref": "#/components/schemas/SubnetEconomics"
+            },
+            "type": "array"
+          },
+          "with_economics_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "observed_at",
+          "with_economics_count",
+          "open_slots",
+          "cheapest_registration",
+          "highest_emission",
+          "validator_headroom",
+          "biggest_alpha_gain_1d",
+          "biggest_alpha_gain_7d"
         ],
         "type": "object"
       },
@@ -43993,421 +44006,7 @@
             "type": "string"
           },
           "economics": {
-            "additionalProperties": false,
-            "properties": {
-              "alpha_fdv_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_in_emission": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_in_pool": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_market_cap_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_out_emission": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_out_pool": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "alpha_price_change_1d": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227)."
-              },
-              "alpha_price_change_1h": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227)."
-              },
-              "alpha_price_change_1m": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227)."
-              },
-              "alpha_price_change_7d": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227)."
-              },
-              "alpha_price_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that."
-              },
-              "block": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "emission_enabled": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "emission_share": {
-                "anyOf": [
-                  {
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "excess_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "first_emission_block": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "max_stake_alpha": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "max_uids": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "max_validators": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "miner_burned_fraction": {
-                "anyOf": [
-                  {
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "miner_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "miner_readiness": {
-                "anyOf": [
-                  {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "moving_price_pinned": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "name": {
-                "type": "string"
-              },
-              "netuid": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "open_slots": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "owner_coldkey": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "owner_hotkey": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "registered_at_block": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one."
-              },
-              "registration_allowed": {
-                "type": "boolean"
-              },
-              "registration_allowed_pinned": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "registration_cost_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "slug": {
-                "type": "string"
-              },
-              "spot_price_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average."
-              },
-              "subnet_mechanism": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom."
-              },
-              "subnet_volume_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "subtoken_enabled": {
-                "anyOf": [
-                  {
-                    "type": "boolean"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "tao_in_emission_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "tao_in_pool_tao": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "total_stake_alpha": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "validator_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "alpha_fdv_tao",
-              "alpha_in_pool",
-              "alpha_market_cap_tao",
-              "alpha_out_pool",
-              "alpha_price_tao",
-              "emission_share",
-              "max_stake_alpha",
-              "max_uids",
-              "max_validators",
-              "miner_count",
-              "name",
-              "netuid",
-              "owner_coldkey",
-              "owner_hotkey",
-              "registration_allowed",
-              "registration_cost_tao",
-              "slug",
-              "subnet_volume_tao",
-              "tao_in_pool_tao",
-              "total_stake_alpha",
-              "validator_count"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/SubnetEconomics"
           },
           "endpoints": {
             "items": {
@@ -44462,6 +44061,423 @@
           "gaps",
           "subnet",
           "surfaces"
+        ],
+        "type": "object"
+      },
+      "SubnetEconomics": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha_fdv_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_in_emission": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_in_pool": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_market_cap_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_out_emission": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_out_pool": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_price_change_1d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227)."
+          },
+          "alpha_price_change_1h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227)."
+          },
+          "alpha_price_change_1m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227)."
+          },
+          "alpha_price_change_7d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227)."
+          },
+          "alpha_price_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that."
+          },
+          "block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_share": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excess_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_emission_block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_stake_alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_uids": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_validators": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_burned_fraction": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "miner_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "miner_readiness": {
+            "anyOf": [
+              {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "moving_price_pinned": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "open_slots": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner_coldkey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner_hotkey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registered_at_block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one."
+          },
+          "registration_allowed": {
+            "type": "boolean"
+          },
+          "registration_allowed_pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registration_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "spot_price_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average."
+          },
+          "subnet_mechanism": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom."
+          },
+          "subnet_volume_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subtoken_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_in_emission_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_in_pool_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_stake_alpha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validator_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "alpha_fdv_tao",
+          "alpha_in_pool",
+          "alpha_market_cap_tao",
+          "alpha_out_pool",
+          "alpha_price_tao",
+          "emission_share",
+          "max_stake_alpha",
+          "max_uids",
+          "max_validators",
+          "miner_count",
+          "name",
+          "netuid",
+          "owner_coldkey",
+          "owner_hotkey",
+          "registration_allowed",
+          "registration_cost_tao",
+          "slug",
+          "subnet_volume_tao",
+          "tao_in_pool_tao",
+          "total_stake_alpha",
+          "validator_count"
         ],
         "type": "object"
       },

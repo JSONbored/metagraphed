@@ -121,6 +121,16 @@ export const DECLARED: Record<string, string> = {
     "heterogeneous union, correctly. The SDL flattens the three into one " +
     "`EmissionGateChange` the resolver builds -- a real type over an honest " +
     "JSON, which is the safe direction and more useful than the blob.",
+  "ChainEvent.table":
+    "the SDL publishes the `ChainFirehoseTable` enum and the emitter maps " +
+    "every registered Zod enum to `String`. This is the ONLY output field in " +
+    "the schema typed by an enum -- the SDL declares exactly two, and the " +
+    "other is an argument -- so making the emitter emit GraphQL enums is a " +
+    "decision about all 17 registered enum components and every field that " +
+    "refs one, not about this field. `String` is the widening, so nothing " +
+    "breaks meanwhile: every value the enum admits serializes identically, " +
+    "and the vocabulary is asserted against the producer's own in " +
+    "tests/graphql-only-schemas.test.ts.",
   "SubnetTrajectory.deltas":
     "the resolver reshapes on purpose (src/graphql.ts, `deltas: Object.entries" +
     "(data.deltas ?? {})`): the artifact keys deltas by window ('7d'/'30d'), " +
