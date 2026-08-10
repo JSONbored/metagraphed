@@ -484,7 +484,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     assert.equal(lines.length, 1);
     assert.equal(
       lines[0],
-      "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
+      "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_volume_usd,sell_volume_usd,total_volume_usd,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
     );
   });
 
@@ -510,7 +510,7 @@ describe("GET /api/v1/chain/alpha-volume", () => {
     assert.match(res.headers.get("content-type"), /text\/csv/);
     assert.equal(
       (await res.text()).trim(),
-      "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
+      "netuid,buy_volume_alpha,sell_volume_alpha,total_volume_alpha,buy_volume_tao,sell_volume_tao,total_volume_tao,buy_volume_usd,sell_volume_usd,total_volume_usd,buy_count,sell_count,net_volume_alpha,sentiment_ratio,sentiment,vol_mcap_ratio",
     );
   });
 

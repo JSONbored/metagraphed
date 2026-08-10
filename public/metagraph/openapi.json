@@ -2327,18 +2327,27 @@
       "ChainAlphaVolumeArtifactResponse": {
         "value": {
           "data": {
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "network": {
               "buy_count": 1,
               "buy_volume_alpha": 0.5,
               "buy_volume_tao": 0.5,
+              "buy_volume_usd": 0.5,
               "net_volume_alpha": 0.5,
               "sell_count": 1,
               "sell_volume_alpha": 0.5,
               "sell_volume_tao": 0.5,
+              "sell_volume_usd": 0.5,
               "sentiment": "bullish",
               "sentiment_ratio": 0.9966,
               "total_volume_alpha": 0.5,
-              "total_volume_tao": 0.5
+              "total_volume_tao": 0.5,
+              "total_volume_usd": 0.5
             },
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -2362,6 +2371,14 @@
                 "window": "24h"
               }
             ],
+            "tao_usd": {
+              "block_number": 5000000,
+              "observed_at": "2026-06-01T00:00:00.000Z",
+              "price_basis": "example",
+              "usd_per_tao": 0.5
+            },
+            "tao_usd_unavailable": "no_index_reading",
+            "usd_pricing_basis": "window_close_rate",
             "volume_distribution": {
               "count": 1,
               "max": 0.5,
@@ -8374,16 +8391,33 @@
             "buy_count": 1,
             "buy_volume_alpha": 0.5,
             "buy_volume_tao": 0.5,
+            "buy_volume_usd": 0.5,
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
             "net_volume_alpha": 0.5,
             "netuid": 7,
             "schema_version": 1,
             "sell_count": 1,
             "sell_volume_alpha": 0.5,
             "sell_volume_tao": 0.5,
+            "sell_volume_usd": 0.5,
             "sentiment": "bullish",
             "sentiment_ratio": 0.9966,
+            "tao_usd": {
+              "block_number": 5000000,
+              "observed_at": "2026-06-01T00:00:00.000Z",
+              "price_basis": "example",
+              "usd_per_tao": 0.5
+            },
+            "tao_usd_unavailable": "no_index_reading",
             "total_volume_alpha": 0.5,
             "total_volume_tao": 0.5,
+            "total_volume_usd": 0.5,
+            "usd_pricing_basis": "window_close_rate",
             "vol_mcap_ratio": 0.9966,
             "window": "24h"
           },
@@ -20284,6 +20318,47 @@
         "additionalProperties": false,
         "description": "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope.",
         "properties": {
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "network": {
             "additionalProperties": false,
             "description": "Network-wide buy/sell volume rollup across every subnet with volume in the window.",
@@ -20301,6 +20376,10 @@
                 "minimum": 0,
                 "type": "number"
               },
+              "buy_volume_usd": {
+                "minimum": 0,
+                "type": "number"
+              },
               "net_volume_alpha": {
                 "type": "number"
               },
@@ -20314,6 +20393,10 @@
                 "type": "number"
               },
               "sell_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "sell_volume_usd": {
                 "minimum": 0,
                 "type": "number"
               },
@@ -20342,6 +20425,10 @@
                 "type": "number"
               },
               "total_volume_tao": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "total_volume_usd": {
                 "minimum": 0,
                 "type": "number"
               }
@@ -20387,6 +20474,69 @@
               "$ref": "#/components/schemas/SubnetAlphaVolumeArtifact"
             },
             "type": "array"
+          },
+          "tao_usd": {
+            "additionalProperties": false,
+            "description": "The reading every _usd field was converted at -- the network rollup and each per-subnet row alike, so one reading priced them all.",
+            "properties": {
+              "block_number": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "observed_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price_basis": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "usd_per_tao": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "usd_per_tao",
+              "block_number",
+              "observed_at",
+              "price_basis"
+            ],
+            "type": "object"
+          },
+          "tao_usd_unavailable": {
+            "description": "Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.",
+            "enum": [
+              "no_index_reading",
+              "index_unpriced",
+              "index_stale",
+              "no_alpha_price"
+            ],
+            "type": "string"
+          },
+          "usd_pricing_basis": {
+            "const": "window_close_rate",
+            "description": "HOW the totals were converted: at the rate observed at the window's close, not summed per trade. volume_distribution is NOT converted -- its percentiles stay TAO, and a caller wanting them in dollars multiplies by usd_per_tao above.",
+            "type": "string"
           },
           "volume_distribution": {
             "anyOf": [
@@ -42039,6 +42189,50 @@
           "buy_volume_tao": {
             "type": "number"
           },
+          "buy_volume_usd": {
+            "type": "number"
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "net_volume_alpha": {
             "type": "number"
           },
@@ -42063,6 +42257,9 @@
           "sell_volume_tao": {
             "type": "number"
           },
+          "sell_volume_usd": {
+            "type": "number"
+          },
           "sentiment": {
             "description": "Bucketed reading of sentiment_ratio (buying/selling/neutral).",
             "enum": [
@@ -42083,11 +42280,77 @@
             ],
             "description": "Buy share of total volume (0-1); null when there was no volume."
           },
+          "tao_usd": {
+            "additionalProperties": false,
+            "description": "The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them.",
+            "properties": {
+              "block_number": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "observed_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price_basis": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "usd_per_tao": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "usd_per_tao",
+              "block_number",
+              "observed_at",
+              "price_basis"
+            ],
+            "type": "object"
+          },
+          "tao_usd_unavailable": {
+            "description": "Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.",
+            "enum": [
+              "no_index_reading",
+              "index_unpriced",
+              "index_stale",
+              "no_alpha_price"
+            ],
+            "type": "string"
+          },
           "total_volume_alpha": {
             "type": "number"
           },
           "total_volume_tao": {
             "type": "number"
+          },
+          "total_volume_usd": {
+            "type": "number"
+          },
+          "usd_pricing_basis": {
+            "const": "window_close_rate",
+            "description": "HOW the totals were converted: at the rate observed at the window's close, not summed per trade. A string rather than a boolean so a future per-trade implementation publishes a different value instead of silently changing what this shape means.",
+            "type": "string"
           },
           "vol_mcap_ratio": {
             "anyOf": [

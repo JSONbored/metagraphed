@@ -365,7 +365,7 @@ import {
   runHealthProber,
   writeSubnetSnapshot,
 } from "../src/health-prober.ts";
-import { KV_ECONOMICS_CURRENT, KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
+import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import { readCachedNetworkParametersSnapshot } from "../src/network-parameters.ts";
 import {
   mergeFreshness,
@@ -634,6 +634,7 @@ import { foldObservations, observeRequest } from "../src/usage-rollup.ts";
 import type { UsageObservation } from "../src/usage-rollup.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { withAlphaUsdEconomics } from "../src/alpha-usd-overlay.ts";
+import { readTaoUsdCurrentKv } from "./tao-usd-current.ts";
 import type { TaoUsdReading } from "../src/alpha-usd.ts";
 import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 import { runSafeModeWatchdog } from "../src/safe-mode-watchdog.ts";
@@ -7367,40 +7368,6 @@ let economicsCurrentKvMemo: {
   expiresAt: number;
 } = { env: null, value: null, expiresAt: 0 };
 
-/**
- * The newest TAO/USD reading from KV, for pricing alpha in USD (#10381).
- *
- * SAME SHAPE AS readEconomicsCurrentKv below, deliberately -- same 60s
- * per-isolate memo, same "a null is NOT memoized" rule so a cold or unbound
- * store stays re-queried rather than being cached as absent for a minute. The
- * two are read together on the /economics path and there is no reason for them
- * to behave differently under the same failure.
- */
-export const TAO_USD_CURRENT_KV_TTL_MS = 60_000;
-let taoUsdCurrentKvMemo: {
-  env: Env | null;
-  value: unknown;
-  expiresAt: number;
-} = { env: null, value: null, expiresAt: 0 };
-
-export async function readTaoUsdCurrentKv(
-  env: Env,
-  now: number = Date.now(),
-): Promise<Row | null> {
-  if (taoUsdCurrentKvMemo.env === env && now < taoUsdCurrentKvMemo.expiresAt) {
-    return taoUsdCurrentKvMemo.value as Row | null;
-  }
-  const value = await readHealthKv(env, KV_TAO_USD_CURRENT);
-  if (value !== null) {
-    taoUsdCurrentKvMemo = {
-      env,
-      value,
-      expiresAt: now + TAO_USD_CURRENT_KV_TTL_MS,
-    };
-  }
-  return value as Row | null;
-}
-
 export async function readEconomicsCurrentKv(
   env: Env,
   now: number = Date.now(),
@@ -7491,7 +7458,6 @@ registerModuleStateReset("workers/api.ts", () => {
   usageRollupBufferedAtMs = 0;
   healthMetaKvMemo = { env: null, value: null, expiresAt: 0 };
   economicsCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
-  taoUsdCurrentKvMemo = { env: null, value: null, expiresAt: 0 };
   chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
   subnetSlugIndexByNetwork.clear();
   configureAnalytics({ readHealthMetaKv, readEconomicsCurrentKv });

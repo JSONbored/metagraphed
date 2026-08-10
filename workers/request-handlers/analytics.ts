@@ -24,6 +24,9 @@
 // is imported directly from leaf modules, so this file never imports api.ts.
 
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
+import { withChainAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
+import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
+import type { TaoUsdReading } from "../../src/alpha-usd.ts";
 import { readStore } from "../../src/read-store.ts";
 import { HEALTH_CHECK_TABLES } from "../../src/read-store-tables.ts";
 import {
@@ -1144,6 +1147,12 @@ const CHAIN_ALPHA_VOLUME_CSV_COLUMNS = [
   "buy_volume_tao",
   "sell_volume_tao",
   "total_volume_tao",
+  // USD twins (#10383), converted at the window's close rate. Empty when the
+  // index is unavailable -- an export that dropped the columns entirely would
+  // be a quietly different answer to the same question.
+  "buy_volume_usd",
+  "sell_volume_usd",
+  "total_volume_usd",
   "buy_count",
   "sell_count",
   "net_volume_alpha",
@@ -1866,11 +1875,20 @@ export async function handleChainAlphaVolume(
             limit,
           } as unknown as Parameters<typeof buildChainAlphaVolume>[1]),
         );
+      // USD on the network rollup, the spread and every per-subnet row
+      // (#10383). Overlaid before the CSV branch so both formats carry the
+      // same answer, and at ONE named rate -- the window's close -- because
+      // the window is fixed at 24h. See src/alpha-usd-overlay.ts.
+      const priced = withChainAlphaVolumeUsd(
+        data as unknown as Record<string, unknown>,
+        (await readTaoUsdCurrentKv(env)) as TaoUsdReading | null,
+        Date.now(),
+      ) as unknown as typeof data;
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // volume_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
         return csvResponse(
-          data.subnets,
+          priced.subnets,
           "chain-alpha-volume",
           "short",
           cacheRequest,
@@ -1880,7 +1898,7 @@ export async function handleChainAlphaVolume(
       return envelopeResponse(
         cacheRequest,
         {
-          data,
+          data: priced,
           meta: await analyticsMeta(
             env,
             "/metagraph/chain/alpha-volume.json",

@@ -390,6 +390,9 @@ import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
+import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
+import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
+import type { TaoUsdReading } from "../../src/alpha-usd.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
 import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
@@ -4017,7 +4020,15 @@ export async function handleSubnetAlphaVolume(
   return envelopeResponse(
     request,
     {
-      data,
+      // USD on the 24h totals (#10383), overlaid after every tier has
+      // converged. Priced at ONE named rate -- the window's close -- because
+      // the window is fixed at 24h and the totals arrive already summed, so no
+      // per-trade instant survives to here. See src/alpha-usd-overlay.ts.
+      data: withAlphaVolumeUsd(
+        data as unknown as Record<string, unknown>,
+        (await readTaoUsdCurrentKv(env)) as TaoUsdReading | null,
+        Date.now(),
+      ),
       meta: await accountMeta(
         env,
         `/metagraph/subnets/${netuid}/volume.json`,

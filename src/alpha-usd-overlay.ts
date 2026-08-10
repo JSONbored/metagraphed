@@ -145,3 +145,167 @@ export function withAlphaUsdEconomics(
     },
   };
 }
+
+// --- Volume (#10383) -------------------------------------------------------
+//
+// A 24h volume total is an AGGREGATE, which makes the multiplier question
+// sharper than for a spot price: multiplying a window's total by one rate is
+// not the same as summing each trade at the rate it executed at.
+//
+// It is priced at ONE rate here, and says so. Two facts decide it:
+//
+//   1. The window is FIXED at 24h on both routes (src/alpha-volume.ts,
+//      src/chain-alpha-volume.ts -- "a canonical market-depth figure, not a
+//      windowed analytics view", #4339). The 30d case where per-trade and
+//      single-rate diverge materially cannot be requested.
+//   2. The totals arrive ALREADY SUMMED. handleSubnetVolume receives
+//      `ReturnType<typeof buildAlphaVolume>` from the Postgres tier, so no
+//      per-trade instant survives to the edge; pricing each trade would mean
+//      pushing the multiply into both producers for a difference bounded by one
+//      day of rate movement.
+//
+// So this is NOT the per-bucket rule src/alpha-usd-history.ts applies to a
+// SERIES, and that is deliberate: a series has one instant per point, while a
+// single aggregate over a fixed window has one instant. Applying the per-bucket
+// machinery here would be a more complicated way of saying the same thing.
+//
+// The basis is NAMED in the payload rather than left to be assumed, because
+// "$4.1M of volume" reads identically whether it was summed per trade or
+// converted at the close, and only one of those is what we did.
+
+/**
+ * How a volume total was converted: the rate at the window's close.
+ *
+ * A string rather than a boolean, so a future per-trade implementation can
+ * publish a different value instead of silently changing what the same shape
+ * means.
+ */
+export const VOLUME_USD_PRICING_BASIS = "window_close_rate" as const;
+
+/** TAO-denominated volume fields and their USD twins. */
+const VOLUME_USD_FIELDS = [
+  ["buy_volume_tao", "buy_volume_usd"],
+  ["sell_volume_tao", "sell_volume_usd"],
+  ["total_volume_tao", "total_volume_usd"],
+] as const;
+
+// DELIBERATELY ABSENT: buy/sell/total/net_volume_ALPHA, sentiment and
+// sentiment_ratio.
+//
+// The alpha totals are denominated in alpha, and the only alpha price this
+// payload could yield is total_volume_tao / total_volume_alpha -- the window's
+// own realised VWAP. Multiplying the alpha volume by it returns
+// total_volume_tao exactly, so an `*_alpha_usd` field would be a second name
+// for a number already published. `sentiment_ratio` is a ratio of two alpha
+// figures and `sentiment` is a label: both are DIMENSIONLESS, and a
+// dimensionless quantity has no currency to be expressed in.
+
+// volume_distribution is DELIBERATELY NOT PRICED. Its percentiles are TAO and
+// would convert perfectly well, but the shape is `IntensityDistribution` -- a
+// REGISTERED OpenAPI component shared with /chain/network-rollups. Adding
+// `_usd` fields to it would declare USD on a route that does not publish it,
+// and forking the component for one caller trades a shared type for a
+// duplicate. A caller wanting the spread in dollars has `tao_usd.usd_per_tao`
+// published right beside it and can multiply; that is a better trade than a
+// second distribution type.
+
+/** Add `_usd` twins for a set of TAO fields. Absent when unpriceable. */
+function priceTaoFields(
+  row: Row,
+  pairs: ReadonlyArray<readonly [string, string]>,
+  reading: TaoUsdReading,
+  nowMs: number,
+): Row {
+  const out: Row = { ...row };
+  for (const [taoField, usdField] of pairs) {
+    const priced = alphaUsd(row[taoField] as number | null, reading, nowMs);
+    if (priced.ok) out[usdField] = priced.value.usd;
+  }
+  return out;
+}
+
+/** The blob-level provenance + basis, or the named reason there is none. */
+function volumeUsdOverlay(
+  reading: TaoUsdReading | null | undefined,
+  nowMs: number,
+): { usable: boolean; overlay: Row } {
+  const usable = taoUsdUsable(reading, nowMs);
+  if (!usable.ok)
+    return { usable: false, overlay: { tao_usd_unavailable: usable.reason } };
+  const r = reading as TaoUsdReading;
+  return {
+    usable: true,
+    overlay: {
+      tao_usd: {
+        usd_per_tao: r.usd_per_tao as number,
+        block_number: r.block_number ?? null,
+        // No `?? null`: taoUsdUsable already refused any reading whose
+        // observed_at does not parse, so by here it is a real stamp. A
+        // fallback would be a branch that cannot be taken and cannot be
+        // tested -- the kind that reads like a safeguard and is not one.
+        observed_at: r.observed_at,
+        price_basis: r.price_basis ?? null,
+      },
+      // Paired with tao_usd: the basis describes fields that exist, so it
+      // appears exactly when they do.
+      usd_pricing_basis: VOLUME_USD_PRICING_BASIS,
+    },
+  };
+}
+
+const withVolumeFieldSources = (blob: Row): Row => ({
+  ...(typeof blob.field_sources === "object" && blob.field_sources
+    ? (blob.field_sources as Row)
+    : {}),
+  buy_volume_usd: ALPHA_USD_FIELD_SOURCE,
+  sell_volume_usd: ALPHA_USD_FIELD_SOURCE,
+  total_volume_usd: ALPHA_USD_FIELD_SOURCE,
+});
+
+/** Decorate one subnet's 24h volume scorecard. */
+export function withAlphaVolumeUsd(
+  blob: Row | null | undefined,
+  reading: TaoUsdReading | null | undefined,
+  nowMs: number,
+): Row | null | undefined {
+  if (!blob || typeof blob !== "object") return blob;
+  const { usable, overlay } = volumeUsdOverlay(reading, nowMs);
+  return {
+    ...(usable
+      ? priceTaoFields(blob, VOLUME_USD_FIELDS, reading as TaoUsdReading, nowMs)
+      : blob),
+    ...overlay,
+    field_sources: withVolumeFieldSources(blob),
+  };
+}
+
+/** Decorate the network-wide 24h volume blob: totals, spread, and per subnet. */
+export function withChainAlphaVolumeUsd(
+  blob: Row | null | undefined,
+  reading: TaoUsdReading | null | undefined,
+  nowMs: number,
+): Row | null | undefined {
+  if (!blob || typeof blob !== "object") return blob;
+  const { usable, overlay } = volumeUsdOverlay(reading, nowMs);
+  if (!usable) {
+    return { ...blob, ...overlay, field_sources: withVolumeFieldSources(blob) };
+  }
+  const r = reading as TaoUsdReading;
+
+  const network =
+    blob.network && typeof blob.network === "object"
+      ? priceTaoFields(blob.network as Row, VOLUME_USD_FIELDS, r, nowMs)
+      : blob.network;
+
+  return {
+    ...blob,
+    network,
+    subnets: Array.isArray(blob.subnets)
+      ? (blob.subnets as Row[]).map((s) =>
+          priceTaoFields(s, VOLUME_USD_FIELDS, r, nowMs),
+        )
+      : blob.subnets,
+    ...overlay,
+    field_sources: withVolumeFieldSources(blob),
+  };
+}

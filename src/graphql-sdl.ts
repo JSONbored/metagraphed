@@ -1221,7 +1221,7 @@ export const SDL = /* GraphQL */ `
     priced_day_count: Int
     "Why NO day could be priced, or null. read_failed means the index could not be queried, which is not a claim about the index itself."
     usd_unavailable: String
-    field_sources_usd: JSON
+    field_sources_usd: AlphaUsdFieldSource
   }
 
   "One UTC day of network-wide economics aggregated across every subnet with a snapshot that day. Sums are null only when no subnet reported a value that day."
@@ -1706,6 +1706,20 @@ export const SDL = /* GraphQL */ `
     announcements_per_exporter: Float
   }
 
+  "Provenance for the USD fields: RECONSTRUCTED, never measured. The product of a measured alpha price and a measured TAO/USD index is our arithmetic, and a null storage says there is no single chain read behind it."
+  type AlphaUsdFieldSource {
+    kind: String!
+    storage: String
+  }
+
+  "The TAO/USD reading a set of _usd fields was converted at, kept together so the price and its provenance always describe the same block."
+  type TaoUsdConversion {
+    usd_per_tao: Float!
+    block_number: Int
+    observed_at: String
+    price_basis: String
+  }
+
   "Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope."
   type ChainAlphaVolume {
     schema_version: Int!
@@ -1718,6 +1732,13 @@ export const SDL = /* GraphQL */ `
     "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume."
     volume_distribution: IntensityDistribution
     subnets: [ChainAlphaVolumeSubnet!]!
+    "The reading every _usd field was converted at."
+    tao_usd: TaoUsdConversion
+    "HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade."
+    usd_pricing_basis: String
+    "Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero."
+    tao_usd_unavailable: String
+    field_sources: JSON
   }
 
   "Network-wide buy/sell volume rollup across every subnet with volume in the window."
@@ -1728,6 +1749,10 @@ export const SDL = /* GraphQL */ `
     buy_volume_tao: Float!
     sell_volume_tao: Float!
     total_volume_tao: Float!
+    "USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why."
+    buy_volume_usd: Float
+    sell_volume_usd: Float
+    total_volume_usd: Float
     buy_count: Int!
     sell_count: Int!
     net_volume_alpha: Float!
@@ -1748,6 +1773,10 @@ export const SDL = /* GraphQL */ `
     buy_volume_tao: Float!
     sell_volume_tao: Float!
     total_volume_tao: Float!
+    "USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why."
+    buy_volume_usd: Float
+    sell_volume_usd: Float
+    total_volume_usd: Float
     buy_count: Int!
     sell_count: Int!
     net_volume_alpha: Float!
@@ -1757,6 +1786,13 @@ export const SDL = /* GraphQL */ `
     sentiment: String!
     "24h volume / market-cap turnover ratio; always null here (no per-subnet market-cap input in scope at the network level)."
     vol_mcap_ratio: Float
+    "The reading every _usd field was converted at."
+    tao_usd: TaoUsdConversion
+    "HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade."
+    usd_pricing_basis: String
+    "Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero."
+    tao_usd_unavailable: String
+    field_sources: JSON
   }
 
   "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope."
@@ -3716,6 +3752,10 @@ export const SDL = /* GraphQL */ `
     buy_volume_tao: Float!
     sell_volume_tao: Float!
     total_volume_tao: Float!
+    "USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why."
+    buy_volume_usd: Float
+    sell_volume_usd: Float
+    total_volume_usd: Float
     buy_count: Int!
     sell_count: Int!
     net_volume_alpha: Float!
@@ -3725,6 +3765,13 @@ export const SDL = /* GraphQL */ `
     sentiment: String
     "Total TAO volume over alpha market cap; null when market cap is unknown."
     vol_mcap_ratio: Float
+    "The reading every _usd field was converted at."
+    tao_usd: TaoUsdConversion
+    "HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade."
+    usd_pricing_basis: String
+    "Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero."
+    tao_usd_unavailable: String
+    field_sources: JSON
   }
 
   type SubnetOhlcCandle {
@@ -3766,7 +3813,7 @@ export const SDL = /* GraphQL */ `
     priced_candle_count: Int
     "Why NO candle could be priced, or null. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero; read_failed means the index could not be queried at all."
     usd_unavailable: String
-    field_sources_usd: JSON
+    field_sources_usd: AlphaUsdFieldSource
   }
 
   "Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers."
