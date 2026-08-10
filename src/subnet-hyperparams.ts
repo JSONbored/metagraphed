@@ -87,8 +87,10 @@ function ratio(value: unknown): number | null {
   return round(nullableNumber(value), 9);
 }
 
-// D1 0/1 INTEGER -> real boolean, matching toD1Flag in metagraph-neurons.ts.
-function toD1Flag(value: unknown): boolean {
+// A flag column as a real boolean, in any store's spelling. The reasoning --
+// and the production measurement behind it -- is on toBooleanFlag in
+// metagraph-neurons.ts; this is the same function, kept local.
+function toBooleanFlag(value: unknown): boolean {
   return Number(value) === 1;
 }
 
@@ -106,7 +108,7 @@ export function formatSubnetHyperparams(
     weights_rate_limit: nonNegativeInt(row.weights_rate_limit),
     activity_cutoff: nonNegativeInt(row.activity_cutoff),
     activity_cutoff_factor: nonNegativeInt(row.activity_cutoff_factor),
-    registration_allowed: toD1Flag(row.registration_allowed),
+    registration_allowed: toBooleanFlag(row.registration_allowed),
     target_regs_per_interval: nonNegativeInt(row.target_regs_per_interval),
     // rao/1e9-exact-split TAO values (rao_to_tao_exact) — round to rao
     // precision (9dp), not formatNeuron's 6dp roundTao, so no low-order rao
@@ -123,18 +125,18 @@ export function formatSubnetHyperparams(
     serving_rate_limit: nonNegativeInt(row.serving_rate_limit),
     max_validators: nonNegativeInt(row.max_validators),
     commit_reveal_period: nonNegativeInt(row.commit_reveal_period),
-    commit_reveal_enabled: toD1Flag(row.commit_reveal_enabled),
+    commit_reveal_enabled: toBooleanFlag(row.commit_reveal_enabled),
     alpha_high_ratio: ratio(row.alpha_high_ratio),
     alpha_low_ratio: ratio(row.alpha_low_ratio),
-    liquid_alpha_enabled: toD1Flag(row.liquid_alpha_enabled),
+    liquid_alpha_enabled: toBooleanFlag(row.liquid_alpha_enabled),
     alpha_sigmoid_steepness: nullableNumber(row.alpha_sigmoid_steepness),
     yuma_version: nonNegativeInt(row.yuma_version),
-    subnet_is_active: toD1Flag(row.subnet_is_active),
-    transfers_enabled: toD1Flag(row.transfers_enabled),
-    bonds_reset_enabled: toD1Flag(row.bonds_reset_enabled),
-    user_liquidity_enabled: toD1Flag(row.user_liquidity_enabled),
-    owner_cut_enabled: toD1Flag(row.owner_cut_enabled),
-    owner_cut_auto_lock_enabled: toD1Flag(row.owner_cut_auto_lock_enabled),
+    subnet_is_active: toBooleanFlag(row.subnet_is_active),
+    transfers_enabled: toBooleanFlag(row.transfers_enabled),
+    bonds_reset_enabled: toBooleanFlag(row.bonds_reset_enabled),
+    user_liquidity_enabled: toBooleanFlag(row.user_liquidity_enabled),
+    owner_cut_enabled: toBooleanFlag(row.owner_cut_enabled),
+    owner_cut_auto_lock_enabled: toBooleanFlag(row.owner_cut_auto_lock_enabled),
     min_childkey_take_ratio: ratio(row.min_childkey_take_ratio),
   };
 }

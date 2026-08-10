@@ -653,15 +653,25 @@ export function canonicalCompareCachePath(url: URL): string | null {
   return `${url.pathname}?${params.join("&")}`;
 }
 
-// D1 can hand a numeric column back as a string on some read paths (the same
-// class of cell-coercion the feed formatters apply, e.g. formatBlock). Parse a
-// string cell to a number so the CompareArtifact numeric fields never leak a
-// string; leave real numbers, null, and absent cells exactly as-is so the
-// artifact's null/absent contract is unchanged. Booleans (registration_allowed)
-// are intentionally not routed through here. It also normalizes the per-tier
-// Map join key: composeCompareData looks tiers up by numeric requested netuid,
-// so a string-typed row netuid ("7") must key on 7 or the tier drops to null.
-function coerceD1Number(value: unknown): unknown {
+// A numeric cell that arrived as a string, as a number.
+//
+// THIS IS MORE NECESSARY NOW, NOT LESS, which is the opposite of what the D1 in
+// its old name implies. node-postgres returns int8/numeric as STRINGS by
+// design -- they do not fit a JS number safely -- so every BIGINT and every
+// COUNT(*) comes back quoted. Measured against production Neon 2026-08-10:
+//
+//     SELECT count(*) ... -> "30131"   (typeof "string")
+//
+// Parse a string cell to a number so the CompareArtifact numeric fields never
+// leak a string; leave real numbers, null, and absent cells exactly as-is so
+// the artifact's null/absent contract is unchanged. Booleans
+// (registration_allowed) are intentionally not routed through here -- see
+// toBooleanFlag, which is the other half of this and must NOT be widened.
+//
+// It also normalizes the per-tier Map join key: composeCompareData looks tiers
+// up by numeric requested netuid, so a string-typed row netuid ("7") must key
+// on 7 or the tier drops to null.
+function coerceNumericString(value: unknown): unknown {
   if (typeof value !== "string") return value;
   const trimmed = value.trim();
   if (trimmed === "") return value;
@@ -702,40 +712,40 @@ export function composeCompareData({
 
   const structureByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of structureRows || []) {
-    const netuid = coerceD1Number(row.netuid);
+    const netuid = coerceNumericString(row.netuid);
     if (!Number.isInteger(netuid)) continue;
     structureByNetuid.set(netuid as number, {
-      completeness_score: coerceD1Number(row.completeness_score),
-      surface_count: coerceD1Number(row.surface_count),
-      operational_interface_count: coerceD1Number(
+      completeness_score: coerceNumericString(row.completeness_score),
+      surface_count: coerceNumericString(row.surface_count),
+      operational_interface_count: coerceNumericString(
         row.operational_interface_count,
       ),
     });
   }
   const economicsByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of economicsRows || []) {
-    const netuid = coerceD1Number(row.netuid);
+    const netuid = coerceNumericString(row.netuid);
     if (!Number.isInteger(netuid)) continue;
     economicsByNetuid.set(netuid as number, {
-      registration_cost_tao: coerceD1Number(row.registration_cost_tao),
+      registration_cost_tao: coerceNumericString(row.registration_cost_tao),
       registration_allowed: row.registration_allowed,
-      open_slots: coerceD1Number(row.open_slots),
-      emission_share: coerceD1Number(row.emission_share),
-      alpha_price_tao: coerceD1Number(row.alpha_price_tao),
-      validator_count: coerceD1Number(row.validator_count),
-      miner_count: coerceD1Number(row.miner_count),
-      total_stake_alpha: coerceD1Number(row.total_stake_alpha),
-      miner_readiness: coerceD1Number(row.miner_readiness),
+      open_slots: coerceNumericString(row.open_slots),
+      emission_share: coerceNumericString(row.emission_share),
+      alpha_price_tao: coerceNumericString(row.alpha_price_tao),
+      validator_count: coerceNumericString(row.validator_count),
+      miner_count: coerceNumericString(row.miner_count),
+      total_stake_alpha: coerceNumericString(row.total_stake_alpha),
+      miner_readiness: coerceNumericString(row.miner_readiness),
     });
   }
   const healthByNetuid = new Map<number, Record<string, unknown>>();
   for (const row of healthRows || []) {
-    const netuid = coerceD1Number(row.netuid);
+    const netuid = coerceNumericString(row.netuid);
     if (!Number.isInteger(netuid)) continue;
     healthByNetuid.set(netuid as number, {
-      surface_count: coerceD1Number(row.surface_count),
-      ok_count: coerceD1Number(row.ok_count),
-      avg_latency_ms: coerceD1Number(row.avg_latency_ms),
+      surface_count: coerceNumericString(row.surface_count),
+      ok_count: coerceNumericString(row.ok_count),
+      avg_latency_ms: coerceNumericString(row.avg_latency_ms),
     });
   }
 

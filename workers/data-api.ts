@@ -1410,7 +1410,7 @@ async function handleSubnetHyperparamsSync(
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
 
   // Hashed ONCE, before either store writes, on the RAW incoming rows
-  // (pre-coercion) -- formatSubnetHyperparams' toD1Flag(value) tolerates
+  // (pre-coercion) -- formatSubnetHyperparams' toBooleanFlag(value) tolerates
   // either a 0/1 number or a real boolean, so the hash is domain-identical no
   // matter which store's diff consumes it. Each store then diffs this same
   // sequence against ITS OWN latest-recorded hashes below (the two histories
