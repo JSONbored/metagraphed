@@ -397,6 +397,10 @@
         "grain": {
           "enum": ["daily", "weekly", "monthly", "cumulative"]
         },
+        "shape": {
+          "enum": ["flat-array", "keyed-map", "scalar"],
+          "description": "How the payload is arranged, so an extractor does not have to guess. `flat-array`: a list of records, `fields.date`/`fields.amount` naming keys within one (SN64's daily_revenue_summary). `keyed-map`: nested {period: {subkey: amount}} where the period IS the key and there are no field names to point at (SN51's revenue-for-validators). `scalar`: one object carrying a single total, `fields.amount` naming it (SN64's payments/summary/tao)."
+        },
         "fields": {
           "description": "Map of role -> field name in the upstream payload, e.g. {\"date\": \"date\", \"amount\": \"total_revenue\"}.",
           "type": "object",
@@ -460,7 +464,60 @@
             "required": ["role", "provenance"]
           },
           "then": {
-            "required": ["currency", "grain", "fields"]
+            "required": ["currency", "grain", "shape"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "flat-array"
+              }
+            },
+            "required": ["shape"]
+          },
+          "then": {
+            "properties": {
+              "fields": {
+                "type": "object",
+                "required": ["date", "amount"]
+              }
+            },
+            "required": ["fields"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "scalar"
+              }
+            },
+            "required": ["shape"]
+          },
+          "then": {
+            "properties": {
+              "fields": {
+                "type": "object",
+                "required": ["amount"]
+              }
+            },
+            "required": ["fields"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shape": {
+                "const": "keyed-map"
+              }
+            },
+            "required": ["shape"]
+          },
+          "then": {
+            "properties": {
+              "fields": false
+            }
           }
         }
       ]

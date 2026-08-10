@@ -529,6 +529,10 @@ export const SurfaceRevenueSchema = z
         "Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}.",
     }),
     grain: z.enum(["daily", "weekly", "monthly", "cumulative"]).optional(),
+    shape: z.enum(["flat-array", "keyed-map", "scalar"]).optional().meta({
+      description:
+        "How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.",
+    }),
     provenance: z
       .enum([
         "chain-verified",

@@ -52796,6 +52796,15 @@
                 "description": "When absence was established. Required for provenance 'none': an undated absence is not evidence.",
                 "type": "string"
               },
+              "shape": {
+                "description": "How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.",
+                "enum": [
+                  "flat-array",
+                  "keyed-map",
+                  "scalar"
+                ],
+                "type": "string"
+              },
               "source_url": {
                 "format": "uri",
                 "type": "string"

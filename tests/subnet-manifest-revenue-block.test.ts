@@ -45,6 +45,7 @@ const CHUTES_REVENUE: Json = {
   provenance: "probe-derived",
   currency: "USD",
   grain: "daily",
+  shape: "flat-array",
   fields: { date: "date", amount: "total_revenue" },
   excludes: ["sponsored_inference", "pending_instance_revenue"],
   supersedes: ["sn-64-chutes-payments-summary-tao"],
@@ -141,15 +142,69 @@ describe("subnet-manifest revenue block (#10441)", () => {
     );
   });
 
-  test("external-revenue must declare currency, grain and fields", () => {
+  test("external-revenue must declare currency, grain and shape", () => {
     // Without these the amount is a bare number with no unit, no period and no
-    // named source field — exactly the shape that produced the TAO/USD trap.
+    // stated arrangement — exactly the shape that produced the TAO/USD trap.
+    // `fields` is deliberately NOT required here: a keyed-map payload has no
+    // field names to give, so the per-shape rules below own that requirement.
     const bare = { role: "external-revenue", provenance: "probe-derived" };
     assert.equal(validate(manifest(bare)), false);
     const named = errorsFor(manifest(bare)).join(" ");
-    for (const required of ["currency", "grain", "fields"]) {
+    for (const required of ["currency", "grain", "shape"]) {
       assert.ok(named.includes(required), `rejection must name ${required}`);
     }
+  });
+
+  test("each shape demands exactly the fields it can supply (#10525)", () => {
+    const base = {
+      role: "external-revenue",
+      provenance: "probe-derived",
+      currency: "USD",
+      grain: "daily",
+    };
+    // flat-array: a record list, so both keys are nameable and both required.
+    assert.equal(
+      validate(manifest({ ...base, shape: "flat-array" })),
+      false,
+      "flat-array without fields must be rejected",
+    );
+    assert.equal(
+      validate(
+        manifest({
+          ...base,
+          shape: "flat-array",
+          fields: { date: "d", amount: "a" },
+        }),
+      ),
+      true,
+    );
+    // scalar: one total, so only `amount` is nameable.
+    assert.equal(validate(manifest({ ...base, shape: "scalar" })), false);
+    assert.equal(
+      validate(
+        manifest({ ...base, shape: "scalar", fields: { amount: "total" } }),
+      ),
+      true,
+    );
+    // keyed-map: the period IS the key, so there is nothing to name — and
+    // carrying `fields` anyway would be a sentinel like the `$key`/`$value`
+    // stand-in this replaces.
+    assert.equal(
+      validate(manifest({ ...base, shape: "keyed-map", grain: "monthly" })),
+      true,
+    );
+    assert.equal(
+      validate(
+        manifest({
+          ...base,
+          shape: "keyed-map",
+          grain: "monthly",
+          fields: { date: "$key", amount: "$value" },
+        }),
+      ),
+      false,
+      "a keyed-map carrying fields must be rejected — that is the sentinel this replaces",
+    );
   });
 
   test("an UNREADABLE external-revenue surface is not asked to describe its payload", () => {
