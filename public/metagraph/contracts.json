@@ -1462,7 +1462,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/SubnetRevenueArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",
@@ -1473,7 +1473,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainRevenueCoverageArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "content_type": "application/json",

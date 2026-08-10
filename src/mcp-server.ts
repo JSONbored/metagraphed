@@ -2122,8 +2122,7 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   list_crowdloans: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_crowdloan: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_recycled: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
-  get_subnet_revenue: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
-  list_revenue_coverage: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+
   get_sudo_key: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   // Two live RPC POSTs (mainnet + testnet) on a cache miss.
   get_runtime: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,

@@ -1198,7 +1198,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/SubnetRevenueArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",
@@ -1207,7 +1207,7 @@
       "retirement": null,
       "schema_ref": "#/components/schemas/ChainRevenueCoverageArtifact",
       "status": "live",
-      "storage_tier": "git"
+      "storage_tier": "r2"
     },
     {
       "contract_version": "2026-07-03.2",
