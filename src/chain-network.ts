@@ -141,6 +141,13 @@ export function chainNetworkId(id: string | undefined): ChainNetworkId {
  * translation, never the gate. Silently defaulting an unvalidated string would
  * reintroduce #8804, where an unrecognised value took the testnet branch.
  */
+/** The path segment each network is spelled with -- the inverse of
+ * `chainNetworkFromChainName`, kept beside it so the two cannot drift. */
+export const CHAIN_NAME_BY_NETWORK: Readonly<Record<ChainNetworkId, string>> = {
+  mainnet: "finney",
+  testnet: "test",
+};
+
 export function chainNetworkFromChainName(
   chain: string | null | undefined,
 ): ChainNetworkId {
@@ -163,6 +170,31 @@ export function chainNetworkFromChainName(
  * at the front of the key, so the projections stay one prefix in the bucket
  * and a listing still groups them.
  */
+/**
+ * The `/api/v1/{network}/…` twin of a route path, for a network-scoped read.
+ *
+ * MAINNET KEEPS THE BASE PATH, the same asymmetry `networkKvKey`,
+ * `projectionKey` and `chainTable` use: a mainnet request reaches exactly the
+ * path it reached before, and testnet gets the twin the router already serves.
+ *
+ * Twenty GraphQL fields mirrored a route with such a twin and took no `network`
+ * argument at all, so testnet was reachable over REST and unreachable over
+ * GraphQL (#10394). This is the one place that spelling lives, so a resolver
+ * cannot get it subtly wrong -- and the cold-tier loaders each already take a
+ * `ChainNetworkId`, so the fallback follows the same network as the tier rather
+ * than silently answering mainnet.
+ */
+export function networkScopedRoute(
+  routePath: string,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  if (network === DEFAULT_CHAIN_NETWORK) return routePath;
+  const prefix = "/api/v1/";
+  return routePath.startsWith(prefix)
+    ? `${prefix}${CHAIN_NAME_BY_NETWORK[network]}/${routePath.slice(prefix.length)}`
+    : routePath;
+}
+
 export function projectionKey(
   artifactKey: string,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,

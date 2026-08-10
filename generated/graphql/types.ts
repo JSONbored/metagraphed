@@ -3416,6 +3416,7 @@ export type QueryAgent_CatalogArgs = {
 
 
 export type QueryBlockArgs = {
+  network?: InputMaybe<Network>;
   ref: Scalars['String']['input'];
 };
 
@@ -3428,6 +3429,7 @@ export type QueryBlock_Chain_EventsArgs = {
 
 export type QueryBlock_EventsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   ref: Scalars['String']['input'];
 };
@@ -3435,6 +3437,7 @@ export type QueryBlock_EventsArgs = {
 
 export type QueryBlock_ExtrinsicsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   ref: Scalars['String']['input'];
 };
@@ -3449,9 +3452,15 @@ export type QueryBlocksArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   min_events?: InputMaybe<Scalars['Int']['input']>;
   min_extrinsics?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   spec_version?: InputMaybe<Scalars['Int']['input']>;
   to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBlocks_SummaryArgs = {
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3471,12 +3480,14 @@ export type QueryCandidatesArgs = {
 
 
 export type QueryChain_ActivityArgs = {
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryChain_Alpha_VolumeArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3495,6 +3506,7 @@ export type QueryChain_CallsArgs = {
   call_module?: InputMaybe<Scalars['String']['input']>;
   group_by?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3506,6 +3518,7 @@ export type QueryChain_Concentration_HistoryArgs = {
 
 export type QueryChain_DeregistrationsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3531,6 +3544,7 @@ export type QueryChain_Events_StatsArgs = {
 export type QueryChain_FeesArgs = {
   call_module?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3554,6 +3568,7 @@ export type QueryChain_PrometheusArgs = {
 
 export type QueryChain_RegistrationsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3567,6 +3582,7 @@ export type QueryChain_ServingArgs = {
 export type QueryChain_SignersArgs = {
   call_module?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -3574,18 +3590,21 @@ export type QueryChain_SignersArgs = {
 
 export type QueryChain_Stake_FlowArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryChain_Stake_MovesArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryChain_Stake_TransfersArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3598,6 +3617,7 @@ export type QueryChain_Subnet_LifecycleArgs = {
 
 export type QueryChain_Transfer_PairsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   sort?: InputMaybe<Scalars['String']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -3605,6 +3625,7 @@ export type QueryChain_Transfer_PairsArgs = {
 
 export type QueryChain_TransfersArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -3636,6 +3657,11 @@ export type QueryCompareArgs = {
 export type QueryCompare_ValidatorsArgs = {
   hotkeys: Array<Scalars['String']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryCoverageArgs = {
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3674,6 +3700,7 @@ export type QueryEconomicsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   order?: InputMaybe<Scalars['String']['input']>;
   q?: InputMaybe<Scalars['String']['input']>;
   registration_allowed?: InputMaybe<Scalars['Boolean']['input']>;
@@ -3788,6 +3815,7 @@ export type QueryExtrinsicsArgs = {
   cursor?: InputMaybe<Scalars['String']['input']>;
   from?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   signer?: InputMaybe<Scalars['String']['input']>;
   success?: InputMaybe<Scalars['Boolean']['input']>;
@@ -9605,7 +9633,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   block_events?: Resolver<ResolversTypes['BlockEvents'], ParentType, ContextType, RequireFields<QueryBlock_EventsArgs, 'ref'>>;
   block_extrinsics?: Resolver<ResolversTypes['BlockExtrinsics'], ParentType, ContextType, RequireFields<QueryBlock_ExtrinsicsArgs, 'ref'>>;
   blocks?: Resolver<ResolversTypes['BlockList'], ParentType, ContextType, Partial<QueryBlocksArgs>>;
-  blocks_summary?: Resolver<ResolversTypes['BlocksSummary'], ParentType, ContextType>;
+  blocks_summary?: Resolver<ResolversTypes['BlocksSummary'], ParentType, ContextType, Partial<QueryBlocks_SummaryArgs>>;
   build?: Resolver<ResolversTypes['BuildSummary'], ParentType, ContextType>;
   candidates?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCandidatesArgs>>;
   chain_activity?: Resolver<ResolversTypes['ChainActivity'], ParentType, ContextType, Partial<QueryChain_ActivityArgs>>;
@@ -9641,7 +9669,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   compare?: Resolver<ResolversTypes['Compare'], ParentType, ContextType, RequireFields<QueryCompareArgs, 'netuids'>>;
   compare_validators?: Resolver<ResolversTypes['ValidatorComparison'], ParentType, ContextType, RequireFields<QueryCompare_ValidatorsArgs, 'hotkeys'>>;
   contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType>;
-  coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCoverageArgs>>;
   coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCoverage_DepthArgs>>;
   curation?: Resolver<ResolversTypes['CurationList'], ParentType, ContextType, Partial<QueryCurationArgs>>;
   domain_summary?: Resolver<ResolversTypes['DomainSummary'], ParentType, ContextType, RequireFields<QueryDomain_SummaryArgs, 'tag'>>;

@@ -1,4 +1,4 @@
-// What a CALLER sees once the hot tier exists (#9208) -- REST and MCP.
+// What a CALLER sees once the hot tier exists (#9208) -- REST, MCP, GraphQL.
 //
 // The measurement that opened the issue: against head 8,762,608, block
 // 8,759,000 answered 29 extrinsics and block 8,762,600 answered 0. This file
@@ -22,6 +22,7 @@ vi.mock("pg", () => pg.module);
 
 import { handleRequest } from "../workers/api.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
+import { handleGraphQLRequest } from "../src/graphql.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { jsonBody } from "./row-type.ts";
@@ -381,5 +382,73 @@ describe("the MCP tools decline the same gap", () => {
         return true;
       },
     );
+  });
+});
+
+describe("GraphQL runs the same cascade", () => {
+  // The third caller of `answerBlockDetail`, and the one #10394 changed: its
+  // resolvers now pass the network through, and the network is what decides
+  // whether the hot leg is consulted at all. REST and MCP pin the cascade
+  // above; the GraphQL half of it was reached by no test, so the hot callbacks
+  // its resolvers hand in could have been wired to the wrong loader and every
+  // suite would still have passed on the cold answer underneath.
+  async function gql(text: string, env: unknown) {
+    const res = await handleGraphQLRequest(
+      new Request("https://api.metagraph.sh/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: text }),
+      }),
+      env as never,
+      {},
+    );
+    return jsonBody(res);
+  }
+
+  test("a covered recent block serves the hot rows", async () => {
+    // The two rows publish differently: `events` is `[AccountEvent!]!` and
+    // selects into subfields, `extrinsics` is still a bare `[JSON!]!` where the
+    // row itself is the leaf. Each query below is written against what its
+    // field actually publishes, so this reads as the asymmetry it is.
+    const body = await gql(
+      `{ block_extrinsics(ref: "${RECENT}") ` +
+        `{ block_number extrinsic_count extrinsics } }`,
+      envWith({ covered: [RECENT] }),
+    );
+    assert.equal(body.errors, undefined);
+    const detail = body.data.block_extrinsics;
+    assert.equal(detail.block_number, RECENT);
+    assert.equal(detail.extrinsic_count, 2);
+    assert.equal(detail.extrinsics[0].call_function, "set_weights");
+
+    const events = await gql(
+      `{ block_events(ref: "${RECENT}") ` +
+        `{ block_number event_count events { event_kind } } }`,
+      envWith({ covered: [RECENT] }),
+    );
+    assert.equal(events.errors, undefined);
+    assert.equal(events.data.block_events.event_count, 1);
+    assert.equal(events.data.block_events.events[0].event_kind, "StakeAdded");
+  });
+
+  test("a GAP is an error with a typed code, not an empty block", async () => {
+    // Same argument as the REST 503 and the MCP throw: `extrinsics: []` and "a
+    // block that genuinely had none" are the same bytes to a client.
+    for (const field of ["block_extrinsics", "block_events"]) {
+      const body = await gql(
+        `{ ${field}(ref: "${RECENT}") { block_number } }`,
+        envWith({
+          covered: [],
+          window: { floor: RECENT + 500, head: RECENT + 900 },
+        }),
+      );
+      assert.ok(body.errors, `${field} answered instead of declining`);
+      assert.equal(
+        body.errors[0].extensions.code,
+        "BLOCK_DETAIL_UNAVAILABLE",
+        `${field} declined with the wrong code`,
+      );
+      assert.equal(body.errors[0].extensions.block_number, RECENT);
+    }
   });
 });
