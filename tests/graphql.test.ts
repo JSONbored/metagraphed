@@ -2076,7 +2076,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
       "/metagraph/endpoint-incidents.json": INCIDENTS_BLOB,
     });
     const { status, body } = await gql(
-      '{ endpoint_incidents(severity: "critical") { incidents total summary } }',
+      '{ endpoint_incidents(severity: "critical") { incidents { id severity } total summary } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2085,7 +2085,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     assert.equal(body.data.endpoint_incidents.summary.incident_count, 2);
 
     const byNetuid = await gql(
-      "{ endpoint_incidents(netuid: 31) { incidents total } }",
+      "{ endpoint_incidents(netuid: 31) { incidents { id endpoint_id } total } }",
       env as unknown as Env,
     );
     assert.equal(byNetuid.body.data.endpoint_incidents.total, 1);
@@ -8773,7 +8773,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 
   test("cold store: no Postgres flag falls back to the D1 ledger, schema-stable empty, never null", async () => {
     const { status, body } = await gql(
-      "{ incidents { schema_version window surfaces { id } } }",
+      "{ incidents { schema_version window surfaces { surface_id } } }",
       { METAGRAPH_HEALTH_DB: emptyHealthDb },
     );
     assert.equal(status, 200);
@@ -8803,17 +8803,12 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
           },
           surfaces: [
             {
-              id: "inc-1",
-              endpoint_id: "ep-1",
-              state: "down",
-              severity: "high",
-              status: "down",
-              reason: "probe timeout",
+              surface_id: "inc-1",
               netuid: 5,
-              provider: "acme",
-              health_stale: false,
-              pool_eligible: true,
-              user_reported: false,
+              incident_count: 1,
+              downtime_ms: 300,
+              transient_failure_count: 0,
+              transient_failed_samples: 0,
             },
           ],
         }),
@@ -8823,7 +8818,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
       `{ incidents(window: "30d") {
           schema_version window observed_at source
           summary
-          surfaces { id endpoint_id state severity status reason netuid provider health_stale pool_eligible user_reported }
+          surfaces { surface_id netuid incident_count downtime_ms transient_failure_count transient_failed_samples }
         } }`,
       env as unknown as Env,
     );
@@ -8837,10 +8832,12 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
     assert.deepEqual(inc.summary.by_status, { down: 1, warn: 1 });
     assert.deepEqual(inc.summary.by_provider, { acme: 2 });
     assert.equal(inc.surfaces.length, 1);
-    assert.equal(inc.surfaces[0].id, "inc-1");
-    assert.equal(inc.surfaces[0].state, "down");
+    // A per-surface ROLLUP, not an endpoint incident. The row was published as
+    // `EndpointIncident` until #10214, and this test selected eleven of that
+    // type's fields -- every one of which production answers null for, on every
+    // row. It asserted a shape no producer emits.
+    assert.equal(inc.surfaces[0].surface_id, "inc-1");
     assert.equal(inc.surfaces[0].netuid, 5);
-    assert.equal(inc.surfaces[0].pool_eligible, true);
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults", async () => {
@@ -8849,7 +8846,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
-      '{ incidents(window: "30d") { schema_version window observed_at source summary surfaces { id } } }',
+      '{ incidents(window: "30d") { schema_version window observed_at source summary surfaces { surface_id } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -8901,13 +8898,12 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
         },
         surfaces: [
           {
-            id: "inc-1",
-            endpoint_id: "ep-1",
-            state: "down",
-            severity: "high",
-            status: "down",
+            surface_id: "inc-1",
             netuid: 5,
-            provider: "acme",
+            incident_count: 1,
+            downtime_ms: 300,
+            transient_failure_count: 0,
+            transient_failed_samples: 0,
           },
         ],
       }),
@@ -8917,7 +8913,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     // serves each resolver a fresh Response, so the envelopes must be identical.
     const selection = `{
         schema_version window observed_at source summary
-        surfaces { id endpoint_id state severity status netuid provider }
+        surfaces { surface_id netuid incident_count downtime_ms }
       }`;
     const { status, body } = await gql(
       `{ global_incidents(window: "30d") ${selection} }`,
@@ -8930,7 +8926,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(alias.observed_at, "2026-07-01T00:00:00.000Z");
     assert.equal(alias.summary.incident_count, 1);
     assert.equal(alias.surfaces.length, 1);
-    assert.equal(alias.surfaces[0].id, "inc-1");
+    assert.equal(alias.surfaces[0].surface_id, "inc-1");
     assert.equal(alias.surfaces[0].netuid, 5);
     const canonical = await gql(
       `{ incidents(window: "30d") ${selection} }`,
@@ -8944,7 +8940,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
 
   test("cold store: falls back to the D1 ledger, schema-stable empty, never null", async () => {
     const { status, body } = await gql(
-      "{ global_incidents { schema_version window surfaces { id } } }",
+      "{ global_incidents { schema_version window surfaces { surface_id } } }",
       { METAGRAPH_HEALTH_DB: emptyHealthDb },
     );
     assert.equal(status, 200);
@@ -9004,14 +9000,14 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
 
   test("filters by netuid (#7875)", async () => {
     const { status, body } = await gql(
-      '{ global_incidents(window: "30d", netuid: 5) { total returned surfaces { id netuid } } }',
+      '{ global_incidents(window: "30d", netuid: 5) { total returned surfaces { surface_id netuid } } }',
       threeSurfaceEnv(),
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const out = body.data.global_incidents;
     assert.equal(out.total, 2);
-    assert.deepEqual(out.surfaces.map((s: Row) => s.id).sort(), [
+    assert.deepEqual(out.surfaces.map((s: Row) => s.surface_id).sort(), [
       "inc-a",
       "inc-c",
     ]);
@@ -9019,7 +9015,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
 
   test("pages with limit/cursor and reports next_cursor (#7875)", async () => {
     const first = await gql(
-      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2) { total returned limit cursor next_cursor sort order surfaces { id } } }',
+      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2) { total returned limit cursor next_cursor sort order surfaces { surface_id } } }',
       threeSurfaceEnv(),
     );
     assert.equal(first.body.errors, undefined);
@@ -9032,26 +9028,26 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(p1.sort, "surface_id");
     assert.equal(p1.order, "asc");
     assert.deepEqual(
-      p1.surfaces.map((s: Row) => s.id),
+      p1.surfaces.map((s: Row) => s.surface_id),
       ["inc-a", "inc-b"],
     );
 
     const second = await gql(
-      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2, cursor: 2) { returned next_cursor surfaces { id } } }',
+      '{ global_incidents(window: "30d", sort: "surface_id", order: "asc", limit: 2, cursor: 2) { returned next_cursor surfaces { surface_id } } }',
       threeSurfaceEnv(),
     );
     const p2 = second.body.data.global_incidents;
     assert.equal(p2.returned, 1);
     assert.equal(p2.next_cursor, null);
     assert.deepEqual(
-      p2.surfaces.map((s: Row) => s.id),
+      p2.surfaces.map((s: Row) => s.surface_id),
       ["inc-c"],
     );
   });
 
   test("combines a netuid filter with paging (#7875)", async () => {
     const { body } = await gql(
-      '{ global_incidents(window: "30d", netuid: 5, sort: "surface_id", order: "asc", limit: 1) { total returned next_cursor surfaces { id netuid } } }',
+      '{ global_incidents(window: "30d", netuid: 5, sort: "surface_id", order: "asc", limit: 1) { total returned next_cursor surfaces { surface_id netuid } } }',
       threeSurfaceEnv(),
     );
     assert.equal(body.errors, undefined);
@@ -9059,12 +9055,12 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     assert.equal(out.total, 2);
     assert.equal(out.returned, 1);
     assert.equal(out.next_cursor, 1);
-    assert.equal(out.surfaces[0].id, "inc-a");
+    assert.equal(out.surfaces[0].surface_id, "inc-a");
   });
 
   test("an unfiltered query reports schema-stable pagination meta (#7875)", async () => {
     const { body } = await gql(
-      '{ global_incidents(window: "30d") { total returned next_cursor sort order surfaces { id } } }',
+      '{ global_incidents(window: "30d") { total returned next_cursor sort order surfaces { surface_id } } }',
       threeSurfaceEnv(),
     );
     assert.equal(body.errors, undefined);
@@ -9083,12 +9079,14 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     // resolver must degrade rather than emit undefined if the shared list
     // query ever returns a page without pagination meta.
     const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
-      data: { surfaces: [{ id: "inc-a" }, { id: "inc-b" }] },
+      data: {
+        surfaces: [{ surface_id: "inc-a" }, { surface_id: "inc-b" }],
+      },
       meta: {},
     } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
     try {
       const { body } = await gql(
-        '{ global_incidents(window: "30d") { total returned limit cursor next_cursor sort order surfaces { id } } }',
+        '{ global_incidents(window: "30d") { total returned limit cursor next_cursor sort order surfaces { surface_id } } }',
         threeSurfaceEnv(),
       );
       assert.equal(body.errors, undefined);
@@ -9112,7 +9110,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     } as unknown as ReturnType<typeof listQuery.applyQueryFilters>);
     try {
       const { body } = await gql(
-        '{ global_incidents(window: "30d") { total returned surfaces { id } } }',
+        '{ global_incidents(window: "30d") { total returned surfaces { surface_id } } }',
         threeSurfaceEnv(),
       );
       assert.equal(body.errors, undefined);

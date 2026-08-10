@@ -2364,6 +2364,18 @@ export type GlobalHealth = {
   unknown_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** One surface's incident rollup over the window, as GET /api/v1/incidents serves it. */
+export type GlobalIncidentSurface = {
+  __typename?: 'GlobalIncidentSurface';
+  downtime_ms: Scalars['Int']['output'];
+  incident_count: Scalars['Int']['output'];
+  incidents: Array<EndpointIncidentWindow>;
+  netuid: Scalars['Int']['output'];
+  surface_id: Scalars['String']['output'];
+  transient_failed_samples: Scalars['Int']['output'];
+  transient_failure_count: Scalars['Int']['output'];
+};
+
 /** Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope. */
 export type GlobalIncidents = {
   __typename?: 'GlobalIncidents';
@@ -2384,7 +2396,8 @@ export type GlobalIncidents = {
   source?: Maybe<Scalars['String']['output']>;
   /** Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape. */
   summary?: Maybe<Scalars['JSON']['output']>;
-  surfaces: Array<EndpointIncident>;
+  /** Per-surface incident summaries -- NOT endpoint incidents. Published as [EndpointIncident!]! until #10214: those rows carry surface_id/netuid/incident_count/downtime_ms and answered null for all 18 of that type's own fields, on every one of 232 sampled. */
+  surfaces: Array<GlobalIncidentSurface>;
   /** Surfaces matching the filters before paging (#7875). Equals the surfaces length when no limit/cursor is supplied. */
   total: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
@@ -2479,7 +2492,7 @@ export type IncidentList = {
   __typename?: 'IncidentList';
   cursor: Scalars['Int']['output'];
   generated_at?: Maybe<Scalars['String']['output']>;
-  incidents: Array<Scalars['JSON']['output']>;
+  incidents: Array<EndpointIncident>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
   notes?: Maybe<Scalars['JSON']['output']>;
@@ -6800,6 +6813,7 @@ export type ResolversTypes = ResolversObject<{
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GapsList: ResolverTypeWrapper<GapsList>;
   GlobalHealth: ResolverTypeWrapper<GlobalHealth>;
+  GlobalIncidentSurface: ResolverTypeWrapper<GlobalIncidentSurface>;
   GlobalIncidents: ResolverTypeWrapper<GlobalIncidents>;
   HealthHistory: ResolverTypeWrapper<HealthHistory>;
   HealthTrends: ResolverTypeWrapper<HealthTrends>;
@@ -7150,6 +7164,7 @@ export type ResolversParentTypes = ResolversObject<{
   Float: Scalars['Float']['output'];
   GapsList: GapsList;
   GlobalHealth: GlobalHealth;
+  GlobalIncidentSurface: GlobalIncidentSurface;
   GlobalIncidents: GlobalIncidents;
   HealthHistory: HealthHistory;
   HealthTrends: HealthTrends;
@@ -9170,6 +9185,16 @@ export type GlobalHealthResolvers<ContextType = GqlContext, ParentType extends R
   unknown_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type GlobalIncidentSurfaceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GlobalIncidentSurface'] = ResolversParentTypes['GlobalIncidentSurface']> = ResolversObject<{
+  downtime_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  incident_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  incidents?: Resolver<Array<ResolversTypes['EndpointIncidentWindow']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  transient_failed_samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  transient_failure_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type GlobalIncidentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GlobalIncidents'] = ResolversParentTypes['GlobalIncidents']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9181,7 +9206,7 @@ export type GlobalIncidentsResolvers<ContextType = GqlContext, ParentType extend
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  surfaces?: Resolver<Array<ResolversTypes['EndpointIncident']>, ParentType, ContextType>;
+  surfaces?: Resolver<Array<ResolversTypes['GlobalIncidentSurface']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -9264,7 +9289,7 @@ export type IdentityResolvers<ContextType = GqlContext, ParentType extends Resol
 export type IncidentListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IncidentList'] = ResolversParentTypes['IncidentList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  incidents?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  incidents?: Resolver<Array<ResolversTypes['EndpointIncident']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
@@ -11383,6 +11408,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
   GapsList?: GapsListResolvers<ContextType>;
   GlobalHealth?: GlobalHealthResolvers<ContextType>;
+  GlobalIncidentSurface?: GlobalIncidentSurfaceResolvers<ContextType>;
   GlobalIncidents?: GlobalIncidentsResolvers<ContextType>;
   HealthHistory?: HealthHistoryResolvers<ContextType>;
   HealthTrends?: HealthTrendsResolvers<ContextType>;

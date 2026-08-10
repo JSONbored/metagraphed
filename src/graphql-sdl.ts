@@ -2291,7 +2291,7 @@ export const SDL = /* GraphQL */ `
     generated_at: String
     notes: JSON
     summary: JSON
-    incidents: [JSON!]!
+    incidents: [EndpointIncident!]!
     total: Int!
     returned: Int!
     limit: Int!
@@ -3618,7 +3618,8 @@ export const SDL = /* GraphQL */ `
     source: String
     "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape."
     summary: JSON
-    surfaces: [EndpointIncident!]!
+    "Per-surface incident summaries -- NOT endpoint incidents. Published as [EndpointIncident!]! until #10214: those rows carry surface_id/netuid/incident_count/downtime_ms and answered null for all 18 of that type's own fields, on every one of 232 sampled."
+    surfaces: [GlobalIncidentSurface!]!
     "Surfaces matching the filters before paging (#7875). Equals the surfaces length when no limit/cursor is supplied."
     total: Int!
     "Surfaces returned on this page (#7875)."
@@ -5407,6 +5408,17 @@ export const SDL = /* GraphQL */ `
     ended_at: Float!
     duration_ms: Int!
     failed_samples: Int!
+  }
+
+  "One surface's incident rollup over the window, as GET /api/v1/incidents serves it."
+  type GlobalIncidentSurface {
+    netuid: Int!
+    surface_id: String!
+    incident_count: Int!
+    downtime_ms: Int!
+    transient_failure_count: Int!
+    transient_failed_samples: Int!
+    incidents: [EndpointIncidentWindow!]!
   }
 
   type DeregistrationTenure {

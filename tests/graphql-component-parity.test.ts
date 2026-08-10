@@ -277,7 +277,7 @@ describe("scalar identity", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.undertyped, 51);
+    assert.equal(report.undertyped, 50);
   });
 
   test("it FAILS when a field is retyped to a different scalar", () => {
@@ -318,7 +318,7 @@ describe("scalar identity", () => {
   });
 
   test("a CLOSED under-typing makes its declaration stale, so the list shrinks", () => {
-    // `Adapter.snapshot` is one of the 51 still open. Publishing the shape its
+    // `Adapter.snapshot` is one of the 50 still open. Publishing the shape its
     // component already describes has to make the declaration stale, or the
     // list would keep an entry for a gap that no longer exists.
     const fixed = inType(
@@ -332,7 +332,7 @@ describe("scalar identity", () => {
       report.stale.includes("Adapter.snapshot"),
       `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
     );
-    assert.equal(report.undertyped, 50);
+    assert.equal(report.undertyped, 49);
   });
 
   test("a Float over an Int component field is a WIDENING and stays allowed", () => {

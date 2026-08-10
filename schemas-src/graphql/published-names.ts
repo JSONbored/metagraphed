@@ -115,6 +115,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   // `EmissionGateChange` are published under their component names and so
   // need no entry.
   ChainFirehoseEvent: "ChainEvent",
+  EndpointIncident: "EndpointIncident",
   AccountPositionHistoryArtifact: "AccountPositionHistory",
   AccountPositionHistoryArtifactPoints: "AccountPositionHistoryPoint",
   AccountPositionsArtifact: "AccountPositions",
@@ -278,7 +279,13 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   FailureReasonsDay: "FailureReasonsDay",
   GapsArtifact: "GapsList",
   GlobalIncidentsArtifact: "GlobalIncidents",
-  GlobalIncidentsArtifactSurfaces: "EndpointIncident",
+  // A per-surface incident ROLLUP (surface_id/netuid/incident_count/
+  // downtime_ms), not an endpoint incident. Mapping it to
+  // `EndpointIncident` published rows that answered null for all 18 of that
+  // type's own fields, on every one of 232 sampled -- harmless only because
+  // the SDL declared them nullable; the generated schema declares them
+  // non-null and would have nulled every row (#10214).
+  GlobalIncidentsArtifactSurfaces: "GlobalIncidentSurface",
   GlobalIncidentsArtifactSurfacesIncidents: "EndpointIncidentWindow",
   GlobalValidatorsArtifact: "ValidatorList",
   HealthHistoryArtifact: "HealthHistory",

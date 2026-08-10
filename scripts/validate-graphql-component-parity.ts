@@ -190,7 +190,6 @@ const JSON_UNDERTYPED: Record<string, string> = {
   "GlobalIncidents.summary": "GlobalIncidentsArtifactSummary",
   "HealthHistory.summary": "HealthProbeSummary",
   "HealthHistory.surfaces": "[HealthHistoryArtifactSurfaces!]",
-  "IncidentList.incidents": "[EndpointIncident!]",
   "IncidentList.summary": "EndpointIncidentsArtifactSummary",
   "PoolList.pools": "[RpcPool!]",
   "ProfileList.profiles": "[SubnetProfile!]",
