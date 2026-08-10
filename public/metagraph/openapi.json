@@ -36417,6 +36417,60 @@
                 "public_safe": {
                   "type": "boolean"
                 },
+                "revenue": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": {},
+                      "properties": {
+                        "currency": {
+                          "type": "string"
+                        },
+                        "excludes": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "fields": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "grain": {
+                          "type": "string"
+                        },
+                        "provenance": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "shape": {
+                          "type": "string"
+                        },
+                        "supersedes": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "provenance"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "What this surface measures about money, or null when it declares nothing (#10566). Carried here because this artifact is already the list of probe-enabled, public-safe surfaces a lane may fetch — the revenue probe needs exactly that set plus the declaration, and enumerating 129 per-subnet artifacts on every tick to rebuild it would be the same list at 129x the cost."
+                },
                 "schema_source": {
                   "anyOf": [
                     {
@@ -36497,7 +36551,8 @@
                 "auth_required",
                 "public_safe",
                 "probe",
-                "schema_source"
+                "schema_source",
+                "revenue"
               ],
               "type": "object"
             },

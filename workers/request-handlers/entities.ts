@@ -398,6 +398,10 @@ import {
   SUBNET_REVENUE_FIELD_SOURCES,
   loadSubnetRevenue,
 } from "../../src/revenue-load.ts";
+import {
+  loadRevenueObservations,
+  type RevenueStoreDb,
+} from "../../src/revenue-observations.ts";
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
@@ -465,6 +469,7 @@ import {
   FAILURE_REASONS_TABLES,
   INDEXER_LAG_TABLES,
   SUBNET_BURN_HISTORY_TABLES,
+  REVENUE_OBSERVATION_TABLES,
   SUBNET_SNAPSHOT_TABLES,
   SURFACE_HISTORY_TABLES,
   TAO_USD_TABLES,
@@ -7111,12 +7116,21 @@ export async function handleSubnetRevenue(
     );
   }
   const { row } = await resolveSubnetEconomicsRow(env, netuid);
+  // #10566: the observation series, so `amount_usd` is a real figure rather
+  // than the null it was for as long as the probe lane had no producer. A read
+  // failure comes back as null and degrades to "not observed" -- the same
+  // output as an empty store, which is correct here: neither is a zero.
+  const observations = await loadRevenueObservations(
+    readStore(env, REVENUE_OBSERVATION_TABLES) as RevenueStoreDb | undefined,
+    netuid,
+  );
   const revenue = loadSubnetRevenue({
     netuid,
     window_days: 1,
     economics: row,
     surfaces: await subnetSurfacesFor(env, netuid),
     usd_per_tao: await usdPerTaoOrNull(env),
+    observations: observations ?? undefined,
   });
   return envelopeResponse(
     request,
@@ -7148,6 +7162,13 @@ export async function handleChainRevenueCoverage(request: Request, env: Env) {
     ? (blob.subnets as Array<Record<string, unknown>>)
     : [];
   const usd = await usdPerTaoOrNull(env);
+  // ONE read for the whole network, not one per subnet: 129 round trips would
+  // price this route out of existence, and the table is small enough that the
+  // whole of it is cheaper than the first dozen queries.
+  const allObservations = await loadRevenueObservations(
+    readStore(env, REVENUE_OBSERVATION_TABLES) as RevenueStoreDb | undefined,
+    null,
+  );
   const subnets = [];
   for (const row of rows) {
     const netuid = Number(row?.netuid);
@@ -7159,6 +7180,7 @@ export async function handleChainRevenueCoverage(request: Request, env: Env) {
         economics: row,
         surfaces: await subnetSurfacesFor(env, netuid),
         usd_per_tao: usd,
+        observations: allObservations ?? undefined,
       }),
     );
   }

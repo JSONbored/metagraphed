@@ -538,6 +538,7 @@ import {
   LINK_STATUS_SYNC_CRON,
   RAW_CAPTURE_CRON,
   SUBNET_BURN_CAPTURE_CRON,
+  REVENUE_PROBE_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
@@ -649,6 +650,11 @@ import {
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
+import {
+  runRevenueProbeTick,
+  type RevenueStoreDb,
+} from "../src/revenue-observations.ts";
+import { REVENUE_OBSERVATION_TABLES } from "../src/read-store-tables.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -2133,6 +2139,7 @@ function cronLabel(cron: string): string {
   if (cron === LINK_STATUS_SYNC_CRON) return "link-status-sync";
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
+  if (cron === REVENUE_PROBE_CRON) return "revenue-probe";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
   if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
@@ -2352,6 +2359,35 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === REVENUE_PROBE_CRON) {
+    // #10566: the lane src/revenue-probe.ts has been waiting for since #10444.
+    //
+    // It shipped as a library with NO caller -- nothing imported it, no config
+    // carried a trigger -- so revenue_observations was never written and every
+    // revenue route reported null for all 129 subnets, including the two the
+    // epic exists to measure. Nothing failed, because "absent revenue is null,
+    // never zero" is exactly what a dead producer looks like.
+    //
+    // The tick itself lives in src/ so it can be driven end to end in a test;
+    // this branch is the store's lifetime and nothing else.
+    {
+      const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
+      try {
+        return await runRevenueProbeTick(env, store.db as RevenueStoreDb, {
+          readArtifact,
+          recordVerdict: (verdict) =>
+            ctx.waitUntil(
+              recordLaneVerdict(
+                laneHealthStore(env as unknown as Record<string, unknown>),
+                verdict as never,
+              ).then(() => undefined),
+            ),
+        });
+      } finally {
+        store.close();
+      }
+    }
   }
   if (cron === SUBNET_BURN_CAPTURE_CRON) {
     // #9402: one state_queryStorageAt covering every subnet, then one batched D1

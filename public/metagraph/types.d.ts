@@ -9135,6 +9135,21 @@ export interface components {
                 };
                 provider: string;
                 public_safe: boolean;
+                /** @description What this surface measures about money, or null when it declares nothing (#10566). Carried here because this artifact is already the list of probe-enabled, public-safe surfaces a lane may fetch — the revenue probe needs exactly that set plus the declaration, and enumerating 129 per-subnet artifacts on every tick to rebuild it would be the same list at 129x the cost. */
+                revenue: ({
+                    currency?: string;
+                    excludes?: string[];
+                    fields?: {
+                        [key: string]: string;
+                    };
+                    grain?: string;
+                    provenance: string;
+                    role: string;
+                    shape?: string;
+                    supersedes?: string[];
+                } & {
+                    [key: string]: unknown;
+                }) | null;
                 /** @description The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface). */
                 schema_source: ({
                     /** @description Artifact path of the captured schema, under /metagraph/. */
