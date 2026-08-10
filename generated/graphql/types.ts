@@ -891,22 +891,9 @@ export type ChainAlphaVolume = {
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainAlphaVolumeSubnet>;
   /** Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume. */
-  volume_distribution?: Maybe<ChainAlphaVolumeDistribution>;
+  volume_distribution?: Maybe<IntensityDistribution>;
   /** Fixed rolling window label (always 24h). */
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). */
-export type ChainAlphaVolumeDistribution = {
-  __typename?: 'ChainAlphaVolumeDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide buy/sell volume rollup across every subnet with volume in the window. */
@@ -953,26 +940,13 @@ export type ChainAlphaVolumeSubnet = {
 export type ChainAxonRemovals = {
   __typename?: 'ChainAxonRemovals';
   degraded?: Maybe<DegradedInfo>;
-  intensity_distribution?: Maybe<ChainAxonRemovalsIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainAxonRemovalsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainAxonRemovalsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
-export type ChainAxonRemovalsIntensityDistribution = {
-  __typename?: 'ChainAxonRemovalsIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1065,7 +1039,7 @@ export type ChainConcentrationHistory = {
   /** Every distinct builder version in the series. More than one means it changes DEFINITION partway along. */
   builder_versions: Array<Scalars['Int']['output']>;
   /** Present ONLY on a decline. An empty window is a measurement. */
-  degraded?: Maybe<ChainConcentrationHistoryDegraded>;
+  degraded?: Maybe<UnavailableDegraded>;
   newest_day?: Maybe<Scalars['String']['output']>;
   oldest_day?: Maybe<Scalars['String']['output']>;
   /** From the ROWS. A day the capture did not run is absent, never a zero-concentration point. */
@@ -1073,11 +1047,6 @@ export type ChainConcentrationHistory = {
   points: Array<ChainConcentrationHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
-};
-
-export type ChainConcentrationHistoryDegraded = {
-  __typename?: 'ChainConcentrationHistoryDegraded';
-  reason: Scalars['String']['output'];
 };
 
 export type ChainConcentrationHistoryPoint = {
@@ -1104,26 +1073,13 @@ export type ChainDeregistrations = {
   __typename?: 'ChainDeregistrations';
   degraded?: Maybe<DegradedInfo>;
   derivation?: Maybe<DeregistrationDerivation>;
-  intensity_distribution?: Maybe<ChainDeregistrationsIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainDeregistrationsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainDeregistrationsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard. */
-export type ChainDeregistrationsIntensityDistribution = {
-  __typename?: 'ChainDeregistrationsIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1375,26 +1331,13 @@ export type ChainPerformance = {
 export type ChainPrometheus = {
   __typename?: 'ChainPrometheus';
   degraded?: Maybe<DegradedInfo>;
-  intensity_distribution?: Maybe<ChainPrometheusIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainPrometheusNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainPrometheusSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
-export type ChainPrometheusIntensityDistribution = {
-  __typename?: 'ChainPrometheusIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1417,26 +1360,13 @@ export type ChainPrometheusSubnet = {
 
 export type ChainRegistrations = {
   __typename?: 'ChainRegistrations';
-  intensity_distribution?: Maybe<ChainRegistrationsIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainRegistrationsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainRegistrationsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard. */
-export type ChainRegistrationsIntensityDistribution = {
-  __typename?: 'ChainRegistrationsIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide registration rollup: every subnet with NeuronRegistered events in the window, combined. distinct_registrants counts a hotkey once even when it registers on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -1460,26 +1390,13 @@ export type ChainRegistrationsSubnet = {
 /** Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
 export type ChainServing = {
   __typename?: 'ChainServing';
-  intensity_distribution?: Maybe<ChainServingIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainServingNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainServingSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
-export type ChainServingIntensityDistribution = {
-  __typename?: 'ChainServingIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined. */
@@ -1580,26 +1497,13 @@ export type ChainStakeFlowSubnet = {
 /** Network-wide stake-movement (re-delegation) leaderboard over a lookback window, summed live from the account_events StakeMoved stream. Mirrors GET /api/v1/chain/stake-moves's data envelope. */
 export type ChainStakeMoves = {
   __typename?: 'ChainStakeMoves';
-  intensity_distribution?: Maybe<ChainStakeMovesIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainStakeMovesNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainStakeMovesSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window. */
-export type ChainStakeMovesIntensityDistribution = {
-  __typename?: 'ChainStakeMovesIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a coldkey once even when it moves on several subnets. */
@@ -1623,26 +1527,13 @@ export type ChainStakeMovesSubnet = {
 /** Network-wide stake-transfer (between-coldkeys) leaderboard over a lookback window, summed live from the account_events StakeTransferred stream. Mirrors GET /api/v1/chain/stake-transfers's data envelope. */
 export type ChainStakeTransfers = {
   __typename?: 'ChainStakeTransfers';
-  intensity_distribution?: Maybe<ChainStakeTransfersIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainStakeTransfersNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainStakeTransfersSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window. */
-export type ChainStakeTransfersIntensityDistribution = {
-  __typename?: 'ChainStakeTransfersIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin coldkey once even when it transfers out of several subnets. */
@@ -1810,26 +1701,13 @@ export type ChainWeightSetters = {
 /** Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
 export type ChainWeights = {
   __typename?: 'ChainWeights';
-  intensity_distribution?: Maybe<ChainWeightsIntensityDistribution>;
+  intensity_distribution?: Maybe<IntensityDistribution>;
   network: ChainWeightsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainWeightsSubnet>;
   window?: Maybe<Scalars['String']['output']>;
-};
-
-/** Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
-export type ChainWeightsIntensityDistribution = {
-  __typename?: 'ChainWeightsIntensityDistribution';
-  count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
-  mean: Scalars['Float']['output'];
-  median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
 };
 
 /** Network-wide weight-setting rollup: every subnet that set weights in the window, combined. */
@@ -2380,7 +2258,7 @@ export type FailureReasons = {
   /** Counted from the ROWS, not the requested window -- a day the prober did not run is absent rather than a zero. */
   days_covered?: Maybe<Scalars['Int']['output']>;
   /** Present ONLY on a decline. An empty window is a measurement, not a decline. */
-  degraded?: Maybe<FailureReasonsDegraded>;
+  degraded?: Maybe<UnavailableDegraded>;
   failing_checks?: Maybe<Scalars['Int']['output']>;
   failure_rate?: Maybe<Scalars['Float']['output']>;
   kind?: Maybe<Scalars['String']['output']>;
@@ -2403,11 +2281,6 @@ export type FailureReasonsDay = {
   failing_checks: Scalars['Int']['output'];
   failure_rate?: Maybe<Scalars['Float']['output']>;
   total_checks: Scalars['Int']['output'];
-};
-
-export type FailureReasonsDegraded = {
-  __typename?: 'FailureReasonsDegraded';
-  reason: Scalars['String']['output'];
 };
 
 /** Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps). */
@@ -2610,6 +2483,19 @@ export type IndexerLagWindow = {
   oldest_observed_at?: Maybe<Scalars['String']['output']>;
 };
 
+/** Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
+export type IntensityDistribution = {
+  __typename?: 'IntensityDistribution';
+  count: Scalars['Int']['output'];
+  max: Scalars['Float']['output'];
+  mean: Scalars['Float']['output'];
+  median: Scalars['Float']['output'];
+  min: Scalars['Float']['output'];
+  p25: Scalars['Float']['output'];
+  p75: Scalars['Float']['output'];
+  p90: Scalars['Float']['output'];
+};
+
 /** The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument. */
 export enum Network {
   Finney = 'finney',
@@ -2801,11 +2687,6 @@ export type OpportunityEntry = {
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
   validator_headroom?: Maybe<Scalars['Int']['output']>;
-};
-
-export type PipelineHistoryDegraded = {
-  __typename?: 'PipelineHistoryDegraded';
-  reason: Scalars['String']['output'];
 };
 
 export type PipelineHistoryPoint = {
@@ -5776,7 +5657,7 @@ export type SubnetPerformanceHistoryPoint = {
 export type SubnetPipelineHistory = {
   __typename?: 'SubnetPipelineHistory';
   /** Present ONLY on a decline. An empty series is a measurement. */
-  degraded?: Maybe<PipelineHistoryDegraded>;
+  degraded?: Maybe<UnavailableDegraded>;
   /** Independent samples -- the honest denominator for any claim about how a value moved. */
   distinct_observations?: Maybe<Scalars['Int']['output']>;
   /** The first day the pipeline columns were ever written, so a short series reads as a start rather than a gap. */
@@ -6302,6 +6183,11 @@ export type TurnoverValidatorChange = {
   uid?: Maybe<Scalars['Int']['output']>;
 };
 
+export type UnavailableDegraded = {
+  __typename?: 'UnavailableDegraded';
+  reason: Scalars['String']['output'];
+};
+
 /** One daily uptime point for a surface. */
 export type UptimeDay = {
   __typename?: 'UptimeDay';
@@ -6710,11 +6596,9 @@ export type ResolversTypes = ResolversObject<{
   ChainActivity: ResolverTypeWrapper<ChainActivity>;
   ChainActivityDay: ResolverTypeWrapper<ChainActivityDay>;
   ChainAlphaVolume: ResolverTypeWrapper<ChainAlphaVolume>;
-  ChainAlphaVolumeDistribution: ResolverTypeWrapper<ChainAlphaVolumeDistribution>;
   ChainAlphaVolumeNetwork: ResolverTypeWrapper<ChainAlphaVolumeNetwork>;
   ChainAlphaVolumeSubnet: ResolverTypeWrapper<ChainAlphaVolumeSubnet>;
   ChainAxonRemovals: ResolverTypeWrapper<ChainAxonRemovals>;
-  ChainAxonRemovalsIntensityDistribution: ResolverTypeWrapper<ChainAxonRemovalsIntensityDistribution>;
   ChainAxonRemovalsNetwork: ResolverTypeWrapper<ChainAxonRemovalsNetwork>;
   ChainAxonRemovalsSubnet: ResolverTypeWrapper<ChainAxonRemovalsSubnet>;
   ChainBurn: ResolverTypeWrapper<ChainBurn>;
@@ -6723,10 +6607,8 @@ export type ResolversTypes = ResolversObject<{
   ChainCalls: ResolverTypeWrapper<ChainCalls>;
   ChainConcentration: ResolverTypeWrapper<ChainConcentration>;
   ChainConcentrationHistory: ResolverTypeWrapper<ChainConcentrationHistory>;
-  ChainConcentrationHistoryDegraded: ResolverTypeWrapper<ChainConcentrationHistoryDegraded>;
   ChainConcentrationHistoryPoint: ResolverTypeWrapper<ChainConcentrationHistoryPoint>;
   ChainDeregistrations: ResolverTypeWrapper<ChainDeregistrations>;
-  ChainDeregistrationsIntensityDistribution: ResolverTypeWrapper<ChainDeregistrationsIntensityDistribution>;
   ChainDeregistrationsNetwork: ResolverTypeWrapper<ChainDeregistrationsNetwork>;
   ChainDeregistrationsSubnet: ResolverTypeWrapper<ChainDeregistrationsSubnet>;
   ChainEvent: ResolverTypeWrapper<ChainEvent>;
@@ -6747,15 +6629,12 @@ export type ResolversTypes = ResolversObject<{
   ChainIdleStakeSubnet: ResolverTypeWrapper<ChainIdleStakeSubnet>;
   ChainPerformance: ResolverTypeWrapper<ChainPerformance>;
   ChainPrometheus: ResolverTypeWrapper<ChainPrometheus>;
-  ChainPrometheusIntensityDistribution: ResolverTypeWrapper<ChainPrometheusIntensityDistribution>;
   ChainPrometheusNetwork: ResolverTypeWrapper<ChainPrometheusNetwork>;
   ChainPrometheusSubnet: ResolverTypeWrapper<ChainPrometheusSubnet>;
   ChainRegistrations: ResolverTypeWrapper<ChainRegistrations>;
-  ChainRegistrationsIntensityDistribution: ResolverTypeWrapper<ChainRegistrationsIntensityDistribution>;
   ChainRegistrationsNetwork: ResolverTypeWrapper<ChainRegistrationsNetwork>;
   ChainRegistrationsSubnet: ResolverTypeWrapper<ChainRegistrationsSubnet>;
   ChainServing: ResolverTypeWrapper<ChainServing>;
-  ChainServingIntensityDistribution: ResolverTypeWrapper<ChainServingIntensityDistribution>;
   ChainServingNetwork: ResolverTypeWrapper<ChainServingNetwork>;
   ChainServingSubnet: ResolverTypeWrapper<ChainServingSubnet>;
   ChainSigner: ResolverTypeWrapper<ChainSigner>;
@@ -6765,11 +6644,9 @@ export type ResolversTypes = ResolversObject<{
   ChainStakeFlowNetwork: ResolverTypeWrapper<ChainStakeFlowNetwork>;
   ChainStakeFlowSubnet: ResolverTypeWrapper<ChainStakeFlowSubnet>;
   ChainStakeMoves: ResolverTypeWrapper<ChainStakeMoves>;
-  ChainStakeMovesIntensityDistribution: ResolverTypeWrapper<ChainStakeMovesIntensityDistribution>;
   ChainStakeMovesNetwork: ResolverTypeWrapper<ChainStakeMovesNetwork>;
   ChainStakeMovesSubnet: ResolverTypeWrapper<ChainStakeMovesSubnet>;
   ChainStakeTransfers: ResolverTypeWrapper<ChainStakeTransfers>;
-  ChainStakeTransfersIntensityDistribution: ResolverTypeWrapper<ChainStakeTransfersIntensityDistribution>;
   ChainStakeTransfersNetwork: ResolverTypeWrapper<ChainStakeTransfersNetwork>;
   ChainStakeTransfersSubnet: ResolverTypeWrapper<ChainStakeTransfersSubnet>;
   ChainSubnetLifecycle: ResolverTypeWrapper<ChainSubnetLifecycle>;
@@ -6784,7 +6661,6 @@ export type ResolversTypes = ResolversObject<{
   ChainWeightSetter: ResolverTypeWrapper<ChainWeightSetter>;
   ChainWeightSetters: ResolverTypeWrapper<ChainWeightSetters>;
   ChainWeights: ResolverTypeWrapper<ChainWeights>;
-  ChainWeightsIntensityDistribution: ResolverTypeWrapper<ChainWeightsIntensityDistribution>;
   ChainWeightsNetwork: ResolverTypeWrapper<ChainWeightsNetwork>;
   ChainWeightsSubnet: ResolverTypeWrapper<ChainWeightsSubnet>;
   ChainYield: ResolverTypeWrapper<ChainYield>;
@@ -6827,7 +6703,6 @@ export type ResolversTypes = ResolversObject<{
   FailureReason: ResolverTypeWrapper<FailureReason>;
   FailureReasons: ResolverTypeWrapper<FailureReasons>;
   FailureReasonsDay: ResolverTypeWrapper<FailureReasonsDay>;
-  FailureReasonsDegraded: ResolverTypeWrapper<FailureReasonsDegraded>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GapsList: ResolverTypeWrapper<GapsList>;
   GlobalHealth: ResolverTypeWrapper<GlobalHealth>;
@@ -6843,6 +6718,7 @@ export type ResolversTypes = ResolversObject<{
   IndexerLagLatency: ResolverTypeWrapper<IndexerLagLatency>;
   IndexerLagWindow: ResolverTypeWrapper<IndexerLagWindow>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  IntensityDistribution: ResolverTypeWrapper<IntensityDistribution>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Network: ResolverTypeWrapper<Network>;
   NetworkParameters: ResolverTypeWrapper<NetworkParameters>;
@@ -6856,7 +6732,6 @@ export type ResolversTypes = ResolversObject<{
   NominatorPosition: ResolverTypeWrapper<NominatorPosition>;
   OpportunityBoards: ResolverTypeWrapper<OpportunityBoards>;
   OpportunityEntry: ResolverTypeWrapper<OpportunityEntry>;
-  PipelineHistoryDegraded: ResolverTypeWrapper<PipelineHistoryDegraded>;
   PipelineHistoryPoint: ResolverTypeWrapper<PipelineHistoryPoint>;
   PoolList: ResolverTypeWrapper<PoolList>;
   ProfileList: ResolverTypeWrapper<ProfileList>;
@@ -6974,6 +6849,7 @@ export type ResolversTypes = ResolversObject<{
   TaoUsdPoint: ResolverTypeWrapper<TaoUsdPoint>;
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
   TurnoverValidatorChange: ResolverTypeWrapper<TurnoverValidatorChange>;
+  UnavailableDegraded: ResolverTypeWrapper<UnavailableDegraded>;
   UptimeDay: ResolverTypeWrapper<UptimeDay>;
   UptimeLatency: ResolverTypeWrapper<UptimeLatency>;
   UptimeReliability: ResolverTypeWrapper<UptimeReliability>;
@@ -7069,11 +6945,9 @@ export type ResolversParentTypes = ResolversObject<{
   ChainActivity: ChainActivity;
   ChainActivityDay: ChainActivityDay;
   ChainAlphaVolume: ChainAlphaVolume;
-  ChainAlphaVolumeDistribution: ChainAlphaVolumeDistribution;
   ChainAlphaVolumeNetwork: ChainAlphaVolumeNetwork;
   ChainAlphaVolumeSubnet: ChainAlphaVolumeSubnet;
   ChainAxonRemovals: ChainAxonRemovals;
-  ChainAxonRemovalsIntensityDistribution: ChainAxonRemovalsIntensityDistribution;
   ChainAxonRemovalsNetwork: ChainAxonRemovalsNetwork;
   ChainAxonRemovalsSubnet: ChainAxonRemovalsSubnet;
   ChainBurn: ChainBurn;
@@ -7082,10 +6956,8 @@ export type ResolversParentTypes = ResolversObject<{
   ChainCalls: ChainCalls;
   ChainConcentration: ChainConcentration;
   ChainConcentrationHistory: ChainConcentrationHistory;
-  ChainConcentrationHistoryDegraded: ChainConcentrationHistoryDegraded;
   ChainConcentrationHistoryPoint: ChainConcentrationHistoryPoint;
   ChainDeregistrations: ChainDeregistrations;
-  ChainDeregistrationsIntensityDistribution: ChainDeregistrationsIntensityDistribution;
   ChainDeregistrationsNetwork: ChainDeregistrationsNetwork;
   ChainDeregistrationsSubnet: ChainDeregistrationsSubnet;
   ChainEvent: ChainEvent;
@@ -7105,15 +6977,12 @@ export type ResolversParentTypes = ResolversObject<{
   ChainIdleStakeSubnet: ChainIdleStakeSubnet;
   ChainPerformance: ChainPerformance;
   ChainPrometheus: ChainPrometheus;
-  ChainPrometheusIntensityDistribution: ChainPrometheusIntensityDistribution;
   ChainPrometheusNetwork: ChainPrometheusNetwork;
   ChainPrometheusSubnet: ChainPrometheusSubnet;
   ChainRegistrations: ChainRegistrations;
-  ChainRegistrationsIntensityDistribution: ChainRegistrationsIntensityDistribution;
   ChainRegistrationsNetwork: ChainRegistrationsNetwork;
   ChainRegistrationsSubnet: ChainRegistrationsSubnet;
   ChainServing: ChainServing;
-  ChainServingIntensityDistribution: ChainServingIntensityDistribution;
   ChainServingNetwork: ChainServingNetwork;
   ChainServingSubnet: ChainServingSubnet;
   ChainSigner: ChainSigner;
@@ -7123,11 +6992,9 @@ export type ResolversParentTypes = ResolversObject<{
   ChainStakeFlowNetwork: ChainStakeFlowNetwork;
   ChainStakeFlowSubnet: ChainStakeFlowSubnet;
   ChainStakeMoves: ChainStakeMoves;
-  ChainStakeMovesIntensityDistribution: ChainStakeMovesIntensityDistribution;
   ChainStakeMovesNetwork: ChainStakeMovesNetwork;
   ChainStakeMovesSubnet: ChainStakeMovesSubnet;
   ChainStakeTransfers: ChainStakeTransfers;
-  ChainStakeTransfersIntensityDistribution: ChainStakeTransfersIntensityDistribution;
   ChainStakeTransfersNetwork: ChainStakeTransfersNetwork;
   ChainStakeTransfersSubnet: ChainStakeTransfersSubnet;
   ChainSubnetLifecycle: ChainSubnetLifecycle;
@@ -7142,7 +7009,6 @@ export type ResolversParentTypes = ResolversObject<{
   ChainWeightSetter: ChainWeightSetter;
   ChainWeightSetters: ChainWeightSetters;
   ChainWeights: ChainWeights;
-  ChainWeightsIntensityDistribution: ChainWeightsIntensityDistribution;
   ChainWeightsNetwork: ChainWeightsNetwork;
   ChainWeightsSubnet: ChainWeightsSubnet;
   ChainYield: ChainYield;
@@ -7185,7 +7051,6 @@ export type ResolversParentTypes = ResolversObject<{
   FailureReason: FailureReason;
   FailureReasons: FailureReasons;
   FailureReasonsDay: FailureReasonsDay;
-  FailureReasonsDegraded: FailureReasonsDegraded;
   Float: Scalars['Float']['output'];
   GapsList: GapsList;
   GlobalHealth: GlobalHealth;
@@ -7201,6 +7066,7 @@ export type ResolversParentTypes = ResolversObject<{
   IndexerLagLatency: IndexerLagLatency;
   IndexerLagWindow: IndexerLagWindow;
   Int: Scalars['Int']['output'];
+  IntensityDistribution: IntensityDistribution;
   JSON: Scalars['JSON']['output'];
   NetworkParameters: NetworkParameters;
   NetworkRandomness: NetworkRandomness;
@@ -7213,7 +7079,6 @@ export type ResolversParentTypes = ResolversObject<{
   NominatorPosition: NominatorPosition;
   OpportunityBoards: OpportunityBoards;
   OpportunityEntry: OpportunityEntry;
-  PipelineHistoryDegraded: PipelineHistoryDegraded;
   PipelineHistoryPoint: PipelineHistoryPoint;
   PoolList: PoolList;
   ProfileList: ProfileList;
@@ -7331,6 +7196,7 @@ export type ResolversParentTypes = ResolversObject<{
   TaoUsdPoint: TaoUsdPoint;
   TurnoverUidReassignment: TurnoverUidReassignment;
   TurnoverValidatorChange: TurnoverValidatorChange;
+  UnavailableDegraded: UnavailableDegraded;
   UptimeDay: UptimeDay;
   UptimeLatency: UptimeLatency;
   UptimeReliability: UptimeReliability;
@@ -8069,19 +7935,8 @@ export type ChainAlphaVolumeResolvers<ContextType = GqlContext, ParentType exten
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainAlphaVolumeSubnet']>, ParentType, ContextType>;
-  volume_distribution?: Resolver<Maybe<ResolversTypes['ChainAlphaVolumeDistribution']>, ParentType, ContextType>;
+  volume_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainAlphaVolumeDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAlphaVolumeDistribution'] = ResolversParentTypes['ChainAlphaVolumeDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainAlphaVolumeNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAlphaVolumeNetwork'] = ResolversParentTypes['ChainAlphaVolumeNetwork']> = ResolversObject<{
@@ -8118,24 +7973,13 @@ export type ChainAlphaVolumeSubnetResolvers<ContextType = GqlContext, ParentType
 
 export type ChainAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovals'] = ResolversParentTypes['ChainAxonRemovals']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainAxonRemovalsIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainAxonRemovalsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainAxonRemovalsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainAxonRemovalsIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsIntensityDistribution'] = ResolversParentTypes['ChainAxonRemovalsIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainAxonRemovalsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovalsNetwork'] = ResolversParentTypes['ChainAxonRemovalsNetwork']> = ResolversObject<{
@@ -8201,17 +8045,13 @@ export type ChainConcentrationResolvers<ContextType = GqlContext, ParentType ext
 
 export type ChainConcentrationHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistory'] = ResolversParentTypes['ChainConcentrationHistory']> = ResolversObject<{
   builder_versions?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
-  degraded?: Resolver<Maybe<ResolversTypes['ChainConcentrationHistoryDegraded']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['UnavailableDegraded']>, ParentType, ContextType>;
   newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   point_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['ChainConcentrationHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainConcentrationHistoryDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistoryDegraded'] = ResolversParentTypes['ChainConcentrationHistoryDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type ChainConcentrationHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistoryPoint'] = ResolversParentTypes['ChainConcentrationHistoryPoint']> = ResolversObject<{
@@ -8232,24 +8072,13 @@ export type ChainConcentrationHistoryPointResolvers<ContextType = GqlContext, Pa
 export type ChainDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrations'] = ResolversParentTypes['ChainDeregistrations']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   derivation?: Resolver<Maybe<ResolversTypes['DeregistrationDerivation']>, ParentType, ContextType>;
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainDeregistrationsIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainDeregistrationsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainDeregistrationsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainDeregistrationsIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrationsIntensityDistribution'] = ResolversParentTypes['ChainDeregistrationsIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainDeregistrationsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrationsNetwork'] = ResolversParentTypes['ChainDeregistrationsNetwork']> = ResolversObject<{
@@ -8430,24 +8259,13 @@ export type ChainPerformanceResolvers<ContextType = GqlContext, ParentType exten
 
 export type ChainPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPrometheus'] = ResolversParentTypes['ChainPrometheus']> = ResolversObject<{
   degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainPrometheusIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainPrometheusNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainPrometheusSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainPrometheusIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPrometheusIntensityDistribution'] = ResolversParentTypes['ChainPrometheusIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainPrometheusNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPrometheusNetwork'] = ResolversParentTypes['ChainPrometheusNetwork']> = ResolversObject<{
@@ -8464,24 +8282,13 @@ export type ChainPrometheusSubnetResolvers<ContextType = GqlContext, ParentType 
 }>;
 
 export type ChainRegistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainRegistrations'] = ResolversParentTypes['ChainRegistrations']> = ResolversObject<{
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainRegistrationsIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainRegistrationsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainRegistrationsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainRegistrationsIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainRegistrationsIntensityDistribution'] = ResolversParentTypes['ChainRegistrationsIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainRegistrationsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainRegistrationsNetwork'] = ResolversParentTypes['ChainRegistrationsNetwork']> = ResolversObject<{
@@ -8498,24 +8305,13 @@ export type ChainRegistrationsSubnetResolvers<ContextType = GqlContext, ParentTy
 }>;
 
 export type ChainServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainServing'] = ResolversParentTypes['ChainServing']> = ResolversObject<{
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainServingIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainServingNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainServingSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainServingIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainServingIntensityDistribution'] = ResolversParentTypes['ChainServingIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainServingNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainServingNetwork'] = ResolversParentTypes['ChainServingNetwork']> = ResolversObject<{
@@ -8593,24 +8389,13 @@ export type ChainStakeFlowSubnetResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type ChainStakeMovesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeMoves'] = ResolversParentTypes['ChainStakeMoves']> = ResolversObject<{
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainStakeMovesIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainStakeMovesNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainStakeMovesSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainStakeMovesIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeMovesIntensityDistribution'] = ResolversParentTypes['ChainStakeMovesIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainStakeMovesNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeMovesNetwork'] = ResolversParentTypes['ChainStakeMovesNetwork']> = ResolversObject<{
@@ -8627,24 +8412,13 @@ export type ChainStakeMovesSubnetResolvers<ContextType = GqlContext, ParentType 
 }>;
 
 export type ChainStakeTransfersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeTransfers'] = ResolversParentTypes['ChainStakeTransfers']> = ResolversObject<{
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainStakeTransfersIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainStakeTransfersNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainStakeTransfersSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainStakeTransfersIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeTransfersIntensityDistribution'] = ResolversParentTypes['ChainStakeTransfersIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainStakeTransfersNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeTransfersNetwork'] = ResolversParentTypes['ChainStakeTransfersNetwork']> = ResolversObject<{
@@ -8774,24 +8548,13 @@ export type ChainWeightSettersResolvers<ContextType = GqlContext, ParentType ext
 }>;
 
 export type ChainWeightsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainWeights'] = ResolversParentTypes['ChainWeights']> = ResolversObject<{
-  intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainWeightsIntensityDistribution']>, ParentType, ContextType>;
+  intensity_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainWeightsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainWeightsSubnet']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-}>;
-
-export type ChainWeightsIntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainWeightsIntensityDistribution'] = ResolversParentTypes['ChainWeightsIntensityDistribution']> = ResolversObject<{
-  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainWeightsNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainWeightsNetwork'] = ResolversParentTypes['ChainWeightsNetwork']> = ResolversObject<{
@@ -9228,7 +8991,7 @@ export type FailureReasonResolvers<ContextType = GqlContext, ParentType extends 
 
 export type FailureReasonsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReasons'] = ResolversParentTypes['FailureReasons']> = ResolversObject<{
   days_covered?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  degraded?: Resolver<Maybe<ResolversTypes['FailureReasonsDegraded']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['UnavailableDegraded']>, ParentType, ContextType>;
   failing_checks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   failure_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9248,10 +9011,6 @@ export type FailureReasonsDayResolvers<ContextType = GqlContext, ParentType exte
   failing_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   failure_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-}>;
-
-export type FailureReasonsDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReasonsDegraded'] = ResolversParentTypes['FailureReasonsDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type GapsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsList'] = ResolversParentTypes['GapsList']> = ResolversObject<{
@@ -9421,6 +9180,17 @@ export type IndexerLagWindowResolvers<ContextType = GqlContext, ParentType exten
   oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type IntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IntensityDistribution'] = ResolversParentTypes['IntensityDistribution']> = ResolversObject<{
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
   name: 'JSON';
 }
@@ -9576,10 +9346,6 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-}>;
-
-export type PipelineHistoryDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryDegraded'] = ResolversParentTypes['PipelineHistoryDegraded']> = ResolversObject<{
-  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type PipelineHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryPoint'] = ResolversParentTypes['PipelineHistoryPoint']> = ResolversObject<{
@@ -10649,7 +10415,7 @@ export type SubnetPerformanceHistoryPointResolvers<ContextType = GqlContext, Par
 }>;
 
 export type SubnetPipelineHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPipelineHistory'] = ResolversParentTypes['SubnetPipelineHistory']> = ResolversObject<{
-  degraded?: Resolver<Maybe<ResolversTypes['PipelineHistoryDegraded']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['UnavailableDegraded']>, ParentType, ContextType>;
   distinct_observations?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   first_captured_day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -11069,6 +10835,10 @@ export type TurnoverValidatorChangeResolvers<ContextType = GqlContext, ParentTyp
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type UnavailableDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['UnavailableDegraded'] = ResolversParentTypes['UnavailableDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type UptimeDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['UptimeDay'] = ResolversParentTypes['UptimeDay']> = ResolversObject<{
   avg_latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -11349,11 +11119,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainActivity?: ChainActivityResolvers<ContextType>;
   ChainActivityDay?: ChainActivityDayResolvers<ContextType>;
   ChainAlphaVolume?: ChainAlphaVolumeResolvers<ContextType>;
-  ChainAlphaVolumeDistribution?: ChainAlphaVolumeDistributionResolvers<ContextType>;
   ChainAlphaVolumeNetwork?: ChainAlphaVolumeNetworkResolvers<ContextType>;
   ChainAlphaVolumeSubnet?: ChainAlphaVolumeSubnetResolvers<ContextType>;
   ChainAxonRemovals?: ChainAxonRemovalsResolvers<ContextType>;
-  ChainAxonRemovalsIntensityDistribution?: ChainAxonRemovalsIntensityDistributionResolvers<ContextType>;
   ChainAxonRemovalsNetwork?: ChainAxonRemovalsNetworkResolvers<ContextType>;
   ChainAxonRemovalsSubnet?: ChainAxonRemovalsSubnetResolvers<ContextType>;
   ChainBurn?: ChainBurnResolvers<ContextType>;
@@ -11362,10 +11130,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainCalls?: ChainCallsResolvers<ContextType>;
   ChainConcentration?: ChainConcentrationResolvers<ContextType>;
   ChainConcentrationHistory?: ChainConcentrationHistoryResolvers<ContextType>;
-  ChainConcentrationHistoryDegraded?: ChainConcentrationHistoryDegradedResolvers<ContextType>;
   ChainConcentrationHistoryPoint?: ChainConcentrationHistoryPointResolvers<ContextType>;
   ChainDeregistrations?: ChainDeregistrationsResolvers<ContextType>;
-  ChainDeregistrationsIntensityDistribution?: ChainDeregistrationsIntensityDistributionResolvers<ContextType>;
   ChainDeregistrationsNetwork?: ChainDeregistrationsNetworkResolvers<ContextType>;
   ChainDeregistrationsSubnet?: ChainDeregistrationsSubnetResolvers<ContextType>;
   ChainEvent?: ChainEventResolvers<ContextType>;
@@ -11385,15 +11151,12 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainIdleStakeSubnet?: ChainIdleStakeSubnetResolvers<ContextType>;
   ChainPerformance?: ChainPerformanceResolvers<ContextType>;
   ChainPrometheus?: ChainPrometheusResolvers<ContextType>;
-  ChainPrometheusIntensityDistribution?: ChainPrometheusIntensityDistributionResolvers<ContextType>;
   ChainPrometheusNetwork?: ChainPrometheusNetworkResolvers<ContextType>;
   ChainPrometheusSubnet?: ChainPrometheusSubnetResolvers<ContextType>;
   ChainRegistrations?: ChainRegistrationsResolvers<ContextType>;
-  ChainRegistrationsIntensityDistribution?: ChainRegistrationsIntensityDistributionResolvers<ContextType>;
   ChainRegistrationsNetwork?: ChainRegistrationsNetworkResolvers<ContextType>;
   ChainRegistrationsSubnet?: ChainRegistrationsSubnetResolvers<ContextType>;
   ChainServing?: ChainServingResolvers<ContextType>;
-  ChainServingIntensityDistribution?: ChainServingIntensityDistributionResolvers<ContextType>;
   ChainServingNetwork?: ChainServingNetworkResolvers<ContextType>;
   ChainServingSubnet?: ChainServingSubnetResolvers<ContextType>;
   ChainSigner?: ChainSignerResolvers<ContextType>;
@@ -11403,11 +11166,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainStakeFlowNetwork?: ChainStakeFlowNetworkResolvers<ContextType>;
   ChainStakeFlowSubnet?: ChainStakeFlowSubnetResolvers<ContextType>;
   ChainStakeMoves?: ChainStakeMovesResolvers<ContextType>;
-  ChainStakeMovesIntensityDistribution?: ChainStakeMovesIntensityDistributionResolvers<ContextType>;
   ChainStakeMovesNetwork?: ChainStakeMovesNetworkResolvers<ContextType>;
   ChainStakeMovesSubnet?: ChainStakeMovesSubnetResolvers<ContextType>;
   ChainStakeTransfers?: ChainStakeTransfersResolvers<ContextType>;
-  ChainStakeTransfersIntensityDistribution?: ChainStakeTransfersIntensityDistributionResolvers<ContextType>;
   ChainStakeTransfersNetwork?: ChainStakeTransfersNetworkResolvers<ContextType>;
   ChainStakeTransfersSubnet?: ChainStakeTransfersSubnetResolvers<ContextType>;
   ChainSubnetLifecycle?: ChainSubnetLifecycleResolvers<ContextType>;
@@ -11422,7 +11183,6 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainWeightSetter?: ChainWeightSetterResolvers<ContextType>;
   ChainWeightSetters?: ChainWeightSettersResolvers<ContextType>;
   ChainWeights?: ChainWeightsResolvers<ContextType>;
-  ChainWeightsIntensityDistribution?: ChainWeightsIntensityDistributionResolvers<ContextType>;
   ChainWeightsNetwork?: ChainWeightsNetworkResolvers<ContextType>;
   ChainWeightsSubnet?: ChainWeightsSubnetResolvers<ContextType>;
   ChainYield?: ChainYieldResolvers<ContextType>;
@@ -11465,7 +11225,6 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReason?: FailureReasonResolvers<ContextType>;
   FailureReasons?: FailureReasonsResolvers<ContextType>;
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
-  FailureReasonsDegraded?: FailureReasonsDegradedResolvers<ContextType>;
   GapsList?: GapsListResolvers<ContextType>;
   GlobalHealth?: GlobalHealthResolvers<ContextType>;
   GlobalIncidents?: GlobalIncidentsResolvers<ContextType>;
@@ -11479,6 +11238,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   IndexerLagDegraded?: IndexerLagDegradedResolvers<ContextType>;
   IndexerLagLatency?: IndexerLagLatencyResolvers<ContextType>;
   IndexerLagWindow?: IndexerLagWindowResolvers<ContextType>;
+  IntensityDistribution?: IntensityDistributionResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   NetworkParameters?: NetworkParametersResolvers<ContextType>;
   NetworkRandomness?: NetworkRandomnessResolvers<ContextType>;
@@ -11491,7 +11251,6 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   NominatorPosition?: NominatorPositionResolvers<ContextType>;
   OpportunityBoards?: OpportunityBoardsResolvers<ContextType>;
   OpportunityEntry?: OpportunityEntryResolvers<ContextType>;
-  PipelineHistoryDegraded?: PipelineHistoryDegradedResolvers<ContextType>;
   PipelineHistoryPoint?: PipelineHistoryPointResolvers<ContextType>;
   PoolList?: PoolListResolvers<ContextType>;
   ProfileList?: ProfileListResolvers<ContextType>;
@@ -11608,6 +11367,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   TaoUsdPoint?: TaoUsdPointResolvers<ContextType>;
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;
   TurnoverValidatorChange?: TurnoverValidatorChangeResolvers<ContextType>;
+  UnavailableDegraded?: UnavailableDegradedResolvers<ContextType>;
   UptimeDay?: UptimeDayResolvers<ContextType>;
   UptimeLatency?: UptimeLatencyResolvers<ContextType>;
   UptimeReliability?: UptimeReliabilityResolvers<ContextType>;

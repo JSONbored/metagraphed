@@ -28,6 +28,11 @@
 // probe.method fallback) -- the hand-edited schema never declared it
 // nullable.
 import { z } from "zod";
+import {
+  DisabledProxyContractSchema,
+  EndpointEligibilityPolicySchema,
+} from "./endpoint-pool-policy.ts";
+import { HttpUrlSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { BittensorNetworkSchema, HealthStatusSchema } from "../shared.ts";
@@ -44,8 +49,6 @@ import {
  * these values imports them instead of restating them (#9799). */
 export const PROVIDER_KIND_VALUES = QUERY_ENUMS.providerKind;
 export const ProviderKindSchema = z.enum(PROVIDER_KIND_VALUES);
-
-const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 
 export const ProviderSchema = z
   .object({
@@ -293,29 +296,8 @@ export const RpcPoolsArtifactSchema = ArtifactBaseSchema.extend({
       "live-cron-prober",
     ])
     .optional(),
-  disabled_proxy_contract: z
-    .object({
-      enabled: z.boolean().optional(),
-      feature_flag: z.string().optional(),
-      allowed_methods: z.array(z.string()).optional(),
-      denied_method_patterns: z.array(z.string()).optional(),
-      rate_limit_required: z.boolean().optional(),
-      waf_required: z.boolean().optional(),
-    })
-    .passthrough()
-    .optional(),
-  eligibility_policy: z
-    .object({
-      source: z.string().optional(),
-      eligible_layers: z.array(z.string()).optional(),
-      required_status: z.string().optional(),
-      requires_no_auth: z.boolean().optional(),
-      requires_public_safe: z.boolean().optional(),
-      user_reports_can_change_health: z.boolean().optional(),
-      notes: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
+  disabled_proxy_contract: DisabledProxyContractSchema.optional(),
+  eligibility_policy: EndpointEligibilityPolicySchema.optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),
   pools: z.array(RpcPoolSchema),
 }).describe(

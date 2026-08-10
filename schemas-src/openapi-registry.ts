@@ -62,6 +62,8 @@ import {
   ScoreDistributionSchema,
   SubnetStatusSchema,
   SubnetTypeSchema,
+  ChainStateSchema,
+  SocialLinksSchema,
 } from "./shared.ts";
 import {
   ArtifactBaseSchema,
@@ -119,6 +121,9 @@ import {
   ReviewStateSchema,
   CandidateStateSchema,
   EndpointPublicationStateSchema,
+  AuthSchema,
+  QualitySignalsSchema,
+  RateLimitSchema,
 } from "./routes/subnet-detail.ts";
 import { EconomicsArtifactSchema } from "./routes/economics.ts";
 import {
@@ -357,6 +362,7 @@ import {
   ChainStakeMovesArtifactSchema,
   ChainStakeTransfersArtifactSchema,
   ChainWeightsArtifactSchema,
+  IntensityDistributionSchema,
 } from "./routes/chain-network-rollups.ts";
 import { ChainAlphaVolumeArtifactSchema } from "./routes/chain-alpha-volume.ts";
 import { ChainConcentrationArtifactSchema } from "./routes/chain-concentration.ts";
@@ -388,6 +394,7 @@ import {
   CoverageArtifactSchema,
   CoverageDepthArtifactSchema,
   CoverageDepthRowSchema,
+  CoverageCompletenessSchema,
 } from "./routes/coverage.ts";
 import {
   CoverageLevelSchema,
@@ -466,6 +473,7 @@ import {
   HealthPercentilesArtifactSchema,
   HealthTrendsArtifactSchema,
   UptimeArtifactSchema,
+  HealthHistorySummarySchema,
 } from "./routes/health-surfaces.ts";
 import {
   SurfacesArtifactSchema,
@@ -486,6 +494,15 @@ import {
 } from "./routes/candidates-evidence.ts";
 import { WebhookSubscriptionArtifactSchema } from "./routes/webhooks.ts";
 import { AlertTriggerArtifactSchema } from "./routes/alert-triggers.ts";
+import {
+  DisabledProxyContractSchema,
+  EndpointEligibilityPolicySchema,
+} from "./routes/endpoint-pool-policy.ts";
+import {
+  DeregistrationDerivationSchema,
+  EventStreamDegradedSchema,
+  UnavailableDegradedSchema,
+} from "./routes/event-stream-honesty.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -974,6 +991,26 @@ register(ReviewCurationArtifactSchema, "ReviewCurationArtifact");
 register(ReviewDecisionsArtifactSchema, "ReviewDecisionsArtifact");
 register(VerificationArtifactSchema, "VerificationArtifact");
 register(SubnetVerificationArtifactSchema, "SubnetVerificationArtifact");
+
+// REUSED LEAVES (#10214). Registered because they are used by more than one
+// artifact, not because an older hand-edited component named them. An
+// unregistered shape is inlined at every use, and a shape that is inlined
+// 17 times is 17 anonymous shapes to everything downstream: the GraphQL
+// emitter named this one 11 different things and a 348-entry table mapped
+// them back by hand. Registering restores the identity the Zod already had.
+register(EventStreamDegradedSchema, "DegradedInfo");
+register(DeregistrationDerivationSchema, "DeregistrationDerivation");
+register(IntensityDistributionSchema, "IntensityDistribution");
+register(ChainStateSchema, "ChainState");
+register(AuthSchema, "SurfaceAuth");
+register(QualitySignalsSchema, "SurfaceQualitySignals");
+register(RateLimitSchema, "SurfaceRateLimit");
+register(CoverageCompletenessSchema, "CoverageCompleteness");
+register(HealthHistorySummarySchema, "HealthProbeSummary");
+register(UnavailableDegradedSchema, "UnavailableDegraded");
+register(SocialLinksSchema, "SocialLinks");
+register(DisabledProxyContractSchema, "DisabledProxyContract");
+register(EndpointEligibilityPolicySchema, "EndpointEligibilityPolicy");
 
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd

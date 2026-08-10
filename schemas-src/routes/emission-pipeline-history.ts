@@ -2,6 +2,7 @@
 // pipeline decomposition over time. Modeled from
 // src/emission-pipeline-history.ts's buildPipelineHistory().
 import { z } from "zod";
+import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
 import { successEnvelopeSchema } from "../envelope.ts";
 
 export const PipelineHistoryPointSchema = z
@@ -77,11 +78,9 @@ export const PipelineHistoryArtifactSchema = z
       ),
     points: z.array(PipelineHistoryPointSchema),
     /** Present ONLY on a decline. An empty series is a measurement. */
-    degraded: z
-      .object({ reason: z.enum(["unavailable"]) })
-      .strict()
-      .optional()
-      .describe("Present ONLY on a decline. An empty series is a measurement."),
+    degraded: UnavailableDegradedSchema.optional().describe(
+      "Present ONLY on a decline. An empty series is a measurement.",
+    ),
   })
   .passthrough();
 export type PipelineHistoryArtifact = z.infer<

@@ -342,6 +342,23 @@ export type SubnetEconomics = z.infer<typeof SubnetEconomicsSchema>;
 // Absent (not null) on a degraded refresh whose node could not serve the
 // pinned reads. Never defaulted to captured_at or to chain tip: a height that
 // was not read from is worse than no height, because it looks like provenance.
+/**
+ * A public http(s) URL. Owned here since #10214: three route modules each
+ * declared their own identical copy, so the same constraint was stated three
+ * times and could drift in two of them unnoticed.
+ */
+export const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
+
+/** The social links block, shared by the subnet index entry and its detail. */
+export const SocialLinksSchema = z
+  .object({
+    reddit: HttpUrlSchema.optional(),
+    telegram: HttpUrlSchema.optional(),
+    x: HttpUrlSchema.optional(),
+    youtube: HttpUrlSchema.optional(),
+  })
+  .strict();
+
 export const ChainStateSchema = z
   .object({
     block: z.int().min(0),

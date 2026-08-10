@@ -16,22 +16,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "./subnet-alpha-volume.ts";
-
-const VolumeDistributionSchema = z
-  .object({
-    count: z.int().min(0),
-    mean: z.number().min(0),
-    min: z.number().min(0),
-    p25: z.number().min(0),
-    median: z.number().min(0),
-    p75: z.number().min(0),
-    p90: z.number().min(0),
-    max: z.number().min(0),
-  })
-  .strict()
-  .describe(
-    "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard).",
-  );
+import { IntensityDistributionSchema } from "./chain-network-rollups.ts";
 
 export const ChainAlphaVolumeArtifactSchema = z
   .object({
@@ -73,8 +58,8 @@ export const ChainAlphaVolumeArtifactSchema = z
       .describe(
         "Network-wide buy/sell volume rollup across every subnet with volume in the window.",
       ),
-    volume_distribution: VolumeDistributionSchema.nullable().describe(
-      "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume.",
+    volume_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). Null when no subnet had volume.",
     ),
     subnets: z.array(SubnetAlphaVolumeArtifactSchema),
   })

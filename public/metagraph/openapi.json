@@ -12704,20 +12704,7 @@
             ]
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "dominant_netuid": {
             "anyOf": [
@@ -13326,62 +13313,10 @@
             ]
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "derivation": {
-            "additionalProperties": false,
-            "description": "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name.",
-            "properties": {
-              "is_lower_bound": {
-                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
-                "examples": [
-                  true
-                ],
-                "type": "boolean"
-              },
-              "lookback_days": {
-                "description": "Days of NeuronRegistered history the derivation had available.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "method": {
-                "type": "string"
-              },
-              "unattributed_registrations": {
-                "description": "Of those, the ones with no observed previous holder.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "window_registrations": {
-                "description": "Registrations observed inside the reported window.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "method",
-              "lookback_days",
-              "window_registrations",
-              "unattributed_registrations",
-              "is_lower_bound"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DeregistrationDerivation"
           },
           "dominant_netuid": {
             "anyOf": [
@@ -15083,20 +15018,7 @@
             "description": "Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements."
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "dominant_netuid": {
             "anyOf": [
@@ -20125,79 +20047,7 @@
         "additionalProperties": false,
         "properties": {
           "auth": {
-            "anyOf": [
-              {
-                "additionalProperties": false,
-                "properties": {
-                  "body_envelope": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "credential_key": {
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "payload_key": {
-                        "minLength": 1,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "credential_key",
-                      "payload_key"
-                    ],
-                    "type": "object"
-                  },
-                  "location": {
-                    "enum": [
-                      "header",
-                      "query",
-                      "cookie",
-                      "body"
-                    ],
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "names": {
-                    "items": {
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array"
-                  },
-                  "scheme": {
-                    "enum": [
-                      "none",
-                      "bearer",
-                      "api-key",
-                      "basic",
-                      "oauth2",
-                      "signature",
-                      "custom"
-                    ],
-                    "type": "string"
-                  },
-                  "scopes_note": {
-                    "type": "string"
-                  },
-                  "token_url": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "value_format": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "scheme"
-                ],
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/SurfaceAuth"
           },
           "auth_required": {
             "type": "boolean"
@@ -20237,40 +20087,7 @@
             "type": "boolean"
           },
           "rate_limit": {
-            "additionalProperties": false,
-            "properties": {
-              "burst": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "cost_notes": {
-                "type": "string"
-              },
-              "requests": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "scope": {
-                "enum": [
-                  "per-key",
-                  "per-ip",
-                  "global",
-                  "unknown"
-                ],
-                "type": "string"
-              },
-              "window": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "requests",
-              "window"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/SurfaceRateLimit"
           },
           "rate_limit_notes": {
             "type": "string"
@@ -20558,60 +20375,13 @@
           "volume_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard).",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume."
+            "description": "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). Null when no subnet had volume."
           },
           "window": {
             "description": "Fixed rolling window label (always 24h).",
@@ -20636,77 +20406,18 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
             "additionalProperties": false,
@@ -21168,20 +20879,8 @@
             "type": "array"
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "Present ONLY on a decline. An empty window is a measurement.",
-            "properties": {
-              "reason": {
-                "enum": [
-                  "unavailable"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/UnavailableDegraded",
+            "description": "Present ONLY on a decline. An empty window is a measurement."
           },
           "newest_day": {
             "anyOf": [
@@ -21801,119 +21500,21 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "derivation": {
-            "additionalProperties": false,
-            "description": "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name.",
-            "properties": {
-              "is_lower_bound": {
-                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
-                "examples": [
-                  true
-                ],
-                "type": "boolean"
-              },
-              "lookback_days": {
-                "description": "Days of NeuronRegistered history the derivation had available.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "method": {
-                "type": "string"
-              },
-              "unattributed_registrations": {
-                "description": "Of those, the ones with no observed previous holder.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "window_registrations": {
-                "description": "Registrations observed inside the reported window.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "method",
-              "lookback_days",
-              "window_registrations",
-              "unattributed_registrations",
-              "is_lower_bound"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DeregistrationDerivation"
           },
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
             "additionalProperties": false,
@@ -23160,77 +22761,18 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
             "additionalProperties": false,
@@ -23360,59 +22902,13 @@
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
             "additionalProperties": false,
@@ -23543,59 +23039,13 @@
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
           },
           "network": {
             "additionalProperties": false,
@@ -24035,59 +23485,13 @@
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window."
           },
           "network": {
             "additionalProperties": false,
@@ -24218,59 +23622,13 @@
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window."
           },
           "network": {
             "additionalProperties": false,
@@ -24391,6 +23749,82 @@
           "network",
           "intensity_distribution",
           "subnets"
+        ],
+        "type": "object"
+      },
+      "ChainState": {
+        "additionalProperties": false,
+        "description": "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360.",
+        "properties": {
+          "block": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "block_hash": {
+            "description": "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
+            "pattern": "^0x[0-9a-fA-F]{64}$",
+            "type": "string"
+          },
+          "emission_bar_quantile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_gate_bar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "theta. Null when the bar is unset, which disables the gate outright."
+          },
+          "emission_gate_exponent": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
+          },
+          "network_immunity_period": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed."
+          },
+          "total_issuance_tao": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "block",
+          "block_hash",
+          "total_issuance_tao",
+          "emission_gate_bar",
+          "emission_bar_quantile",
+          "emission_gate_exponent"
         ],
         "type": "object"
       },
@@ -25037,59 +24471,13 @@
           "intensity_distribution": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "description": "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
-                "properties": {
-                  "count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "max": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "median": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "min": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p25": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p75": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "p90": {
-                    "minimum": 0,
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "count",
-                  "mean",
-                  "min",
-                  "p25",
-                  "median",
-                  "p75",
-                  "p90",
-                  "max"
-                ],
-                "type": "object"
+                "$ref": "#/components/schemas/IntensityDistribution"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window."
           },
           "network": {
             "additionalProperties": false,
@@ -26877,76 +26265,7 @@
             "type": "integer"
           },
           "completeness": {
-            "additionalProperties": {},
-            "properties": {
-              "average_score": {
-                "maximum": 100,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "dimension_coverage": {
-                "additionalProperties": {
-                  "additionalProperties": {},
-                  "properties": {
-                    "pct": {
-                      "maximum": 100,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "present": {
-                      "description": "Subnets carrying at least one surface of this kind.",
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "pct",
-                    "present"
-                  ],
-                  "type": "object"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "fully_complete_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "fully_complete_pct": {
-                "maximum": 100,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "median_score": {
-                "maximum": 100,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "methodology": {
-                "type": "string"
-              },
-              "score_distribution": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
-              },
-              "scored_subnet_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/CoverageCompleteness"
           },
           "contract_version": {
             "type": "string"
@@ -27138,6 +26457,78 @@
           "source",
           "surface_count"
         ],
+        "type": "object"
+      },
+      "CoverageCompleteness": {
+        "additionalProperties": {},
+        "properties": {
+          "average_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "dimension_coverage": {
+            "additionalProperties": {
+              "additionalProperties": {},
+              "properties": {
+                "pct": {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "present": {
+                  "description": "Subnets carrying at least one surface of this kind.",
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "pct",
+                "present"
+              ],
+              "type": "object"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "fully_complete_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "fully_complete_pct": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "median_score": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "score_distribution": {
+            "additionalProperties": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "scored_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "CoverageDepthArtifact": {
@@ -27917,20 +27308,7 @@
             "type": "array"
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "field_sources": {
             "additionalProperties": {
@@ -28182,6 +27560,95 @@
         ],
         "type": "object"
       },
+      "DegradedInfo": {
+        "additionalProperties": false,
+        "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "DeregistrationDerivation": {
+        "additionalProperties": false,
+        "description": "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name.",
+        "properties": {
+          "is_lower_bound": {
+            "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
+            "examples": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "lookback_days": {
+            "description": "Days of NeuronRegistered history the derivation had available.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
+          },
+          "unattributed_registrations": {
+            "description": "Of those, the ones with no observed previous holder.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_registrations": {
+            "description": "Registrations observed inside the reported window.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "method",
+          "lookback_days",
+          "window_registrations",
+          "unattributed_registrations",
+          "is_lower_bound"
+        ],
+        "type": "object"
+      },
+      "DisabledProxyContract": {
+        "additionalProperties": {},
+        "description": "The contract the RPC proxy honours while disabled: which methods stay allowed, which patterns stay denied, and whether rate limiting and WAF are prerequisites for enabling it.",
+        "properties": {
+          "allowed_methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "denied_method_patterns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "feature_flag": {
+            "type": "string"
+          },
+          "rate_limit_required": {
+            "type": "boolean"
+          },
+          "waf_required": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "DomainsArtifact": {
         "additionalProperties": false,
         "description": "The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains.",
@@ -28421,80 +27888,7 @@
             ]
           },
           "chain_state": {
-            "additionalProperties": false,
-            "description": "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360.",
-            "properties": {
-              "block": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "block_hash": {
-                "description": "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
-                "pattern": "^0x[0-9a-fA-F]{64}$",
-                "type": "string"
-              },
-              "emission_bar_quantile": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "emission_gate_bar": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "theta. Null when the bar is unset, which disables the gate outright."
-              },
-              "emission_gate_exponent": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
-              },
-              "network_immunity_period": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed."
-              },
-              "total_issuance_tao": {
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "block",
-              "block_hash",
-              "total_issuance_tao",
-              "emission_gate_bar",
-              "emission_bar_quantile",
-              "emission_gate_exponent"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/ChainState"
           },
           "contract_version": {
             "type": "string"
@@ -29507,80 +28901,8 @@
             "description": "Block emission derived from TotalIssuance at that block, never read from the stale BlockEmission storage item."
           },
           "chain_state": {
-            "additionalProperties": false,
-            "description": "The block every input below was pinned to. Required: without it nothing here can be verified.",
-            "properties": {
-              "block": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "block_hash": {
-                "description": "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
-                "pattern": "^0x[0-9a-fA-F]{64}$",
-                "type": "string"
-              },
-              "emission_bar_quantile": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "emission_gate_bar": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "theta. Null when the bar is unset, which disables the gate outright."
-              },
-              "emission_gate_exponent": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
-              },
-              "network_immunity_period": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed."
-              },
-              "total_issuance_tao": {
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "block",
-              "block_hash",
-              "total_issuance_tao",
-              "emission_gate_bar",
-              "emission_bar_quantile",
-              "emission_gate_exponent"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/ChainState",
+            "description": "The block every input below was pinned to. Required: without it nothing here can be verified."
           },
           "field_sources": {
             "additionalProperties": {
@@ -29975,6 +29297,37 @@
         ],
         "type": "object"
       },
+      "EndpointEligibilityPolicy": {
+        "additionalProperties": {},
+        "description": "Which probed endpoints this pool may draw from: the layers it accepts, the health verdict it requires, and whether an endpoint must be auth-free and public-safe to qualify.",
+        "properties": {
+          "eligible_layers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "required_status": {
+            "type": "string"
+          },
+          "requires_no_auth": {
+            "type": "boolean"
+          },
+          "requires_public_safe": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "user_reports_can_change_health": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
       "EndpointIncident": {
         "additionalProperties": false,
         "properties": {
@@ -30273,64 +29626,10 @@
             "type": "string"
           },
           "disabled_proxy_contract": {
-            "additionalProperties": {},
-            "properties": {
-              "allowed_methods": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "denied_method_patterns": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "feature_flag": {
-                "type": "string"
-              },
-              "rate_limit_required": {
-                "type": "boolean"
-              },
-              "waf_required": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/DisabledProxyContract"
           },
           "eligibility_policy": {
-            "additionalProperties": {},
-            "properties": {
-              "eligible_layers": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "notes": {
-                "type": "string"
-              },
-              "required_status": {
-                "type": "string"
-              },
-              "requires_no_auth": {
-                "type": "boolean"
-              },
-              "requires_public_safe": {
-                "type": "boolean"
-              },
-              "source": {
-                "type": "string"
-              },
-              "user_reports_can_change_health": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/EndpointEligibilityPolicy"
           },
           "generated_at": {
             "type": "string"
@@ -31634,20 +30933,8 @@
             "description": "Counted from the ROWS, not the requested window -- a day the prober did not run is absent rather than a zero."
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "Present ONLY on a decline. An empty window is a measurement, not a decline.",
-            "properties": {
-              "reason": {
-                "enum": [
-                  "unavailable"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/UnavailableDegraded",
+            "description": "Present ONLY on a decline. An empty window is a measurement, not a decline."
           },
           "failing_checks": {
             "anyOf": [
@@ -33366,26 +32653,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": {},
-            "properties": {
-              "classification_counts": {
-                "$ref": "#/components/schemas/CountMap"
-              },
-              "status_counts": {
-                "$ref": "#/components/schemas/CountMap"
-              },
-              "surface_count": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "surface_count",
-              "status_counts",
-              "classification_counts"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/HealthProbeSummary"
           },
           "surfaces": {
             "items": {
@@ -33905,6 +33173,28 @@
           "netuid",
           "source",
           "surfaces"
+        ],
+        "type": "object"
+      },
+      "HealthProbeSummary": {
+        "additionalProperties": {},
+        "properties": {
+          "classification_counts": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "status_counts": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "surface_count",
+          "status_counts",
+          "classification_counts"
         ],
         "type": "object"
       },
@@ -34964,6 +34254,56 @@
           "readiness_tier",
           "readiness_version",
           "components"
+        ],
+        "type": "object"
+      },
+      "IntensityDistribution": {
+        "additionalProperties": false,
+        "description": "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
+        "properties": {
+          "count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "mean": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "median": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "min": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "p25": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "p75": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "p90": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "count",
+          "mean",
+          "min",
+          "p25",
+          "median",
+          "p75",
+          "p90",
+          "max"
         ],
         "type": "object"
       },
@@ -36337,20 +35677,8 @@
         "additionalProperties": {},
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "Present ONLY on a decline. An empty series is a measurement.",
-            "properties": {
-              "reason": {
-                "enum": [
-                  "unavailable"
-                ],
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/UnavailableDegraded",
+            "description": "Present ONLY on a decline. An empty series is a measurement."
           },
           "distinct_observations": {
             "anyOf": [
@@ -37581,76 +36909,7 @@
           "coverage": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "properties": {
-                  "average_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "dimension_coverage": {
-                    "additionalProperties": {
-                      "additionalProperties": {},
-                      "properties": {
-                        "pct": {
-                          "maximum": 100,
-                          "minimum": 0,
-                          "type": "integer"
-                        },
-                        "present": {
-                          "description": "Subnets carrying at least one surface of this kind.",
-                          "maximum": 9007199254740991,
-                          "minimum": 0,
-                          "type": "integer"
-                        }
-                      },
-                      "required": [
-                        "pct",
-                        "present"
-                      ],
-                      "type": "object"
-                    },
-                    "propertyNames": {
-                      "type": "string"
-                    },
-                    "type": "object"
-                  },
-                  "fully_complete_count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "fully_complete_pct": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "median_score": {
-                    "maximum": 100,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "methodology": {
-                    "type": "string"
-                  },
-                  "score_distribution": {
-                    "additionalProperties": {
-                      "maximum": 9007199254740991,
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "propertyNames": {
-                      "type": "string"
-                    },
-                    "type": "object"
-                  },
-                  "scored_subnet_count": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/CoverageCompleteness"
               },
               {
                 "type": "null"
@@ -40338,64 +39597,10 @@
             "type": "string"
           },
           "disabled_proxy_contract": {
-            "additionalProperties": {},
-            "properties": {
-              "allowed_methods": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "denied_method_patterns": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "feature_flag": {
-                "type": "string"
-              },
-              "rate_limit_required": {
-                "type": "boolean"
-              },
-              "waf_required": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/DisabledProxyContract"
           },
           "eligibility_policy": {
-            "additionalProperties": {},
-            "properties": {
-              "eligible_layers": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "notes": {
-                "type": "string"
-              },
-              "required_status": {
-                "type": "string"
-              },
-              "requires_no_auth": {
-                "type": "boolean"
-              },
-              "requires_public_safe": {
-                "type": "boolean"
-              },
-              "source": {
-                "type": "string"
-              },
-              "user_reports_can_change_health": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/EndpointEligibilityPolicy"
           },
           "generated_at": {
             "type": "string"
@@ -42439,6 +41644,28 @@
         ],
         "type": "object"
       },
+      "SocialLinks": {
+        "additionalProperties": false,
+        "properties": {
+          "reddit": {
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+            "type": "string"
+          },
+          "telegram": {
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+            "type": "string"
+          },
+          "x": {
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+            "type": "string"
+          },
+          "youtube": {
+            "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "SourceHealthArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -42839,20 +42066,7 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "distinct_removers": {
             "maximum": 9007199254740991,
@@ -43175,128 +42389,7 @@
           "emission": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "description": "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-                "properties": {
-                  "entropy": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "entropy_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "gini": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "holders": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "nakamoto_coefficient": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_10pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_1pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_20pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_5pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/ConcentrationMetrics"
               },
               {
                 "type": "null"
@@ -43313,128 +42406,7 @@
           "entity_emission": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "description": "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-                "properties": {
-                  "entropy": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "entropy_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "gini": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "holders": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "nakamoto_coefficient": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_10pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_1pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_20pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_5pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/ConcentrationMetrics"
               },
               {
                 "type": "null"
@@ -43445,128 +42417,7 @@
           "entity_stake": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "description": "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-                "properties": {
-                  "entropy": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "entropy_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "gini": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "holders": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "nakamoto_coefficient": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_10pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_1pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_20pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_5pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/ConcentrationMetrics"
               },
               {
                 "type": "null"
@@ -43592,128 +42443,7 @@
           "stake": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "description": "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-                "properties": {
-                  "entropy": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "entropy_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "gini": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "holders": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "nakamoto_coefficient": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_10pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_1pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_20pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_5pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/ConcentrationMetrics"
               },
               {
                 "type": "null"
@@ -43735,128 +42465,7 @@
           "validator_stake": {
             "anyOf": [
               {
-                "additionalProperties": {},
-                "description": "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-                "properties": {
-                  "entropy": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "entropy_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "gini": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "hhi_normalized": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "holders": {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "nakamoto_coefficient": {
-                    "anyOf": [
-                      {
-                        "maximum": 9007199254740991,
-                        "minimum": -9007199254740991,
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_10pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_1pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_20pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "top_5pct_share": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "total": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/ConcentrationMetrics"
               },
               {
                 "type": "null"
@@ -44139,80 +42748,7 @@
         "additionalProperties": {},
         "properties": {
           "chain_state": {
-            "additionalProperties": false,
-            "description": "The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360.",
-            "properties": {
-              "block": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "block_hash": {
-                "description": "The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg.",
-                "pattern": "^0x[0-9a-fA-F]{64}$",
-                "type": "string"
-              },
-              "emission_bar_quantile": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "emission_gate_bar": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "theta. Null when the bar is unset, which disables the gate outright."
-              },
-              "emission_gate_exponent": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet."
-              },
-              "network_immunity_period": {
-                "anyOf": [
-                  {
-                    "maximum": 9007199254740991,
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed."
-              },
-              "total_issuance_tao": {
-                "minimum": 0,
-                "type": "number"
-              }
-            },
-            "required": [
-              "block",
-              "block_hash",
-              "total_issuance_tao",
-              "emission_gate_bar",
-              "emission_bar_quantile",
-              "emission_gate_exponent"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/ChainState"
           },
           "field_sources": {
             "additionalProperties": {
@@ -44466,20 +43002,7 @@
         "description": "Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
         "properties": {
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "deregistrations": {
             "maximum": 9007199254740991,
@@ -44498,46 +43021,7 @@
             ]
           },
           "derivation": {
-            "additionalProperties": false,
-            "description": "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name.",
-            "properties": {
-              "is_lower_bound": {
-                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
-                "examples": [
-                  true
-                ],
-                "type": "boolean"
-              },
-              "lookback_days": {
-                "description": "Days of NeuronRegistered history the derivation had available.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "method": {
-                "type": "string"
-              },
-              "unattributed_registrations": {
-                "description": "Of those, the ones with no observed previous holder.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "window_registrations": {
-                "description": "Registrations observed inside the reported window.",
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "method",
-              "lookback_days",
-              "window_registrations",
-              "unattributed_registrations",
-              "is_lower_bound"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DeregistrationDerivation"
           },
           "distinct_deregistered_hotkeys": {
             "maximum": 9007199254740991,
@@ -45088,26 +43572,7 @@
           "social": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "properties": {
-                  "reddit": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "telegram": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "x": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "youtube": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/SocialLinks"
               },
               {
                 "type": "null"
@@ -48175,26 +46640,7 @@
           "social": {
             "anyOf": [
               {
-                "additionalProperties": false,
-                "properties": {
-                  "reddit": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "telegram": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "x": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "youtube": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  }
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/SocialLinks"
               },
               {
                 "type": "null"
@@ -50888,20 +49334,7 @@
             ]
           },
           "degraded": {
-            "additionalProperties": false,
-            "description": "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
-            "properties": {
-              "detail": {
-                "type": "string"
-              },
-              "reason": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "reason"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/DegradedInfo"
           },
           "distinct_exporters": {
             "maximum": 9007199254740991,
@@ -53644,79 +52077,7 @@
         "additionalProperties": false,
         "properties": {
           "auth": {
-            "anyOf": [
-              {
-                "additionalProperties": false,
-                "properties": {
-                  "body_envelope": {
-                    "additionalProperties": false,
-                    "properties": {
-                      "credential_key": {
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "payload_key": {
-                        "minLength": 1,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "credential_key",
-                      "payload_key"
-                    ],
-                    "type": "object"
-                  },
-                  "location": {
-                    "enum": [
-                      "header",
-                      "query",
-                      "cookie",
-                      "body"
-                    ],
-                    "type": "string"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "names": {
-                    "items": {
-                      "type": "string"
-                    },
-                    "minItems": 1,
-                    "type": "array"
-                  },
-                  "scheme": {
-                    "enum": [
-                      "none",
-                      "bearer",
-                      "api-key",
-                      "basic",
-                      "oauth2",
-                      "signature",
-                      "custom"
-                    ],
-                    "type": "string"
-                  },
-                  "scopes_note": {
-                    "type": "string"
-                  },
-                  "token_url": {
-                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                    "type": "string"
-                  },
-                  "value_format": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "scheme"
-                ],
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/SurfaceAuth"
           },
           "auth_required": {
             "type": "boolean"
@@ -53770,73 +52131,10 @@
             "type": "boolean"
           },
           "quality_signals": {
-            "additionalProperties": false,
-            "properties": {
-              "archived": {
-                "type": "boolean"
-              },
-              "content_type_matches_kind": {
-                "type": "boolean"
-              },
-              "has_default_branch": {
-                "type": "boolean"
-              },
-              "has_recent_push_metadata": {
-                "type": "boolean"
-              },
-              "public_safe": {
-                "type": "boolean"
-              },
-              "rate_limited": {
-                "type": "boolean"
-              },
-              "redirected": {
-                "type": "boolean"
-              },
-              "source_tier": {
-                "$ref": "#/components/schemas/SourceTier"
-              },
-              "transient_failure": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/SurfaceQualitySignals"
           },
           "rate_limit": {
-            "additionalProperties": false,
-            "properties": {
-              "burst": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "cost_notes": {
-                "type": "string"
-              },
-              "requests": {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
-              },
-              "scope": {
-                "enum": [
-                  "per-key",
-                  "per-ip",
-                  "global",
-                  "unknown"
-                ],
-                "type": "string"
-              },
-              "window": {
-                "minLength": 1,
-                "type": "string"
-              }
-            },
-            "required": [
-              "requests",
-              "window"
-            ],
-            "type": "object"
+            "$ref": "#/components/schemas/SurfaceRateLimit"
           },
           "rate_limit_notes": {
             "type": "string"
@@ -54191,6 +52489,81 @@
         ],
         "type": "object"
       },
+      "SurfaceAuth": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "body_envelope": {
+                "additionalProperties": false,
+                "properties": {
+                  "credential_key": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "payload_key": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "credential_key",
+                  "payload_key"
+                ],
+                "type": "object"
+              },
+              "location": {
+                "enum": [
+                  "header",
+                  "query",
+                  "cookie",
+                  "body"
+                ],
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "names": {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "scheme": {
+                "enum": [
+                  "none",
+                  "bearer",
+                  "api-key",
+                  "basic",
+                  "oauth2",
+                  "signature",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              "scopes_note": {
+                "type": "string"
+              },
+              "token_url": {
+                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
+                "type": "string"
+              },
+              "value_format": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scheme"
+            ],
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "SurfaceHistoryChange": {
         "additionalProperties": false,
         "description": "One recorded mutation of a subnet's public surface.",
@@ -54298,6 +52671,75 @@
           "website"
         ],
         "type": "string"
+      },
+      "SurfaceQualitySignals": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "content_type_matches_kind": {
+            "type": "boolean"
+          },
+          "has_default_branch": {
+            "type": "boolean"
+          },
+          "has_recent_push_metadata": {
+            "type": "boolean"
+          },
+          "public_safe": {
+            "type": "boolean"
+          },
+          "rate_limited": {
+            "type": "boolean"
+          },
+          "redirected": {
+            "type": "boolean"
+          },
+          "source_tier": {
+            "$ref": "#/components/schemas/SourceTier"
+          },
+          "transient_failure": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceRateLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "burst": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cost_notes": {
+            "type": "string"
+          },
+          "requests": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scope": {
+            "enum": [
+              "per-key",
+              "per-ip",
+              "global",
+              "unknown"
+            ],
+            "type": "string"
+          },
+          "window": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "requests",
+          "window"
+        ],
+        "type": "object"
       },
       "SurfacesArtifact": {
         "additionalProperties": {},
@@ -54819,6 +53261,22 @@
           "limit",
           "account_count",
           "accounts"
+        ],
+        "type": "object"
+      },
+      "UnavailableDegraded": {
+        "additionalProperties": false,
+        "description": "Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline.",
+        "properties": {
+          "reason": {
+            "enum": [
+              "unavailable"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -56797,37 +55255,7 @@
             "type": "string"
           },
           "quality_signals": {
-            "additionalProperties": false,
-            "properties": {
-              "archived": {
-                "type": "boolean"
-              },
-              "content_type_matches_kind": {
-                "type": "boolean"
-              },
-              "has_default_branch": {
-                "type": "boolean"
-              },
-              "has_recent_push_metadata": {
-                "type": "boolean"
-              },
-              "public_safe": {
-                "type": "boolean"
-              },
-              "rate_limited": {
-                "type": "boolean"
-              },
-              "redirected": {
-                "type": "boolean"
-              },
-              "source_tier": {
-                "$ref": "#/components/schemas/SourceTier"
-              },
-              "transient_failure": {
-                "type": "boolean"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/SurfaceQualitySignals"
           },
           "redirect_target": {
             "anyOf": [
