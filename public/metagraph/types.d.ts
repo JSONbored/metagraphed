@@ -4999,6 +4999,8 @@ export interface components {
             price_at_tx?: number | null;
             price_basis?: ("trade_exact" | "root_no_pool") | null;
             uid?: number | null;
+            usd_at_tx?: number | null;
+            usd_basis?: "index_at_or_before" | null;
         };
         /** @description One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent. */
         AccountEventsArtifact: {

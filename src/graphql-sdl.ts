@@ -5001,6 +5001,10 @@ export const SDL = /* GraphQL */ `
     extrinsic_index: Int
     price_at_tx: Float
     price_basis: String
+    "USD per alpha at this trade: price_at_tx multiplied by the newest TAO/USD index reading at-or-before this event's own instant. Null for any event predating the index -- it starts when we started collecting, and carrying the oldest rate backwards would be fabrication."
+    usd_at_tx: Float
+    "A different kind of claim from price_basis: trade_exact means the alpha price came from this row's own two legs and is exact, while index_at_or_before means the dollar leg is a lookup."
+    usd_basis: String
   }
 
   "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent."
