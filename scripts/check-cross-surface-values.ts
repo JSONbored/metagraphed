@@ -73,21 +73,24 @@ const TIME_DEPENDENT = /_age_ms$|^age_ms$|_at$|^now$|elapsed|uptime_seconds/;
  * Keyed `<tool>.<field>`, because a difference is per-surface-pair per-field
  * and "this route disagrees somewhere" is not a fact anyone can act on.
  */
-const DECLARED: Record<string, string> = {
-  // #10306: the dispatcher applies its own page size instead of the default the
-  // tool publishes -- 100 against a published 50 here, and NOTHING at all on
-  // get_subnet_identity_history, which is why that one answers `entry_count: 0`
-  // for a subnet that has changed identity.
-  "get_chain_subnet_lifecycle.entry_count": "#10306",
-  "get_chain_subnet_lifecycle.subnet_count": "#10306",
-  "get_chain_subnet_lifecycle.limit": "#10306",
-  "get_subnet_identity_history.entry_count": "#10306",
-  "get_subnet_identity_history.entries": "#10306",
-  // #10307: REST answers 89.4820752 and MCP 91.04839199999999 for the same
-  // subnet, both stable across repeated calls, so it is not a moving window
-  // read at two instants.
-  "get_subnet_validator_economics.tao_inflow_per_day": "#10307",
-};
+/**
+ * EMPTY, which is the goal state rather than a missing list.
+ *
+ * Every entry this sweep opened with has been closed rather than tolerated:
+ *
+ *   #10306  five entries -- `get_chain_subnet_lifecycle` served 100 against a
+ *           published 50, and `get_subnet_identity_history` applied no page
+ *           default at all, so it answered `entry_count: 0` for a subnet that
+ *           had changed identity. The MCP dispatcher now serves the default
+ *           each tool publishes.
+ *   #10307  one entry -- `tao_inflow_per_day`, 89.4820752 on REST against
+ *           91.04839199999999 on MCP for the same subnet, both stable. The
+ *           tool was reading the published artifact where REST reads the live
+ *           tier first; both now climb one shared ladder.
+ *
+ * A stale entry FAILS this script, so the list cannot grow back quietly.
+ */
+const DECLARED: Record<string, string> = {};
 
 interface Divergence {
   tool: string;

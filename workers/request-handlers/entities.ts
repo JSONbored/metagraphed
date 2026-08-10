@@ -3171,27 +3171,57 @@ async function resolveSubnetMarketCapTao(env: Env, netuid: number) {
     : null;
 }
 
-// One subnet's live AMM pool reserves (#5235) — the constant-product inputs the
-// stake-quote math needs — resolved from the same live-KV-then-committed-R2
-// economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
-// for the response meta. Returns { row: null } when neither tier has a row.
-export async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
+/**
+ * The economics blob, from the LIVE tier if it has one and the published
+ * artifact otherwise (#10307).
+ *
+ * ── Why the ladder is a function and not two copies ────────────────────────
+ *
+ * It was two copies, and they answered different numbers.
+ * `get_subnet_validator_economics` overrides the economics reader because MCP
+ * resolves artifacts through `ctx` rather than off `env` -- a correct fix for
+ * #9229, which in making it dropped the LIVE rung and read the artifact alone.
+ * REST and GraphQL kept both. The result, verified live for SN64 with both
+ * values stable across repeated calls:
+ *
+ *   GET /api/v1/subnets/64/validator-economics   tao_inflow_per_day 89.4820752
+ *   get_subnet_validator_economics {netuid: 64}  tao_inflow_per_day 91.0483919
+ *
+ * 1.7% apart -- large enough to be a different answer, small enough that
+ * neither looks wrong to a reader. Both surfaces compute
+ * `tao_in_emission_tao * BLOCKS_PER_DAY` from the same field; they were reading
+ * it out of blobs refreshed on different cadences.
+ *
+ * The LADDER is the shared thing; the artifact READER is not. A caller supplies
+ * its own, so MCP keeps the ctx-based read #9229 needed and still gets the live
+ * rung first -- and a surface can no longer acquire one tier and miss the other
+ * by overriding a loader, because the ORDER is not something a caller passes.
+ */
+export async function resolveEconomicsBlob(
+  env: Env,
+  readPublishedArtifact: () => Promise<Record<string, unknown> | null>,
+): Promise<Record<string, unknown> | null> {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
     contractVersion: contractVersion(env),
   });
-  let blob: Record<string, unknown> | null = Array.isArray(live?.data?.subnets)
-    ? live.data
-    : null;
-  if (!blob) {
+  if (Array.isArray(live?.data?.subnets)) return live.data;
+  const artifact = await readPublishedArtifact();
+  return artifact && Array.isArray(artifact.subnets) ? artifact : null;
+}
+
+// One subnet's live AMM pool reserves (#5235) — the constant-product inputs the
+// stake-quote math needs — resolved from the same live-KV-then-committed-R2
+// economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
+// for the response meta. Returns { row: null } when neither tier has a row.
+export async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
+  const blob = await resolveEconomicsBlob(env, async () => {
     const artifact = await readArtifact(env, "/metagraph/economics.json");
-    const artifactData = artifact.ok
-      ? (artifact.data as Record<string, unknown> | undefined)
-      : undefined;
-    blob =
-      artifactData && Array.isArray(artifactData.subnets) ? artifactData : null;
-  }
+    return artifact.ok
+      ? ((artifact.data as Record<string, unknown> | undefined) ?? null)
+      : null;
+  });
   const rows = Array.isArray(blob?.subnets)
     ? (blob.subnets as Array<Record<string, unknown>>)
     : [];
