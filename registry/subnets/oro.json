@@ -412,7 +412,11 @@
       "id": "sn-15-oro-top-miner-payout",
       "kind": "subnet-api",
       "name": "Oro top miner payout",
-      "notes": "Public no-auth GET returning the current top-paid miner (hotkey, agent_name, tao_per_day, usd_per_day). Documented in the subnet's own OpenAPI schema.",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET returning the current top-paid miner (hotkey, agent_name, tao_per_day, usd_per_day). Documented in the subnet's own OpenAPI schema. REVENUE ROLE (#10451): miner-payout, NOT revenue. The live response is {miner_hotkey, agent_name, tao_per_day, usd_per_day} for the single top-earning miner -- that is this subnet's EMISSION paid to a miner, i.e. the denominator of a coverage ratio. Counting it as revenue would put the denominator in the numerator. REVENUE ROLE (#10451): miner-payout, NOT revenue. The live response is {miner_hotkey, agent_name, tao_per_day, usd_per_day} for the single top-earning miner -- that is this subnet's EMISSION paid to a miner, i.e. the denominator of a coverage ratio. Counting it as revenue would put the denominator in the numerator.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -1154,6 +1158,11 @@
       "id": "sn-15-oro-v1-admin-reaper-stats",
       "kind": "subnet-api",
       "name": "ORO v1 admin reaper stats",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.oroagents.com/openapi.json"
+      },
       "notes": "Get reaper service statistics operation on the ORO agents API (GET /v1/admin/reaper/stats), declared in the subnet's own OpenAPI spec at https://api.oroagents.com/openapi.json. The spec declares no security for it, but the API applies a global signed-request auth middleware, so it is registered auth_required:true with probe.enabled:false (Phase 3). Not individually probed; the auth basis is the middleware verified on sampled routes across the miner, validator and admin families.",
       "probe": {
         "enabled": false,
