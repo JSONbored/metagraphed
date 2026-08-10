@@ -6,7 +6,6 @@
 // ABSENT rather than null -- an absent field says "this kind has no such thing",
 // where a null would say "it has one and we do not know it".
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** Shared by every kind. `predates_capture` is the honesty flag: true means the
  * row is the FIRST OBSERVATION of a value, not a change to it. */
@@ -77,6 +76,3 @@ export const EmissionGateChangesArtifactSchema = z
 export type EmissionGateChangesArtifact = z.infer<
   typeof EmissionGateChangesArtifactSchema
 >;
-export const EmissionGateChangesResponseSchema = successEnvelopeSchema(
-  EmissionGateChangesArtifactSchema,
-);

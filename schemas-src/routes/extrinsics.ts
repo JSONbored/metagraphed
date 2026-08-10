@@ -12,7 +12,6 @@
 // hand-edited OpenAPI document itself $refs the same ExtrinsicsFeedArtifact
 // component from all three paths, verified via repo-wide $ref grep).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 
 export const ExtrinsicSchema = z
@@ -57,9 +56,6 @@ export const ExtrinsicsFeedArtifactSchema = z
 export type ExtrinsicsFeedArtifact = z.infer<
   typeof ExtrinsicsFeedArtifactSchema
 >;
-export const ExtrinsicsFeedResponseSchema = successEnvelopeSchema(
-  ExtrinsicsFeedArtifactSchema,
-);
 
 export const ExtrinsicDetailArtifactSchema = z
   .object({
@@ -72,6 +68,3 @@ export const ExtrinsicDetailArtifactSchema = z
 export type ExtrinsicDetailArtifact = z.infer<
   typeof ExtrinsicDetailArtifactSchema
 >;
-export const ExtrinsicDetailResponseSchema = successEnvelopeSchema(
-  ExtrinsicDetailArtifactSchema,
-);

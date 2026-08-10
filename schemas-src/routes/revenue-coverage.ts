@@ -13,7 +13,7 @@
 //      figure as fact because the response let it is the failure mode
 //      #10439's ladder exists for.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 export const REVENUE_PROVENANCE_VALUES = [
@@ -143,10 +143,3 @@ export const ChainRevenueCoverageArtifactSchema = ArtifactBaseSchema.extend({
 export type ChainRevenueCoverageArtifact = z.infer<
   typeof ChainRevenueCoverageArtifactSchema
 >;
-
-export const SubnetRevenueResponseSchema = successEnvelopeSchema(
-  SubnetRevenueArtifactSchema,
-);
-export const ChainRevenueCoverageResponseSchema = successEnvelopeSchema(
-  ChainRevenueCoverageArtifactSchema,
-);

@@ -3,7 +3,6 @@
 // buildChainConcentrationHistory().
 import { z } from "zod";
 import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** One distribution's scorecard, as computeConcentration produced it. Passed
  * through from the stored card rather than re-shaped, so a historical point and
@@ -94,6 +93,3 @@ export const ChainConcentrationHistoryArtifactSchema = z
 export type ChainConcentrationHistoryArtifact = z.infer<
   typeof ChainConcentrationHistoryArtifactSchema
 >;
-export const ChainConcentrationHistoryResponseSchema = successEnvelopeSchema(
-  ChainConcentrationHistoryArtifactSchema,
-);

@@ -5,7 +5,6 @@
 // it replaces. No query params (verified: the DATA_API route reads only the
 // netuid path segment).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 const SubnetConvictionEntrySchema = z
@@ -38,6 +37,3 @@ export const SubnetConvictionArtifactSchema = z
 export type SubnetConvictionArtifact = z.infer<
   typeof SubnetConvictionArtifactSchema
 >;
-export const SubnetConvictionResponseSchema = successEnvelopeSchema(
-  SubnetConvictionArtifactSchema,
-);

@@ -20,7 +20,6 @@
 // in schemas/components/*.schema.json (verified via repo-wide $ref grep), so
 // the hand-edited component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const AccountIdentityArtifactSchema = z
   .object({
@@ -40,9 +39,6 @@ export const AccountIdentityArtifactSchema = z
 export type AccountIdentityArtifact = z.infer<
   typeof AccountIdentityArtifactSchema
 >;
-export const AccountIdentityResponseSchema = successEnvelopeSchema(
-  AccountIdentityArtifactSchema,
-);
 
 const AccountIdentityHistoryEntrySchema = z
   .object({
@@ -79,6 +75,3 @@ export const AccountIdentityHistoryArtifactSchema = z
 export type AccountIdentityHistoryArtifact = z.infer<
   typeof AccountIdentityHistoryArtifactSchema
 >;
-export const AccountIdentityHistoryResponseSchema = successEnvelopeSchema(
-  AccountIdentityHistoryArtifactSchema,
-);

@@ -8,7 +8,6 @@
 // src/contracts.ts), cross-checked against real handler output including the
 // cold-store degraded case — see tests/zod-schemas.test.ts.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { HealthStatusSchema } from "../shared.ts";
 
 export const HealthSubnetSummarySchema = z
@@ -60,7 +59,3 @@ export const HealthSummaryArtifactSchema = z
   // allows generated_at: null for the cold-store case.
   .passthrough();
 export type HealthSummaryArtifact = z.infer<typeof HealthSummaryArtifactSchema>;
-
-export const HealthResponseSchema = successEnvelopeSchema(
-  HealthSummaryArtifactSchema,
-);

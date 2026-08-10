@@ -8,7 +8,6 @@
 // every count null -- so `0` in any of these fields is a MEASURED zero, and the
 // schema must not let a decline masquerade as one.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetHolderSchema = z
   .object({
@@ -119,6 +118,3 @@ export const SubnetHoldersArtifactSchema = z
   })
   .passthrough();
 export type SubnetHoldersArtifact = z.infer<typeof SubnetHoldersArtifactSchema>;
-export const SubnetHoldersResponseSchema = successEnvelopeSchema(
-  SubnetHoldersArtifactSchema,
-);

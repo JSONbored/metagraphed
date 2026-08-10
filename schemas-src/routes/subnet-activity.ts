@@ -8,7 +8,6 @@
 // verified by reading all four source files), cross-checked against the
 // four hand-edited Subnet*Artifact components they replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
@@ -38,9 +37,6 @@ export const SubnetAxonRemovalsArtifactSchema = z
 export type SubnetAxonRemovalsArtifact = z.infer<
   typeof SubnetAxonRemovalsArtifactSchema
 >;
-export const SubnetAxonRemovalsResponseSchema = successEnvelopeSchema(
-  SubnetAxonRemovalsArtifactSchema,
-);
 
 export const SubnetDeregistrationsArtifactSchema = z
   .object({
@@ -101,9 +97,6 @@ export const SubnetDeregistrationsArtifactSchema = z
 export type SubnetDeregistrationsArtifact = z.infer<
   typeof SubnetDeregistrationsArtifactSchema
 >;
-export const SubnetDeregistrationsResponseSchema = successEnvelopeSchema(
-  SubnetDeregistrationsArtifactSchema,
-);
 
 export const SubnetRegistrationsArtifactSchema = z
   .object({
@@ -119,9 +112,6 @@ export const SubnetRegistrationsArtifactSchema = z
 export type SubnetRegistrationsArtifact = z.infer<
   typeof SubnetRegistrationsArtifactSchema
 >;
-export const SubnetRegistrationsResponseSchema = successEnvelopeSchema(
-  SubnetRegistrationsArtifactSchema,
-);
 
 export const SubnetServingArtifactSchema = z
   .object({
@@ -135,6 +125,3 @@ export const SubnetServingArtifactSchema = z
   })
   .strict();
 export type SubnetServingArtifact = z.infer<typeof SubnetServingArtifactSchema>;
-export const SubnetServingResponseSchema = successEnvelopeSchema(
-  SubnetServingArtifactSchema,
-);

@@ -6,7 +6,6 @@
 // it replaces. Reuses ColdkeyIdentitySchema from global-validators.ts and
 // ValidatorDetailSubnetSchema from validator-detail.ts (subnet_context).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ColdkeyIdentitySchema } from "./global-validators.ts";
 import { ValidatorDetailSubnetSchema } from "./validator-detail.ts";
 
@@ -50,6 +49,3 @@ export const CompareValidatorsArtifactSchema = z
 export type CompareValidatorsArtifact = z.infer<
   typeof CompareValidatorsArtifactSchema
 >;
-export const CompareValidatorsResponseSchema = successEnvelopeSchema(
-  CompareValidatorsArtifactSchema,
-);

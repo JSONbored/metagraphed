@@ -6,7 +6,6 @@
 // the same reuse pattern account-events-feed.ts / extrinsics.ts's own
 // ExtrinsicDetailArtifact already use.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 
 export const BlockEventsArtifactSchema = z
@@ -31,6 +30,3 @@ export const BlockEventsArtifactSchema = z
     "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref.",
   );
 export type BlockEventsArtifact = z.infer<typeof BlockEventsArtifactSchema>;
-export const BlockEventsResponseSchema = successEnvelopeSchema(
-  BlockEventsArtifactSchema,
-);

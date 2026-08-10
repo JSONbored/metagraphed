@@ -4,7 +4,6 @@
 // set), cross-checked against the hand-edited SubnetIdleStakeArtifact
 // component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetIdleStakeArtifactSchema = z
   .object({
@@ -22,6 +21,3 @@ export const SubnetIdleStakeArtifactSchema = z
 export type SubnetIdleStakeArtifact = z.infer<
   typeof SubnetIdleStakeArtifactSchema
 >;
-export const SubnetIdleStakeResponseSchema = successEnvelopeSchema(
-  SubnetIdleStakeArtifactSchema,
-);

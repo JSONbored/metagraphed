@@ -29,7 +29,6 @@
 // shape check) -- dropped in favor of plain z.string(), matching how every
 // other account route in this epic models ss58-shaped fields.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const CounterpartySchema = z
   .object({
@@ -109,6 +108,3 @@ export const AccountCounterpartiesArtifactSchema = z
 export type AccountCounterpartiesArtifact = z.infer<
   typeof AccountCounterpartiesArtifactSchema
 >;
-export const AccountCounterpartiesResponseSchema = successEnvelopeSchema(
-  AccountCounterpartiesArtifactSchema,
-);

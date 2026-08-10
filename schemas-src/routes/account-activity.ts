@@ -17,7 +17,6 @@
 // epic's established convention. AccountStakeFlowArtifact needed no fix at
 // all (diff:openapi-zod reports PASS after cosmetic normalization).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -56,9 +55,6 @@ export const AccountServingArtifactSchema = z
 export type AccountServingArtifact = z.infer<
   typeof AccountServingArtifactSchema
 >;
-export const AccountServingResponseSchema = successEnvelopeSchema(
-  AccountServingArtifactSchema,
-);
 
 export const AccountPrometheusArtifactSchema = z
   .object({
@@ -99,9 +95,6 @@ export const AccountPrometheusArtifactSchema = z
 export type AccountPrometheusArtifact = z.infer<
   typeof AccountPrometheusArtifactSchema
 >;
-export const AccountPrometheusResponseSchema = successEnvelopeSchema(
-  AccountPrometheusArtifactSchema,
-);
 
 export const AccountStakeMovesArtifactSchema = z
   .object({
@@ -136,9 +129,6 @@ export const AccountStakeMovesArtifactSchema = z
 export type AccountStakeMovesArtifact = z.infer<
   typeof AccountStakeMovesArtifactSchema
 >;
-export const AccountStakeMovesResponseSchema = successEnvelopeSchema(
-  AccountStakeMovesArtifactSchema,
-);
 
 const FLOW_DIRECTION_ENUM = [
   "accumulating",
@@ -203,6 +193,3 @@ export const AccountStakeFlowArtifactSchema = z
 export type AccountStakeFlowArtifact = z.infer<
   typeof AccountStakeFlowArtifactSchema
 >;
-export const AccountStakeFlowResponseSchema = successEnvelopeSchema(
-  AccountStakeFlowArtifactSchema,
-);

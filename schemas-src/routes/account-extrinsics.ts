@@ -22,7 +22,6 @@
 // numbers -- same finding as account-events-feed.ts's 3 routes. Fixed to
 // required non-nullable integers.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ExtrinsicSchema = z
   .object({
@@ -78,6 +77,3 @@ export const AccountExtrinsicsArtifactSchema = z
 export type AccountExtrinsicsArtifact = z.infer<
   typeof AccountExtrinsicsArtifactSchema
 >;
-export const AccountExtrinsicsResponseSchema = successEnvelopeSchema(
-  AccountExtrinsicsArtifactSchema,
-);

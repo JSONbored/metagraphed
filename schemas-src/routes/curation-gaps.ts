@@ -8,7 +8,7 @@
 // hand-edited CurationArtifact/CurationEntry and GapsArtifact/GapsEntry
 // components they replace.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import { COVERAGE_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
 import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
 import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "./endpoints-pools.ts";
@@ -48,9 +48,6 @@ export const CurationArtifactSchema = ArtifactBaseSchema.extend({
     "Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation).",
   );
 export type CurationArtifact = z.infer<typeof CurationArtifactSchema>;
-export const CurationResponseSchema = successEnvelopeSchema(
-  CurationArtifactSchema,
-);
 
 export const GAPS_SORT_FIELDS = [
   "coverage_level",
@@ -85,4 +82,3 @@ export const GapsArtifactSchema = ArtifactBaseSchema.extend({
     "Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps).",
   );
 export type GapsArtifact = z.infer<typeof GapsArtifactSchema>;
-export const GapsResponseSchema = successEnvelopeSchema(GapsArtifactSchema);

@@ -3,7 +3,6 @@
 // buildFailureReasons().
 import { z } from "zod";
 import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const FailureReasonSchema = z
   .object({
@@ -81,6 +80,3 @@ export const FailureReasonsArtifactSchema = z
 export type FailureReasonsArtifact = z.infer<
   typeof FailureReasonsArtifactSchema
 >;
-export const FailureReasonsResponseSchema = successEnvelopeSchema(
-  FailureReasonsArtifactSchema,
-);

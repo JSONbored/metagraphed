@@ -4,7 +4,6 @@
 // cross-checked against the hand-edited SubnetStakeTransfersArtifact
 // component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetStakeTransfersArtifactSchema = z
   .object({
@@ -23,6 +22,3 @@ export const SubnetStakeTransfersArtifactSchema = z
 export type SubnetStakeTransfersArtifact = z.infer<
   typeof SubnetStakeTransfersArtifactSchema
 >;
-export const SubnetStakeTransfersResponseSchema = successEnvelopeSchema(
-  SubnetStakeTransfersArtifactSchema,
-);

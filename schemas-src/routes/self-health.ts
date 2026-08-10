@@ -8,7 +8,6 @@
 // sub-shape gets silently inlined by the OpenAPI registry rather than
 // $ref'd -- see the Zod-registry gotcha in the schema notes.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SelfHealthDaySchema = z
   .object({
@@ -121,7 +120,3 @@ export const SelfHealthArtifactSchema = z
     "metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health.",
   );
 export type SelfHealthArtifact = z.infer<typeof SelfHealthArtifactSchema>;
-
-export const SelfHealthResponseSchema = successEnvelopeSchema(
-  SelfHealthArtifactSchema,
-);

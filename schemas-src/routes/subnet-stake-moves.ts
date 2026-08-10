@@ -3,7 +3,6 @@
 // src/subnet-stake-moves.ts's buildSubnetStakeMoves(), cross-checked
 // against the hand-edited SubnetStakeMovesArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetStakeMovesArtifactSchema = z
   .object({
@@ -19,6 +18,3 @@ export const SubnetStakeMovesArtifactSchema = z
 export type SubnetStakeMovesArtifact = z.infer<
   typeof SubnetStakeMovesArtifactSchema
 >;
-export const SubnetStakeMovesResponseSchema = successEnvelopeSchema(
-  SubnetStakeMovesArtifactSchema,
-);

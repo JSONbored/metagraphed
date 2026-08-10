@@ -13,7 +13,6 @@
 // more times -- so the published GraphQL schema grew five anonymous twins of
 // a type it already had a name for.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ConcentrationMetricsSchema } from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -65,9 +64,6 @@ export const SubnetConcentrationArtifactSchema = z
 export type SubnetConcentrationArtifact = z.infer<
   typeof SubnetConcentrationArtifactSchema
 >;
-export const SubnetConcentrationResponseSchema = successEnvelopeSchema(
-  SubnetConcentrationArtifactSchema,
-);
 
 const SubnetConcentrationHistoryPointSchema = z
   .object({
@@ -101,6 +97,3 @@ export const SubnetConcentrationHistoryArtifactSchema = z
 export type SubnetConcentrationHistoryArtifact = z.infer<
   typeof SubnetConcentrationHistoryArtifactSchema
 >;
-export const SubnetConcentrationHistoryResponseSchema = successEnvelopeSchema(
-  SubnetConcentrationHistoryArtifactSchema,
-);

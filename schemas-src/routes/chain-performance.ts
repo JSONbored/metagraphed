@@ -7,7 +7,6 @@
 // cross-checked against the hand-edited ChainPerformanceArtifact component
 // it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import {
   ConcentrationMetricsSchema,
   ScoreDistributionSchema,
@@ -47,6 +46,3 @@ export const ChainPerformanceArtifactSchema = z
 export type ChainPerformanceArtifact = z.infer<
   typeof ChainPerformanceArtifactSchema
 >;
-export const ChainPerformanceResponseSchema = successEnvelopeSchema(
-  ChainPerformanceArtifactSchema,
-);

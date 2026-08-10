@@ -7,7 +7,6 @@
 // (confirmed every setter row's `hotkey` reads back null in practice --
 // matches the hand-edited component's declared nullability).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetWeightsArtifactSchema = z
   .object({
@@ -21,9 +20,6 @@ export const SubnetWeightsArtifactSchema = z
   })
   .strict();
 export type SubnetWeightsArtifact = z.infer<typeof SubnetWeightsArtifactSchema>;
-export const SubnetWeightsResponseSchema = successEnvelopeSchema(
-  SubnetWeightsArtifactSchema,
-);
 
 const SubnetWeightSetterSchema = z
   .object({
@@ -87,6 +83,3 @@ export const SubnetWeightSettersArtifactSchema = z
 export type SubnetWeightSettersArtifact = z.infer<
   typeof SubnetWeightSettersArtifactSchema
 >;
-export const SubnetWeightSettersResponseSchema = successEnvelopeSchema(
-  SubnetWeightSettersArtifactSchema,
-);

@@ -6,7 +6,6 @@
 // here would make author clock skew a schema violation on the one route whose
 // whole subject is that difference, turning evidence into an error.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** What was actually measured. Published because chain-detail-prune keeps a
  * rolling window, so a distribution without its bounds reads as a lifetime one. */
@@ -78,6 +77,3 @@ export const IndexerLagArtifactSchema = z
   })
   .passthrough();
 export type IndexerLagArtifact = z.infer<typeof IndexerLagArtifactSchema>;
-export const IndexerLagResponseSchema = successEnvelopeSchema(
-  IndexerLagArtifactSchema,
-);

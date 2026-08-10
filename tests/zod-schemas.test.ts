@@ -8,59 +8,60 @@
 // issue's non-vacuous requirement: an empty object must fail every schema.
 import assert from "node:assert/strict";
 import { describe, test, vi, afterEach } from "vitest";
+import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { SubnetsResponseSchema } from "../schemas-src/routes/subnets.ts";
-import { SubnetDetailResponseSchema } from "../schemas-src/routes/subnet-detail.ts";
-import { HealthResponseSchema } from "../schemas-src/routes/health.ts";
-import { SelfHealthResponseSchema } from "../schemas-src/routes/self-health.ts";
-import { EconomicsResponseSchema } from "../schemas-src/routes/economics.ts";
-import { StakeQuoteResponseSchema } from "../schemas-src/routes/stake-quote.ts";
-import { SubnetAlphaVolumeResponseSchema } from "../schemas-src/routes/subnet-alpha-volume.ts";
+import { SubnetsArtifactSchema } from "../schemas-src/routes/subnets.ts";
+import { SubnetDetailArtifactSchema } from "../schemas-src/routes/subnet-detail.ts";
+import { HealthSummaryArtifactSchema } from "../schemas-src/routes/health.ts";
+import { SelfHealthArtifactSchema } from "../schemas-src/routes/self-health.ts";
+import { EconomicsArtifactSchema } from "../schemas-src/routes/economics.ts";
+import { SubnetStakeQuoteArtifactSchema } from "../schemas-src/routes/stake-quote.ts";
+import { SubnetAlphaVolumeArtifactSchema } from "../schemas-src/routes/subnet-alpha-volume.ts";
 import {
-  SubnetAxonRemovalsResponseSchema,
-  SubnetDeregistrationsResponseSchema,
-  SubnetRegistrationsResponseSchema,
-  SubnetServingResponseSchema,
+  SubnetAxonRemovalsArtifactSchema,
+  SubnetDeregistrationsArtifactSchema,
+  SubnetRegistrationsArtifactSchema,
+  SubnetServingArtifactSchema,
 } from "../schemas-src/routes/subnet-activity.ts";
 import {
-  SubnetBurnResponseSchema,
-  SubnetRecycledResponseSchema,
+  SubnetBurnArtifactSchema,
+  SubnetRecycledArtifactSchema,
 } from "../schemas-src/routes/subnet-registration-cost.ts";
-import { SubnetEventsResponseSchema } from "../schemas-src/routes/subnet-events.ts";
-import { SubnetEventSummaryResponseSchema } from "../schemas-src/routes/subnet-event-summary.ts";
-import { SubnetHistoryResponseSchema } from "../schemas-src/routes/subnet-history.ts";
-import { SubnetIdentityHistoryResponseSchema } from "../schemas-src/routes/subnet-identity-history.ts";
-import { SubnetIdleStakeResponseSchema } from "../schemas-src/routes/subnet-idle-stake.ts";
-import { SubnetOverviewResponseSchema } from "../schemas-src/routes/subnet-overview.ts";
+import { SubnetEventsArtifactSchema } from "../schemas-src/routes/subnet-events.ts";
+import { SubnetEventSummaryArtifactSchema } from "../schemas-src/routes/subnet-event-summary.ts";
+import { SubnetHistoryArtifactSchema } from "../schemas-src/routes/subnet-history.ts";
+import { SubnetIdentityHistoryArtifactSchema } from "../schemas-src/routes/subnet-identity-history.ts";
+import { SubnetIdleStakeArtifactSchema } from "../schemas-src/routes/subnet-idle-stake.ts";
+import { SubnetOverviewArtifactSchema } from "../schemas-src/routes/subnet-overview.ts";
 import {
-  DomainSummaryResponseSchema,
-  DomainsResponseSchema,
+  DomainSummaryArtifactSchema,
+  DomainsArtifactSchema,
 } from "../schemas-src/routes/domains.ts";
-import { EconomicsTrendsResponseSchema } from "../schemas-src/routes/economics-trends.ts";
+import { EconomicsTrendsArtifactSchema } from "../schemas-src/routes/economics-trends.ts";
 import {
-  SubnetConcentrationResponseSchema,
-  SubnetConcentrationHistoryResponseSchema,
+  SubnetConcentrationArtifactSchema,
+  SubnetConcentrationHistoryArtifactSchema,
 } from "../schemas-src/routes/subnet-concentration.ts";
-import { SubnetTurnoverResponseSchema } from "../schemas-src/routes/subnet-turnover.ts";
-import { SubnetStakeFlowResponseSchema } from "../schemas-src/routes/subnet-stake-flow.ts";
-import { SubnetStakeMovesResponseSchema } from "../schemas-src/routes/subnet-stake-moves.ts";
-import { SubnetStakeTransfersResponseSchema } from "../schemas-src/routes/subnet-stake-transfers.ts";
-import { SubnetOhlcResponseSchema } from "../schemas-src/routes/subnet-ohlc.ts";
+import { SubnetTurnoverArtifactSchema } from "../schemas-src/routes/subnet-turnover.ts";
+import { SubnetStakeFlowArtifactSchema } from "../schemas-src/routes/subnet-stake-flow.ts";
+import { SubnetStakeMovesArtifactSchema } from "../schemas-src/routes/subnet-stake-moves.ts";
+import { SubnetStakeTransfersArtifactSchema } from "../schemas-src/routes/subnet-stake-transfers.ts";
+import { SubnetOhlcArtifactSchema } from "../schemas-src/routes/subnet-ohlc.ts";
 import {
-  SubnetYieldResponseSchema,
-  SubnetYieldHistoryResponseSchema,
+  SubnetYieldArtifactSchema,
+  SubnetYieldHistoryArtifactSchema,
 } from "../schemas-src/routes/subnet-yield.ts";
-import { SubnetMoversResponseSchema } from "../schemas-src/routes/subnet-movers.ts";
-import { SubnetTrajectoryResponseSchema } from "../schemas-src/routes/subnet-trajectory.ts";
+import { SubnetMoversArtifactSchema } from "../schemas-src/routes/subnet-movers.ts";
+import { SubnetTrajectoryArtifactSchema } from "../schemas-src/routes/subnet-trajectory.ts";
 import {
-  SubnetLeaseResponseSchema,
+  SubnetLeaseArtifactSchema,
   SubnetLeaseHistoryArtifactSchema,
 } from "../schemas-src/routes/subnet-lease.ts";
 import {
-  CrowdloansResponseSchema,
-  CrowdloanDetailResponseSchema,
+  CrowdloansArtifactSchema,
+  CrowdloanDetailArtifactSchema,
 } from "../schemas-src/routes/crowdloans.ts";
 import { SubnetOwnershipHistoryArtifactSchema } from "../schemas-src/routes/subnet-ownership-history.ts";
 import { SubnetConvictionArtifactSchema } from "../schemas-src/routes/subnet-conviction.ts";
@@ -396,18 +397,34 @@ async function realBody(path: string) {
 }
 
 const cases: [string, string, z.ZodType][] = [
-  ["subnets", "/api/v1/subnets", SubnetsResponseSchema],
-  ["subnet-detail", "/api/v1/subnets/64", SubnetDetailResponseSchema],
-  ["health", "/api/v1/health", HealthResponseSchema],
+  ["subnets", "/api/v1/subnets", successEnvelopeSchema(SubnetsArtifactSchema)],
+  [
+    "subnet-detail",
+    "/api/v1/subnets/64",
+    successEnvelopeSchema(SubnetDetailArtifactSchema),
+  ],
+  [
+    "health",
+    "/api/v1/health",
+    successEnvelopeSchema(HealthSummaryArtifactSchema),
+  ],
   // #8318: our OWN uptime, distinct from the third-party rollup above. Parses
   // the cold-store shape here (three components, verdict "degraded"), which is
   // exactly what the route serves before the poller has written anything.
-  ["self-health", "/api/v1/self-health", SelfHealthResponseSchema],
-  ["economics", "/api/v1/economics", EconomicsResponseSchema],
+  [
+    "self-health",
+    "/api/v1/self-health",
+    successEnvelopeSchema(SelfHealthArtifactSchema),
+  ],
+  [
+    "economics",
+    "/api/v1/economics",
+    successEnvelopeSchema(EconomicsArtifactSchema),
+  ],
   [
     "stake-quote",
     "/api/v1/subnets/64/stake-quote?amount=1000&direction=stake",
-    StakeQuoteResponseSchema,
+    successEnvelopeSchema(SubnetStakeQuoteArtifactSchema),
   ],
 ];
 
@@ -416,58 +433,74 @@ const batch1Cases: [string, string, z.ZodType][] = [
   [
     "subnet-volume",
     "/api/v1/subnets/64/volume",
-    SubnetAlphaVolumeResponseSchema,
+    successEnvelopeSchema(SubnetAlphaVolumeArtifactSchema),
   ],
   [
     "subnet-axon-removals",
     "/api/v1/subnets/64/axon-removals",
-    SubnetAxonRemovalsResponseSchema,
+    successEnvelopeSchema(SubnetAxonRemovalsArtifactSchema),
   ],
-  ["subnet-burn", "/api/v1/subnets/64/burn", SubnetBurnResponseSchema],
+  [
+    "subnet-burn",
+    "/api/v1/subnets/64/burn",
+    successEnvelopeSchema(SubnetBurnArtifactSchema),
+  ],
   [
     "subnet-deregistrations",
     "/api/v1/subnets/64/deregistrations",
-    SubnetDeregistrationsResponseSchema,
+    successEnvelopeSchema(SubnetDeregistrationsArtifactSchema),
   ],
   [
     "subnet-event-summary",
     "/api/v1/subnets/64/event-summary",
-    SubnetEventSummaryResponseSchema,
+    successEnvelopeSchema(SubnetEventSummaryArtifactSchema),
   ],
-  ["subnet-events", "/api/v1/subnets/64/events", SubnetEventsResponseSchema],
-  ["subnet-history", "/api/v1/subnets/64/history", SubnetHistoryResponseSchema],
+  [
+    "subnet-events",
+    "/api/v1/subnets/64/events",
+    successEnvelopeSchema(SubnetEventsArtifactSchema),
+  ],
+  [
+    "subnet-history",
+    "/api/v1/subnets/64/history",
+    successEnvelopeSchema(SubnetHistoryArtifactSchema),
+  ],
   [
     "subnet-identity-history",
     "/api/v1/subnets/64/identity-history",
-    SubnetIdentityHistoryResponseSchema,
+    successEnvelopeSchema(SubnetIdentityHistoryArtifactSchema),
   ],
   [
     "subnet-recycled",
     "/api/v1/subnets/64/recycled",
-    SubnetRecycledResponseSchema,
+    successEnvelopeSchema(SubnetRecycledArtifactSchema),
   ],
   [
     "subnet-registrations",
     "/api/v1/subnets/64/registrations",
-    SubnetRegistrationsResponseSchema,
+    successEnvelopeSchema(SubnetRegistrationsArtifactSchema),
   ],
-  ["subnet-serving", "/api/v1/subnets/64/serving", SubnetServingResponseSchema],
+  [
+    "subnet-serving",
+    "/api/v1/subnets/64/serving",
+    successEnvelopeSchema(SubnetServingArtifactSchema),
+  ],
   [
     "subnet-idle-stake",
     "/api/v1/subnets/64/idle-stake",
-    SubnetIdleStakeResponseSchema,
+    successEnvelopeSchema(SubnetIdleStakeArtifactSchema),
   ],
   [
     "subnet-overview",
     "/api/v1/subnets/64/overview",
-    SubnetOverviewResponseSchema,
+    successEnvelopeSchema(SubnetOverviewArtifactSchema),
   ],
   [
     "domain-summary",
     "/api/v1/domains/agents/summary",
-    DomainSummaryResponseSchema,
+    successEnvelopeSchema(DomainSummaryArtifactSchema),
   ],
-  ["domains", "/api/v1/domains", DomainsResponseSchema],
+  ["domains", "/api/v1/domains", successEnvelopeSchema(DomainsArtifactSchema)],
 ];
 
 // Batch 2 (#8056) -- same ground-truth pattern, 16 more routes.
@@ -475,54 +508,78 @@ const batch2Cases: [string, string, z.ZodType][] = [
   [
     "economics-trends",
     "/api/v1/economics/trends",
-    EconomicsTrendsResponseSchema,
+    successEnvelopeSchema(EconomicsTrendsArtifactSchema),
   ],
   [
     "subnet-concentration",
     "/api/v1/subnets/64/concentration",
-    SubnetConcentrationResponseSchema,
+    successEnvelopeSchema(SubnetConcentrationArtifactSchema),
   ],
   [
     "subnet-concentration-history",
     "/api/v1/subnets/64/concentration/history",
-    SubnetConcentrationHistoryResponseSchema,
+    successEnvelopeSchema(SubnetConcentrationHistoryArtifactSchema),
   ],
   [
     "subnet-turnover",
     "/api/v1/subnets/64/turnover?changes=true",
-    SubnetTurnoverResponseSchema,
+    successEnvelopeSchema(SubnetTurnoverArtifactSchema),
   ],
   [
     "subnet-stake-flow",
     "/api/v1/subnets/64/stake-flow",
-    SubnetStakeFlowResponseSchema,
+    successEnvelopeSchema(SubnetStakeFlowArtifactSchema),
   ],
   [
     "subnet-stake-moves",
     "/api/v1/subnets/64/stake-moves",
-    SubnetStakeMovesResponseSchema,
+    successEnvelopeSchema(SubnetStakeMovesArtifactSchema),
   ],
   [
     "subnet-stake-transfers",
     "/api/v1/subnets/64/stake-transfers",
-    SubnetStakeTransfersResponseSchema,
+    successEnvelopeSchema(SubnetStakeTransfersArtifactSchema),
   ],
-  ["subnet-ohlc", "/api/v1/subnets/64/ohlc", SubnetOhlcResponseSchema],
-  ["subnet-yield", "/api/v1/subnets/64/yield", SubnetYieldResponseSchema],
+  [
+    "subnet-ohlc",
+    "/api/v1/subnets/64/ohlc",
+    successEnvelopeSchema(SubnetOhlcArtifactSchema),
+  ],
+  [
+    "subnet-yield",
+    "/api/v1/subnets/64/yield",
+    successEnvelopeSchema(SubnetYieldArtifactSchema),
+  ],
   [
     "subnet-yield-history",
     "/api/v1/subnets/64/yield/history",
-    SubnetYieldHistoryResponseSchema,
+    successEnvelopeSchema(SubnetYieldHistoryArtifactSchema),
   ],
-  ["subnet-movers", "/api/v1/subnets/movers", SubnetMoversResponseSchema],
+  [
+    "subnet-movers",
+    "/api/v1/subnets/movers",
+    successEnvelopeSchema(SubnetMoversArtifactSchema),
+  ],
   [
     "subnet-trajectory",
     "/api/v1/subnets/64/trajectory",
-    SubnetTrajectoryResponseSchema,
+    successEnvelopeSchema(SubnetTrajectoryArtifactSchema),
   ],
-  ["subnet-lease", "/api/v1/subnets/64/lease", SubnetLeaseResponseSchema],
-  ["crowdloans", "/api/v1/crowdloans", CrowdloansResponseSchema],
-  ["crowdloan-detail", "/api/v1/crowdloans/0", CrowdloanDetailResponseSchema],
+  [
+    "subnet-lease",
+    "/api/v1/subnets/64/lease",
+    successEnvelopeSchema(SubnetLeaseArtifactSchema),
+  ],
+  [
+    "crowdloans",
+    "/api/v1/crowdloans",
+    successEnvelopeSchema(CrowdloansArtifactSchema),
+  ],
+  [
+    "crowdloan-detail",
+    "/api/v1/crowdloans/0",
+    successEnvelopeSchema(CrowdloanDetailArtifactSchema),
+  ],
 ];
 
 describe("pilot route response schemas parse real handler output", () => {

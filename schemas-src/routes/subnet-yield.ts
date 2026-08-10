@@ -4,7 +4,6 @@
 // buildSubnetYieldHistory(), cross-checked against the hand-edited
 // SubnetYieldArtifact/SubnetYieldHistoryArtifact components they replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_YIELD_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
@@ -54,9 +53,6 @@ export const SubnetYieldArtifactSchema = z
   })
   .strict();
 export type SubnetYieldArtifact = z.infer<typeof SubnetYieldArtifactSchema>;
-export const SubnetYieldResponseSchema = successEnvelopeSchema(
-  SubnetYieldArtifactSchema,
-);
 
 const SubnetYieldHistoryPointSchema = z
   .object({
@@ -92,6 +88,3 @@ export const SubnetYieldHistoryArtifactSchema = z
 export type SubnetYieldHistoryArtifact = z.infer<
   typeof SubnetYieldHistoryArtifactSchema
 >;
-export const SubnetYieldHistoryResponseSchema = successEnvelopeSchema(
-  SubnetYieldHistoryArtifactSchema,
-);

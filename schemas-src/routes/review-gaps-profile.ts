@@ -10,11 +10,7 @@
 // (+ReviewGapPriority), SubnetGapsArtifact, and
 // ReviewProfileCompletenessArtifact(+Entry) components they replace.
 import { z } from "zod";
-import {
-  ArtifactBaseSchema,
-  CountMapSchema,
-  successEnvelopeSchema,
-} from "../envelope.ts";
+import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CurationLevelSchema } from "../shared.ts";
 import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { SubnetProfileIdentityEvidenceSchema } from "./subnet-profile.ts";
@@ -58,9 +54,6 @@ export const ReviewGapPrioritiesArtifactSchema = ArtifactBaseSchema.extend({
 export type ReviewGapPrioritiesArtifact = z.infer<
   typeof ReviewGapPrioritiesArtifactSchema
 >;
-export const ReviewGapPrioritiesResponseSchema = successEnvelopeSchema(
-  ReviewGapPrioritiesArtifactSchema,
-);
 
 export const SubnetGapsArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0),
@@ -70,9 +63,6 @@ export const SubnetGapsArtifactSchema = ArtifactBaseSchema.extend({
   enrichment_queue: z.array(ReviewEnrichmentQueueEntrySchema),
 }).passthrough();
 export type SubnetGapsArtifact = z.infer<typeof SubnetGapsArtifactSchema>;
-export const SubnetGapsResponseSchema = successEnvelopeSchema(
-  SubnetGapsArtifactSchema,
-);
 
 export const PROFILE_SORT_FIELDS = [
   "candidate_count",
@@ -146,6 +136,3 @@ export const ReviewProfileCompletenessArtifactSchema =
 export type ReviewProfileCompletenessArtifact = z.infer<
   typeof ReviewProfileCompletenessArtifactSchema
 >;
-export const ReviewProfileCompletenessResponseSchema = successEnvelopeSchema(
-  ReviewProfileCompletenessArtifactSchema,
-);

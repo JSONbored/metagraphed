@@ -15,7 +15,6 @@
 // setters/weight_sets). Cross-checked against the 8 matching hand-edited
 // components they replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
@@ -83,9 +82,6 @@ export const ChainAxonRemovalsArtifactSchema = z
 export type ChainAxonRemovalsArtifact = z.infer<
   typeof ChainAxonRemovalsArtifactSchema
 >;
-export const ChainAxonRemovalsResponseSchema = successEnvelopeSchema(
-  ChainAxonRemovalsArtifactSchema,
-);
 
 // #9742: how long the slots that turned over had been held. Optional so a
 // body published before this shipped still validates.
@@ -153,9 +149,6 @@ export const ChainDeregistrationsArtifactSchema = z
 export type ChainDeregistrationsArtifact = z.infer<
   typeof ChainDeregistrationsArtifactSchema
 >;
-export const ChainDeregistrationsResponseSchema = successEnvelopeSchema(
-  ChainDeregistrationsArtifactSchema,
-);
 
 export const ChainPrometheusArtifactSchema = z
   .object({
@@ -203,9 +196,6 @@ export const ChainPrometheusArtifactSchema = z
 export type ChainPrometheusArtifact = z.infer<
   typeof ChainPrometheusArtifactSchema
 >;
-export const ChainPrometheusResponseSchema = successEnvelopeSchema(
-  ChainPrometheusArtifactSchema,
-);
 
 export const ChainRegistrationsArtifactSchema = z
   .object({
@@ -250,9 +240,6 @@ export const ChainRegistrationsArtifactSchema = z
 export type ChainRegistrationsArtifact = z.infer<
   typeof ChainRegistrationsArtifactSchema
 >;
-export const ChainRegistrationsResponseSchema = successEnvelopeSchema(
-  ChainRegistrationsArtifactSchema,
-);
 
 export const ChainServingArtifactSchema = z
   .object({
@@ -298,9 +285,6 @@ export const ChainServingArtifactSchema = z
     "Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope.",
   );
 export type ChainServingArtifact = z.infer<typeof ChainServingArtifactSchema>;
-export const ChainServingResponseSchema = successEnvelopeSchema(
-  ChainServingArtifactSchema,
-);
 
 export const ChainStakeMovesArtifactSchema = z
   .object({
@@ -346,9 +330,6 @@ export const ChainStakeMovesArtifactSchema = z
 export type ChainStakeMovesArtifact = z.infer<
   typeof ChainStakeMovesArtifactSchema
 >;
-export const ChainStakeMovesResponseSchema = successEnvelopeSchema(
-  ChainStakeMovesArtifactSchema,
-);
 
 export const ChainStakeTransfersArtifactSchema = z
   .object({
@@ -394,9 +375,6 @@ export const ChainStakeTransfersArtifactSchema = z
 export type ChainStakeTransfersArtifact = z.infer<
   typeof ChainStakeTransfersArtifactSchema
 >;
-export const ChainStakeTransfersResponseSchema = successEnvelopeSchema(
-  ChainStakeTransfersArtifactSchema,
-);
 
 export const ChainWeightsArtifactSchema = z
   .object({
@@ -442,6 +420,3 @@ export const ChainWeightsArtifactSchema = z
     "Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights.",
   );
 export type ChainWeightsArtifact = z.infer<typeof ChainWeightsArtifactSchema>;
-export const ChainWeightsResponseSchema = successEnvelopeSchema(
-  ChainWeightsArtifactSchema,
-);

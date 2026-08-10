@@ -8,7 +8,6 @@
 // an enum here would be a real (if inert) tightening the issue's wire-
 // compatibility constraint doesn't require -- left loose on purpose.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_HISTORY_WINDOW_VALUES = [
@@ -45,6 +44,3 @@ export const SubnetHistoryArtifactSchema = z
     "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope.",
   );
 export type SubnetHistoryArtifact = z.infer<typeof SubnetHistoryArtifactSchema>;
-export const SubnetHistoryResponseSchema = successEnvelopeSchema(
-  SubnetHistoryArtifactSchema,
-);

@@ -12,7 +12,6 @@
 // GlobalValidatorEntry is its only referrer -- so that hand-edited key also
 // becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES = [
@@ -152,6 +151,3 @@ export const GlobalValidatorsArtifactSchema = z
 export type GlobalValidatorsArtifact = z.infer<
   typeof GlobalValidatorsArtifactSchema
 >;
-export const GlobalValidatorsResponseSchema = successEnvelopeSchema(
-  GlobalValidatorsArtifactSchema,
-);

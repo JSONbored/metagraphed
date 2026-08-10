@@ -3,7 +3,7 @@
 // get_adapter MCP tool, types-epic E batch 11, #8074's get-adapter.ts).
 // Modeled from the hand-edited AdapterArtifact component it replaces.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 
 /** What the adapter last captured. Was a bare open object (#9800), so the
  * field the whole artifact exists to carry declared nothing -- not even its
@@ -75,6 +75,3 @@ export const AdapterArtifactSchema = ArtifactBaseSchema.extend({
     "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope.",
   );
 export type AdapterArtifact = z.infer<typeof AdapterArtifactSchema>;
-export const AdapterResponseSchema = successEnvelopeSchema(
-  AdapterArtifactSchema,
-);

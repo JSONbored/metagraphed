@@ -6,7 +6,6 @@
 // the sibling history routes, trajectory takes no ?window (the full points
 // series plus precomputed 7d/30d deltas cover that).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** One window's change, endpoint to endpoint. Every field is a DIFFERENCE
  * (`to` minus `from`), not a level -- a negative `tao_in_pool_tao` means the
@@ -79,6 +78,3 @@ export const SubnetTrajectoryArtifactSchema = z
 export type SubnetTrajectoryArtifact = z.infer<
   typeof SubnetTrajectoryArtifactSchema
 >;
-export const SubnetTrajectoryResponseSchema = successEnvelopeSchema(
-  SubnetTrajectoryArtifactSchema,
-);

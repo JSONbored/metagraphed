@@ -24,7 +24,6 @@
 // *.schema.json (verified via repo-wide $ref grep), so the hand-edited
 // component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const TOP_HOLDERS_SORT_VALUES = [
   "total_tao",
@@ -88,6 +87,3 @@ export const TopHoldersArtifactSchema = z
   })
   .passthrough();
 export type TopHoldersArtifact = z.infer<typeof TopHoldersArtifactSchema>;
-export const TopHoldersResponseSchema = successEnvelopeSchema(
-  TopHoldersArtifactSchema,
-);

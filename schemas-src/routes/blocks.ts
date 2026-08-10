@@ -8,7 +8,6 @@
 // in this same batch (verified via repo-wide $ref grep), so the hand-edited
 // Block component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const BlockSchema = z
   .object({
@@ -41,9 +40,6 @@ export const BlocksFeedArtifactSchema = z
   })
   .passthrough();
 export type BlocksFeedArtifact = z.infer<typeof BlocksFeedArtifactSchema>;
-export const BlocksFeedResponseSchema = successEnvelopeSchema(
-  BlocksFeedArtifactSchema,
-);
 
 export const BlockDetailArtifactSchema = z
   .object({
@@ -67,6 +63,3 @@ export const BlockDetailArtifactSchema = z
   })
   .passthrough();
 export type BlockDetailArtifact = z.infer<typeof BlockDetailArtifactSchema>;
-export const BlockDetailResponseSchema = successEnvelopeSchema(
-  BlockDetailArtifactSchema,
-);

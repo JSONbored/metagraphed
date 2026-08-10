@@ -13,7 +13,6 @@
 // a cross-component one), so both hand-edited component keys become fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ChainTransferPairSchema = z
   .object({
@@ -56,9 +55,6 @@ export const ChainTransferPairsArtifactSchema = z
 export type ChainTransferPairsArtifact = z.infer<
   typeof ChainTransferPairsArtifactSchema
 >;
-export const ChainTransferPairsResponseSchema = successEnvelopeSchema(
-  ChainTransferPairsArtifactSchema,
-);
 
 const ChainTransferPartySchema = z
   .object({
@@ -94,6 +90,3 @@ export const ChainTransfersArtifactSchema = z
 export type ChainTransfersArtifact = z.infer<
   typeof ChainTransfersArtifactSchema
 >;
-export const ChainTransfersResponseSchema = successEnvelopeSchema(
-  ChainTransfersArtifactSchema,
-);

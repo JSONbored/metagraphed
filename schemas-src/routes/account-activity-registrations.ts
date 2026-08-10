@@ -9,7 +9,6 @@
 // src/account-registrations.ts's buildAccountRegistrations(), and
 // src/account-weight-setters.ts's buildAccountWeightSetters().
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
@@ -48,9 +47,6 @@ export const AccountAxonRemovalsArtifactSchema = z
 export type AccountAxonRemovalsArtifact = z.infer<
   typeof AccountAxonRemovalsArtifactSchema
 >;
-export const AccountAxonRemovalsResponseSchema = successEnvelopeSchema(
-  AccountAxonRemovalsArtifactSchema,
-);
 
 export const AccountDeregistrationsArtifactSchema = z
   .object({
@@ -83,9 +79,6 @@ export const AccountDeregistrationsArtifactSchema = z
 export type AccountDeregistrationsArtifact = z.infer<
   typeof AccountDeregistrationsArtifactSchema
 >;
-export const AccountDeregistrationsResponseSchema = successEnvelopeSchema(
-  AccountDeregistrationsArtifactSchema,
-);
 
 export const AccountRegistrationsArtifactSchema = z
   .object({
@@ -114,9 +107,6 @@ export const AccountRegistrationsArtifactSchema = z
 export type AccountRegistrationsArtifact = z.infer<
   typeof AccountRegistrationsArtifactSchema
 >;
-export const AccountRegistrationsResponseSchema = successEnvelopeSchema(
-  AccountRegistrationsArtifactSchema,
-);
 
 export const AccountWeightSettersArtifactSchema = z
   .object({
@@ -153,6 +143,3 @@ export const AccountWeightSettersArtifactSchema = z
 export type AccountWeightSettersArtifact = z.infer<
   typeof AccountWeightSettersArtifactSchema
 >;
-export const AccountWeightSettersResponseSchema = successEnvelopeSchema(
-  AccountWeightSettersArtifactSchema,
-);

@@ -10,7 +10,6 @@
 // the handlers in workers/api.ts, not from the prose — see the header comment
 // on each schema for what the handler actually guarantees.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /**
  * One retrieved surface backing an answer.
@@ -48,7 +47,6 @@ export const AskArtifactSchema = z
   })
   .passthrough();
 export type AskArtifact = z.infer<typeof AskArtifactSchema>;
-export const AskResponseSchema = successEnvelopeSchema(AskArtifactSchema);
 
 /**
  * The request body. POST-only: the question is prose, and a URL is the wrong
@@ -92,9 +90,6 @@ export const SemanticSearchArtifactSchema = z
 export type SemanticSearchArtifact = z.infer<
   typeof SemanticSearchArtifactSchema
 >;
-export const SemanticSearchResponseSchema = successEnvelopeSchema(
-  SemanticSearchArtifactSchema,
-);
 
 /**
  * A catalog-resolved probe of one registered surface.
@@ -127,6 +122,3 @@ export const SurfaceVerifyArtifactSchema = z
   })
   .passthrough();
 export type SurfaceVerifyArtifact = z.infer<typeof SurfaceVerifyArtifactSchema>;
-export const SurfaceVerifyResponseSchema = successEnvelopeSchema(
-  SurfaceVerifyArtifactSchema,
-);

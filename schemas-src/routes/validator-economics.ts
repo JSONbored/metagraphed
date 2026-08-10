@@ -8,7 +8,6 @@
 // #9285/#9114/#9121 for the same class. `degraded_reason` names the missing input
 // whenever a field was withheld, so a caller can tell "unknown" from "zero".
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 // Permitted / active / earning are three DIFFERENT sets and are published separately
@@ -163,10 +162,6 @@ export type SubnetValidatorEconomicsArtifact = z.infer<
   typeof SubnetValidatorEconomicsArtifactSchema
 >;
 
-export const SubnetValidatorEconomicsResponseSchema = successEnvelopeSchema(
-  SubnetValidatorEconomicsArtifactSchema,
-);
-
 // GET /api/v1/validators/economics (#9324) — the cross-subnet ranking.
 //
 // One row per subnet, reusing the per-subnet artifact shape so a caller reading
@@ -215,10 +210,6 @@ export const ValidatorEconomicsRankingArtifactSchema = z
 export type ValidatorEconomicsRankingArtifact = z.infer<
   typeof ValidatorEconomicsRankingArtifactSchema
 >;
-
-export const ValidatorEconomicsRankingResponseSchema = successEnvelopeSchema(
-  ValidatorEconomicsRankingArtifactSchema,
-);
 
 // GET /api/v1/subnets/{netuid}/validator-economics/history (#9326).
 //
@@ -294,6 +285,3 @@ export const SubnetValidatorEconomicsHistoryArtifactSchema = z
 export type SubnetValidatorEconomicsHistoryArtifact = z.infer<
   typeof SubnetValidatorEconomicsHistoryArtifactSchema
 >;
-
-export const SubnetValidatorEconomicsHistoryResponseSchema =
-  successEnvelopeSchema(SubnetValidatorEconomicsHistoryArtifactSchema);

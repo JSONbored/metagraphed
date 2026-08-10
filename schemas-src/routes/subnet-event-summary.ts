@@ -7,7 +7,6 @@
 // SubnetEventCategorySummary/SubnetEventKindSummary/SubnetEventSummaryArtifact
 // components it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -103,6 +102,3 @@ export const SubnetEventSummaryArtifactSchema = z
 export type SubnetEventSummaryArtifact = z.infer<
   typeof SubnetEventSummaryArtifactSchema
 >;
-export const SubnetEventSummaryResponseSchema = successEnvelopeSchema(
-  SubnetEventSummaryArtifactSchema,
-);

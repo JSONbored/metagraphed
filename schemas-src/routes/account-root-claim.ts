@@ -18,7 +18,6 @@
 // Bucket (c): `queried_at` drops format:date-time in favor of plain
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 const RootClaimTypeSchema = z
@@ -71,6 +70,3 @@ export const AccountRootClaimArtifactSchema = z
 export type AccountRootClaimArtifact = z.infer<
   typeof AccountRootClaimArtifactSchema
 >;
-export const AccountRootClaimResponseSchema = successEnvelopeSchema(
-  AccountRootClaimArtifactSchema,
-);

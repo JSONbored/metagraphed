@@ -11,7 +11,6 @@
 // on the MCP side; this makes the ROUTE the owner and the tool the importer,
 // which is the direction #9796 settled on.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const AlertTriggerArtifactSchema = z
   .object({
@@ -37,6 +36,3 @@ export const AlertTriggerArtifactSchema = z
   })
   .passthrough();
 export type AlertTriggerArtifact = z.infer<typeof AlertTriggerArtifactSchema>;
-export const AlertTriggerResponseSchema = successEnvelopeSchema(
-  AlertTriggerArtifactSchema,
-);

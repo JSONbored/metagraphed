@@ -19,7 +19,6 @@
 // -- ChainEventsStatsArtifact is its only referrer -- so that hand-edited
 // component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EpochMillisSchema } from "../shared.ts";
 
 const ChainEventSchema = z
@@ -63,9 +62,6 @@ export const ChainEventsFeedArtifactSchema = z
 export type ChainEventsFeedArtifact = z.infer<
   typeof ChainEventsFeedArtifactSchema
 >;
-export const ChainEventsFeedResponseSchema = successEnvelopeSchema(
-  ChainEventsFeedArtifactSchema,
-);
 
 const ChainEventEntrySchema = z
   .object({
@@ -91,6 +87,3 @@ export const ChainEventsStatsArtifactSchema = z
 export type ChainEventsStatsArtifact = z.infer<
   typeof ChainEventsStatsArtifactSchema
 >;
-export const ChainEventsStatsResponseSchema = successEnvelopeSchema(
-  ChainEventsStatsArtifactSchema,
-);

@@ -3,7 +3,6 @@
 // Shape mirrors src/emission-decomposition.ts's EmissionDecomposition exactly;
 // the module is the source of truth and this is its contract projection.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ChainStateSchema, FieldSourcesSchema } from "../shared.ts";
 
 /** A fraction of block emission. Null where stage 0 excluded the subnet. */
@@ -221,7 +220,3 @@ export const EmissionPipelineArtifactSchema = z
 export type EmissionPipelineArtifact = z.infer<
   typeof EmissionPipelineArtifactSchema
 >;
-
-export const EmissionPipelineResponseSchema = successEnvelopeSchema(
-  EmissionPipelineArtifactSchema,
-);

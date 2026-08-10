@@ -1,7 +1,6 @@
 // GET /api/v1/subnets/{netuid}/surface-history (#9612): one subnet's surface
 // audit trail. Modeled from src/surface-history.ts's buildSurfaceHistory().
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SurfaceHistoryChangeSchema = z
   .object({
@@ -54,6 +53,3 @@ export const SubnetSurfaceHistoryArtifactSchema = z
 export type SubnetSurfaceHistoryArtifact = z.infer<
   typeof SubnetSurfaceHistoryArtifactSchema
 >;
-export const SubnetSurfaceHistoryResponseSchema = successEnvelopeSchema(
-  SubnetSurfaceHistoryArtifactSchema,
-);

@@ -8,7 +8,6 @@
 // counterpart, kept independent per this issue's zero-behavior-change scope.
 // Cross-checked against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetStakeQuoteArtifactSchema = z
   .object({
@@ -40,7 +39,3 @@ export const SubnetStakeQuoteArtifactSchema = z
 export type SubnetStakeQuoteArtifact = z.infer<
   typeof SubnetStakeQuoteArtifactSchema
 >;
-
-export const StakeQuoteResponseSchema = successEnvelopeSchema(
-  SubnetStakeQuoteArtifactSchema,
-);

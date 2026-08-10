@@ -3,7 +3,6 @@
 // src/turnover.ts's buildTurnover()/buildTurnoverChanges(), cross-checked
 // against the hand-edited SubnetTurnoverArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_TURNOVER_WINDOW_VALUES = [
@@ -85,6 +84,3 @@ export const SubnetTurnoverArtifactSchema = z
 export type SubnetTurnoverArtifact = z.infer<
   typeof SubnetTurnoverArtifactSchema
 >;
-export const SubnetTurnoverResponseSchema = successEnvelopeSchema(
-  SubnetTurnoverArtifactSchema,
-);

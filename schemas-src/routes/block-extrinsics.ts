@@ -4,7 +4,6 @@
 // BlockExtrinsicsArtifact component it replaces. Reuses ExtrinsicSchema from
 // extrinsics.ts (the same batch's own conversion of that route).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ExtrinsicSchema } from "./extrinsics.ts";
 
 export const BlockExtrinsicsArtifactSchema = z
@@ -31,6 +30,3 @@ export const BlockExtrinsicsArtifactSchema = z
 export type BlockExtrinsicsArtifact = z.infer<
   typeof BlockExtrinsicsArtifactSchema
 >;
-export const BlockExtrinsicsResponseSchema = successEnvelopeSchema(
-  BlockExtrinsicsArtifactSchema,
-);

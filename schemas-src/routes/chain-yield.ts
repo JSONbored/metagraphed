@@ -7,7 +7,6 @@
 // ChainYieldArtifact is its only referrer (verified via repo-wide $ref
 // grep), so the hand-edited component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const YieldDistributionSchema = z
   .object({
@@ -62,6 +61,3 @@ export const ChainYieldArtifactSchema = z
     "Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield.",
   );
 export type ChainYieldArtifact = z.infer<typeof ChainYieldArtifactSchema>;
-export const ChainYieldResponseSchema = successEnvelopeSchema(
-  ChainYieldArtifactSchema,
-);

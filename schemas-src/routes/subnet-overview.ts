@@ -15,7 +15,7 @@
 // real always-present behavior -- additionalProperties stays permissive
 // (.passthrough()) so this is a pure completeness gain, not a tightening.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
 import { SubnetProfileSchema } from "./subnet-profile.ts";
 
@@ -58,6 +58,3 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
 export type SubnetOverviewArtifact = z.infer<
   typeof SubnetOverviewArtifactSchema
 >;
-export const SubnetOverviewResponseSchema = successEnvelopeSchema(
-  SubnetOverviewArtifactSchema,
-);

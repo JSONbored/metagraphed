@@ -4,7 +4,6 @@
 // against the hand-edited EconomicsTrendsArtifact/EconomicsTrendsDay
 // components it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { SERIES_USD_UNAVAILABLE } from "../../src/alpha-usd-history.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -81,6 +80,3 @@ export const EconomicsTrendsArtifactSchema = z
 export type EconomicsTrendsArtifact = z.infer<
   typeof EconomicsTrendsArtifactSchema
 >;
-export const EconomicsTrendsResponseSchema = successEnvelopeSchema(
-  EconomicsTrendsArtifactSchema,
-);

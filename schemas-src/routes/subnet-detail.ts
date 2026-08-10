@@ -21,7 +21,7 @@ import {
   SubmissionReviewStateSchema,
 } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import {
   BittensorNetworkSchema,
   CoverageLevelSchema,
@@ -645,7 +645,3 @@ export const SubnetDetailArtifactSchema = ArtifactBaseSchema.extend({
   verified_surfaces: z.array(SurfaceSchema).optional(),
 });
 export type SubnetDetailArtifact = z.infer<typeof SubnetDetailArtifactSchema>;
-
-export const SubnetDetailResponseSchema = successEnvelopeSchema(
-  SubnetDetailArtifactSchema,
-);

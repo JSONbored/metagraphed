@@ -21,7 +21,6 @@
 // components/*.schema.json (verified via repo-wide $ref grep), so the
 // hand-edited component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ConcentrationMetricsSchema } from "../shared.ts";
 
 const PortfolioPositionSchema = z
@@ -91,6 +90,3 @@ export const AccountPortfolioArtifactSchema = z
 export type AccountPortfolioArtifact = z.infer<
   typeof AccountPortfolioArtifactSchema
 >;
-export const AccountPortfolioResponseSchema = successEnvelopeSchema(
-  AccountPortfolioArtifactSchema,
-);

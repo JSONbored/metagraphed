@@ -12,11 +12,7 @@
 // hand-edited RegistrySummaryArtifact/RegistryLeaderboardsArtifact
 // components they replace.
 import { z } from "zod";
-import {
-  ArtifactBaseSchema,
-  CountMapSchema,
-  successEnvelopeSchema,
-} from "../envelope.ts";
+import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CoverageCompletenessSchema } from "./coverage.ts";
 
 export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
@@ -75,9 +71,6 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
 export type RegistrySummaryArtifact = z.infer<
   typeof RegistrySummaryArtifactSchema
 >;
-export const RegistrySummaryResponseSchema = successEnvelopeSchema(
-  RegistrySummaryArtifactSchema,
-);
 
 export const ECONOMIC_LEADERBOARD_BOARDS = [
   "open-slots",
@@ -165,6 +158,3 @@ export const RegistryLeaderboardsArtifactSchema = z
 export type RegistryLeaderboardsArtifact = z.infer<
   typeof RegistryLeaderboardsArtifactSchema
 >;
-export const RegistryLeaderboardsResponseSchema = successEnvelopeSchema(
-  RegistryLeaderboardsArtifactSchema,
-);

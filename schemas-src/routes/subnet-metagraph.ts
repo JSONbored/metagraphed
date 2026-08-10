@@ -22,7 +22,6 @@
 // via repo-wide $ref grep), and all three are converted together in this same
 // batch, so the hand-edited Neuron component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 // Exported so the surfaces that serve these rows can derive `fields=`'s
 // allowed set from the CONTRACT rather than from a second list (#9082) --
@@ -125,9 +124,6 @@ export const SubnetMetagraphArtifactSchema = z
 export type SubnetMetagraphArtifact = z.infer<
   typeof SubnetMetagraphArtifactSchema
 >;
-export const SubnetMetagraphResponseSchema = successEnvelopeSchema(
-  SubnetMetagraphArtifactSchema,
-);
 
 export const NeuronDetailArtifactSchema = z
   .object({
@@ -144,9 +140,6 @@ export const NeuronDetailArtifactSchema = z
     "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot.",
   );
 export type NeuronDetailArtifact = z.infer<typeof NeuronDetailArtifactSchema>;
-export const NeuronDetailResponseSchema = successEnvelopeSchema(
-  NeuronDetailArtifactSchema,
-);
 
 export const SubnetValidatorsArtifactSchema = z
   .object({
@@ -168,9 +161,6 @@ export const SubnetValidatorsArtifactSchema = z
 export type SubnetValidatorsArtifact = z.infer<
   typeof SubnetValidatorsArtifactSchema
 >;
-export const SubnetValidatorsResponseSchema = successEnvelopeSchema(
-  SubnetValidatorsArtifactSchema,
-);
 
 // Per-day neuron_daily rollup point: a Neuron's state on one snapshot_date
 // (every Neuron field, always present per the live neuron_daily rollup query,
@@ -201,6 +191,3 @@ export const NeuronHistoryArtifactSchema = z
     "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
   );
 export type NeuronHistoryArtifact = z.infer<typeof NeuronHistoryArtifactSchema>;
-export const NeuronHistoryResponseSchema = successEnvelopeSchema(
-  NeuronHistoryArtifactSchema,
-);

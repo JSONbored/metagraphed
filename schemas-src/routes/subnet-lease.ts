@@ -8,7 +8,6 @@
 // params (verified: handleSubnetLease doesn't even accept a `url` argument;
 // the lease/history DATA_API route reads only the netuid path segment).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 const SubnetLeaseSchema = z
@@ -41,9 +40,6 @@ export const SubnetLeaseArtifactSchema = z
     "Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease.",
   );
 export type SubnetLeaseArtifact = z.infer<typeof SubnetLeaseArtifactSchema>;
-export const SubnetLeaseResponseSchema = successEnvelopeSchema(
-  SubnetLeaseArtifactSchema,
-);
 
 // objectItems-equivalent looseness: no field required at the item level,
 // matching the hand-written original exactly.
@@ -78,6 +74,3 @@ export const SubnetLeaseHistoryArtifactSchema = z
 export type SubnetLeaseHistoryArtifact = z.infer<
   typeof SubnetLeaseHistoryArtifactSchema
 >;
-export const SubnetLeaseHistoryResponseSchema = successEnvelopeSchema(
-  SubnetLeaseHistoryArtifactSchema,
-);

@@ -6,7 +6,6 @@
 // window/observed_at null, every count 0, when the subnet has no
 // PrometheusServed events in the window).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const SubnetPrometheusArtifactSchema = z
@@ -29,6 +28,3 @@ export const SubnetPrometheusArtifactSchema = z
 export type SubnetPrometheusArtifact = z.infer<
   typeof SubnetPrometheusArtifactSchema
 >;
-export const SubnetPrometheusResponseSchema = successEnvelopeSchema(
-  SubnetPrometheusArtifactSchema,
-);

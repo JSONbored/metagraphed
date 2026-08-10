@@ -13,7 +13,6 @@
 // this same batch (verified via repo-wide $ref grep), so the hand-edited
 // component key becomes fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ColdkeyIdentitySchema } from "./global-validators.ts";
 
 export const ValidatorDetailSubnetSchema = z
@@ -126,6 +125,3 @@ export const ValidatorDetailArtifactSchema = z
 export type ValidatorDetailArtifact = z.infer<
   typeof ValidatorDetailArtifactSchema
 >;
-export const ValidatorDetailResponseSchema = successEnvelopeSchema(
-  ValidatorDetailArtifactSchema,
-);
