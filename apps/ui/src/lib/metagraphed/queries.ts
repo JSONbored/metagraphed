@@ -230,6 +230,8 @@ import type {
   SubnetHolders,
   SubnetOwnershipHistory,
   SubnetLeaseState,
+  SubnetLifecycleEntry,
+  DeregistrationStanding,
   SubnetLeaseTerms,
   SubnetLeaseHistory,
   SubnetLeaseEvent,
@@ -5437,6 +5439,96 @@ export function normalizeSubnetLeaseState(netuid: number, raw: unknown): SubnetL
     leased,
     lease: normalizeSubnetLeaseTerms(d.lease),
     queried_at: firstString(d.queried_at) ?? null,
+  };
+}
+
+/**
+ * One subnet's registration/deregistration timeline (#10262).
+ *
+ * Newest first. A subnet with no recorded event returns an empty list at 200 --
+ * absence of events is a real answer, distinct from an unknown netuid (404).
+ */
+export const subnetLifecycleQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-lifecycle", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ entries?: unknown }>(`/api/v1/subnets/${netuid}/lifecycle`, {
+        signal,
+      });
+      const raw = isRecord(res.data) ? res.data.entries : null;
+      const entries = (Array.isArray(raw) ? raw : [])
+        .map(normalizeSubnetLifecycleEntry)
+        .filter((e): e is SubnetLifecycleEntry => e !== null);
+      return { data: entries, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetLifecycleEntry(raw: unknown): SubnetLifecycleEntry | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid) ?? null;
+  const event = firstString(raw.event);
+  if (netuid === null || !event) return null;
+  return {
+    netuid,
+    event,
+    // NULLABLE ON PURPOSE. A transition older than capture has no block, and
+    // coercing it to 0 would claim it happened at genesis.
+    block_number: firstFiniteNumber(raw.block_number) ?? null,
+    observed_at: firstString(raw.observed_at) ?? null,
+    predates_capture: raw.predates_capture === true,
+  };
+}
+
+/**
+ * This subnet's place in the chain's pruning order, or null if it has none
+ * (#10285).
+ *
+ * The route answers network-wide; this picks the one entry out of `ranked` OR
+ * `immune`. Those two lists are disjoint and a subnet in neither is not a
+ * pruning candidate at all -- root, most obviously.
+ */
+export const subnetDeregistrationStandingQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-dereg-standing", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/chain/deregistration-ranking", {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const pick = (list: unknown) =>
+        (Array.isArray(list) ? list : [])
+          .map(normalizeDeregistrationStanding)
+          .find((e) => e?.netuid === netuid) ?? null;
+      return {
+        data: {
+          standing: pick(d.ranked) ?? pick(d.immune),
+          ranked_count: firstFiniteNumber(d.ranked_count) ?? null,
+          immune_count: firstFiniteNumber(d.immune_count) ?? null,
+          next_to_deregister: firstFiniteNumber(d.next_to_deregister) ?? null,
+        },
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeDeregistrationStanding(raw: unknown): DeregistrationStanding | null {
+  if (!isRecord(raw)) return null;
+  const netuid = firstFiniteNumber(raw.netuid) ?? null;
+  if (netuid === null) return null;
+  return {
+    netuid,
+    // null iff immune -- see the type's note; not interchangeable with 0.
+    rank: firstFiniteNumber(raw.rank) ?? null,
+    comparison_price: firstFiniteNumber(raw.comparison_price) ?? null,
+    moving_price: firstFiniteNumber(raw.moving_price) ?? null,
+    registered_at_block: firstFiniteNumber(raw.registered_at_block) ?? null,
+    subnet_mechanism: firstFiniteNumber(raw.subnet_mechanism) ?? null,
+    immune: raw.immune === true,
+    immune_until_block: firstFiniteNumber(raw.immune_until_block) ?? null,
+    blocks_until_prunable: firstFiniteNumber(raw.blocks_until_prunable) ?? null,
   };
 }
 

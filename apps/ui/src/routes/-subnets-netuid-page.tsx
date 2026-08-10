@@ -67,6 +67,7 @@ import { SubnetConvictionLeaderboard } from "@/components/metagraphed/subnet-con
 import { SubnetHoldersLeaderboard } from "@/components/metagraphed/subnet-holders-leaderboard";
 import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
 import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
+import { SubnetLifecyclePanel } from "@/components/metagraphed/subnet-lifecycle-panel";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -700,6 +701,17 @@ function GovernancePanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <SubnetOwnershipHistory netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="lifecycle"
+        title="Lifecycle & deregistration standing"
+        subtitle="When this subnet registered, and where it sits in the order the chain would prune."
+        info="GET /api/v1/subnets/{netuid}/lifecycle and /api/v1/chain/deregistration-ranking — an append-only registration/deregistration log (a transition older than capture carries a NULL block and says so, rather than reading as block 0), beside the pallet's own pruning order. That order is NOT a price sort: immunity excludes a subnet entirely, and a Stable-mechanism subnet is compared at a flat 1.0 rather than its moving price."
+      >
+        <QueryErrorBoundary>
+          <SubnetLifecyclePanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
