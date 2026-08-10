@@ -10866,6 +10866,18 @@ export interface components {
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
+            wallet_search?: {
+                /** @description Where the search actually looked. Without it, "we searched" is unfalsifiable and nobody else can re-run it. `chain` means the on-chain owner keys were read (SubnetOwner), which is always available and is NOT a declaration by the team. */
+                checked: ("website" | "docs" | "blog" | "source-repo" | "explorer" | "whitepaper" | "chain")[];
+                notes?: string;
+                /**
+                 * @description Cross-checked against registry/entities/ itself, so the summary cannot drift from the data it summarises.
+                 * @enum {string}
+                 */
+                outcome: "none-found" | "wallets-declared";
+                /** @description An absence with no date is not evidence. */
+                searched_at: string;
+            };
             website_url?: string | null;
         };
         SubnetDetailArtifact: {
@@ -18413,6 +18425,13 @@ export interface operations {
                      *           "surface_count": 1,
                      *           "symbol": "example",
                      *           "tempo": 1,
+                     *           "wallet_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "website_url": "https://api.metagraph.sh/example"
                      *         },
                      *         "surfaces": [
@@ -39298,6 +39317,13 @@ export interface operations {
                      *           "surface_count": 1,
                      *           "symbol": "example",
                      *           "tempo": 1,
+                     *           "wallet_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "website_url": "https://api.metagraph.sh/example"
                      *         },
                      *         "surfaces": [
@@ -44546,6 +44572,13 @@ export interface operations {
                      *           "surface_count": 1,
                      *           "symbol": "example",
                      *           "tempo": 1,
+                     *           "wallet_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "website_url": "https://api.metagraph.sh/example"
                      *         },
                      *         "surfaces": [

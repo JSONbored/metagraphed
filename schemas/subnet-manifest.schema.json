@@ -65,6 +65,9 @@
     "revenue_search": {
       "$ref": "#/$defs/revenue_search"
     },
+    "wallet_search": {
+      "$ref": "#/$defs/wallet_search"
+    },
     "curation": {
       "$ref": "#/$defs/curation"
     },
@@ -683,6 +686,45 @@
         "redirect_target": {
           "type": ["string", "null"],
           "format": "uri"
+        }
+      }
+    },
+    "wallet_search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["searched_at", "outcome", "checked"],
+      "description": "Whether this subnet has been searched for DECLARED WALLETS -- a treasury, a multisig, or a burn address the team has published -- and when. The sibling of `revenue_search`, and it exists for the same reason one phase later: `registry/entities/` holds addresses that EXIST, so a subnet that declares none has no address to write and its absence has nowhere to live. Without this the claim \"N of 128 subnets publish no treasury address\" cannot be made at all, because nothing distinguishes a subnet nobody looked at from one that was looked at and had none.",
+      "properties": {
+        "searched_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the search was run. An absence with no date is not evidence."
+        },
+        "outcome": {
+          "enum": ["none-found", "wallets-declared"],
+          "description": "`none-found` asserts the team publishes no wallet address; `wallets-declared` says at least one is registered in `registry/entities/` against this netuid. Cross-checked against the entity files themselves, so the summary cannot drift from the data it summarises.",
+          "type": "string"
+        },
+        "checked": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "website",
+              "docs",
+              "blog",
+              "source-repo",
+              "explorer",
+              "whitepaper",
+              "chain"
+            ],
+            "type": "string"
+          },
+          "description": "Where the search actually looked. Without it, \"we searched\" is unfalsifiable and nobody else can re-run it. `chain` means the on-chain owner keys were read (SubnetOwner), which is always available and is NOT a declaration by the team."
+        },
+        "notes": {
+          "type": "string"
         }
       }
     },

@@ -246,22 +246,49 @@ for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
 const JSON_SCHEMA_MIRRORS: Array<{
   schemaFile: string;
   pointer: string[];
+  module: string;
   zodExport: string;
 }> = [
   {
     schemaFile: "schemas/entity.schema.json",
     pointer: ["properties", "category", "enum"],
+    module: "../schemas-src/shared.ts",
     zodExport: "ENTITY_CATEGORY_VALUES",
+  },
+  // #10586, declared alongside the vocabulary rather than after it drifted.
+  // The entity-category pair above was added the other way round.
+  {
+    schemaFile: "schemas/subnet-manifest.schema.json",
+    pointer: ["$defs", "wallet_search", "properties", "outcome", "enum"],
+    module: "../schemas-src/routes/subnet-detail.ts",
+    zodExport: "WALLET_SEARCH_OUTCOME_VALUES",
+  },
+  {
+    schemaFile: "schemas/subnet-manifest.schema.json",
+    pointer: [
+      "$defs",
+      "wallet_search",
+      "properties",
+      "checked",
+      "items",
+      "enum",
+    ],
+    module: "../schemas-src/routes/subnet-detail.ts",
+    zodExport: "WALLET_SEARCH_CHECKED_VALUES",
   },
 ];
 
-const schemaSrcShared =
-  (await import("../schemas-src/shared.ts")) as unknown as Record<
-    string,
-    readonly string[]
-  >;
+const mirrorModules = new Map<string, Record<string, readonly string[]>>();
+for (const { module } of JSON_SCHEMA_MIRRORS) {
+  if (mirrorModules.has(module)) continue;
+  mirrorModules.set(
+    module,
+    (await import(module)) as unknown as Record<string, readonly string[]>,
+  );
+}
 
-for (const { schemaFile, pointer, zodExport } of JSON_SCHEMA_MIRRORS) {
+for (const { schemaFile, pointer, module, zodExport } of JSON_SCHEMA_MIRRORS) {
+  const schemaSrcShared = mirrorModules.get(module)!;
   const raw = JSON.parse(
     await fs.readFile(path.join(repoRoot, schemaFile), "utf8"),
   ) as unknown;
