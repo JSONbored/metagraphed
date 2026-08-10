@@ -4043,7 +4043,7 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     });
   });
 
-  test("sudo: resolves Postgres-tier rows from the Sudo feed, JSON-encoding call_args", async () => {
+  test("sudo: resolves Postgres-tier rows from the Sudo feed, serving call_args decoded", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: dataApi(
@@ -4081,10 +4081,9 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     const item = body.data.sudo.items[0];
     assert.equal(item.call_module, "Sudo");
     assert.equal(item.success, true);
-    assert.equal(
-      item.call_args,
-      JSON.stringify([{ name: "call", value: "setWeights" }]),
-    );
+    // Decoded, exactly as REST and MCP serve it -- the JSON scalar carries
+    // the value rather than a JSON-encoded copy of it (#10391).
+    assert.deepEqual(item.call_args, [{ name: "call", value: "setWeights" }]);
   });
 
   test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
@@ -4285,7 +4284,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     });
   });
 
-  test("extrinsics: resolves Postgres-tier rows, JSON-encoding call_args", async () => {
+  test("extrinsics: resolves Postgres-tier rows, serving call_args decoded", async () => {
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: dataApi(
@@ -4323,10 +4322,8 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     const item = body.data.extrinsics.items[0];
     assert.equal(item.call_module, "SubtensorModule");
     assert.equal(item.success, true);
-    assert.equal(
-      item.call_args,
-      JSON.stringify([{ name: "netuid", value: 1 }]),
-    );
+    // Decoded, exactly as REST and MCP serve it (#10391).
+    assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
   });
 
   test("extrinsics: exposes the action-sentence summary field, and null for an unmatched call (#8525)", async () => {
@@ -4677,10 +4674,8 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     assert.equal(item.call_module, "AdminUtils");
     assert.equal(item.call_function, "sudo_set_weights_set_rate_limit");
     assert.equal(item.success, true);
-    assert.equal(
-      item.call_args,
-      JSON.stringify([{ name: "netuid", value: 1 }]),
-    );
+    // Decoded, exactly as REST and MCP serve it (#10391).
+    assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
   });
 
   test("governance_config_changes: a partial Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -8325,10 +8320,8 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     assert.equal(item.call_module, "SubtensorModule");
     assert.equal(item.call_function, "register");
     assert.equal(item.success, true);
-    assert.equal(
-      item.call_args,
-      JSON.stringify([{ name: "netuid", value: 1 }]),
-    );
+    // Decoded, exactly as REST and MCP serve it (#10391).
+    assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
   });
 
   test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {

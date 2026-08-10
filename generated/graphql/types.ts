@@ -2212,8 +2212,8 @@ export type EvmAddressMapping = {
 export type Extrinsic = {
   __typename?: 'Extrinsic';
   block_number?: Maybe<Scalars['Int']['output']>;
-  /** JSON-encoded decoded call arguments. */
-  call_args?: Maybe<Scalars['String']['output']>;
+  /** Decoded call arguments, as REST and MCP serve them: a list of {name, type, value} objects for a keyed call, or the positional tuple for one that has no names. Served as the JSON scalar rather than a JSON-encoded String (#10391) so all three surfaces answer the same shape -- ChainEvent.args, which carries the same duality, was already JSON. */
+  call_args?: Maybe<Scalars['JSON']['output']>;
   call_function?: Maybe<Scalars['String']['output']>;
   call_module?: Maybe<Scalars['String']['output']>;
   extrinsic_hash?: Maybe<Scalars['String']['output']>;
@@ -8957,7 +8957,7 @@ export type EvmAddressMappingResolvers<ContextType = GqlContext, ParentType exte
 
 export type ExtrinsicResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Extrinsic'] = ResolversParentTypes['Extrinsic']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  call_args?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  call_args?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   call_function?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   call_module?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   extrinsic_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;

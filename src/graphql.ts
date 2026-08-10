@@ -1833,11 +1833,6 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
   };
 }
 
-// formatExtrinsic's call_args is a decoded JS value (object/array/null), but
-// the SDL exposes it as an opaque JSON-encoded String (no custom JSON scalar
-// exists in this schema yet) -- stringify it here rather than letting
-// graphql-js' default String serializer coerce the object via `String(...)`
-// (which would silently produce "[object Object]").
 // REST's turnoverChangeDetail block, normalized into the SubnetTurnoverChanges
 // type. Absent when the caller did not set the changes toggle and on the cold
 // buildTurnover([]) fallback, both of which resolve the field to null rather
@@ -1881,13 +1876,19 @@ function turnoverChangesNode(detail: Row | null | undefined) {
   };
 }
 
+// A malformed/absent row resolves to null rather than an empty object, which
+// is what the nullable `Extrinsic` positions expect.
+//
+// `call_args` used to be JSON.stringify'd here, because the SDL declared it a
+// String and graphql-js' String serializer would have coerced the decoded
+// object via `String(...)` into "[object Object]". It is the JSON scalar now
+// (#10391): REST and MCP both serve the decoded value, GraphQL served a
+// JSON-encoded copy of it, and the comment justifying that said "no custom
+// JSON scalar exists in this schema yet" -- `scalar JSON` is the SDL's first
+// declaration and 116 fields already use it, `ChainEvent.args` (the sibling
+// with the same object-or-array duality) among them.
 function extrinsicNode(extrinsic: Row) {
-  if (!extrinsic) return null;
-  return {
-    ...extrinsic,
-    call_args:
-      extrinsic.call_args == null ? null : JSON.stringify(extrinsic.call_args),
-  };
+  return extrinsic ?? null;
 }
 
 // buildGlobalValidators' per-hotkey entries carry featured/uid_count/
@@ -7397,8 +7398,8 @@ const rootValue = {
         offset: safeOffset,
         nextCursor: null,
       });
-    // Reuse extrinsicNode (the same mapper the extrinsics feed uses) so
-    // call_args is JSON-encoded to the String field identically here.
+    // Reuse extrinsicNode (the same mapper the extrinsics feed uses) so a
+    // malformed row degrades identically here.
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,

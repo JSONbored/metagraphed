@@ -3936,8 +3936,8 @@ export const SDL = /* GraphQL */ `
     signer: String
     call_module: String
     call_function: String
-    "JSON-encoded decoded call arguments."
-    call_args: String
+    "Decoded call arguments, as REST and MCP serve them: a list of {name, type, value} objects for a keyed call, or the positional tuple for one that has no names. Served as the JSON scalar rather than a JSON-encoded String (#10391) so all three surfaces answer the same shape -- ChainEvent.args, which carries the same duality, was already JSON."
+    call_args: JSON
     success: Boolean
     fee_tao: Float
     tip_tao: Float
