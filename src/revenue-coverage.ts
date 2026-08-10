@@ -69,7 +69,7 @@ export interface CoverageResult {
   };
 }
 
-function round(value: number, places = 9): number {
+function roundTo(value: number, places = 9): number {
   const f = 10 ** places;
   return Math.round(value * f) / f;
 }
@@ -119,8 +119,8 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
     typeof alpha_price_tao === "number" &&
     Number.isFinite(alpha_price_tao)
       ? {
-          tao: round(alpha_out_per_block * blocks * alpha_price_tao),
-          usd: round(
+          tao: roundTo(alpha_out_per_block * blocks * alpha_price_tao),
+          usd: roundTo(
             alpha_out_per_block * blocks * alpha_price_tao * usd_per_tao,
             6,
           ),
@@ -130,8 +130,8 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
   // The owner's 18% of the SAME denominator, so the two are comparable. Priced
   // off tao_total rather than alpha so it does not silently change basis.
   const ownerTake: CoverageBasis = {
-    tao: round(emissionTao * OWNER_CUT),
-    usd: round(emissionTao * OWNER_CUT * usd_per_tao, 6),
+    tao: roundTo(emissionTao * OWNER_CUT),
+    usd: roundTo(emissionTao * OWNER_CUT * usd_per_tao, 6),
   };
 
   // Null propagates. Zero emission also yields null rather than Infinity: a
@@ -139,10 +139,10 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
   // render as the worst possible subsidy rather than as "not applicable".
   const haveRevenue = revenue_usd !== null;
   const coverage =
-    haveRevenue && emissionUsd > 0 ? round(revenue_usd / emissionUsd) : null;
+    haveRevenue && emissionUsd > 0 ? roundTo(revenue_usd / emissionUsd) : null;
   const subsidy =
     haveRevenue && revenue_usd > 0 && emissionUsd > 0
-      ? round(emissionUsd / revenue_usd)
+      ? roundTo(emissionUsd / revenue_usd)
       : null;
 
   const checks: CoverageResult["verification"]["checks"] = [
@@ -155,7 +155,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
       detail:
         coverage === null || subsidy === null
           ? "one or both ratios are null, so there is nothing to reconcile"
-          : `coverage x subsidy = ${round(coverage * subsidy, 6)}`,
+          : `coverage x subsidy = ${roundTo(coverage * subsidy, 6)}`,
     },
     {
       name: "absent_revenue_is_null_not_zero",
@@ -167,7 +167,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
     {
       name: "emission_is_positive",
       ok: emissionUsd > 0,
-      detail: `emission ${round(emissionTao, 6)} TAO over ${window_days} day(s)`,
+      detail: `emission ${roundTo(emissionTao, 6)} TAO over ${window_days} day(s)`,
     },
   ];
 
@@ -175,11 +175,11 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
     window_days,
     emission: {
       basis: "tao_total",
-      tao: round(emissionTao, 6),
-      usd: round(emissionUsd, 6),
+      tao: roundTo(emissionTao, 6),
+      usd: roundTo(emissionUsd, 6),
       alternates: { alpha_out_priced: alphaPriced, owner_take: ownerTake },
     },
-    revenue_usd: revenue_usd === null ? null : round(revenue_usd, 6),
+    revenue_usd: revenue_usd === null ? null : roundTo(revenue_usd, 6),
     coverage_ratio: coverage,
     subsidy_multiple: subsidy,
     verification: { verified: checks.every((c) => c.ok), checks },
