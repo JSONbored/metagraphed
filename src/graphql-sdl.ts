@@ -274,8 +274,8 @@ export const SDL = /* GraphQL */ `
       publication_state: String
       status: String
       pool_eligible: String
-      min_latency_ms: Int
-      max_latency_ms: Int
+      min_latency_ms: Float
+      max_latency_ms: Float
       min_score: Float
       max_score: Float
       sort: String
@@ -427,8 +427,8 @@ export const SDL = /* GraphQL */ `
       publication_state: String
       status: String
       pool_eligible: Boolean
-      min_latency_ms: Int
-      max_latency_ms: Int
+      min_latency_ms: Float
+      max_latency_ms: Float
       min_score: Float
       max_score: Float
       sort: String
@@ -446,8 +446,8 @@ export const SDL = /* GraphQL */ `
       publication_state: String
       status: String
       pool_eligible: Boolean
-      min_latency_ms: Int
-      max_latency_ms: Int
+      min_latency_ms: Float
+      max_latency_ms: Float
       min_score: Float
       max_score: Float
       sort: String
@@ -655,8 +655,8 @@ export const SDL = /* GraphQL */ `
       provider: String
       publication_state: String
       status: String
-      min_latency_ms: Int
-      max_latency_ms: Int
+      min_latency_ms: Float
+      max_latency_ms: Float
       min_score: Float
       max_score: Float
       fields: [String!]

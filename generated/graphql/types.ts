@@ -3677,9 +3677,9 @@ export type QueryEndpointsArgs = {
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   max_score?: InputMaybe<Scalars['Float']['input']>;
-  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   min_score?: InputMaybe<Scalars['Float']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3872,9 +3872,9 @@ export type QueryProvider_EndpointsArgs = {
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   max_score?: InputMaybe<Scalars['Float']['input']>;
-  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   min_score?: InputMaybe<Scalars['Float']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4017,9 +4017,9 @@ export type QueryRpc_EndpointsArgs = {
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   max_score?: InputMaybe<Scalars['Float']['input']>;
-  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   min_score?: InputMaybe<Scalars['Float']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4164,9 +4164,9 @@ export type QuerySubnet_EndpointsArgs = {
   kind?: InputMaybe<Scalars['String']['input']>;
   layer?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  max_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  max_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   max_score?: InputMaybe<Scalars['Float']['input']>;
-  min_latency_ms?: InputMaybe<Scalars['Int']['input']>;
+  min_latency_ms?: InputMaybe<Scalars['Float']['input']>;
   min_score?: InputMaybe<Scalars['Float']['input']>;
   netuid: Scalars['Int']['input'];
   order?: InputMaybe<Scalars['String']['input']>;
