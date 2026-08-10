@@ -9,16 +9,6 @@ import { readArtifact, readHealthKv } from "../storage.ts";
 import { contractVersion, publishedAt } from "../responses.ts";
 import { KV_HEALTH_CURRENT } from "../../src/health-prober.ts";
 import { subnetBadgeStatus } from "../../src/health-serving.ts";
-import {
-  listToolDefinitions,
-  listPromptDefinitions,
-  MCP_SERVER_INFO,
-  MCP_INSTRUCTIONS,
-  MCP_PROTOCOL_VERSIONS,
-  MCP_CAPABILITIES,
-  MCP_REGISTRY_META,
-  MCP_RESOURCE_TEMPLATES,
-} from "../../src/mcp-server.ts";
 import { feedLinkHeader } from "../../src/feeds.ts";
 import {
   buildAgentToolsIndex,
@@ -392,6 +382,27 @@ export async function mcpServerCardResponse(
   request: Request,
   env: Env,
 ): Promise<Response> {
+  // IMPORTED HERE, NOT AT MODULE SCOPE (#10424). src/mcp-server.ts is ~12.5k
+  // lines; these eight bindings are the only things this module uses from it,
+  // and six of them are plain constants. A static import made every consumer
+  // of discovery.ts -- which is most of the request-handler graph -- load the
+  // whole MCP server: 19 of the module-mocking tests that reach a heavy module
+  // reached it through THIS edge, paying ~1.8s of import each because those
+  // tests cannot share a module registry (#8922).
+  //
+  // Deferred rather than split into a leaf constants module: listToolDefinitions
+  // genuinely needs the tool registry, so extracting only the constants would
+  // leave the expensive edge in place for a smaller win and two files.
+  const {
+    listToolDefinitions,
+    listPromptDefinitions,
+    MCP_SERVER_INFO,
+    MCP_INSTRUCTIONS,
+    MCP_PROTOCOL_VERSIONS,
+    MCP_CAPABILITIES,
+    MCP_REGISTRY_META,
+    MCP_RESOURCE_TEMPLATES,
+  } = await import("../../src/mcp-server.ts");
   const base = `https://${PRIMARY_DOMAIN}`;
   const serverCardContent = {
     schema_version: 1,
@@ -492,6 +503,8 @@ export async function agentToolsResponse(
   env: Env,
   kind: string,
 ): Promise<Response> {
+  // Deferred for the same reason as mcpServerCardResponse above (#10424).
+  const { listToolDefinitions } = await import("../../src/mcp-server.ts");
   const tools = listToolDefinitions();
   const data =
     kind === "openai"
