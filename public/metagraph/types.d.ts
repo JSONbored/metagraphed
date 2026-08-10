@@ -4970,7 +4970,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            /** @description When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this coldkey owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
+            /** @description When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
             owners_observed_at: string | null;
             ownership_tie_count: number;
             ownership_ties: ({

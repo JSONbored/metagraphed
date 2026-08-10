@@ -182,7 +182,7 @@ export type AccountDeregistrations = {
 export type AccountEntities = {
   __typename?: 'AccountEntities';
   labels: Array<AccountEntityLabel>;
-  /** When the CURRENT-ownership half was captured, or null when no owner snapshot could be read (#9313). Null is load-bearing: it separates "we could not read who owns what" from "this coldkey owns nothing", which are the same empty list without it. An owns tie is never fresher than this stamp. */
+  /** When the CURRENT-ownership half was captured, or null when no owner snapshot could be read (#9313). Null is load-bearing: it separates "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An owns tie is never fresher than this stamp. */
   owners_observed_at?: Maybe<Scalars['String']['output']>;
   ownership_tie_count: Scalars['Int']['output'];
   ownership_ties: Array<AccountOwnershipTie>;

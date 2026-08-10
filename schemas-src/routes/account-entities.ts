@@ -63,7 +63,7 @@ export const AccountEntitiesArtifactSchema = z
       .string()
       .nullable()
       .describe(
-        'When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this coldkey owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp.',
+        'When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp.',
       ),
   })
   .passthrough()
