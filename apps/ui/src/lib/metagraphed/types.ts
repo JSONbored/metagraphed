@@ -4103,3 +4103,41 @@ export interface AlertTriggerCreated {
   match_count: number;
   owner_token: string;
 }
+
+/**
+ * One registration/deregistration transition for a subnet (#10262).
+ *
+ * `predates_capture` is load-bearing rather than decorative: every subnet alive
+ * when the lane first ran was registered before we were watching, so its row
+ * carries a NULL block. A reader must be able to tell "registered before
+ * capture" from "registered at block 0", which is why the block is nullable and
+ * the flag travels beside it.
+ */
+export interface SubnetLifecycleEntry {
+  netuid: number;
+  event: string;
+  block_number: number | null;
+  observed_at: string | null;
+  predates_capture: boolean;
+}
+
+/**
+ * One subnet's standing in the chain's own pruning order (#10285).
+ *
+ * `rank` is null exactly when `immune` is true -- an immune subnet is not in
+ * the ranking at all, it is waiting to join it, which is why the two fields are
+ * not redundant. `comparison_price` is what the pallet compares and
+ * `moving_price` the raw read; they differ only for a Stable-mechanism subnet,
+ * where the pallet substitutes a flat 1.0.
+ */
+export interface DeregistrationStanding {
+  netuid: number;
+  rank: number | null;
+  comparison_price: number | null;
+  moving_price: number | null;
+  registered_at_block: number | null;
+  subnet_mechanism: number | null;
+  immune: boolean;
+  immune_until_block: number | null;
+  blocks_until_prunable: number | null;
+}
