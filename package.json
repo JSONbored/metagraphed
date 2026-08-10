@@ -151,6 +151,7 @@
     "conformance:adversarial": "node scripts/check-adversarial-surface.ts",
     "conformance:graphql": "node scripts/check-graphql-conformance.ts",
     "conformance:graphql-int-range": "node scripts/check-graphql-int-range.ts",
+    "conformance:graphql-nullability": "node scripts/check-graphql-nullability.ts",
     "conformance:mcp": "node scripts/check-mcp-conformance.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
