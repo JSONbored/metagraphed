@@ -3145,11 +3145,14 @@ function AccountEventsSection({
                   <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
                     {ev.amount_tao != null ? `${formatNumber(ev.amount_tao)} τ` : "—"}
                     {/* #8369: what it was worth at the time, as secondary
-                        text. Renders nothing for events that have no price. */}
+                        text. Renders nothing for events that have no price.
+                        #8602 adds the fiat leg beside it, which renders
+                        nothing of its own for events predating the index. */}
                     <PriceAtTx
                       price={ev.price_at_tx}
                       basis={ev.price_basis}
                       blockNumber={ev.block_number}
+                      usd={ev.usd_at_tx}
                     />
                   </td>
                   <td className="px-4 py-4 text-right mg-type-data text-ink-muted">

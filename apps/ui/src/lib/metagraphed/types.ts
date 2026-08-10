@@ -1145,6 +1145,14 @@ export interface AccountEvent {
    * non-swap events, root (no AMM pool), or a malformed leg. */
   price_at_tx?: number | null;
   price_basis?: "trade_exact" | "root_no_pool" | null;
+  /** USD per alpha at this trade (#8602): price_at_tx multiplied by the newest
+   * index reading at-or-before this event. Null for events predating the
+   * index -- it starts when we started collecting, and carrying the oldest
+   * rate backwards would be fabrication. */
+  usd_at_tx?: number | null;
+  /** A DIFFERENT kind of claim from price_basis: the alpha price is exact,
+   * the dollar leg is a lookup. */
+  usd_basis?: "index_at_or_before" | null;
   [key: string]: unknown;
 }
 
