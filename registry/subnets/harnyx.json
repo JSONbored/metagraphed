@@ -25,6 +25,12 @@
     "x": "https://x.com/harnyx_ai"
   },
   "notes": "First maintainer review for SN67. Website, source repository, healthz endpoint, dashboard, and data-artifact all verified live 2026-07-15; on-chain identity (metagraph.sh) confirms name/website/source_repo match the tracked values exactly, no rename needed. Diffed the repo's generated API reference docs (docs/api/generated/) for undiscovered public GET endpoints -- all 4 documented GET routes require Bittensor-signed auth, so nothing new to add.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"],
+    "notes": "Commerce is visible but no revenue FIGURE is published: pricing/billing signals found on this subnet's own site or docs (website:pricing). \"No observable external revenue\" means no published amount, not no revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
