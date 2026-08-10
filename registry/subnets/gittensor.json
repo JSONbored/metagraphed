@@ -38,6 +38,11 @@
   "name": "Gittensor",
   "netuid": 74,
   "notes": "Pilot manifest. This tracks public-safe registry concepts only; validator credential flows and private scoring internals are out of scope.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "partnership": {
     "since": "2026-07-04",
     "tier": "pilot"
@@ -241,6 +246,10 @@
       "id": "gittensory-public-stats",
       "kind": "data-artifact",
       "name": "Gittensory public contribution stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Public no-auth GET /v1/public/stats on api.loopover.ai returning aggregate PR-handling stats (totals: handled/merged/closed/reviewed/accuracyPct/minutesSaved, plus a weekly breakdown). Documented in the LoopOver API OpenAPI schema (100 paths) on the same host as the contribution-interface descriptor.",
       "probe": {
         "enabled": true,
@@ -299,7 +308,11 @@
         "submitted_by": "oktofeesh1"
       },
       "source_urls": ["https://api.gittensor.io/swagger"],
-      "url": "https://api.gittensor.io/dash/stats"
+      "url": "https://api.gittensor.io/dash/stats",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      }
     },
     {
       "auth_required": false,
@@ -343,7 +356,12 @@
         "submitted_by": "carlh7777"
       },
       "source_urls": ["https://api.gittensor.io/swagger"],
-      "url": "https://api.gittensor.io/issues/stats"
+      "url": "https://api.gittensor.io/issues/stats",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "probe-derived"
+      },
+      "notes": "REVENUE ROLE (#10465): miner-payout. `totalPayouts` and `totalBountyPool` are contributor rewards flowing OUT, not platform revenue coming in. REVENUE ROLE (#10465): miner-payout. `totalPayouts` and `totalBountyPool` are contributor rewards flowing OUT, not platform revenue coming in."
     },
     {
       "auth_required": false,
