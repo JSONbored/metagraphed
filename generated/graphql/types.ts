@@ -715,6 +715,13 @@ export type Adapter = {
   subnet?: Maybe<Scalars['String']['output']>;
 };
 
+/** Provenance for the USD fields: RECONSTRUCTED, never measured. The product of a measured alpha price and a measured TAO/USD index is our arithmetic, and a null storage says there is no single chain read behind it. */
+export type AlphaUsdFieldSource = {
+  __typename?: 'AlphaUsdFieldSource';
+  kind: Scalars['String']['output'];
+  storage?: Maybe<Scalars['String']['output']>;
+};
+
 export type Block = {
   __typename?: 'Block';
   author?: Maybe<Scalars['String']['output']>;
@@ -884,12 +891,19 @@ export type ChainActivityDay = {
 /** Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope. */
 export type ChainAlphaVolume = {
   __typename?: 'ChainAlphaVolume';
+  field_sources?: Maybe<Scalars['JSON']['output']>;
   network: ChainAlphaVolumeNetwork;
   /** Newest event observed_at across the window; null on a cold store. */
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
   subnets: Array<ChainAlphaVolumeSubnet>;
+  /** The reading every _usd field was converted at. */
+  tao_usd?: Maybe<TaoUsdConversion>;
+  /** Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero. */
+  tao_usd_unavailable?: Maybe<Scalars['String']['output']>;
+  /** HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade. */
+  usd_pricing_basis?: Maybe<Scalars['String']['output']>;
   /** Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume. */
   volume_distribution?: Maybe<IntensityDistribution>;
   /** Fixed rolling window label (always 24h). */
@@ -902,16 +916,20 @@ export type ChainAlphaVolumeNetwork = {
   buy_count: Scalars['Int']['output'];
   buy_volume_alpha: Scalars['Float']['output'];
   buy_volume_tao: Scalars['Float']['output'];
+  /** USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why. */
+  buy_volume_usd?: Maybe<Scalars['Float']['output']>;
   net_volume_alpha: Scalars['Float']['output'];
   sell_count: Scalars['Int']['output'];
   sell_volume_alpha: Scalars['Float']['output'];
   sell_volume_tao: Scalars['Float']['output'];
+  sell_volume_usd?: Maybe<Scalars['Float']['output']>;
   /** Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window. */
   sentiment: Scalars['String']['output'];
   /** net/gross alpha lean in [-1, 1]; null when there was no volume in the window. */
   sentiment_ratio?: Maybe<Scalars['Float']['output']>;
   total_volume_alpha: Scalars['Float']['output'];
   total_volume_tao: Scalars['Float']['output'];
+  total_volume_usd?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One subnet's rolling 24h buy/sell volume scorecard, ranked by total_volume_tao then netuid. */
@@ -920,18 +938,29 @@ export type ChainAlphaVolumeSubnet = {
   buy_count: Scalars['Int']['output'];
   buy_volume_alpha: Scalars['Float']['output'];
   buy_volume_tao: Scalars['Float']['output'];
+  /** USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why. */
+  buy_volume_usd?: Maybe<Scalars['Float']['output']>;
+  field_sources?: Maybe<Scalars['JSON']['output']>;
   net_volume_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   sell_count: Scalars['Int']['output'];
   sell_volume_alpha: Scalars['Float']['output'];
   sell_volume_tao: Scalars['Float']['output'];
+  sell_volume_usd?: Maybe<Scalars['Float']['output']>;
   /** Coarse sentiment label (bullish/bearish/neutral). */
   sentiment: Scalars['String']['output'];
   /** net/gross alpha lean in [-1, 1]; null when this subnet had no volume. */
   sentiment_ratio?: Maybe<Scalars['Float']['output']>;
+  /** The reading every _usd field was converted at. */
+  tao_usd?: Maybe<TaoUsdConversion>;
+  /** Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero. */
+  tao_usd_unavailable?: Maybe<Scalars['String']['output']>;
   total_volume_alpha: Scalars['Float']['output'];
   total_volume_tao: Scalars['Float']['output'];
+  total_volume_usd?: Maybe<Scalars['Float']['output']>;
+  /** HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade. */
+  usd_pricing_basis?: Maybe<Scalars['String']['output']>;
   /** 24h volume / market-cap turnover ratio; always null here (no per-subnet market-cap input in scope at the network level). */
   vol_mcap_ratio?: Maybe<Scalars['Float']['output']>;
   window?: Maybe<Scalars['String']['output']>;
@@ -1955,7 +1984,7 @@ export type EconomicsTrends = {
   __typename?: 'EconomicsTrends';
   day_count: Scalars['Int']['output'];
   days: Array<EconomicsTrendsDay>;
-  field_sources_usd?: Maybe<Scalars['JSON']['output']>;
+  field_sources_usd?: Maybe<AlphaUsdFieldSource>;
   priced_day_count?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   /** The OLDEST snapshot_date carrying USD, or null when none does. Published so a caller can say 'USD from <date>' rather than infer the boundary from where the nulls stop. */
@@ -5576,7 +5605,7 @@ export type SubnetOhlc = {
   /** How many candles the WINDOW holds, not how many this page carries. A limit narrows the candle list from the recent end; this stays the denominator, the same convention /chain/deregistrations uses for its own page. */
   candle_count: Scalars['Int']['output'];
   candles: Array<SubnetOhlcCandle>;
-  field_sources_usd?: Maybe<Scalars['JSON']['output']>;
+  field_sources_usd?: Maybe<AlphaUsdFieldSource>;
   /** The resolved bucket interval (1h/1d). */
   interval?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
@@ -5972,18 +6001,29 @@ export type SubnetVolume = {
   buy_count: Scalars['Int']['output'];
   buy_volume_alpha: Scalars['Float']['output'];
   buy_volume_tao: Scalars['Float']['output'];
+  /** USD twins (#10383), converted at the window's close rate. Null when the index was unusable -- tao_usd_unavailable says why. */
+  buy_volume_usd?: Maybe<Scalars['Float']['output']>;
+  field_sources?: Maybe<Scalars['JSON']['output']>;
   net_volume_alpha: Scalars['Float']['output'];
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   sell_count: Scalars['Int']['output'];
   sell_volume_alpha: Scalars['Float']['output'];
   sell_volume_tao: Scalars['Float']['output'];
+  sell_volume_usd?: Maybe<Scalars['Float']['output']>;
   /** Bucketed reading of sentiment_ratio (buying/selling/neutral). */
   sentiment?: Maybe<Scalars['String']['output']>;
   /** Buy share of total volume (0-1); null when there was no volume. */
   sentiment_ratio?: Maybe<Scalars['Float']['output']>;
+  /** The reading every _usd field was converted at. */
+  tao_usd?: Maybe<TaoUsdConversion>;
+  /** Why there are no _usd fields. index_unpriced is ADR 0025's insufficient_pools -- a stated decline, never a price of zero. */
+  tao_usd_unavailable?: Maybe<Scalars['String']['output']>;
   total_volume_alpha: Scalars['Float']['output'];
   total_volume_tao: Scalars['Float']['output'];
+  total_volume_usd?: Maybe<Scalars['Float']['output']>;
+  /** HOW the totals were converted: window_close_rate -- at the rate observed at the window's close, not summed per trade. */
+  usd_pricing_basis?: Maybe<Scalars['String']['output']>;
   /** Total TAO volume over alpha market cap; null when market cap is unknown. */
   vol_mcap_ratio?: Maybe<Scalars['Float']['output']>;
   /** The rolling window label this card covers (24h). */
@@ -6170,6 +6210,15 @@ export type TaoUsd = {
   priced_point_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
+};
+
+/** The TAO/USD reading a set of _usd fields was converted at, kept together so the price and its provenance always describe the same block. */
+export type TaoUsdConversion = {
+  __typename?: 'TaoUsdConversion';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  price_basis?: Maybe<Scalars['String']['output']>;
+  usd_per_tao: Scalars['Float']['output'];
 };
 
 /** The newest reading with the derivation that produced it, kept together so both describe the same block. */
@@ -6609,6 +6658,7 @@ export type ResolversTypes = ResolversObject<{
   AccountWeightSetters: ResolverTypeWrapper<AccountWeightSetters>;
   AccountWeightSettersSubnet: ResolverTypeWrapper<AccountWeightSettersSubnet>;
   Adapter: ResolverTypeWrapper<Adapter>;
+  AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
   BlockDetail: ResolverTypeWrapper<BlockDetail>;
@@ -6874,6 +6924,7 @@ export type ResolversTypes = ResolversObject<{
   SurfaceHistoryChange: ResolverTypeWrapper<SurfaceHistoryChange>;
   SurfaceList: ResolverTypeWrapper<SurfaceList>;
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
+  TaoUsdConversion: ResolverTypeWrapper<TaoUsdConversion>;
   TaoUsdLatest: ResolverTypeWrapper<TaoUsdLatest>;
   TaoUsdPoint: ResolverTypeWrapper<TaoUsdPoint>;
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
@@ -6958,6 +7009,7 @@ export type ResolversParentTypes = ResolversObject<{
   AccountWeightSetters: AccountWeightSetters;
   AccountWeightSettersSubnet: AccountWeightSettersSubnet;
   Adapter: Adapter;
+  AlphaUsdFieldSource: AlphaUsdFieldSource;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
   BlockDetail: BlockDetail;
@@ -7221,6 +7273,7 @@ export type ResolversParentTypes = ResolversObject<{
   SurfaceHistoryChange: SurfaceHistoryChange;
   SurfaceList: SurfaceList;
   TaoUsd: TaoUsd;
+  TaoUsdConversion: TaoUsdConversion;
   TaoUsdLatest: TaoUsdLatest;
   TaoUsdPoint: TaoUsdPoint;
   TurnoverUidReassignment: TurnoverUidReassignment;
@@ -7817,6 +7870,11 @@ export type AdapterResolvers<ContextType = GqlContext, ParentType extends Resolv
   subnet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type AlphaUsdFieldSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaUsdFieldSource'] = ResolversParentTypes['AlphaUsdFieldSource']> = ResolversObject<{
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  storage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type BlockResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Block'] = ResolversParentTypes['Block']> = ResolversObject<{
   author?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -7959,11 +8017,15 @@ export type ChainActivityDayResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type ChainAlphaVolumeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAlphaVolume'] = ResolversParentTypes['ChainAlphaVolume']> = ResolversObject<{
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainAlphaVolumeNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnets?: Resolver<Array<ResolversTypes['ChainAlphaVolumeSubnet']>, ParentType, ContextType>;
+  tao_usd?: Resolver<Maybe<ResolversTypes['TaoUsdConversion']>, ParentType, ContextType>;
+  tao_usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_pricing_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   volume_distribution?: Resolver<Maybe<ResolversTypes['IntensityDistribution']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -7972,30 +8034,40 @@ export type ChainAlphaVolumeNetworkResolvers<ContextType = GqlContext, ParentTyp
   buy_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   buy_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   buy_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  buy_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   net_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   sell_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sell_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   sell_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  sell_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   sentiment?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sentiment_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ChainAlphaVolumeSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAlphaVolumeSubnet'] = ResolversParentTypes['ChainAlphaVolumeSubnet']> = ResolversObject<{
   buy_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   buy_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   buy_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  buy_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   net_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sell_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sell_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   sell_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  sell_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   sentiment?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sentiment_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_usd?: Resolver<Maybe<ResolversTypes['TaoUsdConversion']>, ParentType, ContextType>;
+  tao_usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_pricing_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   vol_mcap_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -8787,7 +8859,7 @@ export type EconomicsSummaryResolvers<ContextType = GqlContext, ParentType exten
 export type EconomicsTrendsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EconomicsTrends'] = ResolversParentTypes['EconomicsTrends']> = ResolversObject<{
   day_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   days?: Resolver<Array<ResolversTypes['EconomicsTrendsDay']>, ParentType, ContextType>;
-  field_sources_usd?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  field_sources_usd?: Resolver<Maybe<ResolversTypes['AlphaUsdFieldSource']>, ParentType, ContextType>;
   priced_day_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   usd_available_from?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10381,7 +10453,7 @@ export type SubnetMoversNetworkResolvers<ContextType = GqlContext, ParentType ex
 export type SubnetOhlcResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOhlc'] = ResolversParentTypes['SubnetOhlc']> = ResolversObject<{
   candle_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   candles?: Resolver<Array<ResolversTypes['SubnetOhlcCandle']>, ParentType, ContextType>;
-  field_sources_usd?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  field_sources_usd?: Resolver<Maybe<ResolversTypes['AlphaUsdFieldSource']>, ParentType, ContextType>;
   interval?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   priced_candle_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -10693,16 +10765,23 @@ export type SubnetVolumeResolvers<ContextType = GqlContext, ParentType extends R
   buy_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   buy_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   buy_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  buy_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   net_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sell_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sell_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   sell_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  sell_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   sentiment?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   sentiment_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_usd?: Resolver<Maybe<ResolversTypes['TaoUsdConversion']>, ParentType, ContextType>;
+  tao_usd_unavailable?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total_volume_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   total_volume_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  total_volume_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_pricing_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   vol_mcap_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
@@ -10853,6 +10932,13 @@ export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends Resolve
   priced_point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdConversionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdConversion'] = ResolversParentTypes['TaoUsdConversion']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type TaoUsdLatestResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdLatest'] = ResolversParentTypes['TaoUsdLatest']> = ResolversObject<{
@@ -11151,6 +11237,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountWeightSetters?: AccountWeightSettersResolvers<ContextType>;
   AccountWeightSettersSubnet?: AccountWeightSettersSubnetResolvers<ContextType>;
   Adapter?: AdapterResolvers<ContextType>;
+  AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
   BlockDetail?: BlockDetailResolvers<ContextType>;
@@ -11410,6 +11497,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SurfaceHistoryChange?: SurfaceHistoryChangeResolvers<ContextType>;
   SurfaceList?: SurfaceListResolvers<ContextType>;
   TaoUsd?: TaoUsdResolvers<ContextType>;
+  TaoUsdConversion?: TaoUsdConversionResolvers<ContextType>;
   TaoUsdLatest?: TaoUsdLatestResolvers<ContextType>;
   TaoUsdPoint?: TaoUsdPointResolvers<ContextType>;
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;

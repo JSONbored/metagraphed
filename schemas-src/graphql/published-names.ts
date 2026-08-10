@@ -150,6 +150,14 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   ChainActivityArtifactDays: "ChainActivityDay",
   ChainAlphaVolumeArtifact: "ChainAlphaVolume",
   ChainAlphaVolumeArtifactNetwork: "ChainAlphaVolumeNetwork",
+  // Several routes emit structurally identical inline components, so each set
+  // maps onto ONE published type rather than N types with different names.
+  // Declared rather than left as JSON: these shapes are fixed and small, and an
+  // under-typing is a field a caller cannot select.
+  SubnetOhlcArtifactFieldSourcesUsd: "AlphaUsdFieldSource",
+  EconomicsTrendsArtifactFieldSourcesUsd: "AlphaUsdFieldSource",
+  ChainAlphaVolumeArtifactTaoUsd: "TaoUsdConversion",
+  SubnetAlphaVolumeArtifactTaoUsd: "TaoUsdConversion",
   ChainAxonRemovalsArtifact: "ChainAxonRemovals",
   ChainAxonRemovalsArtifactNetwork: "ChainAxonRemovalsNetwork",
   ChainAxonRemovalsArtifactSubnets: "ChainAxonRemovalsSubnet",

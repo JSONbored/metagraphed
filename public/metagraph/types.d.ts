@@ -6183,15 +6183,27 @@ export interface components {
         };
         /** @description Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope. */
         ChainAlphaVolumeArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             /** @description Network-wide buy/sell volume rollup across every subnet with volume in the window. */
             network: {
                 buy_count: number;
                 buy_volume_alpha: number;
                 buy_volume_tao: number;
+                buy_volume_usd?: number;
                 net_volume_alpha: number;
                 sell_count: number;
                 sell_volume_alpha: number;
                 sell_volume_tao: number;
+                sell_volume_usd?: number;
                 /**
                  * @description Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window.
                  * @enum {string}
@@ -6201,12 +6213,30 @@ export interface components {
                 sentiment_ratio: number | null;
                 total_volume_alpha: number;
                 total_volume_tao: number;
+                total_volume_usd?: number;
             };
             /** @description Newest event observed_at across the window; null on a cold store. */
             observed_at: string | null;
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
+            /** @description The reading every _usd field was converted at -- the network rollup and each per-subnet row alike, so one reading priced them all. */
+            tao_usd?: {
+                block_number: number | null;
+                observed_at: string | null;
+                price_basis: string | null;
+                usd_per_tao: number;
+            };
+            /**
+             * @description Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.
+             * @enum {string}
+             */
+            tao_usd_unavailable?: "no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price";
+            /**
+             * @description HOW the totals were converted: at the rate observed at the window's close, not summed per trade. volume_distribution is NOT converted -- its percentiles stay TAO, and a caller wanting them in dollars multiplies by usd_per_tao above.
+             * @constant
+             */
+            usd_pricing_basis?: "window_close_rate";
             /** @description Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). Null when no subnet had volume. */
             volume_distribution: components["schemas"]["IntensityDistribution"] | null;
             /**
@@ -10291,12 +10321,24 @@ export interface components {
             buy_count: number;
             buy_volume_alpha: number;
             buy_volume_tao: number;
+            buy_volume_usd?: number;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources?: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
             net_volume_alpha: number;
             netuid: number;
             schema_version: number;
             sell_count: number;
             sell_volume_alpha: number;
             sell_volume_tao: number;
+            sell_volume_usd?: number;
             /**
              * @description Bucketed reading of sentiment_ratio (buying/selling/neutral).
              * @enum {string}
@@ -10304,8 +10346,26 @@ export interface components {
             sentiment: "bullish" | "bearish" | "neutral";
             /** @description Buy share of total volume (0-1); null when there was no volume. */
             sentiment_ratio: number | null;
+            /** @description The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them. */
+            tao_usd?: {
+                block_number: number | null;
+                observed_at: string | null;
+                price_basis: string | null;
+                usd_per_tao: number;
+            };
+            /**
+             * @description Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.
+             * @enum {string}
+             */
+            tao_usd_unavailable?: "no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price";
             total_volume_alpha: number;
             total_volume_tao: number;
+            total_volume_usd?: number;
+            /**
+             * @description HOW the totals were converted: at the rate observed at the window's close, not summed per trade. A string rather than a boolean so a future per-trade implementation publishes a different value instead of silently changing what this shape means.
+             * @constant
+             */
+            usd_pricing_basis?: "window_close_rate";
             /** @description Total TAO volume over alpha market cap; null when market cap is unknown. */
             vol_mcap_ratio: number | null;
             /**
@@ -14462,18 +14522,27 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "network": {
                      *           "buy_count": 1,
                      *           "buy_volume_alpha": 0.5,
                      *           "buy_volume_tao": 0.5,
+                     *           "buy_volume_usd": 0.5,
                      *           "net_volume_alpha": 0.5,
                      *           "sell_count": 1,
                      *           "sell_volume_alpha": 0.5,
                      *           "sell_volume_tao": 0.5,
+                     *           "sell_volume_usd": 0.5,
                      *           "sentiment": "bullish",
                      *           "sentiment_ratio": 0.9966,
                      *           "total_volume_alpha": 0.5,
-                     *           "total_volume_tao": 0.5
+                     *           "total_volume_tao": 0.5,
+                     *           "total_volume_usd": 0.5
                      *         },
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -14497,6 +14566,14 @@ export interface operations {
                      *             "window": "24h"
                      *           }
                      *         ],
+                     *         "tao_usd": {
+                     *           "block_number": 5000000,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "tao_usd_unavailable": "no_index_reading",
+                     *         "usd_pricing_basis": "window_close_rate",
                      *         "volume_distribution": {
                      *           "count": 1,
                      *           "max": 0.5,
@@ -24183,18 +24260,27 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "network": {
                      *           "buy_count": 1,
                      *           "buy_volume_alpha": 0.5,
                      *           "buy_volume_tao": 0.5,
+                     *           "buy_volume_usd": 0.5,
                      *           "net_volume_alpha": 0.5,
                      *           "sell_count": 1,
                      *           "sell_volume_alpha": 0.5,
                      *           "sell_volume_tao": 0.5,
+                     *           "sell_volume_usd": 0.5,
                      *           "sentiment": "bullish",
                      *           "sentiment_ratio": 0.9966,
                      *           "total_volume_alpha": 0.5,
-                     *           "total_volume_tao": 0.5
+                     *           "total_volume_tao": 0.5,
+                     *           "total_volume_usd": 0.5
                      *         },
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -24218,6 +24304,14 @@ export interface operations {
                      *             "window": "24h"
                      *           }
                      *         ],
+                     *         "tao_usd": {
+                     *           "block_number": 5000000,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "tao_usd_unavailable": "no_index_reading",
+                     *         "usd_pricing_basis": "window_close_rate",
                      *         "volume_distribution": {
                      *           "count": 1,
                      *           "max": 0.5,
@@ -46017,16 +46111,33 @@ export interface operations {
                      *         "buy_count": 1,
                      *         "buy_volume_alpha": 0.5,
                      *         "buy_volume_tao": 0.5,
+                     *         "buy_volume_usd": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "net_volume_alpha": 0.5,
                      *         "netuid": 7,
                      *         "schema_version": 1,
                      *         "sell_count": 1,
                      *         "sell_volume_alpha": 0.5,
                      *         "sell_volume_tao": 0.5,
+                     *         "sell_volume_usd": 0.5,
                      *         "sentiment": "bullish",
                      *         "sentiment_ratio": 0.9966,
+                     *         "tao_usd": {
+                     *           "block_number": 5000000,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "tao_usd_unavailable": "no_index_reading",
                      *         "total_volume_alpha": 0.5,
                      *         "total_volume_tao": 0.5,
+                     *         "total_volume_usd": 0.5,
+                     *         "usd_pricing_basis": "window_close_rate",
                      *         "vol_mcap_ratio": 0.9966,
                      *         "window": "24h"
                      *       },
