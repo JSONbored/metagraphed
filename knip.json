@@ -12,16 +12,13 @@
     "schemas-src/openapi-registry.ts",
     "scripts/*.ts",
     "scripts/lib/*.ts",
-    "tests/**/*.ts",
-    "packages/*/index.ts",
-    "packages/*/src/index.ts"
+    "tests/**/*.ts"
   ],
   "project": [
     "src/**/*.ts",
     "workers/**/*.ts",
     "schemas-src/**/*.ts",
-    "scripts/**/*.ts",
-    "packages/**/*.ts"
+    "scripts/**/*.ts"
   ],
   "ignore": ["generated/**", "public/**", "dist/**", "apps/**"],
   "ignoreExportsUsedInFile": true,

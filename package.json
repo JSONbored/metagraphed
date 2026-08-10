@@ -95,6 +95,7 @@
     "validate:schema-opacity": "node scripts/validate-schema-opacity.ts",
     "validate:schema-vocabularies": "node scripts/validate-schema-vocabularies.ts",
     "validate:unreferenced-modules": "node scripts/validate-unreferenced-modules.ts",
+    "validate:unreferenced-exports": "node scripts/validate-unreferenced-exports.ts",
     "validate:module-state-resets": "node scripts/validate-module-state-resets.ts",
     "validate:pg-json-binds": "node scripts/validate-pg-json-binds.ts",
     "openapi:generate": "node scripts/generate-openapi.ts --write",
