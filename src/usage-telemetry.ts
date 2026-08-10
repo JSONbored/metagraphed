@@ -180,6 +180,28 @@ function usageSampleRatesByRoute(
  */
 export const MCP_PROTOCOL_ROUTE_PREFIX = "mcp:";
 
+/**
+ * The one MCP protocol method that does NOT inherit the never-sampled
+ * exemption below.
+ *
+ * The exemption's stated premise is a volume one: "The whole MCP surface is
+ * ~2K events/day against a REST firehose three orders of magnitude larger, so
+ * exempting it costs nothing the sampling was introduced to save." Measured
+ * 2026-08-10, `mcp:ping` ALONE ran ~175/hour -- ~4,200/day, more than twice
+ * the entire surface the premise was priced on, and 13% of every analytics
+ * event the project captured that day. The premise held when it was written
+ * and a single client polling ping invalidated it.
+ *
+ * It is also the one method whose exemption buys nothing. The rest of the
+ * `mcp:` surface answers ADR 0027's "does anyone actually authenticate/call
+ * tools?"; a keepalive answers whether a transport is still open, which
+ * $mcp_initialize already establishes and which no dashboard reads. Sampled
+ * rather than dropped so a ping storm stays VISIBLE as a weighted count
+ * (sum(1/sample_rate)) instead of becoming an absence nobody can distinguish
+ * from a quiet day.
+ */
+export const MCP_PING_ROUTE = `${MCP_PROTOCOL_ROUTE_PREFIX}ping`;
+
 /** The sample rate that applies to one usage event: 1 for anything never
  * sampled (failures, every MCP surface), otherwise the route override,
  * otherwise the deployment default. */
@@ -201,7 +223,14 @@ export function resolveUsageSampleRate(
   // The whole MCP surface is ~2K events/day against a REST firehose three
   // orders of magnitude larger, so exempting it costs nothing the sampling
   // was introduced to save.
-  if (route !== undefined && route.startsWith(MCP_PROTOCOL_ROUTE_PREFIX)) {
+  // MCP_PING_ROUTE is carved back out and falls through to the override
+  // map/default below -- see its declaration for the measurement that
+  // invalidated this exemption's own volume premise.
+  if (
+    route !== undefined &&
+    route.startsWith(MCP_PROTOCOL_ROUTE_PREFIX) &&
+    route !== MCP_PING_ROUTE
+  ) {
     return 1;
   }
   if (route !== undefined) {
