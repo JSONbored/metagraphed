@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { promises as fs, readFileSync } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 import {
@@ -175,6 +175,29 @@ for (const workflow of workflows) {
     // stops finding ANY upload and reports the split as missing, which is the
     // opposite of what it checks. The rule is "a coverage upload exists on
     // both the token and tokenless paths", not "the path is spelled this way".
+    // codecov.yml's `after_n_builds` MUST equal the number of matrix legs that
+    // upload coverage (#10414). Codecov computes project/patch once it has that
+    // many uploads; if the workflow grows a leg and the number does not, it
+    // fires on a PARTIAL merge and reports the missing legs as a coverage
+    // regression -- observed as 95.77% (-2.17%) when it waited for 2 of 4.
+    // That failure is indistinguishable from a real drop by eye, which is why
+    // it is asserted here rather than left to a comment.
+    const legCount = (content.match(/args: --pass=/g) ?? []).length;
+    if (legCount > 0) {
+      const codecovYml = readFileSync(
+        path.join(repoRoot, "codecov.yml"),
+        "utf8",
+      );
+      const afterN = Number(
+        /after_n_builds:\s*(\d+)/.exec(codecovYml)?.[1] ?? NaN,
+      );
+      check(
+        afterN === legCount,
+        workflow,
+        `codecov.yml after_n_builds is ${afterN} but the test matrix has ${legCount} coverage-uploading leg(s) -- Codecov would compute the verdict on a partial merge and report the shortfall as a coverage drop`,
+      );
+    }
+
     const coverageUploads = codecovSteps.filter((step) =>
       step.block.includes("lcov.info"),
     );
