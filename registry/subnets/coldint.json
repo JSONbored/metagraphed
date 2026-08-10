@@ -25,6 +25,11 @@
   "name": "Coldint",
   "netuid": 29,
   "notes": "Reviewed overlay for SN29 using the official Coldint website, validator repository, dynamic configuration repository, README documentation, and referenced training dataset. This pass fixed the min-compute data-artifact surface (added by a recent contributor PR) having no probe config at all -- the registry-wide gap tracked in #5932 -- and removed an incorrect social.x value (https://x.com/cacheon_ai, a copy-paste of SN14 Cacheon's own handle, unrelated to this subnet); no official Coldint social account was found on the website or in the README to replace it with. On-chain SubnetIdentitiesV3 native_name is a stylized \"hotfloat\" rather than \"Coldint\", but the on-chain website_url field matches coldint.io exactly, positively confirming the same operator -- not treated as a rename.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-29",
   "source_repo": "https://github.com/coldint/coldint_validator",
@@ -135,6 +140,10 @@
       "id": "sn-29-coldint-taostats-dashboard",
       "kind": "dashboard",
       "name": "Coldint TaoStats dashboard",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
       "notes": "TaoStats subnet dashboard linked by the Coldint README.",
       "probe": {
         "enabled": true,

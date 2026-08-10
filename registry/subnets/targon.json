@@ -25,6 +25,11 @@
   "name": "Targon",
   "netuid": 4,
   "notes": "Reviewed overlay for SN4 using the official Targon website, docs, Intel whitepaper, and source repository. The docs site's own sitemap lists 10 API categories (compute, health, heim, inventory, ssh-keys, templates, user, version, volumes, workloads); all but inventory and version are personal compute-rental account actions requiring a Bearer API key (create/manage workloads, templates, ssh keys, volumes), not eligible for public surface tracking. The documented no-auth health endpoints (/tha/v2/healthz, /tha/v2/readyz) currently 500 in production despite the docs describing them as working liveness/readiness checks -- not tracked as a surface since it would only generate false-unhealthy noise. No OpenAPI/Swagger schema, SSE stream, or standalone data artifact is verified yet.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-4",
   "social": {
@@ -178,6 +183,10 @@
       "id": "sn-4-targon-stats-dashboard",
       "kind": "dashboard",
       "name": "Targon Stats dashboard",
+      "revenue": {
+        "role": "usage-proxy",
+        "provenance": "probe-derived"
+      },
       "notes": "Official Targon Stats dashboard (page title \"Targon Stats\"). Its first-party ownership is proven by the official manifold-inc/targon CLI source, which names https://stats.targon.com as a default endpoint host.",
       "probe": {
         "enabled": true,
@@ -202,7 +211,11 @@
       "id": "sn-4-targon-miner-stats-api",
       "kind": "subnet-api",
       "name": "Targon miner stats API",
-      "notes": "Public no-auth JSON endpoint returning live SN4 per-miner stats (uid, payout, GPU card count, confidential-compute type), documented as 'Get All Miners' in the official Targon Stats HTTP API docs.",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth JSON endpoint returning live SN4 per-miner stats (uid, payout, GPU card count, confidential-compute type), documented as 'Get All Miners' in the official Targon Stats HTTP API docs. REVENUE ROLE (#10463): miner-payout. The `payout` field is EMISSION paid to miners, not customer revenue -- the single most-quoted number on this subnet and the denominator of a coverage ratio, not its numerator. REVENUE ROLE (#10463): miner-payout. The `payout` field is EMISSION paid to miners, not customer revenue -- the single most-quoted number on this subnet and the denominator of a coverage ratio, not its numerator.",
       "probe": {
         "enabled": true,
         "expect": "json",

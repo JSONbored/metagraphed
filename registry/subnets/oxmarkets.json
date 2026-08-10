@@ -19,6 +19,11 @@
   "name": "OxMarkets",
   "netuid": 35,
   "notes": "First maintainer-reviewed pass for SN35 (previously candidate-discovered/unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). OxMarkets/Cartha is a liquidity-as-a-service subnet powering a permissionless perp DEX (FX, crypto, commodities). Added the missing website and source-repo surfaces. Fixed 7 surfaces having no probe config at all -- the registry-wide gap tracked in #5932. Diffed the full Cartha Verifier OpenAPI schema (58 paths): most are 401/403-gated in practice despite the schema declaring no security scheme (a documentation gap on the operator's side, not a registry concern), and the remaining unauthenticated GETs are either already tracked or require query parameters with no stable canonical value (e.g. /v1/metagraph/compare, /v1/miner/status). One new genuine no-auth public endpoint found and added: GET /pools, returning the registered liquidity-pool/vault list.",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website", "docs", "openapi", "dashboard", "source-repo"]
+  },
   "schema_version": 1,
   "slug": "sn-35",
   "social": {
@@ -93,7 +98,7 @@
       "id": "sn-35-oxmarkets-cartha-cli",
       "kind": "sdk",
       "name": "Cartha CLI (PyPI)",
-      "notes": "Published PyPI package `cartha-cli` — the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo.",
+      "notes": "Published PyPI package `cartha-cli` \u2014 the official CLI for Cartha subnet (SN35) miners; built from the team's General-Tao-Ventures/cartha-cli repo.",
       "probe": {
         "enabled": true,
         "expect": "html",
@@ -213,7 +218,11 @@
       "id": "sn-35-oxmarkets-lp-stats",
       "kind": "data-artifact",
       "name": "Cartha liquidity-providing metrics",
-      "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET /v1/lp-stats on api.cartha.finance returning aggregated liquidity-providing metrics for the 0xMarkets landing page (observed top-level fields: apy_tiers, max_apy, tvl, weekly_rewards, emissions, prices, epoch, extras, last_updated). Documented as GET /v1/lp-stats in the subnet OpenAPI spec (api.cartha.finance/openapi.json, already cited for the existing health and OpenAPI surfaces); same api.cartha.finance host as the Cartha Verifier API. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned. REVENUE ROLE (#10463): not-revenue. `apy_tiers` is yield CONFIGURATION (lock periods, boosts, advertised APY), not an amount anybody earned.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -1067,6 +1076,11 @@
       "id": "sn-35-oxmarkets-v1-admin-system-alerts-stats",
       "kind": "subnet-api",
       "name": "OxMarkets v1 admin system alerts stats",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.cartha.finance/openapi.json"
+      },
       "notes": "Get System Alerts Stats operation on the OxMarkets/Cartha API (GET /v1/admin/system-alerts/stats), declared in the subnet's own OpenAPI spec at https://api.cartha.finance/openapi.json. The spec declares no security on it; registered with the probe disabled (not individually verified beyond the sampled routes above).",
       "probe": {
         "enabled": false,
