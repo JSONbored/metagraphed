@@ -17,6 +17,14 @@
 // is_lower_bound`. That is the confident-zeros failure (#9803) reached through
 // a door REST and MCP had already closed.
 //
+// WHAT ELSE IT COMPARES, once a pair is found: the field must be present, its
+// nullability must not over-promise, and -- since #10377's blind spot -- its
+// TYPE must be the same type. That last one was missing, and it is what let
+// the enum->JSON class hide: `String` against `JSON` read as agreement, so an
+// emitter change that retyped 348 fields as `JSON` would have passed every
+// gate in the repo. A `Float` over an `Int` is still allowed, in both checks,
+// because a widening loses nothing.
+//
 // HOW THE PAIRS ARE FOUND -- derived, not declared. Each Query field carries a
 // `Mirrors GET /api/v1/...` annotation; the route's OpenAPI response names the
 // component its `data` refs. That seeds SDL-type <-> component pairs, which
@@ -33,7 +41,11 @@ import type {
   TypeNode,
 } from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
-import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
+import {
+  ALIASED_TYPE_NAMES,
+  PROJECTED_TYPES,
+  PUBLISHED_TYPE_NAMES,
+} from "../schemas-src/graphql/published-names.ts";
 
 /** Only the sliver of the OpenAPI document this gate reads. */
 export interface OpenApiDocument {
@@ -89,11 +101,78 @@ const PAGINATION_FIELDS = new Set([
  * this script, so a fix cannot leave a stale exemption behind -- the same
  * idiom the MCP input-parity and tier-cascade gates use.
  */
-const DECLARED: Record<string, string> = {};
+const DECLARED: Record<string, string> = {
+  "EmissionGateChanges.changes":
+    "the component is a three-arm union (param/subnet/flow changes, each " +
+    "carrying only its own fields) and the emitter answers JSON for a " +
+    "heterogeneous union, correctly. The SDL flattens the three into one " +
+    "`EmissionGateChange` the resolver builds -- a real type over an honest " +
+    "JSON, which is the safe direction and more useful than the blob.",
+  "SubnetTrajectory.deltas":
+    "the resolver reshapes on purpose (src/graphql.ts, `deltas: Object.entries" +
+    "(data.deltas ?? {})`): the artifact keys deltas by window ('7d'/'30d'), " +
+    "which are not valid GraphQL field names, so they become a list carrying " +
+    "`window`. The component is a record, so the emitter answers JSON; the " +
+    "SDL's list of a named type is the shape the resolver actually returns.",
+};
+
+/**
+ * Fields the SDL publishes as `JSON` where the component has a real shape,
+ * each with the type it becomes.
+ *
+ * These are UNDER-typings, not faults: `JSON` serializes anything, so nothing
+ * breaks at runtime. What a caller loses is the ability to select into the
+ * value at all, which is the whole point of the type system -- and it is
+ * exactly what the generated SDL fixes, by publishing the shape the component
+ * already describes. Closing one means adding a named type to the published
+ * schema, so they are recorded here rather than fixed piecemeal.
+ *
+ * THE LIST ONLY SHRINKS. An entry whose field is no longer under-typed fails,
+ * and an under-typed field with no entry fails -- so the count is a live
+ * measure of the distance left to the generated schema, and cannot drift up.
+ */
+const JSON_UNDERTYPED: Record<string, string> = {
+  "Adapter.snapshot": "AdapterArtifactSnapshot",
+  "BlockEvents.events": "[AccountEvent!]",
+  "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
+  "BuildSummary.artifact_budget_summary":
+    "BuildSummaryArtifactArtifactBudgetSummary",
+  "BuildSummary.artifacts": "[BuildSummaryArtifactArtifacts!]",
+  "BuildSummary.coverage": "CoverageArtifact",
+  "ChainConcentrationHistoryPoint.emission": "ChainConcentrationScorecard",
+  "ChainConcentrationHistoryPoint.entity_emission":
+    "ChainConcentrationScorecard",
+  "ChainConcentrationHistoryPoint.entity_stake": "ChainConcentrationScorecard",
+  "ChainConcentrationHistoryPoint.stake": "ChainConcentrationScorecard",
+  "ChainConcentrationHistoryPoint.validator_stake":
+    "ChainConcentrationScorecard",
+  "Changelog.artifacts": "ChangelogArtifactArtifacts",
+  "Changelog.subnets": "ChangelogArtifactSubnets",
+  "Changelog.summary": "ChangelogArtifactSummary",
+  "ComparedValidator.coldkey_identity":
+    "CompareValidatorsArtifactValidatorsColdkeyIdentity",
+  "ComparedValidator.subnet_context":
+    "CompareValidatorsArtifactValidatorsSubnetContext",
+  "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
+  "SubnetConviction.king": "String",
+  "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
+  "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
+  "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",
+  "SubnetEventSummary.recent_events": "[AccountEvent!]",
+  "SubnetHealthIncidents.surfaces": "[HealthIncidentsArtifactSurfaces!]",
+  "SubnetHealthPercentiles.surfaces": "[HealthPercentilesArtifactSurfaces!]",
+  "SubnetLease.lease": "SubnetLeaseArtifactLease",
+  "SubnetLeaseHistory.lease_events": "[SubnetLeaseHistoryArtifactLeaseEvents!]",
+  "SubnetOwnershipHistory.ownership_changes":
+    "[SubnetOwnershipHistoryArtifactOwnershipChanges!]",
+  "TaoUsdLatest.pools": "[JSON!]",
+};
 
 export interface ParityReport {
   violations: string[];
   stale: string[];
+  /** Declared JSON under-typings still live -- the distance left to close. */
+  undertyped: number;
   comparedTypes: number;
   comparedFields: number;
   projections: string[];
@@ -150,6 +229,35 @@ function generatedScalarName(type: GraphQLOutputType): string | null {
 }
 
 const SCALARS = new Set(["Int", "Float", "String", "Boolean", "ID"]);
+
+/**
+ * What a field is, written the way the SDL writes it: `Foo`, `[Foo!]`.
+ *
+ * Nullability of the LEAF is deliberately dropped -- that is the separate
+ * non-null check above, and folding the two would report one defect twice.
+ */
+function sdlLeaf(node: TypeNode): { name: string; list: boolean } {
+  let current = node;
+  let list = false;
+  while (current.kind !== "NamedType") {
+    if (current.kind === "ListType") list = true;
+    current = current.type;
+  }
+  return { name: current.name.value, list };
+}
+
+function generatedLeaf(type: GraphQLOutputType): {
+  name: string;
+  list: boolean;
+} {
+  let current: unknown = type;
+  let list = false;
+  while (current instanceof GraphQLNonNull || current instanceof GraphQLList) {
+    if (current instanceof GraphQLList) list = true;
+    current = (current as { ofType: unknown }).ofType;
+  }
+  return { name: (current as { name: string }).name, list };
+}
 
 function generatedTypeName(type: GraphQLOutputType): string | null {
   let current: unknown = type;
@@ -232,6 +340,7 @@ export function checkComponentParity(
   let comparedFields = 0;
   let projectedTypes = 0;
   let projectedFields = 0;
+  const undertypedMatched = new Set<string>();
 
   for (const [sdlName, components] of paired) {
     const sdlFields = new Set(
@@ -294,6 +403,65 @@ export function checkComponentParity(
               `${sdlName}.${name} -- the SDL declares ${sdlScalar}, ` +
                 `${componentName} emits ${genScalar}`,
             );
+          }
+          // SCALAR IDENTITY -- the blind spot that hid the whole enum->JSON
+          // class (#10377). Until this, `String` against `JSON` read as
+          // agreement, so 348 fields could be retyped `JSON` and no gate would
+          // have said anything.
+          //
+          // The two name systems are reconciled through PUBLISHED_TYPE_NAMES:
+          // the component `SubnetIndexEntry` is published as `Subnet`, and
+          // comparing raw ids would report all 300-odd mirrors as mismatched.
+          const sdlSide = sdlLeaf(sdlNode.type);
+          const genSide = generatedLeaf(genField.type);
+          const genPublished =
+            PUBLISHED_TYPE_NAMES[genSide.name] ?? genSide.name;
+          const key = `${sdlName}.${name}`;
+          const sameShape =
+            sdlSide.list === genSide.list &&
+            (sdlSide.name === genPublished ||
+              // The one component published under a second name.
+              sdlSide.name === ALIASED_TYPE_NAMES[genSide.name] ||
+              // A WIDENING, left alone here for the same reason the narrowing
+              // check above states: a Float accepts every integer, and 13
+              // fields declare it deliberately for a computed value
+              // (`mean_ms`, `stability_score`, the percentiles) whose
+              // component happens to hold whole numbers today. The dangerous
+              // direction -- Int over Float -- is the check above.
+              (sdlSide.name === "Float" && genPublished === "Int"));
+          if (!sameShape) {
+            const written = (
+              side: { name: string; list: boolean },
+              n: string,
+            ) => (side.list ? `[${n}!]` : n);
+            const wanted = written(genSide, genPublished);
+            if (sdlSide.name === "JSON") {
+              // UNDER-typing: the SDL publishes an opaque blob where the
+              // component has a shape. Not a runtime fault -- JSON serializes
+              // anything -- but a caller cannot select into it, which is the
+              // whole point of the type system. Declared rather than failed,
+              // because closing one means publishing a new named type, and
+              // that is the generator's job (#10214). The list only SHRINKS:
+              // an entry that stops being under-typed fails below.
+              if (JSON_UNDERTYPED[key] === wanted) undertypedMatched.add(key);
+              else
+                violations.push(
+                  `${key} -- the SDL declares JSON, ${componentName} emits ` +
+                    `${wanted}; declare it in JSON_UNDERTYPED or publish the type`,
+                );
+            } else if (declared[key]) {
+              // Declared, and still real -- record it so the staleness sweep
+              // does not report a live exemption as gone.
+              matched.add(key);
+            } else {
+              // OVER-typing, or a plain disagreement. `String` over an object
+              // is the dangerous direction: graphql-js' String serializer
+              // throws on a non-scalar and nulls the surrounding object.
+              violations.push(
+                `${key} -- the SDL declares ${written(sdlSide, sdlSide.name)}, ` +
+                  `${componentName} emits ${wanted}`,
+              );
+            }
           }
         }
         comparedFields += 1;
@@ -381,7 +549,13 @@ export function checkComponentParity(
 
   return {
     violations,
-    stale: Object.keys(declared).filter((key) => !matched.has(key)),
+    stale: [
+      ...Object.keys(declared).filter((key) => !matched.has(key)),
+      ...Object.keys(JSON_UNDERTYPED).filter(
+        (key) => !undertypedMatched.has(key),
+      ),
+    ],
+    undertyped: undertypedMatched.size,
     comparedTypes,
     comparedFields,
     projections,
@@ -406,7 +580,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     `graphql-component-parity: ${report.comparedTypes} mirror type(s), ` +
       `${report.comparedFields} field(s) compared, ` +
       `${report.projectedTypes} declared projection(s) (${report.projectedFields} field(s)), ` +
-      `${report.projections.length} pagination view(s) skipped.`,
+      `${report.projections.length} pagination view(s) skipped, ` +
+      `${report.undertyped} JSON under-typing(s) left to close.`,
   );
   if (report.violations.length) {
     console.error(

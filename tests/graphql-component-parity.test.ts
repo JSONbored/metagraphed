@@ -246,3 +246,79 @@ describe("declared projections (#10214)", () => {
     );
   });
 });
+
+// Scalar identity (#10377's blind spot). Until this check, `String` against
+// `JSON` read as agreement, so an emitter that retyped 348 fields as JSON
+// would have passed every gate in the repo.
+describe("scalar identity", () => {
+  test("28 JSON under-typings are declared, and all of them are live", () => {
+    const report = checkComponentParity(sdl, openapi);
+    assert.deepEqual(report.violations, []);
+    assert.deepEqual(report.stale, []);
+    assert.equal(report.undertyped, 28);
+  });
+
+  test("it FAILS when a field is retyped to a different scalar", () => {
+    // The whole class the gate was blind to: a `String` where the component
+    // publishes an OBJECT throws at serialization and nulls the surrounding
+    // object, and the old comparison read it as agreement.
+    const broken = inType(
+      sdl,
+      "SubnetHyperparameters",
+      /^ {4}hyperparameters: Hyperparameters\n/m,
+      "    hyperparameters: String\n",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith(
+          "SubnetHyperparameters.hyperparameters -- the SDL declares String",
+        ),
+      ),
+      `expected the retyped field to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("it FAILS on a NEW under-typing that is not declared", () => {
+    const broken = inType(
+      sdl,
+      "SubnetHyperparameters",
+      /^ {4}hyperparameters: Hyperparameters\n/m,
+      "    hyperparameters: JSON\n",
+    );
+    const report = checkComponentParity(broken, openapi);
+    assert.ok(
+      report.violations.some((v) =>
+        v.includes("declare it in JSON_UNDERTYPED or publish the type"),
+      ),
+      `expected the new under-typing to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a CLOSED under-typing makes its declaration stale, so the list shrinks", () => {
+    const fixed = inType(
+      sdl,
+      "SubnetConviction",
+      /^ {4}king: JSON\n/m,
+      "    king: String\n",
+    );
+    const report = checkComponentParity(fixed, openapi);
+    assert.ok(
+      report.stale.includes("SubnetConviction.king"),
+      `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
+    );
+    assert.equal(report.undertyped, 27);
+  });
+
+  test("a Float over an Int component field is a WIDENING and stays allowed", () => {
+    // 13 fields declare it deliberately for a computed value whose component
+    // holds whole numbers today. The dangerous direction -- Int over Float --
+    // is the separate narrowing check.
+    const report = checkComponentParity(sdl, openapi);
+    assert.ok(
+      !report.violations.some((v) =>
+        v.includes("ChainTurnoverNetwork.stability_score"),
+      ),
+    );
+  });
+});
