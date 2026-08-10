@@ -396,8 +396,41 @@
     // roughly 60% under the tier with room for growth. A tail route still
     // yields hundreds of captures a day, which is ample for trend work.
     // Re-derive from measurement -- not estimate -- when traffic shape moves.
-    "POSTHOG_USAGE_SAMPLE_RATE": "0.05",
-    "POSTHOG_USAGE_SAMPLE_RATES": "{\"block-detail\":0.01}",
+    //
+    // RE-DERIVED 2026-08-10, because it moved. The ~400K/month above was
+    // measured on 08-02 during the box quiesce; two full clean hours after the
+    // billing cycle reset (14:00-16:00 US/Arizona, the first hours of unblocked
+    // ingestion since 08-04) measure this instead:
+    //
+    //   rate 0.05, ok      2,662 events <- 53,240 requests   1,331/hour
+    //   unsampled, ok        869 events                        434/hour
+    //   unsampled, FAILED    675 events                        337/hour
+    //   rate 0.01, ok        151 events <- 15,100 requests      75/hour
+    //
+    // 479 of those unsampled successes were `mcp:ping`, carved out of the
+    // never-sampled MCP exemption in the same cycle -- so the forward-looking
+    // total is ~1,939/hour, which is 1.44M/cycle against a 1M tier. The head is
+    // also no longer a head: block-detail is 5% of events now, not 85.5%, and
+    // the top routes (block-chain-events/-events/-extrinsics, /api/v1/icon)
+    // sit within 1.5x of each other. A per-route map governs a spike; a flat
+    // distribution has to move the default.
+    //
+    //   0.05 -> 0.015   1,331/hour -> 399/hour
+    //   block-detail 0.01 -> 0.005    75/hour -> 38/hour
+    //
+    // -> ~969/hour = ~721K/cycle, 72% of the tier. A tail route still yields
+    // tens of captures a day and every weighted aggregate
+    // (sum(1/coalesce(sample_rate,1))) is unchanged in expectation.
+    //
+    // THE 337/hour OF FAILURES ARE NOT SAMPLED AND MUST NOT BE. They are 251K
+    // of that 721K, and they are a BUG, not a budget line: `account-summary`
+    // is failing 92% of calls on a hard 15,058ms timeout (successes average
+    // 11,671ms, just under it), cascading from `r2-sql` timeouts -- see the
+    // linked issue. Fixing that returns the cycle to ~470K/47%. Throttling the
+    // failure stream instead would be suppressing a watchdog over a known bad
+    // state, which is how the degradation stays invisible.
+    "POSTHOG_USAGE_SAMPLE_RATE": "0.015",
+    "POSTHOG_USAGE_SAMPLE_RATES": "{\"block-detail\":0.005}",
     // #9430: $exception storm guard -- at most one capture per fingerprint
     // per minute per isolate, with the suppressed count carried on the next
     // event that gets through (src/usage-telemetry.ts).
