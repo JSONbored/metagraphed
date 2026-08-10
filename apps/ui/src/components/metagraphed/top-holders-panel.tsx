@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { topHoldersQuery } from "@/lib/metagraphed/queries";
 import { Panel } from "@/components/metagraphed/primitives";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
-import { formatTao, formatRelative } from "@/lib/metagraphed/format";
+import { formatNumber, formatTao, formatRelative } from "@/lib/metagraphed/format";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import type { TopHolder } from "@/lib/metagraphed/types";
 
@@ -25,7 +25,7 @@ const SHOWN = 15;
  * across them.
  */
 export function TopHoldersPanel() {
-  const { data, isLoading, isError, error, refetch } = useQuery(topHoldersQuery());
+  const { data, isLoading, isError, error, refetch } = useQuery(topHoldersQuery(SHOWN));
 
   if (isLoading) return <Skeleton className="h-[240px] w-full" />;
   if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
@@ -43,7 +43,8 @@ export function TopHoldersPanel() {
   return (
     <Panel as="section" dense>
       <p className="mb-3 mg-type-data-sm text-ink-muted">
-        Largest TAO holders network-wide
+        Largest {formatNumber(Math.min(SHOWN, h.accounts.length))} TAO holders network-wide
+        {h.account_count == null ? "" : ` of ${formatNumber(h.account_count)} ranked`}
         {h.captured_at ? ` · captured ${formatRelative(h.captured_at)}` : ""}
       </p>
 

@@ -21,7 +21,7 @@ const SHOWN = 15;
  * them is about the subnet.
  */
 export function ValidatorEconomicsRanking() {
-  const { data, isLoading, isError, error, refetch } = useQuery(validatorEconomicsQuery());
+  const { data, isLoading, isError, error, refetch } = useQuery(validatorEconomicsQuery(SHOWN));
 
   if (isLoading) return <Skeleton className="h-[240px] w-full" />;
   if (isError) return <ErrorState error={error} onRetry={() => void refetch()} />;
@@ -41,7 +41,8 @@ export function ValidatorEconomicsRanking() {
   return (
     <Panel as="section" dense>
       <p className="mb-3 mg-type-data-sm text-ink-muted">
-        What it costs to start validating, by subnet — {formatNumber(e.total)} ranked
+        What it costs to start validating — cheapest {formatNumber(Math.min(SHOWN, e.rows.length))}{" "}
+        of {formatNumber(e.total)} ranked subnets
         {e.tao_weight != null ? ` · tao weight ${formatNumber(e.tao_weight)}` : ""}
       </p>
 
