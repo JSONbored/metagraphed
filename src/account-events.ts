@@ -275,9 +275,14 @@ export function formatAccountEvent(
 
 // ---- Entity API builders (#1347) -------------------------------------------
 
-// Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
-// must not pass through Boolean(), which treats any non-empty string as true.
-function toD1Flag(value: unknown): boolean {
+// A flag column as a real boolean, in any store's spelling -- see
+// toBooleanFlag in metagraph-neurons.ts for the measurement. This copy is the
+// one with the strongest claim to the coercion: it renders rows from the
+// lakehouse tier, which answers JSON rather than coming through a Postgres
+// driver, so a 0/1 here is not hypothetical.
+//
+// NOT Boolean(value): a numeric string "0" is truthy and would invert the flag.
+function toBooleanFlag(value: unknown): boolean {
   return Number(value) === 1;
 }
 
@@ -299,8 +304,8 @@ export function formatRegistration(
     netuid: toBlockNumber(row.netuid),
     uid: toBlockNumber(row.uid),
     stake_tao: toTaoOrNull(row.stake_tao),
-    validator_permit: toD1Flag(row.validator_permit),
-    active: toD1Flag(row.active),
+    validator_permit: toBooleanFlag(row.validator_permit),
+    active: toBooleanFlag(row.active),
   };
 }
 

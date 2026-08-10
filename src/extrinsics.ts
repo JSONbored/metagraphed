@@ -185,7 +185,7 @@ export function formatExtrinsic(
     // D1 can return the `success` INTEGER column as a numeric string ("1"/"0"),
     // same as block_number/extrinsic_index above — a bare `=== 1` would leave a
     // successful extrinsic mislabeled false. Number()-coerce first, mirroring
-    // toD1Flag in account-events.ts (#2487).
+    // toBooleanFlag in account-events.ts (#2487).
     success: row.success == null ? null : Number(row.success) === 1,
     // fee_tao / tip_tao (D1 REAL columns) — coerce through toTaoOrNull so a
     // numeric string never leaks the string form into the ["number","null"]

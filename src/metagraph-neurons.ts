@@ -337,10 +337,26 @@ function round9(value: unknown): number | null {
   return Math.round(Number(value) * RAO_PER_TAO) / RAO_PER_TAO;
 }
 
-// Coerce a D1 0/1 INTEGER flag cell to a boolean. Numeric strings like "0"
-// must not pass through Boolean(), which treats any non-empty string as true.
-// Mirrors the local toD1Flag added to formatRegistration by #2487.
-function toD1Flag(value: unknown): boolean {
+/**
+ * Any store's spelling of a flag column, as a real boolean.
+ *
+ * IT IS NOT A D1 COERCION ANY MORE, which is what the name and the old comment
+ * said. Measured against production Neon 2026-08-10: these columns are BOOLEAN
+ * there and the driver hands back real `true`/`false` --
+ *
+ *     validator_permit=true  (boolean)   validator_permit=false (boolean)
+ *
+ * -- so `Number(value) === 1` is doing nothing for the tier that actually
+ * serves. It is KEPT rather than simplified because this formatter is shared:
+ * the same builder renders the projection and cold tiers, whose rows arrive as
+ * decoded JSON rather than from the driver, and a 0/1 there would become `true`
+ * either way under a looser test.
+ *
+ * NOT `Boolean(value)`. A numeric string "0" is truthy, so the looser spelling
+ * inverts the flag rather than widening it -- the same class as #10088's typing
+ * trap, in the opposite direction.
+ */
+function toBooleanFlag(value: unknown): boolean {
   return Number(value) === 1;
 }
 
@@ -349,7 +365,7 @@ interface ImmunityWindow {
   immunity_expires_at?: string | null;
 }
 
-// coerce the flag columns back to real booleans for the API (toD1Flag
+// coerce the flag columns back to real booleans for the API (toBooleanFlag
 // handles the D1 INTEGER 0/1 cells; nonNegativeInt/nullableNumber coerce
 // string-typed uid/registered_at_block into real integers, and roundTao
 // rounds stake_tao / emission_tao to rao precision). The explicit null
@@ -429,8 +445,8 @@ export function formatNeuron(
     uid: row.uid == null ? null : nonNegativeInt(row.uid),
     hotkey,
     coldkey: row.coldkey ?? null,
-    active: toD1Flag(row.active),
-    validator_permit: toD1Flag(row.validator_permit),
+    active: toBooleanFlag(row.active),
+    validator_permit: toBooleanFlag(row.validator_permit),
     rank: row.rank == null ? null : round(nullableNumber(row.rank)),
     trust: row.trust == null ? null : round(nullableNumber(row.trust)),
     validator_trust:
@@ -449,7 +465,7 @@ export function formatNeuron(
       row.registered_at_block == null
         ? null
         : nonNegativeInt(row.registered_at_block),
-    is_immunity_period: toD1Flag(row.is_immunity_period),
+    is_immunity_period: toBooleanFlag(row.is_immunity_period),
     axon: row.axon ?? null,
     // Global per-hotkey (SubtensorModule::Delegates), not per (netuid, uid) --
     // null means no Delegates entry at capture time (#2548).
