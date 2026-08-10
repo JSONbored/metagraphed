@@ -14,11 +14,7 @@ type Row = Record<string, unknown>;
 // with the other per-route bounds, because the published enum is derived from
 // these same keys (#10218); re-exported here so the existing import sites keep
 // working.
-export {
-  DEFAULT_HISTORY_WINDOW,
-  HISTORY_WINDOW_DAYS,
-  HISTORY_WINDOWS,
-} from "./route-limits.ts";
+export { DEFAULT_HISTORY_WINDOW, HISTORY_WINDOW_DAYS } from "./route-limits.ts";
 import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;

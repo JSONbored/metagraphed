@@ -7,9 +7,6 @@
 import { median, percentile } from "./lib/stats.ts";
 import { clampRowLimit } from "../workers/request-params.ts";
 
-// The account_events kind emitted when a neuron announces its axon endpoint on a subnet.
-export const SERVING_EVENT_KIND = "AxonServed";
-
 export const CHAIN_SERVING_LIMIT_DEFAULT = 20;
 export const CHAIN_SERVING_LIMIT_MAX = 100;
 

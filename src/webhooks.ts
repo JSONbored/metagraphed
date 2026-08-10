@@ -18,7 +18,7 @@ export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
 // so nothing reads these to decide what to do. They are reporting only.
 export const WEBHOOK_DELIVERY_PREFIX = "webhooks:delivery:";
 export const WEBHOOK_SIGNATURE_HEADER = "x-metagraph-signature";
-export const WEBHOOK_TIMESTAMP_HEADER = "x-metagraph-timestamp";
+const WEBHOOK_TIMESTAMP_HEADER = "x-metagraph-timestamp";
 export const WEBHOOK_SECRET_HEADER = "x-metagraph-webhook-secret";
 // Stable per-content event id + per-(subscription, event) idempotency key so a
 // subscriber can dedupe the retries at-least-once delivery implies.

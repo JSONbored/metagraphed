@@ -39,10 +39,6 @@ export interface PaginationProfile {
   maxLimit?: number;
 }
 
-export interface ParamError {
-  error: { parameter: string; message: string };
-}
-
 // Clamp a raw limit (a query-param string or a tool-arg number) into
 // [MIN_LIMIT, maxLimit], falling back to defaultLimit when absent/blank/non-finite.
 export function clampLimit(

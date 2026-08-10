@@ -14,9 +14,6 @@ import {
   type EventStreamDegraded,
 } from "./uncurated-event-streams.ts";
 
-// The account_events kind emitted when a neuron announces its Prometheus telemetry endpoint on a subnet.
-export const PROMETHEUS_EVENT_KIND = "PrometheusServed";
-
 export const CHAIN_PROMETHEUS_LIMIT_DEFAULT = 20;
 export const CHAIN_PROMETHEUS_LIMIT_MAX = 100;
 

@@ -24,7 +24,6 @@ import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
 // matched nothing and this route family published a permanent 0. The feed is
 // now DERIVED from UID reuse in the NeuronRegistered stream -- see
 // src/deregistration-derivation.ts for the mechanism and the measurements.
-export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
 
 export const CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT = 20;
 export const CHAIN_DEREGISTRATIONS_LIMIT_MAX = 100;

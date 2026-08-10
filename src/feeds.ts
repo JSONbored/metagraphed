@@ -703,8 +703,6 @@ export const FEED_PATH_SEGMENTS = [
 /** Every feed kind, including the parameterized per-subnet one. */
 export const FEED_TARGET_KINDS = [...FEED_PATH_SEGMENTS, "subnet"] as const;
 
-export type FeedTargetKind = (typeof FEED_TARGET_KINDS)[number];
-
 // Distributed over the segment literals rather than written as a single
 // `{ kind: "registry" | "incidents" | ... }` member, so the union stays a
 // DISCRIMINATED one: handleFeedRequest narrows by elimination down its

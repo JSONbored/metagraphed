@@ -345,13 +345,6 @@ export async function recordTraceSpan(
   }
 }
 
-export interface SpanTimingResult<T> {
-  value: T;
-  startedAt: number;
-  endedAt: number;
-  ok: boolean;
-}
-
 /**
  * Time an async operation, capturing success/failure without swallowing a
  * thrown error -- callers get the same control flow as calling `fn()`
