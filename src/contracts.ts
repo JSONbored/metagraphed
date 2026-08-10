@@ -1319,7 +1319,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-stake-quote",
     "/metagraph/subnets/{netuid}/stake-quote.json",
-    "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
+    "Read-only constant-product stake/unstake slippage quote for one subnet (#5235): the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake, computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool) at /api/v1/subnets/{netuid}/stake-quote (no static file). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard (an amount over 1000× the relevant reserve is rejected with 422). `amount` is REQUIRED — the only required query parameter on this API — and a missing, non-numeric or non-positive one is a 400 `invalid_query` naming the parameter, the same code every other query violation answers (#10401; it was `invalid_amount` for the missing case until the contract stopped declaring the parameter optional). The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
     "SubnetStakeQuoteArtifact",
     COMPUTED_LIVE,
   ),
@@ -5816,7 +5816,15 @@ export function buildOpenApiArtifact(
           ...entry.query_parameters.map((parameter) => ({
             ...withSharedParameterDescription(parameter),
             in: "query",
-            required: false,
+            // DERIVED from the route's own schema, not hardcoded (#10401).
+            //
+            // This was a flat `false`, which was true of all 103 query schemas
+            // for as long as every parameter was optional. `stake-quote.amount`
+            // is the first required one, and a hardcoded `false` would have
+            // republished the exact lie the issue was filed about -- in the
+            // spec this time, where `npm run build` produces no diff and
+            // validate:contract-drift therefore sees nothing wrong.
+            required: isRequiredQueryParameter(entry, parameter.name),
           })),
         ],
         // Omitted entirely rather than emitted empty for the 180 GET routes
@@ -6628,6 +6636,33 @@ export function listQuerySchema(
  * Used by the gate today. 3/5 (#10063) makes `route()` emit from it and 4/5
  * (#10064) derives the MCP tool inputs from it.
  */
+/**
+ * Does the route REQUIRE this query parameter? (#10401)
+ *
+ * Asks the schema by parsing `undefined` rather than reading a flag: that is
+ * the same question the runtime validator answers, so the spec cannot disagree
+ * with the parse. It also gets `.default()` right for free -- a defaulted field
+ * accepts `undefined` and returns the default, so it is NOT required, which a
+ * naive "has .optional()" check would get wrong in the direction that publishes
+ * a mandatory parameter nobody has to send.
+ *
+ * A parameter with no schema entry is reported optional. That is the shape of
+ * the routes that declare parameters without a Zod object at all, and inventing
+ * a requirement for them would fail requests the handler accepts.
+ */
+export function isRequiredQueryParameter(
+  entry: {
+    path: string;
+    query_collection?: string | null;
+    query_filter_names?: string[];
+    csv_response?: boolean;
+  },
+  name: string,
+): boolean {
+  const field = querySchemaForRoute(entry)?.shape?.[name];
+  return field ? !field.safeParse(undefined).success : false;
+}
+
 export function querySchemaForRoute(entry: {
   path: string;
   query_collection?: string | null;

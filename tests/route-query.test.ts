@@ -587,3 +587,66 @@ describe("every published constraint is enforced (#10218)", () => {
     );
   });
 });
+
+describe("a REQUIRED query parameter (#10401)", () => {
+  // `stake-quote.amount` is the first and only required query parameter on the
+  // API. It was declared `.optional()` while the handler rejected every request
+  // without it, so the contract published a possibility that could not be
+  // exercised -- found by #10214's generator comparing the route against
+  // GraphQL's honest `amount: Float!`, not by any gate.
+  //
+  // Being the first REQUIRED one is the part with teeth: firstViolation picked
+  // the failing parameter by walking the keys the caller SUPPLIED, which is
+  // exhaustive only while every field is optional. A required field that is
+  // absent has no key to walk, and that path was marked `v8 ignore` as
+  // unreachable.
+  const quote = (query: string) =>
+    parseRouteQuery(
+      new URL(`https://api.metagraph.sh/api/v1/subnets/1/stake-quote?${query}`),
+    );
+
+  test("a missing required parameter is REPORTED, not skipped", () => {
+    const parsed = quote("");
+    assert.ok("error" in parsed, "a missing amount must be a violation");
+    // Named, so the caller is told WHICH parameter — the fallback that fires
+    // here used to be dead code and had never returned a real parameter.
+    assert.equal(parsed.error.parameter, "amount");
+  });
+
+  /** The violation message, or a marker so a passing parse fails the assertion. */
+  const message = (query: string): string => {
+    const parsed = quote(query);
+    return "error" in parsed ? parsed.error.message : "(no violation)";
+  };
+
+  test("the message states the BOUND, not just the type", () => {
+    // `z.number().gt(0)` publishes `exclusiveMinimum`, and boundFor only read
+    // the inclusive keywords -- so this said "amount must be a number", which
+    // is false about `0` and useless about an absent value.
+    assert.match(message(""), /greater than 0/);
+    assert.match(message("amount=0"), /greater than 0/);
+    assert.match(message("amount=-3"), /greater than 0/);
+  });
+
+  test("a missing value does NOT get a `Received:` clause", () => {
+    // There is nothing to echo. "Received: null" would describe a value the
+    // caller never sent.
+    assert.ok(!message("").includes("Received"));
+    assert.ok(message("amount=0").includes('Received: "0"'));
+  });
+
+  test("a valid amount still parses, and keeps its type", () => {
+    const parsed = quote("amount=5");
+    assert.ok(!("error" in parsed));
+    assert.equal(parsed.query.amount, 5);
+  });
+
+  test("a SUPPLIED parameter's violation still wins over the absent one", () => {
+    // Two mistakes at once: `direction` is wrong AND `amount` is missing. The
+    // caller is told about the one they actually wrote, because a message about
+    // a parameter absent from their request is the harder one to act on.
+    const parsed = quote("direction=sideways");
+    assert.ok("error" in parsed);
+    assert.equal(parsed.error.parameter, "direction");
+  });
+});

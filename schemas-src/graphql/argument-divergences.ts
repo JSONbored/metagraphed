@@ -192,16 +192,12 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
     reason: BOOLEAN_STRING_FORWARDING,
   },
 
-  // ── the route's own schema is the looser one ──────────────────────────────
-  "subnet_stake_quote.amount": {
-    type: "Float!",
-    reason:
-      "the route DECLARES it optional and REJECTS the request without it -- " +
-      "GET /api/v1/subnets/1/stake-quote answers invalid_amount, `amount` " +
-      "must be a finite number greater than 0`. The SDL's non-null is the " +
-      "honest spelling of what the route does; the route's `.optional()` is a " +
-      "possibility the handler cannot express (#10401).",
-  },
+  // `subnet_stake_quote.amount` was declared here as `Float!` while the route
+  // called it optional and rejected every request without it. #10401 fixed the
+  // route instead, so the generator now derives the non-null from the schema
+  // and the declaration is gone -- which is the outcome a divergence entry is
+  // supposed to reach. Nothing replaces it: an entry kept after its divergence
+  // closes is a lie that validate:graphql-query-arguments would fail on.
 };
 
 /** Does the route's parse own this field's argument, or does GraphQL? */
