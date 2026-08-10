@@ -28,6 +28,7 @@
     "chain-prometheus",
     "chain-registrations",
     "chain-registrations-by-network",
+    "chain-revenue-coverage",
     "chain-serving",
     "chain-signers",
     "chain-signers-by-network",

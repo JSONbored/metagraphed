@@ -542,6 +542,14 @@ export const SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN =
 // Live cumulative TAO recycled for registration on one subnet (#4339/8.4),
 // queried from the chain's own RAORecycledForRegistration storage map at
 // request time — not a D1/account_events tier, no static file.
+// #10447: one subnet's external revenue against the TAO the network emits to
+// it. Composed live from the economics capture, the subnet's own surface
+// declarations and the tao-usd index — no static file, and never a 404 for a
+// subnet with no revenue data, which is 127 of 129 of them.
+export const SUBNET_REVENUE_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/revenue$/;
+// The cross-subnet companion. Exact path.
+export const CHAIN_REVENUE_COVERAGE_PATH = "/api/v1/chain/revenue-coverage";
 export const SUBNET_RECYCLED_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/recycled$/;
 // Live current registration/burn cost for one subnet (#6321) — the dynamic

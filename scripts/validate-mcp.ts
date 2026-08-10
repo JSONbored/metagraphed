@@ -856,6 +856,27 @@ assert.ok(
 // --- Economics + metagraph data tools --------------------------------------
 // Economics serves live-KV-primary with committed-R2 fallback; this cold env has
 // no live KV, so it falls back to the committed economics.json (netuid 7 has a row).
+// #10447/#10475: the two revenue tools. Asserted on the property that matters
+// most for an agent -- a subnet with no observed revenue must report null
+// ratios, never 0, because 127 of 129 subnets are in that state and an agent
+// that reads null as zero misreports the whole network.
+{
+  const rev = await callOk("get_subnet_revenue", { netuid: 7 });
+  const body = rev.revenue as Row;
+  assert.equal(body.netuid, 7);
+  assert.equal(typeof body.provenance, "string");
+  if (body.revenue_usd === null) {
+    assert.equal(body.coverage_ratio, null);
+    assert.equal(body.subsidy_multiple, null);
+  }
+  const coverage = await callOk("list_revenue_coverage", {});
+  assert.equal(
+    (coverage.observed_count as number) <= (coverage.subnet_count as number),
+    true,
+    "the covered set can never exceed the network",
+  );
+}
+
 const econ = await callOk("get_subnet_economics", { netuid: 7 });
 assert.ok(
   econ.economics && Number.isInteger(econ.economics.netuid),

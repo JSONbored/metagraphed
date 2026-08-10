@@ -167,6 +167,8 @@ import {
   handleValidatorEconomicsRanking,
   handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
+  handleSubnetRevenue,
+  handleChainRevenueCoverage,
   handleSubnetBurn,
   handleChainBurn,
   handleChainHolders,
@@ -581,6 +583,8 @@ import {
   VALIDATOR_ECONOMICS_RANKING_PATH,
   SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
+  SUBNET_REVENUE_PATH_PATTERN,
+  CHAIN_REVENUE_COVERAGE_PATH,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
   CROWDLOAN_DETAIL_PATH_PATTERN,
@@ -6395,6 +6399,10 @@ const REGISTRY_ONLY_API_PATHS = new Set([
   "/api/v1/accounts/top-holders",
   "/api/v1/chain/emission-pipeline",
   "/api/v1/chain/deregistration-ranking",
+  // #10447: composed from the curated per-subnet revenue SURFACES against
+  // mainnet emission. The surfaces are registry records, which testnet has
+  // none of, so a testnet-addressed request has no numerator to read.
+  "/api/v1/chain/revenue-coverage",
 ]);
 
 /** Per-subnet leaves with the same two reasons, matched under any netuid. */
@@ -6426,6 +6434,9 @@ const REGISTRY_ONLY_SUBNET_LEAVES = new Set([
   "lease/history",
   "stake-moves",
   "stake-transfers",
+  // The per-subnet half of /api/v1/chain/revenue-coverage, declared above for
+  // the same reason: the numerator comes from registry surface records.
+  "revenue",
 ]);
 
 /** Prefixes covering the registry's parameterised singletons. */
@@ -6614,6 +6625,13 @@ async function dispatchLiveChainRoute(
   const chain = chainNetworkId(network.id);
   const { pathname } = url;
 
+  const revenueMatch = SUBNET_REVENUE_PATH_PATTERN.exec(pathname);
+  if (revenueMatch) {
+    return handleSubnetRevenue(request, env, Number(revenueMatch[1]));
+  }
+  if (pathname === CHAIN_REVENUE_COVERAGE_PATH) {
+    return handleChainRevenueCoverage(request, env);
+  }
   const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(pathname);
   if (recycledMatch) {
     return handleSubnetRecycled(request, env, Number(recycledMatch[1]), chain);

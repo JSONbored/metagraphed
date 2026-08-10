@@ -249,6 +249,12 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Live cumulative TAO recycled for registration on one subnet (#4339/8.4):
   // computed from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/recycled\.json$/,
+  // #10447: one subnet's revenue coverage and the cross-subnet table. Both are
+  // composed live from the economics capture, the subnet's own declarations and
+  // the tao-usd index -- nothing to commit, so R2-only like every other
+  // COMPUTED_LIVE artifact.
+  /^subnets\/(?:\d+|\{netuid\})\/revenue\.json$/,
+  /^chain\/revenue-coverage\.json$/,
   // Live current registration/burn cost for one subnet (#6321): computed
   // from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/burn\.json$/,

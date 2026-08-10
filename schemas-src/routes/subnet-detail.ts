@@ -34,6 +34,9 @@ import {
 } from "../shared.ts";
 import { SurfaceAuthLocationSchema } from "../shared.ts";
 import { SurfaceAuthSchemeSchema } from "../shared.ts";
+// The evidence-class vocabulary is owned by the route that publishes the
+// coverage ratio it gates (#10447). Restating it here is how the two drift.
+import { RevenueProvenanceSchema } from "./revenue-coverage.ts";
 
 const HttpOrWssUrlSchema = z
   .string()
@@ -533,19 +536,10 @@ export const SurfaceRevenueSchema = z
       description:
         "How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.",
     }),
-    provenance: z
-      .enum([
-        "chain-verified",
-        "probe-derived",
-        "operator-attested",
-        "third-party-reported",
-        "proxy-only",
-        "none",
-      ])
-      .meta({
-        description:
-          "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
-      }),
+    provenance: RevenueProvenanceSchema.meta({
+      description:
+        "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
+    }),
     role: z
       .enum(["external-revenue", "usage-proxy", "miner-payout", "not-revenue"])
       .meta({

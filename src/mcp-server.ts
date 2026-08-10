@@ -1587,6 +1587,16 @@ import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
+import {
+  SUBNET_REVENUE_FIELD_SOURCES,
+  loadSubnetRevenue,
+} from "./revenue-load.ts";
+import {
+  GetSubnetRevenueInputSchema,
+  GetSubnetRevenueOutputSchema,
+  ListRevenueCoverageInputSchema,
+  ListRevenueCoverageOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-revenue.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadChainBurn } from "./chain-burn.ts";
 import {
@@ -2112,6 +2122,7 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   list_crowdloans: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_crowdloan: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_recycled: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+
   get_sudo_key: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   // Two live RPC POSTs (mainnet + testnet) on a cache miss.
   get_runtime: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -3047,6 +3058,65 @@ function mcpAccountIdentityHistoryRequest(
   return new Request(
     `https://d/api/v1/accounts/${encodeURIComponent(ss58)}/identity-history${qs ? `?${qs}` : ""}`,
   );
+}
+
+/** The economics blob, or null. Never throws: a harness or a cold cache with
+ * no economics is "no denominator", not a tool failure. */
+async function mcpEconomicsBlob(ctx: McpCtx): Promise<Row | null> {
+  try {
+    return (await loadArtifactData(ctx, "/metagraph/economics.json")) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** One subnet's economics row, or null. */
+async function mcpEconomicsRow(
+  ctx: McpCtx,
+  netuid: number,
+): Promise<Row | null> {
+  const blob = await mcpEconomicsBlob(ctx);
+  const rows = Array.isArray(blob?.subnets)
+    ? (blob.subnets as Array<Record<string, unknown>>)
+    : [];
+  return rows.find((r) => Number(r?.netuid) === netuid) ?? null;
+}
+
+/** A subnet's surface declarations, or null on any read failure --
+ * loadSubnetRevenue reads null as "no declarations" rather than failing. */
+async function mcpSubnetSurfaces(
+  ctx: McpCtx,
+  netuid: number,
+): Promise<Array<Record<string, unknown>> | null> {
+  try {
+    const blob = await loadArtifactData(
+      ctx,
+      `/metagraph/subnets/${netuid}.json`,
+    );
+    const surfaces = blob?.surfaces;
+    return Array.isArray(surfaces)
+      ? (surfaces as Array<Record<string, unknown>>)
+      : null;
+  } catch {
+    // A subnet with no published record is not an error here: the revenue
+    // answer is "nothing declared", which loadSubnetRevenue renders as
+    // provenance "none" rather than a 404. Turning a missing artifact into a
+    // tool error would make the normal case look broken.
+    return null;
+  }
+}
+
+/** Latest TAO/USD, or null. Null prices the emission at 0 USD, which yields
+ * null ratios -- honest, since without a rate there is no USD comparison. */
+async function mcpUsdPerTao(ctx: McpCtx): Promise<number | null> {
+  try {
+    const blob = await loadArtifactData(ctx, "/metagraph/network/tao-usd.json");
+    const latest = blob?.latest as Record<string, unknown> | undefined;
+    const usd = latest?.usd_per_tao;
+    return typeof usd === "number" && Number.isFinite(usd) ? usd : null;
+  } catch {
+    return null;
+  }
 }
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
@@ -8671,6 +8741,90 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_revenue",
+    title: "Get a subnet's external revenue against its emission",
+    description:
+      "Fetch one subnet's external revenue against the TAO the network emits to it: " +
+      "the measured tao_total denominator (SubnetTaoInEmission + SubnetExcessTao) with " +
+      "its alpha-priced and 18% owner-take alternates, the observed revenue, and the two " +
+      "ratios -- coverage_ratio (revenue/emission) and subsidy_multiple (emission/revenue). " +
+      "COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND " +
+      "THAT IS THE NORMAL CASE: two of 128 subnets publish a readable revenue figure, so " +
+      "reporting a null as 0% is a false claim about the other 126. An observed zero is a " +
+      "different fact and reads back as a real 0. Only chain-verified and probe-derived " +
+      "provenance contributes to the headline; operator-attested and third-party-reported " +
+      "figures appear in `sources` and are never summed in. Never quote a figure without " +
+      "its `provenance`. Mirrors GET /api/v1/subnets/{netuid}/revenue.",
+    inputSchema: inputJsonSchema(GetSubnetRevenueInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetRevenueInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const economics = await mcpEconomicsRow(ctx, netuid);
+      return {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        netuid,
+        revenue: loadSubnetRevenue({
+          netuid,
+          window_days: 1,
+          economics,
+          surfaces: await mcpSubnetSurfaces(ctx, netuid),
+          usd_per_tao: await mcpUsdPerTao(ctx),
+        }),
+        field_sources: SUBNET_REVENUE_FIELD_SOURCES,
+      };
+    },
+  },
+  {
+    name: "list_revenue_coverage",
+    title: "List every subnet's revenue coverage",
+    description:
+      "Fetch every subnet's revenue coverage in one response -- the cross-subnet companion " +
+      "to get_subnet_revenue. `observed_count` against `subnet_count` states how much of " +
+      "the network has a readable revenue figure at all, rather than leaving it to be " +
+      "inferred from nulls. Subnets with no observed revenue are INCLUDED with null ratios " +
+      "rather than dropped: omitting them would make the covered set look like the whole " +
+      "network. Mirrors GET /api/v1/chain/revenue-coverage.",
+    inputSchema: inputJsonSchema(ListRevenueCoverageInputSchema),
+    async handler(_args: unknown, ctx: McpCtx) {
+      const blob = await mcpEconomicsBlob(ctx);
+      const rows = Array.isArray(blob?.subnets)
+        ? (blob.subnets as Array<Record<string, unknown>>)
+        : [];
+      const usd = await mcpUsdPerTao(ctx);
+      const subnets = [];
+      for (const row of rows) {
+        const netuid = Number(row?.netuid);
+        if (!Number.isInteger(netuid)) continue;
+        subnets.push(
+          loadSubnetRevenue({
+            netuid,
+            window_days: 1,
+            economics: row,
+            surfaces: await mcpSubnetSurfaces(ctx, netuid),
+            usd_per_tao: usd,
+          }),
+        );
+      }
+      return {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        window_days: 1,
+        observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
+        subnet_count: subnets.length,
+        subnets,
+      };
+    },
+  },
+  {
     name: "get_subnet_recycled",
     title: "Get a subnet's live cumulative recycled TAO",
     description:
@@ -14126,6 +14280,8 @@ const TOOL_OUTPUT_SCHEMAS = {
   ),
   get_subnet_conviction: outputJsonSchema(GetSubnetConvictionOutputSchema),
   get_subnet_recycled: outputJsonSchema(GetSubnetRecycledOutputSchema),
+  get_subnet_revenue: outputJsonSchema(GetSubnetRevenueOutputSchema),
+  list_revenue_coverage: outputJsonSchema(ListRevenueCoverageOutputSchema),
   get_subnet_burn_history: outputJsonSchema(GetSubnetBurnHistoryOutputSchema),
   get_subnet_holders: outputJsonSchema(GetSubnetHoldersOutputSchema),
   get_chain_holders: outputJsonSchema(GetChainHoldersOutputSchema),

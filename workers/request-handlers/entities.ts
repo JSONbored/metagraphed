@@ -394,6 +394,10 @@ import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
+import {
+  SUBNET_REVENUE_FIELD_SOURCES,
+  loadSubnetRevenue,
+} from "../../src/revenue-load.ts";
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
@@ -7078,4 +7082,129 @@ export async function handleExtrinsic(
     },
     "short",
   );
+}
+
+// #10447: one subnet's external revenue against the TAO the network emits to
+// it, and the cross-subnet table.
+//
+// Composed rather than stored: the declarations come from the subnet's own
+// surfaces (#10441), the denominator from the economics capture, the price from
+// the tao-usd index, and the arithmetic from src/revenue-coverage.ts. The
+// probe lane's observations (#10444) fill in `amount_usd` once it has run;
+// until then every readable surface reports null, which is the honest state
+// rather than a zero.
+//
+// NEVER 404s and never 500s on a subnet with no revenue data. 127 of 129 are in
+// that state, so an error there would make the normal case look like a broken
+// endpoint and a caller sweeping the network would see 127 failures instead of
+// 127 answers.
+export async function handleSubnetRevenue(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const { row } = await resolveSubnetEconomicsRow(env, netuid);
+  const revenue = loadSubnetRevenue({
+    netuid,
+    window_days: 1,
+    economics: row,
+    surfaces: await subnetSurfacesFor(env, netuid),
+    usd_per_tao: await usdPerTaoOrNull(env),
+  });
+  return envelopeResponse(
+    request,
+    {
+      data: {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        netuid,
+        revenue,
+        field_sources: SUBNET_REVENUE_FIELD_SOURCES,
+      },
+      meta: { contract_version: contractVersion(env) },
+    },
+    "short",
+  );
+}
+
+/** Every subnet's coverage in one response. Subnets with no observed revenue
+ * are INCLUDED with null ratios rather than dropped: omitting them would make
+ * the covered set look like the whole network. */
+export async function handleChainRevenueCoverage(request: Request, env: Env) {
+  const blob = await resolveEconomicsBlob(env, async () => {
+    const artifact = await readArtifact(env, "/metagraph/economics.json");
+    return artifact.ok
+      ? ((artifact.data as Record<string, unknown> | undefined) ?? null)
+      : null;
+  });
+  const rows = Array.isArray(blob?.subnets)
+    ? (blob.subnets as Array<Record<string, unknown>>)
+    : [];
+  const usd = await usdPerTaoOrNull(env);
+  const subnets = [];
+  for (const row of rows) {
+    const netuid = Number(row?.netuid);
+    if (!Number.isInteger(netuid)) continue;
+    subnets.push(
+      loadSubnetRevenue({
+        netuid,
+        window_days: 1,
+        economics: row,
+        surfaces: await subnetSurfacesFor(env, netuid),
+        usd_per_tao: usd,
+      }),
+    );
+  }
+  return envelopeResponse(
+    request,
+    {
+      data: {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        window_days: 1,
+        observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
+        subnet_count: subnets.length,
+        subnets,
+      },
+      meta: { contract_version: contractVersion(env) },
+    },
+    "short",
+  );
+}
+
+/** The subnet's surfaces from the published registry. Null on any read
+ * failure, which loadSubnetRevenue reads as "no declarations". */
+async function subnetSurfacesFor(
+  env: Env,
+  netuid: number,
+): Promise<Array<Record<string, unknown>> | null> {
+  const artifact = await readArtifact(env, `/metagraph/subnets/${netuid}.json`);
+  if (!artifact.ok) return null;
+  const data = artifact.data as Record<string, unknown> | undefined;
+  const surfaces = data?.surfaces;
+  return Array.isArray(surfaces)
+    ? (surfaces as Array<Record<string, unknown>>)
+    : null;
+}
+
+/** Latest TAO/USD, or null. Null prices the emission at 0 USD, which yields
+ * null ratios -- honest, since without a rate there is no USD comparison. */
+async function usdPerTaoOrNull(env: Env): Promise<number | null> {
+  try {
+    const artifact = await readArtifact(env, "/metagraph/network/tao-usd.json");
+    if (!artifact.ok) return null;
+    const data = artifact.data as Record<string, unknown> | undefined;
+    const latest = data?.latest as Record<string, unknown> | undefined;
+    const usd = latest?.usd_per_tao;
+    return typeof usd === "number" && Number.isFinite(usd) ? usd : null;
+  } catch {
+    return null;
+  }
 }

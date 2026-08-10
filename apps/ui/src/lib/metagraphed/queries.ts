@@ -7017,6 +7017,46 @@ export const subnetStakeQuoteQuery = (
     staleTime: STALE_SHORT,
   });
 
+// #10447: one subnet's external revenue against the TAO the network emits to
+// it. coverage_ratio and subsidy_multiple stay NULL when revenue is not
+// observed — 127 of 129 subnets are in that state, and coercing null to 0 here
+// would render every one of them as "0% covered", which is a false claim about
+// each. An observed 0 is a different value and survives as a real 0.
+export const subnetRevenueQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-revenue", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/revenue`, {
+        signal,
+      });
+      return {
+        data: isRecord(res.data) ? res.data : {},
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<Record<string, unknown>>;
+    },
+    staleTime: STALE_MED,
+  });
+
+// #10447: every subnet's coverage in one response. Subnets with no observed
+// revenue are included with null ratios rather than dropped — omitting them
+// would make the covered set look like the whole network.
+export const chainRevenueCoverageQuery = () =>
+  queryOptions({
+    queryKey: k("chain-revenue-coverage"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/chain/revenue-coverage`, {
+        signal,
+      });
+      return {
+        data: isRecord(res.data) ? res.data : {},
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<Record<string, unknown>>;
+    },
+    staleTime: STALE_MED,
+  });
+
 // #4339/8.4: the live cumulative TAO recycled for registration on one subnet,
 // queried live from the chain (600s KV cache on the backend) — a single
 // snapshot, no pagination. recycled_tao stays null on RPC failure rather than

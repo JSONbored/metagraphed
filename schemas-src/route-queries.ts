@@ -305,6 +305,12 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/network/parameters",
   "/api/v1/network/randomness",
   "/api/v1/subnets/{netuid}/recycled",
+  // #10447: both revenue routes take no query parameters. The window is
+  // fixed at one day for now -- a ?window= that silently changed the
+  // denominator would make two callers quoting "the" ratio mean different
+  // things, so it waits until the series exists to make it meaningful.
+  "/api/v1/subnets/{netuid}/revenue",
+  "/api/v1/chain/revenue-coverage",
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/chain/indexer-lag",
   "/api/v1/chain/burn",

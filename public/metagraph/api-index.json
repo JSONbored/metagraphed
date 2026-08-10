@@ -1193,6 +1193,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-revenue",
+      "path": "/metagraph/subnets/{netuid}/revenue.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetRevenueArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-revenue-coverage",
+      "path": "/metagraph/chain/revenue-coverage.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainRevenueCoverageArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "subnet-recycled",
       "path": "/metagraph/subnets/{netuid}/recycled.json",
       "retirement": null,
@@ -2354,7 +2372,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 164,
+    "mainnet_only_route_count": 166,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9498,6 +9516,38 @@
         "testnet"
       ],
       "path": "/api/v1/network/randomness",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/revenue.json",
+      "cache": "short",
+      "description": "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
+      "id": "subnet-revenue",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/revenue",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/revenue-coverage.json",
+      "cache": "short",
+      "description": "Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped.",
+      "id": "chain-revenue-coverage",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/revenue-coverage",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
