@@ -28,6 +28,11 @@
   "slug": "sn-12",
   "source_repo": "https://github.com/backend-developers-ltd/ComputeHorde",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["openapi", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -123,7 +128,7 @@
       "id": "sn-12-computehorde-collateral-abi",
       "kind": "data-artifact",
       "name": "ComputeHorde collateral contract ABI",
-      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow — a standalone machine-readable reference artifact the registry did not yet capture.",
+      "notes": "Public no-auth machine-readable JSON ABI for ComputeHorde's on-chain collateral smart contract, committed in the official backend-developers-ltd/ComputeHorde source repository (whose README declares \"Subnet 12 of Bittensor\"). The contract carries a NETUID accessor plus the deposit / reclaim / finalizeReclaim / collaterals interface that SN12 miners and validators use for the subnet's economic-security collateral flow \u2014 a standalone machine-readable reference artifact the registry did not yet capture.",
       "probe": {
         "enabled": true,
         "expect": "json",

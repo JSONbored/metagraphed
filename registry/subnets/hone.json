@@ -42,6 +42,11 @@
   "slug": "sn-5",
   "source_repo": "https://github.com/manifold-inc/hone",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -142,7 +147,7 @@
       "id": "sn-5-hone-subnet-api",
       "kind": "subnet-api",
       "name": "Hone API health",
-      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training — a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap.",
+      "notes": "Public no-auth GET returning the Hone (SN5) backend API health as JSON ({\"status\":\"ok\"}). Served on the api.hone.training subdomain of the subnet's registered website hone.training \u2014 a live API host distinct from the website-host /health path noted as 404 in this file. Fills the noted missing public-API-endpoint gap.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -189,7 +194,7 @@
       "id": "sn-5-hone-sandbox-runner-config",
       "kind": "data-artifact",
       "name": "Hone sandbox runner configuration",
-      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance — runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
+      "notes": "Public no-auth machine-readable sandbox_runner/config.yaml from the official SN5 Hone repository (manifold-inc/hone), pinned to an immutable commit. Documents the configuration for a Hone sandbox runner instance \u2014 runner identity, API server settings, hardware profile (GPU/CPU/memory), and per-job execution mode and resource limits used to run and score miner submissions. Static YAML artifact describing the subnet's evaluation runtime.",
       "provider": "hone",
       "public_safe": true,
       "review": {

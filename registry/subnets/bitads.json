@@ -33,7 +33,7 @@
   "docs_url": null,
   "name": "BitAds",
   "netuid": 16,
-  "notes": "Reviewed overlay for SN16 BitAds. The former bitads.ai website/docs domain no longer resolves (DNS lame delegation — the domain's own nameservers refuse the query, re-confirmed this pass), so website_url/docs_url are nulled until a live domain is confirmed. The operator's active code has moved from FirstTensorLabs/BitAds (still 404) to study-service/BitAds.ai (live) -- the source-repo surface was still pointing at the dead URL with probing disabled despite the top-level source_repo field already being correct; fixed to point at the live repo with probing re-enabled. Two more community-submitted surfaces (min-compute, TaoMarketCap snapshot) had no probe config at all (the registry-wide gap tracked in #5932), fixed. Common API/OpenAPI/Swagger paths previously returned website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
+  "notes": "Reviewed overlay for SN16 BitAds. The former bitads.ai website/docs domain no longer resolves (DNS lame delegation \u2014 the domain's own nameservers refuse the query, re-confirmed this pass), so website_url/docs_url are nulled until a live domain is confirmed. The operator's active code has moved from FirstTensorLabs/BitAds (still 404) to study-service/BitAds.ai (live) -- the source-repo surface was still pointing at the dead URL with probing disabled despite the top-level source_repo field already being correct; fixed to point at the live repo with probing re-enabled. Two more community-submitted surfaces (min-compute, TaoMarketCap snapshot) had no probe config at all (the registry-wide gap tracked in #5932), fixed. Common API/OpenAPI/Swagger paths previously returned website HTML instead of machine-readable API/schema responses, so they are excluded as content mismatches.",
   "schema_version": 1,
   "slug": "sn-16",
   "social": {
@@ -41,6 +41,11 @@
   },
   "source_repo": "https://github.com/study-service/BitAds.ai",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["source-repo"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -48,7 +53,7 @@
       "id": "sn-16-bitads-website",
       "kind": "website",
       "name": "BitAds website",
-      "notes": "Official BitAds website (bitads.ai domain currently unresolvable). Not probe-enabled because bitads.ai currently fails to resolve (DNS lame delegation — the domain's nameservers refuse queries); marked degraded until the domain recovers or a replacement is confirmed.",
+      "notes": "Official BitAds website (bitads.ai domain currently unresolvable). Not probe-enabled because bitads.ai currently fails to resolve (DNS lame delegation \u2014 the domain's nameservers refuse queries); marked degraded until the domain recovers or a replacement is confirmed.",
       "probe": {
         "enabled": false,
         "expect": "html",
@@ -103,7 +108,7 @@
       "id": "sn-16-bitads-min-compute",
       "kind": "data-artifact",
       "name": "BitAds minimum compute requirements",
-      "notes": "Public no-auth machine-readable min_compute.yml specifying the minimum and recommended hardware (CPU/RAM/storage/OS and network bandwidth) to run an SN16 BitAds miner or validator, published in the official BitAds source repository study-service/BitAds.ai — whose README states 'netuid 16' and whose GitHub homepage is the registered bitads.ai website. A standalone machine-readable reference artifact the registry did not yet capture.",
+      "notes": "Public no-auth machine-readable min_compute.yml specifying the minimum and recommended hardware (CPU/RAM/storage/OS and network bandwidth) to run an SN16 BitAds miner or validator, published in the official BitAds source repository study-service/BitAds.ai \u2014 whose README states 'netuid 16' and whose GitHub homepage is the registered bitads.ai website. A standalone machine-readable reference artifact the registry did not yet capture.",
       "probe": {
         "enabled": true,
         "expect": "any",

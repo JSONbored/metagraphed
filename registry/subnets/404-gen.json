@@ -23,7 +23,7 @@
   },
   "dashboard_url": null,
   "docs_url": null,
-  "name": "404—GEN",
+  "name": "404\u2014GEN",
   "netuid": 17,
   "notes": "First maintainer-reviewed pass for SN17 (previously unreviewed, categories empty, no website/source-repo surfaces despite website_url/source_repo already being set). 404-GEN is a text/image-to-3D generation competition (\"winner-stays-in\" format): miners submit 3D generation solutions, validators run VLM-judged pairwise duels and Docker-image verification. Confirmed live: the official website, source repository, and the public competition-state repository (404-Repo/404-active-competition, distinct from the code repo, updated continuously with the current round/stage and leader history) that the source repo's own README describes as the auditable record of every competition decision. Added website + source-repo surfaces (missing despite the top-level fields already being set) and two new data-artifacts from the live competition-state repo.",
   "schema_version": 1,
@@ -33,6 +33,11 @@
   },
   "source_repo": "https://github.com/404-Repo/404-gen-subnet",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -117,7 +122,7 @@
       "authority": "community",
       "id": "sn-17-404-gen-sdk",
       "kind": "sdk",
-      "name": "404—GEN Blender add-on",
+      "name": "404\u2014GEN Blender add-on",
       "notes": "Official 404-Repo Blender add-on to generate SN17 3D assets directly in Blender; its README links the canonical 404-gen-subnet project repo.",
       "probe": {
         "enabled": true,
@@ -142,7 +147,7 @@
       "authority": "community",
       "id": "sn-17-404-gen-data-artifact",
       "kind": "data-artifact",
-      "name": "404—GEN Mini 3D dataset",
+      "name": "404\u2014GEN Mini 3D dataset",
       "notes": "Official 404-Gen HuggingFace dataset of 20k+ text-to-3D assets generated on SN17 (MIT-licensed, public); the 404-Gen org profile used as the source declares it operates Subnet 17 and links the on-chain 404.xyz website.",
       "probe": {
         "enabled": true,
@@ -164,7 +169,7 @@
       "authority": "community",
       "id": "sn-17-404-gen-health",
       "kind": "subnet-api",
-      "name": "404—GEN portal health",
+      "name": "404\u2014GEN portal health",
       "notes": "Public no-auth GET /api/health on gen.404.xyz returning portal liveness JSON (observed: {\"status\":\"ok\",\"time\":\"...\"}). Same host where users obtain gateway API keys (gen.404.xyz/account); gateway client docs in 404-Repo/gateway-rs reference this portal.",
       "probe": {
         "enabled": true,

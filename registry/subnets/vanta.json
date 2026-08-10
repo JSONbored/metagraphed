@@ -42,6 +42,11 @@
   },
   "source_repo": "https://github.com/taoshidev/vanta-network",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -213,7 +218,7 @@
       "id": "sn-8-vanta-llms-txt",
       "kind": "data-artifact",
       "name": "Vanta Network llms.txt index",
-      "notes": "Public no-auth machine-readable llms.txt index of SN8 Vanta Network, served at the registered official website www.vantanetwork.io. The document self-identifies as SN8 — its header states Vanta Network is 'built on Bittensor Subnet 8'. An agent-consumable Markdown map of the network (what it is, how performance is evaluated on-chain, key links), distinct from the HTML website/docs surfaces already registered.",
+      "notes": "Public no-auth machine-readable llms.txt index of SN8 Vanta Network, served at the registered official website www.vantanetwork.io. The document self-identifies as SN8 \u2014 its header states Vanta Network is 'built on Bittensor Subnet 8'. An agent-consumable Markdown map of the network (what it is, how performance is evaluated on-chain, key links), distinct from the HTML website/docs surfaces already registered.",
       "provider": "vanta",
       "public_safe": true,
       "review": {
