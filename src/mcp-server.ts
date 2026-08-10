@@ -1306,7 +1306,6 @@ import {
   INGESTED_EVENT_KINDS,
   buildAccountSummary,
   buildAccountEvents,
-  buildSubnetEvents,
   buildAccountSubnets,
   loadAccountHistory,
   buildAccountTransfers,
@@ -5104,14 +5103,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
               offset: 0,
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          ).then(
-            (data) =>
-              data ??
-              buildSubnetEvents([], netuid, {
-                limit: recentEventsLimit,
-                offset: 0,
-                nextCursor: null,
-              }),
+            // THE COLD RUNG, via the composer that owns the ladder (#10320).
+            // This card fell straight from the retired tier to
+            // `buildSubnetEvents([])`, so the snapshot served
+            // `event_count: 0` while its own standalone twin served ten rows
+            // for the same subnet in the same minute -- verified live on SN64,
+            // 2026-08-09. A card was wired and its embedded copy was not,
+            // which is precisely the class the widened tier-cascade gate now
+            // catches on all three surfaces.
+          ).then((data) =>
+            answerSubnetEvents(ctx.env, netuid, data as Row | null, {
+              limit: recentEventsLimit,
+              offset: 0,
+            }),
           ),
         ]);
       // list_subnet_validators' own limit post-filter (the loader already
