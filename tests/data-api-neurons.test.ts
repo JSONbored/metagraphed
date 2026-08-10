@@ -13,12 +13,11 @@
 // executing, the read dispatcher's route matching, and the dialect of every
 // query on the way.
 import assert from "node:assert/strict";
-import { DatabaseSync } from "node:sqlite";
+import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test, vi } from "vitest";
+import { beforeAll, beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres now (#10179), reached through `new Client(...)` inside
@@ -34,60 +33,58 @@ vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
-const NEURONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "tests/fixtures/sqlite-schema/0007_neurons.sql"),
-  "utf8",
-);
-const NEURONS_READ_INDEXES = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0008_neurons_read_indexes.sql",
-  ),
-  "utf8",
-);
-// subnet_snapshots (the alpha-price join target) lives in the observations
-// migration -- load it too, exactly as the real database carries both.
-const OBSERVATIONS_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0002_observations.sql",
-  ),
-  "utf8",
-);
-// validator_nominator_counts (the nominator_count join target, #9146) -- the
-// same reason as subnet_snapshots above: the real database carries it, and the
-// leaderboard's read joins against it.
-const NOMINATOR_COUNTS_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0012_validator_nominator_counts.sql",
-  ),
-  "utf8",
-);
-// subnet_hyperparams -- the tempo join target apy_estimate needs (#9342). Same
-// reason as the two above: the real database carries it and the leaderboard's
-// read joins against it.
-const HYPERPARAMS_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0009_hyperparams_identity.sql",
-  ),
-  "utf8",
-);
-// neurons_passes (#9812) -- the completeness contract this lane gained after
-// its producer started chunking. Loaded for the same reason as the tables
-// above: the real database carries it, and the write batches the tally
-// alongside the rows it describes, so a suite without it would exercise a
-// write path that cannot exist in production.
-const NEURONS_PASSES_SCHEMA = fs.readFileSync(
-  path.join(
-    process.cwd(),
-    "tests/fixtures/sqlite-schema/0030_neurons_passes.sql",
-  ),
-  "utf8",
-);
+/**
+ * The REAL Neon DDL for every table this route family touches (#10328).
+ *
+ * Six SQLite fixtures became four migrations, and the collapse is the point:
+ * the fixture set was a hand-curated subset, so "which tables does this lane
+ * need" was a judgement made once and never rechecked. On the real files a
+ * lane either finds its table or it does not.
+ *
+ * coerceNeuronSyncRow turns three flag columns into real booleans for Postgres
+ * BOOLEAN -- a bind node:sqlite refuses outright -- and the prune emits
+ * `unnest($1::int[], $2::bigint[])`, an ARRAY-typed cast the SQLite
+ * translation deleted before the engine ever saw it.
+ */
+const MIGRATIONS = [
+  "migrations/neon/0001_side_tables.sql",
+  "migrations/neon/0002_probe_observations.sql",
+  "migrations/neon/0005_remaining_d1_tables.sql",
+  "migrations/neon/0007_hand_created_tables.sql",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
-let db: InstanceType<typeof DatabaseSync>;
+/** Tables a test may write, emptied between tests. */
+const SEEDED_TABLES = [
+  "neurons",
+  "neuron_daily",
+  "account_position_daily",
+  "neurons_passes",
+  "validator_nominator_counts",
+  "subnet_hyperparams",
+  "subnet_snapshots",
+  "surface_checks",
+  "surface_status",
+];
+
+let db: PGlite;
+
+/**
+ * Run a seed statement written with `?` placeholders.
+ *
+ * The fixtures below were written against node:sqlite and read clearly as they
+ * are; rewriting each one to `$n` by hand would be a large diff that changes
+ * nothing about what is being seeded. Postgres only accepts `$n`, so the
+ * rewrite happens here -- the same conversion `toPositionalPlaceholders` does
+ * for production SQL, kept local because these are fixtures rather than code
+ * under test.
+ */
+const seed = async (sql: string, params: unknown[] = []) => {
+  let i = 0;
+  await db.query(
+    sql.replace(/\?/g, () => `$${++i}`),
+    params as never[],
+  );
+};
 
 const SYNC_SECRET = "test-neurons-sync-secret";
 const BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
@@ -169,13 +166,12 @@ const NEURON_DB_COLUMNS =
   "validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, " +
   "registered_at_block, is_immunity_period, axon, block_number, captured_at, take";
 
-function insertNeuron(overrides: Row = {}) {
+async function insertNeuron(overrides: Row = {}) {
   const row = syncRow(overrides);
-  db.prepare(
+  await seed(
     `INSERT INTO neurons (${NEURON_DB_COLUMNS})
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    ...([
+    [
       row.netuid,
       row.uid,
       row.hotkey,
@@ -196,22 +192,21 @@ function insertNeuron(overrides: Row = {}) {
       row.block_number,
       row.captured_at,
       row.take,
-    ] as never[]),
+    ],
   );
 }
 
-function insertDaily(overrides: Row = {}) {
+async function insertDaily(overrides: Row = {}) {
   const row: Row = {
     snapshot_date: dayAgo(1),
     updated_at: Date.now(),
     ...syncRow(),
     ...overrides,
   };
-  db.prepare(
+  await seed(
     `INSERT INTO neuron_daily (snapshot_date, updated_at, ${NEURON_DB_COLUMNS})
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    ...([
+    [
       row.snapshot_date,
       row.updated_at,
       row.netuid,
@@ -234,7 +229,7 @@ function insertDaily(overrides: Row = {}) {
       row.block_number,
       row.captured_at,
       row.take,
-    ] as never[]),
+    ],
   );
 }
 
@@ -248,42 +243,62 @@ function insertDaily(overrides: Row = {}) {
  * value so any code that regresses to reading it fails loudly instead of passing on a
  * coincidence.
  */
-function insertPrice(netuid: number, snapshotDate: string, price: number) {
+async function insertPrice(
+  netuid: number,
+  snapshotDate: string,
+  price: number,
+) {
   const alphaInPool = 1_000_000;
-  db.prepare(
+  await seed(
     `INSERT INTO subnet_snapshots
        (netuid, snapshot_date, alpha_price_tao, tao_in_pool_tao, alpha_in_pool)
      VALUES (?, ?, ?, ?, ?)`,
-  ).run(netuid, snapshotDate, price * 2, price * alphaInPool, alphaInPool);
+    [netuid, snapshotDate, price * 2, price * alphaInPool, alphaInPool],
+  );
 }
 
-const one = (sql: string, ...params: unknown[]) =>
-  db.prepare(sql).get(...(params as never[])) as Row;
-const count = (table: string) =>
-  (db.prepare(`SELECT COUNT(*) n FROM ${table}`).get() as { n: number }).n;
+const one = async (sql: string, ...params: unknown[]) => {
+  let i = 0;
+  return (
+    await db.query<Row>(
+      sql.replace(/\?/g, () => `$${++i}`),
+      params as never[],
+    )
+  ).rows[0] as Row;
+};
+const count = async (table: string) =>
+  Number(
+    (await db.query<{ n: number }>(`SELECT COUNT(*) n FROM ${table}`)).rows[0]!
+      .n,
+  );
 
-beforeEach(() => {
-  db = new DatabaseSync(":memory:");
-  db.exec(NEURONS_SCHEMA);
-  db.exec(NEURONS_READ_INDEXES);
-  db.exec(OBSERVATIONS_SCHEMA);
-  db.exec(NOMINATOR_COUNTS_SCHEMA);
-  db.exec(HYPERPARAMS_SCHEMA);
-  db.exec(NEURONS_PASSES_SCHEMA);
+// ONE instance for the file, TRUNCATE between tests. Several tests DROP a
+// table on purpose to reach a decline path, so beforeEach re-applies the
+// migrations first -- every statement is IF NOT EXISTS, a no-op otherwise.
+beforeAll(async () => {
+  db = new PGlite();
+  for (const sql of MIGRATIONS) await db.exec(sql);
+});
+
+beforeEach(async () => {
+  for (const sql of MIGRATIONS) await db.exec(sql);
+  await db.exec(`TRUNCATE ${SEEDED_TABLES.join(", ")}`);
   pg.control.queries.length = 0;
   pg.control.failNext = null;
-  // Wrapped rather than handed over raw: coerceNeuronSyncRow turns the three
-  // flag columns into real booleans for Postgres BOOLEAN, and node:sqlite
-  // refuses a boolean bind outright. See tests/helpers/pg-sqlite.ts.
-  pg.control.db = sqliteBackedPg(db);
+  // Handed over VERBATIM: real booleans to real BOOLEAN columns, and the
+  // prune's `unnest($1::int[], $2::bigint[])` judged by the engine that runs
+  // it rather than by a translation that stripped its casts.
+  pg.control.postgres = async (text, values) =>
+    (await db.query(text, values as never[])).rows;
 });
 
 // netuid -> tempo(blocks), the row apy_estimate annualizes against. Values are
 // the real chain ones (SubtensorModule::Tempo): root 100, netuid 1 is 99.
-function insertTempo(netuid: number, tempo: number | null) {
-  db.prepare(
+async function insertTempo(netuid: number, tempo: number | null) {
+  await seed(
     "INSERT INTO subnet_hyperparams (netuid, tempo, captured_at) VALUES (?, ?, ?)",
-  ).run(netuid, tempo as never, Date.now());
+    [netuid, tempo as never, Date.now()],
+  );
 }
 
 // --- POST /api/v1/internal/neurons-sync: the D1 write lane -------------------
@@ -318,16 +333,23 @@ test("neurons-sync writes neurons, neuron_daily, and account_position_daily from
   // question nobody could answer while Neon was frozen behind a mirror.
   assert.deepEqual(body.stores, ["neon"]);
 
-  assert.equal(count("neurons"), 3);
-  assert.equal(count("neuron_daily"), 3);
-  assert.equal(count("account_position_daily"), 2);
-  const stored = one("SELECT * FROM neurons WHERE netuid = 7 AND uid = 0");
+  assert.equal(await count("neurons"), 3);
+  assert.equal(await count("neuron_daily"), 3);
+  assert.equal(await count("account_position_daily"), 2);
+  const stored = await one(
+    "SELECT * FROM neurons WHERE netuid = 7 AND uid = 0",
+  );
   assert.equal(stored.hotkey, "5Hot7-0");
-  assert.equal(stored.validator_permit, 1, "boolean stored as INTEGER 1");
+  // A REAL BOOLEAN. This read `1, "boolean stored as INTEGER 1"` -- which was
+  // node:sqlite's coercion showing through the double, not the store: the
+  // column is BOOLEAN in migrations/neon/0007.
+  assert.equal(stored.validator_permit, true);
   assert.equal(stored.take, 0.18);
-  const daily = one("SELECT * FROM neuron_daily WHERE netuid = 7 AND uid = 0");
+  const daily = await one(
+    "SELECT * FROM neuron_daily WHERE netuid = 7 AND uid = 0",
+  );
   assert.equal(daily.snapshot_date, "2026-07-15", "derived from captured_at");
-  const position = one(
+  const position = await one(
     "SELECT * FROM account_position_daily WHERE account = '5Hot7-0'",
   );
   assert.equal(position.netuid, 7);
@@ -343,7 +365,8 @@ test("neurons-sync upsert: a newer capture replaces the row, an older one is dis
   ]);
   assert.equal(stale.status, 200);
   assert.equal(
-    one("SELECT stake_tao FROM neurons WHERE netuid = 7 AND uid = 0").stake_tao,
+    (await one("SELECT stake_tao FROM neurons WHERE netuid = 7 AND uid = 0"))
+      .stake_tao,
     100,
     "older capture must not clobber",
   );
@@ -352,7 +375,8 @@ test("neurons-sync upsert: a newer capture replaces the row, an older one is dis
   ]);
   assert.equal(fresh.status, 200);
   assert.equal(
-    one("SELECT stake_tao FROM neurons WHERE netuid = 7 AND uid = 0").stake_tao,
+    (await one("SELECT stake_tao FROM neurons WHERE netuid = 7 AND uid = 0"))
+      .stake_tao,
     200,
   );
 });
@@ -381,9 +405,9 @@ test("a payload that D1 had to split into chunks now travels as one statement", 
   );
   const res = await postSync(rows);
   assert.equal(res.status, 200);
-  assert.equal(count("neurons"), 100);
-  assert.equal(count("neuron_daily"), 100);
-  assert.equal(count("account_position_daily"), 100);
+  assert.equal(await count("neurons"), 100);
+  assert.equal(await count("neuron_daily"), 100);
+  assert.equal(await count("account_position_daily"), 100);
   assert.equal(
     pg.control.queries.filter((q) => q.text.startsWith("INSERT INTO neurons "))
       .length,
@@ -412,7 +436,11 @@ test("neurons-sync 503s unless ALL THREE tables are declared Neon's", async () =
   assert.deepEqual(await res.json(), {
     error: "no store bound for this route",
   });
-  assert.equal(count("neurons"), 0, "refused before anything was written");
+  assert.equal(
+    await count("neurons"),
+    0,
+    "refused before anything was written",
+  );
 });
 
 test("a failed table is a 502, and the tables written before it are NOT rolled back", async () => {
@@ -427,12 +455,16 @@ test("a failed table is a 502, and the tables written before it are NOT rolled b
   // converges on the same state rather than double-counting. What must NOT
   // happen is the request reporting ok -- the producer would advance past a
   // snapshot two of whose three tables are missing.
-  db.exec("DROP TABLE account_position_daily");
+  await db.exec("DROP TABLE account_position_daily");
   const res = await postSync([syncRow()]);
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: "neon write failed" });
-  assert.equal(count("neurons"), 1, "written before the failure, and kept");
-  assert.equal(count("neuron_daily"), 1);
+  assert.equal(
+    await count("neurons"),
+    1,
+    "written before the failure, and kept",
+  );
+  assert.equal(await count("neuron_daily"), 1);
 });
 
 // --- POST /api/v1/internal/backfill-neuron-daily: the D1 write lane ----------
@@ -460,10 +492,10 @@ test("backfill-neuron-daily writes neuron_daily + account_position_daily and nev
   assert.equal(body.neuron_daily_written, 2);
   assert.equal(body.account_position_daily_written, 1);
   assert.deepEqual(body.stores, ["neon"]);
-  assert.equal(count("neuron_daily"), 2);
-  assert.equal(count("account_position_daily"), 1);
+  assert.equal(await count("neuron_daily"), 2);
+  assert.equal(await count("account_position_daily"), 1);
   // The pre-existing live row survived: no prune, no neurons write.
-  assert.equal(count("neurons"), 1);
+  assert.equal(await count("neurons"), 1);
 });
 
 // "backfill-neuron-daily is idempotent under the captured_at guard" was here.
@@ -503,7 +535,7 @@ test("backfill-neuron-daily 503s with no store -- it writes, so it needs one", a
 test("backfill-neuron-daily maps a write failure to a 502", async () => {
   // The operator replaying a year of history is precisely the caller who must
   // not be told `ok` for rows that landed nowhere.
-  db.exec("DROP TABLE neuron_daily");
+  await db.exec("DROP TABLE neuron_daily");
   const res = await postBackfill([syncRow()]);
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: "neon write failed" });
@@ -555,7 +587,7 @@ test("a neurons route declines unless every table it reads is read-enabled", asy
 });
 
 test("a failing read maps to the dispatcher's opaque 502, never a leaked DB error", async () => {
-  db.exec("DROP TABLE neurons");
+  await db.exec("DROP TABLE neurons");
   const res = await call(req("/api/v1/subnets/7/metagraph"));
   assert.equal(res.status, 502);
   assert.deepEqual(await res.json(), { error: "data query failed" });
@@ -620,11 +652,12 @@ test("GET /api/v1/subnets/:netuid/validators ranks by stake with the uid tiebrea
 // Regression pin for the post-Postgres blackout: the dispatcher used to pass
 // identityByColdkey: new Map(), so every operator name vanished when the
 // Postgres route (which did the join) was removed.
-function insertIdentity(account: string, name: string) {
-  db.prepare(
+async function insertIdentity(account: string, name: string) {
+  await seed(
     `INSERT INTO account_identity (account, name, url, github, image, discord, description, additional, captured_at)
      VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?)`,
-  ).run(account, name, Date.now());
+    [account, name, Date.now()],
+  );
 }
 
 test("GET /api/v1/validators serves the leaderboard from D1 with real prices and realized-return baselines", async () => {
@@ -742,10 +775,15 @@ const FRESH_SCAN = () => Date.now();
 /** Far outside it -- absence then means "not looked recently", not "zero". */
 const STALE_SCAN = 1_000;
 
-function insertNominatorCount(hotkey: string, count: number, at = STALE_SCAN) {
-  db.prepare(
+async function insertNominatorCount(
+  hotkey: string,
+  count: number,
+  at = STALE_SCAN,
+) {
+  await seed(
     "INSERT INTO validator_nominator_counts (hotkey, nominator_count, captured_at) VALUES (?, ?, ?)",
-  ).run(hotkey, count, at);
+    [hotkey, count, at],
+  );
 }
 
 test("GET /api/v1/validators fills nominator_count from D1; a STALE scan leaves the rest null", async () => {
@@ -932,7 +970,7 @@ test("a failing counts read degrades to null rather than failing the request", a
     stake_tao: 100,
     validator_permit: 1,
   });
-  db.exec("DROP TABLE validator_nominator_counts");
+  await db.exec("DROP TABLE validator_nominator_counts");
 
   const list = await call(req("/api/v1/validators"));
   assert.equal(list.status, 200, "the leaderboard still serves");
@@ -1497,32 +1535,29 @@ test("GET /api/v1/subnets/movers with a single stored day stays empty (not compa
 // --- account_position_daily reader -------------------------------------------
 
 test("GET /api/v1/accounts/:ss58/subnets/:netuid/history reads account_position_daily with the window bound", async () => {
-  const insertPosition = (snapshotDate: string, stake: number) =>
-    db
-      .prepare(
-        `INSERT INTO account_position_daily
+  const insertPosition = async (snapshotDate: string, stake: number) =>
+    seed(
+      `INSERT INTO account_position_daily
            (account, netuid, snapshot_date, uid, coldkey, active, validator_permit, rank, trust, incentive, dividends, stake_tao, emission_tao, captured_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        ...([
-          "5Acct",
-          7,
-          snapshotDate,
-          0,
-          "5Cold",
-          1,
-          1,
-          0.5,
-          0.9,
-          0.1,
-          0.2,
-          stake,
-          1.5,
-          CAPTURED_AT,
-          CAPTURED_AT,
-        ] as never[]),
-      );
+      [
+        "5Acct",
+        7,
+        snapshotDate,
+        0,
+        "5Cold",
+        1,
+        1,
+        0.5,
+        0.9,
+        0.1,
+        0.2,
+        stake,
+        1.5,
+        CAPTURED_AT,
+        CAPTURED_AT,
+      ],
+    );
   insertPosition(dayAgo(1), 100);
   insertPosition(dayAgo(60), 50);
   const res = await call(req("/api/v1/accounts/5Acct/subnets/7/history"));
@@ -1569,9 +1604,10 @@ test("a NULL alpha_price_tao snapshot and a NULL-hotkey daily row are carried an
     validator_permit: 1,
   });
   // Latest snapshot for netuid 7 carries an explicitly NULL price.
-  db.prepare(
+  await seed(
     "INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_price_tao, tao_in_pool_tao, alpha_in_pool) VALUES (7, ?, NULL, NULL, NULL)",
-  ).run(dayAgo(0));
+    [dayAgo(0)],
+  );
   // A permitted daily row with no hotkey: the baseline fold must skip it.
   insertDaily({
     netuid: 7,
@@ -1622,7 +1658,7 @@ test("movers normalizes a bogus window plus explicit sort/limit on an empty stor
 });
 
 test("a missing subnet_snapshots table degrades prices and baselines, never the validators route", async () => {
-  db.exec("DROP TABLE subnet_snapshots");
+  await db.exec("DROP TABLE subnet_snapshots");
   insertNeuron({
     netuid: 7,
     uid: 0,
@@ -1819,7 +1855,7 @@ test("a missing subnet_hyperparams table degrades apy_estimate, never the valida
   // Same degrade contract as the subnet_snapshots case above: the tempo read is
   // an ENRICHMENT, so losing it costs the APY opinion and nothing else. A throw
   // that escaped here would take down the whole leaderboard over a side table.
-  db.exec("DROP TABLE subnet_hyperparams");
+  await db.exec("DROP TABLE subnet_hyperparams");
   insertPrice(1, dayAgo(0), 0.5);
   insertNeuron({
     netuid: 1,
@@ -1908,11 +1944,11 @@ test("a declared pass_total rides the message and tallies to COMPLETE", async ()
     }),
   );
   assert.equal(first.status, 200);
-  let pass = db
-    .prepare(
+  let pass = (
+    await db.query<Row>(
       "SELECT expected_rows, received_rows, completed_at FROM neurons_passes",
     )
-    .all() as unknown as Row[];
+  ).rows;
   assert.equal(pass.length, 1);
   assert.equal(pass[0]!.expected_rows, 2);
   assert.equal(pass[0]!.received_rows, 1);
@@ -1930,11 +1966,11 @@ test("a declared pass_total rides the message and tallies to COMPLETE", async ()
     }),
   );
   assert.equal(second.status, 200);
-  pass = db
-    .prepare(
+  pass = (
+    await db.query<Row>(
       "SELECT expected_rows, received_rows, completed_at FROM neurons_passes",
     )
-    .all() as unknown as Row[];
+  ).rows;
   assert.equal(pass.length, 1, "one row per pass, keyed on its captured_at");
   assert.equal(pass[0]!.received_rows, 2);
   assert.ok(
@@ -1956,7 +1992,7 @@ test("a pass_total smaller than the rows sent is refused", async () => {
   );
   assert.equal(res.status, 400);
   assert.equal(
-    (db.prepare("SELECT COUNT(*) AS n FROM neurons_passes").get() as Row).n,
+    ((await one("SELECT COUNT(*) AS n FROM neurons_passes")) as Row).n,
     0,
   );
 });
@@ -1982,7 +2018,7 @@ test("the queue consumer writes a neurons message and acks it", async () => {
     syncRow({ uid: 0, hotkey: "5Hot7-0", captured_at: CAPTURED_AT }),
     syncRow({ uid: 1, hotkey: "5Hot7-1", captured_at: CAPTURED_AT }),
   ]);
-  assert.equal(count("neurons"), 2);
+  assert.equal(await count("neurons"), 2);
 
   // A later capture naming only uid 0 must retire uid 1 -- it is the shape of a
   // deregistration, and the reason a partial message could never be applied.
@@ -2014,12 +2050,12 @@ test("the queue consumer writes a neurons message and acks it", async () => {
 
   assert.deepEqual(acked, ["ack"], "a written message is acked, never retried");
   assert.equal(
-    one("SELECT * FROM neurons WHERE uid = 0").captured_at,
+    (await one("SELECT * FROM neurons WHERE uid = 0")).captured_at,
     CAPTURED_AT + 60_000,
     "the later capture was applied through the guarded upsert",
   );
   // The derived tables are redone by the consumer from the message's rows.
-  assert.equal(count("neuron_daily") > 0, true);
+  assert.equal((await count("neuron_daily")) > 0, true);
 });
 
 test("the consumer refuses a neurons message that does not claim key-completeness", async () => {
@@ -2051,5 +2087,5 @@ test("the consumer refuses a neurons message that does not claim key-completenes
     { waitUntil: (p: Promise<unknown>) => void p } as never,
   );
   assert.deepEqual(acked, ["ack"], "unparseable is acked, not retried");
-  assert.equal(count("neurons"), 2, "nothing written, nothing pruned");
+  assert.equal(await count("neurons"), 2, "nothing written, nothing pruned");
 });
