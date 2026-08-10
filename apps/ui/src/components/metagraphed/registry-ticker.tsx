@@ -47,9 +47,10 @@ export function RegistryTicker() {
       void queryClient.invalidateQueries({ queryKey: blocksQueryOptions.queryKey });
     },
   });
-  // Same query key/staleTime as use-tao-price.ts's shared hook so this
-  // global ticker's fetch dedupes against /subnets' own market-strip query
-  // instead of hitting the (rate-limited, external) CoinPaprika API twice.
+  // Same query key/staleTime as use-tao-price.ts's shared hook so this global
+  // ticker's fetch dedupes against /subnets' own market-strip query rather than
+  // calling /api/v1/network/tao-usd twice on every page. (The external
+  // CoinPaprika call this used to dedupe is gone -- see market.functions.ts.)
   const marketQ = useQuery({
     queryKey: ["tao-market"],
     queryFn: () => getTaoMarket(),
@@ -129,8 +130,13 @@ export function RegistryTicker() {
                 <span className="text-ink-strong tabular-nums">{formatUsd(market?.price)}</span>
               </span>
             </TooltipTrigger>
+            {/* #10300: this said "CoinPaprika" after the source had already
+                moved to our own index, crediting a third party for a figure we
+                compute. The provenance a tooltip states is the only provenance
+                a reader gets, so it names the real basis. */}
             <TooltipContent side="bottom" className="mg-type-caption">
-              Current TAO price · CoinPaprika
+              Current TAO price · our own liquidity-weighted median across qualifying wTAO/WETH
+              pools, not a venue ticker
             </TooltipContent>
           </Tooltip>
 
