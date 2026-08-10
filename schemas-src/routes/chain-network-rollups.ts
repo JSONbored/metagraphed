@@ -21,7 +21,7 @@ import {
   EventStreamDegradedSchema,
 } from "./event-stream-honesty.ts";
 
-const IntensityDistributionSchema = z
+export const IntensityDistributionSchema = z
   .object({
     count: z.int().min(0),
     mean: z.number().min(0),
@@ -34,7 +34,7 @@ const IntensityDistributionSchema = z
   })
   .strict()
   .describe(
-    "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
+    "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
   );
 
 export const ChainAxonRemovalsArtifactSchema = z
@@ -59,7 +59,9 @@ export const ChainAxonRemovalsArtifactSchema = z
       .describe(
         "Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -125,7 +127,9 @@ export const ChainDeregistrationsArtifactSchema = z
       .describe(
         "Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -175,7 +179,9 @@ export const ChainPrometheusArtifactSchema = z
       .describe(
         "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -223,7 +229,9 @@ export const ChainRegistrationsArtifactSchema = z
       .describe(
         "Network-wide registration rollup: every subnet with NeuronRegistered events in the window, combined. distinct_registrants counts a hotkey once even when it registers on several subnets, so it is NOT the sum of the per-subnet counts.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -268,7 +276,9 @@ export const ChainServingArtifactSchema = z
       .describe(
         "Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -312,7 +322,9 @@ export const ChainStakeMovesArtifactSchema = z
       .describe(
         "Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -358,7 +370,9 @@ export const ChainStakeTransfersArtifactSchema = z
       .describe(
         "Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window.",
+    ),
     subnets: z.array(
       z
         .object({
@@ -406,7 +420,9 @@ export const ChainWeightsArtifactSchema = z
       .describe(
         "Network-wide weight-setting rollup: every subnet that set weights in the window, combined.",
       ),
-    intensity_distribution: IntensityDistributionSchema.nullable(),
+    intensity_distribution: IntensityDistributionSchema.nullable().describe(
+      "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window.",
+    ),
     subnets: z.array(
       z
         .object({

@@ -9,6 +9,7 @@
 // Query params from the same OpenAPI operation's `parameters` array (the
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
+import { SocialLinksSchema } from "../shared.ts";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
 import {
   BittensorNetworkSchema,
@@ -19,8 +20,6 @@ import {
   SubnetTypeSchema,
 } from "../shared.ts";
 import { NATIVE_NAME_QUALITY_VALUES } from "../shared.ts";
-
-const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 
 export const SubnetIndexEntrySchema = z
   .object({
@@ -96,16 +95,7 @@ export const SubnetIndexEntrySchema = z
     registered_at_block: z.int().min(0).optional(),
     registry_observed_count: z.int().min(0).optional(),
     slug: z.string(),
-    social: z
-      .object({
-        reddit: HttpUrlSchema.optional(),
-        telegram: HttpUrlSchema.optional(),
-        x: HttpUrlSchema.optional(),
-        youtube: HttpUrlSchema.optional(),
-      })
-      .strict()
-      .nullable()
-      .optional(),
+    social: SocialLinksSchema.nullable().optional(),
     source_repo: z.url().nullable().optional(),
     status: SubnetStatusSchema,
     subnet_type: SubnetTypeSchema,

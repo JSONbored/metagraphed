@@ -38,6 +38,10 @@
 // NOT in LIVE_OVERLAY_ROUTE_IDS and gets no live overlay at all -- fully
 // static, edge-cache eligible (verified via workers/api.ts).
 import { z } from "zod";
+import {
+  DisabledProxyContractSchema,
+  EndpointEligibilityPolicySchema,
+} from "./endpoint-pool-policy.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { HealthStatusSchema } from "../shared.ts";
@@ -196,29 +200,8 @@ export type EndpointIncidentsArtifact = z.infer<
 
 export const EndpointPoolsArtifactSchema = ArtifactBaseSchema.extend({
   source: z.enum(["endpoint-resource-probes", "rpc-endpoint-probes"]),
-  disabled_proxy_contract: z
-    .object({
-      enabled: z.boolean().optional(),
-      feature_flag: z.string().optional(),
-      allowed_methods: z.array(z.string()).optional(),
-      denied_method_patterns: z.array(z.string()).optional(),
-      rate_limit_required: z.boolean().optional(),
-      waf_required: z.boolean().optional(),
-    })
-    .passthrough()
-    .optional(),
-  eligibility_policy: z
-    .object({
-      source: z.string().optional(),
-      eligible_layers: z.array(z.string()).optional(),
-      required_status: z.string().optional(),
-      requires_no_auth: z.boolean().optional(),
-      requires_public_safe: z.boolean().optional(),
-      user_reports_can_change_health: z.boolean().optional(),
-      notes: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
+  disabled_proxy_contract: DisabledProxyContractSchema.optional(),
+  eligibility_policy: EndpointEligibilityPolicySchema.optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),
   pools: z.array(RpcPoolSchema),
 }).describe(

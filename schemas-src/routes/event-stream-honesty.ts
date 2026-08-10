@@ -6,11 +6,18 @@
 // wire-compatibility argument src/account-nominator-positions.ts's `degraded`
 // block already makes.
 //
-// Deliberately NOT registered as named OpenAPI components: they are new
-// shapes with no hand-edited predecessor to keep a name compatible with, so
-// z.toJSONSchema inlines them into each artifact that carries one. See
-// schemas-src/openapi-registry.ts's header for when a leaf DOES need
-// registering.
+// Both ARE registered as named OpenAPI components (#10214). They were not,
+// on the reasoning that a new shape with no hand-edited predecessor has no
+// name to stay compatible with -- true, and the wrong test. Registration is
+// not only about preserving an old name: an unregistered schema is INLINED by
+// z.toJSONSchema at every use, which erases the fact that the 17 artifacts
+// carrying a `degraded` block carry the SAME block. Every generator reading
+// the JSON Schema then re-derives a name per occurrence -- which is why the
+// GraphQL emitter invented 11 names for this one shape and a hand-maintained
+// table mapped them all back to `DegradedInfo`.
+//
+// Register a shape that is USED MORE THAN ONCE, whatever its history. See
+// schemas-src/openapi-registry.ts's header for the rest of the rule.
 import { z } from "zod";
 
 /** A route's own statement that its zero is not a measurement. */
@@ -22,6 +29,18 @@ export const EventStreamDegradedSchema = z
   .strict()
   .describe(
     "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer.",
+  );
+
+/**
+ * The narrow form: a decline whose only possible reason is that the read could
+ * not be answered at all. Three routes had written this exact object inline
+ * (#10214), so the published schema carried three names for one shape.
+ */
+export const UnavailableDegradedSchema = z
+  .object({ reason: z.enum(["unavailable"]) })
+  .strict()
+  .describe(
+    "Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline.",
   );
 
 /**

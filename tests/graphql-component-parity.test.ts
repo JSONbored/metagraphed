@@ -91,8 +91,13 @@ describe("graphql component parity gate (#10214)", () => {
       [],
       "a component field GraphQL does not expose is drift, not a choice",
     );
+    // A floor against the gate going BLIND (pairing nothing and reporting no
+    // violations), not a target. It moves down as shared shapes get
+    // registered and their duplicate mirrors collapse -- #10214 took this
+    // from 324 to 299 by giving 41 inlined copies their names back -- so it
+    // is set well under the current count. Blindness reads near zero.
     assert.ok(
-      report.comparedTypes > 300,
+      report.comparedTypes > 250,
       `only ${report.comparedTypes} types compared`,
     );
     assert.ok(

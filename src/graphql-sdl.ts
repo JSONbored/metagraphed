@@ -1503,7 +1503,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainWeightsNetwork!
-    intensity_distribution: ChainWeightsIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainWeightsSubnet!]!
   }
 
@@ -1516,7 +1516,7 @@ export const SDL = /* GraphQL */ `
   }
 
   "Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window."
-  type ChainWeightsIntensityDistribution {
+  type IntensityDistribution {
     count: Int!
     mean: Float!
     min: Float!
@@ -1542,7 +1542,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainServingNetwork!
-    intensity_distribution: ChainServingIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainServingSubnet!]!
   }
 
@@ -1552,18 +1552,6 @@ export const SDL = /* GraphQL */ `
     announcements: Int!
     "Null when distinct_servers is 0 (no defined intensity without servers)."
     announcements_per_server: Float
-  }
-
-  "Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
-  type ChainServingIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's axon-serving activity in the window, ranked by announcements."
@@ -1601,7 +1589,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainAxonRemovalsNetwork!
-    intensity_distribution: ChainAxonRemovalsIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainAxonRemovalsSubnet!]!
     degraded: DegradedInfo
   }
@@ -1612,18 +1600,6 @@ export const SDL = /* GraphQL */ `
     removals: Int!
     "Null when distinct_removers is 0 (no defined intensity without removers)."
     removals_per_remover: Float
-  }
-
-  "Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard."
-  type ChainAxonRemovalsIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's axon-removal activity in the window, ranked by removals."
@@ -1640,7 +1616,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainRegistrationsNetwork!
-    intensity_distribution: ChainRegistrationsIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainRegistrationsSubnet!]!
   }
 
@@ -1650,18 +1626,6 @@ export const SDL = /* GraphQL */ `
     registrations: Int!
     "Null when distinct_registrants is 0 (no defined intensity without hotkeys)."
     registrations_per_registrant: Float
-  }
-
-  "Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard."
-  type ChainRegistrationsIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's neuron-registration activity in the window, ranked by registrations."
@@ -1678,7 +1642,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainDeregistrationsNetwork!
-    intensity_distribution: ChainDeregistrationsIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainDeregistrationsSubnet!]!
     derivation: DeregistrationDerivation
     degraded: DegradedInfo
@@ -1691,18 +1655,6 @@ export const SDL = /* GraphQL */ `
     "Null when distinct_deregistered_hotkeys is 0 (no defined intensity without hotkeys)."
     deregistrations_per_hotkey: Float
     tenure: DeregistrationTenure
-  }
-
-  "Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard."
-  type ChainDeregistrationsIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's neuron-deregistration activity in the window, ranked by deregistrations."
@@ -1720,7 +1672,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainPrometheusNetwork!
-    intensity_distribution: ChainPrometheusIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainPrometheusSubnet!]!
     degraded: DegradedInfo
   }
@@ -1731,18 +1683,6 @@ export const SDL = /* GraphQL */ `
     announcements: Int!
     "Null when distinct_exporters is 0 (no defined intensity without exporters)."
     announcements_per_exporter: Float
-  }
-
-  "Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard."
-  type ChainPrometheusIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's Prometheus telemetry-serving activity in the window, ranked by announcements."
@@ -1763,7 +1703,7 @@ export const SDL = /* GraphQL */ `
     subnet_count: Int!
     network: ChainAlphaVolumeNetwork!
     "Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume."
-    volume_distribution: ChainAlphaVolumeDistribution
+    volume_distribution: IntensityDistribution
     subnets: [ChainAlphaVolumeSubnet!]!
   }
 
@@ -1782,18 +1722,6 @@ export const SDL = /* GraphQL */ `
     sentiment_ratio: Float
     "Coarse sentiment label (bullish/bearish/neutral); neutral both for balanced volume and an empty window."
     sentiment: String!
-  }
-
-  "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard)."
-  type ChainAlphaVolumeDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's rolling 24h buy/sell volume scorecard, ranked by total_volume_tao then netuid."
@@ -1892,7 +1820,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainStakeMovesNetwork!
-    intensity_distribution: ChainStakeMovesIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainStakeMovesSubnet!]!
   }
 
@@ -1902,18 +1830,6 @@ export const SDL = /* GraphQL */ `
     movements: Int!
     "Null when distinct_movers is 0."
     movements_per_mover: Float
-  }
-
-  "Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window."
-  type ChainStakeMovesIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's stake-movement activity in the window, ranked by movements."
@@ -1931,7 +1847,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     subnet_count: Int!
     network: ChainStakeTransfersNetwork!
-    intensity_distribution: ChainStakeTransfersIntensityDistribution
+    intensity_distribution: IntensityDistribution
     subnets: [ChainStakeTransfersSubnet!]!
   }
 
@@ -1941,18 +1857,6 @@ export const SDL = /* GraphQL */ `
     transfers: Int!
     "Null when distinct_senders is 0."
     transfers_per_sender: Float
-  }
-
-  "Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window."
-  type ChainStakeTransfersIntensityDistribution {
-    count: Int!
-    mean: Float!
-    min: Float!
-    p25: Float!
-    median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
   }
 
   "One subnet's stake-transfer activity in the window, ranked by transfers."
@@ -3087,7 +2991,7 @@ export const SDL = /* GraphQL */ `
     by_classification: JSON!
   }
 
-  type FailureReasonsDegraded {
+  type UnavailableDegraded {
     reason: String!
   }
 
@@ -3107,7 +3011,7 @@ export const SDL = /* GraphQL */ `
     "Oldest day first."
     series: [FailureReasonsDay!]!
     "Present ONLY on a decline. An empty window is a measurement, not a decline."
-    degraded: FailureReasonsDegraded
+    degraded: UnavailableDegraded
   }
 
   type IndexerLagWindow {
@@ -3165,10 +3069,6 @@ export const SDL = /* GraphQL */ `
     validator_stake: JSON
   }
 
-  type ChainConcentrationHistoryDegraded {
-    reason: String!
-  }
-
   type ChainConcentrationHistory {
     schema_version: Int!
     window: String
@@ -3180,7 +3080,7 @@ export const SDL = /* GraphQL */ `
     builder_versions: [Int!]!
     points: [ChainConcentrationHistoryPoint!]!
     "Present ONLY on a decline. An empty window is a measurement."
-    degraded: ChainConcentrationHistoryDegraded
+    degraded: UnavailableDegraded
   }
 
   type PipelineHistoryPoint {
@@ -3205,10 +3105,6 @@ export const SDL = /* GraphQL */ `
     first_emission_block: Int
   }
 
-  type PipelineHistoryDegraded {
-    reason: String!
-  }
-
   type SubnetPipelineHistory {
     schema_version: Int!
     netuid: Int!
@@ -3223,7 +3119,7 @@ export const SDL = /* GraphQL */ `
     first_captured_day: String!
     points: [PipelineHistoryPoint!]!
     "Present ONLY on a decline. An empty series is a measurement."
-    degraded: PipelineHistoryDegraded
+    degraded: UnavailableDegraded
   }
 
   type ChainHolders {

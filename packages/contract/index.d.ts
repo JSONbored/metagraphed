@@ -4833,11 +4833,7 @@ export interface components {
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -4949,26 +4945,8 @@ export interface components {
         AccountDeregistrationsArtifact: {
             address: string;
             concentration: number | null;
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
-            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
-            derivation?: {
-                /**
-                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
-                 * @example true
-                 */
-                is_lower_bound: boolean;
-                /** @description Days of NeuronRegistered history the derivation had available. */
-                lookback_days: number;
-                method: string;
-                /** @description Of those, the ones with no observed previous holder. */
-                unattributed_registrations: number;
-                /** @description Registrations observed inside the reported window. */
-                window_registrations: number;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
+            derivation?: components["schemas"]["DeregistrationDerivation"];
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -5243,11 +5221,7 @@ export interface components {
             address: string;
             /** @description Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements. */
             concentration: number | null;
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -6161,21 +6135,7 @@ export interface components {
         /** @enum {string} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
         CandidateSurface: {
-            auth?: {
-                body_envelope?: {
-                    credential_key: string;
-                    payload_key: string;
-                };
-                /** @enum {string} */
-                location?: "header" | "query" | "cookie" | "body";
-                name?: string;
-                names?: string[];
-                /** @enum {string} */
-                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
-                scopes_note?: string;
-                token_url?: string;
-                value_format?: string;
-            } | null;
+            auth?: components["schemas"]["SurfaceAuth"];
             auth_required: boolean;
             /** @enum {string} */
             confidence?: "low" | "medium" | "high";
@@ -6186,14 +6146,7 @@ export interface components {
             netuid: number;
             provider: string;
             public_safe: boolean;
-            rate_limit?: {
-                burst?: number;
-                cost_notes?: string;
-                requests: number;
-                /** @enum {string} */
-                scope?: "per-key" | "per-ip" | "global" | "unknown";
-                window: string;
-            };
+            rate_limit?: components["schemas"]["SurfaceRateLimit"];
             rate_limit_notes?: string;
             review_notes?: string;
             /** @constant */
@@ -6254,17 +6207,8 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
-            /** @description Spread of per-subnet total_volume_tao across every subnet with volume; null when no subnet had volume. */
-            volume_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). Null when no subnet had volume. */
+            volume_distribution: components["schemas"]["IntensityDistribution"] | null;
             /**
              * @description Fixed rolling window label (always 24h).
              * @enum {string}
@@ -6272,21 +6216,9 @@ export interface components {
             window: "24h";
         };
         ChainAxonRemovalsArtifact: {
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            degraded?: components["schemas"]["DegradedInfo"];
+            /** @description Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 distinct_removers: number;
@@ -6376,10 +6308,7 @@ export interface components {
             /** @description Every distinct builder version in the series. More than one means it changes DEFINITION partway along. */
             builder_versions: number[];
             /** @description Present ONLY on a decline. An empty window is a measurement. */
-            degraded?: {
-                /** @enum {string} */
-                reason: "unavailable";
-            };
+            degraded?: components["schemas"]["UnavailableDegraded"];
             newest_day: string | null;
             oldest_day: string | null;
             /** @description From the ROWS. A day the capture did not run is absent, never a zero-concentration point. */
@@ -6463,36 +6392,10 @@ export interface components {
             [key: string]: unknown;
         };
         ChainDeregistrationsArtifact: {
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
-            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
-            derivation?: {
-                /**
-                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
-                 * @example true
-                 */
-                is_lower_bound: boolean;
-                /** @description Days of NeuronRegistered history the derivation had available. */
-                lookback_days: number;
-                method: string;
-                /** @description Of those, the ones with no observed previous holder. */
-                unattributed_registrations: number;
-                /** @description Registrations observed inside the reported window. */
-                window_registrations: number;
-            };
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            degraded?: components["schemas"]["DegradedInfo"];
+            derivation?: components["schemas"]["DeregistrationDerivation"];
+            /** @description Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 deregistrations: number;
@@ -6690,21 +6593,9 @@ export interface components {
             [key: string]: unknown;
         };
         ChainPrometheusArtifact: {
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            degraded?: components["schemas"]["DegradedInfo"];
+            /** @description Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 announcements: number;
@@ -6724,16 +6615,8 @@ export interface components {
             window: ("7d" | "30d") | null;
         };
         ChainRegistrationsArtifact: {
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet registration intensity (NeuronRegistered events per hotkey) across EVERY subnet with registrations in the window -- network-wide even when limit truncates the leaderboard. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide registration rollup: every subnet with NeuronRegistered events in the window, combined. distinct_registrants counts a hotkey once even when it registers on several subnets, so it is NOT the sum of the per-subnet counts. */
             network: {
                 distinct_registrants: number;
@@ -6754,16 +6637,8 @@ export interface components {
         };
         /** @description Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
         ChainServingArtifact: {
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet re-announcement intensity (AxonServed events per server) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide axon-serving rollup: every subnet with AxonServed announcements in the window, combined. */
             network: {
                 announcements: number;
@@ -6850,16 +6725,8 @@ export interface components {
         };
         /** @description Network-wide stake-movement (re-delegation) leaderboard over a lookback window, summed live from the account_events StakeMoved stream. Mirrors GET /api/v1/chain/stake-moves's data envelope. */
         ChainStakeMovesArtifact: {
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet movements-per-mover intensity across EVERY subnet with moves in the window. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide stake-move rollup: every subnet with StakeMoved events in the window, combined. distinct_movers counts a `coldkey` once even when it moves on several subnets. */
             network: {
                 distinct_movers: number;
@@ -6880,16 +6747,8 @@ export interface components {
         };
         /** @description Network-wide stake-transfer (between-coldkeys) leaderboard over a lookback window, summed live from the account_events StakeTransferred stream. Mirrors GET /api/v1/chain/stake-transfers's data envelope. */
         ChainStakeTransfersArtifact: {
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet transfers-per-sender intensity across EVERY subnet with transfers in the window. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide stake-transfer rollup: every subnet with StakeTransferred events in the window, combined. distinct_senders counts an origin `coldkey` once even when it transfers out of several subnets. */
             network: {
                 distinct_senders: number;
@@ -6907,6 +6766,20 @@ export interface components {
                 transfers_per_sender: number | null;
             }[];
             window: ("7d" | "30d") | null;
+        };
+        /** @description The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
+        ChainState: {
+            block: number;
+            /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
+            block_hash: string;
+            emission_bar_quantile: number | null;
+            /** @description theta. Null when the bar is unset, which disables the gate outright. */
+            emission_gate_bar: number | null;
+            /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
+            emission_gate_exponent: number | null;
+            /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
+            network_immunity_period?: number | null;
+            total_issuance_tao: number;
         };
         ChainSubnetLifecycleArtifact: {
             entries: ({
@@ -7021,16 +6894,8 @@ export interface components {
         };
         /** @description Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
         ChainWeightsArtifact: {
-            intensity_distribution: {
-                count: number;
-                max: number;
-                mean: number;
-                median: number;
-                min: number;
-                p25: number;
-                p75: number;
-                p90: number;
-            } | null;
+            /** @description Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
+            intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide weight-setting rollup: every subnet that set weights in the window, combined. */
             network: {
                 distinct_setters: number;
@@ -7321,28 +7186,7 @@ export interface components {
             candidate_count: number;
             candidate_subnet_count: number;
             chain_subnet_count: number;
-            completeness?: {
-                average_score?: number;
-                dimension_coverage?: {
-                    [key: string]: {
-                        pct: number;
-                        /** @description Subnets carrying at least one surface of this kind. */
-                        present: number;
-                    } & {
-                        [key: string]: unknown;
-                    };
-                };
-                fully_complete_count?: number;
-                fully_complete_pct?: number;
-                median_score?: number;
-                methodology?: string;
-                score_distribution?: {
-                    [key: string]: number;
-                };
-                scored_subnet_count?: number;
-            } & {
-                [key: string]: unknown;
-            };
+            completeness?: components["schemas"]["CoverageCompleteness"];
             contract_version?: string;
             curated_overlay_count: number;
             curation_level_counts: components["schemas"]["CountMap"];
@@ -7375,6 +7219,28 @@ export interface components {
                 overlays: string;
             };
             surface_count: number;
+        } & {
+            [key: string]: unknown;
+        };
+        CoverageCompleteness: {
+            average_score?: number;
+            dimension_coverage?: {
+                [key: string]: {
+                    pct: number;
+                    /** @description Subnets carrying at least one surface of this kind. */
+                    present: number;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+            fully_complete_count?: number;
+            fully_complete_pct?: number;
+            median_score?: number;
+            methodology?: string;
+            score_distribution?: {
+                [key: string]: number;
+            };
+            scored_subnet_count?: number;
         } & {
             [key: string]: unknown;
         };
@@ -7533,11 +7399,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -7590,6 +7452,37 @@ export interface components {
             source_count?: number;
             verified_at?: string | null;
         };
+        /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
+        DegradedInfo: {
+            detail?: string;
+            reason: string;
+        };
+        /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
+        DeregistrationDerivation: {
+            /**
+             * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
+             * @example true
+             */
+            is_lower_bound: boolean;
+            /** @description Days of NeuronRegistered history the derivation had available. */
+            lookback_days: number;
+            method: string;
+            /** @description Of those, the ones with no observed previous holder. */
+            unattributed_registrations: number;
+            /** @description Registrations observed inside the reported window. */
+            window_registrations: number;
+        };
+        /** @description The contract the RPC proxy honours while disabled: which methods stay allowed, which patterns stay denied, and whether rate limiting and WAF are prerequisites for enabling it. */
+        DisabledProxyContract: {
+            allowed_methods?: string[];
+            denied_method_patterns?: string[];
+            enabled?: boolean;
+            feature_flag?: string;
+            rate_limit_required?: boolean;
+            waf_required?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
         DomainsArtifact: {
             domain_count: number;
@@ -7623,20 +7516,7 @@ export interface components {
         };
         EconomicsArtifact: {
             captured_at: string | null;
-            /** @description The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
-            chain_state?: {
-                block: number;
-                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
-                block_hash: string;
-                emission_bar_quantile: number | null;
-                /** @description theta. Null when the bar is unset, which disables the gate outright. */
-                emission_gate_bar: number | null;
-                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
-                emission_gate_exponent: number | null;
-                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
-                network_immunity_period?: number | null;
-                total_issuance_tao: number;
-            };
+            chain_state?: components["schemas"]["ChainState"];
             contract_version?: string;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources?: {
@@ -7793,19 +7673,7 @@ export interface components {
             /** @description Block emission derived from TotalIssuance at that block, never read from the stale BlockEmission storage item. */
             block_emission_tao: number | null;
             /** @description The block every input below was pinned to. Required: without it nothing here can be verified. */
-            chain_state: {
-                block: number;
-                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
-                block_hash: string;
-                emission_bar_quantile: number | null;
-                /** @description theta. Null when the bar is unset, which disables the gate outright. */
-                emission_gate_bar: number | null;
-                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
-                emission_gate_exponent: number | null;
-                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
-                network_immunity_period?: number | null;
-                total_issuance_tao: number;
-            };
+            chain_state: components["schemas"]["ChainState"];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -7876,6 +7744,18 @@ export interface components {
             predates_capture: boolean;
             previous_enabled: boolean | null;
         };
+        /** @description Which probed endpoints this pool may draw from: the layers it accepts, the health verdict it requires, and whether an endpoint must be auth-free and public-safe to qualify. */
+        EndpointEligibilityPolicy: {
+            eligible_layers?: string[];
+            notes?: string;
+            required_status?: string;
+            requires_no_auth?: boolean;
+            requires_public_safe?: boolean;
+            source?: string;
+            user_reports_can_change_health?: boolean;
+        } & {
+            [key: string]: unknown;
+        };
         EndpointIncident: {
             classification: components["schemas"]["Classification"];
             detected_at: string;
@@ -7941,27 +7821,8 @@ export interface components {
         /** @description Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here. */
         EndpointPoolsArtifact: {
             contract_version?: string;
-            disabled_proxy_contract?: {
-                allowed_methods?: string[];
-                denied_method_patterns?: string[];
-                enabled?: boolean;
-                feature_flag?: string;
-                rate_limit_required?: boolean;
-                waf_required?: boolean;
-            } & {
-                [key: string]: unknown;
-            };
-            eligibility_policy?: {
-                eligible_layers?: string[];
-                notes?: string;
-                required_status?: string;
-                requires_no_auth?: boolean;
-                requires_public_safe?: boolean;
-                source?: string;
-                user_reports_can_change_health?: boolean;
-            } & {
-                [key: string]: unknown;
-            };
+            disabled_proxy_contract?: components["schemas"]["DisabledProxyContract"];
+            eligibility_policy?: components["schemas"]["EndpointEligibilityPolicy"];
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
@@ -8196,10 +8057,7 @@ export interface components {
             /** @description Counted from the ROWS, not the requested window -- a day the prober did not run is absent rather than a zero. */
             days_covered: number | null;
             /** @description Present ONLY on a decline. An empty window is a measurement, not a decline. */
-            degraded?: {
-                /** @enum {string} */
-                reason: "unavailable";
-            };
+            degraded?: components["schemas"]["UnavailableDegraded"];
             failing_checks: number | null;
             failure_rate: number | null;
             kind: string | null;
@@ -8511,13 +8369,7 @@ export interface components {
             /** @constant */
             schema_version: 1;
             source: string;
-            summary: {
-                classification_counts: components["schemas"]["CountMap"];
-                status_counts: components["schemas"]["CountMap"];
-                surface_count: number;
-            } & {
-                [key: string]: unknown;
-            };
+            summary: components["schemas"]["HealthProbeSummary"];
             surfaces: {
                 classification: components["schemas"]["Classification"];
                 error_class: string | null;
@@ -8614,6 +8466,13 @@ export interface components {
                 [key: string]: unknown;
             })[];
             window?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        HealthProbeSummary: {
+            classification_counts: components["schemas"]["CountMap"];
+            status_counts: components["schemas"]["CountMap"];
+            surface_count: number;
         } & {
             [key: string]: unknown;
         };
@@ -8818,6 +8677,17 @@ export interface components {
             readiness_verified?: boolean;
             readiness_version: number;
             score: number;
+        };
+        /** @description A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike. */
+        IntensityDistribution: {
+            count: number;
+            max: number;
+            mean: number;
+            median: number;
+            min: number;
+            p25: number;
+            p75: number;
+            p90: number;
         };
         JsonObject: {
             [key: string]: unknown;
@@ -9099,10 +8969,7 @@ export interface components {
         PartnershipTier: "pilot";
         PipelineHistoryArtifact: {
             /** @description Present ONLY on a decline. An empty series is a measurement. */
-            degraded?: {
-                /** @enum {string} */
-                reason: "unavailable";
-            };
+            degraded?: components["schemas"]["UnavailableDegraded"];
             /** @description Independent samples -- the honest denominator for any claim about how a value moved. */
             distinct_observations: number | null;
             /** @description The first day the pipeline columns were ever written, so a short series reads as a start rather than a gap. */
@@ -9351,28 +9218,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            coverage?: ({
-                average_score?: number;
-                dimension_coverage?: {
-                    [key: string]: {
-                        pct: number;
-                        /** @description Subnets carrying at least one surface of this kind. */
-                        present: number;
-                    } & {
-                        [key: string]: unknown;
-                    };
-                };
-                fully_complete_count?: number;
-                fully_complete_pct?: number;
-                median_score?: number;
-                methodology?: string;
-                score_distribution?: {
-                    [key: string]: number;
-                };
-                scored_subnet_count?: number;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            coverage?: components["schemas"]["CoverageCompleteness"] | null;
             curation_level_counts?: components["schemas"]["CountMap"];
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
@@ -9921,27 +9767,8 @@ export interface components {
         /** @description RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay. */
         RpcPoolsArtifact: {
             contract_version?: string;
-            disabled_proxy_contract?: {
-                allowed_methods?: string[];
-                denied_method_patterns?: string[];
-                enabled?: boolean;
-                feature_flag?: string;
-                rate_limit_required?: boolean;
-                waf_required?: boolean;
-            } & {
-                [key: string]: unknown;
-            };
-            eligibility_policy?: {
-                eligible_layers?: string[];
-                notes?: string;
-                required_status?: string;
-                requires_no_auth?: boolean;
-                requires_public_safe?: boolean;
-                source?: string;
-                user_reports_can_change_health?: boolean;
-            } & {
-                [key: string]: unknown;
-            };
+            disabled_proxy_contract?: components["schemas"]["DisabledProxyContract"];
+            eligibility_policy?: components["schemas"]["EndpointEligibilityPolicy"];
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
@@ -10371,6 +10198,12 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        SocialLinks: {
+            reddit?: string;
+            telegram?: string;
+            x?: string;
+            youtube?: string;
+        };
         SourceHealthArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -10465,11 +10298,7 @@ export interface components {
             window: "24h";
         };
         SubnetAxonRemovalsArtifact: {
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             distinct_removers: number;
             netuid: number;
             observed_at: string | null;
@@ -10532,97 +10361,22 @@ export interface components {
         SubnetConcentrationArtifact: {
             captured_at?: string | null;
             /** @description Emission concentration across all UIDs. */
-            emission: ({
-                entropy?: number | null;
-                entropy_normalized?: number | null;
-                gini?: number | null;
-                hhi?: number | null;
-                hhi_normalized?: number | null;
-                holders?: number;
-                nakamoto_coefficient?: number | null;
-                top_10pct_share?: number | null;
-                top_1pct_share?: number | null;
-                top_20pct_share?: number | null;
-                top_5pct_share?: number | null;
-                total?: number | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            emission: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Distinct controlling entities (coldkeys) behind the subnet's UIDs. */
             entity_count: number;
             /** @description Emission concentration collapsed to one holder per controlling entity. */
-            entity_emission?: ({
-                entropy?: number | null;
-                entropy_normalized?: number | null;
-                gini?: number | null;
-                hhi?: number | null;
-                hhi_normalized?: number | null;
-                holders?: number;
-                nakamoto_coefficient?: number | null;
-                top_10pct_share?: number | null;
-                top_1pct_share?: number | null;
-                top_20pct_share?: number | null;
-                top_5pct_share?: number | null;
-                total?: number | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            entity_emission?: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Stake concentration collapsed to one holder per controlling entity. */
-            entity_stake?: ({
-                entropy?: number | null;
-                entropy_normalized?: number | null;
-                gini?: number | null;
-                hhi?: number | null;
-                hhi_normalized?: number | null;
-                holders?: number;
-                nakamoto_coefficient?: number | null;
-                top_10pct_share?: number | null;
-                top_1pct_share?: number | null;
-                top_20pct_share?: number | null;
-                top_5pct_share?: number | null;
-                total?: number | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            entity_stake?: components["schemas"]["ConcentrationMetrics"] | null;
             netuid: number;
             neuron_count: number;
             schema_version: number;
             /** @description Stake concentration across all UIDs. */
-            stake: ({
-                entropy?: number | null;
-                entropy_normalized?: number | null;
-                gini?: number | null;
-                hhi?: number | null;
-                hhi_normalized?: number | null;
-                holders?: number;
-                nakamoto_coefficient?: number | null;
-                top_10pct_share?: number | null;
-                top_1pct_share?: number | null;
-                top_20pct_share?: number | null;
-                top_5pct_share?: number | null;
-                total?: number | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            stake: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description UIDs per controlling entity -- a Sybil/consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys). Null on an empty subnet. */
             uids_per_entity?: number | null;
             /** @description Stake concentration across permitted validators only. */
-            validator_stake?: ({
-                entropy?: number | null;
-                entropy_normalized?: number | null;
-                gini?: number | null;
-                hhi?: number | null;
-                hhi_normalized?: number | null;
-                holders?: number;
-                nakamoto_coefficient?: number | null;
-                top_10pct_share?: number | null;
-                top_1pct_share?: number | null;
-                top_20pct_share?: number | null;
-                top_5pct_share?: number | null;
-                total?: number | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            validator_stake?: components["schemas"]["ConcentrationMetrics"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -10677,20 +10431,7 @@ export interface components {
             [key: string]: unknown;
         };
         SubnetDeregistrationRankingArtifact: {
-            /** @description The chain state the decomposition's inputs were pinned to. theta/q/h are read AS STORED at this block -- the runtime gates with the stored bar between its 360-block recomputes, so a live read is the wrong number for 359 blocks out of 360. */
-            chain_state: {
-                block: number;
-                /** @description The block hash, so the pinning is exact -- a height alone is ambiguous across a reorg. */
-                block_hash: string;
-                emission_bar_quantile: number | null;
-                /** @description theta. Null when the bar is unset, which disables the gate outright. */
-                emission_gate_bar: number | null;
-                /** @description h. Null means the runtime default 3, NOT zero -- h = 0 makes the Hill gate a constant 0.5 for every subnet. */
-                emission_gate_exponent: number | null;
-                /** @description SubtensorModule.NetworkImmunityPeriod -- how many blocks after registration a subnet cannot be deregistered. Null on a blob captured before this read existed. */
-                network_immunity_period?: number | null;
-                total_issuance_tao: number;
-            };
+            chain_state: components["schemas"]["ChainState"];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -10733,28 +10474,10 @@ export interface components {
         };
         /** @description Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
         SubnetDeregistrationsArtifact: {
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             deregistrations: number;
             deregistrations_per_hotkey: number | null;
-            /** @description How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
-            derivation?: {
-                /**
-                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
-                 * @example true
-                 */
-                is_lower_bound: boolean;
-                /** @description Days of NeuronRegistered history the derivation had available. */
-                lookback_days: number;
-                method: string;
-                /** @description Of those, the ones with no observed previous holder. */
-                unattributed_registrations: number;
-                /** @description Registrations observed inside the reported window. */
-                window_registrations: number;
-            };
+            derivation?: components["schemas"]["DeregistrationDerivation"];
             distinct_deregistered_hotkeys: number;
             events?: {
                 block_number: number;
@@ -10848,12 +10571,7 @@ export interface components {
             };
             registered_at_block?: number;
             slug: string;
-            social?: {
-                reddit?: string;
-                telegram?: string;
-                x?: string;
-                youtube?: string;
-            } | null;
+            social?: components["schemas"]["SocialLinks"] | null;
             source_repo?: string | null;
             status: components["schemas"]["SubnetStatus"];
             subnet_type: components["schemas"]["SubnetType"];
@@ -11323,12 +11041,7 @@ export interface components {
             registered_at_block?: number;
             registry_observed_count?: number;
             slug: string;
-            social?: {
-                reddit?: string;
-                telegram?: string;
-                x?: string;
-                youtube?: string;
-            } | null;
+            social?: components["schemas"]["SocialLinks"] | null;
             source_repo?: string | null;
             status: components["schemas"]["SubnetStatus"];
             subnet_type: components["schemas"]["SubnetType"];
@@ -11820,11 +11533,7 @@ export interface components {
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
-            /** @description A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
-            degraded?: {
-                detail?: string;
-                reason: string;
-            };
+            degraded?: components["schemas"]["DegradedInfo"];
             distinct_exporters: number;
             netuid: number;
             observed_at: string | null;
@@ -12293,21 +12002,7 @@ export interface components {
             [key: string]: unknown;
         };
         Surface: {
-            auth?: {
-                body_envelope?: {
-                    credential_key: string;
-                    payload_key: string;
-                };
-                /** @enum {string} */
-                location?: "header" | "query" | "cookie" | "body";
-                name?: string;
-                names?: string[];
-                /** @enum {string} */
-                scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
-                scopes_note?: string;
-                token_url?: string;
-                value_format?: string;
-            } | null;
+            auth?: components["schemas"]["SurfaceAuth"];
             auth_required: boolean;
             authority: components["schemas"]["Authority"];
             classification?: components["schemas"]["Classification"];
@@ -12322,25 +12017,8 @@ export interface components {
             probe?: components["schemas"]["ProbeConfig"];
             provider: string;
             public_safe: boolean;
-            quality_signals?: {
-                archived?: boolean;
-                content_type_matches_kind?: boolean;
-                has_default_branch?: boolean;
-                has_recent_push_metadata?: boolean;
-                public_safe?: boolean;
-                rate_limited?: boolean;
-                redirected?: boolean;
-                source_tier?: components["schemas"]["SourceTier"];
-                transient_failure?: boolean;
-            };
-            rate_limit?: {
-                burst?: number;
-                cost_notes?: string;
-                requests: number;
-                /** @enum {string} */
-                scope?: "per-key" | "per-ip" | "global" | "unknown";
-                window: string;
-            };
+            quality_signals?: components["schemas"]["SurfaceQualitySignals"];
+            rate_limit?: components["schemas"]["SurfaceRateLimit"];
             rate_limit_notes?: string;
             review?: {
                 /** @enum {string} */
@@ -12412,6 +12090,21 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        SurfaceAuth: {
+            body_envelope?: {
+                credential_key: string;
+                payload_key: string;
+            };
+            /** @enum {string} */
+            location?: "header" | "query" | "cookie" | "body";
+            name?: string;
+            names?: string[];
+            /** @enum {string} */
+            scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
+            scopes_note?: string;
+            token_url?: string;
+            value_format?: string;
+        } | null;
         /** @description One recorded mutation of a subnet's public surface. */
         SurfaceHistoryChange: {
             /** @description insert, update or delete. A delete is the only evidence a surface ever existed. */
@@ -12428,6 +12121,25 @@ export interface components {
         };
         /** @enum {string} */
         SurfaceKind: "archive" | "dashboard" | "data-artifact" | "docs" | "example" | "openapi" | "repo-registry" | "sdk" | "source-repo" | "sse" | "subnet-api" | "subtensor-rpc" | "subtensor-wss" | "website";
+        SurfaceQualitySignals: {
+            archived?: boolean;
+            content_type_matches_kind?: boolean;
+            has_default_branch?: boolean;
+            has_recent_push_metadata?: boolean;
+            public_safe?: boolean;
+            rate_limited?: boolean;
+            redirected?: boolean;
+            source_tier?: components["schemas"]["SourceTier"];
+            transient_failure?: boolean;
+        };
+        SurfaceRateLimit: {
+            burst?: number;
+            cost_notes?: string;
+            requests: number;
+            /** @enum {string} */
+            scope?: "per-key" | "per-ip" | "global" | "unknown";
+            window: string;
+        };
         SurfacesArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -12520,6 +12232,11 @@ export interface components {
             sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
         } & {
             [key: string]: unknown;
+        };
+        /** @description Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline. */
+        UnavailableDegraded: {
+            /** @enum {string} */
+            reason: "unavailable";
         };
         /** @description One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope. */
         UptimeArtifact: {
@@ -12851,17 +12568,7 @@ export interface components {
             netuid?: number;
             private_redirect_blocked?: boolean;
             provider?: string;
-            quality_signals?: {
-                archived?: boolean;
-                content_type_matches_kind?: boolean;
-                has_default_branch?: boolean;
-                has_recent_push_metadata?: boolean;
-                public_safe?: boolean;
-                rate_limited?: boolean;
-                redirected?: boolean;
-                source_tier?: components["schemas"]["SourceTier"];
-                transient_failure?: boolean;
-            };
+            quality_signals?: components["schemas"]["SurfaceQualitySignals"];
             redirect_target?: string | null;
             source_tier?: components["schemas"]["SourceTier"];
             source_type?: string;

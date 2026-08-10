@@ -2,6 +2,7 @@
 // the mix is changing. Modeled from src/failure-reasons.ts's
 // buildFailureReasons().
 import { z } from "zod";
+import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
 import { successEnvelopeSchema } from "../envelope.ts";
 
 export const FailureReasonSchema = z
@@ -72,13 +73,9 @@ export const FailureReasonsArtifactSchema = z
     series: z.array(FailureReasonsDaySchema).describe("Oldest day first."),
     /** Present ONLY on a decline. An empty window is NOT a decline: it means
      * the prober recorded nothing in that range, which is a measurement. */
-    degraded: z
-      .object({ reason: z.enum(["unavailable"]) })
-      .strict()
-      .optional()
-      .describe(
-        "Present ONLY on a decline. An empty window is a measurement, not a decline.",
-      ),
+    degraded: UnavailableDegradedSchema.optional().describe(
+      "Present ONLY on a decline. An empty window is a measurement, not a decline.",
+    ),
   })
   .passthrough();
 export type FailureReasonsArtifact = z.infer<

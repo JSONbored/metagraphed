@@ -2,6 +2,7 @@
 // concentrated? Modeled from src/chain-concentration-history.ts's
 // buildChainConcentrationHistory().
 import { z } from "zod";
+import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
 import { successEnvelopeSchema } from "../envelope.ts";
 
 /** One distribution's scorecard, as computeConcentration produced it. Passed
@@ -85,11 +86,9 @@ export const ChainConcentrationHistoryArtifactSchema = z
       ),
     points: z.array(ChainConcentrationHistoryPointSchema),
     /** Present ONLY on a decline. An empty window is a measurement. */
-    degraded: z
-      .object({ reason: z.enum(["unavailable"]) })
-      .strict()
-      .optional()
-      .describe("Present ONLY on a decline. An empty window is a measurement."),
+    degraded: UnavailableDegradedSchema.optional().describe(
+      "Present ONLY on a decline. An empty window is a measurement.",
+    ),
   })
   .passthrough();
 export type ChainConcentrationHistoryArtifact = z.infer<

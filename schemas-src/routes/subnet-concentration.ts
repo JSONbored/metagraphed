@@ -3,38 +3,21 @@
 // static file. Modeled from src/concentration.ts's buildConcentration()/
 // buildConcentrationHistory(), cross-checked against the hand-edited
 // SubnetConcentrationArtifact/SubnetConcentrationHistoryArtifact components
-// they replace. The inline stake/emission/entity_stake/entity_emission/
-// validator_stake lens shape is intentionally NOT the shared
-// ConcentrationMetrics component (schemas/components/06-health.schema.json)
-// -- the hand-written SubnetConcentrationArtifact never $ref'd it either
-// (kept independently inline), and ConcentrationMetrics is still referenced
-// by SubnetPerformanceArtifact (a different, not-yet-converted route) --
-// touching it is out of this batch's scope.
+// they replace.
+//
+// The five lenses USE the shared ConcentrationMetrics component (#10214).
+// They held a local copy of it, on the reasoning that the hand-written
+// artifact never $ref'd it either and converting it was out of #8056's batch.
+// Both reasons were about migration order, not about the shape: the copy was
+// byte-identical to the shared one, and being unregistered it inlined five
+// more times -- so the published GraphQL schema grew five anonymous twins of
+// a type it already had a name for.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { ConcentrationMetricsSchema } from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_CONCENTRATION_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
-
-const ConcentrationLensSchema = z
-  .object({
-    holders: z.int().min(0).optional(),
-    total: z.number().nullable().optional(),
-    gini: z.number().nullable().optional(),
-    hhi: z.number().nullable().optional(),
-    hhi_normalized: z.number().nullable().optional(),
-    nakamoto_coefficient: z.int().nullable().optional(),
-    top_1pct_share: z.number().nullable().optional(),
-    top_5pct_share: z.number().nullable().optional(),
-    top_10pct_share: z.number().nullable().optional(),
-    top_20pct_share: z.number().nullable().optional(),
-    entropy: z.number().nullable().optional(),
-    entropy_normalized: z.number().nullable().optional(),
-  })
-  .passthrough()
-  .describe(
-    "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
-  );
 
 export const SubnetConcentrationArtifactSchema = z
   .object({
@@ -55,23 +38,23 @@ export const SubnetConcentrationArtifactSchema = z
         "UIDs per controlling entity -- a Sybil/consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many hotkeys). Null on an empty subnet.",
       ),
     captured_at: z.string().nullable().optional(),
-    stake: ConcentrationLensSchema.nullable().describe(
+    stake: ConcentrationMetricsSchema.nullable().describe(
       "Stake concentration across all UIDs.",
     ),
-    emission: ConcentrationLensSchema.nullable().describe(
+    emission: ConcentrationMetricsSchema.nullable().describe(
       "Emission concentration across all UIDs.",
     ),
-    entity_stake: ConcentrationLensSchema.nullable()
+    entity_stake: ConcentrationMetricsSchema.nullable()
       .optional()
       .describe(
         "Stake concentration collapsed to one holder per controlling entity.",
       ),
-    entity_emission: ConcentrationLensSchema.nullable()
+    entity_emission: ConcentrationMetricsSchema.nullable()
       .optional()
       .describe(
         "Emission concentration collapsed to one holder per controlling entity.",
       ),
-    validator_stake: ConcentrationLensSchema.nullable()
+    validator_stake: ConcentrationMetricsSchema.nullable()
       .optional()
       .describe("Stake concentration across permitted validators only."),
   })

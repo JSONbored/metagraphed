@@ -15,6 +15,7 @@
 // itself (not a shortcut introduced here), matching the issue's own
 // documented-open-map carve-out.
 import { z } from "zod";
+import { HttpUrlSchema, SocialLinksSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
 import {
@@ -34,7 +35,6 @@ import {
 import { SurfaceAuthLocationSchema } from "../shared.ts";
 import { SurfaceAuthSchemeSchema } from "../shared.ts";
 
-const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 const HttpOrWssUrlSchema = z
   .string()
   .regex(/^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\/\//);
@@ -75,7 +75,7 @@ export const CANDIDATE_STATE_VALUES = QUERY_ENUMS.candidateState;
 export const CandidateStateSchema = z.enum(CANDIDATE_STATE_VALUES);
 export type CandidateState = z.infer<typeof CandidateStateSchema>;
 
-const QualitySignalsSchema = z
+export const QualitySignalsSchema = z
   .object({
     archived: z.boolean().optional(),
     content_type_matches_kind: z.boolean().optional(),
@@ -132,7 +132,7 @@ export const VerificationResultSchema = z
   })
   .strict();
 
-const RateLimitSchema = z
+export const RateLimitSchema = z
   .object({
     burst: z.int().min(0).optional(),
     cost_notes: z.string().optional(),
@@ -142,7 +142,7 @@ const RateLimitSchema = z
   })
   .strict();
 
-const AuthSchema = z
+export const AuthSchema = z
   .object({
     body_envelope: z
       .object({
@@ -445,16 +445,7 @@ export const SubnetDetailSchema = z
       .passthrough(),
     registered_at_block: z.int().min(0).optional(),
     slug: z.string(),
-    social: z
-      .object({
-        reddit: HttpUrlSchema.optional(),
-        telegram: HttpUrlSchema.optional(),
-        x: HttpUrlSchema.optional(),
-        youtube: HttpUrlSchema.optional(),
-      })
-      .strict()
-      .nullable()
-      .optional(),
+    social: SocialLinksSchema.nullable().optional(),
     source_repo: z.url().nullable().optional(),
     status: SubnetStatusSchema,
     subnet_type: SubnetTypeSchema,
