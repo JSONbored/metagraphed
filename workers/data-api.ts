@@ -399,6 +399,7 @@ import { neonOwnsTable } from "../src/neon-write.ts";
 import { KV_TAO_USD_CURRENT } from "../src/kv-keys.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
+import { runTaoUsdIndexWatchdog } from "../src/tao-usd-index-watchdog.ts";
 
 import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import {
@@ -7726,9 +7727,18 @@ export default {
   ) {
     if (controller?.cron === TABLE_FRESHNESS_CRON) {
       // D1 only. It reads MAX(<timestamp>) per table and writes one verdict.
-      return runTableFreshnessWatchdog(
-        env as unknown as Record<string, unknown>,
-      );
+      const bag = env as unknown as Record<string, unknown>;
+      // The TAO/USD index rides this cron rather than its own (#8603). Its
+      // staleness bound already lives in TABLE_FRESHNESS, the store is already
+      // reachable here, and a NEW cron expression would need
+      // `wrangler triggers deploy` to take effect -- Workers Builds deploys
+      // code, not schedules. A watchdog that silently never runs is the exact
+      // failure it was built to catch, so it reuses a schedule known to fire.
+      const [freshness] = await Promise.all([
+        runTableFreshnessWatchdog(bag),
+        runTaoUsdIndexWatchdog(bag),
+      ]);
+      return freshness;
     }
     if (controller?.cron === NEON_PRUNE_CRON) {
       // Neon's own retention for the rolling windows (#9891). Independent of
