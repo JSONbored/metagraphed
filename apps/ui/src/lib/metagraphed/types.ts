@@ -4170,3 +4170,31 @@ export interface DeregistrationStanding {
   immune_until_block: number | null;
   blocks_until_prunable: number | null;
 }
+
+/** What holding a permit, and earning, cost on one subnet (#10300). */
+export interface SubnetValidatorEconomics {
+  netuid: number | null;
+  permit_floor_cost_tao: number | null;
+  earning_floor_cost_tao: number | null;
+  /** How many times the permit floor the earning floor is. */
+  permit_to_earning_multiple: number | null;
+  max_validators: number | null;
+  validator_slots_open: number | null;
+  /** Permitted, active and earning are THREE DIFFERENT SETS, never collapsed. */
+  permitted: number | null;
+  active: number | null;
+  earning: number | null;
+  median_take: number | null;
+  /** True when the validator cap, not the stake floor, is holding entry back. */
+  cap_binding: boolean | null;
+}
+
+/** One day of the same thresholds. */
+export interface SubnetValidatorEconomicsPoint {
+  snapshot_date: string;
+  permit_floor_alpha: number | null;
+  earning_floor_alpha: number | null;
+  validators_permitted: number | null;
+  validators_earning: number | null;
+  emission_gate_open: boolean | null;
+}

@@ -231,6 +231,8 @@ import type {
   SubnetOwnershipHistory,
   SubnetLeaseState,
   SubnetLifecycleEntry,
+  SubnetValidatorEconomics,
+  SubnetValidatorEconomicsPoint,
   DeregistrationStanding,
   SubnetLeaseTerms,
   SubnetLeaseHistory,
@@ -5439,6 +5441,87 @@ export function normalizeSubnetLeaseState(netuid: number, raw: unknown): SubnetL
     leased,
     lease: normalizeSubnetLeaseTerms(d.lease),
     queried_at: firstString(d.queried_at) ?? null,
+  };
+}
+
+/**
+ * What it costs to hold a validator permit on this subnet, and to earn (#10300).
+ *
+ * PERMIT AND EARNING ARE DIFFERENT THRESHOLDS and the gap between them is the
+ * point: holding a permit does not mean earning, so the route publishes both
+ * floors and the multiple between them rather than one "validator cost".
+ */
+export const subnetValidatorEconomicsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-validator-economics", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/validator-economics`,
+        { signal },
+      );
+      return {
+        data: normalizeSubnetValidatorEconomics(res.data),
+        meta: res.meta,
+        url: res.url,
+      };
+    },
+    staleTime: STALE_MED,
+  });
+
+/** The same thresholds over time, so a reader sees which way they are moving. */
+export const subnetValidatorEconomicsHistoryQuery = (netuid: number, window: string) =>
+  queryOptions({
+    queryKey: k("subnet-validator-economics-history", netuid, window),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<{ points?: unknown }>(
+        `/api/v1/subnets/${netuid}/validator-economics/history?window=${encodeURIComponent(window)}`,
+        { signal },
+      );
+      const raw = isRecord(res.data) ? res.data.points : null;
+      const points = (Array.isArray(raw) ? raw : [])
+        .map(normalizeValidatorEconomicsPoint)
+        .filter((p): p is SubnetValidatorEconomicsPoint => p !== null);
+      return { data: points, meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+function normalizeSubnetValidatorEconomics(raw: unknown): SubnetValidatorEconomics | null {
+  if (!isRecord(raw)) return null;
+  const composition = isRecord(raw.composition) ? raw.composition : {};
+  const takes = isRecord(raw.takes) ? raw.takes : {};
+  return {
+    netuid: firstFiniteNumber(raw.netuid) ?? null,
+    permit_floor_cost_tao: firstFiniteNumber(raw.permit_floor_cost_tao) ?? null,
+    earning_floor_cost_tao: firstFiniteNumber(raw.earning_floor_cost_tao) ?? null,
+    permit_to_earning_multiple: firstFiniteNumber(raw.permit_to_earning_multiple) ?? null,
+    max_validators: firstFiniteNumber(raw.max_validators) ?? null,
+    validator_slots_open: firstFiniteNumber(raw.validator_slots_open) ?? null,
+    // Three DIFFERENT sets, never collapsed: permitted, active and earning
+    // answer "how many validators does this subnet have" three defensible ways.
+    permitted: firstFiniteNumber(composition.permitted) ?? null,
+    active: firstFiniteNumber(composition.active) ?? null,
+    earning: firstFiniteNumber(composition.earning) ?? null,
+    median_take: firstFiniteNumber(takes.median) ?? null,
+    // `cap_binding` is the one that changes what a reader should do: slots open
+    // is meaningless when the cap is what is holding entry back.
+    cap_binding: typeof raw.cap_binding === "boolean" ? raw.cap_binding : null,
+  };
+}
+
+function normalizeValidatorEconomicsPoint(raw: unknown): SubnetValidatorEconomicsPoint | null {
+  if (!isRecord(raw)) return null;
+  // A point with no date cannot be placed on a timeline, so it is dropped
+  // rather than rendered at an arbitrary position.
+  const date = firstString(raw.snapshot_date);
+  if (date === null || date === undefined) return null;
+  return {
+    snapshot_date: date,
+    permit_floor_alpha: firstFiniteNumber(raw.permit_floor_alpha) ?? null,
+    earning_floor_alpha: firstFiniteNumber(raw.earning_floor_alpha) ?? null,
+    validators_permitted: firstFiniteNumber(raw.validators_permitted) ?? null,
+    validators_earning: firstFiniteNumber(raw.validators_earning) ?? null,
+    emission_gate_open: typeof raw.emission_gate_open === "boolean" ? raw.emission_gate_open : null,
   };
 }
 

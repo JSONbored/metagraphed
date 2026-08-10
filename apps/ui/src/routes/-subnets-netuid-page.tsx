@@ -68,6 +68,7 @@ import { SubnetHoldersLeaderboard } from "@/components/metagraphed/subnet-holder
 import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
 import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { SubnetLifecyclePanel } from "@/components/metagraphed/subnet-lifecycle-panel";
+import { SubnetValidatorEconomicsPanel } from "@/components/metagraphed/subnet-validator-economics-panel";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
 import { ValidatorsTableLoader } from "@/components/metagraphed/validators-panel";
 import { DistributionPanel } from "@/components/metagraphed/concentration-panel";
@@ -712,6 +713,9 @@ function GovernancePanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <SubnetLifecyclePanel netuid={netuid} />
+          {/* #10300: validator-economics and its history were published and
+              rendered nowhere. */}
+          <SubnetValidatorEconomicsPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
