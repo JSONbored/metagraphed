@@ -451,6 +451,7 @@
         "provenance": "probe-derived",
         "currency": "USD",
         "grain": "daily",
+        "shape": "flat-array",
         "fields": {
           "date": "date",
           "amount": "total_revenue"
@@ -490,6 +491,7 @@
         "provenance": "probe-derived",
         "currency": "USD",
         "grain": "daily",
+        "shape": "flat-array",
         "fields": {
           "date": "date",
           "amount": "usd_amount"
@@ -720,6 +722,7 @@
         "provenance": "probe-derived",
         "currency": "USD",
         "grain": "cumulative",
+        "shape": "scalar",
         "fields": {
           "amount": "total"
         },
@@ -908,6 +911,7 @@
         "provenance": "chain-verified",
         "currency": "USD",
         "grain": "cumulative",
+        "shape": "flat-array",
         "fields": {
           "date": "timestamp",
           "amount": "usd_amount"

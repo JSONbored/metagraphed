@@ -12186,6 +12186,11 @@ export interface components {
                 role: "external-revenue" | "usage-proxy" | "miner-payout" | "not-revenue";
                 /** @description When absence was established. Required for provenance 'none': an undated absence is not evidence. */
                 searched_at?: string;
+                /**
+                 * @description How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.
+                 * @enum {string}
+                 */
+                shape?: "flat-array" | "keyed-map" | "scalar";
                 /** Format: uri */
                 source_url?: string;
                 /** @description Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice. */
