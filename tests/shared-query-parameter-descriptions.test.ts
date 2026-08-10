@@ -34,7 +34,7 @@ interface Parameter {
   name?: string;
   in?: string;
   description?: string;
-  schema?: { maximum?: number; enum?: unknown[] };
+  schema?: { maximum?: number; enum?: unknown[]; type?: string };
 }
 
 function queryParameters(): { path: string; parameter: Parameter }[] {
@@ -115,12 +115,38 @@ describe("shared query parameters are described in the published spec (#9131)", 
       `expected the cursor parameters, found ${cursors.length} ` +
         `across ${SPEC_PATHS} paths`,
     );
+    // PER SHAPE, not one sentence for all of them -- which is what this used
+    // to assert, and it was enforcing the defect #10060 named: the shared
+    // name-keyed description said "echo it back verbatim" on every `cursor`,
+    // while ~40 collection routes take a ROW OFFSET. Telling a caller to echo
+    // an integer offset back verbatim is precisely the paging loop the comment
+    // above warns about, published as guidance.
+    //
+    // Since #10219 the builder's own sentence reaches the spec, so each cursor
+    // says what it actually is. The property worth pinning is that it says
+    // WHICH -- an opaque token must not read as an offset and vice versa.
     for (const { path, parameter } of cursors) {
-      assert.match(
-        parameter.description ?? "",
-        /verbatim/i,
-        `${path}'s cursor description must say to echo it back verbatim`,
-      );
+      const prose = parameter.description ?? "";
+      const numeric = parameter.schema?.type === "integer";
+      if (numeric) {
+        assert.match(
+          prose,
+          /offset|position/i,
+          `${path}'s cursor is an integer offset and must say so`,
+        );
+        assert.doesNotMatch(
+          prose,
+          /verbatim/i,
+          `${path}'s cursor is an offset -- telling a caller to echo it back ` +
+            "verbatim is the paging loop this test exists to prevent",
+        );
+      } else {
+        assert.match(
+          prose,
+          /verbatim/i,
+          `${path}'s cursor is opaque and must say to echo it back verbatim`,
+        );
+      }
     }
   });
 

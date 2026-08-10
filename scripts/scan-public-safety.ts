@@ -248,9 +248,16 @@ const patterns: SafetyPattern[] = [
     regex: /\bcoldkey\b/i,
     // Bare "coldkey" as a public API field name (JSON property / required entry /
     // TS type member) is legitimate metagraph vocabulary (#1304) — an ss58 coldkey
-    // is public on-chain data, not a secret. Also allow the "hotkey or coldkey" /
-    // "hotkey/coldkey" field-pair phrase (account routes #1347 doc text + the
-    // generated MCP server-card prose), generated CSV headers for public exports,
+    // is public on-chain data, not a secret. Also allow the field-pair phrase in
+    // EITHER order -- "hotkey or coldkey", "coldkey or hotkey", "hotkey/coldkey",
+    // "coldkey/hotkey" (account routes #1347 doc text + the generated MCP
+    // server-card prose). It accepted only the hotkey-first order until #10219,
+    // which is an arbitrary distinction the rule never meant to draw: the two
+    // orders are the same legitimate vocabulary, and `ss58Schema()`'s own
+    // sentence ("Coldkey or hotkey depending on the tool") tripped it the moment
+    // a builder's prose started reaching the published spec. Widened rather than
+    // reworded, so the next writer does not hit the same arbitrary wall.
+    // Also allowed: generated CSV headers for public exports,
     // the "coldkey-only" behaviour descriptor (a coldkey-only ss58 address has no
     // hotkey-attributed rollup), and "coldkey" as a bare SQL/code identifier —
     // one comprehensive alternation covering the common ways a column/field
@@ -288,7 +295,7 @@ const patterns: SafetyPattern[] = [
     // a lowercase identifier + `(` matches the method-call shape without
     // loosening the bare `\bcoldkey\b` trigger itself.
     allow:
-      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\bhotkey(?:\s+or\s+|\s*\/\s*)coldkey\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
+      /"coldkey"\s*:?|\bcoldkey\s*\??\s*:|\bcoldkey\?\.|\bcoldkey\.[a-z_]+\(|\b(?:hotkey(?:\s+or\s+|\s*\/\s*)coldkey|coldkey(?:\s+or\s+|\s*\/\s*)hotkey)\b|\bcoldkey-only(?![-A-Za-z0-9_])|\bcoldkey\s*(?:=|!=|<>|IS\s+(?:NOT\s+)?NULL\b|IN\s*\()|\bcoldkey\s*(?:,|\)|\]|\}|;|`)|\bcoldkey\s+(?:ASC|DESC|AS\b|TEXT|VARCHAR|CHAR|INTEGER|BIGINT|NUMERIC|BOOLEAN)\b|'coldkey'|\bcoldkey\s*\/\s*[a-z_]+\b|\b[a-z_]+\s*\/\s*coldkey\b|\b[a-z]+-coldkey\b|\bcoldkey\s*\(/gi,
     soft: true,
   },
   {

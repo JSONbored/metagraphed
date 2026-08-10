@@ -2024,14 +2024,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2078,14 +2078,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2132,14 +2132,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2186,14 +2186,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2240,14 +2240,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2311,14 +2311,14 @@
           }
         },
         {
-          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored.",
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
           "name": "since",
           "schema": {
             "type": "string"
           }
         },
         {
-          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day.",
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
           "name": "until",
           "schema": {
             "type": "string"
@@ -2424,6 +2424,7 @@
           }
         },
         {
+          "description": "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
           "name": "netuids",
           "schema": {
             "maxLength": 767,
@@ -2618,6 +2619,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -2746,6 +2748,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "review_state",
           "schema": {
             "maxLength": 100,
@@ -2800,6 +2803,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -2968,6 +2972,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -2975,6 +2980,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -3028,6 +3034,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3118,6 +3125,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -3125,6 +3133,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -3178,6 +3187,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3299,6 +3309,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -3372,6 +3383,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3489,6 +3501,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -3562,6 +3575,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3665,6 +3679,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -3686,6 +3701,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -3720,6 +3736,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3811,6 +3828,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -3832,6 +3850,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -3866,6 +3885,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -3933,6 +3953,7 @@
       ],
       "query_parameters": [
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -3981,6 +4002,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -4182,6 +4204,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -4342,6 +4365,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -4452,6 +4476,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -4646,6 +4671,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum.",
           "name": "sort",
           "schema": {
             "enum": [
@@ -4666,6 +4692,7 @@
           }
         },
         {
+          "description": "Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first.",
           "name": "order",
           "schema": {
             "enum": [
@@ -4901,6 +4928,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5002,6 +5030,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5100,6 +5129,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "review_state",
           "schema": {
             "maxLength": 100,
@@ -5123,6 +5153,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5227,6 +5258,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "review_state",
           "schema": {
             "maxLength": 100,
@@ -5250,6 +5282,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5414,6 +5447,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5557,6 +5591,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "reason_codes",
           "schema": {
             "maxLength": 100,
@@ -5592,6 +5627,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -5787,6 +5823,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "reason_codes",
           "schema": {
             "maxLength": 100,
@@ -5794,6 +5831,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "review_state",
           "schema": {
             "maxLength": 100,
@@ -5834,6 +5872,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -6016,6 +6055,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -6203,6 +6243,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "reason_codes",
           "schema": {
             "maxLength": 100,
@@ -6272,6 +6313,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -6368,6 +6410,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -6459,6 +6502,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -6513,6 +6557,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -6595,6 +6640,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -6649,6 +6695,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -7285,6 +7332,7 @@
           }
         },
         {
+          "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
           "name": "direction",
           "schema": {
             "enum": [
@@ -7383,6 +7431,7 @@
           }
         },
         {
+          "description": "Which side of the trade to price: `stake` buys alpha with TAO, `unstake` sells alpha for TAO. Omit for `stake`.",
           "name": "direction",
           "schema": {
             "default": "stake",
@@ -7456,6 +7505,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to earning_floor_cost_tao.",
           "name": "sort",
           "schema": {
             "default": "earning_floor_cost_tao",
@@ -7530,6 +7580,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to stake.",
           "name": "sort",
           "schema": {
             "default": "stake",
@@ -7582,6 +7633,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to subnet_count.",
           "name": "sort",
           "schema": {
             "default": "subnet_count",
@@ -7637,6 +7689,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_stake.",
           "name": "sort",
           "schema": {
             "default": "total_stake",
@@ -7692,6 +7745,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to total_tao.",
           "name": "sort",
           "schema": {
             "default": "total_tao",
@@ -7785,6 +7839,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to net_staked.",
           "name": "sort",
           "schema": {
             "default": "net_staked",
@@ -7816,6 +7871,7 @@
           }
         },
         {
+          "description": "An SS58 account address (47-48 base58 characters). Coldkey or hotkey depending on the tool — see the tool description for which this expects.",
           "name": "coldkey",
           "schema": {
             "pattern": "^[1-9A-HJ-NP-Za-km-z]{47,48}$",
@@ -7996,6 +8052,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8239,12 +8296,14 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
           "name": "kind",
           "schema": {
             "type": "string"
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -8252,6 +8311,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -8279,6 +8339,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8435,6 +8496,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8502,6 +8564,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
           "name": "kind",
           "schema": {
             "type": "string"
@@ -8516,6 +8579,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -8523,6 +8587,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -8550,6 +8615,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8593,6 +8659,7 @@
           }
         },
         {
+          "description": "Inclusive first day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "from",
           "schema": {
             "format": "date",
@@ -8601,6 +8668,7 @@
           }
         },
         {
+          "description": "Inclusive last day of the range to read, as YYYY-MM-DD. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "to",
           "schema": {
             "format": "date",
@@ -8629,6 +8697,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8664,6 +8733,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -8671,6 +8741,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -8698,6 +8769,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8733,6 +8805,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
           "name": "direction",
           "schema": {
             "enum": [
@@ -8744,6 +8817,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -8751,6 +8825,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -8778,6 +8853,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -8873,6 +8949,7 @@
           }
         },
         {
+          "description": "Which side of the flow to count, relative to the account or subnet this route is scoped to. Omit to count both. Options are per-route; see this parameter's enum.",
           "name": "direction",
           "schema": {
             "enum": [
@@ -9218,6 +9295,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -9563,6 +9641,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Restrict the result to this kind. Options are per-tool; see this parameter's enum.",
           "name": "kind",
           "schema": {
             "enum": [
@@ -9601,6 +9680,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to top1_share.",
           "name": "sort",
           "schema": {
             "default": "top1_share",
@@ -9664,6 +9744,7 @@
           }
         },
         {
+          "description": "Restrict the result to this kind, matched exactly against the value the rows carry. Open set, so a value nothing matches yields an empty result rather than an error. Omit for every kind.",
           "name": "kind",
           "schema": {
             "type": "string"
@@ -9935,6 +10016,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
@@ -9954,6 +10036,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "from",
           "schema": {
             "minimum": 0,
@@ -9961,6 +10044,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "to",
           "schema": {
             "minimum": 0,
@@ -9968,6 +10052,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -9975,6 +10060,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -10184,6 +10270,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block",
           "schema": {
             "minimum": 0,
@@ -10198,6 +10285,7 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
@@ -10205,6 +10293,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "before",
           "schema": {
             "minimum": 0,
@@ -10322,12 +10411,14 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block",
           "schema": {
             "minimum": 0,
@@ -10372,6 +10463,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -10379,6 +10471,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -10386,6 +10479,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "from",
           "schema": {
             "minimum": 0,
@@ -10393,6 +10487,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "to",
           "schema": {
             "minimum": 0,
@@ -10468,12 +10563,14 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block",
           "schema": {
             "minimum": 0,
@@ -10497,6 +10594,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -10504,6 +10602,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -10511,6 +10610,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "from",
           "schema": {
             "minimum": 0,
@@ -10518,6 +10618,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "to",
           "schema": {
             "minimum": 0,
@@ -10574,12 +10675,14 @@
           }
         },
         {
+          "description": "Opaque pagination token: pass back the `next_cursor` from the previous response verbatim. Its contents are not stable and must not be parsed or constructed. Stable across inserts, unlike a row offset.",
           "name": "cursor",
           "schema": {
             "type": "string"
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block",
           "schema": {
             "minimum": 0,
@@ -10603,6 +10706,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "block_start",
           "schema": {
             "minimum": 0,
@@ -10610,6 +10714,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "block_end",
           "schema": {
             "minimum": 0,
@@ -10617,6 +10722,7 @@
           }
         },
         {
+          "description": "Inclusive first block height of the range to read. Omit for an unbounded end. Must not be later than the range's upper bound.",
           "name": "from",
           "schema": {
             "minimum": 0,
@@ -10624,6 +10730,7 @@
           }
         },
         {
+          "description": "Inclusive last block height of the range to read. Omit for an unbounded end. Must not be earlier than the range's lower bound.",
           "name": "to",
           "schema": {
             "minimum": 0,
@@ -10835,6 +10942,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to tx_count.",
           "name": "sort",
           "schema": {
             "default": "tx_count",
@@ -10969,6 +11077,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to volume.",
           "name": "sort",
           "schema": {
             "default": "volume",
@@ -11655,6 +11764,7 @@
           }
         },
         {
+          "description": "Column to rank the result by; pair with `order` for direction. Options are per-tool; see this parameter's enum. Defaults to nakamoto_coefficient.",
           "name": "sort",
           "schema": {
             "default": "nakamoto_coefficient",
@@ -11670,6 +11780,7 @@
           }
         },
         {
+          "description": "Sort direction for the chosen sort key: `asc` smallest-first, `desc` largest-first. Defaults to desc.",
           "name": "order",
           "schema": {
             "default": "desc",
@@ -11944,6 +12055,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
           "name": "netuids",
           "schema": {
             "maxLength": 767,
@@ -12123,6 +12235,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12194,6 +12307,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12281,6 +12395,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12389,6 +12504,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -12462,6 +12578,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12519,6 +12636,7 @@
       ],
       "query_parameters": [
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -12577,6 +12695,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12628,6 +12747,7 @@
       ],
       "query_parameters": [
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "id",
           "schema": {
             "maxLength": 100,
@@ -12686,6 +12806,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12771,6 +12892,7 @@
           }
         },
         {
+          "description": "Restrict the result to rows whose field equals this value. Matched exactly (case-insensitively), not searched for as a substring — an unmatched value yields an empty result rather than an error.",
           "name": "provider",
           "schema": {
             "maxLength": 100,
@@ -12827,6 +12949,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -12917,6 +13040,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -13042,6 +13166,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,
@@ -13135,6 +13260,7 @@
           }
         },
         {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
           "name": "cursor",
           "schema": {
             "minimum": 0,

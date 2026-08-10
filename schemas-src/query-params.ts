@@ -205,8 +205,16 @@ export const windowSchema = <T extends readonly [string, ...string[]]>(
     .enum(values)
     .describe(
       "Trailing time window to aggregate over, ending at the latest data " +
-        "point rather than a calendar boundary. Options are per-tool; see this " +
-        "parameter's enum." +
+        "point rather than a calendar boundary. Options are per-tool: " +
+        // NAMED, not deferred to "see this parameter's enum". The builder is
+        // handed the values, so listing them is a derivation rather than a
+        // restatement -- it cannot drift from the `enum` beside it, because
+        // both come from this one argument. The deferral was written when the
+        // shared name-keyed description interpolated them at emit time; that
+        // rung no longer runs for `window` (#10219), so the sentence has to
+        // carry them itself or the option set becomes invisible in prose.
+        values.map((value) => `\`${value}\``).join(", ") +
+        "." +
         (fallback === undefined ? "" : ` Defaults to ${fallback}.`),
     )
     .meta(
@@ -288,6 +296,34 @@ export const sortSchema = <T extends readonly [string, ...string[]]>(
     );
 
 /**
+ * What an ORDERED PAIR's two halves promise about each other (#10219).
+ *
+ * 41 pairs are published across the GET routes -- `from`/`to`,
+ * `block_start`/`block_end`, `since`/`until` -- and before this, not one of
+ * them said which way round they go. JSON Schema has no way to relate two
+ * sibling properties, so the relationship lived in the handler or nowhere, and
+ * a caller reading the contract could not tell an ordered pair from two
+ * independent filters.
+ *
+ * STATED, NOT ENFORCED, and that distinction is the decision here. Measured
+ * across every route publishing an ordered pair: 20 reject an inverted range
+ * and 12 answer an empty page instead, and the 12 are deliberate -- an
+ * inverted range provably matches nothing, so skipping the read is the point,
+ * and nine tests pin exactly that. Adding `.refine()` would flip all twelve to
+ * rejecting, which is a behaviour change on twelve routes made by a refactor
+ * rather than by a decision. The sentence makes the pair legible without
+ * touching what either surface does with it.
+ *
+ * Derived from the edge the builder already carries, so a route cannot state
+ * it one way for `from` and another for `to`.
+ */
+export function orderingNote(edge: "first" | "last"): string {
+  return edge === "first"
+    ? " Must not be later than the range's upper bound."
+    : " Must not be earlier than the range's lower bound.";
+}
+
+/**
  * A block height bound. Inclusive on both ends, which is the one thing a
  * caller cannot infer from the name and gets wrong by one row.
  */
@@ -297,7 +333,8 @@ export const blockBoundSchema = (edge: "first" | "last") =>
     .min(0)
     .describe(
       `Inclusive ${edge} block height of the range to read. ` +
-        "Omit for an unbounded end.",
+        "Omit for an unbounded end." +
+        orderingNote(edge),
     )
     .meta({ examples: [8783000] });
 
@@ -406,6 +443,36 @@ export const blockEventCursorSchema = () =>
  * make no promise about its contents. If a length ever needs enforcing, the
  * place is `decodeCursor`, where every surface already funnels.
  */
+/**
+ * A feed's `since`/`until` bound.
+ *
+ * NO PATTERN, deliberately, and this reverses nothing: `src/feeds.ts` accepts a
+ * whole UTC day or an ISO instant with an explicit zone, range-checks the
+ * calendar, and rejects a malformed value with a message naming which form was
+ * expected. Publishing a regex would make the router's derived message preempt
+ * that better one on all 24 feed paths -- a worse answer for the caller, in
+ * exchange for a `pattern` keyword.
+ *
+ * What DID need fixing is that these published `{"type":"string"}` and nothing
+ * else: no accepted forms, no ordering, no example. The handler knowing more
+ * than a schema can say is a reason not to move the CHECK; it was never a
+ * reason to say nothing.
+ */
+export const feedInstantSchema = (edge: "first" | "last") =>
+  z
+    .string()
+    .describe(
+      `Inclusive ${edge} instant of the window to read: either a whole UTC ` +
+        "day as YYYY-MM-DD, or an ISO-8601 date-time with an explicit zone " +
+        "(e.g. 2026-06-01T00:00:00Z). A bare day resolves to that day's " +
+        (edge === "first" ? "first" : "last") +
+        " instant, so the named day is included either way." +
+        orderingNote(edge),
+    )
+    .meta({
+      examples: [edge === "first" ? "2026-06-01" : "2026-06-30T23:59:59Z"],
+    });
+
 export const keysetCursorSchema = () =>
   z
     .string()
@@ -475,7 +542,8 @@ export const daySchema = (edge: "first" | "last") =>
     .meta({ format: "date", examples: ["2026-08-01"] })
     .describe(
       `Inclusive ${edge} day of the range to read, as YYYY-MM-DD. ` +
-        "Omit for an unbounded end.",
+        "Omit for an unbounded end." +
+        orderingNote(edge),
     );
 
 /**
