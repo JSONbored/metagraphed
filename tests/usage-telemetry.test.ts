@@ -11,6 +11,7 @@ import {
   admitExceptionCaptureShared,
   EXCEPTION_STORM_KV_PREFIX,
   isBenignPlatformMessage,
+  MCP_PING_ROUTE,
   MCP_PROTOCOL_ROUTE_PREFIX,
   classifyMcpErrorType,
   resolveDeployment,
@@ -2711,8 +2712,10 @@ describe("MCP protocol events are exempt from usage_event sampling", () => {
     // scheduleMcpProtocolUsageEvent (src/mcp-server.ts) sets `route` and never
     // `mcpTool`, so the pre-existing mcpTool exemption did not cover these and
     // 95% of them were dropped.
+    // "ping" is deliberately ABSENT: it is carved back out of this exemption
+    // (see the mcp:ping tests below) after measurement showed one keepalive
+    // out-volumed the entire surface this exemption was priced on.
     for (const method of [
-      "ping",
       "resources/read",
       "resources/subscribe",
       "prompts/get",
@@ -2736,10 +2739,53 @@ describe("MCP protocol events are exempt from usage_event sampling", () => {
       resolveUsageSampleRate(
         mockEnv({
           ...sampled,
-          [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"mcp:ping":0.01}',
+          [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"mcp:resources/read":0.01}',
         }),
-        { route: "mcp:ping", ok: true, durationMs: 1 },
+        { route: "mcp:resources/read", ok: true, durationMs: 1 },
       ),
+      1,
+    );
+  });
+
+  // mcp:ping is the single carve-out from the exemption above. Measured
+  // 2026-08-10 it ran ~175/hour -- ~4,200/day against the ~2K/day the whole
+  // exemption was priced on, and 13% of the project's entire analytics volume
+  // -- for a keepalive no dashboard reads.
+  test("mcp:ping falls through to the deployment default rate", () => {
+    assert.equal(
+      resolveUsageSampleRate(mockEnv(sampled), {
+        route: MCP_PING_ROUTE,
+        ok: true,
+        durationMs: 1,
+      }),
+      0.05,
+    );
+  });
+
+  // Unlike the rest of the surface, ping IS tunable -- the operator can push
+  // it lower still without a code change when a client starts polling harder.
+  test("a per-route override CAN re-sample mcp:ping", () => {
+    assert.equal(
+      resolveUsageSampleRate(
+        mockEnv({
+          ...sampled,
+          [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"mcp:ping":0.001}',
+        }),
+        { route: MCP_PING_ROUTE, ok: true, durationMs: 1 },
+      ),
+      0.001,
+    );
+  });
+
+  // The failure rule outranks the carve-out: a ping that FAILS is a transport
+  // fault, and `ok: false` is never sampled anywhere in this module.
+  test("a FAILING mcp:ping is still never sampled", () => {
+    assert.equal(
+      resolveUsageSampleRate(mockEnv(sampled), {
+        route: MCP_PING_ROUTE,
+        ok: false,
+        durationMs: 1,
+      }),
       1,
     );
   });
@@ -2761,7 +2807,7 @@ describe("MCP protocol events are exempt from usage_event sampling", () => {
     const calls: Row[] = [];
     const recorded = await recordUsageEvent(
       mockEnv(sampled),
-      { route: "mcp:ping", ok: true, durationMs: 2 },
+      { route: "mcp:resources/read", ok: true, durationMs: 2 },
       {
         fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
         // Above 0.05: this event would be sampled out if the gate applied.

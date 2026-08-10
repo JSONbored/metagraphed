@@ -210,7 +210,7 @@ import {
   newSpanId,
   newTraceId,
   recordTraceSpan,
-  shouldSampleTrace,
+  shouldRecordTraceSpan,
 } from "./tracing.ts";
 import { resolveClientIp } from "../workers/config.ts";
 import {
@@ -15682,11 +15682,25 @@ async function dispatchTool(
       // #9000: the "mcp" surface rate, not the global one. MCP is ~1.9K tool
       // calls/day against REST's ~1.1M requests/day, so it can afford a rate
       // that actually answers questions while REST stays dark.
-      if (shouldSampleTrace(ctx?.env, "mcp")) {
+      //
+      // #9000 sized "100% is ~1.9K spans/day, ~56K/month" as affordable
+      // against a 1M tier. Measured 2026-08-10, spans bill against the 100K
+      // AI-Observability allocation instead, which made this ONE call site
+      // 57% of the entire monthly budget. The arithmetic was right and the
+      // denominator was wrong; the rate now carries the correction and the
+      // gate keeps every failed tool call regardless of it.
+      const spanName = `mcp.tool/${name}`;
+      if (
+        shouldRecordTraceSpan(ctx?.env, {
+          name: spanName,
+          ok: toolOk,
+          surface: "mcp",
+        })
+      ) {
         scheduleTraceSpan(ctx, {
           traceId: newTraceId(),
           spanId: newSpanId(),
-          name: `mcp.tool/${name}`,
+          name: spanName,
           startTimeMs: toolStartedAt,
           endTimeMs: Date.now(),
           ok: toolOk,

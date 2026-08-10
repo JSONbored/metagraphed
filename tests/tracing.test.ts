@@ -3,16 +3,19 @@ import { describe, test } from "vitest";
 import {
   POSTHOG_TRACES_PATH,
   POSTHOG_TRACES_SAMPLE_RATE_ENV,
+  isUntracedInternalRoute,
   newSpanId,
   newTraceId,
   otlpTraceExportRequest,
   recordTraceSpan,
+  shouldRecordTraceSpan,
   shouldSampleTrace,
   timedSpan,
   POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV,
   tracesSampleRate,
   type TraceSpanInput,
 } from "../src/tracing.ts";
+import { POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 function fakeFetch({
@@ -321,5 +324,232 @@ describe("per-surface trace sampling (#9000)", () => {
       assert.equal(shouldSampleTrace(env, "mcp"), true);
       assert.equal(shouldSampleTrace(env), false);
     }
+  });
+});
+
+// The AI-Observability tier correction (measured 2026-08-10). Spans bill
+// against a 100K/month allocation, not the 1M product-analytics one every rate
+// in #9000/#9466 was sized against, and the flat Math.random() gate spent that
+// budget on successes while discarding the failures worth having.
+describe("isUntracedInternalRoute", () => {
+  test("matches the /api/v1/internal/ prefix #9005 already excluded", () => {
+    assert.equal(
+      isUntracedInternalRoute("/api/v1/internal/usage-rollup"),
+      true,
+    );
+    assert.equal(
+      isUntracedInternalRoute("/api/v1/internal/chain-detail-sync"),
+      true,
+    );
+  });
+
+  // The prefix is anchored, not a substring search: a public route is not
+  // silenced because "internal" appears somewhere in it.
+  test("does not match public routes", () => {
+    for (const route of [
+      "/api/v1/subnets/74",
+      "/api/v1/internal-notes",
+      "mcp.tool/get_subnet",
+      "registry-sync",
+    ]) {
+      assert.equal(isUntracedInternalRoute(route), false);
+    }
+  });
+});
+
+describe("shouldRecordTraceSpan", () => {
+  // The whole point: a failure is never sampled away. Rate 0 is the default
+  // AND api.ts's deployed REST setting, which used to mean a 5xx there
+  // produced no span ever.
+  test("keeps a failure even at rate 0", () => {
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(
+        shouldRecordTraceSpan(mockEnv(), {
+          name: "/api/v1/subnets/74",
+          ok: false,
+        }),
+        true,
+      );
+    }
+  });
+
+  test("drops a success at rate 0 and keeps one at rate 1", () => {
+    const dark = mockEnv();
+    const lit = mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1" });
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(
+        shouldRecordTraceSpan(dark, { name: "subnet-detail", ok: true }),
+        false,
+      );
+      assert.equal(
+        shouldRecordTraceSpan(lit, { name: "subnet-detail", ok: true }),
+        true,
+      );
+    }
+  });
+
+  // 92% of the data-api Worker's spans were one internal cron route. The
+  // exclusion beats the rate: even a fully-sampled deployment stops paying for
+  // machine-to-machine plumbing it never reads a percentile for.
+  test("drops a successful internal route even at rate 1", () => {
+    const env = mockEnv({ [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "1" });
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(
+        shouldRecordTraceSpan(env, {
+          name: "/api/v1/internal/usage-rollup",
+          ok: true,
+        }),
+        false,
+      );
+    }
+  });
+
+  // #9005's own carve-out, ported: "a failing internal ingest must stay
+  // visible". The exclusion is on the success span, never on the error.
+  test("keeps a FAILING internal route despite the exclusion", () => {
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(
+        shouldRecordTraceSpan(mockEnv(), {
+          name: "/api/v1/internal/usage-rollup",
+          ok: false,
+        }),
+        true,
+      );
+    }
+  });
+
+  // The per-surface split survives: "mcp" still consults its own rate first,
+  // so cutting REST to 0.002 doesn't silently cut the priority surface too.
+  test("a success honours the mcp surface rate, not the general one", () => {
+    const env = mockEnv({
+      [POSTHOG_TRACES_SAMPLE_RATE_ENV]: "0",
+      [POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV]: "1",
+    });
+    for (let i = 0; i < 20; i += 1) {
+      assert.equal(
+        shouldRecordTraceSpan(env, {
+          name: "mcp.tool/get_subnet",
+          ok: true,
+          surface: "mcp",
+        }),
+        true,
+      );
+      assert.equal(
+        shouldRecordTraceSpan(env, { name: "subnet-detail", ok: true }),
+        false,
+      );
+    }
+  });
+});
+
+describe("recordTraceSpan storm guard", () => {
+  const CONFIGURED = {
+    POSTHOG_PROJECT_TOKEN: "phc_test",
+  };
+
+  function failedSpan(name: string): TraceSpanInput {
+    return {
+      traceId: newTraceId(),
+      spanId: newSpanId(),
+      name,
+      startTimeMs: 1,
+      endTimeMs: 2,
+      ok: false,
+      serviceName: "metagraphed-api",
+    };
+  }
+
+  // shouldRecordTraceSpan returning true for a failure is permission to TRY,
+  // not a promise to emit — an unsampled failure stream is the exact shape
+  // that spent a month's event budget in two days.
+  test("holds a repeated failure inside the window", async () => {
+    const env = mockEnv({
+      ...CONFIGURED,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    });
+    let calls = 0;
+    const fetchSpy = fakeFetch({
+      onCall: () => {
+        calls += 1;
+      },
+    });
+    const span = failedSpan("/api/v1/storm-guard-held");
+    assert.equal(await recordTraceSpan(env, span, { fetch: fetchSpy }), true);
+    for (let i = 0; i < 10; i += 1) {
+      assert.equal(
+        await recordTraceSpan(env, span, { fetch: fetchSpy }),
+        false,
+      );
+    }
+    assert.equal(calls, 1);
+  });
+
+  // Distinct fingerprints are independent: one noisy route must never mask a
+  // genuinely new failure somewhere else.
+  test("a different route is never delayed by another's window", async () => {
+    const env = mockEnv({
+      ...CONFIGURED,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    });
+    let calls = 0;
+    const fetchSpy = fakeFetch({
+      onCall: () => {
+        calls += 1;
+      },
+    });
+    for (const name of ["/api/v1/first-fault", "/api/v1/second-fault"]) {
+      assert.equal(
+        await recordTraceSpan(env, failedSpan(name), { fetch: fetchSpy }),
+        true,
+      );
+    }
+    assert.equal(calls, 2);
+  });
+
+  // The gate that actually bounds a FLEET-wide storm (#9900): the local map is
+  // per-isolate, and a recycled isolate always looks like a first sighting.
+  test("defers to the shared cross-isolate gate", async () => {
+    const env = mockEnv({
+      ...CONFIGURED,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    });
+    let calls = 0;
+    const fetchSpy = fakeFetch({
+      onCall: () => {
+        calls += 1;
+      },
+    });
+    assert.equal(
+      await recordTraceSpan(env, failedSpan("/api/v1/shared-held"), {
+        fetch: fetchSpy,
+        admitShared: async () => null,
+      }),
+      false,
+    );
+    assert.equal(calls, 0);
+  });
+
+  // Successes are thinned by the RATE, not the storm guard — throttling them
+  // too would bias the latency percentiles toward whichever route happened to
+  // win a window.
+  test("never throttles successes", async () => {
+    const env = mockEnv({
+      ...CONFIGURED,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    });
+    let calls = 0;
+    const fetchSpy = fakeFetch({
+      onCall: () => {
+        calls += 1;
+      },
+    });
+    const span: TraceSpanInput = {
+      ...failedSpan("/api/v1/happy-path"),
+      ok: true,
+    };
+    for (let i = 0; i < 5; i += 1) {
+      assert.equal(await recordTraceSpan(env, span, { fetch: fetchSpy }), true);
+    }
+    assert.equal(calls, 5);
   });
 });

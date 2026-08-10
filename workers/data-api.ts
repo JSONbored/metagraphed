@@ -36,7 +36,7 @@ import {
   newSpanId,
   newTraceId,
   recordTraceSpan,
-  shouldSampleTrace,
+  shouldRecordTraceSpan,
 } from "../src/tracing.ts";
 import { decodeCursor, encodeCursor } from "../src/cursor.ts";
 import { buildAccountSubnets } from "../src/account-events.ts";
@@ -7805,19 +7805,15 @@ export default {
     //
     // Same shape as withUsageTelemetry's catch in workers/api.ts: observe and
     // rethrow, never handle.
-    if (!shouldSampleTrace(env)) {
-      try {
-        return await dispatchDataApiRequest(request, env, ctx);
-      } catch (error) {
-        await captureUncaughtDataApiError(
-          error,
-          maskedDataApiRoute(request),
-          env,
-          ctx,
-        );
-        throw error;
-      }
-    }
+    //
+    // The pre-dispatch sampling branch this comment used to describe is GONE.
+    // Whether a span is kept now depends on how the request ENDS
+    // (shouldRecordTraceSpan: failures always, successes by rate, internal
+    // routes never) and `ok` is not known until the finally -- so the decision
+    // moved there and the duplicated sampled/unsampled try/catch collapsed
+    // into the single path below. #9440's guarantee is strengthened rather
+    // than weakened by that: the uncaught-fault capture is no longer merely
+    // outside the sampled block, it is on the only block there is.
     const startedAt = Date.now();
     // #9001: masked, like the $exception route above. A span NAME is the
     // primary grouping key in any tracing backend, so a raw pathname makes
@@ -7835,21 +7831,26 @@ export default {
       await captureUncaughtDataApiError(error, route, env, ctx);
       throw error;
     } finally {
-      const endedAt = Date.now();
-      const pending = Promise.resolve(
-        recordTraceSpan(env, {
+      if (shouldRecordTraceSpan(env, { name: route, ok })) {
+        const span = {
           traceId: newTraceId(),
           spanId: newSpanId(),
           name: route,
           startTimeMs: startedAt,
-          endTimeMs: endedAt,
+          endTimeMs: Date.now(),
           ok,
           serviceName: "metagraphed-data-api",
           attributes: { route },
-        }),
-      ).catch(() => false);
-      if (typeof ctx?.waitUntil === "function") {
-        ctx.waitUntil(pending);
+        };
+        // No Promise.resolve wrapper: workers/api.ts's scheduleTraceSpan needs
+        // one because its recorder is an injectable dep that a test may stub
+        // with a non-promise. This calls the real `async` recordTraceSpan,
+        // which by declaration always returns a promise and never throws
+        // synchronously, so .catch alone is the whole guarantee.
+        const pending = recordTraceSpan(env, span).catch(() => false);
+        if (typeof ctx?.waitUntil === "function") {
+          ctx.waitUntil(pending);
+        }
       }
     }
   },

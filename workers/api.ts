@@ -47,7 +47,7 @@ import {
   newSpanId,
   newTraceId,
   recordTraceSpan,
-  shouldSampleTrace,
+  shouldRecordTraceSpan,
 } from "../src/tracing.ts";
 import {
   recordLaneVerdict,
@@ -1540,7 +1540,13 @@ export async function withUsageTelemetry(
     // match Sentry's old 0.05. Reuses this chokepoint's own route/ok/duration
     // -- see src/tracing.ts's header for why this is an independent span (no
     // parent) rather than nested under anything.
-    if (shouldSampleTrace(env)) {
+    // Outcome-aware since the AI-Observability tier measurement: this Worker's
+    // REST rate is 0 (see src/tracing.ts's header for why its ~1.1M req/day
+    // stays dark), which previously meant a 5xx here produced no span EVER.
+    // Failures now always reach the recorder, bounded there by the storm
+    // guard, so "REST is dark" costs throughput visibility without also
+    // costing incident visibility.
+    if (shouldRecordTraceSpan(env, { name: route, ok })) {
       scheduleTraceSpan(env, ctx, {
         traceId: newTraceId(),
         spanId: newSpanId(),

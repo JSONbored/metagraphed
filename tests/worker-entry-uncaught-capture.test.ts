@@ -158,7 +158,11 @@ describe("data-api", () => {
       } as never),
       /binding exploded/,
     );
-    assert.equal(scheduled.length, 1);
+    // TWO drains, not one: the $exception and an outcome-aware failure span.
+    // This env sets no trace sample rate, so the span exists precisely because
+    // shouldRecordTraceSpan ignores the rate for `ok: false` -- an uncaught
+    // fault on a Worker whose REST tracing is off used to leave no span at all.
+    assert.equal(scheduled.length, 2);
     await Promise.all(scheduled);
     assert.equal(active.exceptions().length, 1);
   });

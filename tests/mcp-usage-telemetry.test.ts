@@ -253,8 +253,11 @@ describe("MCP tool-dispatch usage telemetry", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, true);
-      // Two events: usage_event + $mcp_tool_call.
-      assert.equal(posted.length, 2);
+      // Three posts: usage_event + $mcp_tool_call + an OTLP failure span.
+      // The span is new since tracing became outcome-aware -- CONFIGURED_ENV
+      // sets no MCP trace rate, so a failing tool call used to be traced only
+      // if it won a dice roll it could never win at rate 0.
+      assert.equal(posted.length, 3);
       const usagePost = posted.find((p) => p.body.event === "usage_event");
       assert.ok(usagePost, "usage_event should be posted");
       assert.equal(usagePost.body.properties.ok, false);
