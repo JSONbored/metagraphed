@@ -45,7 +45,13 @@
         "submitted_by": "jsonbored"
       },
       "source_urls": ["https://stats.bitcast.network/docs"],
-      "url": "https://stats.bitcast.network/"
+      "url": "https://stats.bitcast.network/",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "none",
+        "searched_at": "2026-08-10T00:00:00Z"
+      },
+      "notes": "REVENUE ROLE (#10459): none, searched 2026-08-10. stats.bitcast.network now 301-redirects to bitcast.network -- the stats subdomain is gone, so this surface no longer serves a dashboard."
     },
     {
       "auth_required": false,
@@ -1742,7 +1748,12 @@
       "id": "sn-93-bitcast-get-api-v2-stats-revenue-summary",
       "kind": "subnet-api",
       "name": "Bitcast Get Revenue Summary",
-      "notes": "Auth-gated GET /api/v2/stats/revenue/summary on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://bitcast-api.bitcast.network/openapi.json"
+      },
+      "notes": "Auth-gated GET /api/v2/stats/revenue/summary on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false. REVENUE ROLE (#10459): external-revenue, operator-attested. The subnet's own schema declares a revenue summary, but the live endpoint answers 403 without an X-API-Key, so it is declared and unreadable. Recorded, not counted.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -1773,6 +1784,11 @@
       "id": "sn-93-bitcast-get-api-v2-stats-revenue-transactions",
       "kind": "subnet-api",
       "name": "Bitcast Get Revenue Transactions",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://bitcast-api.bitcast.network/openapi.json"
+      },
       "notes": "Auth-gated GET /api/v2/stats/revenue/transactions on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
       "probe": {
         "enabled": false,
@@ -1866,6 +1882,11 @@
       "id": "sn-93-bitcast-get-api-v2-twitter-accounts-earnings",
       "kind": "subnet-api",
       "name": "Bitcast Get All Accounts Earnings",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "operator-attested",
+        "source_url": "https://bitcast-api.bitcast.network/openapi.json"
+      },
       "notes": "Auth-gated GET /api/v2/twitter/accounts/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
       "probe": {
         "enabled": false,
@@ -3509,7 +3530,12 @@
       "id": "sn-93-bitcast-get-api-v2-youtube-users-earnings",
       "kind": "subnet-api",
       "name": "Bitcast Get All Yt Accounts Earnings",
-      "notes": "Auth-gated GET /api/v2/youtube/users/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false.",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "operator-attested",
+        "source_url": "https://bitcast-api.bitcast.network/openapi.json"
+      },
+      "notes": "Auth-gated GET /api/v2/youtube/users/earnings on bitcast-api.bitcast.network from the Bitcast OpenAPI schema (sn-93-bitcast-network-openapi). auth_required:true, probe.enabled:false. REVENUE ROLE (#10459): miner-payout. Creator EARNINGS are money flowing OUT to content creators, not platform revenue coming in -- the opposite side of the ledger from /api/v2/stats/revenue/summary.",
       "probe": {
         "enabled": false,
         "expect": "json",
