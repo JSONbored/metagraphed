@@ -218,7 +218,11 @@
       "id": "sn-110-green-compute-billing-bonus-rates-api",
       "kind": "subnet-api",
       "name": "Green Compute billing bonus rates API",
-      "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces.",
+      "revenue": {
+        "role": "not-revenue",
+        "provenance": "probe-derived"
+      },
+      "notes": "Public no-auth GET returning platform billing bonus rates by payment method (stripe, usdt, usdc, tao, alpha). Documented in the subnet's own OpenAPI (api.green-compute.com/openapi.json, path /platform/billing/bonus-rates); same host as the existing healthz and openapi surfaces. REVENUE ROLE (#10462): not-revenue, but load-bearing evidence. The live payload {stripe, usdt, usdc, tao, alpha} is a payment-method bonus schedule, which establishes Green Compute takes fiat and stablecoin -- so its revenue is external rather than alpha-denominated -- while carrying no amount itself. Note alpha is +10%, i.e. paying in the subnet's own token is incentivised.",
       "probe": {
         "enabled": true,
         "expect": "json",
@@ -758,7 +762,12 @@
       "id": "sn-110-green-compute-get-platform-admin-analytics-gross-revenue",
       "kind": "subnet-api",
       "name": "Green Compute Analytics Gross Revenue",
-      "notes": "Auth-gated GET /platform/admin/analytics/gross-revenue on api.green-compute.com from the GreenCompute Gateway OpenAPI schema (sn-110-green-compute-openapi). Schema declares no security scheme, but live anonymous calls return 401 missing api key on representative routes (#7121). auth_required:true, probe.enabled:false.",
+      "revenue": {
+        "role": "external-revenue",
+        "provenance": "operator-attested",
+        "source_url": "https://api.green-compute.com/openapi.json"
+      },
+      "notes": "Auth-gated GET /platform/admin/analytics/gross-revenue on api.green-compute.com from the GreenCompute Gateway OpenAPI schema (sn-110-green-compute-openapi). Schema declares no security scheme, but live anonymous calls return 401 missing api key on representative routes (#7121). auth_required:true, probe.enabled:false. REVENUE ROLE (#10462): external-revenue, operator-attested. Declared by the subnet's own OpenAPI schema but answers 401 'missing api key' unauthenticated (the schema declares no security scheme -- the mismatch tracked in #7121). Declared and unreadable: recorded, never counted.",
       "probe": {
         "enabled": false,
         "expect": "json",
@@ -789,6 +798,11 @@
       "id": "sn-110-green-compute-get-platform-admin-analytics-revenue-by-miner",
       "kind": "subnet-api",
       "name": "Green Compute Analytics Revenue By Miner",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "operator-attested",
+        "source_url": "https://api.green-compute.com/openapi.json"
+      },
       "notes": "Auth-gated GET /platform/admin/analytics/revenue-by-miner on api.green-compute.com from the GreenCompute Gateway OpenAPI schema (sn-110-green-compute-openapi). Schema declares no security scheme, but live anonymous calls return 401 missing api key on representative routes (#7121). auth_required:true, probe.enabled:false.",
       "probe": {
         "enabled": false,
@@ -1068,7 +1082,12 @@
       "id": "sn-110-green-compute-get-platform-billing-admin-miner-revenue",
       "kind": "subnet-api",
       "name": "Green Compute Billing Admin Miner Revenue",
-      "notes": "Auth-gated GET /platform/billing/admin/miner-revenue on api.green-compute.com from the GreenCompute Gateway OpenAPI schema (sn-110-green-compute-openapi). Schema declares no security scheme, but live anonymous calls return 401 missing api key on representative routes (#7121). auth_required:true, probe.enabled:false.",
+      "revenue": {
+        "role": "miner-payout",
+        "provenance": "operator-attested",
+        "source_url": "https://api.green-compute.com/openapi.json"
+      },
+      "notes": "Auth-gated GET /platform/billing/admin/miner-revenue on api.green-compute.com from the GreenCompute Gateway OpenAPI schema (sn-110-green-compute-openapi). Schema declares no security scheme, but live anonymous calls return 401 missing api key on representative routes (#7121). auth_required:true, probe.enabled:false. REVENUE ROLE (#10462): miner-payout, not platform revenue -- 'revenue-by-miner' and 'miner-revenue' name what miners EARN from the platform, the outbound side. Naming alone does not settle it, so this is recorded as payout and excluded from any coverage numerator.",
       "probe": {
         "enabled": false,
         "expect": "json",
