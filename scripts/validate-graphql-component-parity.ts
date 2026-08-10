@@ -101,7 +101,7 @@ const PAGINATION_FIELDS = new Set([
  * this script, so a fix cannot leave a stale exemption behind -- the same
  * idiom the MCP input-parity and tier-cascade gates use.
  */
-const DECLARED: Record<string, string> = {
+export const DECLARED: Record<string, string> = {
   "EmissionGateChanges.changes":
     "the component is a three-arm union (param/subnet/flow changes, each " +
     "carrying only its own fields) and the emitter answers JSON for a " +
@@ -133,6 +133,13 @@ const DECLARED: Record<string, string> = {
  */
 const JSON_UNDERTYPED: Record<string, string> = {
   "Adapter.snapshot": "AdapterArtifactSnapshot",
+  // Landed on main between this check being written (#10400) and the
+  // `field_sources_usd` provenance block being added (#10392) -- each PR was
+  // green against its own base and red together, which is what a gate added
+  // in parallel with the thing it measures always risks. Unlike
+  // `field_sources`, which is a record keyed by field name and honestly JSON,
+  // this one is a fixed `{kind, storage}` object.
+  "EconomicsTrends.field_sources_usd": "EconomicsTrendsArtifactFieldSourcesUsd",
   "BlockEvents.events": "[AccountEvent!]",
   "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
   "BuildSummary.artifact_budget_summary":
@@ -155,6 +162,7 @@ const JSON_UNDERTYPED: Record<string, string> = {
     "CompareValidatorsArtifactValidatorsSubnetContext",
   "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
   "SubnetConviction.king": "String",
+  "SubnetOhlc.field_sources_usd": "SubnetOhlcArtifactFieldSourcesUsd",
   "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
   "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
   "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",
@@ -179,6 +187,8 @@ export interface ParityReport {
   /** Declared projections checked -- see `PROJECTED_TYPES` (#10214). */
   projectedTypes: number;
   projectedFields: number;
+  /** Component fields a projection declares it does not republish (#10404). */
+  droppedFields: number;
 }
 
 /** Pull the SDL out of the TypeScript template literal that holds it. */
@@ -277,6 +287,9 @@ export function checkComponentParity(
   sdl: string,
   openapi: OpenApiDocument,
   declared: Record<string, string> = DECLARED,
+  projectedTypesMap: Readonly<
+    Record<string, (typeof PROJECTED_TYPES)[string]>
+  > = PROJECTED_TYPES,
 ): ParityReport {
   const sdlTypes = new Map<string, ObjectTypeDefinitionNode>();
   for (const def of parse(sdl).definitions) {
@@ -341,6 +354,7 @@ export function checkComponentParity(
   let projectedTypes = 0;
   let projectedFields = 0;
   const undertypedMatched = new Set<string>();
+  let droppedFields = 0;
 
   for (const [sdlName, components] of paired) {
     const sdlFields = new Set(
@@ -352,7 +366,20 @@ export function checkComponentParity(
         (f) => PAGINATION_FIELDS.has(f) && !genNames.includes(f),
       );
       if (addedPagination.length >= 2) {
-        projections.push(`${sdlName} <- ${componentName}`);
+        // A paginated view, not a mirror -- but skipping it wholesale is what
+        // hid 158 fields (#10404). It has to be DECLARED, and the projection
+        // pass below applies every rule a projection gets.
+        const declaredView = projectedTypesMap[sdlName];
+        if (declaredView?.component === componentName) {
+          projections.push(`${sdlName} <- ${componentName}`);
+          continue;
+        }
+        violations.push(
+          `${sdlName} -- pages over ${componentName} and is not declared in ` +
+            `PROJECTED_TYPES, so nothing checks the ` +
+            `${genNames.filter((n) => !PAGINATION_FIELDS.has(n)).length} field(s) ` +
+            `behind its paging`,
+        );
         continue;
       }
       comparedTypes += 1;
@@ -486,7 +513,7 @@ export function checkComponentParity(
   // the traversal above only reaches a type through a `Mirrors GET` annotation
   // and a resolver-built type has none. All fifteen were reached by zero
   // gates.
-  for (const [sdlName, projection] of Object.entries(PROJECTED_TYPES)) {
+  for (const [sdlName, projection] of Object.entries(projectedTypesMap)) {
     const sdlType = sdlTypes.get(sdlName);
     const genType = generated.get(projection.component);
     if (!sdlType) {
@@ -505,9 +532,23 @@ export function checkComponentParity(
     const genFields = genType.getFields();
     const added = new Set(projection.added);
     const usedAdded = new Set<string>();
+    // A paginated view RENAMES the component's row array and row count rather
+    // than dropping them, so the element type and the count are compared under
+    // the published name (#10404).
+    const renamed = new Map<string, string>();
+    if (projection.itemsFrom) renamed.set("items", projection.itemsFrom);
+    if (projection.totalFrom) renamed.set("total", projection.totalFrom);
+    for (const [published, source] of renamed) {
+      if (!genFields[source]) {
+        violations.push(
+          `${sdlName}.${published} -- declared as renaming ` +
+            `${projection.component}.${source}, which the component does not publish`,
+        );
+      }
+    }
     for (const field of sdlType.fields ?? []) {
       const name = field.name.value;
-      const genField = genFields[name];
+      const genField = genFields[renamed.get(name) ?? name];
       if (!genField) {
         if (added.has(name)) usedAdded.add(name);
         else
@@ -545,6 +586,41 @@ export function checkComponentParity(
         );
       }
     }
+    // Both directions on `dropped`, which is what makes the list shrink-only:
+    // a name the component does not publish is a typo, and a name the SDL now
+    // publishes is a closed gap whose declaration was left behind.
+    const publishedNames = new Set(
+      (sdlType.fields ?? []).map((field) => field.name.value),
+    );
+    for (const name of projection.dropped ?? []) {
+      if (!genFields[name]) {
+        violations.push(
+          `${sdlName}.${name} -- declared as dropped, but ` +
+            `${projection.component} publishes no such field`,
+        );
+        continue;
+      }
+      if (publishedNames.has(name)) {
+        violations.push(
+          `${sdlName}.${name} -- declared as dropped, and the SDL publishes it`,
+        );
+        continue;
+      }
+      droppedFields += 1;
+    }
+    // Completeness, so `dropped` is the WHOLE set rather than a sample: every
+    // component field the projection does not publish must be named. Without
+    // this the list would shrink honestly and still say nothing about a field
+    // that vanished after it was written.
+    for (const name of Object.keys(genFields)) {
+      if (publishedNames.has(name)) continue;
+      if (projection.dropped?.includes(name)) continue;
+      if ([...renamed.values()].includes(name)) continue;
+      violations.push(
+        `${sdlName}.${name} -- ${projection.component} publishes it, the ` +
+          `projection neither publishes nor declares it dropped`,
+      );
+    }
   }
 
   return {
@@ -561,6 +637,7 @@ export function checkComponentParity(
     projections,
     projectedTypes,
     projectedFields,
+    droppedFields,
   };
 }
 
@@ -580,7 +657,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     `graphql-component-parity: ${report.comparedTypes} mirror type(s), ` +
       `${report.comparedFields} field(s) compared, ` +
       `${report.projectedTypes} declared projection(s) (${report.projectedFields} field(s)), ` +
-      `${report.projections.length} pagination view(s) skipped, ` +
+      `${report.projections.length} pagination view(s), ` +
+      `${report.droppedFields} declared drop(s), ` +
       `${report.undertyped} JSON under-typing(s) left to close.`,
   );
   if (report.violations.length) {

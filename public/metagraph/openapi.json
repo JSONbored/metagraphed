@@ -41220,6 +41220,7 @@
         "required": [
           "generated_at",
           "schema_version",
+          "document_count",
           "documents"
         ],
         "type": "object"
@@ -41319,6 +41320,7 @@
         "required": [
           "generated_at",
           "schema_version",
+          "document_count",
           "documents"
         ],
         "type": "object"

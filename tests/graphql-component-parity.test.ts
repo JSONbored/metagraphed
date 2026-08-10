@@ -5,6 +5,7 @@ import { GraphQLObjectType } from "graphql";
 import { emitTypes, pascalCase } from "../schemas-src/graphql/emit.ts";
 import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
 import {
+  DECLARED,
   checkComponentParity,
   extractSdl,
   type OpenApiDocument,
@@ -251,11 +252,11 @@ describe("declared projections (#10214)", () => {
 // `JSON` read as agreement, so an emitter that retyped 348 fields as JSON
 // would have passed every gate in the repo.
 describe("scalar identity", () => {
-  test("28 JSON under-typings are declared, and all of them are live", () => {
+  test("every JSON under-typing is declared, and all of them are live", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.undertyped, 28);
+    assert.equal(report.undertyped, 30);
   });
 
   test("it FAILS when a field is retyped to a different scalar", () => {
@@ -307,7 +308,7 @@ describe("scalar identity", () => {
       report.stale.includes("SubnetConviction.king"),
       `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
     );
-    assert.equal(report.undertyped, 27);
+    assert.equal(report.undertyped, 29);
   });
 
   test("a Float over an Int component field is a WIDENING and stays allowed", () => {
@@ -319,6 +320,103 @@ describe("scalar identity", () => {
       !report.violations.some((v) =>
         v.includes("ChainTurnoverNetwork.stability_score"),
       ),
+    );
+  });
+});
+
+// Paginated views (#10404). They used to be SKIPPED wholesale on the rule "two
+// or more pagination fields the component lacks means this is a view" -- true
+// of the paging and false of the 158 fields behind it.
+describe("paginated views", () => {
+  test("all 25 are declared, and their drops are the whole set", () => {
+    const report = checkComponentParity(sdl, openapi);
+    assert.deepEqual(report.violations, []);
+    assert.equal(report.projections.length, 25);
+    assert.equal(report.droppedFields, 180);
+  });
+
+  test("it FAILS when a component field is neither published nor declared dropped", () => {
+    // The whole point: a field vanishing from a published view used to be a
+    // silence. `min_incident_samples` is the threshold behind an incident
+    // count -- the confident-zeros class (#9803).
+    const report = checkComponentParity(sdl, openapi, DECLARED, {
+      ...PROJECTED_TYPES,
+      GlobalIncidents: {
+        ...PROJECTED_TYPES.GlobalIncidents,
+        dropped: [],
+      },
+    });
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith(
+          "GlobalIncidents.min_incident_samples -- GlobalIncidentsArtifact publishes it",
+        ),
+      ),
+      `expected the undeclared drop to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a STALE drop fails, so the list only shrinks", () => {
+    const report = checkComponentParity(sdl, openapi, DECLARED, {
+      ...PROJECTED_TYPES,
+      GlobalIncidents: {
+        ...PROJECTED_TYPES.GlobalIncidents,
+        dropped: [
+          ...(PROJECTED_TYPES.GlobalIncidents.dropped ?? []),
+          "surfaces",
+        ],
+      },
+    });
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith(
+          "GlobalIncidents.surfaces -- declared as dropped, and the SDL publishes it",
+        ),
+      ),
+      `expected the stale drop to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a drop naming a field the component does not publish is a typo", () => {
+    const report = checkComponentParity(sdl, openapi, DECLARED, {
+      ...PROJECTED_TYPES,
+      GlobalIncidents: {
+        ...PROJECTED_TYPES.GlobalIncidents,
+        dropped: [
+          ...(PROJECTED_TYPES.GlobalIncidents.dropped ?? []),
+          "min_incident_sample",
+        ],
+      },
+    });
+    assert.ok(
+      report.violations.some((v) => v.includes("publishes no such field")),
+      `expected the typo to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("a rename that names a field the component lacks fails", () => {
+    // `items` IS the component's row array under another name; declaring the
+    // wrong source silently compares nothing.
+    const report = checkComponentParity(sdl, openapi, DECLARED, {
+      ...PROJECTED_TYPES,
+      BlockList: { ...PROJECTED_TYPES.BlockList, itemsFrom: "rows" },
+    });
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith("BlockList.items -- declared as renaming"),
+      ),
+      `expected the bad rename to be reported, got: ${report.violations.join("; ")}`,
+    );
+  });
+
+  test("an UNDECLARED paginated view is a violation, not a skip", () => {
+    const { GlobalIncidents: _dropped, ...withoutOne } = PROJECTED_TYPES;
+    const report = checkComponentParity(sdl, openapi, DECLARED, withoutOne);
+    assert.ok(
+      report.violations.some((v) =>
+        v.startsWith("GlobalIncidents -- pages over GlobalIncidentsArtifact"),
+      ),
+      `expected the undeclared view to be reported, got: ${report.violations.join("; ")}`,
     );
   });
 });

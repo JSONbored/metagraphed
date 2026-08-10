@@ -10067,7 +10067,7 @@ export interface components {
         }) | null;
         SearchArtifact: {
             contract_version?: string;
-            document_count?: number;
+            document_count: number;
             /** @description Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON. */
             documents: {
                 artifact_path: string;
@@ -10094,7 +10094,7 @@ export interface components {
         /** @description Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index). */
         SearchIndexArtifact: {
             contract_version?: string;
-            document_count?: number;
+            document_count: number;
             documents: {
                 artifact_path: string;
                 categories?: string[];
