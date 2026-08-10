@@ -38,6 +38,11 @@
   "slug": "sn-10",
   "source_repo": "https://github.com/Swap-Subnet/swap-subnet",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["docs", "openapi", "website"]
+  },
   "surfaces": [
     {
       "auth_required": false,
@@ -129,7 +134,7 @@
       "id": "sn-10-taofi-api",
       "kind": "subnet-api",
       "name": "TaoFi swap API",
-      "notes": "Public unauthenticated TaoFi (SN10 Swap) API — the servers host declared in the TaoFi OpenAPI schema. All 8 documented paths (getBuyQuote, getBuyCall, getSellQuote, getSellCall, getRefundCall, getBalance, getNativeTaoQuote, getNativeTaoCall) are POST-only; GET/HEAD to any of them returns 405, and the bare host root returns 404 (confirmed live). The registry's probe schema only supports GET/HEAD, so recurring read probes are intentionally disabled -- same pattern as gittensor.json's POST-only MCP surface. Documented at taofi-doc.web.app.",
+      "notes": "Public unauthenticated TaoFi (SN10 Swap) API \u2014 the servers host declared in the TaoFi OpenAPI schema. All 8 documented paths (getBuyQuote, getBuyCall, getSellQuote, getSellCall, getRefundCall, getBalance, getNativeTaoQuote, getNativeTaoCall) are POST-only; GET/HEAD to any of them returns 405, and the bare host root returns 404 (confirmed live). The registry's probe schema only supports GET/HEAD, so recurring read probes are intentionally disabled -- same pattern as gittensor.json's POST-only MCP surface. Documented at taofi-doc.web.app.",
       "probe": {
         "enabled": false,
         "expect": "any",

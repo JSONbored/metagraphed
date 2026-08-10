@@ -27,6 +27,12 @@
   "slug": "sn-9",
   "source_repo": "https://github.com/macrocosm-os/iota",
   "status": "active",
+  "revenue_search": {
+    "searched_at": "2026-08-10T00:00:00Z",
+    "outcome": "none-found",
+    "checked": ["openapi", "website"],
+    "notes": "Its OpenAPI declares POST /miner/payout_coldkey -- miner payout configuration, not revenue."
+  },
   "surfaces": [
     {
       "auth_required": false,
