@@ -3659,6 +3659,8 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     health_stale: Boolean
     health_source: String
+    "How the incident was derived. Always probe-derived: the health prober owns this surface and no hand-set incident exists. Served by /api/v1/endpoint-incidents on every row -- verified live -- and not selectable here until the generator surfaced the omission (#10214)."
+    source: String
     pool_eligible: Boolean
     user_reported: Boolean
     incident_count: Int
