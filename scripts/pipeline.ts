@@ -133,6 +133,7 @@ function checkCommands(): Step[] {
     step("validate:adapters"),
     step("validate:intake"),
     step("validate:surface"),
+    step("validate:revenue-provenance"),
     // #8658: runs after the build steps above, so the staged surfaces.json
     // exists to compare the callable catalog against.
     step("validate:operational-surface-parity"),
@@ -244,6 +245,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:adapters"),
     step("validate:intake"),
     step("validate:surface"),
+    step("validate:revenue-provenance"),
     // #8658: runs after the build steps above, so the staged surfaces.json
     // exists to compare the callable catalog against.
     step("validate:operational-surface-parity"),
