@@ -432,8 +432,11 @@
         },
         {
           "if": {
-            "properties": { "role": { "const": "external-revenue" } },
-            "required": ["role"]
+            "properties": {
+              "role": { "const": "external-revenue" },
+              "provenance": { "enum": ["chain-verified", "probe-derived"] }
+            },
+            "required": ["role", "provenance"]
           },
           "then": { "required": ["currency", "grain", "fields"] }
         }

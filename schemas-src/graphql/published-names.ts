@@ -2024,6 +2024,12 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
       "rate_limit",
       "rate_limit_notes",
       "review",
+      // #10441/#10476: `revenue` is a structured declaration block, the same
+      // class as probe/review/verification above -- what a surface measures
+      // and on what terms, not a value. Dropped from the projection until
+      // #10476 models it as its own SDL type; declared here rather than left
+      // to the parity gate, which is what caught it.
+      "revenue",
       "verification",
     ],
   },

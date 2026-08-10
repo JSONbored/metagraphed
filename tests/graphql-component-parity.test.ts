@@ -359,7 +359,14 @@ describe("paginated views", () => {
     // Every projection's drops, not just the paginated ones -- `dropped` is
     // the whole set on all 38, which is what makes an undeclared drop a
     // failure rather than a silence.
-    assert.equal(report.droppedFields, 194);
+    //
+    // 194 -> 195 (#10441): Surface.revenue. The published Surface component
+    // gained a structured declaration block -- what a surface measures and on
+    // what terms -- and the projection drops it alongside probe, review and
+    // verification until #10476 models it as its own SDL type. This number is
+    // a completeness pin rather than a shrink-only ceiling, so it moves with a
+    // deliberate drop; it moving WITHOUT one is the failure it exists to catch.
+    assert.equal(report.droppedFields, 195);
   });
 
   test("it FAILS when a component field is neither published nor declared dropped", () => {

@@ -152,6 +152,36 @@ describe("subnet-manifest revenue block (#10441)", () => {
     }
   });
 
+  test("an UNREADABLE external-revenue surface is not asked to describe its payload", () => {
+    // #10453/#10458/#10459/#10462: SN93, SN110 and Hippius all declare revenue
+    // endpoints in their own OpenAPI schemas that answer 401/403 without a key.
+    // The endpoint is real and the role is external-revenue, but currency,
+    // grain and the field names are exactly what cannot be known without
+    // reading the payload. Demanding them here would force a contributor to
+    // invent three values to describe a response nobody has seen — which is
+    // the opposite of what the provenance ladder is for.
+    for (const provenance of [
+      "operator-attested",
+      "third-party-reported",
+    ] as const) {
+      assert.equal(
+        validate(manifest({ role: "external-revenue", provenance })),
+        true,
+        `${provenance} should not require currency/grain/fields`,
+      );
+    }
+  });
+
+  test("a READABLE external-revenue surface still must describe its payload", () => {
+    for (const provenance of ["probe-derived", "chain-verified"] as const) {
+      assert.equal(
+        validate(manifest({ role: "external-revenue", provenance })),
+        false,
+        `${provenance} must still require currency/grain/fields`,
+      );
+    }
+  });
+
   test("the currency/grain requirement applies only to external-revenue", () => {
     // A miner-payout or proxy surface has nothing to denominate, so demanding a
     // currency there would push contributors into inventing one.

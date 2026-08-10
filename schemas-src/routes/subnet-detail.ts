@@ -466,6 +466,63 @@ export const ProbeConfigSchema = z
   })
   .strict();
 
+// #10441: what a surface measures, and on what terms. The published mirror of
+// schemas/subnet-manifest.schema.json's `$defs.revenue` -- a registry-side
+// addition that nothing consumed passed CI vacuously, and only failed once a
+// subnet file actually carried one and the block reached these artifacts.
+export const SurfaceRevenueSchema = z
+  .object({
+    circularity: z
+      .enum(["external", "alpha-denominated", "team-funded", "unknown"])
+      .optional()
+      .meta({
+        description:
+          "Whether the money originates outside Bittensor. Absent means unknown, never external.",
+      }),
+    currency: z.enum(["USD", "TAO", "ALPHA"]).optional().meta({
+      description:
+        "Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and its values reconcile as USD.",
+    }),
+    excludes: z.array(z.string()).optional().meta({
+      description:
+        "Fields present in the payload that are NOT external revenue and must be subtracted -- subnet-funded or unrecognised components.",
+    }),
+    fields: z.record(z.string(), z.string()).optional().meta({
+      description:
+        "Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}.",
+    }),
+    grain: z.enum(["daily", "weekly", "monthly", "cumulative"]).optional(),
+    provenance: z
+      .enum([
+        "chain-verified",
+        "probe-derived",
+        "operator-attested",
+        "third-party-reported",
+        "proxy-only",
+        "none",
+      ])
+      .meta({
+        description:
+          "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
+      }),
+    role: z
+      .enum(["external-revenue", "usage-proxy", "miner-payout", "not-revenue"])
+      .meta({
+        description:
+          "What this surface actually measures. A 'stats' endpoint is guilty until proven revenue: miner payout is emission -- the denominator -- and counting it as revenue puts the denominator in the numerator.",
+      }),
+    searched_at: z.string().optional().meta({
+      description:
+        "When absence was established. Required for provenance 'none': an undated absence is not evidence.",
+    }),
+    source_url: z.url().optional(),
+    supersedes: z.array(z.string()).optional().meta({
+      description:
+        "Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice.",
+    }),
+  })
+  .strict();
+
 export const SurfaceSchema = z
   .object({
     auth: AuthSchema,
@@ -500,6 +557,7 @@ export const SurfaceSchema = z
       })
       .strict()
       .optional(),
+    revenue: SurfaceRevenueSchema.optional(),
     schema_status: z
       .enum(["machine-readable", "ui-only", "not-captured"])
       .optional(),

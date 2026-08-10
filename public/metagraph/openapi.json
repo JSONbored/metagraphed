@@ -52651,6 +52651,98 @@
           "rate_limit_notes": {
             "type": "string"
           },
+          "revenue": {
+            "additionalProperties": false,
+            "properties": {
+              "circularity": {
+                "description": "Whether the money originates outside Bittensor. Absent means unknown, never external.",
+                "enum": [
+                  "external",
+                  "alpha-denominated",
+                  "team-funded",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "currency": {
+                "description": "Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and its values reconcile as USD.",
+                "enum": [
+                  "USD",
+                  "TAO",
+                  "ALPHA"
+                ],
+                "type": "string"
+              },
+              "excludes": {
+                "description": "Fields present in the payload that are NOT external revenue and must be subtracted -- subnet-funded or unrecognised components.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "fields": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}.",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "grain": {
+                "enum": [
+                  "daily",
+                  "weekly",
+                  "monthly",
+                  "cumulative"
+                ],
+                "type": "string"
+              },
+              "provenance": {
+                "description": "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
+                "enum": [
+                  "chain-verified",
+                  "probe-derived",
+                  "operator-attested",
+                  "third-party-reported",
+                  "proxy-only",
+                  "none"
+                ],
+                "type": "string"
+              },
+              "role": {
+                "description": "What this surface actually measures. A 'stats' endpoint is guilty until proven revenue: miner payout is emission -- the denominator -- and counting it as revenue puts the denominator in the numerator.",
+                "enum": [
+                  "external-revenue",
+                  "usage-proxy",
+                  "miner-payout",
+                  "not-revenue"
+                ],
+                "type": "string"
+              },
+              "searched_at": {
+                "description": "When absence was established. Required for provenance 'none': an undated absence is not evidence.",
+                "type": "string"
+              },
+              "source_url": {
+                "format": "uri",
+                "type": "string"
+              },
+              "supersedes": {
+                "description": "Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "provenance",
+              "role"
+            ],
+            "type": "object"
+          },
           "review": {
             "additionalProperties": false,
             "properties": {
