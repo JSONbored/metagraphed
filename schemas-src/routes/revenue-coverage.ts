@@ -53,9 +53,29 @@ export const RevenueSourceSchema = z
     provenance: RevenueProvenanceSchema,
     currency: z.string(),
     grain: z.string(),
+    supersedes: z.array(z.string()).optional().meta({
+      description:
+        "Surface ids this one subsumes. A subsumed surface is reported here with its own figure and NEVER contributes to `revenue_usd` — SN64 publishes both an all-channel daily total and a TAO-channel subset of it, and summing the two inflates the headline.",
+    }),
     amount_usd: z.number().nullable().meta({
       description:
-        "Null when the surface declares revenue but nothing has been read from it — an auth-gated endpoint, or a probe that has not run.",
+        "The figure for the requested window, or null. Null when the surface declares revenue but nothing has been read from it (an auth-gated endpoint, or a probe that has not run), when its grain cannot form the window, or when the window is only partly observed — a partial sum presented as a whole window understates.",
+    }),
+    contributes: z.boolean().meta({
+      description:
+        "Whether this surface's figure reached `revenue_usd`. Published per source so a caller can see WHY a subnet with visible figures reports a null headline, instead of inferring it.",
+    }),
+    excluded_reason: z.string().nullable().meta({
+      description:
+        "Null when it contributed; otherwise why it did not — superseded, provenance not headline-eligible, not observed, or a grain that cannot span the window.",
+    }),
+    periods_observed: z.int().min(0).optional().meta({
+      description:
+        "How many distinct periods were seen for this surface within the window.",
+    }),
+    periods_expected: z.int().min(0).optional().meta({
+      description:
+        "How many the window requires at this surface's grain. Absent when the grain carries no period at all (a cumulative total) or does not divide the window.",
     }),
     response_hash: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
