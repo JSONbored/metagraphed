@@ -496,10 +496,17 @@ export type ConcentrationMetrics = z.infer<typeof ConcentrationMetricsSchema>;
 // references it by name.
 export const ScoreDistributionSchema = z
   .object({
-    count: z.int().min(0).optional(),
-    mean: z.number().nullable().optional(),
-    min: z.number().nullable().optional(),
-    max: z.number().nullable().optional(),
+    // Required, not optional-and-nullable (#10214). BOTH producers --
+    // src/chain-performance.ts and src/subnet-performance.ts's
+    // scoreDistribution() -- return `null` for the whole block when no value
+    // is finite, and otherwise set these four unconditionally from
+    // `finite.length` and the sorted values. There is no path that yields a
+    // distribution object with a missing or null count/mean/min/max, so the
+    // looser shape published a possibility neither producer can express.
+    count: z.int().min(0),
+    mean: z.number(),
+    min: z.number(),
+    max: z.number(),
     p10: z.number().nullable().optional(),
     p25: z.number().nullable().optional(),
     p50: z.number().nullable().optional(),

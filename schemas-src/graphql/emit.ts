@@ -299,6 +299,22 @@ export function emitTypes(): EmittedTypes {
     if (ref) {
       const target = resolve(ref);
       if (!target) return JSONScalar;
+      // A registered component is not necessarily an OBJECT. The registry
+      // names enum and scalar leaves too -- SurfaceKind, Authority,
+      // HealthStatus, SubnetStatus and a dozen more -- and #10367 registered
+      // more of them. This branch used to hand every $ref straight to
+      // componentType(), which builds an object type and answers null for
+      // anything with no field set, so each of those landed on JSONScalar.
+      //
+      // 348 emitted fields were typed JSON against 116 in the hand-written
+      // SDL: generating from that would have retyped ~230 correctly-typed
+      // fields as JSON, and no gate could see it -- the parity gate compares
+      // nullability and Int-narrowing, not scalar identity.
+      //
+      // A $ref to a non-object emits what the target IS, by recursion.
+      if (!target.properties && !target.allOf) {
+        return outputType(target, path, fallbackName);
+      }
       if (inFlight.has(ref)) return types.get(ref) ?? JSONScalar;
       inFlight.add(ref);
       const built = componentType(ref);

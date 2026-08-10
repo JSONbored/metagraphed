@@ -226,14 +226,19 @@ describe("declared projections (#10214)", () => {
   });
 
   test("a stale `added` entry fails, so the list can only shrink", () => {
-    // ScoreDistribution declares `p50` as resolver-added. Remove it from the
-    // SDL and the declaration has to go too -- otherwise `added` accumulates
-    // permissions for fields that no longer exist.
-    const broken = inType(sdl, "ScoreDistribution", /^ {4}p50: Float\n/m, "");
+    // OpportunityEntry declares `validator_headroom` as resolver-added. Remove
+    // it from the SDL and the declaration has to go too -- otherwise `added`
+    // accumulates permissions for fields that no longer exist.
+    const broken = inType(
+      sdl,
+      "OpportunityEntry",
+      /^ {4}validator_headroom: Int\n/m,
+      "",
+    );
     const report = checkComponentParity(broken, openapi);
     assert.ok(
       report.violations.some((v) =>
-        v.startsWith("ScoreDistribution.p50 -- declared as resolver-added"),
+        v.startsWith("OpportunityEntry.validator_headroom -- declared as resolver-added"),
       ),
       `expected the stale added entry to be reported, got: ${report.violations.join("; ")}`,
     );
