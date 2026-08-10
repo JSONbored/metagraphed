@@ -56,6 +56,27 @@ export const TaoUsdArtifactSchema = z
     schema_version: z.int(),
     window: z.string().nullable(),
     point_count: z.int().min(0),
+    // STALENESS IS STATED, NOT INFERRED (#8601 requirement 3). A consumer that
+    // has to parse observed_at, know the bound, and compare correctly has three
+    // chances to get it wrong -- and one that skips the check reads a frozen
+    // rate as a current one.
+    stale: z
+      .boolean()
+      .describe(
+        "True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh.",
+      ),
+    stale_after_ms: z
+      .int()
+      .min(0)
+      .describe(
+        "The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift.",
+      ),
+    age_ms: z
+      .int()
+      .nullable()
+      .describe(
+        "How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading.",
+      ),
     /** How many points carried a price. A gap from point_count is how a window
      * with unpriceable blocks announces itself. */
     priced_point_count: z

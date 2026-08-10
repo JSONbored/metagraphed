@@ -6204,6 +6204,8 @@ export type SurfaceList = {
 
 export type TaoUsd = {
   __typename?: 'TaoUsd';
+  /** How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading. */
+  age_ms?: Maybe<Scalars['Float']['output']>;
   change_pct?: Maybe<Scalars['Float']['output']>;
   change_usd?: Maybe<Scalars['Float']['output']>;
   latest?: Maybe<TaoUsdLatest>;
@@ -6214,6 +6216,10 @@ export type TaoUsd = {
   /** How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
   priced_point_count: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+  /** True when the newest reading is older than stale_after_ms, or carries no usable timestamp at all. A reading that cannot say WHEN it was taken counts as stale, never fresh. */
+  stale: Scalars['Boolean']['output'];
+  /** The bound that stale is measured against -- the same one the API refuses to derive USD figures from. */
+  stale_after_ms: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -10932,6 +10938,7 @@ export type SurfaceListResolvers<ContextType = GqlContext, ParentType extends Re
 }>;
 
 export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsd'] = ResolversParentTypes['TaoUsd']> = ResolversObject<{
+  age_ms?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   change_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   change_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   latest?: Resolver<Maybe<ResolversTypes['TaoUsdLatest']>, ParentType, ContextType>;
@@ -10940,6 +10947,8 @@ export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends Resolve
   points?: Resolver<Array<ResolversTypes['TaoUsdPoint']>, ParentType, ContextType>;
   priced_point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stale?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  stale_after_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 

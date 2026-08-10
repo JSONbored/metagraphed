@@ -42,6 +42,7 @@ import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
+import { TAO_USD_MAX_AGE_MS } from "../src/alpha-usd.ts";
 
 // The real DDL, so the CHECK constraint that pairs a null price with
 // `insufficient_pools` is enforced in the fixtures too — a test that could
@@ -653,5 +654,62 @@ describe("tao_usd over GraphQL and MCP", () => {
     assert.equal(card.point_count, 1);
     // A model must not substitute 0 for an unpriceable block.
     assert.match(tool.description, /never as a zero price/);
+  });
+});
+
+describe("staleness is STATED, not left to the caller (#8601)", () => {
+  const NOW = Date.parse("2026-08-10T06:00:00.000Z");
+  const row = (msAgo: number) => ({
+    observed_at: NOW - msAgo,
+    block_number: 25_719_199,
+    usd_per_tao: 204.125,
+    price_basis: "wrapped_onchain_median",
+    eth_usd: 1917,
+    pool_count: 2,
+    pools: "[]",
+  });
+
+  test("a fresh reading is not stale, and says how old it is", () => {
+    const out = buildTaoUsdSeries([row(60_000)], { now: () => NOW });
+    assert.equal(out.stale, false);
+    assert.equal(out.age_ms, 60_000);
+  });
+
+  test("past the bound it says so, rather than making the caller compare", () => {
+    // The failure this closes: a consumer that skips the comparison reads a
+    // frozen rate as a current one -- a value with no live writer behind it,
+    // served at 200 OK.
+    const out = buildTaoUsdSeries([row(TAO_USD_MAX_AGE_MS + 1)], {
+      now: () => NOW,
+    });
+    assert.equal(out.stale, true);
+    assert.ok((out.age_ms as number) > (out.stale_after_ms as number));
+  });
+
+  test("the bound IS the one the API refuses to price against", () => {
+    // Compared against the DECLARATION, not a literal. If these drift, the API
+    // says "fresh" while every USD figure on it is refusing to derive -- two
+    // answers to one question.
+    const out = buildTaoUsdSeries([row(1000)], { now: () => NOW });
+    assert.equal(out.stale_after_ms, TAO_USD_MAX_AGE_MS);
+  });
+
+  test("a reading that cannot say WHEN is STALE, never fresh", () => {
+    // Defaulting the unknown direction to "current" is exactly how a frozen
+    // rate survives a staleness check.
+    for (const bad of [null, "", "not-a-date"]) {
+      const out = buildTaoUsdSeries([{ ...row(0), observed_at: bad }], {
+        now: () => NOW,
+      });
+      assert.equal(out.stale, true, String(bad));
+      assert.equal(out.age_ms, null);
+    }
+  });
+
+  test("an empty window is stale, not silently fresh", () => {
+    // No reading at all is the strongest form of "do not price against this".
+    const out = buildTaoUsdSeries([], { now: () => NOW });
+    assert.equal(out.stale, true);
+    assert.equal(out.age_ms, null);
   });
 });
