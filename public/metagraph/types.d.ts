@@ -10669,6 +10669,18 @@ export interface components {
                 [key: string]: unknown;
             };
             registered_at_block?: number;
+            revenue_search?: {
+                /** @description Where the search actually looked. Without it, "we searched" is unfalsifiable and nobody else can re-run it. */
+                checked: ("website" | "docs" | "openapi" | "dashboard" | "source-repo" | "blog" | "explorer")[];
+                notes?: string;
+                /**
+                 * @description Cross-checked against the surfaces themselves, so the summary cannot drift from the data it summarises.
+                 * @enum {string}
+                 */
+                outcome: "none-found" | "surfaces-declared";
+                /** @description An absence with no date is not evidence. */
+                searched_at: string;
+            };
             slug: string;
             social?: components["schemas"]["SocialLinks"] | null;
             source_repo?: string | null;
@@ -18120,6 +18132,13 @@ export interface operations {
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
+                     *           "revenue_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "slug": "example-subnet",
                      *           "social": {},
                      *           "source_repo": "https://api.metagraph.sh/example",
@@ -38846,6 +38865,13 @@ export interface operations {
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
+                     *           "revenue_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "slug": "example-subnet",
                      *           "social": {},
                      *           "source_repo": "https://api.metagraph.sh/example",
@@ -44087,6 +44113,13 @@ export interface operations {
                      *           "probed_surface_count": 1,
                      *           "provenance": {},
                      *           "registered_at_block": 5000000,
+                     *           "revenue_search": {
+                     *             "checked": [
+                     *               "website"
+                     *             ],
+                     *             "outcome": "none-found",
+                     *             "searched_at": "2026-06-01T00:00:00.000Z"
+                     *           },
                      *           "slug": "example-subnet",
                      *           "social": {},
                      *           "source_repo": "https://api.metagraph.sh/example",

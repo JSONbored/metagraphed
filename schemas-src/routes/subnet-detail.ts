@@ -339,6 +339,42 @@ export const CurationMetadataSchema = z
   .strict();
 export type CurationMetadata = z.infer<typeof CurationMetadataSchema>;
 
+// #10543: whether this subnet has been searched for external revenue, and
+// when. `revenue` lives on a SURFACE, so a subnet with no revenue-shaped
+// surface has nowhere to put one -- and that is exactly the population the
+// dark sweep covers. Without this, an undated silence is indistinguishable
+// from nobody having looked, and "N% of the network has no observable
+// external revenue" is not a defensible claim.
+export const RevenueSearchSchema = z
+  .object({
+    checked: z
+      .array(
+        z.enum([
+          "website",
+          "docs",
+          "openapi",
+          "dashboard",
+          "source-repo",
+          "blog",
+          "explorer",
+        ]),
+      )
+      .min(1)
+      .meta({
+        description:
+          'Where the search actually looked. Without it, "we searched" is unfalsifiable and nobody else can re-run it.',
+      }),
+    notes: z.string().optional(),
+    outcome: z.enum(["none-found", "surfaces-declared"]).meta({
+      description:
+        "Cross-checked against the surfaces themselves, so the summary cannot drift from the data it summarises.",
+    }),
+    searched_at: z.string().meta({
+      description: "An absence with no date is not evidence.",
+    }),
+  })
+  .strict();
+
 export const SubnetDetailSchema = z
   .object({
     block: z.int().min(0).optional(),
@@ -413,6 +449,7 @@ export const SubnetDetailSchema = z
     native_slug: z.string().nullable().optional(),
     netuid: z.int().min(0),
     notes: z.string().nullable().optional(),
+    revenue_search: RevenueSearchSchema.optional(),
     participant_count: z.int().min(0).optional(),
     partnership: z.union([PartnershipMetadataSchema, z.null()]).optional(),
     previously_known_as: z.array(z.string()).optional(),

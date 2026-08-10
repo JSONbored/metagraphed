@@ -95,6 +95,53 @@ export function checkSurfaceRevenue(
   return out;
 }
 
+/**
+ * #10543: the subnet-level search record must agree with the surfaces.
+ *
+ * `revenue_search` summarises a search; the surfaces are its result. Nothing
+ * links them, so without this the summary quietly rots: a subnet recorded
+ * `none-found` in March keeps asserting it after a revenue surface is added in
+ * August, and the "N% of the network has no observable external revenue" claim
+ * silently overcounts. A summary that cannot disagree with its data is a
+ * comment, not a record.
+ */
+export function checkRevenueSearch(
+  subnet: Row,
+  file = "<memory>",
+): ProvenanceViolation[] {
+  const search = subnet?.revenue_search;
+  if (!search || typeof search !== "object") return [];
+  const declared = (
+    Array.isArray(subnet?.surfaces) ? subnet.surfaces : []
+  ).filter((s: Row) => s?.revenue?.role === "external-revenue");
+  const subject = `netuid ${subnet?.netuid ?? "?"}`;
+  if (search.outcome === "none-found" && declared.length > 0) {
+    return [
+      {
+        file,
+        subject,
+        message:
+          `revenue_search says "none-found" but ${declared.length} surface(s) declare ` +
+          `role "external-revenue" (${declared.map((s: Row) => s.id).join(", ")}). ` +
+          "The search record has gone stale against its own data.",
+      },
+    ];
+  }
+  if (search.outcome === "surfaces-declared" && declared.length === 0) {
+    return [
+      {
+        file,
+        subject,
+        message:
+          'revenue_search says "surfaces-declared" but no surface declares role ' +
+          '"external-revenue". Either the declaration was removed and the summary was not ' +
+          'updated, or the outcome should be "none-found".',
+      },
+    ];
+  }
+  return [];
+}
+
 /** Check one entity label. Exported for the same reason as above. */
 export function checkEntityRole(
   entity: Row,
@@ -122,9 +169,9 @@ export async function collectViolations(): Promise<ProvenanceViolation[]> {
   const subnetDir = path.join(repoRoot, "registry/subnets");
   for (const file of await listJsonFiles(subnetDir)) {
     const subnet = (await readJson(file)) as Row;
-    violations.push(
-      ...checkSurfaceRevenue(subnet, path.relative(repoRoot, file)),
-    );
+    const rel = path.relative(repoRoot, file);
+    violations.push(...checkSurfaceRevenue(subnet, rel));
+    violations.push(...checkRevenueSearch(subnet, rel));
   }
 
   const entityDir = path.join(repoRoot, "registry/entities");
