@@ -1,5 +1,6 @@
-// #9540: every GraphQL resolver whose tier flag is RETIRED must reach a
-// cold-tier/artifact loader, or it can only ever answer zero.
+// #9540/#10320: every RESOLVER, REST HANDLER and MCP TOOL whose tier flag is
+// RETIRED must reach a cold-tier/artifact loader, or it can only ever answer
+// zero.
 //
 // Eight tier flags read "retired" in wrangler.jsonc, and tryPostgresTier
 // returns null for all of them. A resolver whose ladder is
@@ -10,6 +11,27 @@
 // governance_config_changes, chain_calls, chain_signers, chain_stake_flow,
 // chain_transfer_pairs, account_events, chain_transfers and chain_alpha_volume
 // ALL returned 0 while REST and MCP served real rows for every one.
+//
+// ── Why it scans three surfaces and not one (#10320) ───────────────────────
+//
+// "REST and MCP served real rows for every one" was true of #9540's sample and
+// was never a property of the codebase. Prometheus was the counterexample: all
+// three surfaces were missing the rung, for the same reason -- each card's twin
+// got wired and the card did not.
+//
+// Widening it immediately found one more, on the surface the old scope could
+// not see: `get_subnet_snapshot` embeds a recent-events card whose ladder fell
+// straight from the retired tier to `buildSubnetEvents([])`, while the
+// standalone `get_subnet_events` reached `answerSubnetEvents`. Verified live on
+// SN64, 2026-08-09 -- the snapshot answered `event_count: 0` in the same minute
+// its own twin answered ten rows.
+//
+// EACH SURFACE NEEDS ITS OWN SLICER, and this is the part that has to be right.
+// A naive "stop at the next `;`" scan over the same files reports 45 rung-less
+// ladders of 126, and probing six of them found four false positives -- a
+// ladder split across statements reads as broken. The three slicers below each
+// end at the construct's OWN closing line, which is what turns that into the
+// nine real findings enumerated at the bottom.
 //
 // This is a SOURCE-STRUCTURE test on purpose. The defect is "a rung is
 // missing", which is a property of how the ladder is written, and a runtime
@@ -23,6 +45,8 @@ import path from "node:path";
 import { test } from "vitest";
 
 const GRAPHQL_SRC = path.join(process.cwd(), "src/graphql.ts");
+const MCP_SRC = path.join(process.cwd(), "src/mcp-server.ts");
+const REST_DIR = path.join(process.cwd(), "workers/request-handlers");
 const WRANGLER = path.join(process.cwd(), "wrangler.jsonc");
 
 /** A resolver reaching one of these can never get rows from that tier. Read
@@ -112,6 +136,74 @@ function buildResolver(
 }
 
 /**
+ * REST handlers, sliced to their OWN column-0 closing brace.
+ *
+ * `export function handleX(` ... `}` at column zero, which prettier guarantees
+ * for a top-level function. Stopping at the next `export function` instead
+ * would absorb the gap between two handlers -- the same mistake the resolver
+ * slicer documents, and the reason its comment exists.
+ */
+function restHandlers(retired: Set<string>): Resolver[] {
+  const out: Resolver[] = [];
+  for (const file of fs.readdirSync(REST_DIR)) {
+    if (!file.endsWith(".ts")) continue;
+    const lines = fs
+      .readFileSync(path.join(REST_DIR, file), "utf8")
+      .split("\n");
+    for (const [start, line] of lines.entries()) {
+      const match = /^export (?:async )?function ([a-zA-Z0-9_]+)\(/.exec(line);
+      if (!match) continue;
+      let end = lines.length;
+      for (let i = start + 1; i < lines.length; i++) {
+        if (/^\}$/.test(lines[i])) {
+          end = i + 1;
+          break;
+        }
+      }
+      out.push(
+        buildResolver(match[1], lines.slice(start, end).join("\n"), retired),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * MCP tools, sliced from their `name:` line to the entry's own `  },`.
+ *
+ * A tool is an object member of the MCP_TOOLS array, so its closing line is at
+ * two-space indent exactly like a GraphQL resolver's -- the same delimiter for
+ * the same prettier reason. Keyed on `name:` rather than on `handler(` because
+ * the ladder is often built in a helper above the handler, inside the same
+ * entry.
+ */
+function mcpTools(retired: Set<string>): Resolver[] {
+  const lines = fs.readFileSync(MCP_SRC, "utf8").split("\n");
+  const out: Resolver[] = [];
+  for (const [start, line] of lines.entries()) {
+    const match = /^ {4}name: "([a-z0-9_]+)",$/.exec(line);
+    if (!match) continue;
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^ {2}\},?$/.test(lines[i])) {
+        end = i + 1;
+        break;
+      }
+    }
+    out.push(
+      buildResolver(match[1], lines.slice(start, end).join("\n"), retired),
+    );
+  }
+  return out;
+}
+
+/** Every ladder on every surface, which is the set the assertions run over. */
+function ladders(): Resolver[] {
+  const retired = retiredFlags();
+  return [...resolvers(), ...restHandlers(retired), ...mcpTools(retired)];
+}
+
+/**
  * Resolvers still to be wired, tracked against #9540.
  *
  * These ARE defects -- each has a loader its REST/MCP twin already calls, and
@@ -140,16 +232,42 @@ const PENDING_WIRING = new Set<string>([
  * leave a stale exemption behind.
  */
 const NO_TIER_ANYWHERE: Record<string, string> = {
+  // ── AXON REMOVALS. `AxonInfoRemoved` has never been emitted -- zero
+  // occurrences in the complete decoded stream -- so there is nothing for a
+  // cold tier to hold. An empty answer here is the correct answer, and the
+  // question of whether the event will ever fire belongs to the lane, not to
+  // wiring on any of these three surfaces.
   chain_axon_removals:
     "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no lane exists for it",
-  account_prometheus:
-    "get_account_prometheus falls to buildAccountPrometheus([]) on MCP too -- no lane exists for it",
   account_axon_removals:
     "get_account_axon_removals falls to buildAccountAxonRemovals([]) on MCP too -- no lane exists for it",
   subnet_axon_removals:
     "get_subnet_axon_removals falls to buildSubnetAxonRemovals(null) on MCP too -- no lane exists for it",
+  handleChainAxonRemovals:
+    "the REST twin of chain_axon_removals -- same absent lane, same correct empty",
+  handleSubnetAxonRemovals:
+    "the REST twin of subnet_axon_removals -- same absent lane, same correct empty",
+  get_chain_axon_removals:
+    "the MCP twin the GraphQL entry above cites as evidence; naming it here keeps the claim checkable from either side",
+  get_account_axon_removals:
+    "the MCP twin of account_axon_removals -- same absent lane",
+  get_subnet_axon_removals:
+    "the MCP twin of subnet_axon_removals -- same absent lane",
+
+  // ── PROMETHEUS. Never curated into a tier on any surface (#10248 wired the
+  // cold rung for the chain-level card; these three remain uncurated). All
+  // three surfaces bottom out in the same empty builder, so they agree -- which
+  // is what makes this a lane question rather than a wiring bug.
+  account_prometheus:
+    "get_account_prometheus falls to buildAccountPrometheus([]) on MCP too -- no lane exists for it",
   subnet_prometheus:
     "get_subnet_prometheus falls to buildSubnetPrometheus(null) on MCP too -- no lane exists for it",
+  handleSubnetPrometheus:
+    "the REST twin of subnet_prometheus -- same uncurated lane, same correct empty",
+  get_account_prometheus:
+    "the MCP twin of account_prometheus -- same uncurated lane",
+  get_subnet_prometheus:
+    "the MCP twin of subnet_prometheus -- same uncurated lane",
 };
 
 // Positive control. A pure "nothing is broken" assertion passes just as well
@@ -177,8 +295,8 @@ test("the detector recognises a resolver that DOES reach its loader", () => {
   );
 });
 
-test("no resolver on a retired tier is left with no loader to fall back to", () => {
-  const broken = resolvers()
+test("nothing on a retired tier is left with no loader to fall back to", () => {
+  const broken = ladders()
     .filter((r) => r.usesRetiredTier && !r.hasLoader)
     .map((r) => r.name);
   const unexpected = [...new Set(broken)].filter(
@@ -187,15 +305,16 @@ test("no resolver on a retired tier is left with no loader to fall back to", () 
   assert.deepEqual(
     unexpected,
     [],
-    `these resolvers read a retired tier and have no loader, so they can only answer zero:\n  ${unexpected.join("\n  ")}\n` +
-      "Wire each to the loader its REST/MCP twin already uses, or add it to " +
-      "NO_TIER_ANYWHERE with the evidence that no tier exists for it either.",
+    `these read a retired tier and have no loader, so they can only answer zero:\n  ${unexpected.join("\n  ")}\n` +
+      "Wire each to the loader its twin on another surface already uses, or " +
+      "add it to NO_TIER_ANYWHERE with the evidence that no tier exists for " +
+      "it either.",
   );
 });
 
 test("neither exemption list carries a stale entry", () => {
   const broken = new Set(
-    resolvers()
+    ladders()
       .filter((r) => r.usesRetiredTier && !r.hasLoader)
       .map((r) => r.name),
   );
