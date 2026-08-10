@@ -53,6 +53,7 @@ jobs:
       - name: Generate enrichment issues
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: node scripts/enrichment-issues.ts --write | tee enrichment-run.log
 
       - name: Job summary

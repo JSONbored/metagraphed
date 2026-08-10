@@ -67,6 +67,7 @@ jobs:
       # publish, and both halves have to come from production for the answer
       # to mean anything.
       - name: Validate live MCP responses against their published outputSchemas
+        shell: bash
         run: |
           node scripts/check-mcp-conformance.ts | tee mcp-conformance.log
           {

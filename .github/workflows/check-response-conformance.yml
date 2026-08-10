@@ -55,6 +55,7 @@ jobs:
       - name: Validate live responses against the published spec
         env:
           LIVE_ALERT_WEBHOOK_URL: ${{ secrets.LIVE_ALERT_WEBHOOK_URL }}
+        shell: bash
         run: |
           node scripts/check-response-conformance.ts | tee conformance.log
           {

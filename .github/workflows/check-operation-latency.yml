@@ -56,6 +56,7 @@ jobs:
         run: npm ci
 
       - name: Time every operation
+        shell: bash
         run: |
           node scripts/check-operation-latency.ts | tee latency.log
           {

@@ -59,6 +59,7 @@ jobs:
         run: npm ci
 
       - name: Measure every published value against GraphQL's Int
+        shell: bash
         run: |
           node scripts/check-graphql-int-range.ts | tee int-range.log
           {

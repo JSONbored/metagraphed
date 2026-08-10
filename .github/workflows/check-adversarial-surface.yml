@@ -58,6 +58,7 @@ jobs:
         run: npm ci
 
       - name: Probe the surface
+        shell: bash
         run: |
           node scripts/check-adversarial-surface.ts | tee adversarial.log
           {

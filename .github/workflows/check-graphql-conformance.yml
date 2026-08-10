@@ -59,6 +59,7 @@ jobs:
         run: npm ci
 
       - name: Execute every Query field against production
+        shell: bash
         run: |
           node scripts/check-graphql-conformance.ts | tee graphql-conformance.log
           {
