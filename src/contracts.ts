@@ -1711,7 +1711,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-revenue",
     "/metagraph/subnets/{netuid}/revenue.json",
-    "One subnet's external revenue against the TAO the network emits to it (#10446/#10447), composed live at /api/v1/subnets/{netuid}/revenue (no static file). The denominator is tao_total -- SubnetTaoInEmission + SubnetExcessTao, measured -- with the alpha-priced and 18% owner-take alternates published beside it and never substituted for it. COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND THAT IS THE NORMAL CASE: two of 129 subnets publish a readable revenue figure, so a client rendering null as 0% makes a false claim about the other 127. An observed zero is a different fact and reads back as a real 0, with subsidy_multiple null there because dividing by zero is undefined rather than infinite. Only chain-verified and probe-derived contribute to the headline; operator-attested and third-party-reported are carried in `sources` and never summed in. Never 404s for a subnet with no revenue data.",
+    "One subnet's external revenue against the TAO the network emits to it (#10446/#10447), composed live at /api/v1/subnets/{netuid}/revenue (no static file). The denominator is tao_total -- SubnetTaoInEmission + SubnetExcessTao, measured -- with the alpha-priced and 18% owner-take alternates published beside it and never substituted for it. COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND THAT IS THE NORMAL CASE: two of 128 subnets publish a readable revenue figure, so a client rendering null as 0% makes a false claim about the other 126. An observed zero is a different fact and reads back as a real 0, with subsidy_multiple null there because dividing by zero is undefined rather than infinite. Only chain-verified and probe-derived contribute to the headline; operator-attested and third-party-reported are carried in `sources` and never summed in. Never 404s for a subnet with no revenue data.",
     "SubnetRevenueArtifact",
     COMPUTED_LIVE,
   ),
@@ -3735,7 +3735,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/revenue",
     "/metagraph/subnets/{netuid}/revenue.json",
-    "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 127 of 129 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
+    "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
     "short",
     ["subnets"],
     [],
@@ -5260,6 +5260,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // Same economics blob as its sibling above, built from the mainnet registry
   // index and carrying no network dimension (#10285).
   "/api/v1/chain/deregistration-ranking",
+  // #10447: the revenue numerator is read from curated per-subnet surface
+  // records, which exist only for mainnet. Declared rather than left to answer
+  // `artifact_not_found`, which would report a contract decision as an incident.
+  "/api/v1/chain/revenue-coverage",
+  "/api/v1/subnets/{netuid}/revenue",
   "/api/v1/registry/summary",
   "/api/v1/lineage",
   "/api/v1/fixtures",

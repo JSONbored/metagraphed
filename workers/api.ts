@@ -6399,6 +6399,10 @@ const REGISTRY_ONLY_API_PATHS = new Set([
   "/api/v1/accounts/top-holders",
   "/api/v1/chain/emission-pipeline",
   "/api/v1/chain/deregistration-ranking",
+  // #10447: composed from the curated per-subnet revenue SURFACES against
+  // mainnet emission. The surfaces are registry records, which testnet has
+  // none of, so a testnet-addressed request has no numerator to read.
+  "/api/v1/chain/revenue-coverage",
 ]);
 
 /** Per-subnet leaves with the same two reasons, matched under any netuid. */
@@ -6430,6 +6434,9 @@ const REGISTRY_ONLY_SUBNET_LEAVES = new Set([
   "lease/history",
   "stake-moves",
   "stake-transfers",
+  // The per-subnet half of /api/v1/chain/revenue-coverage, declared above for
+  // the same reason: the numerator comes from registry surface records.
+  "revenue",
 ]);
 
 /** Prefixes covering the registry's parameterised singletons. */

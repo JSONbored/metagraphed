@@ -8749,8 +8749,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "its alpha-priced and 18% owner-take alternates, the observed revenue, and the two " +
       "ratios -- coverage_ratio (revenue/emission) and subsidy_multiple (emission/revenue). " +
       "COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND " +
-      "THAT IS THE NORMAL CASE: two of 129 subnets publish a readable revenue figure, so " +
-      "reporting a null as 0% is a false claim about the other 127. An observed zero is a " +
+      "THAT IS THE NORMAL CASE: two of 128 subnets publish a readable revenue figure, so " +
+      "reporting a null as 0% is a false claim about the other 126. An observed zero is a " +
       "different fact and reads back as a real 0. Only chain-verified and probe-derived " +
       "provenance contributes to the headline; operator-attested and third-party-reported " +
       "figures appear in `sources` and are never summed in. Never quote a figure without " +

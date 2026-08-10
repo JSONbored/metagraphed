@@ -1456,7 +1456,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's external revenue against the TAO the network emits to it (#10446/#10447), composed live at /api/v1/subnets/{netuid}/revenue (no static file). The denominator is tao_total -- SubnetTaoInEmission + SubnetExcessTao, measured -- with the alpha-priced and 18% owner-take alternates published beside it and never substituted for it. COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND THAT IS THE NORMAL CASE: two of 129 subnets publish a readable revenue figure, so a client rendering null as 0% makes a false claim about the other 127. An observed zero is a different fact and reads back as a real 0, with subsidy_multiple null there because dividing by zero is undefined rather than infinite. Only chain-verified and probe-derived contribute to the headline; operator-attested and third-party-reported are carried in `sources` and never summed in. Never 404s for a subnet with no revenue data.",
+      "description": "One subnet's external revenue against the TAO the network emits to it (#10446/#10447), composed live at /api/v1/subnets/{netuid}/revenue (no static file). The denominator is tao_total -- SubnetTaoInEmission + SubnetExcessTao, measured -- with the alpha-priced and 18% owner-take alternates published beside it and never substituted for it. COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND THAT IS THE NORMAL CASE: two of 128 subnets publish a readable revenue figure, so a client rendering null as 0% makes a false claim about the other 126. An observed zero is a different fact and reads back as a real 0, with subsidy_multiple null there because dividing by zero is undefined rather than infinite. Only chain-verified and probe-derived contribute to the headline; operator-attested and third-party-reported are carried in `sources` and never summed in. Never 404s for a subnet with no revenue data.",
       "id": "subnet-revenue",
       "path": "/metagraph/subnets/{netuid}/revenue.json",
       "retirement": null,
@@ -2817,7 +2817,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 164,
+    "mainnet_only_route_count": 166,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

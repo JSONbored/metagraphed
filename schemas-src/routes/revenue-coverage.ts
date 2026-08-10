@@ -5,7 +5,7 @@
 // carry that a naive response would drop:
 //
 //   1. `coverage_ratio` and `subsidy_multiple` are NULLABLE, and null is the
-//      normal case -- 127 of 129 subnets have no readable revenue figure. A
+//      normal case -- 126 of 128 subnets have no readable revenue figure. A
 //      non-null type here would force a caller to read absent as zero, which
 //      is the false claim this whole epic exists to avoid making at scale.
 //   2. `provenance` is REQUIRED on every figure, so a consumer cannot read a

@@ -60021,122 +60021,6 @@
         ]
       }
     },
-    "/api/v1/{network}/chain/revenue-coverage": {
-      "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
-        "operationId": "chainRevenueCoverageByNetwork",
-        "parameters": [
-          {
-            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
-            "in": "path",
-            "name": "network",
-            "required": true,
-            "schema": {
-              "enum": [
-                "finney",
-                "mainnet",
-                "test",
-                "testnet"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "examples": {
-                  "ChainRevenueCoverageArtifactResponse": {
-                    "$ref": "#/components/examples/ChainRevenueCoverageArtifactResponse"
-                  }
-                },
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope"
-                    },
-                    {
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ChainRevenueCoverageArtifact"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
-            "headers": {
-              "cache-control": {
-                "$ref": "#/components/headers/CacheControl"
-              },
-              "etag": {
-                "$ref": "#/components/headers/ETag"
-              },
-              "x-metagraph-contract-version": {
-                "$ref": "#/components/headers/ContractVersion"
-              }
-            }
-          },
-          "304": {
-            "description": "ETag matched and the cached response is still valid."
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Query parameters were malformed or unsupported."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Artifact or API route was not found."
-          },
-          "405": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "HTTP method is not supported."
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unexpected backend error."
-          }
-        },
-        "summary": "Fetch every subnet's revenue coverage in one response. observed_count against subnet_count states how much of the network has a readable revenue figure at all. Subnets with no observed revenue are included with null ratios rather than dropped.",
-        "tags": [
-          "chain"
-        ],
-        "x-metagraphed-networks": [
-          "finney",
-          "mainnet",
-          "test",
-          "testnet"
-        ]
-      }
-    },
     "/api/v1/{network}/chain/signers": {
       "get": {
         "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -63724,132 +63608,6 @@
           }
         },
         "summary": "Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
-        "tags": [
-          "subnets"
-        ],
-        "x-metagraphed-networks": [
-          "finney",
-          "mainnet",
-          "test",
-          "testnet"
-        ]
-      }
-    },
-    "/api/v1/{network}/subnets/{netuid}/revenue": {
-      "get": {
-        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
-        "operationId": "subnetRevenueByNetwork",
-        "parameters": [
-          {
-            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
-            "in": "path",
-            "name": "network",
-            "required": true,
-            "schema": {
-              "enum": [
-                "finney",
-                "mainnet",
-                "test",
-                "testnet"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "netuid",
-            "required": true,
-            "schema": {
-              "maximum": 65535,
-              "minimum": 0,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "examples": {
-                  "SubnetRevenueArtifactResponse": {
-                    "$ref": "#/components/examples/SubnetRevenueArtifactResponse"
-                  }
-                },
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope"
-                    },
-                    {
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/SubnetRevenueArtifact"
-                        }
-                      },
-                      "type": "object"
-                    }
-                  ]
-                }
-              }
-            },
-            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
-            "headers": {
-              "cache-control": {
-                "$ref": "#/components/headers/CacheControl"
-              },
-              "etag": {
-                "$ref": "#/components/headers/ETag"
-              },
-              "x-metagraph-contract-version": {
-                "$ref": "#/components/headers/ContractVersion"
-              }
-            }
-          },
-          "304": {
-            "description": "ETag matched and the cached response is still valid."
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Query parameters were malformed or unsupported."
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Artifact or API route was not found."
-          },
-          "405": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "HTTP method is not supported."
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            },
-            "description": "Unexpected backend error."
-          }
-        },
-        "summary": "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 127 of 129 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
         "tags": [
           "subnets"
         ],
@@ -72463,11 +72221,9 @@
         "tags": [
           "chain"
         ],
+        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "finney",
-          "mainnet",
-          "test",
-          "testnet"
+          "mainnet"
         ]
       }
     },
@@ -93034,15 +92790,13 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 127 of 129 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
+        "summary": "Fetch one subnet's external revenue against the TAO the network emits to it: the measured tao_total denominator with its alternates, the observed revenue, and the two ratios. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed -- the normal case for 126 of 128 subnets -- and a client must render null as 'not observed', never as 0%. Only chain-verified and probe-derived contribute to the headline; every declared surface is listed in `sources` with its own provenance. verification.verified false means the response is not defensible.",
         "tags": [
           "subnets"
         ],
+        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "finney",
-          "mainnet",
-          "test",
-          "testnet"
+          "mainnet"
         ]
       }
     },
