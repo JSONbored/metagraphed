@@ -3476,7 +3476,7 @@ export const SDL = /* GraphQL */ `
     limit: Int!
     offset: Int!
     "Total distinct nominating coldkeys in the window, before limit/offset paging."
-    nominator_count: Int!
+    nominator_count: Int
     nominators: [Nominator!]!
     concentration_complete: Boolean
     top_nominator_share: Float
@@ -3755,8 +3755,8 @@ export const SDL = /* GraphQL */ `
     subnet_count: Int!
     netuids: [Int!]!
     "Member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens."
-    total_stake_tao: Float!
-    total_emission_share: Float!
+    total_stake_tao: Float
+    total_emission_share: Float
     "Within-domain emission concentration scorecard; null when the domain has no members. Declared Float until #9889 — the route has served the full 12-key scorecard for long enough that the scalar coerced to null on every domain, which this type's own comment then read as 'no members'."
     emission_concentration: ConcentrationMetrics
   }
@@ -4328,7 +4328,7 @@ export const SDL = /* GraphQL */ `
 
   "One child hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float."
   type AccountChildEntry {
-    child: String!
+    child: String
     proportion: String!
     proportion_fraction: Float!
   }
@@ -4353,7 +4353,7 @@ export const SDL = /* GraphQL */ `
 
   "One parent hotkey's delegated-stake proportion on a subnet. proportion is the raw stringified u64 (0..u64::MAX represents 0..100%); proportion_fraction is the same value pre-divided to a 0..1 float."
   type AccountParentEntry {
-    parent: String!
+    parent: String
     proportion: String!
     proportion_fraction: Float!
   }
@@ -5071,7 +5071,7 @@ export const SDL = /* GraphQL */ `
   }
 
   type AccountModuleCall {
-    call_module: String!
+    call_module: String
     count: Int!
   }
 
@@ -5333,7 +5333,7 @@ export const SDL = /* GraphQL */ `
     replaced_by_hotkey: String!
     block_number: Int!
     observed_at: String!
-    tenure_blocks: Int!
+    tenure_blocks: Int
   }
 
   type BuildArtifactBudget {
@@ -5396,11 +5396,11 @@ export const SDL = /* GraphQL */ `
     """
     The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for.
     """
-    snapshot_captured_at: String!
+    snapshot_captured_at: String
     """
     The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero.
     """
-    latest_stake_event_at: String!
+    latest_stake_event_at: String
   }
 
   """
@@ -5424,11 +5424,11 @@ export const SDL = /* GraphQL */ `
 
   type DeregistrationTenure {
     sample_count: Int!
-    median_blocks: Int!
-    p10_blocks: Int!
-    p90_blocks: Int!
-    min_blocks: Int!
-    max_blocks: Int!
+    median_blocks: Int
+    p10_blocks: Int
+    p90_blocks: Int
+    min_blocks: Int
+    max_blocks: Int
     censored: Boolean!
   }
 `;
