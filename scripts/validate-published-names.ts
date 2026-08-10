@@ -31,6 +31,7 @@ import {
   ALIASED_TYPE_NAMES,
   PUBLISHED_TYPE_NAMES,
   QUERY_BINDINGS,
+  SUBSCRIPTION_BINDINGS,
   PROJECTED_TYPES,
   RESOLVER_BUILT_TYPES,
 } from "../schemas-src/graphql/published-names.ts";
@@ -275,6 +276,18 @@ const sdlBindings = (sdlTypes.get("Query")?.fields ?? []).map((field) => {
   };
 });
 
+/** Subscription's fields, read the same way Query's are. */
+const sdlSubscriptionBindings = (
+  sdlTypes.get("Subscription")?.fields ?? []
+).map((field) => ({
+  field: field.name.value,
+  // Always null, and structurally so: the field is reached over WebSocket
+  // only, and there is no REST route to mirror.
+  route: null,
+  returns: print(field.type),
+  description: field.description?.value ?? "",
+}));
+
 // ── the pairing, computed the way the parity gate computes it ────────────────
 const { computed, paired, reachable } = traverse(
   sdlTypes,
@@ -356,16 +369,26 @@ if (staleAlias.length) {
   );
 }
 
-// ── the Query bindings ───────────────────────────────────────────────────────
-const bindingProblems = compareQueryBindings(sdlBindings, QUERY_BINDINGS);
-if (bindingProblems.length) {
-  errors.push(
-    `${bindingProblems.length} Query binding(s) that no longer describe the SDL:\n` +
-      bindingProblems
-        .sort()
-        .map((line) => `    ${line}`)
-        .join("\n"),
-  );
+// ── the root bindings ────────────────────────────────────────────────────────
+//
+// BOTH roots, on the same comparison. Subscription's one field was checked by
+// nothing until #10409: it was accounted for as a resolver-built type, which
+// means its return type and description lived only in the SDL -- the exact
+// drift `QUERY_BINDINGS` exists to stop, on the one root that had no registry.
+for (const [rootName, sdlRoot, declaredRoot] of [
+  ["Query", sdlBindings, QUERY_BINDINGS],
+  ["Subscription", sdlSubscriptionBindings, SUBSCRIPTION_BINDINGS],
+] as const) {
+  const bindingProblems = compareQueryBindings(sdlRoot, declaredRoot);
+  if (bindingProblems.length) {
+    errors.push(
+      `${bindingProblems.length} ${rootName} binding(s) that no longer describe the SDL:\n` +
+        bindingProblems
+          .sort()
+          .map((line) => `    ${line}`)
+          .join("\n"),
+    );
+  }
 }
 
 // ── the resolver-built list, and the projections ─────────────────────────────
@@ -377,8 +400,14 @@ if (bindingProblems.length) {
 // them matters because only the first is checked: everything in the second is
 // taken on trust, so that list is the debt and should only shrink.
 const projected = new Set(Object.keys(PROJECTED_TYPES));
+// The two ROOTS are excluded by name, not listed as debt. A root is not a
+// component and never will be -- it is assembled from its fields -- and both
+// have their fields declared: `QUERY_BINDINGS` for Query, `SUBSCRIPTION_
+// BINDINGS` for Subscription (#10409). `Subscription` sat in
+// RESOLVER_BUILT_TYPES only because the debt list was the one place to put it.
+const ROOT_TYPES = new Set(["Query", "Subscription"]);
 const unpaired = [...sdlTypes.keys()]
-  .filter((name) => name !== "Query" && !paired.has(name))
+  .filter((name) => !ROOT_TYPES.has(name) && !paired.has(name))
   .sort();
 const declaredResolverBuilt = [...RESOLVER_BUILT_TYPES].sort();
 const missingResolverBuilt = unpaired.filter(
@@ -464,6 +493,7 @@ if (isMain)
     `Published-name validation passed: ${Object.keys(PUBLISHED_TYPE_NAMES).length} component name(s), ` +
       `${new Set(Object.values(PUBLISHED_TYPE_NAMES)).size} published type(s), ` +
       `${QUERY_BINDINGS.length} Query binding(s), ` +
+      `${SUBSCRIPTION_BINDINGS.length} Subscription binding(s), ` +
       `${Object.keys(PROJECTED_TYPES).length} declared projection(s), ` +
       `${RESOLVER_BUILT_TYPES.length} resolver-built type(s), ` +
       `${Object.keys(ALIASED_TYPE_NAMES).length} declared alias(es).`,

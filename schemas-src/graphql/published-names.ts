@@ -109,6 +109,12 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   AccountPortfolioArtifact: "AccountPortfolio",
   AccountPortfolioArtifactPositions: "AccountPortfolioPosition",
   AccountsListArtifactAccountsSubnets: "AccountSubnet",
+  // The one GraphQL-only component whose published name differs from its
+  // own (#10409): the component is named for the firehose that produces
+  // it, the type for what a subscriber reads. `OpportunityBoards` and
+  // `EmissionGateChange` are published under their component names and so
+  // need no entry.
+  ChainFirehoseEvent: "ChainEvent",
   AccountPositionHistoryArtifact: "AccountPositionHistory",
   AccountPositionHistoryArtifactPoints: "AccountPositionHistoryPoint",
   AccountPositionsArtifact: "AccountPositions",
@@ -251,7 +257,7 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   DomainSummaryArtifactEmissionConcentration: "ConcentrationMetrics",
   DomainsArtifact: "DomainOverview",
   EconomicsArtifact: "EconomicsList",
-  EconomicsArtifactSubnets: "SubnetEconomics",
+  SubnetEconomics: "SubnetEconomics",
   EconomicsArtifactSummary: "EconomicsSummary",
   EconomicsTrendsArtifact: "EconomicsTrends",
   EconomicsTrendsArtifactDays: "EconomicsTrendsDay",
@@ -2014,7 +2020,7 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
   SubnetHealth: { component: "HealthSubnetSummary", added: [] },
   OpportunityEntry: {
-    component: "SubnetDetailArtifactEconomics",
+    component: "SubnetEconomics",
     added: ["validator_headroom"],
     dropped: [
       "alpha_fdv_tao",
@@ -2056,6 +2062,28 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
     dropped: ["ref", "limit", "offset"],
   },
   AccountEntry: { component: "AccountsListArtifactAccounts", added: [] },
+  // ── the three that had NO component until #10409 ─────────────────────────
+  //
+  // Each has one now, in schemas-src/graphql/graphql-only.ts, so each is
+  // checked field by field like every other projection instead of being
+  // taken on trust. `EmissionGateChange` is DERIVED from the three arm
+  // schemas REST already serves, so a field added to any arm fails the
+  // parity gate until the SDL publishes it.
+  OpportunityBoards: {
+    component: "OpportunityBoards",
+    added: [],
+    dropped: [],
+  },
+  EmissionGateChange: {
+    component: "EmissionGateChange",
+    added: [],
+    dropped: [],
+  },
+  ChainEvent: {
+    component: "ChainFirehoseEvent",
+    added: [],
+    dropped: [],
+  },
   // Two producers, one published type, and the ACCOUNTS-LIST one is the whole
   // of it: `AccountsListArtifactAccountsSubnets` emits exactly the four fields
   // `AccountSubnet` declares, so the projection below (which drops seven of
@@ -2404,31 +2432,59 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
 };
 
 /**
- * Types a resolver builds, with no component behind them.
+ * The Subscription root, declared the way `QUERY_BINDINGS` declares the Query
+ * root (#10409).
  *
- * THIS LIST IS THE DEBT, and only it: everything in `PROJECTED_TYPES` gets
- * checked field by field, and everything here is taken on trust. It was 15
- * when #10371 split the two, 8 after the projections were declared, and 4
- * now that the three with a component behind them moved across -- `SubnetList`
- * and `ProviderList` page over `SubnetsArtifact`/`ProvidersArtifact`, and
- * `GlobalHealth` flattens `HealthSummaryArtifact`. Anything that picks its
- * fields from a component belongs there, not here.
+ * A root type is not a component and never will be -- it is assembled from its
+ * fields -- so `Subscription` sat in `RESOLVER_BUILT_TYPES` for the same
+ * reason `Query` is excluded by name rather than listed there: the debt list
+ * was the only place to put it. Declaring its one field the way the 196 Query
+ * fields are declared is what the generator needs and what takes that list to
+ * zero.
  *
- * Why each of the four is still here, and what closing it would take:
- *
- *   OpportunityBoards       six boards of OpportunityEntry, assembled from a
- *                           leaderboard read. No artifact has this shape.
- *   EmissionGateChange      the flattened form of a three-arm union
- *                           (param/subnet/flow), each arm carrying only its
- *                           own fields. GraphQL could express it as a union;
- *                           the SDL chose one type with everything nullable.
- *   Subscription            a root type, not a component.
- *   ChainEvent              the subscription payload -- the #4980 NOTIFY
- *                           shape, which no REST route serves.
+ * `route` is null and always will be: the field is reached over WebSocket only
+ * (Sec-WebSocket-Protocol: graphql-transport-ws at /api/v1/graphql), and
+ * POSTing a subscription operation to the query endpoint returns a standard
+ * GraphQL error. There is no REST route to mirror.
  */
-export const RESOLVER_BUILT_TYPES: readonly string[] = [
-  "OpportunityBoards",
-  "EmissionGateChange",
-  "Subscription",
-  "ChainEvent",
+export const SUBSCRIPTION_BINDINGS: readonly QueryBinding[] = [
+  {
+    field: "chainEvents",
+    route: null,
+    returns: "ChainEvent!",
+    description:
+      "Live chain events as they land (blocks/extrinsics/chain_events/account_events), optionally filtered to one or more tables. Field shape mirrors the #4980 NOTIFY payload -- only the fields relevant to the event's table are populated.",
+  },
 ];
+
+/**
+ * Types a resolver builds with no component behind them -- EMPTY, and the
+ * generator's completeness depends on it staying that way.
+ *
+ * THIS LIST WAS THE DEBT, and only it: everything in `PROJECTED_TYPES` is
+ * checked field by field and everything here was taken on trust, so an
+ * over-promise in any of them (the class that nulled `SelfHealthLane.detail`
+ * on every request, #10215) was invisible. It was 15 when #10371 split the two,
+ * 8 once the projections were declared, 4 once `SubnetList` / `ProviderList` /
+ * `GlobalHealth` named the components they page over and flatten, and 0 at
+ * #10409:
+ *
+ *   OpportunityBoards    now a projection of the registered `OpportunityBoards`
+ *                        component, whose rows are the same `SubnetEconomics`
+ *                        card `OpportunityEntry` already projects.
+ *   EmissionGateChange   now a projection of a component DERIVED from the three
+ *                        arm schemas /api/v1/chain/governance/emission-changes
+ *                        already serves -- add a field to any arm and the parity
+ *                        gate fails until the SDL publishes it.
+ *   ChainEvent           now a projection of `ChainFirehoseEvent`, the #4980
+ *                        NOTIFY payload, modeled in schemas-src/graphql/
+ *                        graphql-only.ts because no REST route serves it.
+ *   Subscription         a ROOT, like Query -- assembled from its fields rather
+ *                        than emitted as a component, and declared as such in
+ *                        `SUBSCRIPTION_BINDINGS` above.
+ *
+ * A new entry here is a type nothing checks. Give it a component and declare
+ * the projection instead; `schemas-src/graphql/graphql-only.ts` is where a
+ * shape only GraphQL publishes goes.
+ */
+export const RESOLVER_BUILT_TYPES: readonly string[] = [];

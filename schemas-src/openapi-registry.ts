@@ -61,6 +61,7 @@ import {
   PartnershipTierSchema,
   EpochMillisSchema,
   ScoreDistributionSchema,
+  SubnetEconomicsSchema,
   SubnetStatusSchema,
   SubnetTypeSchema,
   ChainStateSchema,
@@ -251,6 +252,11 @@ import {
   SubnetTrajectoryArtifactSchema,
   SubnetTrajectoryDeltaSchema,
 } from "./routes/subnet-trajectory.ts";
+import {
+  ChainFirehoseEventSchema,
+  EmissionGateChangeSchema,
+  OpportunityBoardsSchema,
+} from "./graphql/graphql-only.ts";
 import {
   SubnetLeaseArtifactSchema,
   SubnetLeaseHistoryArtifactSchema,
@@ -668,6 +674,24 @@ register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
 // `SubnetTrajectoryDelta` type be compared against something instead of
 // sitting in RESOLVER_BUILT_TYPES where nothing checks it.
 register(SubnetTrajectoryDeltaSchema, "SubnetTrajectoryDelta");
+
+// The three shapes only GraphQL publishes (#10409). No route serves them, so
+// nothing else in this file registers them -- and until they were registered,
+// the published `OpportunityBoards` / `EmissionGateChange` / `ChainEvent`
+// types sat in RESOLVER_BUILT_TYPES, which is the list of types NO gate
+// reaches. Registering them is what lets the parity gate compare them, exactly
+// as it does for SubnetTrajectoryDelta above. See schemas-src/graphql/
+// graphql-only.ts for why they live in this registry rather than a second one.
+// The shared per-subnet economics card, registered under the name the SDL
+// already publishes it as. It is ONE Zod node
+// (schemas-src/shared.ts) that /api/v1/economics and /api/v1/subnets/{netuid}
+// both serve, and unregistered it inlined at every use -- so
+// `OpportunityBoards` six board arrays each got their own anonymous copy of
+// the same 41 fields instead of the one published `OpportunityEntry` (#10409).
+register(SubnetEconomicsSchema, "SubnetEconomics");
+register(OpportunityBoardsSchema, "OpportunityBoards");
+register(EmissionGateChangeSchema, "EmissionGateChange");
+register(ChainFirehoseEventSchema, "ChainFirehoseEvent");
 register(SubnetLeaseArtifactSchema, "SubnetLeaseArtifact");
 register(SubnetLeaseHistoryArtifactSchema, "SubnetLeaseHistoryArtifact");
 register(CrowdloansArtifactSchema, "CrowdloansArtifact");

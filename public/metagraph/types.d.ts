@@ -6521,6 +6521,48 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One live chain event as the firehose broadcasts it. Only the fields relevant to the event's table are populated. */
+        ChainFirehoseEvent: {
+            /** @description account_events only */
+            amount_tao?: number | null;
+            /** @description blocks only */
+            block_hash?: string | null;
+            block_number: number;
+            /** @description extrinsics only */
+            call_function?: string | null;
+            /** @description extrinsics only */
+            call_module?: string | null;
+            /** @description account_events only */
+            coldkey?: string | null;
+            /** @description blocks only */
+            event_count?: number | null;
+            /** @description chain_events / account_events (event index within the block) */
+            event_index?: number | null;
+            /** @description account_events only -- the curated kind (e.g. Transfer, StakeAdded) */
+            event_kind?: string | null;
+            /** @description blocks only */
+            extrinsic_count?: number | null;
+            /** @description extrinsics only */
+            extrinsic_index?: number | null;
+            /** @description account_events only */
+            hotkey?: string | null;
+            /** @description chain_events only */
+            method?: string | null;
+            /** @description account_events only */
+            netuid?: number | null;
+            observed_at?: string | null;
+            /** @description chain_events only */
+            pallet?: string | null;
+            /** @description extrinsics only */
+            signer?: string | null;
+            /** @description extrinsics only */
+            success?: boolean | null;
+            /**
+             * @description Which source table this event came from.
+             * @enum {string}
+             */
+            table: "blocks" | "extrinsics" | "chain_events" | "account_events";
+        };
         ChainHoldersArtifact: {
             captured_at: string | null;
             /** @description Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
@@ -7564,57 +7606,7 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-            subnets: {
-                alpha_fdv_tao: number | null;
-                alpha_in_emission?: number | null;
-                alpha_in_pool: number | null;
-                alpha_market_cap_tao: number | null;
-                alpha_out_emission?: number | null;
-                alpha_out_pool: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
-                alpha_price_change_1d?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227). */
-                alpha_price_change_1h?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227). */
-                alpha_price_change_1m?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
-                alpha_price_change_7d?: number | null;
-                /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
-                alpha_price_tao: number | null;
-                block?: number | null;
-                emission_enabled?: boolean | null;
-                emission_share: number | null;
-                excess_tao?: number | null;
-                first_emission_block?: number | null;
-                max_stake_alpha: number | null;
-                max_uids: number;
-                max_validators: number;
-                miner_burned_fraction?: number | null;
-                miner_count: number;
-                miner_readiness?: number | null;
-                moving_price_pinned?: number | null;
-                name: string;
-                netuid: number;
-                open_slots?: number | null;
-                owner_coldkey: string | null;
-                owner_hotkey: string | null;
-                /** @description SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one. */
-                registered_at_block?: number | null;
-                registration_allowed: boolean;
-                registration_allowed_pinned?: boolean | null;
-                registration_cost_tao: number | null;
-                slug: string;
-                /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
-                spot_price_tao?: number | null;
-                /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
-                subnet_mechanism?: number | null;
-                subnet_volume_tao: number | null;
-                subtoken_enabled?: boolean | null;
-                tao_in_emission_tao?: number | null;
-                tao_in_pool_tao: number | null;
-                total_stake_alpha: number | null;
-                validator_count: number;
-            }[];
+            subnets: components["schemas"]["SubnetEconomics"][];
             summary: {
                 registration_open_count: number;
                 subnet_count: number;
@@ -7674,6 +7666,24 @@ export interface components {
             /** Format: date-time */
             observed_at: string;
             predates_capture: boolean;
+        };
+        /** @description One recorded change to the emission gate. Shape varies by kind: a param entry has no netuid, a subnet entry has no numeric value. */
+        EmissionGateChange: {
+            block_number: number | null;
+            enabled?: boolean | null;
+            is_set?: boolean | null;
+            item?: string | null;
+            /** @enum {string} */
+            kind: "param" | "subnet" | "flow";
+            netuid?: number | null;
+            /** Format: date-time */
+            observed_at: string;
+            param?: string | null;
+            predates_capture: boolean;
+            previous_enabled?: boolean | null;
+            previous_value?: number | null;
+            source?: ("governance" | "runtime_recomputed") | null;
+            value?: number | null;
         };
         EmissionGateChangesArtifact: {
             change_count: number;
@@ -8990,6 +9000,17 @@ export interface components {
             })[];
         } & {
             [key: string]: unknown;
+        };
+        /** @description The economic opportunity boards, ranked. The same ranking /api/v1/registry/leaderboards serves, re-keyed to GraphQL field names. */
+        OpportunityBoards: {
+            biggest_alpha_gain_1d: components["schemas"]["SubnetEconomics"][];
+            biggest_alpha_gain_7d: components["schemas"]["SubnetEconomics"][];
+            cheapest_registration: components["schemas"]["SubnetEconomics"][];
+            highest_emission: components["schemas"]["SubnetEconomics"][];
+            observed_at: string | null;
+            open_slots: components["schemas"]["SubnetEconomics"][];
+            validator_headroom: components["schemas"]["SubnetEconomics"][];
+            with_economics_count: number;
         };
         PaginationMeta: {
             collection: string;
@@ -10661,57 +10682,7 @@ export interface components {
             candidate_surfaces: components["schemas"]["CandidateSurface"][];
             candidates?: components["schemas"]["CandidateSurface"][];
             contract_version?: string;
-            economics?: {
-                alpha_fdv_tao: number | null;
-                alpha_in_emission?: number | null;
-                alpha_in_pool: number | null;
-                alpha_market_cap_tao: number | null;
-                alpha_out_emission?: number | null;
-                alpha_out_pool: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
-                alpha_price_change_1d?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227). */
-                alpha_price_change_1h?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227). */
-                alpha_price_change_1m?: number | null;
-                /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
-                alpha_price_change_7d?: number | null;
-                /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
-                alpha_price_tao: number | null;
-                block?: number | null;
-                emission_enabled?: boolean | null;
-                emission_share: number | null;
-                excess_tao?: number | null;
-                first_emission_block?: number | null;
-                max_stake_alpha: number | null;
-                max_uids: number;
-                max_validators: number;
-                miner_burned_fraction?: number | null;
-                miner_count: number;
-                miner_readiness?: number | null;
-                moving_price_pinned?: number | null;
-                name: string;
-                netuid: number;
-                open_slots?: number | null;
-                owner_coldkey: string | null;
-                owner_hotkey: string | null;
-                /** @description SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one. */
-                registered_at_block?: number | null;
-                registration_allowed: boolean;
-                registration_allowed_pinned?: boolean | null;
-                registration_cost_tao: number | null;
-                slug: string;
-                /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
-                spot_price_tao?: number | null;
-                /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
-                subnet_mechanism?: number | null;
-                subnet_volume_tao: number | null;
-                subtoken_enabled?: boolean | null;
-                tao_in_emission_tao?: number | null;
-                tao_in_pool_tao: number | null;
-                total_stake_alpha: number | null;
-                validator_count: number;
-            };
+            economics?: components["schemas"]["SubnetEconomics"];
             endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             generated_at: string;
@@ -10724,6 +10695,57 @@ export interface components {
             verified_surfaces?: components["schemas"]["Surface"][];
         } & {
             [key: string]: unknown;
+        };
+        SubnetEconomics: {
+            alpha_fdv_tao: number | null;
+            alpha_in_emission?: number | null;
+            alpha_in_pool: number | null;
+            alpha_market_cap_tao: number | null;
+            alpha_out_emission?: number | null;
+            alpha_out_pool: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~1 day from subnet_snapshots (#7227). */
+            alpha_price_change_1d?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227). */
+            alpha_price_change_1h?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~30 days from subnet_snapshots (#7227). */
+            alpha_price_change_1m?: number | null;
+            /** @description Signed %-change in alpha_price_tao over ~7 days from subnet_snapshots (#7227). */
+            alpha_price_change_7d?: number | null;
+            /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
+            alpha_price_tao: number | null;
+            block?: number | null;
+            emission_enabled?: boolean | null;
+            emission_share: number | null;
+            excess_tao?: number | null;
+            first_emission_block?: number | null;
+            max_stake_alpha: number | null;
+            max_uids: number;
+            max_validators: number;
+            miner_burned_fraction?: number | null;
+            miner_count: number;
+            miner_readiness?: number | null;
+            moving_price_pinned?: number | null;
+            name: string;
+            netuid: number;
+            open_slots?: number | null;
+            owner_coldkey: string | null;
+            owner_hotkey: string | null;
+            /** @description SubtensorModule.NetworkRegisteredAt -- the SUBNET's registration height, read in this same pinned sweep. Both the immunity clock's start and the deregistration order's tie-break. Not a neuron's registration block, and not the registry index's field of the same name, which is a publish cycle behind this one. */
+            registered_at_block?: number | null;
+            registration_allowed: boolean;
+            registration_allowed_pinned?: boolean | null;
+            registration_cost_tao: number | null;
+            slug: string;
+            /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
+            spot_price_tao?: number | null;
+            /** @description SubtensorModule.SubnetMechanism -- 0 is Stable, 1 is Dynamic. Not cosmetic: get_moving_alpha_price substitutes a flat 1.0 for a Stable subnet instead of reading its moving price, moving it from the top of a pruning-price order to the bottom. */
+            subnet_mechanism?: number | null;
+            subnet_volume_tao: number | null;
+            subtoken_enabled?: boolean | null;
+            tao_in_emission_tao?: number | null;
+            tao_in_pool_tao: number | null;
+            total_stake_alpha: number | null;
+            validator_count: number;
         };
         SubnetEndpointsArtifact: {
             contract_version?: string;
