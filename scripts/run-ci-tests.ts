@@ -64,13 +64,18 @@ if (PASS !== null && PASS !== "shared" && PASS !== "mocked") {
   );
   process.exit(1);
 }
-// A shard of the mocking pass would be a silent no-op on the wrong pass rather
-// than an error, so it is refused: 71 files do not need slicing, and asking for
-// it means the caller believes something untrue about what is running.
-if (SHARD !== null && PASS !== "shared") {
+// Either pass may be sharded. #10414 refused it on the mocking pass, reasoning
+// that 71 files were not worth slicing -- which sized the work by FILE COUNT
+// when the cost is per-file IMPORT. 129s of that pass's 158s is module import,
+// ~1.8s per file, because each file needs its own registry (#8922) and
+// re-imports mcp-server.ts and graphql.ts from scratch. Import cost shards
+// exactly as well as test time does, and the unsharded mocking pass went on to
+// be the longest job in the run. A shard still requires a pass, though: on its
+// own it would silently slice whichever pass ran first.
+if (SHARD !== null && PASS === null) {
   console.error(
-    "run-ci-tests: --shard applies to --pass=shared only (the mocking pass is " +
-      "71 files and is not worth slicing).",
+    "run-ci-tests: --shard requires --pass, or it would slice only the first " +
+      "pass and silently run the second whole.",
   );
   process.exit(1);
 }
@@ -177,12 +182,13 @@ if (PASS === null || PASS === "shared") {
 // both to Codecov, which merges them.
 if (PASS === null || PASS === "mocked") {
   runPass(
-    `module-mocking, isolated (${mockingFiles.length} files)`,
+    `module-mocking, isolated (${mockingFiles.length} files${SHARD ? `, shard ${SHARD}` : ""})`,
     [
       ...BASE,
       "--coverage",
       "--coverage.reportsDirectory=coverage-mocked",
       ...NO_PER_PASS_THRESHOLDS,
+      ...(SHARD ? [`--shard=${SHARD}`] : []),
       ...mockingFiles.map((name) => `tests/${name}`),
     ],
     "-mocked",
