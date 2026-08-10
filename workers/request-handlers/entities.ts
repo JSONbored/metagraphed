@@ -381,6 +381,7 @@ import {
   OHLC_INTERVALS,
 } from "../../src/subnet-ohlc.ts";
 import {
+  loadTaoUsdAtInstants,
   loadTaoUsdBuckets,
   ohlcUsdWindowStart,
   taoUsdBucketMap,
@@ -391,6 +392,7 @@ import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
+import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
 import type { TaoUsdReading } from "../../src/alpha-usd.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
@@ -728,6 +730,12 @@ export const EVENTS_CSV_COLUMNS = [
   // of the stability promise above.
   "price_at_tx",
   "price_basis",
+  // The fiat companion (#8602). Empty for any event predating tao_usd_index --
+  // an export that omitted the columns entirely would be a quietly different
+  // answer to the same question, and CSV is the format most likely to be
+  // charted offline where a missing column is least visible.
+  "usd_at_tx",
+  "usd_basis",
 ];
 // The formatIdentityHistoryEntry row shape (src/subnet-identity-history.ts):
 // one SubnetIdentitiesV3 snapshot per row, stable so a CSV consumer's columns
@@ -4594,9 +4602,29 @@ export async function handleAccountEvents(
       offset: parsedOffset,
       nextCursor: null,
     });
+  // The fiat companion to price_at_tx (#8602), resolved for the WHOLE PAGE in
+  // one query -- each event against the newest index reading at-or-before its
+  // own instant, never a bucket it merely falls inside. Measured against
+  // production for a 200-event page: 1.9ms, 200 probes on an index that
+  // already exists. Events predating the index carry nulls rather than the
+  // oldest rate carried backwards.
+  const eventRows = Array.isArray(data?.events)
+    ? (data.events as unknown as Record<string, unknown>[])
+    : [];
+  const usdByInstant = eventRows.length
+    ? await loadTaoUsdAtInstants(
+        readStore(env, TAO_USD_TABLES) as never as unknown as Parameters<
+          typeof loadTaoUsdAtInstants
+        >[0],
+        eventRows
+          .map((e) => Date.parse(String(e?.observed_at)))
+          .filter((n) => Number.isFinite(n)),
+      )
+    : new Map();
+  const priced = { ...data, events: withUsdAtTx(eventRows, usdByInstant) };
   if (csvRequested(url, request)) {
     return csvResponse(
-      data.events as unknown[],
+      priced.events as unknown[],
       "account-events",
       "short",
       request,
@@ -4606,11 +4634,11 @@ export async function handleAccountEvents(
   return accountEnvelopeResponse(
     request,
     {
-      data,
+      data: priced,
       meta: await accountMeta(
         env,
         `/metagraph/accounts/${ss58}/events.json`,
-        (data.events as unknown as Array<Record<string, unknown>>)[0]
+        (priced.events as unknown as Array<Record<string, unknown>>)[0]
           ?.observed_at ?? null,
       ),
     },

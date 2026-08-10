@@ -233,6 +233,10 @@ export type AccountEvent = {
   price_at_tx?: Maybe<Scalars['Float']['output']>;
   price_basis?: Maybe<Scalars['String']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
+  /** USD per alpha at this trade: price_at_tx multiplied by the newest TAO/USD index reading at-or-before this event's own instant. Null for any event predating the index -- it starts when we started collecting, and carrying the oldest rate backwards would be fabrication. */
+  usd_at_tx?: Maybe<Scalars['Float']['output']>;
+  /** A different kind of claim from price_basis: trade_exact means the alpha price came from this row's own two legs and is exact, while index_at_or_before means the dollar leg is a lookup. */
+  usd_basis?: Maybe<Scalars['String']['output']>;
 };
 
 export type AccountEventKind = {
@@ -7481,6 +7485,8 @@ export type AccountEventResolvers<ContextType = GqlContext, ParentType extends R
   price_at_tx?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  usd_at_tx?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  usd_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type AccountEventKindResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountEventKind'] = ResolversParentTypes['AccountEventKind']> = ResolversObject<{

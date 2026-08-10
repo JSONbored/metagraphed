@@ -13767,6 +13767,29 @@
                 "type": "null"
               }
             ]
+          },
+          "usd_at_tx": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "usd_basis": {
+            "anyOf": [
+              {
+                "enum": [
+                  "index_at_or_before"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

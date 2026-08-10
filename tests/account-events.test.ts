@@ -17,6 +17,7 @@ import {
   ACCOUNT_ACTIVITY_MODULES_WINDOW,
 } from "../src/account-events.ts";
 import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
+import { withUsdAtTx } from "../src/price-at-tx.ts";
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [
@@ -1131,8 +1132,14 @@ test("loadAccountHistory is schema-stable when no tier can answer", async () => 
 // Deriving the expectation from formatAccountEvent's own output, rather than
 // restating the column names, is the point: a restated list would have to be
 // updated by the same hand that forgot the first time.
-test("the events CSV projection covers every field formatAccountEvent emits", () => {
-  const row = formatAccountEvent({
+test("the events CSV projection covers every field the SERVED row emits", () => {
+  // The served row is the formatter's output PLUS the fiat overlay (#8602):
+  // withUsdAtTx is what the handler applies before csvResponse sees it, so
+  // comparing against formatAccountEvent alone would have declared usd_at_tx
+  // and usd_basis "columns with no source field" -- and comparing the other
+  // direction would have let a real dropped field through. The invariant is
+  // about what is SERVED, so the fixture has to be the served shape.
+  const formatted = formatAccountEvent({
     block_number: 8454388,
     event_index: 3,
     event_kind: "StakeAdded",
@@ -1145,7 +1152,13 @@ test("the events CSV projection covers every field formatAccountEvent emits", ()
     observed_at: 1_751_500_800_000,
     extrinsic_index: 2,
   });
-  assert.ok(row);
+  assert.ok(formatted);
+  const row = withUsdAtTx(
+    [formatted as unknown as Record<string, unknown>],
+    new Map([
+      [Date.parse(String(formatted.observed_at)), { usd_per_tao: 200 }],
+    ]),
+  )[0];
   const emitted = Object.keys(row);
   const missing = emitted.filter((key) => !EVENTS_CSV_COLUMNS.includes(key));
   assert.deepEqual(
@@ -1164,4 +1177,7 @@ test("the events CSV projection covers every field formatAccountEvent emits", ()
   // The derived pair specifically, since they are what regressed.
   assert.equal(row.price_at_tx, 0.028409091);
   assert.equal(row.price_basis, "trade_exact");
+  // And the fiat pair, which must ride the same projection.
+  assert.equal(row.usd_at_tx, 0.028409091 * 200);
+  assert.equal(row.usd_basis, "index_at_or_before");
 });
