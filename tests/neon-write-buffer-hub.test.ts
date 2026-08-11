@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   BUFFER_FLUSH_LANE,
+  BUFFER_ROUTE,
   countPending,
   enqueueStatement,
   flushBuffer,
@@ -372,6 +373,38 @@ describe("NeonWriteBufferHub", () => {
     assert.equal(res.status, 503);
   });
 
+  test("an alarm whose flush THROWS still pages and still re-arms", async () => {
+    // flushBuffer is written not to throw, so this is storage itself breaking.
+    // Without the catch the alarm dies silently: no verdict, no capture, and
+    // no rescheduled alarm -- the buffer stops draining and nothing says why.
+    const h = hub();
+    await h.do.fetch(post(stmt("neurons", "A")));
+    const broken = Object.create(h.storage) as typeof h.storage;
+    broken.list = async () => {
+      throw new Error("storage unavailable");
+    };
+    (h.do as unknown as { state: { storage: unknown } }).state = {
+      ...h.do.state,
+      storage: broken,
+    } as never;
+    await h.do.alarm();
+    assert.notEqual(await broken.getAlarm(), null, "must re-arm");
+  });
+
+  test("and survives a non-Error throw from storage", async () => {
+    const h = hub();
+    const broken = Object.create(h.storage) as typeof h.storage;
+    broken.list = async () => {
+      throw "storage unavailable";
+    };
+    (h.do as unknown as { state: { storage: unknown } }).state = {
+      ...h.do.state,
+      storage: broken,
+    } as never;
+    await h.do.alarm();
+    assert.notEqual(await broken.getAlarm(), null, "must re-arm");
+  });
+
   test("an alarm with nothing buffered does NOT schedule another wake", async () => {
     // Re-arming after a clean drain would book a wake with no work, which is
     // the exact cost this whole file exists to remove.
@@ -443,5 +476,112 @@ describe("flushBuffer, the defensive edges", () => {
     );
     assert.equal(out.ok, false);
     assert.equal(await countPending(storage), 1, "backlog must survive");
+  });
+});
+
+describe("PostHog capture (#10694)", () => {
+  /** Collects what would have been sent to the $exception inbox. */
+  function captureSpy() {
+    const events: { errorCode?: string; route?: string; message: string }[] =
+      [];
+    return {
+      events,
+      capture: async (
+        _env: unknown,
+        e: { error: unknown; route?: string; errorCode?: string },
+      ) => {
+        events.push({
+          errorCode: e.errorCode,
+          route: e.route,
+          message: String((e.error as Error)?.message ?? e.error),
+        });
+        return true;
+      },
+    };
+  }
+
+  test("a failed flush pages, and names the lane it stopped on", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    const spy = captureSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      captureException: spy.capture as never,
+      sql: {
+        async unsafe() {
+          throw new Error("connection reset");
+        },
+      },
+    });
+    assert.equal(spy.events.length, 1);
+    assert.equal(spy.events[0].errorCode, "flush_failed");
+    assert.equal(spy.events[0].route, BUFFER_ROUTE);
+    assert.match(spy.events[0].message, /connection reset/);
+  });
+
+  test("an unbound Hyperdrive pages -- the backlog grows with nothing else saying so", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    const spy = captureSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      captureException: spy.capture as never,
+    });
+    assert.equal(spy.events[0].errorCode, "flush_hyperdrive_unbound");
+    assert.match(spy.events[0].message, /1 statement\(s\) held/);
+  });
+
+  test("a DISCARDED statement pages -- it is the only data loss this can cause", async () => {
+    const storage = fakeStorage();
+    storage.map.set("seq", 1);
+    storage.map.set(chunkKey(1, 0), new TextEncoder().encode("{not json"));
+    const spy = captureSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      captureException: spy.capture as never,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(spy.events[0].errorCode, "flush_undecodable_statement");
+    assert.match(spy.events[0].message, /seq 1/);
+  });
+
+  test("a clean flush pages nothing", async () => {
+    // The inbox is only useful if a healthy drain is silent.
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    const spy = captureSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      captureException: spy.capture as never,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.deepEqual(spy.events, []);
+  });
+
+  test("every capture carries the same route, so one incident is one issue", async () => {
+    // PostHog groups an inbox by (route, error type). A second spelling would
+    // split one incident into two that each look half as urgent.
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    const spy = captureSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      captureException: spy.capture as never,
+    });
+    assert.ok(spy.events.length > 0);
+    assert.ok(spy.events.every((e) => e.route === BUFFER_ROUTE));
   });
 });

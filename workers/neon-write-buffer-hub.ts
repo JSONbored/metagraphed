@@ -51,9 +51,21 @@ import {
 import { createPgSql, type HyperdriveLike } from "../src/pg-sql.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "../src/lane-health.ts";
+import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 
 /** The lane the drain itself reports under. */
 export const BUFFER_FLUSH_LANE = "neon:buffer-flush";
+
+/**
+ * The route label every capture from this file carries.
+ *
+ * ONE STRING, because PostHog groups an inbox by (route, error type) and a
+ * second spelling would split one incident into two issues that each look half
+ * as urgent. The lane verdict is the durable record; this is the notification
+ * path -- see src/lane-health.ts's header for why the repo keeps both, and why
+ * PostHog is deliberately NOT the record.
+ */
+export const BUFFER_ROUTE = "neon-write-buffer";
 
 /** Where the monotonic sequence lives, outside the statement prefix. */
 const SEQ_KEY = "seq";
@@ -144,10 +156,13 @@ export async function flushBuffer(
     laneHealthDb?: LaneHealthDb | null;
     sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
     now?: () => number;
+    captureException?: typeof recordExceptionEvent;
   } = {},
 ): Promise<FlushOutcome> {
   const now = deps.now ?? Date.now;
   const laneDb = deps.laneHealthDb ?? laneHealthStore(env);
+  const capture = deps.captureException ?? recordExceptionEvent;
+  const asEnv = env as unknown as Parameters<typeof recordExceptionEvent>[0];
   const stored = await storage.list<Uint8Array>({ prefix: STATEMENT_PREFIX });
   const groups = groupChunkKeys([...stored.keys()]);
   if (groups.length === 0) return { drained: 0, undecodable: 0, ok: true };
@@ -166,6 +181,15 @@ export async function flushBuffer(
       age_ms: null,
       detail: `hyperdrive unbound with ${groups.length} statement(s) buffered`,
       checked_at: now(),
+    });
+    // The backlog is safe but growing, and nothing else will say so until a
+    // freshness watchdog trips two hours later.
+    await capture(asEnv, {
+      error: new Error(
+        `neon write buffer cannot flush: hyperdrive unbound, ${groups.length} statement(s) held`,
+      ),
+      route: BUFFER_ROUTE,
+      errorCode: "flush_hyperdrive_unbound",
     });
     return {
       drained: 0,
@@ -187,6 +211,16 @@ export async function flushBuffer(
       // write must not wedge the whole backlog behind it.
       undecodable += 1;
       drainedKeys.push(...group.keys);
+      // DISCARDING A STATEMENT IS DATA LOSS, and the only kind this design can
+      // produce. It must page rather than show up as a number in a detail
+      // string nobody reads.
+      await capture(asEnv, {
+        error: new Error(
+          `neon write buffer discarded an unreadable statement at seq ${group.seq}`,
+        ),
+        route: BUFFER_ROUTE,
+        errorCode: "flush_undecodable_statement",
+      });
       continue;
     }
     const tally = perLane.get(statement.lane) ?? { ok: 0, failed: 0 };
@@ -205,6 +239,11 @@ export async function flushBuffer(
       await storage.delete(drainedKeys);
       await recordFlushVerdicts(laneDb, perLane, now());
       const reason = error instanceof Error ? error.message : String(error);
+      await capture(asEnv, {
+        error,
+        route: BUFFER_ROUTE,
+        errorCode: "flush_failed",
+      });
       await recordLaneVerdict(laneDb, {
         lane: BUFFER_FLUSH_LANE,
         verdict: "stale",
@@ -293,6 +332,22 @@ export class NeonWriteBufferHub implements DurableObject {
       statement,
       Date.now(),
     );
+    if (!result.accepted) {
+      // THE BUFFER IS FULL. Producers are enqueueing faster than the flush
+      // drains, which means the flush is failing or Neon is refusing -- and
+      // from here on, capture rows are being turned away. The lane verdict
+      // says so too, but this is the path that pages.
+      await recordExceptionEvent(
+        this.env as unknown as Parameters<typeof recordExceptionEvent>[0],
+        {
+          error: new Error(
+            `neon write buffer refused a statement: ${result.reason}`,
+          ),
+          route: BUFFER_ROUTE,
+          errorCode: "buffer_full",
+        },
+      );
+    }
     // 503, not 500: the buffer being full is backpressure the producer should
     // retry against, not a bug in the request it just made.
     return result.accepted
@@ -302,10 +357,29 @@ export class NeonWriteBufferHub implements DurableObject {
 
   async alarm(): Promise<void> {
     const storage = this.state.storage as unknown as BufferStorage;
-    // `this.state` IS the WaitUntilLike the flush needs -- DurableObjectState
-    // carries waitUntil, so wrapping it would add a branch with nothing on the
-    // other side of it.
-    const outcome = await flushBuffer(storage, this.env, this.state);
+    let outcome: FlushOutcome;
+    try {
+      // `this.state` IS the WaitUntilLike the flush needs -- DurableObjectState
+      // carries waitUntil, so wrapping it would add a branch with nothing on
+      // the other side of it.
+      outcome = await flushBuffer(storage, this.env, this.state);
+    } catch (error) {
+      // flushBuffer is written not to throw, so reaching here means something
+      // outside its own error handling broke -- storage itself, most likely.
+      // WITHOUT THIS THE ALARM DIES SILENTLY: an uncaught throw in alarm()
+      // leaves no verdict, no capture, and no rescheduled alarm, so the buffer
+      // stops draining and nothing says why until a freshness watchdog trips.
+      await recordExceptionEvent(
+        this.env as unknown as Parameters<typeof recordExceptionEvent>[0],
+        { error, route: BUFFER_ROUTE, errorCode: "flush_alarm_threw" },
+      );
+      outcome = {
+        drained: 0,
+        undecodable: 0,
+        ok: false,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
     // A FAILED flush is the only reason to re-arm. A successful one drained
     // everything it listed, and the alarm has already fired and cleared -- so
     // the next enqueue arms the next drain, which is exactly what
