@@ -1,0 +1,157 @@
+name: Refresh Neon schema
+
+# The Neon half of the same blind spot .github/workflows/refresh-lakehouse-schema.yml
+# closes for the lakehouse.
+#
+# `validate:db-types-drift` proves generated/db/types.ts is what
+# generated/db/schema.json produces -- that the repo is internally consistent.
+# It cannot prove the SNAPSHOT still matches the live database, and
+# scripts/generate-db-types.ts documents exactly that split: CI has no database,
+# so the credentialed half runs elsewhere.
+#
+# "Elsewhere" was nowhere. `npm run snapshot:neon-schema` appeared in
+# package.json and in no workflow, so a column added or dropped in production
+# stayed invisible until someone ran it by hand -- while the drift gate kept
+# passing on a stale pair, which reads exactly like a green build.
+#
+# WEEKLY, and on a different day to the lakehouse lane so two schema PRs do not
+# land on the same morning.
+#
+# NO AUTO-MERGE. The snapshot feeds 53 generated row interfaces, and
+# `db/schema.sql` carries constraints, defaults and indexes that a diff makes
+# reviewable -- which is the whole reason that artifact exists. A production
+# schema change is something a human should see, not something a bot should
+# ratify.
+on:
+  schedule:
+    - cron: "0 6 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-neon-schema
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Re-snapshot the live Neon schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # PG_DUMP 18 SPECIFICALLY. pg_dump refuses a server newer than itself and
+      # Neon runs 18.x, so the client the runner ships is too old -- and
+      # scripts/snapshot-neon-schema.ts fails rather than letting whatever is
+      # first on PATH take a silently different dump. PGDG installs to
+      # /usr/lib/postgresql/18/bin, which is already one of the paths the script
+      # looks in.
+      - name: Install PostgreSQL 18 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-18
+          /usr/lib/postgresql/18/bin/pg_dump --version
+
+      # The URI carries a password. It is masked into GITHUB_ENV -- never echo
+      # it, and never add a step that dumps the environment.
+      #
+      # FAILS rather than warning, which is the one deliberate difference from
+      # the identical block in publish-cloudflare.yml. There, a missing
+      # credential degrades one set of fields to null and the publish is still
+      # worth doing. Here the credential IS the job: without it nothing was
+      # checked, and a green run would restore exactly the false assurance this
+      # workflow exists to remove.
+      - name: Resolve the Neon connection string
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -uo pipefail
+          if [ -z "${NEON_API_KEY:-}" ] || [ -z "${PROJECT_ID:-}" ]; then
+            echo "::error::NEON_API_KEY or NEON_PROJECT_ID is unset, so the live schema" \
+                 "could not be read and the committed snapshot went unverified."
+            exit 1
+          fi
+          branch="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID/branches" \
+            | jq -r '.branches[] | select(.default == true) | .id')" || true
+          uri=""
+          if [ -n "${branch:-}" ] && [ "$branch" != "null" ]; then
+            uri="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+              "https://console.neon.tech/api/v2/projects/$PROJECT_ID/connection_uri?database_name=neondb&role_name=neondb_owner&branch_id=$branch" \
+              | jq -r '.uri')" || true
+          fi
+          if [ -z "${uri:-}" ] || [ "$uri" = "null" ]; then
+            echo "::error::could not resolve a Neon connection URI for project $PROJECT_ID."
+            exit 1
+          fi
+          echo "::add-mask::$uri"
+          echo "NEON_DATABASE_URL=$uri" >> "$GITHUB_ENV"
+
+      # --write, because this lane's job is to PROPOSE the update. Without it
+      # the script treats a difference as a failure, which is the right contract
+      # for a contributor running it by hand and the wrong one here.
+      - name: Re-snapshot and regenerate
+        run: |
+          npm run snapshot:neon-schema -- --write
+          npm run build:db-types
+
+      - name: Did the schema move?
+        id: diff
+        run: |
+          if git diff --quiet -- generated/db db/schema.sql; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The committed snapshot still matches the live schema."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- generated/db db/schema.sql
+          fi
+
+      - name: Open a PR for the drift
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/refresh-neon-schema
+          delete-branch: true
+          add-paths: |
+            generated/db
+            db/schema.sql
+          title: "chore(db): the live Neon schema moved"
+          commit-message: "chore(db): re-snapshot the live Neon schema"
+          body: |
+            The live Neon schema no longer matches the committed snapshot. This is the drift `validate:db-types-drift` structurally cannot see — it compares the committed types to the committed snapshot, and all three artifacts are regenerated together here.
+
+            **Read the diff before merging.** `db/schema.sql` is the human-readable half and exists precisely so constraints, defaults and indexes show up as a diff rather than as a silent change to a JSON blob.
+
+            Worth checking specifically:
+
+            - a **dropped column** that a generated row interface still declares — `tsc` will not catch a read of a column the database no longer has
+            - a **type change** (`text` → `int8`, nullable → `NOT NULL`) — the interface follows it, so code that used to compile may now be wrong at runtime rather than at build time
+            - an **index or constraint** appearing in `db/schema.sql` with no migration in `migrations/neon/` behind it — that is a change made outside the migration path, which is worth knowing about on its own
+          labels: |
+            automation
