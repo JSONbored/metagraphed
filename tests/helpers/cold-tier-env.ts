@@ -80,20 +80,32 @@ export interface LakehouseDouble {
 /**
  * Stub the R2 SQL transport.
  *
- * `answer` receives the SQL and returns the rows for it, so a reader that
- * issues more than one query (the runtime timeline and its head block, the
- * blocks seam's two legs) can be answered per-query rather than with one list
- * that happens to satisfy both.
+ * `answer` receives the SQL and returns the rows for it, so a reader that issues
+ * more than one query (the runtime timeline and its head block, the blocks
+ * seam's two legs) can be answered per-query rather than with one list that
+ * happens to satisfy both.
+ *
+ * `once: true` answers the FIRST query and returns nothing after it. The account
+ * feeds need this: `windowedAccountEventsRead` keeps widening its time window
+ * and re-querying until it has collected `limit` rows, so a double that answers
+ * every query with the same list hands back that list once per step -- a page
+ * four times too long, silently.
  */
 export function lakehouse(
   answer: unknown[] | ((sql: string) => unknown[]),
+  { once = false }: { once?: boolean } = {},
 ): LakehouseDouble {
   const original = globalThis.fetch;
   const queries: string[] = [];
   globalThis.fetch = (async (_url: string, init: RequestInit) => {
     const sql = String(JSON.parse(String(init.body)).query);
     queries.push(sql);
-    const rows = typeof answer === "function" ? answer(sql) : answer;
+    const rows =
+      once && queries.length > 1
+        ? []
+        : typeof answer === "function"
+          ? answer(sql)
+          : answer;
     return {
       ok: true,
       status: 200,

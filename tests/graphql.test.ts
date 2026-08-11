@@ -2946,30 +2946,31 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 
   test("block_extrinsics: resolves Postgres-tier rows (the /blocks/:ref/extrinsics { data } envelope)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            ref: "9",
-            block_number: 9,
-            extrinsic_count: 1,
-            limit: 50,
-            offset: 0,
-            extrinsics: [
-              {
-                block_number: 9,
-                extrinsic_index: 0,
-                call_module: "Timestamp",
-                call_function: "set",
-                success: true,
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    // The query asks offset: 2, and R2 SQL has no OFFSET -- the reader over-fetches
+    // and slices. Two rows to page past, then the asserted one: with a single row
+    // the slice would empty the page, which the retired tier's double could never
+    // have shown because it ignored paging entirely.
+    const lake = lakehouse([
+      { block_number: 9, extrinsic_index: 8, observed_at: 1_750_009_000_002 },
+      { block_number: 9, extrinsic_index: 9, observed_at: 1_750_009_000_001 },
+      {
+        block_number: 9,
+        extrinsic_index: 0,
+        extrinsic_hash: null,
+        signer: null,
+        call_module: "Timestamp",
+        call_function: "set",
+        call_args: null,
+        success: true,
+        fee_tao: null,
+        tip_tao: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
       env as unknown as Env,
@@ -2981,6 +2982,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       body.data.block_extrinsics.extrinsics[0].call_module,
       "Timestamp",
     );
+    lake.restore();
   });
 
   test("block_events: cold store returns a schema-stable empty list, never an error", async () => {
@@ -2993,34 +2995,28 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 
   test("block_events: resolves Postgres-tier rows (the /blocks/:ref/events { data } envelope)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            ref: "9",
-            block_number: 9,
-            event_count: 1,
-            limit: 100,
-            offset: 0,
-            events: [
-              // `event_kind`, not `kind` -- the name AccountEvent publishes,
-              // the name the component declares, and the name production
-              // serves (verified: block_events rows carry block_number,
-              // event_index, event_kind, hotkey, ...). The invented `kind`
-              // survived only while `events` was `[JSON!]`, which passes any
-              // row through verbatim (#10404).
-              {
-                block_number: 9,
-                event_index: 0,
-                event_kind: "Balances.Transfer",
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    // Same offset emulation as block_extrinsics above: rows to page past first.
+    const lake = lakehouse([
+      { block_number: 9, event_index: 8, observed_at: 1_750_009_000_002 },
+      { block_number: 9, event_index: 9, observed_at: 1_750_009_000_001 },
+      {
+        block_number: 9,
+        event_index: 0,
+        extrinsic_index: 0,
+        event_kind: "Transfer",
+        hotkey: null,
+        coldkey: null,
+        netuid: null,
+        uid: null,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events { block_number event_kind } } }',
       env as unknown as Env,
@@ -3031,6 +3027,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       body.data.block_events.events[0].event_kind,
       "Balances.Transfer",
     );
+    lake.restore();
   });
 
   test("block_chain_events: resolves the all-events tier by block_number", async () => {
@@ -16133,22 +16130,25 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([
-      {
-        // The lakehouse row, per generated/lakehouse/types.ts's own column list:
-        // hotkey is the from side, coldkey the to side, and `direction` is
-        // DERIVED by the builder from which side this account is on. The retired
-        // tier handed over a finished `from`/`to`/`direction` triple, so none of
-        // that derivation ran here.
-        block_number: 1200,
-        event_index: 3,
-        event_kind: "Transfer",
-        hotkey: SS58,
-        coldkey: OTHER,
-        amount_tao: 1.5,
-        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
-      },
-    ]);
+    const lake = lakehouse(
+      [
+        {
+          // The lakehouse row, per generated/lakehouse/types.ts's own column list:
+          // hotkey is the from side, coldkey the to side, and `direction` is
+          // DERIVED by the builder from which side this account is on. The retired
+          // tier handed over a finished `from`/`to`/`direction` triple, so none of
+          // that derivation ran here.
+          block_number: 1200,
+          event_index: 3,
+          event_kind: "Transfer",
+          hotkey: SS58,
+          coldkey: OTHER,
+          amount_tao: 1.5,
+          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+        },
+      ],
+      { once: true },
+    );
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
@@ -16351,21 +16351,24 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([
-      {
-        block_number: 1200,
-        event_index: 3,
-        event_kind: "StakeAdded",
-        hotkey: SS58,
-        coldkey: OTHER,
-        netuid: 7,
-        uid: 42,
-        amount_tao: 1.5,
-        alpha_amount: 2.25,
-        observed_at: "2026-07-15T00:00:00.000Z",
-        extrinsic_index: 4,
-      },
-    ]);
+    const lake = lakehouse(
+      [
+        {
+          block_number: 1200,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: OTHER,
+          netuid: 7,
+          uid: 42,
+          amount_tao: 1.5,
+          alpha_amount: 2.25,
+          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+          extrinsic_index: 4,
+        },
+      ],
+      { once: true },
+    );
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
