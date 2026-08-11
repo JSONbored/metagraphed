@@ -333,7 +333,6 @@ export interface SweepMessage {
 }
 
 export const ATTRIBUTION_SWEEP_QUEUE = "attribution-sweeps";
-export const ATTRIBUTION_SWEEP_DLQ = "attribution-sweeps-dlq";
 
 /** The minimal producer surface, injected so the enqueue is testable without a
  * Cloudflare binding. */

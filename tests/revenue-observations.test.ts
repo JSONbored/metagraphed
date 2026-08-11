@@ -16,18 +16,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import {
+  REVENUE_SEND_BATCH_MAX,
   eligibleRevenueSurfaces,
+  enqueueRevenueProbes,
+  handleRevenueProbeBatch,
   fetchRevenuePayload,
   loadRevenueObservations,
   persistRevenueProbe,
   runRevenueProbeLane,
-  runRevenueProbeTick,
   sha256Hex,
   REVENUE_OBSERVATIONS_TABLE,
   REVENUE_PROBE_FAILURES_TABLE,
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
-import { handleScheduled } from "../workers/api.ts";
+import worker, { handleScheduled } from "../workers/api.ts";
 import { REVENUE_PROBE_CRON } from "../workers/config.ts";
 import { REVENUE_OBSERVATION_TABLES } from "../src/read-store-tables.ts";
 
@@ -404,108 +406,6 @@ describe("the lane end to end", () => {
   });
 });
 
-describe("runRevenueProbeTick", () => {
-  const ARTIFACT = {
-    ok: true,
-    data: {
-      surfaces: [
-        {
-          surface_id: "sn-64-chutes-daily-revenue-summary",
-          netuid: 64,
-          url: "https://example/daily",
-          auth_required: false,
-          revenue: {
-            role: "external-revenue",
-            provenance: "probe-derived",
-            currency: "USD",
-            grain: "daily",
-            shape: "flat-array",
-            fields: { date: "date", amount: "total_revenue" },
-          },
-        },
-      ],
-    },
-  };
-
-  test("reads the artifact, probes, persists, and reports ok", async () => {
-    const { db, calls } = recordingDb();
-    const verdicts: Array<Record<string, unknown>> = [];
-    const r = await runRevenueProbeTick({}, db, {
-      readArtifact: async () => ARTIFACT,
-      recordVerdict: (v) => verdicts.push(v),
-      fetchPayload: async () => ({
-        payload: [{ date: "2026-08-08", total_revenue: 11668 }],
-        raw: '[{"date":"2026-08-08","total_revenue":11668}]',
-      }),
-      now: () => 1786320000000,
-    });
-    assert.equal(r.ok, true);
-    assert.equal(r.written, 1);
-    assert.equal(calls.length, 1);
-    assert.equal(verdicts.length, 1, "every tick records a verdict");
-    assert.equal(verdicts[0].lane, "revenue-probe");
-    assert.equal(verdicts[0].verdict, "ok");
-  });
-
-  test("with no injected fetcher it uses the real one", async () => {
-    // The default is the wire the lane actually runs on in production; a suite
-    // that always injects a fetcher never exercises it, and a broken default
-    // would look exactly like the two months this lane spent doing nothing.
-    const { db, calls } = recordingDb();
-    const original = globalThis.fetch;
-    globalThis.fetch = (async () =>
-      new Response(
-        '[{"date":"2026-08-08","total_revenue":11668}]',
-      )) as typeof fetch;
-    try {
-      const r = await runRevenueProbeTick({}, db, {
-        readArtifact: async () => ARTIFACT,
-        recordVerdict: () => {},
-        now: () => 1786320000000,
-      });
-      assert.equal(r.written, 1);
-      assert.equal(calls[0].values[4], 11668, "the figure came off the wire");
-    } finally {
-      globalThis.fetch = original;
-    }
-  });
-
-  test("a tick that wrote nothing is STALE, not ok", async () => {
-    // The whole defect was a lane that looked fine while producing nothing.
-    // "Ran without error" is not the same claim as "observed something".
-    const { db } = recordingDb();
-    const verdicts: Array<Record<string, unknown>> = [];
-    const r = await runRevenueProbeTick({}, db, {
-      readArtifact: async () => ({ ok: false }),
-      recordVerdict: (v) => verdicts.push(v),
-      now: () => 1786320000000,
-    });
-    assert.equal(r.written, 0);
-    assert.equal(verdicts[0].verdict, "stale");
-    assert.equal(verdicts[0].detail, "no_eligible_surfaces");
-  });
-
-  test("an upstream failure is recorded as a failure, and still verdicted", async () => {
-    const { db, calls } = recordingDb();
-    const verdicts: Array<Record<string, unknown>> = [];
-    const r = await runRevenueProbeTick({}, db, {
-      readArtifact: async () => ARTIFACT,
-      recordVerdict: (v) => verdicts.push(v),
-      fetchPayload: async () => {
-        throw new Error("HTTP 503");
-      },
-      now: () => 1786320000000,
-    });
-    assert.equal(r.written, 0);
-    assert.equal(r.failed, 1);
-    // Into the failures table, never as a zero-valued observation.
-    assert.equal(calls.length, 1);
-    assert.match(calls[0].sql, new RegExp(REVENUE_PROBE_FAILURES_TABLE));
-    assert.equal(verdicts[0].verdict, "stale");
-    assert.match(String(verdicts[0].detail), /failed 1/);
-  });
-});
-
 describe("fetchRevenuePayload", () => {
   test("a non-2xx throws rather than handing an error body to the extractor", async () => {
     // An operator returning 500 with a JSON error body must not have that body
@@ -669,7 +569,7 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     assert.match(api, /return "revenue-probe"/);
   });
 
-  test("handleScheduled routes the cron to the lane and returns its verdict", async () => {
+  test("handleScheduled routes the cron to the PRODUCER and returns its verdict", async () => {
     // The branch itself, not just its presence in the source. A dispatch that
     // matches no branch returns undefined and the tick reports success having
     // done nothing — the same shape of silence this lane was built to end.
@@ -677,12 +577,15 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
       {} as unknown as Parameters<typeof handleScheduled>[1],
       { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; written: number; skipped: number; reason?: string };
+    )) as { ok: boolean; enqueued: number; reason?: string };
     assert.equal(result.ok, false);
-    assert.equal(result.written, 0);
-    // With no HYPERDRIVE binding the lane declines rather than pretending: a
-    // store it cannot reach must not read as a pass with nothing to write.
-    assert.equal(result.reason, "no_store_binding");
+    assert.equal(result.enqueued, 0);
+    // The cron is a PRODUCER now (#10715): it enqueues one message per eligible
+    // surface and does no probing. With no queue binding it declines rather
+    // than pretending -- and the binding is reported before the empty list,
+    // because a missing binding is a config error and "no eligible surfaces"
+    // would send someone to the registry instead.
+    assert.equal(result.reason, "no_queue_binding");
   });
 
   test("both tables are declared Neon sole-store in every config", async () => {
@@ -715,5 +618,345 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     for (const table of REVENUE_OBSERVATION_TABLES) {
       assert.match(sql, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
     }
+  });
+});
+
+describe("the queue lane (#10715)", () => {
+  const surface = {
+    id: "sn-64-chutes-daily-revenue-summary",
+    netuid: 64,
+    url: "https://api.chutes.ai/invoices/summary",
+    auth_required: false,
+    probe: { enabled: true },
+    revenue: {
+      role: "external-revenue",
+      provenance: "probe-derived",
+      currency: "USD",
+      grain: "daily",
+      shape: "flat-array",
+      fields: { date: "date", amount: "total_revenue" },
+    },
+  };
+
+  function queue(sent: Array<Array<{ body: unknown }>>, fail = false) {
+    return {
+      async sendBatch(messages: Array<{ body: { surface_id: string } }>) {
+        if (fail) throw new Error("queue unavailable");
+        sent.push(messages);
+      },
+    };
+  }
+
+  test("enqueues every eligible surface", async () => {
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const out = await enqueueRevenueProbes(queue(sent), ["a", "b"]);
+    assert.deepEqual(out, { ok: true, enqueued: 2 });
+  });
+
+  test("splits at the sendBatch cap", async () => {
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const many = Array.from(
+      { length: REVENUE_SEND_BATCH_MAX + 3 },
+      (_, i) => `s${i}`,
+    );
+    await enqueueRevenueProbes(queue(sent), many);
+    assert.deepEqual(
+      sent.map((b) => b.length),
+      [REVENUE_SEND_BATCH_MAX, 3],
+    );
+  });
+
+  test("an EMPTY eligible set is not a success", async () => {
+    // This lane is why the rule exists: it shipped with no caller and reported
+    // null for 129 subnets for two months (#10566).
+    assert.equal(
+      (await enqueueRevenueProbes(queue([]), [])).reason,
+      "no_eligible_surfaces",
+    );
+    assert.equal(
+      (await enqueueRevenueProbes(null, ["a"])).reason,
+      "no_queue_binding",
+    );
+  });
+
+  test("a send failure reports what actually went out", async () => {
+    const out = await enqueueRevenueProbes(queue([], true), ["a"]);
+    assert.equal(out.ok, false);
+    assert.match(String(out.reason), /queue unavailable/);
+  });
+
+  test("a thrown non-Error still names the failure", async () => {
+    const out = await enqueueRevenueProbes(
+      {
+        async sendBatch() {
+          throw "a bare string";
+        },
+      },
+      ["a"],
+    );
+    assert.match(String(out.reason), /a bare string/);
+  });
+
+  function message(body: unknown) {
+    const calls = { acked: 0, retried: 0 };
+    return {
+      body,
+      ack: () => void (calls.acked += 1),
+      retry: () => void (calls.retried += 1),
+      calls,
+    };
+  }
+
+  const store = () => ({
+    prepare: () => ({
+      bind: () => ({
+        run: async () => undefined,
+        all: async () => ({ results: [] }),
+      }),
+      all: async () => ({ results: [] }),
+    }),
+  });
+
+  const deps = (over: Record<string, unknown> = {}) => ({
+    fetchPayload: async () => ({
+      payload: [{ date: "2026-08-08", total_revenue: 11668 }],
+      raw: '[{"date":"2026-08-08","total_revenue":11668}]',
+    }),
+    hash: sha256Hex,
+    now: () => 1_786_320_000_000,
+    surfaceFor: async () => surface,
+    ...over,
+  });
+
+  test("probes one surface per message and ACKS it on success", async () => {
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch([m], store(), deps() as never);
+    assert.deepEqual(out, { probed: 1, retried: 0, malformed: 0 });
+    assert.equal(m.calls.acked, 1);
+  });
+
+  test("RETRIES when the write fails, because an unwritten probe did not happen", async () => {
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch([m], null, deps() as never);
+    assert.equal(out.retried, 1);
+    assert.equal(m.calls.retried, 1);
+  });
+
+  test("re-reads the eligible set at DELIVERY", async () => {
+    // A message that waited must not probe a surface the registry has since
+    // withdrawn.
+    let askedFor: string | null = null;
+    await handleRevenueProbeBatch(
+      [message({ surface_id: "sn-x" })],
+      store(),
+      deps({
+        surfaceFor: async (id: string) => {
+          askedFor = id;
+          return null;
+        },
+      }) as never,
+    );
+    assert.equal(askedFor, "sn-x");
+  });
+
+  test("a WITHDRAWN surface is acked, not retried", async () => {
+    // Re-delivering will not bring it back.
+    const m = message({ surface_id: "gone" });
+    const out = await handleRevenueProbeBatch(
+      [m],
+      store(),
+      deps({ surfaceFor: async () => null }) as never,
+    );
+    assert.deepEqual(out, { probed: 0, retried: 0, malformed: 1 });
+    assert.equal(m.calls.acked, 1);
+  });
+
+  test("ACKS a malformed body rather than looping it to the dead letter", async () => {
+    const bad = [message({ surface_id: 42 }), message({}), message(null)];
+    const out = await handleRevenueProbeBatch(bad, store(), deps() as never);
+    assert.equal(out.malformed, 3);
+    for (const m of bad) assert.equal(m.calls.acked, 1);
+  });
+
+  test("RETRIES when the probe throws", async () => {
+    const m = message({ surface_id: surface.id });
+    const out = await handleRevenueProbeBatch(
+      [m],
+      store(),
+      deps({
+        surfaceFor: async () => {
+          throw new Error("artifact read exploded");
+        },
+      }) as never,
+    );
+    assert.equal(out.retried, 1);
+  });
+
+  test("the dead-letter queue is registered as a lane", async () => {
+    const source = await fs.readFile(
+      path.join(repoRoot, "src/dead-letter.ts"),
+      "utf8",
+    );
+    assert.match(source, /"revenue-probes-dlq"/);
+  });
+
+  test("both queues are declared, with a dead letter", async () => {
+    const wrangler = await fs.readFile(
+      path.join(repoRoot, "wrangler.jsonc"),
+      "utf8",
+    );
+    assert.match(wrangler, /"binding": "REVENUE_PROBES"/);
+    assert.match(wrangler, /"dead_letter_queue": "revenue-probes-dlq"/);
+  });
+
+  test("the consumer branches on the queue name", async () => {
+    const api = await fs.readFile(
+      path.join(repoRoot, "workers/api.ts"),
+      "utf8",
+    );
+    assert.match(api, /batch\.queue === REVENUE_PROBE_QUEUE/);
+  });
+});
+
+describe("the revenue queue, through the Worker's own handler", () => {
+  const OPERATIONAL = "/metagraph/operational-surfaces.json";
+  const SURFACE = {
+    surface_id: "sn-64-x",
+    netuid: 64,
+    url: "https://api.example/revenue",
+    auth_required: false,
+    revenue: {
+      role: "external-revenue",
+      provenance: "probe-derived",
+      currency: "USD",
+      grain: "daily",
+    },
+  };
+
+  function env(payload: unknown, extra: Record<string, unknown> = {}) {
+    const hit = (p: string) => p === OPERATIONAL && payload != null;
+    return {
+      ASSETS: {
+        async fetch(request: Request) {
+          const { pathname } = new URL(request.url);
+          return hit(pathname)
+            ? Response.json(payload as never)
+            : new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+          return hit(p)
+            ? {
+                async json() {
+                  return payload;
+                },
+              }
+            : null;
+        },
+      },
+      ...extra,
+    };
+  }
+
+  test("the cron producer enqueues every eligible surface", async () => {
+    const sent: string[] = [];
+    const result = (await handleScheduled(
+      { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
+      env(
+        { surfaces: [SURFACE] },
+        {
+          REVENUE_PROBES: {
+            async sendBatch(messages: Array<{ body: { surface_id: string } }>) {
+              for (const m of messages) sent.push(m.body.surface_id);
+            },
+          },
+        },
+      ) as never,
+      { waitUntil: () => {} } as unknown as ExecutionContext,
+    )) as { ok: boolean; enqueued: number };
+    assert.deepEqual(result, { ok: true, enqueued: 1 });
+    assert.deepEqual(sent, ["sn-64-x"]);
+  });
+
+  test("a probe batch is routed to the probe consumer, not the webhook path", async () => {
+    // Both queues bind to one `queue()` export. Without the branch this message
+    // would be handed to the webhook deliverer.
+    let acked = 0;
+    const batch = {
+      queue: "revenue-probes",
+      messages: [
+        {
+          body: { surface_id: "sn-64-x" },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
+      ],
+    };
+    await assert.doesNotReject(() =>
+      worker.queue!(
+        batch as never,
+        env({ surfaces: [SURFACE] }) as never,
+        { waitUntil: () => {} } as never,
+      ),
+    );
+  });
+
+  test("no operational-surfaces artifact enqueues nothing, and says so", async () => {
+    // The artifact-absent branch: an unreadable artifact must not read as "no
+    // surfaces are eligible", which is the same claim by a different route.
+    const result = (await handleScheduled(
+      { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
+      env(null, {
+        REVENUE_PROBES: { async sendBatch() {} },
+      }) as never,
+      { waitUntil: () => {} } as unknown as ExecutionContext,
+    )) as { ok: boolean; reason?: string };
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "no_eligible_surfaces");
+  });
+
+  test("an unreadable artifact at DELIVERY acks rather than retrying forever", async () => {
+    // The consumer's artifact-absent branch. Every surface reads as withdrawn,
+    // which is acked -- retrying would burn the budget re-reading an artifact
+    // that is not there.
+    let acked = 0;
+    const batch = {
+      queue: "revenue-probes",
+      messages: [
+        {
+          body: { surface_id: "sn-64-x" },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
+      ],
+    };
+    await worker.queue!(
+      batch as never,
+      env(null) as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.equal(acked, 1);
+  });
+
+  test("a withdrawn surface is acked at the Worker level too", async () => {
+    let acked = 0;
+    const batch = {
+      queue: "revenue-probes",
+      messages: [
+        {
+          body: { surface_id: "gone" },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
+      ],
+    };
+    await worker.queue!(
+      batch as never,
+      env({ surfaces: [] }) as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.equal(acked, 1);
   });
 });

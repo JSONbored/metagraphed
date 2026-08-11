@@ -19,7 +19,6 @@
 import {
   runRevenueProbe,
   type ProbeSurfaceInput,
-  type RevenueProbeDeps,
   type RevenueProbeResult,
 } from "./revenue-probe.ts";
 import type { RevenueObservation } from "./revenue-serving.ts";
@@ -180,76 +179,6 @@ export function eligibleRevenueSurfaces(
   return out;
 }
 
-export interface RevenueTickDeps {
-  // `any` on the env parameter, not `unknown`: a function parameter is
-  // contravariant, so declaring `unknown` here would reject api.ts's own
-  // `readArtifact(env: Env, ...)` -- the exact function this is for.
-  readArtifact: (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    env: any,
-    path: string,
-  ) => Promise<{ ok: boolean; data?: unknown }>;
-  /** Where the lane's verdict goes. A lane with none is how #10172's frozen
-   * series went unnoticed for five hours -- and being invisible was this lane's
-   * entire defect. */
-  recordVerdict: (verdict: {
-    lane: string;
-    verdict: string;
-    age_ms: null;
-    detail: string;
-    checked_at: number;
-  }) => void;
-  fetchPayload?: RevenueProbeDeps["fetchPayload"];
-  now?: () => number;
-}
-
-/**
- * One scheduled tick.
- *
- * Lives here rather than inline in the cron dispatch so it can be driven end to
- * end in a test -- the same shape runOperationalSurfacesSync and
- * runLinkStatusSync already take. A lane whose only exercise is "the branch was
- * entered" is half-tested exactly where it matters: the fetch closure and the
- * verdict it reports are the parts that were missing for two months.
- */
-export async function runRevenueProbeTick(
-  env: unknown,
-  db: RevenueStoreDb | null | undefined,
-  deps: RevenueTickDeps,
-): Promise<{
-  ok: boolean;
-  written: number;
-  failed: number;
-  skipped: number;
-  reason?: string;
-}> {
-  const artifact = await deps.readArtifact(
-    env,
-    `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
-  );
-  const surfaces = eligibleRevenueSurfaces(
-    artifact.ok ? (artifact.data as Row | undefined) : null,
-  );
-  const result = await runRevenueProbeLane(surfaces, db, {
-    fetchPayload: deps.fetchPayload ?? ((url) => fetchRevenuePayload(url)),
-    hash: sha256Hex,
-    now: deps.now ?? Date.now,
-  });
-  // `stale` when nothing was written: a pass that observed nothing looks
-  // identical to one where every surface passed, which is the confusion this
-  // lane exists to end.
-  deps.recordVerdict({
-    lane: "revenue-probe",
-    verdict: result.ok && result.written > 0 ? "ok" : "stale",
-    age_ms: null,
-    detail:
-      result.reason ??
-      `wrote ${result.written}, failed ${result.failed}, skipped ${result.skipped}`,
-    checked_at: (deps.now ?? Date.now)(),
-  });
-  return result;
-}
-
 /** sha-256 of the exact bytes a figure was extracted from. */
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -347,4 +276,132 @@ function toIsoOrNull(value: unknown): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
   const date = new Date(n);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+// ── the queue lane ──────────────────────────────────────────────────────────
+//
+// REPLACES runRevenueProbeTick, which fetched every eligible surface inside one
+// scheduled invocation. Two surfaces are eligible today so it fit, and that is
+// precisely the problem: the lane was correct only while the number stayed
+// small, and #10464's sweep exists to grow it.
+//
+// One message per surface is one invocation per surface. A surface whose feed
+// times out is retried on its own instead of costing the pass; one that keeps
+// failing reaches the dead-letter queue, which src/dead-letter.ts records as a
+// lane verdict rather than leaving `revenue_probe_failures` to accumulate rows
+// while the lane itself looks healthy.
+
+/** One surface to probe. The eligible set is re-read at DELIVERY, so a message
+ * that waited cannot probe a surface the registry has since withdrawn. */
+export interface RevenueProbeMessage {
+  surface_id: string;
+}
+
+export const REVENUE_PROBE_QUEUE = "revenue-probes";
+
+export interface RevenueProbeQueue {
+  sendBatch(messages: Array<{ body: RevenueProbeMessage }>): Promise<unknown>;
+}
+
+/** Cloudflare caps a sendBatch at 100. */
+export const REVENUE_SEND_BATCH_MAX = 100;
+
+export interface RevenueEnqueueResult {
+  ok: boolean;
+  enqueued: number;
+  reason?: string;
+}
+
+/** Enqueue every eligible revenue surface. */
+export async function enqueueRevenueProbes(
+  queue: RevenueProbeQueue | null | undefined,
+  surfaceIds: string[],
+): Promise<RevenueEnqueueResult> {
+  if (!queue?.sendBatch) {
+    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
+  }
+  if (surfaceIds.length === 0) {
+    // Not a success, and THIS lane is why the rule exists: it shipped in #10444
+    // with no caller and no trigger, so revenue_observations was never written
+    // and every revenue route reported null for 129 subnets for two months
+    // (#10566). A producer that enqueues nothing must say so.
+    return { ok: false, enqueued: 0, reason: "no_eligible_surfaces" };
+  }
+  let enqueued = 0;
+  try {
+    for (let i = 0; i < surfaceIds.length; i += REVENUE_SEND_BATCH_MAX) {
+      const slice = surfaceIds.slice(i, i + REVENUE_SEND_BATCH_MAX);
+      await queue.sendBatch(
+        slice.map((surface_id) => ({ body: { surface_id } })),
+      );
+      enqueued += slice.length;
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      enqueued,
+      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
+    };
+  }
+  return { ok: true, enqueued };
+}
+
+export interface RevenueBatchMessage {
+  body: unknown;
+  ack(): void;
+  retry(): void;
+}
+
+export interface RevenueBatchResult {
+  probed: number;
+  retried: number;
+  malformed: number;
+}
+
+/**
+ * Consume a batch: one surface per message.
+ *
+ * A surface no longer in the eligible set is ACKED, not retried -- the registry
+ * has withdrawn it, and re-delivering will not bring it back.
+ */
+export async function handleRevenueProbeBatch(
+  messages: RevenueBatchMessage[],
+  db: RevenueStoreDb | null | undefined,
+  deps: Parameters<typeof runRevenueProbeLane>[2] & {
+    /** The eligible surfaces, re-read at DELIVERY time. */
+    surfaceFor: (id: string) => Promise<ProbeSurfaceInput | null>;
+  },
+): Promise<RevenueBatchResult> {
+  let probed = 0;
+  let retried = 0;
+  let malformed = 0;
+  for (const message of messages) {
+    const body = message.body as RevenueProbeMessage | null;
+    const id = typeof body?.surface_id === "string" ? body.surface_id : "";
+    if (!id) {
+      message.ack();
+      malformed += 1;
+      continue;
+    }
+    try {
+      const surface = await deps.surfaceFor(id);
+      if (!surface) {
+        message.ack();
+        malformed += 1;
+        continue;
+      }
+      const result = await runRevenueProbeLane([surface], db, deps);
+      if (!result.ok) {
+        message.retry();
+        retried += 1;
+        continue;
+      }
+      message.ack();
+      probed += 1;
+    } catch {
+      message.retry();
+      retried += 1;
+    }
+  }
+  return { probed, retried, malformed };
 }
