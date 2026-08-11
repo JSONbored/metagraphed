@@ -19,6 +19,7 @@
 // erase one an earlier tick already stored. Rebuilding these as a generic
 // upsert would silently drop that and replace a known value with NULL -- the
 // same shape as #9634's last_ok, one table over.
+import type { BlocksHead } from "../generated/db/types.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { neonWriteRunner } from "./neon-write-buffer.ts";
 import {
@@ -103,15 +104,7 @@ async function record(
 export async function mirrorBlocksHeadToNeon(
   env: Record<string, unknown> | null | undefined,
   ctx: WaitUntilLike | null | undefined,
-  row: {
-    block_number: unknown;
-    block_hash: unknown;
-    parent_hash: unknown;
-    extrinsic_count: unknown;
-    event_count: unknown;
-    author: unknown;
-    observed_at: unknown;
-  },
+  row: BlocksHead,
   deps: CaptureStateMirrorDeps = {},
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
   const { sql, laneDb, now, attempted } = await runner(

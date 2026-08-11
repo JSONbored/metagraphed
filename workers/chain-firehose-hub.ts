@@ -1081,7 +1081,7 @@ export class ChainFirehoseHub implements DurableObject {
         await mirrorBlocksHeadToNeon(
           this.env as unknown as Record<string, unknown>,
           this.state,
-          block as unknown as Parameters<typeof mirrorBlocksHeadToNeon>[2],
+          block,
         );
         await this.state.storage.put("head:last_seen", block.block_number);
       }
