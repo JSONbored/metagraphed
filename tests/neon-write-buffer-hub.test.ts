@@ -739,3 +739,57 @@ describe("the enqueue is O(1) (#10755)", () => {
     assert.match(String(out.reason), /buffer full/);
   });
 });
+
+describe("an orphaned alarm must not block the buffer forever (#10763)", () => {
+  test("a STALE alarm is replaced", async () => {
+    // The last fault standing after #10755. An alarm whose time has passed
+    // without the handler running is orphaned -- the object was reset
+    // mid-flight often enough to leave one behind -- and `=== null` read that
+    // as "pending, nothing to do". Nothing fired it, nothing replaced it, and
+    // the buffer had no path to a first drain: enqueues succeeded, storage was
+    // healthy, and no flush ran for thirteen minutes.
+    const storage = fakeStorage();
+    await storage.setAlarm(NOW - 60_000);
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    assert.equal(
+      await storage.getAlarm(),
+      NOW + FLUSH_INTERVAL_MS,
+      "a past alarm must be replaced, not respected",
+    );
+  });
+
+  test("a LIVE alarm is left alone", async () => {
+    // The property the original guard was protecting, and it still holds: a
+    // steady stream of enqueues must not push the flush further away with
+    // every write.
+    const storage = fakeStorage();
+    const live = NOW + 5 * 60_000;
+    await storage.setAlarm(live);
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    assert.equal(await storage.getAlarm(), live);
+  });
+
+  test("an alarm exactly at now counts as stale", async () => {
+    // The boundary. `<= now` rather than `< now`: an alarm due this instant
+    // that has not run is the same orphan one second later.
+    const storage = fakeStorage();
+    await storage.setAlarm(NOW);
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    assert.equal(await storage.getAlarm(), NOW + FLUSH_INTERVAL_MS);
+  });
+
+  test("an EMPTY drain records a verdict rather than returning silently", async () => {
+    // Why three incidents were hard to tell apart: no verdict meant both "the
+    // alarm never fired" and "it fired and found nothing".
+    const spy = laneSpy();
+    const out = await flushBuffer(fakeStorage(), {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: null,
+    });
+    assert.equal(out.drained, 0);
+    assert.equal(spy.rows.length, 1);
+    assert.equal(spy.rows[0].lane, BUFFER_FLUSH_LANE);
+    assert.match(String(spy.rows[0].detail), /nothing buffered/);
+  });
+});

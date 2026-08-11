@@ -182,10 +182,22 @@ export async function enqueueStatement(
     entries[chunkKey(seq, index)] = part;
   });
   await storage.put(entries);
-  // Set the alarm only when none is pending: re-arming on every enqueue would
-  // push the flush further out on every write, which at these cadences means
-  // never.
-  if ((await storage.getAlarm()) === null) {
+  // ARM WHEN THERE IS NO ALARM, OR WHEN THE ONE THERE IS HAS GONE STALE.
+  //
+  // `=== null` alone was not enough (#10763). An alarm whose time has passed
+  // without the handler running is ORPHANED -- the object was reset mid-flight
+  // often enough during #10755's CPU spiral to leave one behind -- and the old
+  // guard read that as "an alarm is pending, nothing to do". Nothing then ever
+  // fired it and nothing ever replaced it, so the buffer had no path to a first
+  // drain even once every other fault was gone: enqueues succeeded, storage was
+  // healthy, and no flush ran for thirteen minutes.
+  //
+  // Comparing against `now` rather than re-arming unconditionally keeps the
+  // property the original guard was protecting: a live alarm is left alone, so
+  // a steady stream of enqueues cannot push the flush further away with every
+  // write.
+  const existingAlarm = await storage.getAlarm();
+  if (existingAlarm === null || existingAlarm <= now) {
     await storage.setAlarm(now + FLUSH_INTERVAL_MS);
   }
   return { accepted: true, seq };
@@ -233,6 +245,17 @@ export async function flushBuffer(
   // to come back, not exactly how much is left.
   const truncated = stored.size >= FLUSH_LIST_LIMIT;
   if (groups.length === 0) {
+    // RECORD IT. An empty drain returning silently is why "the alarm never
+    // fired" and "the alarm fired and found nothing" were indistinguishable
+    // for three incidents -- the absence of a verdict meant both. A cheap row
+    // once per wake makes the next question answerable in one query.
+    await recordLaneVerdict(laneDb, {
+      lane: BUFFER_FLUSH_LANE,
+      verdict: "ok",
+      age_ms: null,
+      detail: "nothing buffered",
+      checked_at: now(),
+    });
     return { drained: 0, undecodable: 0, ok: true, remaining: false };
   }
 
