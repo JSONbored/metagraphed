@@ -401,6 +401,11 @@ import {
   loadSubnetRevenue,
 } from "../../src/revenue-load.ts";
 import {
+  loadSweepRecord,
+  type SweepStoreDb,
+} from "../../src/attribution-sweep.ts";
+import { ATTRIBUTION_SWEEP_TABLES } from "../../src/read-store-tables.ts";
+import {
   loadRevenueObservations,
   type RevenueStoreDb,
 } from "../../src/revenue-observations.ts";
@@ -7167,6 +7172,14 @@ export async function handleSubnetWallets(
         Array<Record<string, unknown>> | undefined)
     : undefined;
   const wallets = subnetWalletRows(netuid, row, entities ?? null, null);
+  // #10489-#10509: whether anyone has looked, and when. An empty wallet list on
+  // its own says nothing about whether the subnet publishes an address -- it is
+  // equally consistent with nobody having searched -- and an undated silence is
+  // not evidence.
+  const attributionSearch = await loadSweepRecord(
+    readStore(env, ATTRIBUTION_SWEEP_TABLES) as SweepStoreDb | undefined,
+    netuid,
+  );
   return envelopeResponse(
     request,
     {
@@ -7177,6 +7190,7 @@ export async function handleSubnetWallets(
         window_days: 30,
         wallet_count: wallets.length,
         wallets,
+        attribution_search: attributionSearch,
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
       },
       meta: { contract_version: contractVersion(env) },

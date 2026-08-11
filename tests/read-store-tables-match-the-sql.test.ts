@@ -33,6 +33,7 @@ const OWNER: Record<string, string[]> = {
   ],
   SUBNET_BURN_HISTORY_TABLES: ["src/subnet-burn-history.ts"],
   TAO_USD_TABLES: ["src/tao-usd-series.ts"],
+  ATTRIBUTION_SWEEP_TABLES: ["src/attribution-sweep.ts"],
   // The feed's own SQL is the revenue pair; the denominator legs are read
   // THROUGH the two loaders that own those tables, so all three modules are
   // checked against this one set.

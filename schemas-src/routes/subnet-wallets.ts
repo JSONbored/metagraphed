@@ -84,11 +84,40 @@ const SubnetWalletSchema = z
   })
   .strict();
 
+const AttributionSearchSchema = z
+  .object({
+    swept_at: z.string().nullable().meta({
+      description:
+        "When this subnet's published surfaces were last searched for an address. NULL means never, or that the sweep store could not be read — either way nobody has looked, which is a different fact from having looked and found nothing.",
+    }),
+    sources_checked: z.int().min(0),
+    sources_read: z.int().min(0).meta({
+      description:
+        "How many of the checked sources actually answered. The gap between this and sources_checked is reach we did not have, published rather than folded into the verdict.",
+    }),
+    candidates: z.int().min(0).meta({
+      description:
+        "Checksum-valid addresses found in the fetched bytes. A CANDIDATE, never an attribution: an address appearing on a team's page is not thereby theirs — a `validator_hotkey` field inside their own API response is the common false positive — and clearing the evidence bar is a human judgement.",
+    }),
+    verdict: z
+      .enum(["none-published", "candidates-found", "unreachable", "no-sources"])
+      .nullable()
+      .meta({
+        description:
+          "`none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet.",
+      }),
+  })
+  .strict();
+
 export const SubnetWalletsArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0).max(65535),
   window_days: z.int().min(1),
   wallet_count: z.int().min(0),
   wallets: z.array(SubnetWalletSchema),
+  attribution_search: AttributionSearchSchema.nullable().meta({
+    description:
+      "Whether anyone has looked, and when (#10489-#10509). An empty wallet list beside a null search means nobody has searched; beside a `none-published` verdict it means somebody did, on the stated date, and the subnet publishes nothing. Those are different facts and an undated silence is not evidence.",
+  }),
   field_sources: FieldSourcesSchema,
 }).describe(
   "One subnet's declared wallets with their roles, evidence and per-window activity. `owner` is chain-derived from SubnetOwner and flagged as such; every other role is a human attribution and carries the source_urls that prove it, in the response rather than only in the registry. An empty list means nothing has been attributed for this subnet — not that nothing exists. Mirrors GET /api/v1/subnets/{netuid}/wallets.",

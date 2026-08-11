@@ -1644,6 +1644,7 @@ import {
 } from "./subnet-ownership-answer.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
+import { loadSweepRecord, type SweepStoreDb } from "./attribution-sweep.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { buildNetworksPayload } from "./network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "./network-artifacts.ts";
@@ -1681,6 +1682,7 @@ import {
   COMPARE_SUBNETS_TABLES,
   EMISSION_CHANGES_TABLES,
   FAILURE_REASONS_TABLES,
+  ATTRIBUTION_SWEEP_TABLES,
   HEALTH_CHECK_TABLES,
   INDEXER_LAG_TABLES,
   LEADERBOARD_TABLES,
@@ -8989,6 +8991,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         window_days: 30,
         wallet_count: wallets.length,
         wallets,
+        // #10489-#10509: whether anyone has looked, and when. An empty wallet
+        // list on its own is equally consistent with nobody having searched,
+        // and an agent reporting "this subnet has no treasury" off the back of
+        // one would be stating a finding nobody made.
+        attribution_search: await loadSweepRecord(
+          readStore(ctx.env, ATTRIBUTION_SWEEP_TABLES) as
+            SweepStoreDb | undefined,
+          netuid,
+        ),
         field_sources: SUBNET_WALLETS_FIELD_SOURCES,
       };
     },

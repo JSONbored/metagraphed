@@ -135,6 +135,15 @@ export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
  */
 export const REVENUE_PROBE_CRON = "24 * * * *";
 
+/** #10489-#10509: the attribution sweep.
+ *
+ * Minute 56 is the other free slot on the hourly grid (24 went to the revenue
+ * probe). Hourly with a SLICE rather than daily with a full pass: 129 subnets x
+ * up to 8 sources is ~1000 outbound requests, which is not a tick. The lane
+ * takes the eight least-recently-swept each hour, so a full pass lands inside a
+ * day and never bursts. */
+export const ATTRIBUTION_SWEEP_CRON = "56 * * * *";
+
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
 // stores directly. Each keeps the cadence its workflow ran on, offset onto a
