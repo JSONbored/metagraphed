@@ -2861,11 +2861,20 @@ for (const [route, assertion, options = {}] of checks) {
   assertion(body);
 }
 
-// #6359: production wrangler.jsonc flips eight METAGRAPH_*_SOURCE flags to
-// "postgres", so the live Worker serves these routes via tryPostgresTier →
-// DATA_API. The cold harness above never sets those flags, so AJV only saw the
-// D1/empty fallback. Validate one representative route per flag with a DATA_API
-// mock whose body is built by the same src/* builders workers/data-api.ts uses.
+// #6359: eight METAGRAPH_*_SOURCE flags make the live Worker serve their routes
+// via tryPostgresTier → DATA_API rather than answering from the cold artifact.
+// The cold harness above never sets them, so AJV only ever saw the empty
+// fallback. Validate one representative route per flag with a DATA_API mock
+// whose body is built by the same src/* builders workers/data-api.ts uses.
+//
+// THE VALUE USED BELOW IS "postgres", WHICH NO DEPLOYMENT SETS. Measured
+// 2026-08-11 against the deployed Workers, not just the configs: metagraphed
+// reads "retired" x8 and "d1" x5, metagraphed-data-api reads "d1" x3, and
+// nothing anywhere reads "postgres". So this exercises the forwarding path
+// through the one disjunct production cannot take -- the three flags that
+// really forward do so via "d1" plus DATA_API_FORWARD_FLAGS membership, which
+// no case here covers. The AJV shapes it proves are still worth proving; the
+// gap is that the gate does not test the branch production runs. #10223.
 {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const OBSERVED_AT_MS = 1_750_009_000_000;

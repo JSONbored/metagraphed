@@ -1,16 +1,29 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
-// Postgres-tier serving gate, one env flag per data source (originally ADR
-// 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully eliminated
-// 2026-07-17 -- reconfirmed live 2026-07-25, zero D1 databases remain on the
-// account -- every flag has been hardcoded "postgres" in every wrangler
-// config since, see wrangler.jsonc's own METAGRAPH_*_SOURCE vars). Each tier
-// keeps its own flag as a kill switch: a failure here degrades to a
-// schema-stable EMPTY response (never a live D1 read -- there's nothing left
-// to fall back to), so a maintainer can force that same degraded-but-never-
-// erroring state with a single flag flip if a specific Postgres tier needs
-// to be taken offline, with no code change or redeploy.
+// DATA_API-forwarding serving gate, one env flag per data source (originally
+// ADR 0013 Sequencing step 3's gated D1 -> Postgres cutover; D1 fully
+// eliminated 2026-07-17 -- reconfirmed 2026-08-11, zero `d1_databases` blocks
+// in any wrangler config and no D1 binding on any deployed Worker).
+//
+// WHAT THE FLAGS ACTUALLY READ, measured across all three configs 2026-08-11:
+// 8 read "retired", 8 read "d1", and NONE reads "postgres". The
+// `value === "postgres"` disjunct below is therefore unreachable in
+// production. It survives because 657 sites in tests/ use "postgres" as the
+// "forward this" value, so deleting it is a test migration rather than a
+// dead-branch removal -- #10223 step 2, after #10190's sweep.
+//
+// A READER WHO TRUSTS THESE NAMES WILL BE WRONG TWICE: "d1" is the live
+// forwarding value and names no D1, and "postgres" names no Postgres box --
+// both stores were wiped. The forward lands on DATA_API, which reads Neon
+// through Hyperdrive. Renaming the surviving concept is #10223's step 3, and
+// it wants the sweep to land first so 407 call sites are not churned twice.
+//
+// Each tier keeps its own flag as a kill switch: a failure here degrades to a
+// schema-stable EMPTY response (there is no second store left to fall back
+// to), so a maintainer can force that same degraded-but-never-erroring state
+// with a single flag flip if a specific tier needs to be taken offline, with
+// no code change or redeploy.
 // `request` is forwarded to the DATA_API service binding after normalizing HEAD
 // probes to GET: DATA_API is GET-only, while the public API computes HEAD
 // metadata from the GET representation and strips the body later. The caller
@@ -70,20 +83,27 @@ async function capturePostgresTierFallback(
   });
 }
 
-// Flags whose DATA_API leg can serve from D1 (the dispatcher sits in
-// workers/data-api.ts ahead of its Hyperdrive gate). For these, a "d1" value
-// must still FORWARD to DATA_API -- the D1 SQL lives there, not here -- while
-// every other flag/value combination keeps the strict postgres-only gate. A
-// blanket "forward on d1" would be wrong: the health and subnet-snapshot
-// flags also hold "d1", but their D1 loaders live in THIS worker and their
-// data-api legs are Postgres-only.
-const DATA_API_D1_FLAGS = new Set<string>([
+// Flags whose "d1" value FORWARDS to DATA_API. "d1" is a legacy token here,
+// not a store: DATA_API's dispatcher for these three routes sits ahead of its
+// Hyperdrive gate, so the rows come from Neon. Every other flag/value
+// combination keeps the strict gate.
+//
+// A BLANKET "FORWARD ON d1" WOULD BE WRONG. METAGRAPH_HEALTH_SOURCE and
+// METAGRAPH_SUBNET_SNAPSHOTS_SOURCE also hold "d1", and DATA_API does not
+// serve the routes they gate -- widening this set would make those call sites
+// forward, take a non-2xx, and fire capturePostgresTierFallback on every
+// request. src/health-status-live.ts works through that for the health flag in
+// full, including why it calls the service binding directly instead: DATA_API
+// implements exactly one of that flag's routes, and a per-flag switch cannot
+// do a per-route job.
+const DATA_API_FORWARD_FLAGS = new Set<string>([
   "METAGRAPH_NEURONS_SOURCE",
-  // tests/fixtures/sqlite-schema/0009: the hyperparams + account-identity dispatchers also
-  // live in DATA_API ahead of its Hyperdrive gate (matchHyperparamsIdentity-
-  // D1Route). Their cold-tier fallback depends on this forward too: DATA_API
-  // answers 503 while its table is still empty, which is what sends the
-  // serving handler on to the lakehouse cold-tier reader.
+  // tests/fixtures/sqlite-schema/0009: the hyperparams + account-identity
+  // dispatchers also live in DATA_API ahead of its Hyperdrive gate
+  // (matchHyperparamsIdentityD1Route -- still D1-named, tracked by #10223).
+  // Their cold-tier fallback depends on this forward too: DATA_API answers 503
+  // while its table is still empty, which is what sends the serving handler on
+  // to the lakehouse cold-tier reader.
   "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
   "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
 ]);
@@ -96,7 +116,7 @@ export async function tryPostgresTier(
   const value = env[flagName];
   const forwards =
     value === "postgres" ||
-    (value === "d1" && DATA_API_D1_FLAGS.has(flagName as string));
+    (value === "d1" && DATA_API_FORWARD_FLAGS.has(flagName as string));
   if (!forwards) return null;
   if (!env.DATA_API) return markPostgresTierFallback();
   const upstreamRequest =
