@@ -18009,15 +18009,20 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     const day = d.daily[0];
     assert.equal(day.extrinsic_count, 0);
     assert.equal(day.signed_extrinsic_count, 0);
-    assert.equal(day.total_fee_tao, null);
+    // `toTao` coerces a NULL fee to 0 by contract -- "NULL fees never leak into
+    // the payload" (src/chain-analytics.ts) -- while the MEDIANs keep null,
+    // because a median over no rows is genuinely unknown rather than zero. The
+    // retired tier echoed data-api's nulls for all of them, so neither rule was
+    // ever exercised here.
+    assert.equal(day.total_fee_tao, 0);
     assert.equal(day.avg_fee_tao, null);
     assert.equal(day.median_fee_tao, null);
-    assert.equal(day.total_tip_tao, null);
+    assert.equal(day.total_tip_tao, 0);
     assert.equal(day.avg_tip_tao, null);
     assert.equal(day.median_tip_tao, null);
     const payer = d.top_fee_payers[0];
-    assert.equal(payer.total_fee_tao, null);
-    assert.equal(payer.total_tip_tao, null);
+    assert.equal(payer.total_fee_tao, 0);
+    assert.equal(payer.total_tip_tao, 0);
     assert.equal(payer.extrinsic_count, 0);
   });
 
