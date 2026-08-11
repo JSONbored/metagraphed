@@ -304,9 +304,11 @@ export function withLaneHealth(
    * A single cutoff cannot work: cadences here differ by more than 100x
    * (`chain-detail` every ~30s, `hotkey-alpha` every 24h). One tight enough to
    * catch a dead 30-second lane marks every 24-hour lane absent between ticks.
-   * So the bound is the lane's OWN observed cadence, reusing the pair the
-   * alarm path already computes -- `laneCadenceMs` (span / n-1) and
-   * `laneSilenceThresholdMs` (3 intervals, floored at 90 min).
+   * So the bound is the lane's own observed MAXIMUM gap, floored by the
+   * producer's declared cadence -- `laneSilenceCadenceMs` -- and then widened by
+   * `laneSilenceThresholdMs` (3 intervals, floored at 90 min). The alarm path
+   * reads the same pair since #10723; it used to compute a MEAN gap of its own,
+   * which is what this comment described.
    *
    * OMITTING `cadences` LEAVES EVERY VERDICT ALONE, deliberately. Without a
    * sample there is no bound that is not a guess, and a guess here invents

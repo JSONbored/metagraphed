@@ -48,6 +48,7 @@
 // every minute, `top-holders-flow` is daily), so one shared constant could only
 // ever be wrong for most of them.
 
+import { laneSilenceCadenceMs } from "./producer-cadence.ts";
 import {
   loadLatestLaneHealth,
   staleLanes,
@@ -231,18 +232,20 @@ export const LANE_STALE_RUN_SQL = VERDICT_RUN_SQL.stale;
  */
 export const LANE_UNKNOWN_RUN_SQL = VERDICT_RUN_SQL.unknown;
 
-/**
- * Each lane's observed cadence, as a mean gap.
+/* LANE_CADENCE_SQL / laneCadenceMs / loadLaneCadence were REMOVED here (#10723).
  *
- * A mean rather than a median because it needs no window function and no sort:
- * one GROUP BY over a bounded window, where `(last - first) / (n - 1)` is the
- * mean gap by construction. A median would be more robust to a single long
- * outage, but the consumer multiplies this by three and floors it at 90
- * minutes, so that robustness would buy nothing a human could measure.
+ * They computed the MEAN gap between lane_health writes, and this file's own
+ * LANE_MAX_GAP_SQL comment already measured why that is the wrong number:
+ * `neon:account-balances` logged 6,268 rows in seven days against a six-hour
+ * producer, mean gap ONE minute. The alarm path read the mean anyway and
+ * false-alarmed four Neon lanes at 1.7-1.8h against producers running every 6h
+ * and 24h.
+ *
+ * Deleted rather than left exported. #10232 had already replaced the mean for the
+ * self-health surface and the alarm path kept using it for another eight months --
+ * a plausible-looking helper that is wrong for the only question left is how that
+ * happens twice.
  */
-export const LANE_CADENCE_SQL =
-  "SELECT lane, COUNT(*) AS n, MIN(checked_at) AS first, MAX(checked_at) AS last " +
-  "FROM lane_health WHERE checked_at > ? GROUP BY lane";
 
 /**
  * The LONGEST gap between consecutive rows, per lane (#10333).
@@ -322,18 +325,6 @@ export async function loadLaneMaxGap(
   }
 }
 
-/** Mean gap between ticks, or null when there is not enough history to say. */
-export function laneCadenceMs(sample: {
-  n: number;
-  first: number;
-  last: number;
-}): number | null {
-  if (sample.n < LANE_ALARM_MIN_CADENCE_SAMPLES) return null;
-  const span = sample.last - sample.first;
-  if (span <= 0) return null;
-  return Math.round(span / (sample.n - 1));
-}
-
 /** How long a lane may stay quiet before the silence is itself the fault. */
 export function laneSilenceThresholdMs(cadenceMs: number): number {
   return Math.max(
@@ -394,8 +385,22 @@ export interface LaneAlarmPlanInput {
   runs: LaneVerdictRuns;
   /** Current unbroken `unknown` runs, keyed by lane (#10695). */
   unknownRuns: LaneVerdictRuns;
-  /** Observed cadence per lane, keyed by lane. Null where uncalibrated. */
-  cadence: Record<string, number | null>;
+  /**
+   * Observed MAXIMUM gap per lane, keyed by lane. Null where uncalibrated.
+   *
+   * The max, not the mean (#10232, and this file's own LANE_MAX_GAP_SQL comment
+   * measures why): a container reboot fires every lane's first tick immediately,
+   * and a mirror lane writes many rows per pass -- `neon:account-balances` logged
+   * 6,268 rows in seven days against a six-hour producer, so its mean gap is ONE
+   * minute against a declared 360. Judged by that mean, every gap between passes
+   * is an outage.
+   *
+   * Resolved through `laneSilenceCadenceMs`, which floors it by the producer's
+   * declared cadence where LANE_PRODUCER names one -- the same function
+   * src/self-health.ts already judges silence by. The alarm path was the one
+   * consumer still guessing (#10723).
+   */
+  observedMaxGap: Record<string, number | null>;
   /** Lanes that already have an open alarm issue. */
   openAlarms: Record<string, number>;
   nowMs: number;
@@ -417,8 +422,19 @@ export interface LaneAlarmPlan {
  * network, so every branch below is reachable from a test.
  */
 export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
-  const { latest, runs, unknownRuns, cadence, openAlarms, nowMs, minStaleMs } =
-    input;
+  const {
+    latest,
+    runs,
+    unknownRuns,
+    observedMaxGap,
+    openAlarms,
+    nowMs,
+    minStaleMs,
+  } = input;
+  // One resolution per lane, so the stale/unknown reports and the silence bound
+  // cannot disagree about what a lane's cadence is.
+  const cadenceFor = (lane: string) =>
+    laneSilenceCadenceMs(lane, observedMaxGap[lane]);
   const qualified: LaneAlarm[] = [];
 
   const stale = staleLanes(latest);
@@ -438,7 +454,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
       ticks: run?.ticks ?? 1,
       detail: record.detail,
       age_ms: record.age_ms,
-      cadence_ms: cadence[record.lane] ?? null,
+      cadence_ms: cadenceFor(record.lane),
     });
   }
 
@@ -460,7 +476,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     // dead producer, which outranks "the producer is running but cannot
     // measure". Gating on liveness rather than de-duplicating afterwards keeps
     // the two loops mutually exclusive by construction.
-    const unknownCadenceMs = cadence[record.lane] ?? null;
+    const unknownCadenceMs = cadenceFor(record.lane);
     if (
       unknownCadenceMs !== null &&
       nowMs - record.checked_at >= laneSilenceThresholdMs(unknownCadenceMs)
@@ -477,7 +493,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
       ticks: run?.ticks ?? 1,
       detail: record.detail,
       age_ms: record.age_ms,
-      cadence_ms: cadence[record.lane] ?? null,
+      cadence_ms: cadenceFor(record.lane),
     });
   }
 
@@ -493,7 +509,7 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     // these lanes actually report. See LANE_SILENCE_EXEMPT for what covers
     // each one instead.
     if (record.lane in LANE_SILENCE_EXEMPT) continue;
-    const cadenceMs = cadence[record.lane] ?? null;
+    const cadenceMs = cadenceFor(record.lane);
     if (cadenceMs === null) continue;
     const quietFor = nowMs - record.checked_at;
     if (quietFor < laneSilenceThresholdMs(cadenceMs)) continue;
@@ -640,31 +656,6 @@ async function loadLaneRuns(
   }
 }
 
-/** Each lane's observed cadence, keyed by lane. Null where uncalibrated. */
-export async function loadLaneCadence(
-  db: D1Like | null | undefined,
-  sinceMs: number,
-): Promise<Record<string, number | null>> {
-  if (!db?.prepare) return {};
-  try {
-    const result = await db.prepare(LANE_CADENCE_SQL).bind(sinceMs).all?.();
-    const rows = (result?.results ?? []) as Record<string, unknown>[];
-    const out: Record<string, number | null> = {};
-    for (const row of rows) {
-      const lane = row.lane == null ? "" : String(row.lane);
-      if (!lane) continue;
-      out[lane] = laneCadenceMs({
-        n: toInt(row.n),
-        first: toInt(row.first),
-        last: toInt(row.last),
-      });
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
 /** The GitHub calls this needs, as one injectable seam. */
 export interface LaneAlarmGitHub {
   listOpen(): Promise<Record<string, number>>;
@@ -781,11 +772,17 @@ export async function runLaneAlarm(
   const minStaleMs =
     Number(env?.LANE_ALARM_MIN_STALE_MS) || LANE_ALARM_MIN_STALE_MS;
 
-  const [latest, runs, unknownRuns, cadence] = await Promise.all([
+  const [latest, runs, unknownRuns, observedMaxGap] = await Promise.all([
     loadLatestLaneHealth(db),
     loadLaneStaleRuns(db),
     loadLaneUnknownRuns(db),
-    loadLaneCadence(db, nowMs - LANE_ALARM_CADENCE_WINDOW_MS),
+    // THE MAX GAP, not the mean (#10723). This file already owned both queries
+    // and already documented why the max is the only column that survives a
+    // container reboot and a many-rows-per-pass mirror lane -- but the alarm path
+    // kept reading the mean, so `neon:account-balances` was judged against a
+    // ONE-MINUTE cadence and alarmed on every gap between its six-hourly passes.
+    // src/self-health.ts and src/self-health-mcp.ts already read it this way.
+    loadLaneMaxGap(db, nowMs - LANE_ALARM_CADENCE_WINDOW_MS),
   ]);
 
   // Read the open alarms BEFORE planning: without them every tick would open a
@@ -807,7 +804,7 @@ export async function runLaneAlarm(
     latest,
     runs,
     unknownRuns,
-    cadence,
+    observedMaxGap,
     openAlarms: openAlarms ?? {},
     nowMs,
     minStaleMs,
