@@ -9,20 +9,17 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
+import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
 import worker, {
   fetchSweepText,
   handleScheduled,
   sweepableSubnets,
 } from "../workers/api.ts";
-import {
-  ATTRIBUTION_SWEEP_CRON,
-  REVENUE_PROBE_CRON,
-} from "../workers/config.ts";
+import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
 import { ATTRIBUTION_SWEEP_TABLES } from "../src/read-store-tables.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
-  SWEEP_SEND_BATCH_MAX,
   enqueueSweeps,
   handleSweepBatch,
   type SweepMessage,
@@ -43,6 +40,15 @@ const NOW = Date.parse("2026-08-11T00:00:00Z");
 
 function record(surfaces: Array<Record<string, unknown>>) {
   return { netuid: 64, surfaces };
+}
+
+/** One lane's entry in the heartbeat's aggregate result. The heartbeat runs
+ * every producer, so a per-lane assertion has to look its own up. */
+function laneResult(result: unknown) {
+  const lanes = (result as { lanes?: Array<Record<string, unknown>> }).lanes;
+  const found = (lanes ?? []).find((l) => l.lane === "attribution-sweep");
+  assert.ok(found, "attribution-sweep must be in LANE_PRODUCERS");
+  return found as { ok: boolean; enqueued: number; reason?: string };
 }
 
 describe("finding ss58 strings", () => {
@@ -337,16 +343,15 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       "utf8",
     );
     assert.ok(
-      wrangler.includes(`"${ATTRIBUTION_SWEEP_CRON}"`),
-      `${ATTRIBUTION_SWEEP_CRON} is not in wrangler.jsonc triggers.crons`,
+      wrangler.includes(`"${LANE_HEARTBEAT_CRON}"`),
+      `${LANE_HEARTBEAT_CRON} is not in wrangler.jsonc triggers.crons`,
     );
   });
 
   test("the cron does not collide with another lane", () => {
     // Dispatch keys on the literal expression, so two lanes sharing one string
     // means the first branch wins and the second silently never runs.
-    assert.equal(ATTRIBUTION_SWEEP_CRON, "56 * * * *");
-    assert.notEqual(ATTRIBUTION_SWEEP_CRON, REVENUE_PROBE_CRON);
+    assert.equal(LANE_HEARTBEAT_CRON, "26 * * * *");
   });
 
   test("dispatch and its label both know the cron", async () => {
@@ -354,19 +359,21 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /if \(cron === ATTRIBUTION_SWEEP_CRON\) \{/);
-    assert.match(api, /return "attribution-sweep"/);
+    assert.match(api, /if \(cron === LANE_HEARTBEAT_CRON\) \{/);
+    assert.match(api, /return "lane-heartbeat"/);
   });
 
   test("handleScheduled routes the cron to the PRODUCER, and it declines cleanly", async () => {
     // The cron no longer sweeps -- it enqueues. With no artifact there is
     // nothing to enqueue, and the producer must say so rather than report a
     // pass with nothing sent.
-    const result = (await handleScheduled(
-      { cron: ATTRIBUTION_SWEEP_CRON } as unknown as ScheduledController,
-      {} as unknown as Parameters<typeof handleScheduled>[1],
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number; reason?: string };
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        {} as unknown as Parameters<typeof handleScheduled>[1],
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
     assert.equal(result.ok, false);
     assert.equal(result.enqueued, 0);
     // The BINDING is reported before the empty list, and that order is the
@@ -581,12 +588,12 @@ describe("the queue lane", () => {
     // 128 subnets is one over two batches at Cloudflare's 100-message cap --
     // exactly the off-by-one that ships.
     const sent: Array<Array<{ body: unknown }>> = [];
-    const many = Array.from({ length: SWEEP_SEND_BATCH_MAX + 28 }, (_, i) => i);
+    const many = Array.from({ length: SEND_BATCH_MAX + 28 }, (_, i) => i);
     const out = await enqueueSweeps(queue(sent), many);
     assert.equal(out.enqueued, many.length);
     assert.deepEqual(
       sent.map((b) => b.length),
-      [SWEEP_SEND_BATCH_MAX, 28],
+      [SEND_BATCH_MAX, 28],
     );
   });
 
@@ -649,7 +656,7 @@ describe("consuming a sweep batch", () => {
   test("acks a swept subnet", async () => {
     const m = message({ netuid: 64 });
     const out = await handleSweepBatch([m], store(), deps());
-    assert.deepEqual(out, { swept: 1, retried: 0, malformed: 0 });
+    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -685,7 +692,7 @@ describe("consuming a sweep batch", () => {
       }),
     );
     // The sweep itself absorbs a fetch failure as `unreachable`, so this acks.
-    assert.equal(out.swept + out.retried, 1);
+    assert.equal(out.done + out.retried, 1);
     assert.equal(m.calls.acked + m.calls.retried, 1);
   });
 
@@ -694,7 +701,7 @@ describe("consuming a sweep batch", () => {
     // reading the store is concerned.
     const m = message({ netuid: 64 });
     const out = await handleSweepBatch([m], null, deps());
-    assert.deepEqual(out, { swept: 0, retried: 1, malformed: 0 });
+    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
     assert.equal(m.calls.retried, 1);
   });
 
@@ -708,7 +715,7 @@ describe("consuming a sweep batch", () => {
       message({ netuid: -1 }),
     ];
     const out = await handleSweepBatch(bad, store(), deps());
-    assert.deepEqual(out, { swept: 0, retried: 0, malformed: 4 });
+    assert.deepEqual(out, { done: 0, retried: 0, dropped: 4 });
     for (const m of bad) assert.equal(m.calls.acked, 1);
   });
 
@@ -719,8 +726,8 @@ describe("consuming a sweep batch", () => {
       store(),
       deps(),
     );
-    assert.equal(out.swept, 1);
-    assert.equal(out.malformed, 2);
+    assert.equal(out.done, 1);
+    assert.equal(out.dropped, 2);
     assert.equal(good.calls.acked, 1);
   });
 });
@@ -900,7 +907,7 @@ describe("the last of the queue shapes", () => {
         },
       },
     );
-    assert.deepEqual(out, { swept: 0, retried: 1, malformed: 0 });
+    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
     assert.equal(calls.retried, 1);
   });
 
@@ -914,12 +921,18 @@ describe("the last of the queue shapes", () => {
         },
       },
     };
-    const result = (await handleScheduled(
-      { cron: ATTRIBUTION_SWEEP_CRON } as unknown as ScheduledController,
-      env as never,
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number };
-    assert.deepEqual(result, { ok: true, enqueued: 1 });
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        env as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
+    assert.deepEqual(result, {
+      lane: "attribution-sweep",
+      ok: true,
+      enqueued: 1,
+    });
     assert.deepEqual(sent, [7]);
   });
 });

@@ -15,8 +15,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
+import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
 import {
-  REVENUE_SEND_BATCH_MAX,
   eligibleRevenueSurfaces,
   enqueueRevenueProbes,
   handleRevenueProbeBatch,
@@ -30,7 +30,7 @@ import {
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
 import worker, { handleScheduled } from "../workers/api.ts";
-import { REVENUE_PROBE_CRON } from "../workers/config.ts";
+import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
 import { REVENUE_OBSERVATION_TABLES } from "../src/read-store-tables.ts";
 
 const repoRoot = path.resolve(
@@ -86,6 +86,15 @@ const OBSERVATION = {
   response_hash: "abc",
   observed_at: 1786320000000,
 };
+
+/** One lane's entry in the heartbeat's aggregate result. The heartbeat runs
+ * every producer, so a per-lane assertion has to look its own up. */
+function laneResult(result: unknown) {
+  const lanes = (result as { lanes?: Array<Record<string, unknown>> }).lanes;
+  const found = (lanes ?? []).find((l) => l.lane === "revenue-probe");
+  assert.ok(found, "revenue-probe must be in LANE_PRODUCERS");
+  return found as { ok: boolean; enqueued: number; reason?: string };
+}
 
 describe("persistRevenueProbe", () => {
   test("writes observations and failures to their own tables", async () => {
@@ -549,15 +558,15 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       "utf8",
     );
     assert.ok(
-      wrangler.includes(`"${REVENUE_PROBE_CRON}"`),
-      `${REVENUE_PROBE_CRON} is not in wrangler.jsonc triggers.crons`,
+      wrangler.includes(`"${LANE_HEARTBEAT_CRON}"`),
+      `${LANE_HEARTBEAT_CRON} is not in wrangler.jsonc triggers.crons`,
     );
   });
 
   test("the cron does not collide with another lane", () => {
     // Dispatch keys on the literal expression, so two lanes sharing one string
     // means the first branch wins and the second silently never runs.
-    assert.equal(REVENUE_PROBE_CRON, "24 * * * *");
+    assert.equal(LANE_HEARTBEAT_CRON, "26 * * * *");
   });
 
   test("dispatch and its label both know the cron", async () => {
@@ -565,19 +574,21 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /if \(cron === REVENUE_PROBE_CRON\) \{/);
-    assert.match(api, /return "revenue-probe"/);
+    assert.match(api, /if \(cron === LANE_HEARTBEAT_CRON\) \{/);
+    assert.match(api, /return "lane-heartbeat"/);
   });
 
   test("handleScheduled routes the cron to the PRODUCER and returns its verdict", async () => {
     // The branch itself, not just its presence in the source. A dispatch that
     // matches no branch returns undefined and the tick reports success having
     // done nothing — the same shape of silence this lane was built to end.
-    const result = (await handleScheduled(
-      { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
-      {} as unknown as Parameters<typeof handleScheduled>[1],
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number; reason?: string };
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        {} as unknown as Parameters<typeof handleScheduled>[1],
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
     assert.equal(result.ok, false);
     assert.equal(result.enqueued, 0);
     // The cron is a PRODUCER now (#10715): it enqueues one message per eligible
@@ -655,14 +666,11 @@ describe("the queue lane (#10715)", () => {
 
   test("splits at the sendBatch cap", async () => {
     const sent: Array<Array<{ body: unknown }>> = [];
-    const many = Array.from(
-      { length: REVENUE_SEND_BATCH_MAX + 3 },
-      (_, i) => `s${i}`,
-    );
+    const many = Array.from({ length: SEND_BATCH_MAX + 3 }, (_, i) => `s${i}`);
     await enqueueRevenueProbes(queue(sent), many);
     assert.deepEqual(
       sent.map((b) => b.length),
-      [REVENUE_SEND_BATCH_MAX, 3],
+      [SEND_BATCH_MAX, 3],
     );
   });
 
@@ -724,14 +732,14 @@ describe("the queue lane (#10715)", () => {
     }),
     hash: sha256Hex,
     now: () => 1_786_320_000_000,
-    surfaceFor: async () => surface,
+    surfaceFor: () => surface,
     ...over,
   });
 
   test("probes one surface per message and ACKS it on success", async () => {
     const m = message({ surface_id: surface.id });
     const out = await handleRevenueProbeBatch([m], store(), deps() as never);
-    assert.deepEqual(out, { probed: 1, retried: 0, malformed: 0 });
+    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -750,7 +758,7 @@ describe("the queue lane (#10715)", () => {
       [message({ surface_id: "sn-x" })],
       store(),
       deps({
-        surfaceFor: async (id: string) => {
+        surfaceFor: (id: string) => {
           askedFor = id;
           return null;
         },
@@ -765,31 +773,42 @@ describe("the queue lane (#10715)", () => {
     const out = await handleRevenueProbeBatch(
       [m],
       store(),
-      deps({ surfaceFor: async () => null }) as never,
+      deps({ surfaceFor: () => null }) as never,
     );
-    assert.deepEqual(out, { probed: 0, retried: 0, malformed: 1 });
+    assert.deepEqual(out, { done: 0, retried: 0, dropped: 1 });
     assert.equal(m.calls.acked, 1);
   });
 
   test("ACKS a malformed body rather than looping it to the dead letter", async () => {
     const bad = [message({ surface_id: 42 }), message({}), message(null)];
     const out = await handleRevenueProbeBatch(bad, store(), deps() as never);
-    assert.equal(out.malformed, 3);
+    assert.equal(out.dropped, 3);
     for (const m of bad) assert.equal(m.calls.acked, 1);
   });
 
-  test("RETRIES when the probe throws", async () => {
-    const m = message({ surface_id: surface.id });
+  test("RETRIES when the probe throws, without taking out the batch", async () => {
+    // One poison message costs one subject, never the others delivered with it.
+    const bad = message({ surface_id: surface.id });
+    const good = message({ surface_id: surface.id });
+    let first = true;
     const out = await handleRevenueProbeBatch(
-      [m],
+      [bad, good],
       store(),
       deps({
-        surfaceFor: async () => {
-          throw new Error("artifact read exploded");
+        fetchPayload: async () => {
+          if (first) {
+            first = false;
+            throw new Error("feed exploded");
+          }
+          return {
+            payload: [{ date: "2026-08-08", total_revenue: 11668 }],
+            raw: '[{"date":"2026-08-08","total_revenue":11668}]',
+          };
         },
       }) as never,
     );
     assert.equal(out.retried, 1);
+    assert.equal(out.done, 1);
   });
 
   test("the dead-letter queue is registered as a lane", async () => {
@@ -862,21 +881,25 @@ describe("the revenue queue, through the Worker's own handler", () => {
 
   test("the cron producer enqueues every eligible surface", async () => {
     const sent: string[] = [];
-    const result = (await handleScheduled(
-      { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
-      env(
-        { surfaces: [SURFACE] },
-        {
-          REVENUE_PROBES: {
-            async sendBatch(messages: Array<{ body: { surface_id: string } }>) {
-              for (const m of messages) sent.push(m.body.surface_id);
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        env(
+          { surfaces: [SURFACE] },
+          {
+            REVENUE_PROBES: {
+              async sendBatch(
+                messages: Array<{ body: { surface_id: string } }>,
+              ) {
+                for (const m of messages) sent.push(m.body.surface_id);
+              },
             },
           },
-        },
-      ) as never,
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number };
-    assert.deepEqual(result, { ok: true, enqueued: 1 });
+        ) as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
+    assert.deepEqual(result, { lane: "revenue-probe", ok: true, enqueued: 1 });
     assert.deepEqual(sent, ["sn-64-x"]);
   });
 
@@ -906,13 +929,15 @@ describe("the revenue queue, through the Worker's own handler", () => {
   test("no operational-surfaces artifact enqueues nothing, and says so", async () => {
     // The artifact-absent branch: an unreadable artifact must not read as "no
     // surfaces are eligible", which is the same claim by a different route.
-    const result = (await handleScheduled(
-      { cron: REVENUE_PROBE_CRON } as unknown as ScheduledController,
-      env(null, {
-        REVENUE_PROBES: { async sendBatch() {} },
-      }) as never,
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; reason?: string };
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        env(null, {
+          REVENUE_PROBES: { async sendBatch() {} },
+        }) as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
     assert.equal(result.ok, false);
     assert.equal(result.reason, "no_eligible_surfaces");
   });
