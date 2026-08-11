@@ -33,11 +33,8 @@ import {
   type NeonWriteResult,
 } from "./neon-write.ts";
 import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
+import { neonWriteRunner } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import {
   writePassTallyToNeon,
@@ -390,9 +387,10 @@ export async function mirrorNeuronSnapshotToNeon(
   if (!neonDualWriteEnabled(env, NEURONS_NEON_LANE)) return empty;
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
+  // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
+  // (empty lane list), so this changes nothing until a lane is named.
   const sql =
-    deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+    deps.sql ?? neonWriteRunner(env, ctx, NEURONS_NEON_LANE, hyperdrive);
   // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op: somebody
   // named the lane and the binding is missing, and that deserves a verdict
   // rather than silence. It is recorded under the lane so #9698 reports it.

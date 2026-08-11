@@ -433,6 +433,7 @@ import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 // this bundle and pushed it over the Worker startup CPU limit.
 import { MCP_TIERED_RATE_LIMIT } from "../src/api-tiers.ts";
 import { createPgSql } from "../src/pg-sql.ts";
+import { neonWriteRunner } from "../src/neon-write-buffer.ts";
 import type { ChainAlertTriggers } from "../generated/db/types.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
@@ -7644,39 +7645,65 @@ export function decodeBlockHeader(
   return { blockTag: rawNumber, blockNumber, timestampSeconds };
 }
 
+/**
+ * The lane name this write reports and buffers under (#10677).
+ *
+ * Named like the `src/*-neon-write.ts` lanes because it now behaves like one:
+ * same runner, same flag, same fire-and-forget contract.
+ */
+export const TAO_USD_INDEX_NEON_LANE = "tao-usd-index";
+
 export async function writeTaoUsdIndexRow(
   env: Env,
   row: TaoUsdIndexRow,
   ctx?: ExecutionContext,
-): Promise<{ inserted: boolean; skipped?: boolean; reason?: string }> {
+): Promise<{ written: boolean; skipped?: boolean; reason?: string }> {
   // The provenance array is stringified into the JSON-holding TEXT `pools`
   // column.
   //
-  // RETURNING plus a length check, rather than trusting a rowcount: ON CONFLICT
-  // DO NOTHING returns zero rows on a re-run, which is precisely the signal
-  // wanted -- "this height was already recorded" is a success, not a failure.
+  // NO `RETURNING`, AND THAT IS THE POINT (#10677). This used to return the
+  // written block_number and report `inserted: written.length > 0`, which made
+  // it the one Neon writer whose result the caller consumed -- and therefore
+  // the one writer that could not be deferred through the write-behind buffer
+  // (src/neon-write-buffer.ts refuses a RETURNING statement rather than hand
+  // back an empty result that reads as "already present"). Since this fires
+  // every 60s it was also the single lane most able to keep the compute awake
+  // on its own, so the asymmetry cost the whole buffer its saving.
+  //
+  // Losing the inserted/duplicate distinction costs nothing real: the Workers
+  // runtime discards a scheduled() return value, so the only consumer was this
+  // repo's own tests, and `ON CONFLICT DO NOTHING` already makes a re-run of
+  // one height a genuine no-op. Whether heights are actually landing is
+  // measured where it belongs -- src/tao-usd-index-watchdog.ts reads the table.
+  //
   // `ctx` is required because createPgSql returns the pooled connection
   // through waitUntil; without one this would leak a connection per tick, so
   // it declines rather than writing.
-  if (!env.HYPERDRIVE?.connectionString || !ctx) {
-    return { inserted: false, skipped: true, reason: "no store bound" };
+  const sql = neonWriteRunner(
+    env as unknown as Record<string, unknown>,
+    ctx ?? null,
+    TAO_USD_INDEX_NEON_LANE,
+    env.HYPERDRIVE,
+  );
+  if (!sql) {
+    return { written: false, skipped: true, reason: "no store bound" };
   }
-  const sql = createPgSql(env.HYPERDRIVE, ctx);
-  const written = await sql<Record<string, unknown>>`
-    INSERT INTO tao_usd_index
+  await sql.unsafe(
+    `INSERT INTO tao_usd_index
       (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
-    VALUES (
-      ${row.block_number},
-      ${row.observed_at},
-      ${row.usd_per_tao},
-      ${row.price_basis},
-      ${row.eth_usd},
-      ${row.pool_count},
-      ${JSON.stringify(row.pools)}
-    )
-    ON CONFLICT (block_number, observed_at) DO NOTHING
-    RETURNING block_number`;
-  return { inserted: written.length > 0 };
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (block_number, observed_at) DO NOTHING`,
+    [
+      row.block_number,
+      row.observed_at,
+      row.usd_per_tao,
+      row.price_basis,
+      row.eth_usd,
+      row.pool_count,
+      JSON.stringify(row.pools),
+    ],
+  );
+  return { written: true };
 }
 
 /**
@@ -7744,7 +7771,7 @@ export async function ingestTaoUsdIndex(
     });
     if (!row) return { ok: false, reason: "observation_unusable" };
 
-    const { inserted } = await writeTaoUsdIndexRow(env, row, ctx);
+    const { written } = await writeTaoUsdIndexRow(env, row, ctx);
     // The hot-path copy, beside the durable row (#10381). Best-effort and
     // AFTER the Neon write, in that order deliberately: KV is a cache of the
     // series, so a KV failure must never cost a minute of the series itself.
@@ -7753,7 +7780,12 @@ export async function ingestTaoUsdIndex(
     await writeTaoUsdCurrentKv(env, row);
     return {
       ok: true,
-      inserted,
+      // `written`, not `inserted` (#10677): the statement no longer RETURNs, so
+      // this reports that the write was issued rather than whether the height
+      // was new. ON CONFLICT DO NOTHING makes a repeat a real no-op, and
+      // src/tao-usd-index-watchdog.ts measures the table for what actually
+      // landed.
+      written,
       block_number: row.block_number,
       usd_per_tao: row.usd_per_tao,
       price_basis: row.price_basis,

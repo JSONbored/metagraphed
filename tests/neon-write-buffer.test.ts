@@ -13,6 +13,7 @@ import { describe, test } from "vitest";
 import {
   chunkKey,
   CHUNK_BYTES,
+  createBufferedPgSql,
   decodeStatement,
   DO_VALUE_LIMIT_BYTES,
   encodeStatement,
@@ -22,6 +23,7 @@ import {
   MAX_BUFFERED_STATEMENTS,
   neonWriteBufferEnabled,
   neonWriteBufferLanes,
+  neonWriteRunner,
   seqFromChunkKey,
   shouldFlushEarly,
   splitPayload,
@@ -239,5 +241,151 @@ describe("neonWriteBufferLanes", () => {
     assert.equal(neonWriteBufferEnabled(env, "blocks-head"), true);
     assert.equal(neonWriteBufferEnabled(env, "chain-detail"), false);
     assert.equal(neonWriteBufferEnabled({}, "blocks-head"), false);
+  });
+});
+
+describe("neonWriteRunner", () => {
+  const HD = { connectionString: "postgresql://x" };
+  const CTX = { waitUntil: () => undefined };
+
+  function namespace() {
+    const sent: unknown[] = [];
+    return {
+      sent,
+      ns: {
+        idFromName: (n: string) => n,
+        get: () => ({
+          async fetch(request: Request) {
+            sent.push(await request.json());
+            return new Response("{}", { status: 200 });
+          },
+        }),
+      },
+    };
+  }
+
+  test("a flagged lane with the binding present returns the BUFFERED runner", async () => {
+    const n = namespace();
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: n.ns, NEON_WRITE_BUFFER_LANES: "blocks-head" },
+      CTX,
+      "blocks-head",
+      HD,
+    );
+    await sql?.unsafe("INSERT INTO t VALUES ($1)", [1]);
+    assert.equal(n.sent.length, 1, "must enqueue, not connect");
+  });
+
+  test("an UNFLAGGED lane goes direct even with the binding present", async () => {
+    const n = namespace();
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: n.ns },
+      CTX,
+      "blocks-head",
+      HD,
+    );
+    assert.ok(sql, "a direct runner is still a runner");
+    assert.deepEqual(n.sent, []);
+  });
+
+  test("a flagged lane with NO binding falls through to direct", async () => {
+    // A half-applied config. Refusing here would drop capture data over a
+    // missing binding, which is the wrong direction to fail.
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER_LANES: "blocks-head" },
+      CTX,
+      "blocks-head",
+      HD,
+    );
+    assert.ok(sql);
+  });
+
+  test("no Hyperdrive and no buffer is no runner at all", async () => {
+    assert.equal(neonWriteRunner({}, CTX, "l", undefined), null);
+    assert.equal(neonWriteRunner({}, CTX, "l", { connectionString: "" }), null);
+  });
+
+  test("a bound Hyperdrive with no ctx is also no runner", async () => {
+    // createPgSql needs somewhere to park its teardown.
+    assert.equal(neonWriteRunner({}, null, "l", HD), null);
+  });
+});
+
+describe("every write lane routes through neonWriteRunner", () => {
+  test("no src/*-neon-write.ts builds its own connection", async () => {
+    // THE OMISSION THIS GUARDS. A lane that keeps calling createPgSql directly
+    // still works, still passes its own tests, and silently denies the buffer
+    // its saving -- invisible until someone measures the compute again. Six
+    // runners had the identical line before #10659; this stops a seventh.
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { repoRoot } = await import("../scripts/lib.ts");
+    const path = await import("node:path");
+    const dir = path.join(repoRoot, "src");
+    const offenders: string[] = [];
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith("-neon-write.ts")) continue;
+      const source = readFileSync(path.join(dir, file), "utf8")
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join("\n");
+      if (/\bcreatePgSql\s*\(/.test(source)) offenders.push(file);
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      "these lanes bypass the buffer; use neonWriteRunner",
+    );
+  });
+});
+
+describe("the buffer refuses what it cannot honour", () => {
+  function namespace() {
+    const sent: unknown[] = [];
+    return {
+      sent,
+      ns: {
+        idFromName: (n: string) => n,
+        get: () => ({
+          async fetch(request: Request) {
+            sent.push(await request.json());
+            return new Response("{}", { status: 200 });
+          },
+        }),
+      },
+    };
+  }
+
+  test("a RETURNING statement throws instead of getting an empty result", async () => {
+    // The one way buffering could produce a CONFIDENTLY WRONG answer rather
+    // than a slow one. `RETURNING id` + `rows.length > 0` is how a caller
+    // learns its row was new; `[]` would read as "already present" for a row
+    // that has not been written yet. tao_usd_index is exactly this shape.
+    const n = namespace();
+    const sql = createBufferedPgSql(n.ns, "tao-usd");
+    await assert.rejects(
+      () =>
+        sql.unsafe(
+          "INSERT INTO tao_usd_index (a) VALUES ($1) ON CONFLICT DO NOTHING RETURNING block_number",
+          [1],
+        ),
+      /cannot defer a statement that RETURNs rows/,
+    );
+    assert.deepEqual(n.sent, [], "nothing may be enqueued");
+  });
+
+  test("case and spacing do not let one slip through", async () => {
+    const sql = createBufferedPgSql(namespace().ns, "l");
+    await assert.rejects(() =>
+      sql.unsafe("INSERT INTO t VALUES (1) returning id"),
+    );
+  });
+
+  test("the word must stand alone -- a column named returning_at is fine", async () => {
+    // A false positive costs a lane the buffer; it must not fire on a column
+    // or a string literal that merely contains the word.
+    const n = namespace();
+    const sql = createBufferedPgSql(n.ns, "l");
+    await sql.unsafe("INSERT INTO t (returning_at) VALUES ($1)", [1]);
+    assert.equal(n.sent.length, 1);
   });
 });

@@ -184,20 +184,39 @@ describe("writeTaoUsdIndexRow", () => {
     });
   });
 
-  it("reports a re-run of the same height as not inserted", async () => {
-    // ON CONFLICT DO NOTHING returns zero rows. That is a success — the height
-    // is already recorded — and the flag has to say so rather than read as a
-    // failed write.
+  it("reports the write as issued, not whether the height was new", async () => {
+    // #10677: the statement no longer RETURNs, so a re-run and a first write
+    // report the SAME thing. That is the point -- consuming the result was
+    // what made this the one Neon writer that could not be deferred through
+    // the write-behind buffer, and it fires every 60s, which is the cadence
+    // most able to keep the compute awake on its own.
+    //
+    // Nothing real is lost: ON CONFLICT DO NOTHING already makes a repeated
+    // height a genuine no-op, and whether heights are landing is measured
+    // against the table by src/tao-usd-index-watchdog.ts.
     pg.control.rows = [];
     await expect(writeTaoUsdIndexRow(env, row, ctx)).resolves.toEqual({
-      inserted: false,
+      written: true,
+    });
+    pg.control.rows = null;
+    await expect(writeTaoUsdIndexRow(env, row, ctx)).resolves.toEqual({
+      written: true,
     });
   });
 
-  it("reports a first write as inserted", async () => {
-    await expect(writeTaoUsdIndexRow(env, row, ctx)).resolves.toEqual({
-      inserted: true,
-    });
+  it("issues the statement with bound parameters and no RETURNING", async () => {
+    // The uniform shape every other Neon write lane already has, and the
+    // precondition for buffering it: src/neon-write-buffer.ts REFUSES a
+    // RETURNING statement rather than hand back an empty result that would
+    // read as "already present".
+    pg.control.queries.length = 0;
+    await writeTaoUsdIndexRow(env, row, ctx);
+    const text = pg.control.queries.at(-1)?.text ?? "";
+    expect(text).toMatch(/INSERT INTO tao_usd_index/);
+    expect(text).toMatch(
+      /ON CONFLICT \(block_number, observed_at\) DO NOTHING/,
+    );
+    expect(text).not.toMatch(/RETURNING/i);
   });
 
   // The write DECLINES rather than falling back now that Neon is the only
@@ -207,7 +226,7 @@ describe("writeTaoUsdIndexRow", () => {
   // connection per minute-cadence tick.
   it("declines, saying why, when no store is bound", async () => {
     const declined = {
-      inserted: false,
+      written: false,
       skipped: true,
       reason: "no store bound",
     };
@@ -244,7 +263,7 @@ describe("the ingestion tick", () => {
     const result = await ingestTaoUsdIndex(env, ctx);
     expect(result).toMatchObject({
       ok: true,
-      inserted: true,
+      written: true,
       block_number: 25_650_836,
       price_basis: "wrapped_onchain_median",
       pool_count: 2,
@@ -272,11 +291,13 @@ describe("the ingestion tick", () => {
   });
 
   it("reports a re-ingested height without failing", async () => {
+    // Indistinguishable from a first write now, deliberately -- see the
+    // "reports the write as issued" case above.
     pg.control.rows = [];
     stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
     await expect(ingestTaoUsdIndex(env, ctx)).resolves.toMatchObject({
       ok: true,
-      inserted: false,
+      written: true,
     });
   });
 
