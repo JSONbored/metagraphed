@@ -675,9 +675,27 @@ export const ROUTE_QUERY_SCHEMAS = {
     format: formatSchema().optional(),
   }),
   "/api/v1/validators/{hotkey}/nominators": z.object({
+    // Described here rather than on the MCP tool, so BOTH surfaces carry the
+    // sentence -- REST published this parameter with no prose at all, and the
+    // one thing a caller cannot guess about it is that the two values answer
+    // different questions rather than the same one better or worse (#10793).
     basis: z
       .enum(NOMINATOR_BASES)
-      .meta({ default: DEFAULT_NOMINATOR_BASIS })
+      .describe(
+        "Which question to answer. `flow` (the default) sums TAO MOVED inside " +
+          "`window`, so a delegator who staked earlier and has not touched it " +
+          "since is absent. `positions` reads the standing ledger instead: " +
+          // "coldkey (an ss58 address)" rather than a bare one, matching this
+          // route's existing description and scan-public-safety's explanatory-
+          // parenthetical exemption: an ss58 coldkey is public on-chain data,
+          // and the scan's job is to catch prose that treats it as a secret.
+          "every coldkey (an ss58 address) delegating right now and how much " +
+          "alpha each holds " +
+          "per subnet, whenever they staked. Different units over different " +
+          "time semantics, so the two are not comparable. On `positions`, " +
+          "`window` and `sort` are REJECTED rather than ignored.",
+      )
+      .meta({ default: DEFAULT_NOMINATOR_BASIS, examples: ["positions"] })
       .optional(),
     window: windowSchema(["7d", "30d", "90d"] as const, "30d").optional(),
     sort: sortSchema(

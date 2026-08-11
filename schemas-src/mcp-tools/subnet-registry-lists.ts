@@ -18,6 +18,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
@@ -28,6 +30,7 @@ import {
   limitSchema,
   netuidSchema,
   numericCursorSchema,
+  offsetSchema,
   orderSchema,
   projectableRows,
   providerSlugSchema,
@@ -126,16 +129,63 @@ export type ListSubnetCandidatesOutput = z.infer<
   typeof ListSubnetCandidatesOutputSchema
 >;
 
+/**
+ * #10793. This took `netuid` alone and returned the whole ledger -- measured at
+ * 77 claims / ~33 KB for SN64, with no pagination block in the response at all,
+ * while GET /api/v1/subnets/{netuid}/evidence publishes `q`, `sort`, `order`,
+ * `limit` and `cursor`. The same no-lever shape #10011 found on
+ * get_coverage_depth (293 KB, zero arguments) and #10027 resolved by giving it
+ * a page.
+ *
+ * The four are NOT copied from the sibling below: both read the `claims`
+ * collection, so both take their vocabulary from it, and a search key or sort
+ * column added there reaches the two tools together.
+ */
 export const GetSubnetEvidenceInputSchema = z
   .object({
     netuid: netuidSchema(),
+    q: querySchema().optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
+    order: orderSchema().optional(),
+    // Both numbers come from the constants that DECIDE them, not from the
+    // sibling's literals. This handler runs applySubnetListQuery, so the
+    // ceiling is whatever the route publishes -- MAX_LIMIT, since
+    // validateListQuery reads the bound off the published schema -- and the
+    // default is the one applyMcpQueryFilters really supplies. Restating the
+    // sibling's `limitSchema(100, 20)` would advertise a ceiling this handler
+    // does not enforce: `limit: 200` is served, not rejected.
+    limit: limitSchema(MAX_LIMIT, MCP_LIST_LIMIT_DEFAULT).optional(),
+    // An integer OFFSET, which is what this route publishes
+    // (`{minimum: 0, type: integer}`) -- not the keyset cursor.
+    cursor: offsetSchema().optional(),
   })
   .strict();
 export type GetSubnetEvidenceInput = z.infer<
   typeof GetSubnetEvidenceInputSchema
 >;
 
-export const GetSubnetEvidenceOutputSchema = SubnetEvidenceArtifactSchema;
+// Extended with the page fields the handler now returns. Left as the full
+// artifact rather than narrowed to the sibling's `pick({netuid, claims})`: this
+// tool has always returned `name`, `slug` and `generated_at` too, and dropping
+// them to share a schema would break callers for tidiness.
+//
+// FIVE fields, not McpListPageFields' seven. applySubnetListQuery lifts
+// total/returned/cursor/limit/next_cursor out of the engine's pagination block
+// and does not lift `sort`/`order`, so spreading the shared group here would
+// declare two fields this handler never emits -- the sibling below carries all
+// seven because its loader really does return them.
+//
+// Optional because the lift is conditional on the engine having produced a
+// pagination block at all; a required field the handler can omit is a schema
+// that fails on its own output.
+export const GetSubnetEvidenceOutputSchema =
+  SubnetEvidenceArtifactSchema.extend({
+    total: McpListPageFields.total.optional(),
+    returned: McpListPageFields.returned.optional(),
+    limit: McpListPageFields.limit.optional(),
+    cursor: McpListPageFields.cursor.optional(),
+    next_cursor: McpListPageFields.next_cursor.optional(),
+  });
 export type GetSubnetEvidenceOutput = z.infer<
   typeof GetSubnetEvidenceOutputSchema
 >;

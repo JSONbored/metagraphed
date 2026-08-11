@@ -84,8 +84,11 @@ export const GET_NETWORK_HEALTH_MCP_TOOL = {
   description:
     "Fetch the live global operational health rollup: global surface counts " +
     "by status (ok/degraded/failed/unknown) and per-subnet operational status " +
-    "from the ~15-minute health prober (KV health:current → D1 surface_status). " +
-    "Use it for a network-wide health snapshot before drilling into " +
+    "from the ~15-minute health prober (KV health:current → Postgres " +
+    "surface_status). Narrow with netuid/status, sort with sort + order, and " +
+    "page with limit (default 20) / cursor -- the subnet rows ARE paged, so a " +
+    "call that omits limit sees 20 of them while `global` still counts every " +
+    "one. Use it for a network-wide health snapshot before drilling into " +
     "get_subnet_health or get_health_trends. Mirrors GET /api/v1/health.",
   inputSchema: inputJsonSchema(GetNetworkHealthInputSchema),
 };

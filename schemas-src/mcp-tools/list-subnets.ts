@@ -23,6 +23,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  querySchema,
   sortSchema,
 } from "./shared.ts";
 import {
@@ -42,6 +43,15 @@ export const ListSubnetsInputSchema = z
   .object({
     cursor: numericCursorSchema().optional(),
     limit: limitSchema(100, 50).optional(),
+    // Free-text over `name` and `slug` -- the `subnets` collection's own
+    // search_keys, applied by the engine's own matcher (#10793).
+    //
+    // NOT a duplicate of search_subnets, which is a curated view on
+    // /api/v1/search with its own ranking and cannot be combined with anything.
+    // Here `q` is one filter among the rest, so "inference in the name AND
+    // readiness above 70" becomes reachable -- it was reachable from neither
+    // tool before.
+    q: querySchema().optional(),
     // A SUBNET status, not a health one. This described "rows with this health
     // status" and gave `ok` as the example -- a health verdict, on a parameter
     // whose route accepts active | inactive. The prose and the example both

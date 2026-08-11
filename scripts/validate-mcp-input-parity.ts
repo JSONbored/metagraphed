@@ -93,7 +93,49 @@ const REQUEST_HEADER =
 const RANKED_OUTPUT =
   "the tool's output order IS its answer (ranked by match/capability); a caller-supplied sort would overwrite the ranking it was called for (#10605)";
 
-/** Standing debt: the route publishes it and the tool cannot pass it. */
+/**
+ * The tool takes this VALUE already, under another argument.
+ *
+ * `get_extrinsic_chain_events` is pinned to one extrinsic by `ref`, a composite
+ * `block_number-extrinsic_index` it parses and validates. Both halves reach the
+ * feed loader from there, so accepting `block` and `extrinsic` separately would
+ * give a caller a second way to say what they already said -- and therefore a
+ * way to contradict it, which has no correct resolution.
+ */
+const RESOLVED_FROM_REF =
+  "the tool already takes this inside `ref` (block_number-extrinsic_index) and passes it on; a second way to say it is a way to contradict it (#10793)";
+
+/**
+ * A range bound over a set that spans one point.
+ *
+ * `before` is a block-height ceiling (`safeBlockNumber`), and this tool reads
+ * the events of a single extrinsic -- so every row shares one block_number and
+ * the bound selects either all of them or none. Exposing it would publish a
+ * filter whose only two outcomes are "no effect" and "empty".
+ */
+const SINGLE_BLOCK_SCOPE =
+  "a block-height bound on a tool scoped to ONE block by `ref`; it can only select every event or none (#10793)";
+
+/**
+ * The route's filter, on the route's OWN tool.
+ *
+ * `list_review_gaps` is declared against `/api/v1/gaps` with `/api/v1/review/gaps`
+ * as an additional route, but it reads /metagraph/review/gap-priorities.json
+ * through the `review-gap-priorities` collection -- which has no
+ * `coverage_level` column to filter on. `/api/v1/gaps` is `list_gaps`' route,
+ * and `list_gaps` exposes `coverage_level` already.
+ */
+const SIBLINGS_ROUTE_FILTER =
+  "this filter belongs to the sibling tool that actually mirrors the route (list_gaps); this tool reads the review feed, whose collection has no such column (#10793)";
+
+/**
+ * Standing debt: the route publishes it and the tool cannot pass it.
+ *
+ * EMPTY as of #10793, and kept anyway. The next route to publish a parameter
+ * its tool cannot pass needs somewhere honest to land, and deleting the reason
+ * would make "add it to DECLARED with a made-up category" the path of least
+ * resistance. An entry here is an admission with a deadline, not a decision.
+ */
 const NOT_YET_EXPOSED =
   "NOT YET EXPOSED -- the route publishes this and the tool cannot pass it; delete this entry by adding it, not by keeping it";
 
@@ -180,42 +222,31 @@ for (const [key, reason] of Object.entries({
   "list_subnets.max_readiness": RENAMED_ON_THE_MCP_SIDE,
   // --- headers -------------------------------------------------------------
   "get_alert_trigger.owner_token": REQUEST_HEADER,
-  // --- standing debt -------------------------------------------------------
-  // Free-text search over a list the tool otherwise mirrors. Each of these
-  // routes publishes `q` and the tool cannot pass it.
-  // #9981 gave four document-shaped routes a page. Their tools do not pass it
-  // YET, and that is a second decision rather than an oversight:
-  // applyMcpQueryFilters supplies MCP_LIST_LIMIT_DEFAULT, so exposing `limit`
-  // here changes each tool's DEFAULT payload -- a behaviour change for every
-  // agent already calling them. #9981 says that choice is per tool ("changing
-  // a default on a published route is a behaviour change... which is why this
-  // is not a one-line sweep"), so the capability landed first and the default
-  // is chosen next, tool by tool. Tracked in #10605.
+  // --- output whose ORDER is the answer ------------------------------------
   "find_subnets_by_capability.sort": RANKED_OUTPUT,
   "find_subnets_by_capability.order": RANKED_OUTPUT,
   "find_subnet_for_task.sort": RANKED_OUTPUT,
   "find_subnet_for_task.order": RANKED_OUTPUT,
-  "list_subnets.q": NOT_YET_EXPOSED,
-  "get_subnet_economics.q": NOT_YET_EXPOSED,
-  "get_subnet_evidence.q": NOT_YET_EXPOSED,
-  "get_coverage_depth.q": NOT_YET_EXPOSED,
-  "list_enrichment_targets.q": NOT_YET_EXPOSED,
-  "find_subnet_opportunities.q": NOT_YET_EXPOSED,
-  "get_network_health.limit": NOT_YET_EXPOSED,
-  "get_network_health.sort": NOT_YET_EXPOSED,
-  "get_network_health.order": NOT_YET_EXPOSED,
-  "get_subnet_evidence.limit": NOT_YET_EXPOSED,
-  "get_subnet_evidence.sort": NOT_YET_EXPOSED,
-  "get_subnet_evidence.order": NOT_YET_EXPOSED,
-  "get_validator_nominators.basis": NOT_YET_EXPOSED,
-  "get_extrinsic_chain_events.pallet": NOT_YET_EXPOSED,
-  "get_extrinsic_chain_events.method": NOT_YET_EXPOSED,
-  "get_extrinsic_chain_events.block": NOT_YET_EXPOSED,
-  "get_extrinsic_chain_events.extrinsic": NOT_YET_EXPOSED,
-  "get_extrinsic_chain_events.before": NOT_YET_EXPOSED,
-  "list_review_gaps.coverage_level": NOT_YET_EXPOSED,
-  "list_enrichment_targets.sort": NOT_YET_EXPOSED,
-  "list_enrichment_targets.order": NOT_YET_EXPOSED,
+  // list_enrichment_targets returns the coverage-depth scorecard's ranked
+  // QUEUE and carries `rank` on every row, so the same judgement applies: a
+  // caller-supplied sort would replace the priority order this tool exists to
+  // publish. `q` is exposed rather than declined because a filter narrows the
+  // queue without reordering it -- rank survives a filter and does not survive
+  // a re-sort (#10793).
+  "list_enrichment_targets.sort": RANKED_OUTPUT,
+  "list_enrichment_targets.order": RANKED_OUTPUT,
+  // --- resolved from another argument the tool already takes ---------------
+  "get_extrinsic_chain_events.block": RESOLVED_FROM_REF,
+  "get_extrinsic_chain_events.extrinsic": RESOLVED_FROM_REF,
+  "get_extrinsic_chain_events.before": SINGLE_BLOCK_SCOPE,
+  // --- the sibling list tool carries them (#10793) -------------------------
+  // Both mirror /api/v1/economics, and `get_economics` IS that route's list
+  // view -- it already publishes q/sort/order/limit/cursor. Every OTHER list
+  // parameter on these two tools was already declared CURATED_VIEW above; `q`
+  // sat under NOT_YET_EXPOSED by oversight rather than by a second decision.
+  "get_subnet_economics.q": CURATED_VIEW,
+  "find_subnet_opportunities.q": CURATED_VIEW,
+  "list_review_gaps.coverage_level": SIBLINGS_ROUTE_FILTER,
 })) {
   DECLARED[key] = reason;
 }

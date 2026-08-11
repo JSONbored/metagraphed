@@ -49626,6 +49626,7 @@ export interface operations {
     validatorNominators: {
         parameters: {
             query?: {
+                /** @description Which question to answer. `flow` (the default) sums TAO MOVED inside `window`, so a delegator who staked earlier and has not touched it since is absent. `positions` reads the standing ledger instead: every coldkey (an ss58 address) delegating right now and how much alpha each holds per subnet, whenever they staked. Different units over different time semantics, so the two are not comparable. On `positions`, `window` and `sort` are REJECTED rather than ignored. */
                 basis?: "flow" | "positions";
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d" | "90d";

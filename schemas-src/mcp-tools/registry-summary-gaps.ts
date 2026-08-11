@@ -19,6 +19,7 @@ import {
   numericCursorSchema,
   orderSchema,
   projectableRows,
+  querySchema,
   sortSchema,
 } from "./shared.ts";
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
@@ -87,6 +88,12 @@ export const ListEnrichmentTargetsInputSchema = z
       .meta({ examples: ["hard-blocked"] }),
     netuid:
       API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.netuid.optional(),
+    // Free-text over the collection's own search_keys -- name, slug,
+    // top_gap_codes, recommended_next_action (#10793). It NARROWS the ranked
+    // queue rather than reordering it, which is why `q` lands here while this
+    // tool's `sort`/`order` are declined: rank survives a filter and does not
+    // survive a re-sort.
+    q: querySchema().optional(),
   })
   .strict();
 export type ListEnrichmentTargetsInput = z.infer<
@@ -153,6 +160,10 @@ export const ListEnrichmentTargetsOutputSchema = z
         gap_code: z.string().nullable(),
         agent_status: z.string().nullable(),
         netuid: z.int().min(0).nullable(),
+        // Added with the `q` input (#10793), because the comment above is a
+        // rule and not a description: a filter that narrowed the result and
+        // does not appear in the echo makes the echo a lie.
+        q: z.string().nullable(),
       })
       .passthrough()
       .optional(),

@@ -102,14 +102,17 @@ describe("global-operational-health", () => {
     assert.equal(GET_NETWORK_HEALTH_MCP_TOOL.name, "get_network_health");
     assert.match(GET_NETWORK_HEALTH_INSTRUCTIONS, /get_network_health/);
     // Asserted an EMPTY argument set until #10014: this tool took nothing at
-    // all and returned every subnet's health row on every call. It now takes
-    // the two filters its collection declares. Kept as an EXACT set so an
-    // argument appearing here by accident still fails.
+    // all and returned every subnet's health row on every call. #10014 gave it
+    // the two filters its collection declares, and #10793 the page its route
+    // publishes -- which the handler had been applying all along, silently, so
+    // that a caller got 20 of 123 subnets and a `next_cursor` no argument could
+    // accept. Kept as an EXACT set so an argument appearing here by accident
+    // still fails.
     assert.deepEqual(
       Object.keys(
         GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties ?? {},
       ).sort(),
-      ["netuid", "status"],
+      ["cursor", "limit", "netuid", "order", "sort", "status"],
     );
     assert.ok(
       new Ajv2020({ strict: false }).compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA),

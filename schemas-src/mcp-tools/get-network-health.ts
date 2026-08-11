@@ -14,7 +14,15 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
+import {
+  limitSchema,
+  offsetSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
 import { HealthSummaryArtifactSchema } from "../routes/health.ts";
 
 /**
@@ -38,6 +46,27 @@ export const GetNetworkHealthInputSchema = z
         "Restrict to subnets in this operational state. `failed` is the one an alerting caller usually wants; `unknown` means unprobed, which is NOT the same as healthy.",
       )
       .meta({ examples: ["failed"] }),
+    // The page the route publishes and this tool could not pass (#10797).
+    //
+    // The handler ALREADY pages: it runs applySubnetListQuery over the
+    // `health-subnets` collection with no explicit default, which
+    // applyMcpQueryFilters then serves at MCP_LIST_LIMIT_DEFAULT. So a caller
+    // was getting 20 of the network's ~129 health rows with no argument that
+    // could say otherwise, and no `limit` in the schema to reveal that a
+    // narrowing had happened at all. Exposing it is the only change here --
+    // the default is what it already was, which is why both numbers come from
+    // the constants that decide them rather than from literals restated here.
+    limit: limitSchema(MAX_LIMIT, MCP_LIST_LIMIT_DEFAULT).optional(),
+    // Integer OFFSET, matching what the route publishes
+    // (`{minimum: 0, type: integer}`). Added alongside `limit` deliberately: a
+    // page size with no way to advance is a narrowing dressed as a capability.
+    cursor: offsetSchema().optional(),
+    // The collection's own sort list, so a column added to the health model
+    // cannot become one this tool rejects.
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["health-subnets"].sort_fields,
+    ).optional(),
+    order: orderSchema().optional(),
   })
   .strict();
 export type GetNetworkHealthInput = z.infer<typeof GetNetworkHealthInputSchema>;
