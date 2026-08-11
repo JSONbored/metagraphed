@@ -25,6 +25,7 @@ import {
   nominatorCountSyncRowSchema,
   nominatorPositionSyncRowSchema,
   subnetHyperparamsSyncRowSchema,
+  subnetIdentitySyncRowSchema,
   validateSyncRows,
 } from "../src/sync-row-schemas.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
@@ -145,6 +146,7 @@ import {
   identityHash,
   buildAccountIdentityHistory,
 } from "../src/account-identity-history.ts";
+import { identityHash as subnetIdentityHash } from "../src/subnet-identity-history.ts";
 
 // metagraphed#6769: a caught write/query failure (logged via console.error,
 // converted to a clean error response) never reaches PostHog's own top-level
@@ -378,6 +380,9 @@ import {
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
   SUBNET_HYPERPARAMS_NEON_LANE,
+  SUBNET_IDENTITY_NEON_LANE,
+  SUBNET_IDENTITY_FIELDS,
+  SUBNET_IDENTITY_HISTORY_COLUMNS,
   failedTables,
   mirrorFamilyToNeon,
   FAMILY_MIRROR_PLANS,
@@ -1897,6 +1902,165 @@ async function handleAccountIdentitySync(
     ok: true,
     account_identity_written: rows.length,
     history_appended: historyAppended,
+    stores: ["neon"],
+    neon: neon.results,
+  });
+}
+
+// --- POST /api/v1/internal/subnet-identity-sync (#10710) ------------------
+//
+// The write path this table never had. `subnet_identity_history` was
+// D1-primary with a Postgres mirror named `syncSubnetIdentityToPostgres` in
+// four places -- and that function was never written. D1 went away, so the
+// table has had no writer since, and the reads did not break: a Postgres miss
+// degrades to a schema-stable empty feed rather than a 404, so a store with no
+// writer read as a healthy, permanently frozen one.
+//
+// THE PRODUCER IS CHAIN-DIRECT. metagraphed-infra's `subnet-identity` poller
+// lane reads SubnetIdentitiesV3 straight from the chain and POSTs the whole
+// active set in one buffered request. It has been POSTing here and getting a
+// 404 since it shipped. The alternative producer -- deriving changes from the
+// hourly profiles artifact -- was rejected because that artifact descends from
+// a capture measured 54 days stale, with 82 of 129 subnets disagreeing with
+// the chain and 28 renamed.
+//
+// APPEND-ON-CHANGE, and the history conflicts on (netuid, identity_hash)
+// rather than (netuid, observed_at) like its siblings. The producer re-reads
+// every identity every pass, so the same revision arrives repeatedly at
+// different timestamps; conflicting on the timestamp would append a duplicate
+// row every pass and bury the provenance the table exists for.
+const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
+// ~129 rows, one per active netuid, each carrying a description and a few
+// URLs. Generous headroom on both.
+const SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES = 2_000_000;
+const SUBNET_IDENTITY_SYNC_MAX_ROWS = 2_000;
+const SUBNET_IDENTITY_SYNC_MAX_NETUID = 65_535;
+// One identity field. Bounded because these are owner-supplied strings from
+// the chain and land in TEXT columns the serving routes render.
+const SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES = 4_096;
+
+const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
+  columns: [...SUBNET_IDENTITY_HISTORY_COLUMNS, "captured_at"],
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxNetuid: SUBNET_IDENTITY_SYNC_MAX_NETUID,
+  maxStringBytes: SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES,
+});
+
+async function handleSubnetIdentitySync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
+  if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
+    return writeJson(
+      { error: "subnet-identity sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(SUBNET_IDENTITY_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_IDENTITY_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${SUBNET_IDENTITY_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_IDENTITY_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of subnet-identity rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > SUBNET_IDENTITY_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_IDENTITY_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  const check = validateSyncRows(
+    incoming,
+    SUBNET_IDENTITY_SYNC_ROW_SCHEMA,
+    "subnet-identity",
+  );
+  if (!check.ok) {
+    return writeJson({ error: check.error }, 400);
+  }
+
+  // Sanitized BEFORE hashing, so the hash the card stores and the hash the
+  // history conflicts on describe the same bytes that were written -- a raw NUL
+  // reaching one and not the other would make a revision look new forever.
+  const sanitized = (incoming as Row[]).map(sanitizeAccountIdentitySyncRow);
+
+  const rows: Row[] = [];
+  const historyRows: Row[] = [];
+  for (const row of sanitized) {
+    const snapshot: Row = {};
+    for (const field of SUBNET_IDENTITY_FIELDS) {
+      snapshot[field] = row[field] ?? null;
+    }
+    const hash = await subnetIdentityHash(snapshot);
+    const observedAt = row.observed_at ?? row.captured_at ?? null;
+    const base: Row = {
+      netuid: row.netuid,
+      block_number: row.block_number,
+      ...snapshot,
+      identity_hash: hash,
+    };
+    rows.push({ ...base, captured_at: observedAt });
+    historyRows.push({ ...base, observed_at: observedAt });
+  }
+
+  const neon = await mirrorFamilyToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    SUBNET_IDENTITY_NEON_LANE,
+    { rows, historyRows },
+  );
+
+  // AUTHORITATIVE: Neon is the only store, so its failure is the request's.
+  const failed = failedTables(neon);
+  if (!neon.attempted || (failed && failed.length > 0)) {
+    console.error("data-api subnet-identity-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed && failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "subnet-identity-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    subnet_identity_written: rows.length,
+    history_appended: historyRows.length,
     stores: ["neon"],
     neon: neon.results,
   });
@@ -7672,6 +7836,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/account-identity-sync"
     ) {
       return handleAccountIdentitySync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-identity-sync"
+    ) {
+      return handleSubnetIdentitySync(request, env, ctx);
     }
     if (
       request.method === "POST" &&

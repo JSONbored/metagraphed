@@ -225,6 +225,63 @@ export function accountIdentitySyncRowSchema({
     });
 }
 
+/**
+ * subnet_identity / subnet_identity_history rows, as the poller's
+ * `subnet-identity` lane sends them (#10710).
+ *
+ * EVERY IDENTITY FIELD IS NULLABLE, and that is the contract rather than
+ * laxness: a subnet whose owner never called set_identity has no name, and the
+ * producer drops empty strings to null rather than sending "". An empty string
+ * would let a consumer overwrite a real curated fallback with nothing, which is
+ * the failure the lane's own header calls out.
+ *
+ * netuid, block_number and observed_at are required: the table's
+ * append-on-change contract is meaningless without them, since a row with no
+ * block cannot be ordered against the revision it supersedes.
+ */
+export function subnetIdentitySyncRowSchema({
+  columns,
+  minCapturedAtMs,
+  maxNetuid,
+  maxStringBytes,
+}: SyncRowSchemaOptions & { maxNetuid: number; maxStringBytes: number }) {
+  return z
+    .looseObject({
+      netuid: z.number().int().min(0).max(maxNetuid),
+      block_number: z.number().int().min(0),
+      observed_at: capturedAtMs(minCapturedAtMs),
+    })
+    .superRefine((row, ctx) => {
+      onlyKnownColumns(columns)(row as Row, ctx);
+      for (const [key, value] of Object.entries(row as Row)) {
+        if (
+          key === "netuid" ||
+          key === "block_number" ||
+          key === "observed_at" ||
+          key === "captured_at"
+        ) {
+          continue;
+        }
+        if (value === null) continue;
+        if (typeof value !== "string") {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "must be a string or null",
+          });
+          continue;
+        }
+        if (utf8Bytes(value) > maxStringBytes) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: `must be at most ${maxStringBytes} UTF-8 bytes`,
+          });
+        }
+      }
+    });
+}
+
 /** validator_nominator_counts. */
 export function nominatorCountSyncRowSchema({
   columns,
