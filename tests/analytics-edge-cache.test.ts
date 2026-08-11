@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { archiveEnv } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -182,29 +183,48 @@ function mockCaches() {
 }
 
 // D1 fully eliminated (2026-07-17): percentiles/incidents/trends/bulk-trends/
-// global-incidents/uptime/trajectory now ALWAYS mark a Postgres-tier MISS as a
-// D1 fallback (there's no live D1 read left to tell "had rows" apart from
-// "cold"), so a MISS can never be cached -- only a Postgres-tier HIT is. This
-// backs a route with a call-counting DATA_API mock instead of a D1 mock, so the
-// MISS/HIT edge-cache invariants that used to run against a fake D1 can still
-// be exercised against the surviving cacheable path.
-function postgresTierEnv(
+// #10190: these routes' tier flag reads "d1"/"retired" and is absent from
+// DATA_API_FORWARD_FLAGS, so the DATA_API call this used to count never happened
+// in production. The upstream the edge cache actually protects is the STORE, so
+// that is what is counted now -- through the pg module double's onQuery hook.
+//
+// The MISS/HIT invariants are unchanged and still meaningful: a store-served
+// payload with real rows is cacheable (isFallback false), an empty one is not,
+// which is the same distinction the tier hit/miss used to draw.
+function storeUpstreamEnv(
   calls: unknown[],
   {
-    flag = "METAGRAPH_HEALTH_SOURCE",
-    body = { schema_version: 1 } as Row,
+    // Enough of a row for every reader that shares this helper: the incidents
+    // and trajectory routes format timestamps out of it, and a row without one
+    // fails as `Invalid time value` rather than as an empty result.
+    rows = [
+      {
+        netuid: 7,
+        surface: "api",
+        samples: 10,
+        healthy_samples: 10,
+        day: LAST_RUN_AT.slice(0, 10),
+        // formatTrajectory keys its points on snapshot_date and shifts dates off
+        // it -- a row without one throws `Invalid time value` rather than
+        // yielding an empty trajectory.
+        snapshot_date: LAST_RUN_AT.slice(0, 10),
+        completeness_score: 1,
+        observed_at: Date.parse(LAST_RUN_AT),
+        last_checked: Date.parse(LAST_RUN_AT),
+        first_seen: Date.parse(LAST_RUN_AT),
+        last_seen: Date.parse(LAST_RUN_AT),
+      },
+    ] as Row[],
     lastRunAt = LAST_RUN_AT as string | null,
   } = {},
 ) {
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  pg.control.rows = rows;
+  pg.control.onQuery = () => calls.push(1);
   return {
     ...createLocalArtifactEnv(),
-    [flag]: "postgres",
-    DATA_API: {
-      fetch: async () => {
-        calls.push(1);
-        return Response.json(body);
-      },
-    },
+    ...pgMockEnv(),
     METAGRAPH_CONTROL: {
       async get(key: string) {
         if (key === "health:meta") {
@@ -246,7 +266,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
 
     // Per-subnet percentiles (netuid + window both vary the key).
     const res = await handleRequest(
@@ -283,7 +303,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
 
@@ -324,7 +344,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
     const target =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=30d";
 
@@ -365,7 +385,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
 
     for (const url of [
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d",
@@ -552,29 +572,26 @@ describe("analytics edge cache", () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const dataApiCalls: string[] = [];
-    const env = {
-      ...analyticsEnv([]),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        async fetch(request: Request) {
-          dataApiCalls.push(request.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
+    // #10190: the tier this counted is retired; the subnet stake-flow
+    // PROJECTION is the upstream the cache protects, so its reads are what the
+    // MISS/HIT counts below measure.
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          rows: [
+            {
               netuid: 7,
-              window: "30d",
-              total_staked_tao: 0,
-              total_unstaked_tao: 0,
-              net_flow_tao: 0,
-              stake_events: 0,
-              unstake_events: 0,
+              event_kind: "StakeAdded",
+              total_tao: 0,
+              events: 0,
+              newest_observed: LAST_RUN_AT,
             },
-            generatedAt: LAST_RUN_AT,
-          });
+          ],
         },
       },
-    };
+    });
+    const env = { ...analyticsEnv([]), ...archive };
 
     // No ?window — should resolve to the 30d default and cache at ?window=30d.
     const first = await handleRequest(
@@ -584,7 +601,7 @@ describe("analytics edge cache", () => {
     );
     await Promise.resolve();
     assert.equal(first.status, 200);
-    const callsAfterMiss = dataApiCalls.length;
+    const callsAfterMiss = archive.keys.length;
     assert.equal(callsAfterMiss, 1);
 
     // Explicit ?window=30d is the canonical form — must be a cache HIT (no DATA_API).
@@ -597,7 +614,7 @@ describe("analytics edge cache", () => {
     );
     assert.equal(hit.status, 200);
     assert.equal(
-      dataApiCalls.length,
+      archive.keys.length,
       callsAfterMiss,
       "explicit ?window=30d must be a cache HIT (no DATA_API fetches)",
     );
@@ -935,7 +952,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
     const url =
       "https://api.metagraph.sh/api/v1/subnets/7/health/incidents?window=7d";
 
@@ -1010,7 +1027,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls, {
+    const env = storeUpstreamEnv(calls, {
       body: { schema_version: 1, windows: { "7d": {}, "30d": {} } },
     });
 
@@ -1518,7 +1535,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
     const base = "/api/v1/subnets/7/health/percentiles";
 
     const miss = await handleRequest(
@@ -1582,7 +1599,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = postgresTierEnv(calls);
+    const env = storeUpstreamEnv(calls);
     const base = "/api/v1/subnets/7/health/incidents";
 
     const miss = await handleRequest(
@@ -1683,9 +1700,7 @@ describe("analytics edge cache", () => {
       const cache = mockCaches();
       cache.install();
       const calls: unknown[] = [];
-      const env = r.store
-        ? { ...postgresTierEnv(calls), ...pgMockEnv() }
-        : postgresTierEnv(calls, { flag: r.flag });
+      const env = storeUpstreamEnv(calls);
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
       // MISS: calls the Postgres tier and caches under the route's key.
@@ -1966,7 +1981,7 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
-    const env = postgresTierEnv([]);
+    const env = storeUpstreamEnv([]);
 
     await handleRequest(
       new Request(
@@ -2107,30 +2122,24 @@ describe("degraded-tier labelling (#9110)", () => {
   });
 
   test("a real tier HIT is NOT labelled", async () => {
-    // A working DATA_API, so tryPostgresTier returns a body and nothing
-    // degrades. This is the direction that keeps the header meaningful: if a
-    // healthy response carried it too, consumers would learn to ignore it.
+    // A projection that answers, so nothing degrades. This is the direction
+    // that keeps the header meaningful: if a healthy response carried it too,
+    // consumers would learn to ignore it. (#10190: the tier this used to drive
+    // is retired, so the #9146 projection is the measured read.)
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            group_by: "module",
-            observed_at: LAST_RUN_AT,
-            total_extrinsics: 1_347_135,
-            calls: [
-              {
-                call_module: "SubtensorModule",
-                call_function: null,
-                count: 603_215,
-                share: 0.4478,
-              },
-            ],
-          }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            newest_observed: LAST_RUN_AT,
+            total: 1_347_135,
+            groups: {
+              module: [{ call_module: "SubtensorModule", count: 603_215 }],
+            },
+          },
+        },
+      }),
     } as unknown as Env;
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/chain/calls?window=7d"),
@@ -2142,7 +2151,7 @@ describe("degraded-tier labelling (#9110)", () => {
     assert.equal(
       body.data.total_extrinsics,
       1_347_135,
-      "the tier body must be what is served",
+      "the projection's own total must be what is served",
     );
     assert.equal(
       res.headers.get(DEGRADED_HEADER),
