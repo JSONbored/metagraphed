@@ -75,7 +75,7 @@ type SourceFlagName = Extract<keyof Env, `METAGRAPH_${string}_SOURCE`>;
  * any of the three wrangler configs holds "postgres" any more; they are all
  * "d1" or "retired". So these tests pin tryPostgresTier's own forwarding
  * CONTRACT, not a path production takes -- the live path is its other
- * disjunct, `"d1"` plus membership in DATA_API_D1_FLAGS. They are kept because
+ * disjunct, `"d1"` plus membership in DATA_API_FORWARD_FLAGS. They are kept because
  * that contract, and the `=== "postgres"` branch implementing it, are still in
  * the tree: deleting the tests while the branch stays would leave it untested
  * rather than retired. Retiring the disjunct itself is the change that makes

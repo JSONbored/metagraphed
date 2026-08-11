@@ -230,7 +230,7 @@ function makeDb({ priorStatus = [] as unknown[] } = {}) {
 // INSERT-statement inspection).
 // healthSource is a parameter, not a constant, because the flag VALUE is what
 // #9522 turned on: production has read "d1" since the box was retired, and
-// tryPostgresTier only forwards "d1" for flags listed in DATA_API_D1_FLAGS.
+// tryPostgresTier only forwards "d1" for flags listed in DATA_API_FORWARD_FLAGS.
 // Every continuity test below ran under "postgres", which forwards, so they
 // all passed while production silently resolved the prior read to null.
 function makeProberEnv({

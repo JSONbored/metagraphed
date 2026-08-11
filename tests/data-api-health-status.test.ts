@@ -7,7 +7,7 @@
 // with since=0 for the last known row per surface, src/health-serving.ts with
 // a freshness cutoff for its KV-cold serving fallback -- and both got null on
 // every call, because nothing answered the path AND the flag that gates the
-// forward was not in DATA_API_D1_FLAGS.
+// forward was not in DATA_API_FORWARD_FLAGS.
 //
 // The consequence was not a missing field but a broken invariant: with an
 // empty prior map the prober rewrote last_ok to null for every surface that

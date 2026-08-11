@@ -3,7 +3,7 @@
 // This helper exists because the previous route through tryPostgresTier could
 // not be fixed without collateral: METAGRAPH_HEALTH_SOURCE is shared with
 // /api/v1/health/trends, /api/v1/incidents and /api/v1/internal/compare-health,
-// none of which data-api implements, so adding it to DATA_API_D1_FLAGS would
+// none of which data-api implements, so adding it to DATA_API_FORWARD_FLAGS would
 // have made all three forward, take a non-2xx, and emit a
 // capturePostgresTierFallback exception per request.
 //
