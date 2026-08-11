@@ -4,6 +4,11 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
+import {
+  forbiddenDataApi,
+  lakehouse,
+  LAKEHOUSE_ENV,
+} from "./helpers/cold-tier-env.ts";
 import { handleRequest } from "../workers/api.ts";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
@@ -3325,29 +3330,22 @@ describe("handleAccountCounterparties", () => {
 
   test("?format=csv exports the list-mode leaderboard as CSV", async () => {
     const { env } = dbWith({ accountEvents: [accountEventRow()] });
-    env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          counterparty_count: 1,
-          transfers_scanned: 1,
-          scan_capped: false,
-          total_sent_tao: 4.2,
-          total_received_tao: 0,
-          counterparties: [
-            {
-              address: COUNTERPARTY,
-              sent_tao: 4.2,
-              received_tao: 0,
-              net_tao: -4.2,
-              transfer_count: 1,
-              last_block: BLOCK_NUM,
-            },
-          ],
-        }),
-    };
+    // #10190: the tier this doubled is retired; the list mode reads the
+    // lakehouse (loadAccountCounterpartiesColdTier). Doubled at that transport
+    // and given raw TRANSFER rows, because the leaderboard below is what
+    // buildCounterparties aggregates FROM them -- the retired tier handed the
+    // finished leaderboard over, so the aggregation never ran in this test.
+    const lake = lakehouse([
+      {
+        hotkey: SS58,
+        coldkey: COUNTERPARTY,
+        amount_tao: 4.2,
+        block_number: BLOCK_NUM,
+        event_index: 0,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+    Object.assign(env, LAKEHOUSE_ENV);
     const res = await handleAccountCounterparties(
       req(`/api/v1/accounts/${SS58}/counterparties?format=csv`),
       env as unknown as Env,
@@ -3363,6 +3361,7 @@ describe("handleAccountCounterparties", () => {
         `${COUNTERPARTY},4.2,0,'-4.2,1,${BLOCK_NUM}`,
       ].join("\r\n"),
     );
+    lake.restore();
   });
 
   test("empty CSV export still emits the header row", async () => {
@@ -4363,28 +4362,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     return { fetch: async () => response };
   }
 
-  /**
-   * A DATA_API that fails the test if it is ever consulted.
-   *
-   * The blocks family's flag (METAGRAPH_BLOCKS_SOURCE) is retired in every
-   * deployed config and absent from DATA_API_FORWARD_FLAGS, so its handlers no
-   * longer read the tier at all (#10190). These use it as the ASSERTION: set the
-   * flag to "postgres", bind a DATA_API that would answer, and prove nothing
-   * asks it -- which is what stops a dead tier read from being reintroduced.
-   */
-  function forbiddenDataApi() {
-    const calls: string[] = [];
-    return {
-      calls,
-      binding: {
-        fetch: async (request: Request) => {
-          calls.push(new URL(request.url).pathname);
-          return Response.json({ schema_version: 1, marker: "tier" });
-        },
-      },
-    };
-  }
-
   /** Stub the lakehouse transport; answers each cold-tier query by SQL prefix. */
   function lakehouse(answer: (sql: string) => unknown[]) {
     const original = globalThis.fetch;
@@ -4409,7 +4386,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env } = dbWith({});
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
     const tier = forbiddenDataApi();
-    env.DATA_API = tier.binding;
+    env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
     const restore = lakehouse(() => [blockRow({ author: "cold-tier" })]);
     try {
@@ -4420,7 +4397,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
           url("/api/v1/blocks"),
         ),
       );
-      assert.deepEqual(tier.calls, []); // the dead tier read is gone
+      assert.deepEqual(tier.paths, []); // the dead tier read is gone
       assert.equal(body.data.blocks[0].author, "cold-tier"); // the lakehouse did
     } finally {
       restore();
@@ -4431,7 +4408,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env } = dbWith({ blockDetail: blockRow() });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
     const tier = forbiddenDataApi();
-    env.DATA_API = tier.binding;
+    env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
     const restore = lakehouse(() => [{ ...blockRow(), author: "lakehouse" }]);
     try {
@@ -4442,26 +4419,18 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
           String(BLOCK_NUM),
         ),
       );
-      assert.deepEqual(tier.calls, []);
+      assert.deepEqual(tier.paths, []);
       assert.equal(body.data.block.author, "lakehouse");
     } finally {
       restore();
     }
   });
 
-  test("handleExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        extrinsic_count: 99,
-        limit: 50,
-        offset: 0,
-        next_cursor: null,
-        extrinsics: [],
-      }),
-    );
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleExtrinsics(
         req("/api/v1/extrinsics"),
@@ -4469,21 +4438,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url("/api/v1/extrinsics"),
       ),
     );
-    assert.equal(body.data.extrinsic_count, 99);
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleExtrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleExtrinsic: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsicDetail: extrinsicRow() });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        ref: HASH,
-        extrinsic: { ...extrinsicRow(), signer: "postgres-signer" },
-        events: [],
-      }),
-    );
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleExtrinsic(
         req(`/api/v1/extrinsics/${HASH}`),
@@ -4491,24 +4456,20 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         HASH,
       ),
     );
-    assert.equal(body.data.extrinsic.signer, "postgres-signer");
-    assert.deepEqual(captures.sql, []);
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
+    // The store read this used to assert AWAY is now the answer: the tier
+    // short-circuited it, and with the tier gone the composer reads the store
+    // itself. Asserting it happened is the honest inverse of the old claim.
+    assert.ok(captures.sql.length > 0);
   });
 
-  test("handleAccountEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        ss58: SS58,
-        event_count: 99,
-        limit: 50,
-        offset: 0,
-        next_cursor: null,
-        events: [],
-      }),
-    );
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const path = `/api/v1/accounts/${SS58}/events`;
     const body = await json(
       await handleAccountEvents(
@@ -4518,7 +4479,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(path),
       ),
     );
-    assert.equal(body.data.event_count, 99);
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
@@ -4890,16 +4853,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleValidatorNominators: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleValidatorNominators: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleValidatorNominators(
         req(`/api/v1/validators/${SS58}/nominators`),
@@ -4908,20 +4866,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/validators/${SS58}/nominators`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountWeightSetters: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountWeightSetters: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountWeightSetters(
         req(`/api/v1/accounts/${SS58}/weight-setters`),
@@ -4930,16 +4885,20 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/weight-setters`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
+    // The store read this used to assert AWAY is now the answer: the tier
+    // short-circuited it, and with the tier gone the composer reads the store
+    // itself. Asserting it happened is the honest inverse of the old claim.
+    assert.ok(captures.sql.length > 0);
   });
 
-  test("handleSubnetWeightSetters: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetWeightSetters: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetWeightSetters(
         req(`/api/v1/subnets/${NETUID}/weights/setters`),
@@ -4948,20 +4907,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/weights/setters`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountStakeFlow: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountStakeFlow: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountStakeFlow(
         req(`/api/v1/accounts/${SS58}/stake-flow`),
@@ -4970,20 +4926,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/stake-flow`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetStakeFlow: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetStakeFlow: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetStakeFlow(
         req(`/api/v1/subnets/${NETUID}/stake-flow`),
@@ -4992,20 +4945,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/stake-flow`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountStakeMoves: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountStakeMoves: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountStakeMoves(
         req(`/api/v1/accounts/${SS58}/stake-moves`),
@@ -5014,16 +4964,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/stake-moves`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetStakeMoves: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetStakeMoves: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetStakeMoves(
         req(`/api/v1/subnets/${NETUID}/stake-moves`),
@@ -5032,16 +4983,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/stake-moves`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetStakeTransfers: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetStakeTransfers: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetStakeTransfers(
         req(`/api/v1/subnets/${NETUID}/stake-transfers`),
@@ -5050,20 +5002,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/stake-transfers`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountRegistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountRegistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountRegistrations(
         req(`/api/v1/accounts/${SS58}/registrations`),
@@ -5072,16 +5021,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/registrations`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetRegistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetRegistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetRegistrations(
         req(`/api/v1/subnets/${NETUID}/registrations`),
@@ -5090,20 +5040,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/registrations`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountServing: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountServing: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountServing(
         req(`/api/v1/accounts/${SS58}/serving`),
@@ -5112,16 +5059,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/serving`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetServing: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetServing: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetServing(
         req(`/api/v1/subnets/${NETUID}/serving`),
@@ -5130,20 +5078,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/serving`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountAxonRemovals: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountAxonRemovals: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountAxonRemovals(
         req(`/api/v1/accounts/${SS58}/axon-removals`),
@@ -5152,7 +5097,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/axon-removals`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
@@ -5175,12 +5122,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     await assertValidComponent("AccountDeregistrationsArtifact", body.data);
   });
 
-  test("handleSubnetAxonRemovals: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetAxonRemovals: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetAxonRemovals(
         req(`/api/v1/subnets/${NETUID}/axon-removals`),
@@ -5189,20 +5135,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/axon-removals`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountPrometheus: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountPrometheus: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountPrometheus(
         req(`/api/v1/accounts/${SS58}/prometheus`),
@@ -5211,16 +5154,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/prometheus`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetPrometheus: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetPrometheus: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetPrometheus(
         req(`/api/v1/subnets/${NETUID}/prometheus`),
@@ -5229,20 +5173,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/prometheus`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountDeregistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountDeregistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountDeregistrations(
         req(`/api/v1/accounts/${SS58}/deregistrations`),
@@ -5251,16 +5192,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/deregistrations`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetDeregistrations: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetDeregistrations: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetDeregistrations(
         req(`/api/v1/subnets/${NETUID}/deregistrations`),
@@ -5269,17 +5211,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/deregistrations`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountTransfers: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountTransfers: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", transfers: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountTransfers(
         req(`/api/v1/accounts/${SS58}/transfers`),
@@ -5288,16 +5230,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/transfers`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountCounterparties: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountCounterparties: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountCounterparties(
         req(`/api/v1/accounts/${SS58}/counterparties`),
@@ -5306,7 +5249,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/counterparties`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
@@ -5369,15 +5314,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // directly with no Postgres tier at all -- silently serving data frozen
   // since the streamer stopped. Same pattern as the blocks above.
 
-  test("handleBlockExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleBlockExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg", extrinsics: [] },
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleBlockExtrinsics(
         req(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
@@ -5386,19 +5327,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/blocks/${BLOCK_NUM}/extrinsics`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleBlockEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleBlockEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ blockEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg", events: [] },
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleBlockEvents(
         req(`/api/v1/blocks/${BLOCK_NUM}/events`),
@@ -5407,7 +5346,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/blocks/${BLOCK_NUM}/events`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
@@ -5415,7 +5356,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
     const tier = forbiddenDataApi();
-    env.DATA_API = tier.binding;
+    env.DATA_API = tier.DATA_API;
     // #9146: the blocks-summary projection is what serves this card now.
     env.METAGRAPH_ARCHIVE = {
       get: async () => ({
@@ -5432,17 +5373,15 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url("/api/v1/blocks/summary"),
       ),
     );
-    assert.deepEqual(tier.calls, []);
+    assert.deepEqual(tier.paths, []);
     assert.equal(body.data.marker, "projection");
   });
 
-  test("handleAccountExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountExtrinsics: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ extrinsics: [extrinsicRow()] });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountExtrinsics(
         req(`/api/v1/accounts/${SS58}/extrinsics`),
@@ -5451,19 +5390,19 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/extrinsics`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSudo: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSudo: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({
       extrinsics: [extrinsicRow({ call_module: "Sudo" })],
     });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSudo(
         req("/api/v1/sudo"),
@@ -5471,19 +5410,19 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url("/api/v1/sudo"),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleGovernanceConfigChanges: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleGovernanceConfigChanges: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({
       extrinsics: [extrinsicRow({ call_module: "AdminUtils" })],
     });
     env.METAGRAPH_EXTRINSICS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", extrinsics: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleGovernanceConfigChanges(
         req("/api/v1/governance/config-changes"),
@@ -5491,7 +5430,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url("/api/v1/governance/config-changes"),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
@@ -5499,7 +5440,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const { env } = dbWith({ blocksFeed: [blockRow()] });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
     const tier = forbiddenDataApi();
-    env.DATA_API = tier.binding;
+    env.DATA_API = tier.DATA_API;
     Object.assign(env, LAKEHOUSE_TOKEN);
     // #9265: `chain.blocks` carries spec_version, so the timeline is real.
     const restore = lakehouse(() => [
@@ -5513,7 +5454,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
           url("/api/v1/runtime"),
         ),
       );
-      assert.deepEqual(tier.calls, []);
+      assert.deepEqual(tier.paths, []);
       assert.equal(body.data.current_spec_version, 423);
     } finally {
       restore();
@@ -5630,13 +5571,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // #4832 Tier 1b: the remaining account_events-derived handlers with no
   // Postgres tier at all -- same pattern as Tier 1a above.
 
-  test("handleSubnetWeights: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetWeights: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", weight_sets: 0 }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetWeights(
         req(`/api/v1/subnets/${NETUID}/weights`),
@@ -5645,20 +5584,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/weights`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetAlphaVolume: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetAlphaVolume: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          data: { schema_version: 1, marker: "pg" },
-          generatedAt: null,
-        }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetAlphaVolume(
         req(`/api/v1/subnets/${NETUID}/volume`),
@@ -5666,17 +5602,17 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         NETUID,
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetEvents: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetEvents: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ subnetEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", events: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetEvents(
         req(`/api/v1/subnets/${NETUID}/events`),
@@ -5685,20 +5621,20 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/events`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSubnetEventSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleSubnetEventSummary: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({
       subnetEventSummaryKinds: [],
       subnetEventSummaryRecent: [],
     });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", event_kinds: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleSubnetEventSummary(
         req(`/api/v1/subnets/${NETUID}/event-summary`),
@@ -5707,20 +5643,20 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/subnets/${NETUID}/event-summary`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
   // #4832 Tier 1c: handleAccount (multi-table: account_events + neurons +
   // extrinsics) and handleAccountSubnets (neurons-derived).
 
-  test("handleAccount: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccount: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({ accountEvents: [accountEventRow()] });
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", event_count: 0 }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccount(
         req(`/api/v1/accounts/${SS58}`),
@@ -5728,8 +5664,13 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         SS58,
       ),
     );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
+    // The store read this used to assert AWAY is now the answer: the tier
+    // short-circuited it, and with the tier gone the composer reads the store
+    // itself. Asserting it happened is the honest inverse of the old claim.
+    assert.ok(captures.sql.length > 0);
   });
 
   test("handleAccountSubnets: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -6333,13 +6274,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // #4832 gap-closure: handleAccountHistory (account_events_daily, now
   // populated by a dedicated hourly Postgres-side rollup route).
 
-  test("handleAccountHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
+  test("handleAccountHistory: the retired tier flag is not consulted even when set (#10190)", async () => {
     const { env, captures } = dbWith({});
     env.METAGRAPH_ACCOUNT_EVENTS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", days: [] }),
-    };
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.DATA_API;
     const body = await json(
       await handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
@@ -6348,7 +6287,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url(`/api/v1/accounts/${SS58}/history`),
       ),
     );
-    assert.equal(body.data.marker, "pg");
+    // Nothing asks the binding, and the answer carries none of its marker.
+    assert.deepEqual(tier.paths, []);
+    assert.equal(body.data.marker, undefined);
     assert.deepEqual(captures.sql, []);
   });
 
