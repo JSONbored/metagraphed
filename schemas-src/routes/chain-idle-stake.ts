@@ -3,7 +3,6 @@
 // buildChainIdleStake(), cross-checked against the hand-edited
 // ChainIdleStakeArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const ChainIdleStakeArtifactSchema = z
   .object({
@@ -30,6 +29,3 @@ export const ChainIdleStakeArtifactSchema = z
 export type ChainIdleStakeArtifact = z.infer<
   typeof ChainIdleStakeArtifactSchema
 >;
-export const ChainIdleStakeResponseSchema = successEnvelopeSchema(
-  ChainIdleStakeArtifactSchema,
-);

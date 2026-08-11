@@ -9,7 +9,6 @@
 // hand-edited DomainSummaryArtifact/DomainsArtifact components they
 // replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const ConcentrationScorecardSchema = z
   .object({
@@ -56,9 +55,6 @@ export const DomainSummaryArtifactSchema = z
     "One domain/capability tag's rollup (#6989). Mirrors GET /api/v1/domains/{tag}/summary.",
   );
 export type DomainSummaryArtifact = z.infer<typeof DomainSummaryArtifactSchema>;
-export const DomainSummaryResponseSchema = successEnvelopeSchema(
-  DomainSummaryArtifactSchema,
-);
 
 export const DomainsArtifactSchema = z
   .object({
@@ -71,6 +67,3 @@ export const DomainsArtifactSchema = z
     "The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains.",
   );
 export type DomainsArtifact = z.infer<typeof DomainsArtifactSchema>;
-export const DomainsResponseSchema = successEnvelopeSchema(
-  DomainsArtifactSchema,
-);

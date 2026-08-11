@@ -3,7 +3,6 @@
 // from src/movers.ts's buildMovers()/buildNetworkSummary(), cross-checked
 // against the hand-edited SubnetMoversArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_MOVERS_MOVERS_SORTS_VALUES = [
@@ -101,6 +100,3 @@ export const SubnetMoversArtifactSchema = z
   })
   .strict();
 export type SubnetMoversArtifact = z.infer<typeof SubnetMoversArtifactSchema>;
-export const SubnetMoversResponseSchema = successEnvelopeSchema(
-  SubnetMoversArtifactSchema,
-);

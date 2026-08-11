@@ -8,7 +8,6 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const RuntimeVersionTransitionSchema = z
   .object({
@@ -53,6 +52,3 @@ export const RuntimeVersionsArtifactSchema = z
 export type RuntimeVersionsArtifact = z.infer<
   typeof RuntimeVersionsArtifactSchema
 >;
-export const RuntimeVersionsResponseSchema = successEnvelopeSchema(
-  RuntimeVersionsArtifactSchema,
-);

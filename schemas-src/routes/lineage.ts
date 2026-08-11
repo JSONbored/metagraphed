@@ -3,7 +3,7 @@
 // types-epic E batch 11, #8074's meta-artifacts-1.ts). Modeled from the
 // hand-edited LineageArtifact component it replaces.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 
 export const LineageArtifactSchema = ArtifactBaseSchema.extend({
   published_at: z.string().nullable().optional(),
@@ -45,6 +45,3 @@ export const LineageArtifactSchema = ArtifactBaseSchema.extend({
   ),
 }).passthrough();
 export type LineageArtifact = z.infer<typeof LineageArtifactSchema>;
-export const LineageResponseSchema = successEnvelopeSchema(
-  LineageArtifactSchema,
-);

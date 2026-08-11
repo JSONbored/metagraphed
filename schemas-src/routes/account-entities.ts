@@ -22,7 +22,6 @@
 // (same cosmetic finding batch 4's account-summary.ts made for the
 // identical field).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EntityCategorySchema } from "../shared.ts";
 
 const EntityLabelSchema = z
@@ -73,6 +72,3 @@ export const AccountEntitiesArtifactSchema = z
 export type AccountEntitiesArtifact = z.infer<
   typeof AccountEntitiesArtifactSchema
 >;
-export const AccountEntitiesResponseSchema = successEnvelopeSchema(
-  AccountEntitiesArtifactSchema,
-);

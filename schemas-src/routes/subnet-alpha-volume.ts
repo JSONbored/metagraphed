@@ -4,7 +4,6 @@
 // (every field always present, none omitted), cross-checked against the
 // hand-edited SubnetAlphaVolumeArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 import { ALPHA_USD_UNAVAILABLE } from "../../src/alpha-usd.ts";
 
@@ -81,7 +80,3 @@ export const SubnetAlphaVolumeArtifactSchema = z
 export type SubnetAlphaVolumeArtifact = z.infer<
   typeof SubnetAlphaVolumeArtifactSchema
 >;
-
-export const SubnetAlphaVolumeResponseSchema = successEnvelopeSchema(
-  SubnetAlphaVolumeArtifactSchema,
-);

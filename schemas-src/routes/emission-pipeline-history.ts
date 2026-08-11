@@ -3,7 +3,6 @@
 // src/emission-pipeline-history.ts's buildPipelineHistory().
 import { z } from "zod";
 import { UnavailableDegradedSchema } from "./event-stream-honesty.ts";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const PipelineHistoryPointSchema = z
   .object({
@@ -86,6 +85,3 @@ export const PipelineHistoryArtifactSchema = z
 export type PipelineHistoryArtifact = z.infer<
   typeof PipelineHistoryArtifactSchema
 >;
-export const PipelineHistoryResponseSchema = successEnvelopeSchema(
-  PipelineHistoryArtifactSchema,
-);

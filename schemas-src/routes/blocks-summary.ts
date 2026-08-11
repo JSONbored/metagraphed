@@ -8,7 +8,6 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ConcentrationMetricsSchema } from "../shared.ts";
 
 const BlockTimeDistributionSchema = z
@@ -58,6 +57,3 @@ export const BlocksSummaryArtifactSchema = z
     "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary.",
   );
 export type BlocksSummaryArtifact = z.infer<typeof BlocksSummaryArtifactSchema>;
-export const BlocksSummaryResponseSchema = successEnvelopeSchema(
-  BlocksSummaryArtifactSchema,
-);

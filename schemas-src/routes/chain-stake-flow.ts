@@ -3,7 +3,6 @@
 // Modeled from src/chain-stake-flow.ts's buildChainStakeFlow(), cross-checked
 // against the hand-edited ChainStakeFlowArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const NetFlowDistributionSchema = z
   .object({
@@ -73,6 +72,3 @@ export const ChainStakeFlowArtifactSchema = z
 export type ChainStakeFlowArtifact = z.infer<
   typeof ChainStakeFlowArtifactSchema
 >;
-export const ChainStakeFlowResponseSchema = successEnvelopeSchema(
-  ChainStakeFlowArtifactSchema,
-);

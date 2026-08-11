@@ -7,7 +7,6 @@
 // payload is a LIST with an `exact` flag per candidate rather than a single
 // answer. A schema with one `kind` field would have forced the resolver to guess.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** One place the query could lead. */
 export const ResolvedIdentifierSchema = z
@@ -58,6 +57,3 @@ export const SearchResolveArtifactSchema = z
   })
   .passthrough();
 export type SearchResolveArtifact = z.infer<typeof SearchResolveArtifactSchema>;
-export const SearchResolveResponseSchema = successEnvelopeSchema(
-  SearchResolveArtifactSchema,
-);

@@ -8,7 +8,6 @@
 // EvmAddressMappingArtifact/NetworkParametersArtifact/RandomnessArtifact/
 // SudoKeyArtifact components they replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 export const EvmAddressMappingArtifactSchema = z
@@ -28,9 +27,6 @@ export const EvmAddressMappingArtifactSchema = z
 export type EvmAddressMappingArtifact = z.infer<
   typeof EvmAddressMappingArtifactSchema
 >;
-export const EvmAddressMappingResponseSchema = successEnvelopeSchema(
-  EvmAddressMappingArtifactSchema,
-);
 
 export const NetworkParametersArtifactSchema = z
   .object({
@@ -69,9 +65,6 @@ export const NetworkParametersArtifactSchema = z
 export type NetworkParametersArtifact = z.infer<
   typeof NetworkParametersArtifactSchema
 >;
-export const NetworkParametersResponseSchema = successEnvelopeSchema(
-  NetworkParametersArtifactSchema,
-);
 
 export const RandomnessArtifactSchema = z
   .object({
@@ -89,9 +82,6 @@ export const RandomnessArtifactSchema = z
     "Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope.",
   );
 export type RandomnessArtifact = z.infer<typeof RandomnessArtifactSchema>;
-export const RandomnessResponseSchema = successEnvelopeSchema(
-  RandomnessArtifactSchema,
-);
 
 export const SudoKeyArtifactSchema = z
   .object({
@@ -108,6 +98,3 @@ export const SudoKeyArtifactSchema = z
     "The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope.",
   );
 export type SudoKeyArtifact = z.infer<typeof SudoKeyArtifactSchema>;
-export const SudoKeyResponseSchema = successEnvelopeSchema(
-  SudoKeyArtifactSchema,
-);

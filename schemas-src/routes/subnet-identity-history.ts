@@ -12,7 +12,6 @@
 // schema would have rejected. Modeled here as nullable (still required --
 // the key itself is always present), matching real behavior.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const SubnetIdentityHistoryEntrySchema = z
   .object({
@@ -52,6 +51,3 @@ export const SubnetIdentityHistoryArtifactSchema = z
 export type SubnetIdentityHistoryArtifact = z.infer<
   typeof SubnetIdentityHistoryArtifactSchema
 >;
-export const SubnetIdentityHistoryResponseSchema = successEnvelopeSchema(
-  SubnetIdentityHistoryArtifactSchema,
-);

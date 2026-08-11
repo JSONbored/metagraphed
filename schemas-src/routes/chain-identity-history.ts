@@ -18,7 +18,6 @@
 // via repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ChainIdentityHistoryChangeSchema = z
   .object({
@@ -50,6 +49,3 @@ export const ChainIdentityHistoryArtifactSchema = z
 export type ChainIdentityHistoryArtifact = z.infer<
   typeof ChainIdentityHistoryArtifactSchema
 >;
-export const ChainIdentityHistoryResponseSchema = successEnvelopeSchema(
-  ChainIdentityHistoryArtifactSchema,
-);

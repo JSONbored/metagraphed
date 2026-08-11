@@ -3,7 +3,6 @@
 // src/validator-history.ts's buildValidatorHistory(), cross-checked against
 // the hand-edited ValidatorHistoryArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ValidatorHistoryPointSchema = z
   .object({
@@ -104,6 +103,3 @@ export const ValidatorHistoryArtifactSchema = z
 export type ValidatorHistoryArtifact = z.infer<
   typeof ValidatorHistoryArtifactSchema
 >;
-export const ValidatorHistoryResponseSchema = successEnvelopeSchema(
-  ValidatorHistoryArtifactSchema,
-);

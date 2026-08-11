@@ -23,7 +23,6 @@
 // required non-nullable integers, matching the hand-edited components and
 // what the route actually returns.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 
 export const AccountEventsArtifactSchema = z
@@ -48,9 +47,6 @@ export const AccountEventsArtifactSchema = z
     "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent.",
   );
 export type AccountEventsArtifact = z.infer<typeof AccountEventsArtifactSchema>;
-export const AccountEventsResponseSchema = successEnvelopeSchema(
-  AccountEventsArtifactSchema,
-);
 
 const AccountDaySchema = z
   .object({
@@ -83,9 +79,6 @@ export const AccountHistoryArtifactSchema = z
 export type AccountHistoryArtifact = z.infer<
   typeof AccountHistoryArtifactSchema
 >;
-export const AccountHistoryResponseSchema = successEnvelopeSchema(
-  AccountHistoryArtifactSchema,
-);
 
 const AccountTransferEntrySchema = z
   .object({
@@ -119,6 +112,3 @@ export const AccountTransfersArtifactSchema = z
 export type AccountTransfersArtifact = z.infer<
   typeof AccountTransfersArtifactSchema
 >;
-export const AccountTransfersResponseSchema = successEnvelopeSchema(
-  AccountTransfersArtifactSchema,
-);

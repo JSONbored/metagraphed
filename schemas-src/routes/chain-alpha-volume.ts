@@ -14,7 +14,6 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "./subnet-alpha-volume.ts";
 import { IntensityDistributionSchema } from "./chain-network-rollups.ts";
@@ -101,6 +100,3 @@ export const ChainAlphaVolumeArtifactSchema = z
 export type ChainAlphaVolumeArtifact = z.infer<
   typeof ChainAlphaVolumeArtifactSchema
 >;
-export const ChainAlphaVolumeResponseSchema = successEnvelopeSchema(
-  ChainAlphaVolumeArtifactSchema,
-);

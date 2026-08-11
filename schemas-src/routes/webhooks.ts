@@ -11,7 +11,6 @@
 // modelled, but on the MCP side; this makes the ROUTE the owner and the tool
 // the importer, which is the direction #9796 settled on.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { OpenObjectSchema } from "../mcp-tools/shared.ts";
 
 /**
@@ -63,6 +62,3 @@ export const WebhookSubscriptionArtifactSchema = z
 export type WebhookSubscriptionArtifact = z.infer<
   typeof WebhookSubscriptionArtifactSchema
 >;
-export const WebhookSubscriptionResponseSchema = successEnvelopeSchema(
-  WebhookSubscriptionArtifactSchema,
-);

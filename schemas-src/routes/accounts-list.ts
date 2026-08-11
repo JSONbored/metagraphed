@@ -25,7 +25,6 @@
 // anywhere in schemas/components/*.schema.json (verified via repo-wide $ref
 // grep), so both hand-edited component keys become fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const ACCOUNTS_LIST_LIST_SORTS_VALUES = [
@@ -97,6 +96,3 @@ export const AccountsListArtifactSchema = z
   })
   .passthrough();
 export type AccountsListArtifact = z.infer<typeof AccountsListArtifactSchema>;
-export const AccountsListResponseSchema = successEnvelopeSchema(
-  AccountsListArtifactSchema,
-);

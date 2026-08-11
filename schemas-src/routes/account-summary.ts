@@ -38,7 +38,6 @@
 // entities.json artifact), which the hand-edited component's optional
 // `labels` array already models.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 import { EntityCategorySchema } from "../shared.ts";
 
@@ -128,9 +127,6 @@ export const AccountSummaryArtifactSchema = z
 export type AccountSummaryArtifact = z.infer<
   typeof AccountSummaryArtifactSchema
 >;
-export const AccountSummaryResponseSchema = successEnvelopeSchema(
-  AccountSummaryArtifactSchema,
-);
 
 export const AccountSubnetsArtifactSchema = z
   .object({
@@ -150,6 +146,3 @@ export const AccountSubnetsArtifactSchema = z
 export type AccountSubnetsArtifact = z.infer<
   typeof AccountSubnetsArtifactSchema
 >;
-export const AccountSubnetsResponseSchema = successEnvelopeSchema(
-  AccountSubnetsArtifactSchema,
-);

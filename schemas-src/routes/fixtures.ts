@@ -6,7 +6,7 @@
 // neither route needs a Query schema. Modeled from the hand-edited
 // FixturesIndexArtifact/FixtureArtifact components they replace.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import { SurfaceKindSchema } from "./subnet-detail.ts";
 
 // Bare `{type:"object", additionalProperties:true}` (hand-written
@@ -54,9 +54,6 @@ export const FixturesIndexArtifactSchema = ArtifactBaseSchema.extend({
   ),
 }).passthrough();
 export type FixturesIndexArtifact = z.infer<typeof FixturesIndexArtifactSchema>;
-export const FixturesIndexResponseSchema = successEnvelopeSchema(
-  FixturesIndexArtifactSchema,
-);
 
 export const FixtureArtifactSchema = ArtifactBaseSchema.extend({
   surface_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9:._-]*$/),
@@ -87,6 +84,3 @@ export const FixtureArtifactSchema = ArtifactBaseSchema.extend({
     .passthrough(),
 }).passthrough();
 export type FixtureArtifact = z.infer<typeof FixtureArtifactSchema>;
-export const FixtureResponseSchema = successEnvelopeSchema(
-  FixtureArtifactSchema,
-);

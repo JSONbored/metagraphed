@@ -3,7 +3,6 @@
 // src/chain-turnover.ts's buildChainTurnover(), cross-checked against the
 // hand-edited ChainTurnoverArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const CHAIN_TURNOVER_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
@@ -96,6 +95,3 @@ export const ChainTurnoverArtifactSchema = z
     "Network-wide validator-set churn across all subnets (#5686). Mirrors GET /api/v1/chain/turnover's data envelope.",
   );
 export type ChainTurnoverArtifact = z.infer<typeof ChainTurnoverArtifactSchema>;
-export const ChainTurnoverResponseSchema = successEnvelopeSchema(
-  ChainTurnoverArtifactSchema,
-);

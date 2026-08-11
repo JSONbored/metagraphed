@@ -6,11 +6,7 @@
 // replace.
 import { z } from "zod";
 import { QUERY_ENUMS } from "../query-enums.ts";
-import {
-  ArtifactBaseSchema,
-  CountMapSchema,
-  successEnvelopeSchema,
-} from "../envelope.ts";
+import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { BittensorNetworkSchema } from "../shared.ts";
 
 /** One surface kind's share of the registry: how many subnets have it, and
@@ -91,9 +87,6 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   surface_count: z.int().min(0),
 }).passthrough();
 export type CoverageArtifact = z.infer<typeof CoverageArtifactSchema>;
-export const CoverageResponseSchema = successEnvelopeSchema(
-  CoverageArtifactSchema,
-);
 
 // Shared with schemas-src/mcp-tools/registry-summary-gaps.ts's
 // COVERAGE_DEPTH_TIERS/COVERAGE_DEPTH_SEVERITIES (types-epic E batch 11,
@@ -226,6 +219,3 @@ export const CoverageDepthArtifactSchema = ArtifactBaseSchema.extend({
   ranked_queue: z.array(CoverageDepthQueueEntrySchema),
 }).passthrough();
 export type CoverageDepthArtifact = z.infer<typeof CoverageDepthArtifactSchema>;
-export const CoverageDepthResponseSchema = successEnvelopeSchema(
-  CoverageDepthArtifactSchema,
-);

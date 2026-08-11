@@ -10,8 +10,6 @@
 // the neurons-staleness tick (#10262).
 import { z } from "zod";
 
-import { successEnvelopeSchema } from "../envelope.ts";
-
 /**
  * The two transitions.
  *
@@ -66,9 +64,6 @@ export const SubnetLifecycleArtifactSchema = z
 export type SubnetLifecycleArtifact = z.infer<
   typeof SubnetLifecycleArtifactSchema
 >;
-export const SubnetLifecycleResponseSchema = successEnvelopeSchema(
-  SubnetLifecycleArtifactSchema,
-);
 
 /**
  * The network-wide feed: every subnet's transitions, newest first.
@@ -98,6 +93,3 @@ export const ChainSubnetLifecycleArtifactSchema = z
 export type ChainSubnetLifecycleArtifact = z.infer<
   typeof ChainSubnetLifecycleArtifactSchema
 >;
-export const ChainSubnetLifecycleResponseSchema = successEnvelopeSchema(
-  ChainSubnetLifecycleArtifactSchema,
-);

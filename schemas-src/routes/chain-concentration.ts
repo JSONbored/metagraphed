@@ -5,7 +5,6 @@
 // batch 3/#8057), cross-checked against the hand-edited
 // ChainConcentrationArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ConcentrationMetricsSchema } from "../shared.ts";
 
 export const ChainConcentrationArtifactSchema = z
@@ -52,6 +51,3 @@ export const ChainConcentrationArtifactSchema = z
 export type ChainConcentrationArtifact = z.infer<
   typeof ChainConcentrationArtifactSchema
 >;
-export const ChainConcentrationResponseSchema = successEnvelopeSchema(
-  ChainConcentrationArtifactSchema,
-);

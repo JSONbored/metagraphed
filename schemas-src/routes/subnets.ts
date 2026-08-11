@@ -10,7 +10,7 @@
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
 import { SocialLinksSchema } from "../shared.ts";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import {
   BittensorNetworkSchema,
   CoverageLevelSchema,
@@ -123,7 +123,3 @@ export const SubnetsArtifactSchema = ArtifactBaseSchema.extend({
   subnets: z.array(SubnetIndexEntrySchema),
 });
 export type SubnetsArtifact = z.infer<typeof SubnetsArtifactSchema>;
-
-export const SubnetsResponseSchema = successEnvelopeSchema(
-  SubnetsArtifactSchema,
-);

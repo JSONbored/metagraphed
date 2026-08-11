@@ -11,7 +11,6 @@
 // (verified via repo-wide $ref grep), so all five hand-edited component
 // keys become fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ChainActivityDaySchema = z
   .object({
@@ -41,9 +40,6 @@ export const ChainActivityArtifactSchema = z
     "Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope.",
   );
 export type ChainActivityArtifact = z.infer<typeof ChainActivityArtifactSchema>;
-export const ChainActivityResponseSchema = successEnvelopeSchema(
-  ChainActivityArtifactSchema,
-);
 
 const ChainCallEntrySchema = z
   .object({
@@ -72,9 +68,6 @@ export const ChainCallsArtifactSchema = z
     "Extrinsic call-mix breakdown over the window. Mirrors GET /api/v1/chain/calls's data envelope.",
   );
 export type ChainCallsArtifact = z.infer<typeof ChainCallsArtifactSchema>;
-export const ChainCallsResponseSchema = successEnvelopeSchema(
-  ChainCallsArtifactSchema,
-);
 
 const ChainSignerEntrySchema = z
   .object({
@@ -110,9 +103,6 @@ export const ChainSignersArtifactSchema = z
     "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters.",
   );
 export type ChainSignersArtifact = z.infer<typeof ChainSignersArtifactSchema>;
-export const ChainSignersResponseSchema = successEnvelopeSchema(
-  ChainSignersArtifactSchema,
-);
 
 const ChainFeeDaySchema = z
   .object({
@@ -157,6 +147,3 @@ export const ChainFeesArtifactSchema = z
     "Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope.",
   );
 export type ChainFeesArtifact = z.infer<typeof ChainFeesArtifactSchema>;
-export const ChainFeesResponseSchema = successEnvelopeSchema(
-  ChainFeesArtifactSchema,
-);

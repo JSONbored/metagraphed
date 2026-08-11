@@ -6,7 +6,6 @@
 // different chain storage item each), cross-checked against the
 // SubnetBurnArtifact/SubnetRecycledArtifact components they replace.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 export const SubnetBurnArtifactSchema = z
@@ -24,9 +23,6 @@ export const SubnetBurnArtifactSchema = z
     "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn.",
   );
 export type SubnetBurnArtifact = z.infer<typeof SubnetBurnArtifactSchema>;
-export const SubnetBurnResponseSchema = successEnvelopeSchema(
-  SubnetBurnArtifactSchema,
-);
 
 export const SubnetRecycledArtifactSchema = z
   .object({
@@ -45,9 +41,6 @@ export const SubnetRecycledArtifactSchema = z
 export type SubnetRecycledArtifact = z.infer<
   typeof SubnetRecycledArtifactSchema
 >;
-export const SubnetRecycledResponseSchema = successEnvelopeSchema(
-  SubnetRecycledArtifactSchema,
-);
 
 // GET /api/v1/chain/burn (#9399): every subnet's live registration cost in one
 // response, ranked cheapest-first. Modeled from src/chain-burn.ts's loadChainBurn().
@@ -78,9 +71,6 @@ export const ChainBurnArtifactSchema = z
   })
   .passthrough();
 export type ChainBurnArtifact = z.infer<typeof ChainBurnArtifactSchema>;
-export const ChainBurnResponseSchema = successEnvelopeSchema(
-  ChainBurnArtifactSchema,
-);
 
 // GET /api/v1/subnets/{netuid}/burn/history (#9402). Modeled from
 // src/subnet-burn-history.ts's buildSubnetBurnHistory().
@@ -112,6 +102,3 @@ export const SubnetBurnHistoryArtifactSchema = z
 export type SubnetBurnHistoryArtifact = z.infer<
   typeof SubnetBurnHistoryArtifactSchema
 >;
-export const SubnetBurnHistoryResponseSchema = successEnvelopeSchema(
-  SubnetBurnHistoryArtifactSchema,
-);

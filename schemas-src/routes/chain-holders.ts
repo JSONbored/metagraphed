@@ -7,7 +7,6 @@
 // carries only counts and a median of within-subnet ratios, both of which
 // survive the mismatch.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const ChainHoldersSubnetSchema = z
   .object({
@@ -89,6 +88,3 @@ export const ChainHoldersArtifactSchema = z
   })
   .passthrough();
 export type ChainHoldersArtifact = z.infer<typeof ChainHoldersArtifactSchema>;
-export const ChainHoldersResponseSchema = successEnvelopeSchema(
-  ChainHoldersArtifactSchema,
-);

@@ -4,7 +4,6 @@
 // query params (both call validateEntityQuery(url, []), so any query string
 // is a 400).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
@@ -62,9 +61,6 @@ export const CrowdloansArtifactSchema = z
   })
   .passthrough();
 export type CrowdloansArtifact = z.infer<typeof CrowdloansArtifactSchema>;
-export const CrowdloansResponseSchema = successEnvelopeSchema(
-  CrowdloansArtifactSchema,
-);
 
 export const CrowdloanDetailArtifactSchema = z
   .object({
@@ -81,6 +77,3 @@ export const CrowdloanDetailArtifactSchema = z
 export type CrowdloanDetailArtifact = z.infer<
   typeof CrowdloanDetailArtifactSchema
 >;
-export const CrowdloanDetailResponseSchema = successEnvelopeSchema(
-  CrowdloanDetailArtifactSchema,
-);

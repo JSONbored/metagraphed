@@ -17,7 +17,6 @@
 // *.schema.json file), and all three are converted together in this same
 // batch, so both hand-edited component keys become fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const SubnetHyperparametersSchema = z
   .object({
@@ -89,9 +88,6 @@ export const SubnetHyperparametersArtifactSchema = z
 export type SubnetHyperparametersArtifact = z.infer<
   typeof SubnetHyperparametersArtifactSchema
 >;
-export const SubnetHyperparametersResponseSchema = successEnvelopeSchema(
-  SubnetHyperparametersArtifactSchema,
-);
 
 const SubnetHyperparamsHistoryEntrySchema = z
   .object({
@@ -119,6 +115,3 @@ export const SubnetHyperparamsHistoryArtifactSchema = z
 export type SubnetHyperparamsHistoryArtifact = z.infer<
   typeof SubnetHyperparamsHistoryArtifactSchema
 >;
-export const SubnetHyperparamsHistoryResponseSchema = successEnvelopeSchema(
-  SubnetHyperparamsHistoryArtifactSchema,
-);

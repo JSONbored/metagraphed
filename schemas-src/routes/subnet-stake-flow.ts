@@ -3,7 +3,6 @@
 // src/stake-flow.ts's buildStakeFlow(), cross-checked against the
 // hand-edited SubnetStakeFlowArtifact component it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES = [
@@ -33,6 +32,3 @@ export const SubnetStakeFlowArtifactSchema = z
 export type SubnetStakeFlowArtifact = z.infer<
   typeof SubnetStakeFlowArtifactSchema
 >;
-export const SubnetStakeFlowResponseSchema = successEnvelopeSchema(
-  SubnetStakeFlowArtifactSchema,
-);

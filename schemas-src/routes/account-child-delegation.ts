@@ -12,7 +12,6 @@
 // this batch replaces (verified via repo-wide $ref grep), so all four
 // hand-edited component keys become fully orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 const ChildDelegationEntrySchema = z
@@ -53,9 +52,6 @@ export const AccountChildrenArtifactSchema = z
 export type AccountChildrenArtifact = z.infer<
   typeof AccountChildrenArtifactSchema
 >;
-export const AccountChildrenResponseSchema = successEnvelopeSchema(
-  AccountChildrenArtifactSchema,
-);
 
 const ParentDelegationEntrySchema = z
   .object({
@@ -95,6 +91,3 @@ export const AccountParentsArtifactSchema = z
 export type AccountParentsArtifact = z.infer<
   typeof AccountParentsArtifactSchema
 >;
-export const AccountParentsResponseSchema = successEnvelopeSchema(
-  AccountParentsArtifactSchema,
-);

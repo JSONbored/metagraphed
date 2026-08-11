@@ -8,7 +8,6 @@
 // SubnetPerformanceHistoryArtifact components they replace, and against a live
 // get_subnet_performance/get_subnet_performance_history response for subnet 1.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import {
   ConcentrationMetricsSchema,
   ScoreDistributionSchema,
@@ -48,9 +47,6 @@ export const SubnetPerformanceArtifactSchema = z
 export type SubnetPerformanceArtifact = z.infer<
   typeof SubnetPerformanceArtifactSchema
 >;
-export const SubnetPerformanceResponseSchema = successEnvelopeSchema(
-  SubnetPerformanceArtifactSchema,
-);
 
 const SubnetPerformanceHistoryPointSchema = z
   .object({
@@ -95,6 +91,3 @@ export const SubnetPerformanceHistoryArtifactSchema = z
 export type SubnetPerformanceHistoryArtifact = z.infer<
   typeof SubnetPerformanceHistoryArtifactSchema
 >;
-export const SubnetPerformanceHistoryResponseSchema = successEnvelopeSchema(
-  SubnetPerformanceHistoryArtifactSchema,
-);

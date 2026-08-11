@@ -27,7 +27,6 @@
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
 import { POSITIONS_DEGRADED_REASONS } from "../../src/account-nominator-positions.ts";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const NominatorPositionSchema = z
   .object({
@@ -105,9 +104,6 @@ export const AccountPositionsArtifactSchema = z
 export type AccountPositionsArtifact = z.infer<
   typeof AccountPositionsArtifactSchema
 >;
-export const AccountPositionsResponseSchema = successEnvelopeSchema(
-  AccountPositionsArtifactSchema,
-);
 
 const AccountPositionHistoryPointSchema = z
   .object({
@@ -154,6 +150,3 @@ export const AccountPositionHistoryArtifactSchema = z
 export type AccountPositionHistoryArtifact = z.infer<
   typeof AccountPositionHistoryArtifactSchema
 >;
-export const AccountPositionHistoryResponseSchema = successEnvelopeSchema(
-  AccountPositionHistoryArtifactSchema,
-);

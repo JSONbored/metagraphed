@@ -8,7 +8,6 @@
 // `row.gini` is the whole point; `row.emission.gini` would need a path syntax
 // no other list surface here has.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const CONCENTRATION_LENSES = [
   "emission",
@@ -81,6 +80,3 @@ export const ChainConcentrationSubnetsArtifactSchema = z
 export type ChainConcentrationSubnetsArtifact = z.infer<
   typeof ChainConcentrationSubnetsArtifactSchema
 >;
-export const ChainConcentrationSubnetsResponseSchema = successEnvelopeSchema(
-  ChainConcentrationSubnetsArtifactSchema,
-);

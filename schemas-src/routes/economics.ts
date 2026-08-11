@@ -7,7 +7,7 @@
 // EconomicsArtifact component (built from src/contracts.ts), cross-checked
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
-import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
+import { ArtifactBaseSchema } from "../envelope.ts";
 import {
   ChainStateSchema,
   FieldSourcesSchema,
@@ -66,7 +66,3 @@ export const EconomicsArtifactSchema = ArtifactBaseSchema.extend({
   summary: EconomicsSummarySchema,
 });
 export type EconomicsArtifact = z.infer<typeof EconomicsArtifactSchema>;
-
-export const EconomicsResponseSchema = successEnvelopeSchema(
-  EconomicsArtifactSchema,
-);

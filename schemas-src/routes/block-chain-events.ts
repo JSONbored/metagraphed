@@ -20,7 +20,6 @@
 // (unregistered), so the hand-edited `ChainEvent` component key becomes
 // fully orphaned as of this batch.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EpochMillisSchema } from "../shared.ts";
 
 const ChainEventSchema = z
@@ -64,6 +63,3 @@ export const BlockChainEventsArtifactSchema = z
 export type BlockChainEventsArtifact = z.infer<
   typeof BlockChainEventsArtifactSchema
 >;
-export const BlockChainEventsResponseSchema = successEnvelopeSchema(
-  BlockChainEventsArtifactSchema,
-);

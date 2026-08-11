@@ -9,7 +9,6 @@
 // via repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES = [
@@ -85,6 +84,3 @@ export const ValidatorNominatorsArtifactSchema = z
 export type ValidatorNominatorsArtifact = z.infer<
   typeof ValidatorNominatorsArtifactSchema
 >;
-export const ValidatorNominatorsResponseSchema = successEnvelopeSchema(
-  ValidatorNominatorsArtifactSchema,
-);

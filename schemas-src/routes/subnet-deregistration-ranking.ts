@@ -5,7 +5,6 @@
 // `Subtensor::get_network_to_prune()`; that module is the source of truth and
 // this is its contract projection.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { ChainStateSchema, FieldSourcesSchema } from "../shared.ts";
 
 export const DeregistrationRankEntrySchema = z
@@ -59,7 +58,3 @@ export const SubnetDeregistrationRankingArtifactSchema = z
 export type SubnetDeregistrationRankingArtifact = z.infer<
   typeof SubnetDeregistrationRankingArtifactSchema
 >;
-
-export const SubnetDeregistrationRankingResponseSchema = successEnvelopeSchema(
-  SubnetDeregistrationRankingArtifactSchema,
-);

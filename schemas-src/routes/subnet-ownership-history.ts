@@ -5,7 +5,6 @@
 // SubnetOwnershipChange components it replaces. No query params (verified:
 // the DATA_API route reads only the netuid path segment).
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 // objectItems-equivalent looseness: no field required at the item level,
 // matching the hand-written original exactly.
@@ -72,6 +71,3 @@ export const SubnetOwnershipHistoryArtifactSchema = z
 export type SubnetOwnershipHistoryArtifact = z.infer<
   typeof SubnetOwnershipHistoryArtifactSchema
 >;
-export const SubnetOwnershipHistoryResponseSchema = successEnvelopeSchema(
-  SubnetOwnershipHistoryArtifactSchema,
-);

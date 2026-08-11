@@ -7,7 +7,6 @@
 // intensity distribution) -- each setter row carries an optional `netuid`
 // scoping a uid-only setter, null when a network-wide hotkey identifies it.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 const ChainWeightSetterSchema = z
   .object({
@@ -54,6 +53,3 @@ export const ChainWeightSettersArtifactSchema = z
 export type ChainWeightSettersArtifact = z.infer<
   typeof ChainWeightSettersArtifactSchema
 >;
-export const ChainWeightSettersResponseSchema = successEnvelopeSchema(
-  ChainWeightSettersArtifactSchema,
-);

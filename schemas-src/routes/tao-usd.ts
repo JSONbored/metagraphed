@@ -7,7 +7,6 @@
 // the pairing as a CHECK. Null means "not priceable at that block"; a zero
 // would mean TAO is worthless.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 
 export const TaoUsdPointSchema = z
   .object({
@@ -100,4 +99,3 @@ export const TaoUsdArtifactSchema = z
   })
   .passthrough();
 export type TaoUsdArtifact = z.infer<typeof TaoUsdArtifactSchema>;
-export const TaoUsdResponseSchema = successEnvelopeSchema(TaoUsdArtifactSchema);

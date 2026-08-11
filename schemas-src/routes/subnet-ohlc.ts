@@ -3,7 +3,6 @@
 // src/subnet-ohlc.ts's buildSubnetOhlc(), cross-checked against the
 // hand-edited SubnetOhlcArtifact/SubnetOhlcCandle components it replaces.
 import { z } from "zod";
-import { successEnvelopeSchema } from "../envelope.ts";
 import { EpochMillisSchema } from "../shared.ts";
 import { SERIES_USD_UNAVAILABLE } from "../../src/alpha-usd-history.ts";
 
@@ -98,6 +97,3 @@ export const SubnetOhlcArtifactSchema = z
     "One subnet's alpha-price OHLC candles (#6979). Mirrors GET /api/v1/subnets/{netuid}/ohlc' data envelope.",
   );
 export type SubnetOhlcArtifact = z.infer<typeof SubnetOhlcArtifactSchema>;
-export const SubnetOhlcResponseSchema = successEnvelopeSchema(
-  SubnetOhlcArtifactSchema,
-);

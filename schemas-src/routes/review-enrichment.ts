@@ -13,11 +13,7 @@
 // components they replace.
 import { z } from "zod";
 import { QUERY_ENUMS } from "../query-enums.ts";
-import {
-  ArtifactBaseSchema,
-  CountMapSchema,
-  successEnvelopeSchema,
-} from "../envelope.ts";
+import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CurationLevelSchema } from "../shared.ts";
 import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
@@ -206,9 +202,6 @@ export const ReviewEnrichmentQueueArtifactSchema = ArtifactBaseSchema.extend({
 export type ReviewEnrichmentQueueArtifact = z.infer<
   typeof ReviewEnrichmentQueueArtifactSchema
 >;
-export const ReviewEnrichmentQueueResponseSchema = successEnvelopeSchema(
-  ReviewEnrichmentQueueArtifactSchema,
-);
 
 export const EVIDENCE_SORT_FIELDS = [
   "evidence_action",
@@ -254,9 +247,6 @@ export const ReviewEnrichmentEvidenceArtifactSchema = ArtifactBaseSchema.extend(
 export type ReviewEnrichmentEvidenceArtifact = z.infer<
   typeof ReviewEnrichmentEvidenceArtifactSchema
 >;
-export const ReviewEnrichmentEvidenceResponseSchema = successEnvelopeSchema(
-  ReviewEnrichmentEvidenceArtifactSchema,
-);
 
 export const TARGET_SORT_FIELDS = [
   "auto_review_candidate",
@@ -340,9 +330,6 @@ export const ReviewEnrichmentTargetsArtifactSchema = ArtifactBaseSchema.extend({
 export type ReviewEnrichmentTargetsArtifact = z.infer<
   typeof ReviewEnrichmentTargetsArtifactSchema
 >;
-export const ReviewEnrichmentTargetsResponseSchema = successEnvelopeSchema(
-  ReviewEnrichmentTargetsArtifactSchema,
-);
 
 export const RECOMMENDED_ADAPTER_KINDS = QUERY_ENUMS.recommendedAdapterKind;
 export const ADAPTER_CANDIDATES_SORT_FIELDS = [
@@ -395,6 +382,3 @@ export const ReviewAdapterCandidatesArtifactSchema = ArtifactBaseSchema.extend({
 export type ReviewAdapterCandidatesArtifact = z.infer<
   typeof ReviewAdapterCandidatesArtifactSchema
 >;
-export const ReviewAdapterCandidatesResponseSchema = successEnvelopeSchema(
-  ReviewAdapterCandidatesArtifactSchema,
-);
