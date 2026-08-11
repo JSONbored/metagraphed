@@ -22,36 +22,14 @@
 // numbers -- same finding as account-events-feed.ts's 3 routes. Fixed to
 // required non-nullable integers.
 import { z } from "zod";
+import { ExtrinsicSchema } from "./extrinsics.ts";
 
-const ExtrinsicSchema = z
-  .object({
-    block_number: z.int().nullable(),
-    extrinsic_index: z.int().nullable(),
-    extrinsic_hash: z.string().nullable().optional(),
-    signer: z.string().nullable().optional(),
-    call_module: z.string().nullable().optional(),
-    call_function: z.string().nullable().optional(),
-    call_args: z
-      .unknown()
-      .nullable()
-      .optional()
-      .describe("JSON-encoded decoded call arguments."),
-    fee_tao: z.number().nullable().optional(),
-    tip_tao: z.number().nullable().optional(),
-    success: z.boolean().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    // #8525: deterministic human-readable action sentence for this
-    // extrinsic's call, or null when no template matches
-    // call_module.call_function -- never a guessed/partial sentence.
-    summary: z
-      .string()
-      .nullable()
-      .optional()
-      .describe(
-        "Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525).",
-      ),
-  })
-  .strict();
+// The extrinsic-feed route's OWN row (#10790). One producer writes both --
+// `formatExtrinsic` in src/extrinsics.ts, which sets every field with `?? null`
+// -- so a row is always PRESENT and sometimes null, never absent. This copy
+// said `.optional()` on nine of the twelve and typed `call_args` as
+// `z.unknown()` where the shared row states the record/positional-tuple duality
+// `decodeChainEventArgs` produces.
 
 export const AccountExtrinsicsArtifactSchema = z
   .object({

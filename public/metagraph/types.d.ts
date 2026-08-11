@@ -5235,19 +5235,19 @@ export interface components {
             extrinsic_count: number;
             extrinsics: {
                 block_number: number | null;
-                /** @description JSON-encoded decoded call arguments. */
-                call_args?: unknown | null;
-                call_function?: string | null;
-                call_module?: string | null;
-                extrinsic_hash?: string | null;
+                call_args: ({
+                    [key: string]: unknown;
+                } | unknown[]) | null;
+                call_function: string | null;
+                call_module: string | null;
+                extrinsic_hash: string | null;
                 extrinsic_index: number | null;
-                fee_tao?: number | null;
-                observed_at?: string | null;
-                signer?: string | null;
-                success?: boolean | null;
-                /** @description Deterministic human-readable action sentence for this extrinsic's call, or null when no template matches call_module.call_function (#8525). */
-                summary?: string | null;
-                tip_tao?: number | null;
+                fee_tao: number | null;
+                observed_at: string | null;
+                signer: string | null;
+                success: boolean | null;
+                summary: string | null;
+                tip_tao: number | null;
             }[];
             limit: number | null;
             next_cursor?: string | null;
@@ -20203,7 +20203,17 @@ export interface operations {
                      *         "extrinsics": [
                      *           {
                      *             "block_number": 5000000,
-                     *             "extrinsic_index": 1
+                     *             "call_args": {},
+                     *             "call_function": "example",
+                     *             "call_module": "example",
+                     *             "extrinsic_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "extrinsic_index": 1,
+                     *             "fee_tao": 0.5,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "signer": "example",
+                     *             "success": false,
+                     *             "summary": "Example description.",
+                     *             "tip_tao": 0.5
                      *           }
                      *         ],
                      *         "limit": 1,
