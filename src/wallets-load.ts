@@ -28,8 +28,16 @@ type ServedWalletActivity = Omit<WalletActivity, "address" | "window_days">;
 
 // Registry/artifact rows are read for shaping only, never trusted for control
 // flow. Mirrors the readJson precedent elsewhere.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
+
+type Row = Record<string, unknown>;
+
+/** The row under an untyped value, or null -- a nested artifact object. */
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
 
 export const SUBNET_WALLETS_FIELD_SOURCES = {
   "wallets[].ss58": { kind: "measured", storage: null },
@@ -126,10 +134,10 @@ export function subnetWalletRows(
       source_urls: Array.isArray(entity?.source_urls)
         ? entity.source_urls.map(String)
         : [],
-      unspendable_proof_basis:
-        typeof entity?.unspendable_proof?.basis === "string"
-          ? entity.unspendable_proof.basis
-          : null,
+      unspendable_proof_basis: ((proof) =>
+        typeof proof?.basis === "string" ? proof.basis : null)(
+        rowOf(entity?.unspendable_proof),
+      ),
       activity: activityFor(ss58),
     });
   }
@@ -139,7 +147,15 @@ export function subnetWalletRows(
 export interface LoadSubnetOwnerCutInput {
   netuid: number;
   window_days?: number;
-  economics: Row | null;
+  /** The subnet's economics card, typed to the contract rather than to a bag:
+   *  `alpha_out_emission` and `alpha_price_tao` are read straight out of it
+   *  and handed to a calculation that takes numbers (#10782).
+   *
+   *  `Partial`, because this reads FOUR of its ~39 members and each read is
+   *  already null-tolerant -- an absent emission nulls the accrual with a
+   *  reason rather than failing. Every name is still checked against the
+   *  contract, so a typo is a compile error; only the arity is relaxed. */
+  economics: Partial<SubnetEconomicsRow> | null;
   /** network-parameters' `subnet_owner_cut_effective`. Null makes the accrual
    * null rather than silently 18% (#10484). */
   owner_cut: number | null;
@@ -190,7 +206,7 @@ export function loadSubnetOwnerCut(
     burned_alpha: input.burned_alpha ?? null,
     flows_observed: input.flows_observed,
   });
-  const owner = (key: string): string | null => {
+  const owner = (key: keyof SubnetEconomicsRow): string | null => {
     const value = input.economics?.[key];
     return typeof value === "string" && value ? value : null;
   };

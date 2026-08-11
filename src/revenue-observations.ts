@@ -33,8 +33,7 @@ import {
 export const REVENUE_OBSERVATIONS_TABLE = "revenue_observations";
 export const REVENUE_PROBE_FAILURES_TABLE = "revenue_probe_failures";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 export interface RevenueStoreDb {
   prepare(sql: string): {
@@ -201,7 +200,12 @@ export function eligibleRevenueSurfaces(
   const surfaces = Array.isArray(artifact?.surfaces) ? artifact.surfaces : [];
   const out: ProbeSurfaceInput[] = [];
   for (const surface of surfaces as Row[]) {
-    const revenue = surface?.revenue as Row | undefined;
+    // The registry's own declaration, asserted at the SAME boundary the
+    // artifact read already is -- narrower than the `as Row` it replaces, not
+    // an additional claim. It says what the object IS, never that its members
+    // are valid: `extractRevenue` validates `shape` against REVENUE_SHAPES
+    // itself, which is the whole point of the paragraph above (#10782).
+    const revenue = surface?.revenue as ProbeSurfaceInput["revenue"];
     if (!revenue) continue;
     // The two `extractRevenue` refuses without, checked in the order it checks
     // them so the reason a surface is skipped here matches the reason it would
@@ -213,7 +217,7 @@ export function eligibleRevenueSurfaces(
       url: String(surface.url ?? ""),
       auth_required: surface.auth_required === true,
       probe: { enabled: true },
-      revenue: surface.revenue,
+      revenue,
     });
   }
   return out;

@@ -16,12 +16,16 @@
 import { buildOpenApiArtifact } from "../src/contracts.ts";
 import { generateOpenApiZodComponents } from "./generate-openapi-zod-components.ts";
 import { buildTimestamp } from "./lib.ts";
+import type { Schema } from "../src/openapi-sample.ts";
 
 type Row = Record<string, unknown>;
 
 export async function loadOpenApiComponentSchemas(
+  // `Record<string, Schema>`, which is what `buildOpenApiArtifact` takes and
+  // what the generator already returns. `Row` typed the VALUES `unknown`, so
+  // the one consumer had to be told these were schemas (#10782).
   generatedAt: string = buildTimestamp(),
-): Promise<Row> {
+): Promise<Record<string, Schema>> {
   return {
     ...generateOpenApiZodComponents(),
     GeneratedOpenApiMarker: {

@@ -7,6 +7,7 @@
 // serving zero-downtime and regression-proof. No I/O here: callers pass parsed
 // objects + D1 rows in.
 
+import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import {
   computeReliability,
   scoreFromStats,
@@ -2223,9 +2224,15 @@ export async function resolveLiveEconomics({
  * cannot drift about what "spot" means -- including the root special case, where there
  * is no AMM and the price is 1 by definition rather than a ratio of absent reserves.
  */
-export function withSpotPrice(
-  row: Row | null | undefined,
-): Row | null | undefined {
+// Typed to the CONTRACT rather than to a bag (#10782). Every caller of the
+// pair below already cast on the way in and on the way out --
+// `withSpotPricedEconomics(blob as Row) as typeof baseData` at three of the
+// four sites -- which is the signature being ignored rather than used. Both
+// functions are shape-preserving, so the honest spelling is the row/artifact
+// in and the same out.
+export function withSpotPrice<T extends SubnetEconomicsRow | null | undefined>(
+  row: T,
+): T {
   if (!row || typeof row !== "object") return row;
   return {
     ...row,
@@ -2248,16 +2255,43 @@ export function withSpotPrice(
  * here. Null-safe: a blob that is not an object, or has no subnets array, is
  * returned unchanged.
  */
-export function withSpotPricedEconomics(
-  blob: Row | null | undefined,
-): Row | null | undefined {
+export function withSpotPricedEconomics<T extends object | null | undefined>(
+  blob: T,
+): T {
   if (!blob || typeof blob !== "object") return blob;
-  const rows = blob.subnets;
+  // Read through a row view rather than constraining `T` to `{subnets?: …}`:
+  // that constraint turns every object-literal argument into an
+  // excess-property check, which is a different rule from the one intended.
+  const rows = (blob as Row).subnets;
   if (!Array.isArray(rows)) return blob;
   return {
     ...blob,
-    subnets: (rows as Row[]).map((row) => withSpotPrice(row)),
+    subnets: (rows as SubnetEconomicsRow[]).map((row) => withSpotPrice(row)),
   };
+}
+
+/**
+ * One subnet's row out of an economics blob, typed to the contract.
+ *
+ * THE ONE PLACE the blob's rows become `SubnetEconomicsRow`. The assertion is
+ * this module's declared boundary -- the blob is produced against
+ * `SubnetEconomicsSchema` and `withSpotPrice`/`withSpotPricedEconomics` above
+ * already read it that way -- and consolidating it here is what lets the MCP
+ * economics tools hand a typed row to `loadSubnetOwnerCut` and
+ * `loadSubnetRevenue`, both of which declare `SubnetEconomicsRow | null`,
+ * without each of them restating the assumption (#10782). #10789 replaces the
+ * assertion with a parse; until then there is exactly one to replace.
+ */
+export function subnetEconomicsRow(
+  economicsBlob: Row | null | undefined,
+  netuid: unknown,
+): SubnetEconomicsRow | null {
+  const rows = economicsBlob?.subnets;
+  if (!Array.isArray(rows)) return null;
+  return (
+    (rows as SubnetEconomicsRow[]).find((entry) => entry?.netuid === netuid) ??
+    null
+  );
 }
 
 export function overlaySubnetEconomics(
@@ -2266,9 +2300,7 @@ export function overlaySubnetEconomics(
   netuid: unknown,
 ): Row | null | undefined {
   if (!detail || typeof detail !== "object") return detail;
-  const rows = economicsBlob?.subnets;
-  if (!Array.isArray(rows)) return detail;
-  const row = (rows as Row[]).find((entry) => entry?.netuid === netuid);
+  const row = subnetEconomicsRow(economicsBlob, netuid);
   if (!row) return detail;
   return { ...detail, economics: withSpotPrice(row) };
 }

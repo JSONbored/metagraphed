@@ -108,7 +108,11 @@ export function isEpochMillis(value: unknown): value is number {
  * put `account_position_daily`'s date range at `1970-01-21 .. 2026-08-07`,
  * outside every served window and inside every COUNT(*).
  */
-export function neuronSnapshotDate(capturedAtMs: number): string | null {
+// Takes `unknown`, matching its own guard: `isEpochMillis` is a type
+// predicate over `unknown` and `Number.isFinite` does not coerce, so a
+// numeric STRING is rejected here and always was. Declaring the parameter
+// `number` said the caller had already checked, which no caller had (#10782).
+export function neuronSnapshotDate(capturedAtMs: unknown): string | null {
   if (!isEpochMillis(capturedAtMs)) return null;
   return new Date(capturedAtMs).toISOString().slice(0, 10);
 }

@@ -35,6 +35,7 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import type { SubnetEconomics as SubnetEconomicsRow } from "../schemas-src/shared.ts";
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { clampToolLimit } from "../workers/request-params.ts";
 import { serveWithSdk } from "./mcp-sdk-adapter.ts";
@@ -1211,6 +1212,7 @@ import {
   buildChainSigners,
   trimChainActivityToWindow,
   trimChainFeesToWindow,
+  type ChainSignersResult,
 } from "./chain-analytics.ts";
 import {
   loadCompareSubnets,
@@ -1281,6 +1283,7 @@ import { loadFixture } from "./fixtures-mcp.ts";
 import {
   callSubnetSurface,
   matchSchemaOperation,
+  type CallSubnetSurfaceCredential,
 } from "./call-subnet-surface.ts";
 import {
   ECONOMIC_LEADERBOARD_BOARDS,
@@ -1297,6 +1300,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
+  subnetEconomicsRow,
   withSpotPrice,
 } from "./health-serving.ts";
 import {
@@ -1602,7 +1606,7 @@ import {
 } from "./subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
 import { GET_SUBNET_OHLC_CANDLE_DEFAULT } from "../schemas-src/mcp-tools/get-subnet-volume-ohlc.ts";
-import { computeStakeQuote } from "./stake-quote.ts";
+import { computeStakeQuote, type StakeQuote } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
@@ -1706,10 +1710,138 @@ import {
   UPTIME_DAILY_TABLES,
 } from "./read-store-tables.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
+
+// ── reading an untyped value ─────────────────────────────────────────────────
+//
+// `Row` was `Record<string, any>` until #10782, which made every read off one
+// an `any` -- so `row.total + 1`, `row.items.map(...)` and `row.name.trim()`
+// all compiled against a value that is a JSON blob from an artifact, a KV
+// entry, or a database. These are the narrowings this file was doing in its
+// head. The same four exist in `workers/api.ts` and `src/graphql.ts`, each
+// close to the reads it serves rather than shared through a module none of the
+// three would otherwise import.
+
+/** The row under an untyped value, or null. */
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
+
+/** The rows under an untyped value, or empty. */
+function rowsOf(value: unknown): Row[] {
+  return Array.isArray(value) ? (value as Row[]) : [];
+}
+
+/**
+ * The values under an array OR an object keyed by index, or empty.
+ *
+ * `Object.values` accepts both spellings and says which it got about neither,
+ * which is how `rpc/pools.json` came to be read as one and published as the
+ * other: the artifact serves `pools` as an ARRAY of five, the test fixtures
+ * spell it as `{ 0: {...} }`, and `Object.values(pools)` on an `any` was
+ * silently correct for both. `rowOf` rejects an array, so narrowing that one
+ * read to a row emptied `get_best_rpc_endpoint` against the real artifact
+ * while the object-keyed fixture kept every unit test green (#10782).
+ *
+ * Both spellings are live, so this takes both and neither is a guess.
+ */
+function valuesOf(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value as unknown[];
+  const row = rowOf(value);
+  return row ? Object.values(row) : [];
+}
+
+/**
+ * The items under an untyped value, or empty.
+ *
+ * `rowsOf` with the row claim withheld. A `value is T` filter only narrows
+ * when `T` is assignable to the array's element type, and an INTERFACE never
+ * is: TypeScript keeps interfaces open to declaration merging, so it will not
+ * grant them an index signature. Filtering `Row[]` with a predicate silently
+ * picks `filter`'s non-narrowing overload.
+ */
+function itemsOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? (value as unknown[]) : [];
+}
+
+/** A finite number, or null. */
+function numberOf(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** An integer, or null. `Number.isInteger` is not a type predicate, so the
+ *  `typeof` is what lets the value be used as a number afterwards. */
+function intOf(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+/** One of the four places a credential can be attached, or null. Equality
+ *  against a literal is what narrows `unknown`; a chain of `!==` guards does
+ *  not, which is why the call_subnet_surface handler validated its location
+ *  four ways and still handed on an untyped value. */
+function authLocationOf(
+  value: unknown,
+): "header" | "query" | "cookie" | "body" | null {
+  return value === "header" ||
+    value === "query" ||
+    value === "cookie" ||
+    value === "body"
+    ? value
+    : null;
+}
+
+/**
+ * The netuid tie-break every ranked list ends with, deterministically.
+ *
+ * Three sorts spelled this `a.netuid - b.netuid`, which on a bag is `NaN`
+ * whenever either row's netuid is not a number -- and a comparator that
+ * answers NaN hands the order to the sort implementation, which is the exact
+ * opposite of the stable page the tie-break exists to produce. An unreadable
+ * netuid now sorts as 0 rather than as chaos (#10782).
+ */
+function compareNetuid(a: Row, b: Row): number {
+  return (intOf(a.netuid) ?? 0) - (intOf(b.netuid) ?? 0);
+}
+
+/** A non-empty string, or null. */
+function stringOf(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * A thrown value's message.
+ *
+ * `catch` binds `unknown`, and reading `.message` off it through a cast is
+ * what let a thrown string or a rejected non-Error render as `undefined` in a
+ * tool's error text. `String(value)` is the honest fallback.
+ */
+function errorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
+}
+
+/**
+ * A loader's own tagged error, as the tool should report it -- or null.
+ *
+ * Four handlers spelled this `rawErr as Row` and then read `.code` and
+ * `.message` straight off the bag into `toolError(code, message)`, whose
+ * parameters are both `string`. The loaders that set a marker set `code` in
+ * the same constructor (`healthHistoryMcpError` and its siblings), so the
+ * marker and the code are ONE question and this asks it once: a tagged error
+ * without a usable code now propagates RAW, where before it became an MCP
+ * error whose `code` was `undefined` (#10782).
+ */
+function taggedLoaderError(
+  raw: unknown,
+  marker: string,
+): { code: string; message: string } | null {
+  const row = rowOf(raw);
+  const code = stringOf(row?.[marker] === true ? row.code : null);
+  return code === null ? null : { code, message: errorMessage(raw) };
+}
 
 // Bridges McpCtx (readArtifact optional -- direct-call tests omit it) to the
 // per-domain loader ctx interfaces that declare readArtifact required; every
@@ -1785,7 +1917,11 @@ interface McpCtx {
   clientName?: string;
   clientVersion?: string;
   recordUsageEvent?: AnyFn;
-  chainSignersCache?: Map<string, unknown>;
+  /** Keyed by {@link chainSignersCacheKey}; holds the in-flight promise so a
+   *  batch of identical calls shares one rate-limiter charge. Typed by what it
+   *  stores rather than `unknown`, which is what made the one read of it need
+   *  an `as { data: Row }` (#10782). */
+  chainSignersCache?: Map<string, Promise<McpChainSignersLoad>>;
   recordMcpToolCallEvent?: AnyFn;
   recordMcpInitializeEvent?: AnyFn;
   recordMcpToolsListEvent?: AnyFn;
@@ -1815,6 +1951,38 @@ interface McpCtx {
 // behavior as `handler` above if used directly across 204 heterogeneous
 // entries). `properties`/`required` stay accessible for tests that inspect
 // a specific tool's wire schema.
+/**
+ * The injectable dependencies the entry copies onto a context.
+ *
+ * DERIVED from `McpCtx` rather than restated, so a member added there and
+ * forgotten here is a compile error instead of a test-injected double that
+ * silently falls through to the real recorder -- the exact defect the
+ * `buildContext` body's own comment describes having shipped once.
+ *
+ * It was `Row`, which made all fourteen members `any`: the object
+ * `buildContext` returns therefore did not satisfy `McpCtx`, and the three
+ * places that pass it were told so rather than fixed (#10782).
+ */
+type McpDeps = Partial<
+  Pick<
+    McpCtx,
+    | "readArtifact"
+    | "readHealthKv"
+    | "executionCtx"
+    | "recordUsageEvent"
+    | "recordMcpToolCallEvent"
+    | "recordMcpInitializeEvent"
+    | "recordMcpToolsListEvent"
+    | "recordMcpMissingCapabilityEvent"
+    | "recordMcpResourcesListEvent"
+    | "recordMcpResourceReadEvent"
+    | "recordMcpPromptsListEvent"
+    | "recordMcpPromptGetEvent"
+    | "recordExceptionEvent"
+    | "recordAiDegradedEvent"
+  >
+>;
+
 interface JsonSchemaLike {
   type?: string | string[];
   properties?: Record<string, unknown>;
@@ -1925,9 +2093,14 @@ const STAKE_PREVIEW_IMPACT_MAX_PCT = 5;
 // `ok` flag) purely from a computed stake quote's price impact — the one signal
 // the preview already carries that reflects how much this size moves the pool.
 // Additive over get_subnet_stake_quote's numbers; adds no execution capability.
-function computeStakePreviewAdvisory(quote: Row) {
+function computeStakePreviewAdvisory(quote: StakeQuote) {
+  // `StakeQuote`, not `Row`. The quote comes straight off `computeStakeQuote`,
+  // which declares `price_impact_pct: number` -- and the bag had this function
+  // comparing an `any` against both thresholds, where an absent impact reads
+  // false in every direction and lands on `ok: false` with no warning saying
+  // why (#10782).
   const impact = quote.price_impact_pct;
-  const warnings = [];
+  const warnings: string[] = [];
   if (impact >= STAKE_PREVIEW_IMPACT_MAX_PCT) {
     warnings.push(
       `Estimated price impact ${impact}% meets or exceeds the ${STAKE_PREVIEW_IMPACT_MAX_PCT}% high-impact threshold: this size would move the pool price substantially against you — consider a smaller amount.`,
@@ -2801,7 +2974,7 @@ function requireCredentialStore(ctx: McpCtx): {
 async function requireCredentialStoreSurface(
   ctx: McpCtx,
   surfaceId: string,
-): Promise<Row> {
+): Promise<{ surface: Row; canonicalId: string }> {
   if (!SURFACE_ID_PATTERN.test(surfaceId)) {
     throw toolError("invalid_params", "Invalid surface_id format.");
   }
@@ -2814,7 +2987,11 @@ async function requireCredentialStoreSurface(
         `for it would have no effect.`,
     );
   }
-  return surface;
+  // The STORE KEY, resolved here rather than by the caller: a row reached
+  // through `surface_key` or a deprecated alias carries a different id than
+  // the caller asked with, and a credential written under one and read under
+  // the other is a credential that silently never applies (#10782).
+  return { surface, canonicalId: stringOf(surface.surface_id) ?? surfaceId };
 }
 
 /**
@@ -3054,11 +3231,17 @@ async function readMcpWebhookDeliveryStatus(env: Env, id: unknown) {
     const records = await Promise.all(
       keys
         .slice(0, WEBHOOK_REDELIVERY_LIST_LIMIT)
-        .map((entry: Row) =>
+        // No `(entry: Row)` annotation: `list()` already types its keys, and
+        // restating the parameter as a bag was what picked `get`'s STRING
+        // overload -- so the records below were `(string | null)[]` and the
+        // `as Row[]` put them back (#10782).
+        .map((entry) =>
           env.METAGRAPH_CONTROL.get(entry.name, { type: "json" }),
         ),
     );
-    return summarizeDeliveryRecords(records as Row[]);
+    return summarizeDeliveryRecords(
+      records.filter((record): record is Row => rowOf(record) !== null),
+    );
   } catch {
     return summarizeDeliveryRecords([]);
   }
@@ -3070,7 +3253,11 @@ async function readMcpWebhookDeliveryStatus(env: Env, id: unknown) {
 // METAGRAPH_ACCOUNT_IDENTITY_SOURCE flag as get_account_identity.
 function mcpAccountIdentityHistoryRequest(
   ss58: string,
-  { limit, offset, cursor }: Row,
+  {
+    limit,
+    offset,
+    cursor,
+  }: { limit?: number; offset?: number; cursor?: string | null },
 ) {
   const params = new URLSearchParams();
   if (limit != null) params.set("limit", String(limit));
@@ -3092,16 +3279,15 @@ async function mcpEconomicsBlob(ctx: McpCtx): Promise<Row | null> {
   }
 }
 
-/** One subnet's economics row, or null. */
+/** One subnet's economics row, or null. Typed to the contract through
+ *  health-serving's own boundary rather than handed on as a bag: all three
+ *  callers pass it to a loader that declares `SubnetEconomicsRow | null`
+ *  (#10782). */
 async function mcpEconomicsRow(
   ctx: McpCtx,
   netuid: number,
-): Promise<Row | null> {
-  const blob = await mcpEconomicsBlob(ctx);
-  const rows = Array.isArray(blob?.subnets)
-    ? (blob.subnets as Array<Record<string, unknown>>)
-    : [];
-  return rows.find((r) => Number(r?.netuid) === netuid) ?? null;
+): Promise<SubnetEconomicsRow | null> {
+  return subnetEconomicsRow(await mcpEconomicsBlob(ctx), netuid);
 }
 
 /** A subnet's surface declarations, or null on any read failure --
@@ -3440,45 +3626,83 @@ async function requireDataTierRateLimit(ctx: McpCtx) {
   }
 }
 
-function chainSignersCacheKey({ label, limit, callModule, sort }: Row) {
+/**
+ * One chain-signers lookup, as its single caller spells it.
+ *
+ * A named shape rather than `Row`: the cache KEY is built from four of these
+ * members and the leaderboard from three, and with the bag they were the same
+ * `any` -- so a caller adding a scope the key does not include would have
+ * shared a cache entry across two different questions, silently (#10782).
+ */
+interface McpChainSignersOptions {
+  label: string;
+  days: number | null;
+  observedAt: string | null;
+  limit: number;
+  callModule?: string | null;
+  sort: string;
+}
+
+/** What one cached lookup holds. `rows` is the aggregation input, which since
+ *  the #4772 D1 retirement is always empty -- kept so the shape does not
+ *  change if a store comes back. */
+interface McpChainSignersLoad {
+  data: ChainSignersResult;
+  rows: Row[];
+}
+
+function chainSignersCacheKey({
+  label,
+  limit,
+  callModule,
+  sort,
+}: McpChainSignersOptions) {
   return JSON.stringify([label, limit, callModule || "", sort]);
 }
 
-async function loadMcpChainSigners(ctx: McpCtx, options: Row) {
-  ctx.chainSignersCache ||= new Map();
+async function loadMcpChainSigners(
+  ctx: McpCtx,
+  options: McpChainSignersOptions,
+): Promise<McpChainSignersLoad> {
+  const cache = (ctx.chainSignersCache ||= new Map());
   const key = chainSignersCacheKey(options);
-  if (!ctx.chainSignersCache.has(key)) {
-    // The limiter charge lives inside the cache-miss promise (not ahead of the
-    // cache check) so a batch of identical calls shares one limiter charge,
-    // instead of paying the limiter once per duplicate request in the batch.
-    // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
-    // there is no live D1 aggregation left to run here -- this always resolves to
-    // the schema-stable empty leaderboard via buildChainSigners([...]).
-    ctx.chainSignersCache.set(
-      key,
-      requireDataTierRateLimit(ctx)
-        .then(() => ({
-          data: buildChainSigners({
-            window: options.label,
-            sort: options.sort,
-            observedAt: options.observedAt,
-            rows: [],
-          }),
-          rows: [],
-        }))
-        .catch((error: unknown) => {
-          ctx.chainSignersCache!.delete(key);
-          throw error;
-        }),
-    );
-  }
-  return ctx.chainSignersCache.get(key);
+  // One `get`, not `has` then `get`. The second lookup answers
+  // `| undefined` however the first one went, so the old form needed the
+  // caller to accept a value the function had already proved was there --
+  // which is what the `as { data: Row }` at the call site was doing (#10782).
+  const cached = cache.get(key);
+  if (cached) return cached;
+  // The limiter charge lives inside the cache-miss promise (not ahead of the
+  // cache check) so a batch of identical calls shares one limiter charge,
+  // instead of paying the limiter once per duplicate request in the batch.
+  // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
+  // there is no live D1 aggregation left to run here -- this always resolves to
+  // the schema-stable empty leaderboard via buildChainSigners([...]).
+  const pending = requireDataTierRateLimit(ctx)
+    .then(() => ({
+      data: buildChainSigners({
+        window: options.label,
+        sort: options.sort,
+        observedAt: options.observedAt,
+        rows: [],
+      }),
+      rows: [] as Row[],
+    }))
+    .catch((error: unknown) => {
+      cache.delete(key);
+      throw error;
+    });
+  cache.set(key, pending);
+  return pending;
 }
 
-async function mcpObservedAt(ctx: McpCtx) {
+async function mcpObservedAt(ctx: McpCtx): Promise<string | null> {
   if (!ctx.readHealthKv) return null;
   const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
-  return meta?.last_run_at || null;
+  // `readHealthKv` is injected and typed `AnyFn`, so its result is `any` and
+  // the old `meta?.last_run_at || null` inferred `any` too -- a timestamp that
+  // every caller then treated as a string without one of them checking.
+  return stringOf(rowOf(meta)?.last_run_at);
 }
 
 // Resolve + validate a history window arg (7d|30d|90d|1y|all) the way the REST
@@ -3615,11 +3839,13 @@ async function loadEconomicsSubnetRows(ctx: McpCtx) {
     contractVersion: mcpContractVersion(ctx),
   });
   if (Array.isArray(live?.data?.subnets)) {
-    return live.data.subnets.map((row: Row) => withSpotPrice(row) as Row);
+    return live.data.subnets.map((row: SubnetEconomicsRow) =>
+      withSpotPrice(row),
+    );
   }
   const blob = await loadArtifactData(ctx, "/metagraph/economics.json");
   return Array.isArray(blob?.subnets)
-    ? blob.subnets.map((row: Row) => withSpotPrice(row) as Row)
+    ? blob.subnets.map((row: SubnetEconomicsRow) => withSpotPrice(row))
     : [];
 }
 
@@ -3700,8 +3926,9 @@ async function runAi(fn: AnyFn) {
   try {
     return await fn();
   } catch (rawError) {
-    const error = rawError as Row;
-    if (error?.aiInput) throw toolError("invalid_params", error.message);
+    const error = rowOf(rawError);
+    if (error?.aiInput)
+      throw toolError("invalid_params", errorMessage(rawError));
     // Already classified deeper in the stack (requireAi's own ai_unavailable,
     // requireAiRateLimit's rate_limited) — do not re-wrap and do not turn a
     // rate limit into a fault.
@@ -3714,8 +3941,9 @@ async function runAi(fn: AnyFn) {
 // `subnet` string (numeric, curated slug, or chain native_slug). Slug lookup
 // joins the committed index curated-slug-first, then native_slug — the same
 // precedence the REST resolver uses (see lookupSubnetNetuid, #331).
-async function resolveNetuid(ctx: McpCtx, args: Row) {
-  if (Number.isInteger(args?.netuid) && args.netuid >= 0) return args.netuid;
+async function resolveNetuid(ctx: McpCtx, args: Row): Promise<number> {
+  const declared = intOf(args?.netuid);
+  if (declared !== null && declared >= 0) return declared;
   const ref = typeof args?.subnet === "string" ? args.subnet.trim() : "";
   if (ref === "") {
     throw toolError(
@@ -3724,25 +3952,44 @@ async function resolveNetuid(ctx: McpCtx, args: Row) {
     );
   }
   if (/^\d+$/.test(ref)) return Number(ref);
-  const index = await loadArtifactData(ctx, "/metagraph/subnets.json");
-  const subnets = Array.isArray(index.subnets) ? index.subnets : [];
+  const index = rowOf(await loadArtifactData(ctx, "/metagraph/subnets.json"));
+  const subnets = rowsOf(index?.subnets);
   const key = ref.toLowerCase();
+  const matches = (field: string) => (s: Row) => {
+    const value = s[field];
+    return typeof value === "string" && value.toLowerCase() === key;
+  };
   const match =
-    subnets.find(
-      (s: Row) => typeof s.slug === "string" && s.slug.toLowerCase() === key,
-    ) ||
-    subnets.find(
-      (s: Row) =>
-        typeof s.native_slug === "string" &&
-        s.native_slug.toLowerCase() === key,
-    );
-  if (!match) {
+    subnets.find(matches("slug")) ?? subnets.find(matches("native_slug"));
+  // A row matched by slug but carrying an unusable netuid resolves to NOTHING,
+  // which is what "no subnet matches" already meant -- the old form returned
+  // `match.netuid` unchecked, so a corrupt index entry handed every downstream
+  // route a netuid that was not a number (#10782).
+  const netuid = intOf(match?.netuid);
+  if (netuid === null) {
     throw toolError(
       "not_found",
       `No subnet matches '${ref}'. Use search_subnets to discover one.`,
     );
   }
-  return match.netuid;
+  return netuid;
+}
+
+/** One ranked candidate. Both members are numbers because both are SORTED on
+ *  -- `b.relevance - a.relevance || a.netuid - b.netuid` -- and subtraction on
+ *  a bag's member is how a non-numeric one produces `NaN` and an order that
+ *  depends on the engine's sort implementation (#10782). */
+interface RankedSubnet {
+  netuid: number;
+  relevance: number;
+}
+
+/** One RPC endpoint admitted to the best-of ranking, with the two values it
+ *  is SORTED on already resolved to numbers. */
+interface RankedRpcEndpoint {
+  endpoint: Row;
+  score: number;
+  latencyMs: number;
 }
 
 // Rank subnets relevant to a free-form task. Uses semantic (intent) ranking when
@@ -3765,14 +4012,18 @@ async function rankSubnetsForTask(
       const out = await semanticSearch(ctx.env, task, {
         limit: Math.min(poolSize, 20),
       });
-      const ranked = (out.results || [])
-        .filter(
-          (r: Row) =>
-            r.type === "subnet" &&
-            Number.isInteger(r.netuid) &&
-            isCallable(r.netuid),
-        )
-        .map((r: Row) => ({ netuid: r.netuid, relevance: r.score }));
+      // `SemanticMatch.netuid` is declared `unknown`, so the integer check is
+      // what produces the number -- and hoisting it out of the filter is what
+      // lets the map below carry that number instead of re-reading the bag
+      // (#10782).
+      const ranked: RankedSubnet[] = [];
+      for (const r of out.results || []) {
+        const netuid = intOf(r.netuid);
+        if (r.type !== "subnet" || netuid === null || !isCallable(netuid)) {
+          continue;
+        }
+        ranked.push({ netuid, relevance: r.score });
+      }
       // Only commit to semantic mode when it yields callable hits; a pool of
       // purely non-callable matches falls through to keyword discovery.
       if (ranked.length > 0) return { mode: "semantic", ranked };
@@ -3789,20 +4040,23 @@ async function rankSubnetsForTask(
       });
     }
   }
-  const index = await loadArtifactData(ctx, "/metagraph/search.json");
+  const index = rowOf(await loadArtifactData(ctx, "/metagraph/search.json"));
   const terms = queryTerms(task);
-  const docs = Array.isArray(index.documents) ? index.documents : [];
-  const ranked = docs
-    .filter((doc: Row) => doc.type === "subnet")
-    .map((doc: Row) => ({
-      netuid: doc.netuid,
-      relevance: scoreDocument(doc, terms),
-    }))
-    .filter((entry: Row) => entry.relevance > 0 && isCallable(entry.netuid))
-    .sort((a: Row, b: Row) => b.relevance - a.relevance || a.netuid - b.netuid)
-    .slice(0, poolSize);
-  return { mode: "keyword", ranked };
+  const ranked: RankedSubnet[] = [];
+  for (const doc of rowsOf(index?.documents)) {
+    if (doc.type !== "subnet") continue;
+    const netuid = intOf(doc.netuid);
+    if (netuid === null || !isCallable(netuid)) continue;
+    const relevance = scoreDocument(doc, terms);
+    if (relevance > 0) ranked.push({ netuid, relevance });
+  }
+  ranked.sort((a, b) => b.relevance - a.relevance || a.netuid - b.netuid);
+  return { mode: "keyword", ranked: ranked.slice(0, poolSize) };
 }
+
+/** What the argument pipeline reads off a tool: its name (for the error
+ *  message) and its published input schema. */
+type ToolArgumentSource = Pick<McpToolDefinition, "name" | "inputSchema">;
 
 /**
  * The arguments a handler actually receives, from the ones a caller sent.
@@ -3814,14 +4068,28 @@ async function rankSubnetsForTask(
  * here covers every tool at once, where a gate per handler covers whichever
  * ones somebody remembered.
  */
-export function validateToolArguments(tool: Row, args: Row) {
+export function validateToolArguments(
+  // Exactly the two members this reads, not the whole definition: it runs
+  // over BOTH tool objects -- the raw registry entry at dispatch and the
+  // SERVED definition in the tests -- and those are different shapes
+  // (`listToolDefinitions` adds annotations/execution and drops the handler).
+  // Asking for what it uses is what lets one function serve both without
+  // either side being cast into position (#10782).
+  tool: ToolArgumentSource,
+  rawArgs: unknown,
+) {
+  // `unknown`, because that is what a JSON-RPC `params.arguments` IS -- the
+  // two checks below are the whole reason this function exists, and taking a
+  // `Row` meant the caller had to assert the answer before asking (#10782).
+  //
   // `arguments` absent entirely is the same request as `arguments: {}` -- the
   // caller supplied nothing either way, so it must resolve to the same defaults
   // rather than to a bare {}. Returning early here is how the omitted-argument
   // path skipped them (#10306).
-  if (args === undefined || args === null)
+  if (rawArgs === undefined || rawArgs === null)
     return applyPublishedDefaults(tool, {});
-  if (typeof args !== "object" || Array.isArray(args)) {
+  const args = rowOf(rawArgs);
+  if (!args) {
     throw toolError(
       "invalid_params",
       `Invalid arguments for tool ${tool.name}: expected an object of named arguments.`,
@@ -3954,17 +4222,17 @@ function callerSuppliedArg(args: Row, name: string) {
  * the handlers whose parameters are only valid in some modes.
  * `callerSuppliedArg` above gives the distinction back.
  */
-function applyPublishedDefaults(tool: Row, args: Row): Row {
-  const properties = tool.inputSchema?.properties as
-    Record<string, Row> | undefined;
+function applyPublishedDefaults(tool: ToolArgumentSource, args: Row): Row {
+  const properties = tool.inputSchema?.properties;
   if (!properties) return args;
   let filled: Row | null = null;
   const supplied = new Set<string>();
   for (const [name, schema] of Object.entries(properties)) {
-    if (schema?.default === undefined) continue;
+    const declared = rowOf(schema)?.default;
+    if (declared === undefined) continue;
     if (args[name] !== undefined) continue;
     filled ??= { ...args };
-    filled[name] = schema.default;
+    filled[name] = declared;
     supplied.add(name);
   }
   if (!filled) return args;
@@ -4007,9 +4275,8 @@ function applyPublishedDefaults(tool: Row, args: Row): Row {
  * the row builders honour it as zero), so rewriting it here would flatten a
  * distinction tests/pagination-bound-parity.test.ts exists to keep.
  */
-function clampPublishedLimit(tool: Row, args: Row): Row {
-  const schema = tool.inputSchema?.properties?.limit as Row | undefined;
-  const max = schema?.maximum;
+function clampPublishedLimit(tool: ToolArgumentSource, args: Row): Row {
+  const max = rowOf(tool.inputSchema?.properties?.limit)?.maximum;
   const value = args?.limit;
   if (typeof max !== "number" || typeof value !== "number") return args;
   if (!Number.isInteger(value) || value <= max) return args;
@@ -4028,9 +4295,16 @@ function clampPublishedLimit(tool: Row, args: Row): Row {
  * Returns the ORIGINAL object when there is nothing to strip, so the
  * overwhelmingly common case allocates nothing.
  */
-export function splitMcpIntent(args: Row): { intent?: string; rest: Row } {
+export function splitMcpIntent(args: Row | null | undefined): {
+  intent?: string;
+  rest: Row;
+} {
+  // The nullable is in the SIGNATURE now: the body has always handled a
+  // missing argument object by returning it unchanged, and the dispatch
+  // caller reached it through `params?.arguments as Row` -- a cast whose only
+  // job was to hide that this is exactly the case being handled (#10782).
   if (!args || typeof args !== "object" || !Object.hasOwn(args, MCP_INTENT_ARG))
-    return { rest: args };
+    return { rest: args ?? {} };
   const { [MCP_INTENT_ARG]: intent, ...rest } = args;
   return {
     // A non-string, or a caller sending only whitespace, is not an intent.
@@ -4110,9 +4384,13 @@ function optionalNonNegativeNumber(args: Row, key: string) {
 // Like optionalNonNegativeInt, but 0 is invalid (a "cap the list to zero rows"
 // argument reads as a misuse, not a legitimate empty-result request).
 function optionalPositiveInt(args: Row, key: string) {
-  const value = args?.[key];
-  if (value === undefined || value === null) return null;
-  if (!Number.isInteger(value) || value < 1) {
+  const raw = args?.[key];
+  if (raw === undefined || raw === null) return null;
+  // `intOf`, not `Number.isInteger`: the latter is not a type predicate, so
+  // the `value < 1` beside it was comparing an `unknown` -- and the value
+  // RETURNED from here was untyped for every caller that pages on it.
+  const value = intOf(raw);
+  if (value === null || value < 1) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a positive integer.`,
@@ -4347,10 +4625,9 @@ function requireHotkey(args: Row) {
 // bespoke `offset` handling (floor + clamp to 0, no throw): tools/call does not
 // enforce the inputSchema `minimum`, so a bad cursor degrades to the first page
 // instead of erroring.
-function resolveCursor(args: Row) {
-  return Number.isFinite(args?.cursor)
-    ? Math.max(0, Math.floor(args.cursor))
-    : 0;
+function resolveCursor(args: Row): number {
+  const cursor = numberOf(args?.cursor);
+  return cursor === null ? 0 : Math.max(0, Math.floor(cursor));
 }
 
 // Cursor-window an already-filtered/ranked row set through the shared list-query
@@ -4364,9 +4641,19 @@ function resolveCursor(args: Row) {
 // present cursor as paging on its own. The caller pre-resolves both bounds (limit
 // clamped, cursor a non-negative integer), so validateListQuery inside
 // applyQueryFilters cannot fail here and always returns a pagination envelope.
+interface CursorWindowOptions {
+  /** The API_QUERY_COLLECTIONS entry whose rules window the rows. */
+  collection: string;
+  /** The key the rows travel under, both in and out. */
+  dataKey: string;
+  /** Null means "the whole list unless the caller pages". */
+  limit: number | null;
+  cursor: number;
+}
+
 function cursorWindow(
   rows: Row[],
-  { collection, dataKey, limit, cursor }: Row,
+  { collection, dataKey, limit, cursor }: CursorWindowOptions,
 ) {
   const url = new URL("https://mcp.internal/list");
   if (limit != null) {
@@ -4380,20 +4667,21 @@ function cursorWindow(
     url,
     collection,
     [],
-  ) as { data: Row; meta: Row };
-  const {
-    total,
-    returned,
-    limit: pageLimit,
-    cursor: pageCursor,
-  } = meta.pagination;
+  );
+  // The header above says this always windows -- and it did, so the four
+  // destructured members were read off a `meta.pagination` nobody checked and
+  // the `as { data: Row; meta: Row }` made that read type-clean. The fallbacks
+  // are the ones every sibling loader already carries
+  // (src/global-incidents-mcp.ts): an unwindowed answer reports the FULL set,
+  // where the bag reported four `undefined`s in a published envelope (#10782).
+  const page = meta?.pagination;
   return {
-    page: data[dataKey],
-    total,
-    returned,
-    limit: pageLimit,
-    cursor: pageCursor,
-    next_cursor: meta.pagination.next_cursor,
+    page: rowsOf(rowOf(data)?.[dataKey]),
+    total: page?.total ?? rows.length,
+    returned: page?.returned ?? rows.length,
+    limit: page?.limit ?? rows.length,
+    cursor: page?.cursor ?? cursor,
+    next_cursor: page?.next_cursor ?? null,
   };
 }
 
@@ -4466,7 +4754,7 @@ export function sortSubnets(rows: Row[], field: string, order: unknown) {
     const av = subnetSortValue(a, field);
     const bv = subnetSortValue(b, field);
     if (av === null || bv === null) {
-      if (av === null && bv === null) return a.netuid - b.netuid;
+      if (av === null && bv === null) return compareNetuid(a, b);
       return av === null ? 1 : -1;
     }
     // Numeric fields subtract; the string field (name) compares lexically. This
@@ -4476,7 +4764,7 @@ export function sortSubnets(rows: Row[], field: string, order: unknown) {
       typeof av === "number"
         ? av - (bv as number)
         : String(av).localeCompare(String(bv));
-    return cmp !== 0 ? cmp * dir : a.netuid - b.netuid;
+    return cmp !== 0 ? cmp * dir : compareNetuid(a, b);
   });
 }
 
@@ -4564,9 +4852,14 @@ export function identityFilterSubnets(rows: Row[], args: Row) {
 }
 
 export function rangeFilterSubnets(rows: Row[], args: Row) {
-  const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
-    Number.isFinite(args?.[arg]),
-  ).map(({ field, op, arg }) => ({ field, op, limit: args[arg] }));
+  // `Number.isFinite` is not a type predicate, so the filter proved nothing to
+  // the map beside it and every `limit` reached the comparison below as an
+  // `any`. Reading the bound ONCE and keeping the number is the same two
+  // passes with the value carried instead of re-read (#10782).
+  const bounds = LIST_SUBNETS_RANGE_BOUNDS.flatMap(({ field, op, arg }) => {
+    const limit = numberOf(args?.[arg]);
+    return limit === null ? [] : [{ field, op, limit }];
+  });
   if (bounds.length === 0) {
     return rows;
   }
@@ -4661,14 +4954,16 @@ export function categoricalFilterSubnets(rows: Row[], args: Row) {
   const includes: { field: string; value: string }[] = [];
   const excludes: { field: string; value: string }[] = [];
   for (const arg of LIST_SUBNETS_CATEGORICAL) {
-    const inc = typeof args?.[arg] === "string" ? args[arg].trim() : "";
+    // A computed key does not carry its `typeof` narrowing -- TypeScript
+    // cannot know `args[arg]` reads the same slot twice -- so read once and
+    // keep the string (#10782).
+    const inc = stringOf(args?.[arg])?.trim() ?? "";
     if (inc) {
       const lowered = inc.toLowerCase();
       requireCategoricalEnumMember(arg, lowered);
       includes.push({ field: arg, value: lowered });
     }
-    const exc =
-      typeof args?.[`not_${arg}`] === "string" ? args[`not_${arg}`].trim() : "";
+    const exc = stringOf(args?.[`not_${arg}`])?.trim() ?? "";
     if (exc) {
       const lowered = exc.toLowerCase();
       requireCategoricalEnumMember(arg, lowered);
@@ -4743,7 +5038,12 @@ function optionalGapCode(args: Row) {
   return value;
 }
 
-function coverageDepthTarget(row: Row, rank = null) {
+function coverageDepthTarget(row: Row, rank: number | null = null) {
+  // `row.dimensions` is read eleven times below. Reading it ONCE is what lets
+  // the `?.` mean what it says: on a bag every one of those was an `any`, so
+  // the eleven defaults were unreachable-looking code guarding a value the
+  // type system had already promised (#10782).
+  const dimensions = rowOf(row.dimensions);
   return {
     rank,
     netuid: row.netuid,
@@ -4755,7 +5055,7 @@ function coverageDepthTarget(row: Row, rank = null) {
     agent_status: row.agent_status,
     blocker_level: row.blocker_level,
     top_gap_codes: row.top_gap_codes || [],
-    top_gaps: (row.top_gaps || []).map((gap: Row) => ({
+    top_gaps: rowsOf(row.top_gaps).map((gap) => ({
       code: gap.code,
       severity: gap.severity,
       field: gap.field,
@@ -4763,35 +5063,41 @@ function coverageDepthTarget(row: Row, rank = null) {
     })),
     recommended_next_action: row.recommended_next_action || null,
     dimensions: {
-      callable_service_count: row.dimensions?.callable_service_count ?? 0,
-      service_kinds: row.dimensions?.service_kinds || [],
-      schema_service_count: row.dimensions?.schema_service_count ?? 0,
-      schema_missing_count: row.dimensions?.schema_missing_count ?? 0,
-      fixture_available_count: row.dimensions?.fixture_available_count ?? 0,
-      fixture_status_counts: row.dimensions?.fixture_status_counts || {},
-      example_count: row.dimensions?.example_count ?? 0,
-      sdk_count: row.dimensions?.sdk_count ?? 0,
-      candidate_operational_count:
-        row.dimensions?.candidate_operational_count ?? 0,
-      official_surface_count: row.dimensions?.official_surface_count ?? 0,
+      callable_service_count: dimensions?.callable_service_count ?? 0,
+      service_kinds: dimensions?.service_kinds || [],
+      schema_service_count: dimensions?.schema_service_count ?? 0,
+      schema_missing_count: dimensions?.schema_missing_count ?? 0,
+      fixture_available_count: dimensions?.fixture_available_count ?? 0,
+      fixture_status_counts: dimensions?.fixture_status_counts || {},
+      example_count: dimensions?.example_count ?? 0,
+      sdk_count: dimensions?.sdk_count ?? 0,
+      candidate_operational_count: dimensions?.candidate_operational_count ?? 0,
+      official_surface_count: dimensions?.official_surface_count ?? 0,
       provider_claimed_surface_count:
-        row.dimensions?.provider_claimed_surface_count ?? 0,
+        dimensions?.provider_claimed_surface_count ?? 0,
     },
   };
 }
 
+interface CoverageDepthFilters {
+  tier?: string | null;
+  severity?: string | null;
+  gapCode?: string | null;
+  agentStatus?: string | null;
+}
+
 function coverageDepthMatches(
   row: Row,
-  { tier, severity, gapCode, agentStatus }: Row,
+  { tier, severity, gapCode, agentStatus }: CoverageDepthFilters,
 ) {
   if (tier && row.tier !== tier) return false;
   // Agent readiness is an axis independent of tier -- the same agent_status
   // filter REST's GET /api/v1/coverage-depth accepts.
   if (agentStatus && row.agent_status !== agentStatus) return false;
-  if (gapCode && !(row.top_gap_codes || []).includes(gapCode)) return false;
+  if (gapCode && !itemsOf(row.top_gap_codes).includes(gapCode)) return false;
   if (
     severity &&
-    !(row.top_gaps || []).some((gap: Row) => gap.severity === severity)
+    !rowsOf(row.top_gaps).some((gap) => gap.severity === severity)
   ) {
     return false;
   }
@@ -5047,18 +5353,16 @@ const MCP_INTENT_ARG_SCHEMA = {
  * trust. Tested directly rather than annotated away.
  */
 export function withIntentArgument(tool: McpToolDefinition): McpToolDefinition {
-  const schema = tool.inputSchema as Row;
-  return {
-    ...tool,
-    inputSchema: {
-      ...schema,
-      type: schema?.type ?? "object",
-      properties: {
-        ...((schema?.properties as Row) ?? {}),
-        [MCP_INTENT_ARG]: MCP_INTENT_ARG_SCHEMA,
-      },
-    } as JsonSchemaLike,
+  const schema = tool.inputSchema;
+  const withIntent: JsonSchemaLike = {
+    ...schema,
+    type: schema?.type ?? "object",
+    properties: {
+      ...(schema?.properties ?? {}),
+      [MCP_INTENT_ARG]: MCP_INTENT_ARG_SCHEMA,
+    },
   };
+  return { ...tool, inputSchema: withIntent };
 }
 
 // Applied ONCE, here, rather than in listToolDefinitions() -- and that is the
@@ -5135,16 +5439,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // this tool shipped with. Canonical wins when both are given, so the
       // resolution is stated rather than left to argument order.
       const query = requireEitherString(args, "q", "query");
-      const index = await loadArtifactData(ctx, "/metagraph/search.json");
+      const index = rowOf(
+        await loadArtifactData(ctx, "/metagraph/search.json"),
+      );
       const terms = queryTerms(query);
-      const docs = Array.isArray(index.documents) ? index.documents : [];
-      const matched = docs
-        .filter((doc: Row) => doc.type === "subnet")
-        .map((doc: Row) => ({ doc, score: scoreDocument(doc, terms) }))
-        .filter((entry: Row) => entry.score > 0)
-        .sort(
-          (a: Row, b: Row) => b.score - a.score || a.doc.netuid - b.doc.netuid,
-        );
+      const matched = rowsOf(index?.documents)
+        .filter((doc) => doc.type === "subnet")
+        .map((doc) => ({ doc, score: scoreDocument(doc, terms) }))
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score || compareNetuid(a.doc, b.doc));
       return searchResponse({ query }, matched, args, ({ doc }) => ({
         netuid: doc.netuid,
         slug: doc.slug,
@@ -5261,35 +5564,38 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         "/metagraph/agent-catalog.json",
       );
       const live = await mcpLiveHealth(ctx);
-      const catalog = overlayCatalogIndex(staticCatalog, live) || staticCatalog;
+      const catalog = rowOf(
+        overlayCatalogIndex(staticCatalog, live) || staticCatalog,
+      );
       const terms = queryTerms(capability);
-      const subnets = Array.isArray(catalog.subnets) ? catalog.subnets : [];
-      const matched = subnets
-        .map((subnet: Row) => ({
+      // `callable_count` and `integration_readiness` are both FILTERED and
+      // SORTED on, so both are resolved to numbers once, here, rather than
+      // compared as bag members three lines apart -- which is how
+      // `callable_count > 0` passed a row whose count was the string "3" and
+      // then subtracted it into a NaN comparator (#10782).
+      const matched = rowsOf(catalog?.subnets)
+        .map((subnet) => ({
           subnet,
           score: keywordScore(
             {
               name: subnet.name,
               slug: subnet.slug,
               text: [
-                ...(Array.isArray(subnet.categories) ? subnet.categories : []),
-                ...(Array.isArray(subnet.service_kinds)
-                  ? subnet.service_kinds
-                  : []),
+                ...itemsOf(subnet.categories),
+                ...itemsOf(subnet.service_kinds),
               ],
             },
             terms,
           ),
+          callableCount: numberOf(subnet.callable_count) ?? 0,
+          readiness: numberOf(subnet.integration_readiness) ?? 0,
         }))
-        .filter(
-          (entry: Row) => entry.score > 0 && entry.subnet.callable_count > 0,
-        )
+        .filter((entry) => entry.score > 0 && entry.callableCount > 0)
         .sort(
-          (a: Row, b: Row) =>
+          (a, b) =>
             b.score - a.score ||
-            (b.subnet.integration_readiness || 0) -
-              (a.subnet.integration_readiness || 0) ||
-            b.subnet.callable_count - a.subnet.callable_count,
+            b.readiness - a.readiness ||
+            b.callableCount - a.callableCount,
         );
       return searchResponse({ capability }, matched, args, ({ subnet }) => ({
         netuid: subnet.netuid,
@@ -5490,11 +5796,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           readArtifact: loadArtifactData as AnyFn,
         });
       } catch (rawErr) {
-        const err = rawErr as Row;
-        if (err?.healthHistoryMcp) {
-          throw toolError(err.code, err.message);
-        }
-        throw err;
+        const tagged = taggedLoaderError(rawErr, "healthHistoryMcp");
+        if (tagged) throw toolError(tagged.code, tagged.message);
+        throw rawErr;
       }
     },
   },
@@ -5842,20 +6146,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             // partial answer into no answer at all.
             const blob = await resolveEconomicsBlob(ctx.env, async () => {
               try {
-                return (await loadArtifactData(
-                  ctx,
-                  "/metagraph/economics.json",
-                )) as Record<string, unknown> | null;
+                return rowOf(
+                  await loadArtifactData(ctx, "/metagraph/economics.json"),
+                );
               } catch {
                 return null;
               }
             });
-            const rows = Array.isArray(blob?.subnets)
-              ? (blob.subnets as Array<Record<string, unknown>>)
-              : [];
+            // Through the same `subnetEconomicsRow` the REST default reader
+            // uses, so the two ladders cannot disagree about what a row IS on
+            // top of already agreeing about where it comes from (#10782).
             return {
-              row:
-                rows.find((entry) => Number(entry?.netuid) === netuid) ?? null,
+              row: subnetEconomicsRow(blob, netuid),
               generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
             };
           },
@@ -6058,11 +6360,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           readOptionalArtifact: loadOptionalArtifact,
         });
       } catch (rawErr) {
-        const err = rawErr as Row;
-        if (err?.networkEconomics) {
-          throw toolError(err.code, err.message);
-        }
-        throw err;
+        const tagged = taggedLoaderError(rawErr, "networkEconomics");
+        if (tagged) throw toolError(tagged.code, tagged.message);
+        throw rawErr;
       }
     },
   },
@@ -7963,11 +8263,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           readOptionalArtifact: loadOptionalArtifact,
         });
       } catch (rawErr) {
-        const err = rawErr as Row;
-        if (err?.profilesMcp) {
-          throw toolError(err.code, err.message);
-        }
-        throw err;
+        const tagged = taggedLoaderError(rawErr, "profilesMcp");
+        if (tagged) throw toolError(tagged.code, tagged.message);
+        throw rawErr;
       }
     },
   },
@@ -7983,11 +8281,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           readArtifact: loadArtifactData,
         });
       } catch (rawErr) {
-        const err = rawErr as Row;
-        if (err?.profilesMcp) {
-          throw toolError(err.code, err.message);
-        }
-        throw err;
+        const tagged = taggedLoaderError(rawErr, "profilesMcp");
+        if (tagged) throw toolError(tagged.code, tagged.message);
+        throw rawErr;
       }
     },
   },
@@ -10040,13 +10336,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           : buildAccountSummary(ss58, {}));
       // Community-contributable entity labels (#6739), same REST-parity join
       // as workers/request-handlers/entities.ts's own handleAccount.
-      const entitiesArtifact = (await ctx.readArtifact!(
-        ctx.env,
-        ENTITY_LABELS_ARTIFACT,
-      )) as Row | null;
+      const entitiesArtifact = rowOf(
+        await ctx.readArtifact!(ctx.env, ENTITY_LABELS_ARTIFACT),
+      );
       (data as Row).labels = labelsForSs58(
         entityLabelsIndex(
-          entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
+          entitiesArtifact?.ok
+            ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
+            : [],
         ),
         ss58,
       );
@@ -11118,10 +11415,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           `direction must be one of: ${ACCOUNT_TRANSFERS_DIRECTIONS.join(", ")}.`,
         );
       }
+      // Narrowed by the two literals it can be. `ACCOUNT_TRANSFERS_DIRECTIONS
+      // .includes(...)` above is the VALIDATION and proves nothing to the type
+      // system -- `string[].includes` returns a boolean, not a predicate -- so
+      // the assignment below was `any` flowing into a published union (#10782).
       const direction: "sent" | "received" | undefined =
-        rawDirection === undefined || rawDirection === "all"
-          ? undefined
-          : rawDirection;
+        rawDirection === "sent" || rawDirection === "received"
+          ? rawDirection
+          : undefined;
       // block_start/block_end/cursor are validated for REST-parity and forwarded to
       // the Postgres tier below; the local D1 fallback still ignores them (like the
       // D1 filters they used to bound, they have nothing left to filter now that
@@ -12129,14 +12430,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         callModule,
       });
       if (projected) return projected;
-      const { data } = (await loadMcpChainSigners(ctx, {
+      const { data } = await loadMcpChainSigners(ctx, {
         label,
         days,
         observedAt: await mcpObservedAt(ctx),
         limit,
         callModule,
         sort,
-      })) as { data: Row };
+      });
       return data;
     },
   },
@@ -12697,17 +12998,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // config/data_key are guaranteed here (the "endpoints" collection always
       // exists and data.endpoints is always an array by this point, thanks to
       // the schema-stability guard above), so applyQueryFilters always returns
-      // meta.pagination -- no fallback to reason about.
-      const page = transformed.meta!.pagination as Row;
+      // meta.pagination. Read through `?.` anyway, with the same fallbacks
+      // every sibling loader carries: the `as Row` this replaces made the
+      // seven published members `any`, so the ONE thing the guard exists to
+      // prevent -- omitting total/returned/cursor -- was also the one thing
+      // the types could no longer report (#10782).
+      const page = transformed.meta.pagination;
+      const rows = rowsOf(rowOf(transformed.data)?.endpoints);
       return {
-        ...(transformed.data as Row),
-        total: page.total,
-        returned: page.returned,
-        cursor: page.cursor,
-        limit: page.limit,
-        next_cursor: page.next_cursor,
-        sort: page.sort,
-        order: page.order,
+        ...rowOf(transformed.data),
+        total: page?.total ?? rows.length,
+        returned: page?.returned ?? rows.length,
+        cursor: page?.cursor ?? cursor,
+        limit: page?.limit ?? rows.length,
+        next_cursor: page?.next_cursor ?? null,
+        sort: page?.sort ?? null,
+        order: page?.order ?? null,
       };
     },
   },
@@ -13236,36 +13542,48 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const limit = clampToolLimit(args?.limit, 3, 10);
-      const poolData = await loadArtifactData(ctx, "/metagraph/rpc/pools.json");
+      const poolData = rowOf(
+        await loadArtifactData(ctx, "/metagraph/rpc/pools.json"),
+      );
       const liveRpcPool = ctx.readHealthKv
         ? await ctx.readHealthKv(ctx.env, KV_HEALTH_RPC_POOL)
         : null;
-      const pools =
-        poolData.pools && typeof poolData.pools === "object"
-          ? poolData.pools
-          : {};
-      // Pool map keys ("0"/"1"/"2") are pool indices, NOT networks — and the
-      // same physical endpoint can appear in more than one pool. Dedupe by
-      // endpoint id, keeping the best-scored instance.
-      const bestById = new Map<string, Row>();
-      for (const pool of Object.values(pools)) {
-        const overlaid = overlayRpcPoolEligibility(
-          pool as Row,
-          liveRpcPool,
-        ) as Row;
-        for (const endpoint of overlaid.endpoints || []) {
+      // Pool keys are pool INDICES, not networks -- and the artifact spells
+      // that as an array where the fixtures spell it as an object, so the read
+      // takes both (see `valuesOf`). The same physical endpoint can appear in
+      // more than one pool, so dedupe by endpoint id, keeping the best-scored
+      // instance.
+      //
+      // `score` and `latency_ms` are BOTH the sort key, so both are resolved
+      // to numbers as the endpoint is admitted rather than compared as bag
+      // members inside the comparator -- `(b.score || 0) - (a.score || 0)` on
+      // a bag is a subtraction of two `any`s, and a string score there
+      // produces NaN and an engine-defined order (#10782).
+      const bestById = new Map<string, RankedRpcEndpoint>();
+      for (const pool of valuesOf(poolData?.pools)) {
+        const overlaid = rowOf(
+          overlayRpcPoolEligibility(rowOf(pool), liveRpcPool),
+        );
+        for (const endpoint of rowsOf(overlaid?.endpoints)) {
           if (!endpoint.pool_eligible) continue;
-          const existing = bestById.get(endpoint.id);
-          if (!existing || (endpoint.score || 0) > (existing.score || 0)) {
-            bestById.set(endpoint.id, endpoint);
+          // `String(...)` rather than a string check: an id-less endpoint used
+          // to key the map on `undefined`, and dropping it here would be a
+          // behaviour change this issue is not making.
+          const id = String(endpoint.id);
+          const score = numberOf(endpoint.score) ?? 0;
+          const existing = bestById.get(id);
+          if (!existing || score > existing.score) {
+            bestById.set(id, {
+              endpoint,
+              score,
+              latencyMs: numberOf(endpoint.latency_ms) ?? Infinity,
+            });
           }
         }
       }
-      const candidates = [...bestById.values()].sort(
-        (a, b) =>
-          (b.score || 0) - (a.score || 0) ||
-          (a.latency_ms ?? Infinity) - (b.latency_ms ?? Infinity),
-      );
+      const candidates = [...bestById.values()]
+        .sort((a, b) => b.score - a.score || a.latencyMs - b.latencyMs)
+        .map((ranked) => ranked.endpoint);
       const endpoints = candidates.slice(0, limit).map((endpoint) => ({
         id: endpoint.id,
         // The connectable endpoint URL — the whole point of the tool.
@@ -13608,16 +13926,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         args?.netuid === undefined || args?.netuid === null
           ? null
           : requireNetuid(args);
-      const scorecard = await loadArtifactData(
-        ctx,
-        "/metagraph/coverage-depth.json",
+      const scorecard = rowOf(
+        await loadArtifactData(ctx, "/metagraph/coverage-depth.json"),
       );
-      const rows = Array.isArray(scorecard.rows) ? scorecard.rows : [];
-      const rowsByNetuid = new Map(rows.map((row: Row) => [row.netuid, row]));
-      const queue = Array.isArray(scorecard.ranked_queue)
-        ? scorecard.ranked_queue
-        : [];
-      let candidates;
+      const rows = rowsOf(scorecard?.rows);
+      const rowsByNetuid = new Map(rows.map((row) => [row.netuid, row]));
+      const queue = rowsOf(scorecard?.ranked_queue);
+      // `rank` reaches `coverageDepthTarget`, which publishes it. Resolving it
+      // to a number HERE is what keeps the published field a number: the map
+      // callback was annotated `(entry: Row)` and its result destructured as
+      // `Row` again three lines down, so `rank` was an `any` at both ends
+      // (#10782).
+      let candidates: { row: Row; rank: number | null }[];
       if (netuid !== null) {
         const row = rowsByNetuid.get(netuid);
         if (!row) {
@@ -13629,11 +13949,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         candidates = [{ row, rank: null }];
       } else {
         candidates = queue
-          .map((entry: Row) => ({
-            row: rowsByNetuid.get(entry.netuid) || entry,
-            rank: entry.rank ?? null,
+          .map((entry) => ({
+            row: rowOf(rowsByNetuid.get(entry.netuid)) ?? entry,
+            rank: intOf(entry.rank),
           }))
-          .filter((entry: Row) => Number.isInteger(entry.row?.netuid));
+          .filter((entry) => intOf(entry.row.netuid) !== null);
       }
       // Free-text over the collection's own search_keys, through the ENGINE's
       // matcher rather than a second one (#10793). Matched once over the row
@@ -13642,7 +13962,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const q = optionalString(args, "q");
       const matched = new Set(
         searchMatchingRows(
-          candidates.map(({ row }: Row) => row),
+          candidates.map(({ row }) => row),
           q,
           API_QUERY_COLLECTIONS["coverage-depth"].search_keys,
         ),
@@ -13657,7 +13977,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       };
       const targets = candidates
         .filter(
-          ({ row }: Row) =>
+          ({ row }) =>
             matched.has(row) &&
             coverageDepthMatches(row, {
               tier,
@@ -13667,10 +13987,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             }),
         )
         .slice(0, limit)
-        .map(({ row, rank }: Row) => coverageDepthTarget(row, rank));
+        .map(({ row, rank }) => coverageDepthTarget(row, rank));
       return {
-        generated_at: scorecard.generated_at || null,
-        coverage_depth_version: scorecard.coverage_depth_version || null,
+        generated_at: scorecard?.generated_at || null,
+        coverage_depth_version: scorecard?.coverage_depth_version || null,
         total_rows: rows.length,
         queue_count: queue.length,
         returned: targets.length,
@@ -13915,20 +14235,31 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         `/metagraph/agent-catalog/${netuid}.json`,
       );
       const live = await mcpLiveHealth(ctx);
-      const detail =
-        overlayCatalogDetail(staticDetail, live, netuid) || staticDetail;
-      const services = Array.isArray(detail.services) ? detail.services : [];
-      const callable = services.filter((s: Row) => s.eligibility?.callable);
-      const steps = (callable.length > 0 ? callable : services).map(
-        (s: Row) => ({
+      const detail = rowOf(
+        overlayCatalogDetail(staticDetail, live, netuid) || staticDetail,
+      );
+      const services = rowsOf(detail?.services);
+      const callable = services.filter(
+        (s) => rowOf(s.eligibility)?.callable === true,
+      );
+      // The four nested blocks -- eligibility, schema_source, fixture,
+      // fixture_status, health -- are each read through `rowOf` ONCE per
+      // service. On a bag `s.fixture.response?.status` compiled without the
+      // `?.` on `fixture` itself, which is only safe because the `s.fixture`
+      // ternary above it happens to guard it; nothing said so (#10782).
+      const steps = (callable.length > 0 ? callable : services).map((s) => {
+        const fixture = rowOf(s.fixture);
+        const fixtureStatus = rowOf(s.fixture_status);
+        const health = rowOf(s.health);
+        return {
           surface_id: s.surface_id,
           kind: s.kind,
           capability: s.capability,
           base_url: s.base_url,
-          callable: Boolean(s.eligibility?.callable),
+          callable: rowOf(s.eligibility)?.callable === true,
           auth: {
             required: Boolean(s.auth_required),
-            schemes: Array.isArray(s.auth_schemes) ? s.auth_schemes : [],
+            schemes: itemsOf(s.auth_schemes),
           },
           // Ready-to-run curl/Python/TS for a first call (issue #351).
           // Regenerate from base_url + auth so cleartext credential guards stay
@@ -13938,43 +14269,43 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ? {
                 available: true,
                 fetch_with: `get_api_schema with surface_id ${
-                  s.schema_source?.surface_id || s.surface_id
+                  rowOf(s.schema_source)?.surface_id || s.surface_id
                 }`,
                 schema_url: s.schema_url || null,
               }
             : { available: false, schema_url: s.schema_url || null },
-          fixture: s.fixture
+          fixture: fixture
             ? {
                 available: true,
                 fetch_with: `get_fixture with surface_id ${s.surface_id}`,
-                artifact_path: s.fixture.artifact_path,
-                captured_at: s.fixture.captured_at,
-                response_status: s.fixture.response?.status ?? null,
-                content_type: s.fixture.response?.content_type ?? null,
+                artifact_path: fixture.artifact_path,
+                captured_at: fixture.captured_at,
+                response_status: rowOf(fixture.response)?.status ?? null,
+                content_type: rowOf(fixture.response)?.content_type ?? null,
               }
             : {
                 available: false,
-                status: s.fixture_status?.status || "missing",
+                status: fixtureStatus?.status || "missing",
                 reason:
-                  s.fixture_status?.reason || "no captured fixture available",
+                  fixtureStatus?.reason || "no captured fixture available",
               },
           health: {
-            status: s.health?.status ?? "unknown",
-            stale: s.health?.stale ?? false,
-            observed_by: s.health?.observed_by ?? null,
+            status: health?.status ?? "unknown",
+            stale: health?.stale ?? false,
+            observed_by: health?.observed_by ?? null,
           },
-        }),
-      );
+        };
+      });
       const isCallable = callable.length > 0;
-      const schemaStep = steps.find((s: Row) => s.schema.available);
-      const fixtureStep = steps.find((s: Row) => s.fixture.available);
+      const schemaStep = steps.find((s) => s.schema.available);
+      const fixtureStep = steps.find((s) => s.fixture.available);
       return {
         netuid,
-        name: detail.name,
-        slug: detail.slug,
-        integration_readiness: detail.integration_readiness,
-        operational_observed_at: detail.operational_observed_at ?? null,
-        health_source: detail.health_source ?? "unavailable",
+        name: detail?.name,
+        slug: detail?.slug,
+        integration_readiness: detail?.integration_readiness,
+        operational_observed_at: detail?.operational_observed_at ?? null,
+        health_source: detail?.health_source ?? "unavailable",
         callable: isCallable,
         callable_count: callable.length,
         guidance: isCallable
@@ -14113,6 +14444,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (!surface) {
         throw await uncallableSurfaceError(ctx, args.surface_id);
       }
+      // The catalog row's OWN id -- the credential-store key and the id echoed
+      // back in the result. A row can be matched by `surface_key` or by a
+      // deprecated alias, so it is not necessarily the id the caller asked
+      // with; falling back to that one keeps the key a string rather than
+      // storing a credential under `undefined` (#10782).
+      const surfaceId = stringOf(surface.surface_id) ?? args.surface_id;
       const hasInBandStringCredential =
         typeof args?.credential === "string" && args.credential.length > 0;
       const hasInBandObjectCredential =
@@ -14146,7 +14483,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         const stored = await loadSurfaceCredential(
           asCredentialStoreEnv(ctx.env),
           storeIdentity,
-          surface.surface_id,
+          surfaceId,
         );
         if (stored) {
           resolvedCredential = stored;
@@ -14160,7 +14497,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         typeof resolvedCredential === "object" &&
         !Array.isArray(resolvedCredential);
       const hasCredentialArg = hasStringCredentialArg || hasObjectCredentialArg;
-      let credentialPlacement;
+      let credentialPlacement: CallSubnetSurfaceCredential | undefined;
       if (surface.auth_required) {
         if (!hasCredentialArg) {
           throw toolError(
@@ -14168,16 +14505,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             "This surface requires a credential. Supply `credential` (see this tool's description for the required format), register one first with store_surface_credential if you are authenticated, or use list_subnet_apis / how_do_i_call to see how to call it directly.",
           );
         }
-        const scheme = surface.auth?.scheme;
-        const location = surface.auth?.location;
+        // The curated auth block, read ONCE. `surface.auth?.scheme` on a bag
+        // is an `any` five times over, and one of those five (`names`) is
+        // then `Array.isArray`-checked and re-read from the bag rather than
+        // from what the check proved (#10782).
+        const auth = rowOf(surface.auth);
+        const scheme = auth?.scheme;
+        // `location` reaches `CallSubnetSurfaceCredential.location`, a union
+        // of four literals. The `!==` chains below VALIDATE it and narrow
+        // nothing -- excluding literals from `unknown` leaves `unknown` -- so
+        // it crossed into the published placement as an `any` (#10782).
+        const location = authLocationOf(auth?.location);
         if (scheme === "bearer" || scheme === "api-key" || scheme === "basic") {
-          const name = surface.auth?.name;
-          if (
-            !name ||
-            (location !== "header" &&
-              location !== "query" &&
-              location !== "cookie")
-          ) {
+          const name = stringOf(auth?.name);
+          if (!name || location === null || location === "body") {
             throw toolError(
               "credential_not_supported",
               "This surface's auth mechanism (location/name) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
@@ -14196,17 +14537,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             value: resolvedCredential as string,
           };
         } else if (scheme === "signature") {
-          const names = Array.isArray(surface.auth?.names)
-            ? surface.auth.names
-            : null;
-          if (
-            !names ||
-            names.length === 0 ||
-            (location !== "header" &&
-              location !== "query" &&
-              location !== "cookie" &&
-              location !== "body")
-          ) {
+          const names = Array.isArray(auth?.names) ? auth.names : null;
+          if (!names || names.length === 0 || location === null) {
             throw toolError(
               "credential_not_supported",
               "This surface's auth mechanism (location/names) isn't documented completely enough for this tool to attach a credential automatically. Use list_subnet_apis / how_do_i_call to see how to call it directly.",
@@ -14267,7 +14599,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // merge -- auth.body_envelope, curated registry data, describes
           // that shape. Only meaningful for location:"body"; malformed or
           // absent falls back to the existing flat-merge behavior.
-          const envelope = surface.auth?.body_envelope;
+          const envelope = rowOf(auth?.body_envelope);
           const bodyEnvelope =
             location === "body" &&
             envelope &&
@@ -14292,7 +14624,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           );
         }
       }
-      if (surface.probe?.enabled === false) {
+      if (rowOf(surface.probe)?.enabled === false) {
         throw toolError(
           "surface_unavailable",
           "This surface is flagged as not safe to call automatically (probe.enabled:false).",
@@ -14302,7 +14634,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       let requestContentType;
       if (hasPath) {
         const schemaArtifactId =
-          surface.schema_source?.surface_id || surface.surface_id;
+          rowOf(surface.schema_source)?.surface_id || surface.surface_id;
         const schema = await loadOptionalArtifact(
           ctx,
           `/metagraph/schemas/${schemaArtifactId}.json`,
@@ -14316,8 +14648,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // hasPath already proved args.path is a string; the `hasPath !==
         // hasMethod` check above guarantees normalizedMethod is set
         // whenever hasPath is true.
-        const match: Row | null = matchSchemaOperation(
-          schema.document,
+        const match = matchSchemaOperation(
+          rowOf(schema)?.document,
           args.path as string,
           normalizedMethod as string,
         );
@@ -14331,11 +14663,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           hasBodyArg &&
           (normalizedMethod === "POST" || normalizedMethod === "PUT")
         ) {
-          const declaredMediaTypes =
-            match.operation?.requestBody?.content &&
-            typeof match.operation.requestBody.content === "object"
-              ? Object.keys(match.operation.requestBody.content)
-              : [];
+          const declaredContent = rowOf(
+            rowOf(match.operation.requestBody)?.content,
+          );
+          const declaredMediaTypes = declaredContent
+            ? Object.keys(declaredContent)
+            : [];
           if (declaredMediaTypes.length === 0) {
             throw toolError(
               "invalid_params",
@@ -14439,7 +14772,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return {
-        surface_id: surface.surface_id,
+        surface_id: surfaceId,
         url: result.url,
         status_code: result.status_code,
         content_type: result.content_type,
@@ -14495,17 +14828,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const { identity, storeEnv } = requireCredentialStore(ctx);
-      const surface = await requireCredentialStoreSurface(ctx, args.surface_id);
+      const { canonicalId } = await requireCredentialStoreSurface(
+        ctx,
+        args.surface_id,
+      );
       const credential = normalizeSurfaceCredentialArgument(args.credential);
       const { expiresAt, replaced } = await storeSurfaceCredential(
         storeEnv,
         identity,
-        surface.surface_id,
+        canonicalId,
         credential,
         args.ttl_seconds,
       );
       return {
-        surface_id: surface.surface_id,
+        surface_id: canonicalId,
         stored: true,
         expires_at: expiresAt,
         replaced,
@@ -14671,7 +15007,13 @@ const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 // never drift from reality. A schema only constrains successful results — a tool
 // that returns isError (e.g. the AI tools when the AI layer is off) carries no
 // structuredContent, so its schema is simply not applied on that path.
-const TOOL_OUTPUT_SCHEMAS = {
+//
+// Typed as a record of schemas rather than left to inference: the two readers
+// below index it by a tool NAME resolved at runtime, which the inferred
+// literal type cannot answer -- so both wrote `(TOOL_OUTPUT_SCHEMAS as Row)`
+// and got back an `any` where a `JsonSchemaLike | undefined` was wanted
+// (#10782).
+const TOOL_OUTPUT_SCHEMAS: Record<string, JsonSchemaLike> = {
   search_subnets: outputJsonSchema(SearchSubnetsOutputSchema),
   list_subnets: outputJsonSchema(ListSubnetsOutputSchema),
   find_subnets_by_capability: outputJsonSchema(
@@ -14992,7 +15334,7 @@ export function listToolDefinitions() {
     // passes a non-object straight through, which is what keeps the
     // absent-schema case below unchanged rather than adding a branch to it.
     const outputSchema = stripSentinelIntegerBounds(
-      tool.outputSchema || (TOOL_OUTPUT_SCHEMAS as Row)[tool.name],
+      tool.outputSchema || TOOL_OUTPUT_SCHEMAS[tool.name],
     );
     return {
       name: tool.name,
@@ -15328,7 +15670,7 @@ async function mcpCompletionCandidates(
  * than erroring: the spec models completion as best-effort, and a client
  * probing an argument we cannot complete has done nothing wrong.
  */
-async function completeArgument(params: Row, ctx: McpCtx) {
+async function completeArgument(params: Row | null, ctx: McpCtx) {
   const argument = (params?.argument ?? {}) as Row;
   const source = mcpCompletionSource(
     (params?.ref ?? {}) as Row,
@@ -15357,7 +15699,7 @@ function decodeResourceCursor(cursor: unknown) {
   return Number.isInteger(n) && n >= 0 ? n : 0;
 }
 
-async function listResources(params: Row, ctx: McpCtx) {
+async function listResources(params: Row | null, ctx: McpCtx) {
   const all = await listAllResources(ctx);
   const start = decodeResourceCursor(params?.cursor);
   const page = all.slice(start, start + RESOURCE_PAGE_SIZE);
@@ -15443,7 +15785,7 @@ async function readSubnetStatusResource(ctx: McpCtx, netuid: number) {
   };
 }
 
-async function readResource(params: Row, ctx: McpCtx) {
+async function readResource(params: Row | null, ctx: McpCtx) {
   const uri = params?.uri;
   if (uri === MCP_CHAIN_STREAM_RESOURCE_URI) {
     const data = await readLiveChainStreamResource(ctx);
@@ -15486,7 +15828,7 @@ async function readResource(params: Row, ctx: McpCtx) {
 // mirroring the lesson from this session's graphql-ws fix
 // (validateChainEventsSubscribePayload) -- a hand-rolled second validation
 // path is exactly how a security guarantee quietly drifts from the first.
-async function subscribeResource(params: Row, ctx: McpCtx) {
+async function subscribeResource(params: Row | null, ctx: McpCtx) {
   const uri = params?.uri;
   if (typeof uri !== "string" || !isSubscribableResourceUri(uri)) {
     throw toolError(
@@ -15526,7 +15868,7 @@ async function subscribeResource(params: Row, ctx: McpCtx) {
   return {};
 }
 
-async function unsubscribeResource(params: Row, ctx: McpCtx) {
+async function unsubscribeResource(params: Row | null, ctx: McpCtx) {
   const uri = params?.uri;
   if (typeof uri !== "string") {
     throw toolError("invalid_params", "Missing required field: uri.");
@@ -15689,15 +16031,18 @@ export function listPromptDefinitions() {
   }));
 }
 
-function getPrompt(params: Row) {
-  const prompt = PROMPTS_BY_NAME.get(params?.name);
+function getPrompt(params: Row | null) {
+  // `String(params?.name)` in the error message was doing the narrowing the
+  // LOOKUP needed one line earlier: the map is keyed by string, and a
+  // non-string `name` looked it up as one anyway (#10782).
+  const prompt = PROMPTS_BY_NAME.get(String(params?.name));
   if (!prompt) {
     throw toolError(
       "invalid_params",
       `Unknown prompt: ${String(params?.name)}`,
     );
   }
-  const args = params?.arguments || {};
+  const args = rowOf(params?.arguments) ?? {};
   for (const arg of prompt.arguments) {
     if (arg.required && (args[arg.name] == null || args[arg.name] === "")) {
       throw toolError(
@@ -15736,13 +16081,18 @@ function negotiateProtocol(requested: unknown) {
 // but only after recordMcpToolCallEvent (src/usage-telemetry.ts) redacts and
 // size-caps them; see that module's header comment for why (no SDK
 // instrument() wrapper here, so no default redaction pipeline either).
-async function callTool(params: Row, ctx: McpCtx) {
+async function callTool(params: Row | null, ctx: McpCtx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
   const durationMs = Date.now() - startedAt;
   // One bucket for both events, so the tool dimension can never disagree
   // between usage_event and $mcp_tool_call. See mcpToolLabel.
   const toolLabel = mcpToolLabel(params?.name);
+  // The failure code both events report. `structuredContent.error.code` was
+  // two chained reads off a bag; every isError result is built by the same
+  // two producers (toolError's wrapper and the unknown_tool branch) and both
+  // set it, so this is where that gets said once (#10782).
+  const errorCode = rowOf(result.structuredContent.error)?.code;
   scheduleToolUsageEvent(ctx, {
     mcpTool: toolLabel,
     ok: result.isError !== true,
@@ -15753,16 +16103,14 @@ async function callTool(params: Row, ctx: McpCtx) {
     // through so analytics can break failures down by cause, not just count
     // them. Omitted entirely on success (no `errorCode` key at all), same as
     // `route`/`mcpTool` being omitted when absent.
-    ...(result.isError
-      ? { errorCode: result?.structuredContent?.error?.code }
-      : {}),
+    ...(result.isError ? { errorCode } : {}),
   });
   // #9642: `context` is the argument an agent uses to say WHY it called, and
   // PostHog records it as $mcp_intent. Split here rather than read in place so
   // `parameters` below carries the real arguments only -- the intent travels
   // as its own property, not as a second copy inside the parameter blob.
   const { intent, rest: toolParameters } = splitMcpIntent(
-    params?.arguments as Row,
+    rowOf(params?.arguments),
   );
   scheduleMcpToolCallEvent(ctx, {
     toolName: toolLabel,
@@ -15789,9 +16137,7 @@ async function callTool(params: Row, ctx: McpCtx) {
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
     // classifyMcpErrorType inside the recorder. Omitted on success.
-    ...(result.isError
-      ? { errorCode: result?.structuredContent?.error?.code }
-      : {}),
+    ...(result.isError ? { errorCode } : {}),
     ...mcpAttributionFor(ctx),
   });
   // The capability gap, recorded from the same split intent the tool call
@@ -16273,7 +16619,7 @@ export function markMcpTierDegraded(
 }
 
 async function dispatchTool(
-  params: Row,
+  params: Row | null,
   ctx: McpCtx,
 ): Promise<{
   content: { type: string; text: string }[];
@@ -16369,7 +16715,7 @@ async function dispatchTool(
           endTimeMs: Date.now(),
           ok: toolOk,
           serviceName: "metagraphed-api",
-          attributes: { mcp_tool: name },
+          attributes: { mcp_tool: tool.name },
         });
       }
     }
@@ -16377,8 +16723,7 @@ async function dispatchTool(
     // one generic shape onto whichever tool degraded and `degraded` is a
     // per-tool object (#9910). Applied to every result, not just a stamped
     // one: a handler that built its own partial block is the same violation.
-    const outputSchema =
-      tool.outputSchema ?? (TOOL_OUTPUT_SCHEMAS as Row)[tool.name];
+    const outputSchema = tool.outputSchema ?? TOOL_OUTPUT_SCHEMAS[tool.name];
     const payload = completeDegradedBlock(
       markMcpTierDegraded(data, tierGenerationBefore),
       outputSchema,
@@ -16459,11 +16804,16 @@ async function dispatchTool(
  * request to the SDK, and two copies of "well-formed" is precisely how the two
  * envelopes would start disagreeing about what a malformed request is.
  */
-export function isDispatchableJsonRpcMessage(message: unknown): boolean {
-  const row = message as Row | null;
+export function isDispatchableJsonRpcMessage(
+  message: unknown,
+): message is Row & { method: string } {
+  // A type PREDICATE, not a boolean. The guard already proves `method` is a
+  // string, and the router then read `message.method` as `unknown` and fed it
+  // to `mcpMethodLabel(label: string)` -- so the one check that establishes
+  // the fact told nothing to the code that depends on it (#10782).
+  const row = rowOf(message);
   return (
     row !== null &&
-    typeof row === "object" &&
     row.jsonrpc === JSONRPC_VERSION &&
     typeof row.method === "string"
   );
@@ -16484,7 +16834,13 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
     return rpcError(id, RPC_INVALID_REQUEST, "Invalid JSON-RPC request.");
   }
 
-  const { method, params } = message;
+  const method = message.method;
+  // Narrowed ONCE, here. Destructuring `params` off a `Row` gives `unknown`,
+  // and every case below either forwards it to a handler declared
+  // `(params: Row, …)` or reads a member straight off it -- including two
+  // that read it into a telemetry DIMENSION through an `as string` justified
+  // by a throw inside a different function (#10782).
+  const params = rowOf(message.params);
 
   // #8993: the dispatch chokepoint. `ok` starts true and is falsified by the
   // catch and by the unknown-method default -- an unknown method returns
@@ -16496,6 +16852,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
   try {
     switch (method) {
       case "initialize": {
+        const clientInfo = rowOf(params?.clientInfo);
         const result = {
           protocolVersion: negotiateProtocol(params?.protocolVersion),
           capabilities: MCP_CAPABILITIES,
@@ -16511,10 +16868,10 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           // produced an event with server attribution only -- even though
           // ctx.clientName had already been parsed two lines away.
           ...mcpAttributionFor(ctx),
-          ...(params?.clientInfo?.name
+          ...(clientInfo?.name
             ? {
-                clientName: params.clientInfo.name,
-                clientVersion: params.clientInfo.version,
+                clientName: clientInfo.name,
+                clientVersion: clientInfo.version,
                 clientNameSource: "client_info" as const,
               }
             : {}),
@@ -16617,7 +16974,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           // `uri` matched a resource this server serves, and every one of those
           // is a string. The false half was unreachable, and codecov counts an
           // unreachable branch the same as an untested one.
-          resourceName: params.uri as string,
+          resourceName: String(params?.uri),
           sessionId: ctx?.sessionId,
           parameters: params,
           response: result,
@@ -16659,7 +17016,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         scheduleMcpPromptGetEvent(ctx, {
           // Same as resources/read above: getPrompt threw unless the name is
           // one of PROMPTS_BY_NAME's own keys, all of which are strings.
-          resourceName: params.name as string,
+          resourceName: String(params?.name),
           sessionId: ctx?.sessionId,
           parameters: params,
           ...mcpAttributionFor(ctx),
@@ -16683,7 +17040,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           : rpcError(id, RPC_METHOD_NOT_FOUND, `Unknown method: ${method}`);
     }
   } catch (rawError) {
-    const error = rawError as Row;
+    const error = rowOf(rawError);
     dispatchOk = false;
     // A toolError thrown by a protocol method (resources/read, prompts/get) is a
     // bad-params condition, not an internal fault — surface it as -32602.
@@ -16691,7 +17048,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
     if (error?.toolError) {
       return isNotification
         ? null
-        : rpcError(id, RPC_INVALID_PARAMS, error.message);
+        : rpcError(id, RPC_INVALID_PARAMS, errorMessage(rawError));
     }
     // Don't echo raw internals to the public client; log server-side instead.
     // Same discipline as callTool's sibling catch above: a handled toolError
@@ -16794,7 +17151,7 @@ export function mcpDistinctId(
 function buildContext(
   request: Request,
   env: Env,
-  deps: Row,
+  deps: McpDeps,
   authTier: string,
   accountId: string | null = null,
 ) {
@@ -17128,7 +17485,10 @@ function validateMcpProtocolVersionHeader(request: Request) {
 // initialize. Batched/legacy-array requests predate the 2025-06-18 session
 // concept and are left alone.
 function mintMcpSessionHeaderIfNeeded(
-  body: Row | null,
+  // `Row[]` too: the first line below is `Array.isArray(body)`, because a
+  // BATCHED initialize mints no session. That was the whole contract and the
+  // signature did not admit the case it exists to handle (#10782).
+  body: Row | Row[] | null,
   response: Row | null,
   // #8994: the id is generated BEFORE dispatch and passed in, rather than
   // minted here. It has to exist while the initialize event is emitted, and
@@ -17407,7 +17767,7 @@ export function mcpRefusalReason(response: Response): string | null {
 export function scheduleMcpRefusalEvent(
   request: Request,
   env: Env,
-  deps: Row,
+  deps: McpDeps,
   response: Response,
   /** Injectable clock, mirroring admitMcpRefusalCapture's own `nowMs`. Only a
    * test passes it. Without it the storm window can only be crossed by real
@@ -17456,7 +17816,7 @@ export function scheduleMcpRefusalEvent(
         {},
       ),
     ).catch(() => false);
-    (deps.executionCtx as Row | undefined)?.waitUntil?.(pending);
+    deps.executionCtx?.waitUntil?.(pending);
 
     // ...and the same refusal in PostHog's OWN event family.
     //
@@ -17500,7 +17860,7 @@ export function scheduleMcpRefusalEvent(
         {},
       ),
     ).catch(() => false);
-    (deps.executionCtx as Row | undefined)?.waitUntil?.(pendingMcp);
+    deps.executionCtx?.waitUntil?.(pendingMcp);
   } catch {
     // Telemetry must never surface into the MCP path.
   }
@@ -17620,7 +17980,7 @@ async function serveMcpThroughSdk(
 export async function handleMcpRequest(
   request: Request,
   env: Env = {} as unknown as Env,
-  deps: Row = {},
+  deps: McpDeps = {},
 ) {
   const response = await dispatchMcpRequest(request, env, deps);
   if (!response.ok) scheduleMcpRefusalEvent(request, env, deps, response);
@@ -17630,7 +17990,7 @@ export async function handleMcpRequest(
 async function dispatchMcpRequest(
   request: Request,
   env: Env = {} as unknown as Env,
-  deps: Row = {},
+  deps: McpDeps = {},
 ) {
   const { rejection, authTier, accountId, quotaPending } =
     await enforceMcpRateLimit(request, env, deps.executionCtx);

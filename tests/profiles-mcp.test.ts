@@ -233,7 +233,18 @@ describe("profiles-mcp — loadProfilesList", () => {
   test("falls back when list-query data omits captured_at and profile rows", async () => {
     const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
       data: { profiles: null },
-      meta: { pagination: { total: 0, returned: 0, limit: 0, cursor: 0 } },
+      meta: {
+        pagination: {
+          collection: "profiles",
+          total: 0,
+          returned: 0,
+          limit: 0,
+          cursor: 0,
+          next_cursor: null,
+          sort: null,
+          order: "asc" as const,
+        },
+      },
     });
     try {
       const out = await loadProfilesList(makeCtx(), {}, makeDeps());

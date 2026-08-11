@@ -143,8 +143,8 @@ describe("unknown MCP tool arguments are reported, not just refused", () => {
           {
             name: "takes_nothing",
             inputSchema: { additionalProperties: false, properties: {} },
-          } as Row,
-          { nope: 1 } as Row,
+          },
+          { nope: 1 },
         ),
       (error: Error) => {
         assert.match(error.message, /`nope`/);

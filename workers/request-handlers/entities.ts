@@ -399,7 +399,10 @@ import {
   withAlphaUsdCandles,
 } from "../../src/alpha-usd-history.ts";
 import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
-import { resolveLiveEconomics } from "../../src/health-serving.ts";
+import {
+  resolveLiveEconomics,
+  subnetEconomicsRow,
+} from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import {
@@ -3305,11 +3308,12 @@ export async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
       ? ((artifact.data as Record<string, unknown> | undefined) ?? null)
       : null;
   });
-  const rows = Array.isArray(blob?.subnets)
-    ? (blob.subnets as Array<Record<string, unknown>>)
-    : [];
+  // The economics artifact's own rows, named. The trust boundary is the
+  // `readArtifact` above, and `subnetEconomicsRow` is the ONE place the rows
+  // cross it -- this used to keep its own copy of the find, so a third caller
+  // (the MCP tool) kept a fourth (#10782).
   return {
-    row: rows.find((entry) => Number(entry?.netuid) === Number(netuid)) ?? null,
+    row: subnetEconomicsRow(blob, netuid),
     generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
   };
 }

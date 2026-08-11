@@ -546,8 +546,7 @@ import type {
   WatchPushSubscriptions,
 } from "../generated/db/types.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 // --- POST /api/v1/internal/neurons-sync (#4771) -----------------------------
 // The write path into this Worker's own Postgres for neurons/neuron_daily.
@@ -3346,9 +3345,16 @@ function d1Bool(value: unknown): boolean {
  * mergeAlertTriggerUpdateBody, validateAlertTriggerInput) already expects:
  * table_filter/condition parsed from their TEXT-JSON columns, active a real
  * boolean. */
-function normalizeAlertTriggerRow(row: Row): Row;
-function normalizeAlertTriggerRow(row: Row | undefined): Row | null;
-function normalizeAlertTriggerRow(row: Row | undefined): Row | null {
+// Takes the GENERATED table row. It took `Row`, and an interface has no index
+// signature, so every caller reading a real `ChainAlertTriggers` out of the
+// store had to be laundered through `Record<string, any>` first (#10782).
+function normalizeAlertTriggerRow(row: ChainAlertTriggers): Row;
+function normalizeAlertTriggerRow(
+  row: ChainAlertTriggers | undefined,
+): Row | null;
+function normalizeAlertTriggerRow(
+  row: ChainAlertTriggers | undefined,
+): Row | null {
   if (!row) return null;
   return {
     ...row,
@@ -3360,7 +3366,7 @@ function normalizeAlertTriggerRow(row: Row | undefined): Row | null {
 
 /** One chain_alert_deliveries row: success is INTEGER 0/1 on D1, and
  * deliveryRecordView's `success === true` check needs the boolean. */
-function normalizeDeliveryRow(row: Row): Row {
+function normalizeDeliveryRow(row: ChainAlertDeliveries): Row {
   return { ...row, success: d1Bool(row.success) };
 }
 

@@ -24,8 +24,7 @@ import { BlockList, isIP } from "node:net";
 // Mirrors scripts/lib.ts's own Row: registry overlays are validated against
 // the surface schema, not against a TS type, and threading `unknown` through
 // every `?.` would add casts without adding safety.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 const credentialedUrlParams = new Set([
   "access_key",

@@ -13,7 +13,14 @@ import {
 import {
   GraphQLBoolean,
   GraphQLError,
+  Kind,
+  type ASTVisitor,
+  type DocumentNode,
+  type FragmentDefinitionNode,
   type GraphQLArgument,
+  type SelectionNode,
+  type SelectionSetNode,
+  type ValidationContext,
   type GraphQLObjectType,
   buildSchema,
   execute,
@@ -735,6 +742,14 @@ import {
 } from "./chain-transfer-pairs.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { SDL } from "./graphql-sdl.ts";
+// Types only -- erased at build, so naming the Durable Object's contract here
+// costs the bundle nothing (#10782).
+import type { EconomicsArtifact } from "../schemas-src/routes/economics.ts";
+import type { SubnetRevenueView } from "./revenue-serving.ts";
+import type {
+  ChainFirehoseHub,
+  GraphqlWsConnectionInfo,
+} from "../workers/chain-firehose-hub.ts";
 // types-epic D pilot adoption (#7862): the generated arg types for the 5
 // Query fields with a Zod-covered REST mirror from types-epic A (#7859).
 // NOT the generated `QueryResolvers['field']` Resolver function type itself
@@ -935,8 +950,7 @@ import {
   TAO_USD_TABLES,
 } from "./read-store-tables.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
 
@@ -1002,9 +1016,22 @@ export const schema = buildSchema(SDL);
 // curated-surfaces collection the REST route uses, so the allowlists cannot
 // drift; with no arguments the parent's surfaces pass through untouched.
 const SUBNET_SURFACES_FILTER_NAMES = ["kind", "provider", "id"];
+
+/**
+ * A `Subnet` as `subnetNode` builds it: a row plus the two lazy list thunks.
+ *
+ * The two resolvers below invoke `parent.surfaces(...)` / `parent.endpoints
+ * (...)` directly rather than letting the default field resolver do it, so
+ * they depend on those being FUNCTIONS -- which `Row` did not say and
+ * `Record<string, any>` let them assume (#10782).
+ */
+interface SubnetNodeParent extends Row {
+  surfaces: (args: Row, context: GqlContext, info: unknown) => unknown;
+  endpoints: (args: Row, context: GqlContext, info: unknown) => unknown;
+}
 (schema.getType("Subnet") as GraphQLObjectType).getFields().surfaces.resolve =
   async function subnetSurfaces(
-    parent: Row,
+    parent: SubnetNodeParent,
     args: Row,
     context: GqlContext,
     info: unknown,
@@ -1055,7 +1082,7 @@ const SUBNET_SURFACES_FILTER_NAMES = ["kind", "provider", "id"];
 // sibling nested Subnet.surfaces field.
 (schema.getType("Subnet") as GraphQLObjectType).getFields().endpoints.resolve =
   async function subnetEndpoints(
-    parent: Row,
+    parent: SubnetNodeParent,
     args: Row,
     context: GqlContext,
     info: unknown,
@@ -1101,11 +1128,36 @@ const SUBNET_SURFACES_FILTER_NAMES = ["kind", "provider", "id"];
   };
 
 export const GRAPHQL_SUBSCRIPTION_CONTEXT_KEY = "chainFirehose";
+
+/**
+ * What `chainEvents.subscribe` reads off its context, named (#10782).
+ *
+ * It was `Row`, and while `Row` was `Record<string, any>` that read as a full
+ * type: `context[KEY].subscribeChainEvents(...)` type-checked because `any`
+ * has every method. The hub crosses the `src/` <-> `workers/` boundary here
+ * with no declaration on either side of it, so nothing said which two methods
+ * this file depends on -- renaming either in the Durable Object would have
+ * compiled and failed at runtime, on the one transport no REST test covers.
+ *
+ * `import type` is fully erased, so naming the real class costs the bundle
+ * nothing and cannot drift from it.
+ */
+interface ChainEventsSubscriptionContext {
+  [GRAPHQL_SUBSCRIPTION_CONTEXT_KEY]?: Pick<
+    ChainFirehoseHub,
+    "subscribeChainEvents" | "unsubscribeChainEvents"
+  >;
+  /** Set by the graphqlWsServer context() callback from ctx.extra.ip. */
+  clientIp?: string;
+  /** The per-socket record the connection-count cap is keyed on. */
+  graphqlWsConnection?: GraphqlWsConnectionInfo;
+}
+
 schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
   async function* chainEventsSubscribe(
     _source: unknown,
     args: Row,
-    context: Row,
+    context: ChainEventsSubscriptionContext,
   ) {
     const hub = context?.[GRAPHQL_SUBSCRIPTION_CONTEXT_KEY];
     if (!hub) {
@@ -1119,7 +1171,12 @@ schema.getSubscriptionType()!.getFields().chainEvents.subscribe =
     // parseChainFirehoseTopics semantics (an all-unrecognized topics= string
     // also collapses to an empty Set, never silently falling back to
     // "everything"). Previously both cases collapsed to null.
-    const topics = args.tables === undefined ? null : new Set(args.tables);
+    // `undefined` (no filter) stays distinct from `[]` (match nothing) --
+    // see the comment above; `stringsOf` only changes what a NON-list or a
+    // non-string element does, which the published `[ChainFirehoseTable!]`
+    // already forbids.
+    const topics =
+      args.tables === undefined ? null : new Set(stringsOf(args.tables));
     // context.clientIp/context.graphqlWsConnection are set by
     // workers/chain-firehose-hub.ts's graphqlWsServer context() callback
     // from ctx.extra.ip/ctx.extra.graphqlWsConnection (populated by
@@ -1378,10 +1435,15 @@ function fieldComplexity(fieldName: string) {
 
 // --- Validation rules ---
 
-function buildFragmentMap(documentNode: Row) {
-  const fragments = new Map();
+// The AST types below are graphql-js's own. They were `Row`, and `Row` was
+// `Record<string, any>` -- so this whole walker read as typed while every
+// `.kind`, `.selections` and `.name.value` was unchecked. A renamed AST field,
+// or a wrong string in a `kind` comparison, would have compiled and silently
+// measured every query as depth 0, disabling both limits (#10782).
+function buildFragmentMap(documentNode: DocumentNode) {
+  const fragments = new Map<string, FragmentDefinitionNode>();
   for (const def of documentNode.definitions) {
-    if (def.kind === "FragmentDefinition") {
+    if (def.kind === Kind.FRAGMENT_DEFINITION) {
       fragments.set(def.name.value, def);
     }
   }
@@ -1396,8 +1458,10 @@ function buildFragmentMap(documentNode: Row) {
 // stays enabled over POST, matching the documented contract. Sibling data fields
 // in the same operation are still measured, so a mixed query stays bounded.
 const INTROSPECTION_ROOT_FIELDS = new Set(["__schema", "__type"]);
-function isIntrospectionRootField(sel: Row) {
-  return sel.kind === "Field" && INTROSPECTION_ROOT_FIELDS.has(sel.name?.value);
+function isIntrospectionRootField(sel: SelectionNode) {
+  return (
+    sel.kind === Kind.FIELD && INTROSPECTION_ROOT_FIELDS.has(sel.name.value)
+  );
 }
 
 // Depth/complexity must follow named fragment spreads. Otherwise a client moves
@@ -1412,8 +1476,8 @@ function isIntrospectionRootField(sel: Row) {
 // field. Counting them would over-measure a query relative to its equivalent
 // inlined or named-fragment form, wrongly rejecting valid queries.
 function selectionDepth(
-  selectionSet: Row,
-  fragments: Map<string, Row>,
+  selectionSet: SelectionSetNode,
+  fragments: Map<string, FragmentDefinitionNode>,
   visited: Set<string>,
   memo: Map<string, number>,
   max: number,
@@ -1422,7 +1486,7 @@ function selectionDepth(
   for (const sel of selectionSet.selections) {
     if (isIntrospectionRootField(sel)) continue; // schema-only: depth 0
     let depth = 0;
-    if (sel.kind === "FragmentSpread") {
+    if (sel.kind === Kind.FRAGMENT_SPREAD) {
       const fragName = sel.name.value;
       const frag = fragments.get(fragName);
       if (frag && !visited.has(fragName)) {
@@ -1439,7 +1503,7 @@ function selectionDepth(
           memo.set(fragName, depth);
         }
       }
-    } else if (sel.kind === "InlineFragment") {
+    } else if (sel.kind === Kind.INLINE_FRAGMENT) {
       // Transparent: recurse at the same depth (the type condition is not a level).
       depth = selectionDepth(sel.selectionSet, fragments, visited, memo, max);
     } else if (sel.selectionSet) {
@@ -1453,12 +1517,12 @@ function selectionDepth(
 }
 
 export function maxDepthRule(max: number) {
-  return (context: Row) => ({
+  return (context: ValidationContext): ASTVisitor => ({
     Document: {
-      leave(node: Row) {
+      leave(node: DocumentNode) {
         const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
-          if (def.kind === "OperationDefinition") {
+          if (def.kind === Kind.OPERATION_DEFINITION) {
             const depth = selectionDepth(
               def.selectionSet,
               fragments,
@@ -1482,8 +1546,8 @@ export function maxDepthRule(max: number) {
 }
 
 function selectionComplexity(
-  selectionSet: Row,
-  fragments: Map<string, Row>,
+  selectionSet: SelectionSetNode,
+  fragments: Map<string, FragmentDefinitionNode>,
   visited: Set<string>,
   memo: Map<string, number>,
   max: number,
@@ -1491,7 +1555,7 @@ function selectionComplexity(
   let count = 0;
   for (const sel of selectionSet.selections) {
     if (isIntrospectionRootField(sel)) continue; // schema-only: no complexity cost
-    if (sel.kind === "FragmentSpread") {
+    if (sel.kind === Kind.FRAGMENT_SPREAD) {
       const fragName = sel.name.value;
       const frag = fragments.get(fragName);
       if (frag && !visited.has(fragName)) {
@@ -1509,7 +1573,7 @@ function selectionComplexity(
           count += fragCount;
         }
       }
-    } else if (sel.kind === "InlineFragment") {
+    } else if (sel.kind === Kind.INLINE_FRAGMENT) {
       // Transparent like a named spread: count the contained fields, not the
       // inline type condition itself.
       count += selectionComplexity(
@@ -1537,12 +1601,12 @@ function selectionComplexity(
 }
 
 export function maxComplexityRule(max: number) {
-  return (context: Row) => ({
+  return (context: ValidationContext): ASTVisitor => ({
     Document: {
-      leave(node: Row) {
+      leave(node: DocumentNode) {
         const fragments = buildFragmentMap(node);
         for (const def of node.definitions) {
-          if (def.kind === "OperationDefinition") {
+          if (def.kind === Kind.OPERATION_DEFINITION) {
             const complexity = selectionComplexity(
               def.selectionSet,
               fragments,
@@ -1656,24 +1720,142 @@ const LIVE_ECONOMICS_KEY = "live:economics";
 // Resolve an async value at most once per query: a page of subnets each pulling
 // a relationship shares one read of each registry artifact (and one live health
 // snapshot). The promise is cached so concurrent thunks collapse onto one read.
-function once(
+/**
+ * Memoise one load per request, KEEPING ITS TYPE.
+ *
+ * This returned `Promise<Row | null>` regardless of what it was handed, so
+ * every loader that went through it came out an untyped bag -- and with `Row`
+ * as `Record<string, any>` that bag then satisfied any shape a caller wanted.
+ * It is the choke point the whole file's typing runs through: 17 of the errors
+ * this generic removes are callers doing `data?.subnets?.find(...)` on a value
+ * nothing described (#10782).
+ *
+ * The cast remains and is the load-bearing one: the cache is a single map
+ * shared by loads of different shapes, keyed by string, so its value type
+ * cannot be expressed without a per-key registry. `key` and `load` agreeing is
+ * the caller's invariant -- the same one the old signature had, now visible in
+ * exactly one place instead of erased at every call site.
+ */
+function once<T>(
   context: GqlContext,
   key: string,
-  load: AnyFn,
-): Promise<Row | null> {
+  load: () => Promise<T>,
+): Promise<T> {
   let pending = context.cache.get(key);
   if (!pending) {
     pending = load();
     context.cache.set(key, pending);
   }
-  return pending as Promise<Row | null>;
+  return pending as Promise<T>;
+}
+
+/**
+ * The rows under an untyped value, or empty.
+ *
+ * Replaces `rowsOf(data.x).map(...)`, which was two bugs wearing one idiom:
+ * `??` only substitutes for null/undefined, so a truthy NON-array (an object
+ * where the producer meant a list, a cold tier answering `{}`) sailed through
+ * to `.map` and threw at runtime. And with `Row` as `Record<string, any>` the
+ * type system had nothing to say about it. This checks what the idiom only
+ * looked like it checked (#10782).
+ */
+function rowsOf(value: unknown): Row[] {
+  return Array.isArray(value) ? (value as Row[]) : [];
+}
+
+/**
+ * The single row under an untyped value, or null.
+ *
+ * The scalar sibling of {@link rowsOf}, and it closes the same hole: a bare
+ * `value ? value.field : …` accepts any truthy value, so a string or a number
+ * where the producer meant an object reached the property access and answered
+ * `undefined` for every field. An ARRAY is rejected too -- reading `.field`
+ * off a list is the same mistake with a different shape.
+ */
+/**
+ * A thrown value's message.
+ *
+ * `catch (e)` gives `unknown`, correctly -- anything can be thrown. This file
+ * was casting each one to a `Row` and reading `.message` off it, which with
+ * `Row` as `Record<string, any>` compiled and would have printed `undefined`
+ * for a thrown string. Same idiom the watchdogs already use
+ * (`err instanceof Error ? err.message : String(err)`), in one place.
+ */
+function errorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
+}
+
+/** A typed empty row, so `rowOf(x) ?? EMPTY_ROW` needs no cast. */
+const EMPTY_ROW: Row = {};
+
+/**
+ * A declared object, viewed as a row.
+ *
+ * An `interface` has no index signature, so TypeScript will not accept one as
+ * `Record<string, unknown>` even though every property is assignable to
+ * `unknown`. That is the rule, not a smell -- an interface can be augmented.
+ * Spreading produces a fresh object literal, which IS assignable, so this is
+ * the structural conversion rather than an assertion over it. Used where a
+ * producer that HAS a real type meets a resolver path that still speaks rows
+ * (#10782); each call is a place the row-shaped path should eventually take
+ * the producer's type instead (#10784).
+ */
+function toRow(value: object): Row {
+  // The one assertion this file keeps, and the reason it cannot be removed:
+  // TypeScript refuses `interface -> Record<string, unknown>` because an
+  // interface is open to declaration merging, so a later augmentation could
+  // add a property the index signature does not describe. Every property of
+  // every caller here IS assignable to `unknown`; the rule is about what
+  // could be added later, not about the value. Spreading first makes the
+  // result a fresh literal, so nothing aliases the producer's object.
+  return { ...value } as Row;
+}
+
+/** The numbers under an untyped value, or empty. */
+function numbersOf(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is number => typeof entry === "number")
+    : [];
+}
+
+/** The strings under an untyped value, or empty. The scalar-list sibling of
+ *  {@link rowsOf}. */
+function stringsOf(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
 }
 
 // Artifact data, or null when cold/absent — resolvers degrade to empty shapes
 // rather than erroring, like the REST handlers.
-function loadArtifact(context: GqlContext, path: string) {
+//
+// GENERIC, and the type parameter is a CLAIM, not a proof: `readArtifact`
+// honestly returns `data: unknown`, because a baked artifact is data crossing
+// a trust boundary. Naming the expected shape at the call site is strictly
+// better than the `Row` this returned before -- every USE of the value is now
+// checked against the shape the caller says it is, where previously
+// `Record<string, any>` accepted any use at all. It is not a substitute for
+// parsing the boundary, which is #10789's job; REST already parses its own
+// side (`src/response-validation-tripwire.ts`).
+// The default is `Row` -- `Record<string, unknown>` -- because that is what a
+// parsed JSON artifact honestly is: an object whose values are not yet known.
+// It keeps property ACCESS legal (a JSON object has arbitrary keys) while
+// keeping every USE checked, which is the split `unknown` gets wrong in one
+// direction and `any` in the other. A caller that knows the shape names it.
+function loadArtifact<T = Row>(
+  context: GqlContext,
+  path: string,
+): Promise<T | null> {
   return once(context, path, () =>
-    readArtifact(context.env, path).then((res) => (res.ok ? res.data : null)),
+    readArtifact(context.env, path).then((res) =>
+      res.ok ? (res.data as T) : null,
+    ),
   );
 }
 
@@ -1685,8 +1867,7 @@ async function loadRows(
   netuid?: number | null,
 ) {
   const data = await loadArtifact(context, path);
-  const rows = data?.[key];
-  if (!Array.isArray(rows)) return [];
+  const rows = rowsOf(data?.[key]);
   return netuid == null ? rows : rows.filter((row) => row?.netuid === netuid);
 }
 
@@ -1729,14 +1910,16 @@ function loadEconomics(
       });
       // Spot on every row (#9408 completion), on whichever tier answered.
       if (Array.isArray(live?.data?.subnets)) {
-        return withSpotPricedEconomics(live.data as Row);
+        return withSpotPricedEconomics(live.data as EconomicsArtifact);
       }
     }
     const res = await readArtifact(
       context.env,
       networkArtifactPath(ARTIFACT.economics, network),
     );
-    return res.ok ? withSpotPricedEconomics(res.data as Row) : null;
+    return res.ok
+      ? withSpotPricedEconomics(res.data as EconomicsArtifact)
+      : null;
   });
 }
 
@@ -1789,7 +1972,7 @@ async function taoUsdForRevenue(context: GqlContext): Promise<number | null> {
 async function revenueForNetuid(
   context: GqlContext,
   netuid: number,
-): Promise<Row> {
+): Promise<SubnetRevenueView> {
   const rows = (await loadEconomicsRows(context)) as Row[];
   const economics = rows.find((row) => Number(row?.netuid) === netuid) ?? null;
   const observations = await loadRevenueObservations(
@@ -1917,8 +2100,14 @@ async function fetchAllEventsTierFromDataApi(
 // `prefetch` lets the single-subnet path serve surfaces/endpoints from the
 // detail artifact it already read; economics + health are not in that artifact.
 function subnetNode(identity: Row, prefetch: Row = {}) {
-  const netuid = identity.netuid;
-  const bundledOr = (rows: Row[] | undefined, load: AnyFn) =>
+  // Every consumer below takes a number, and the identity row's value is
+  // whatever the artifact carried. `Number(...)` is what each loader did to it
+  // internally anyway; doing it once here is the same coercion, stated.
+  const netuid = Number(identity.netuid);
+  const bundledOr = (
+    rows: Row[] | undefined,
+    load: (context: GqlContext, netuid: number) => unknown,
+  ) =>
     rows !== undefined
       ? () => rows ?? []
       : (_args: unknown, context: GqlContext) => load(context, netuid);
@@ -1928,8 +2117,14 @@ function subnetNode(identity: Row, prefetch: Row = {}) {
       loadSubnetHealth(context, netuid),
     economics: (_args: unknown, context: GqlContext) =>
       loadSubnetEconomics(context, netuid),
-    surfaces: bundledOr(prefetch.surfaces, loadSubnetSurfaces),
-    endpoints: bundledOr(prefetch.endpoints, loadSubnetEndpoints),
+    surfaces: bundledOr(
+      prefetch.surfaces === undefined ? undefined : rowsOf(prefetch.surfaces),
+      loadSubnetSurfaces,
+    ),
+    endpoints: bundledOr(
+      prefetch.endpoints === undefined ? undefined : rowsOf(prefetch.endpoints),
+      loadSubnetEndpoints,
+    ),
   };
 }
 
@@ -1987,7 +2182,10 @@ function turnoverChangesNode(detail: Row | null | undefined) {
 // JSON scalar exists in this schema yet" -- `scalar JSON` is the SDL's first
 // declaration and 116 fields already use it, `ChainEvent.args` (the sibling
 // with the same object-or-array duality) among them.
-function extrinsicNode(extrinsic: Row) {
+// Takes the nullish it was already written to handle: the body is
+// `extrinsic ?? null`, and the parameter said `Row`. Callers pass a value that
+// may be absent (a malformed tier body has no `extrinsic` key).
+function extrinsicNode(extrinsic: Row | null | undefined) {
   return extrinsic ?? null;
 }
 
@@ -2093,14 +2291,16 @@ function accountSummaryNode(data: Row, ss58: string) {
 }
 
 function providerNode(provider: Row) {
-  const netuids = provider?.netuids || [];
+  // The artifact's own list; `numbersOf` is what `|| []` only looked like it
+  // was doing -- a truthy non-list reached `loadProviderSubnets` before.
+  const netuids = numbersOf(provider?.netuids);
   return {
     ...provider,
     netuids,
     subnets: (_args: unknown, context: GqlContext) =>
       loadProviderSubnets(context, netuids),
     endpoints: (_args: unknown, context: GqlContext) =>
-      loadProviderEndpoints(context, provider.id),
+      loadProviderEndpoints(context, String(provider.id)),
   };
 }
 
@@ -2146,10 +2346,15 @@ async function loadProviderSubnets(context: GqlContext, netuids: number[]) {
   if (!netuids.length) return [];
   const rows = await loadRows(context, ARTIFACT.subnets, "subnets");
   const byNetuid = new Map(rows.map((row) => [row.netuid, row]));
-  return netuids
-    .map((netuid: number) => byNetuid.get(netuid))
-    .filter(Boolean)
-    .map((row: Row) => subnetNode(row));
+  return (
+    netuids
+      .map((netuid: number) => byNetuid.get(netuid))
+      // `.filter(Boolean)` does not narrow the type -- a netuid the index does
+      // not carry yielded `undefined` and reached `subnetNode`, which read
+      // `identity.netuid` off it. The predicate says what the filter meant.
+      .filter((row): row is Row => Boolean(row))
+      .map((row: Row) => subnetNode(row))
+  );
 }
 
 // --- Resolvers ---
@@ -2169,6 +2374,29 @@ const SUBNET_SORT_FIELDS = [
 
 // Shared list shape: load → optional netuid filter → paginate → wrap. `map`
 // node-wraps rows; `resultKey` is the list field's name (economics uses
+/**
+ * `listPage`'s options, declared rather than destructured out of a `Row`.
+ *
+ * A local options bag is one of the few shapes that legitimately has no
+ * contract behind it -- but destructuring it from `Record<string, any>` gave
+ * every field `any`, so `filterFn` could have been a number and `limit` a
+ * function and both would have compiled (#10782).
+ */
+interface ListPageOptions {
+  limit?: unknown;
+  cursor?: unknown;
+  /** REQUIRED: `paginate` calls it unconditionally to mint the next cursor,
+   *  so an omitted one threw the moment a list outgrew a page. */
+  keyFn: (row: Row) => unknown;
+  netuid?: number | null;
+  map?: (row: Row) => unknown;
+  /** `subnets` for the subnet index, `items` everywhere else. */
+  resultKey?: string;
+  filterFn?: (row: Row) => boolean;
+  /** A whole-list transform (multi-filter + sort) applied before pagination. */
+  transform?: (rows: Row[]) => Row[];
+}
+
 // `subnets`, the rest use `items`).
 async function listPage(
   context: GqlContext,
@@ -2183,7 +2411,7 @@ async function listPage(
     resultKey = "items",
     filterFn,
     transform,
-  }: Row,
+  }: ListPageOptions,
 ) {
   let all = await loadRows(context, path, key, netuid);
   if (filterFn) {
@@ -2447,7 +2675,7 @@ const rootValue = {
     // The detail artifact nests identity under `subnet` (flat shapes fall back)
     // and bundles surfaces/endpoints, so those resolve from this one read;
     // economics is overlaid live at serve time, so it loads lazily.
-    const identity = data.subnet ?? data;
+    const identity = rowOf(data.subnet) ?? data;
     // The detail artifact omits the list artifact's computed registry metrics
     // (integration_readiness, official_surface_count, gap_count, first_party),
     // so without this backfill the single-subnet path returns them null while
@@ -2643,9 +2871,9 @@ const rootValue = {
         readArtifact: loadArtifact as AnyFn,
       });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (err?.profilesMcp) {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -2682,9 +2910,9 @@ const rootValue = {
     try {
       return await loadFixture(mcpCtx(context), args, { readArtifact });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -4253,9 +4481,9 @@ const rootValue = {
       });
       rows = data.providers as Row[];
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -4277,7 +4505,7 @@ const rootValue = {
     if (typeof id !== "string" || !VALID_PROVIDER_ID.test(id)) return null;
     const data = await loadArtifact(context, `/metagraph/providers/${id}.json`);
     if (!data) return null;
-    return providerNode(data.provider ?? data);
+    return providerNode(rowOf(data.provider) ?? data);
   },
 
   // #6984: reuse loadAdapter (the same loader MCP get_adapter already calls)
@@ -4290,9 +4518,9 @@ const rootValue = {
     try {
       return await loadAdapter(mcpCtx(context), { slug }, { readArtifact });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -4463,12 +4691,12 @@ const rootValue = {
       // flow" contract as every other opaque-JSON boundary in this file.
       return await runSavedQuery(context.env, id, (params ?? {}) as Row);
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (
         err?.toolError &&
         (err.code === "not_found" || err.code === "invalid_params")
       ) {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -5425,11 +5653,11 @@ const rootValue = {
         readArtifact,
       });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       // An unsupported sort/limit/cursor is BAD_USER_INPUT, matching every
       // other field's "not a silently substituted default" convention.
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -5465,11 +5693,11 @@ const rootValue = {
         readArtifact,
       });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       // An unsupported filter/sort value is BAD_USER_INPUT, matching every
       // other field's "not a silently substituted default" convention.
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -5498,12 +5726,12 @@ const rootValue = {
         readArtifact,
       });
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       // An invalid netuid or unsupported filter/sort value is BAD_USER_INPUT,
       // matching every other field's "not a silently substituted default"
       // convention.
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -5648,7 +5876,7 @@ const rootValue = {
         nextCursor: null,
       });
     return {
-      items: (data.extrinsics || []).map(extrinsicNode),
+      items: rowsOf(data.extrinsics).map(extrinsicNode),
       total: data.extrinsic_count ?? 0,
       next_cursor: data.next_cursor ?? null,
     };
@@ -5711,9 +5939,9 @@ const rootValue = {
         })),
       };
     } catch (rawErr) {
-      const err = rawErr as Row;
+      const err = rowOf(rawErr);
       if (err?.toolError && err.code === "invalid_params") {
-        throw new GraphQLError(err.message, {
+        throw new GraphQLError(errorMessage(rawErr), {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
@@ -5740,11 +5968,10 @@ const rootValue = {
     try {
       window = optionalBlocksWindow({ blocks });
     } catch (rawErr) {
-      const err = rawErr as Row;
       // optionalBlocksWindow's only failure is invalid_params (a non-positive
       // or non-integer blocks) — surface it as BAD_USER_INPUT, mirroring how
       // chain_events maps the sibling feed's invalid-filter error.
-      throw new GraphQLError(err.message, {
+      throw new GraphQLError(errorMessage(rawErr), {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
@@ -5832,7 +6059,7 @@ const rootValue = {
         nextCursor: null,
       });
     return {
-      items: (data.extrinsics || []).map(extrinsicNode),
+      items: rowsOf(data.extrinsics).map(extrinsicNode),
       total: data.extrinsic_count ?? 0,
       next_cursor: data.next_cursor ?? null,
     };
@@ -5851,15 +6078,17 @@ const rootValue = {
       // The same hot/cold cascade REST and MCP run (#9540). A composite
       // "<block>-<index>" ref routes through answerBlockDetail, so it inherits
       // the gap case -- raised, not flattened to an empty extrinsic.
-      (gapAwareBlockDetail(
-        await answerExtrinsicDetail(context.env, ref, () =>
-          loadExtrinsicColdTier(context.env, ref),
+      toRow(
+        gapAwareBlockDetail(
+          await answerExtrinsicDetail(context.env, ref, () =>
+            loadExtrinsicColdTier(context.env, ref),
+          ),
+          () => buildExtrinsic(undefined, ref),
         ),
-        () => buildExtrinsic(undefined, ref),
-      ) as Row);
+      );
     return {
       ref: data.ref ?? ref,
-      extrinsic: extrinsicNode(data.extrinsic),
+      extrinsic: extrinsicNode(rowOf(data.extrinsic)),
     };
   },
 
@@ -5951,7 +6180,7 @@ const rootValue = {
         nextCursor: null,
       });
     return {
-      items: (data.extrinsics || []).map(extrinsicNode),
+      items: rowsOf(data.extrinsics).map(extrinsicNode),
       total: data.extrinsic_count ?? 0,
       next_cursor: data.next_cursor ?? null,
     };
@@ -6296,7 +6525,7 @@ const rootValue = {
           priceByNetuid: NO_ALPHA_PRICES,
         }),
     )! as Row;
-    const nodes = (data.validators || []).map(validatorNode);
+    const nodes = rowsOf(data.validators).map(validatorNode);
     const { page, total, nextCursor } = paginate(
       nodes,
       limit,
@@ -6666,9 +6895,9 @@ const rootValue = {
     }
     const data =
       postgres ??
-      ((answer?.kind === "answer"
-        ? answer.data
-        : buildAccountSummary(ss58, {})) as Row);
+      (answer?.kind === "answer"
+        ? toRow(answer.data)
+        : toRow(buildAccountSummary(ss58, {})));
     return accountSummaryNode(data, ss58);
   },
 
@@ -6969,7 +7198,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s: Row) => ({
+      subnets: rowsOf(data.subnets).map((s: Row) => ({
         netuid: s.netuid,
         registrations: s.registrations,
         first_registered_at: s.first_registered_at ?? null,
@@ -7022,9 +7251,11 @@ const rootValue = {
           window: windowParam,
         })
       )?.data as Row | undefined) ??
-      (markDeregistrationsNotDerived(
-        buildAccountDeregistrations([], ss58, { window: windowParam }),
-      ) as Row);
+      toRow(
+        markDeregistrationsNotDerived(
+          buildAccountDeregistrations([], ss58, { window: windowParam }),
+        ),
+      );
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -7033,7 +7264,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s: Row) => ({
+      subnets: rowsOf(data.subnets).map((s: Row) => ({
         netuid: s.netuid,
         deregistrations: s.deregistrations,
         first_deregistered_at: s.first_deregistered_at ?? null,
@@ -7096,7 +7327,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s: Row) => ({
+      subnets: rowsOf(data.subnets).map((s: Row) => ({
         netuid: s.netuid,
         announcements: s.announcements,
         first_served_at: s.first_served_at ?? null,
@@ -7150,7 +7381,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s: Row) => ({
+      subnets: rowsOf(data.subnets).map((s: Row) => ({
         netuid: s.netuid,
         removals: s.removals,
         first_removed_at: s.first_removed_at ?? null,
@@ -7214,7 +7445,7 @@ const rootValue = {
       subnet_count: data.subnet_count ?? 0,
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
-      subnets: (data.subnets ?? []).map((s: Row) => ({
+      subnets: rowsOf(data.subnets).map((s: Row) => ({
         netuid: s.netuid,
         movements: s.movements,
         first_moved_at: s.first_moved_at ?? null,
@@ -7310,7 +7541,9 @@ const rootValue = {
     const data = await answerAccountEntities(context.env, ss58, null);
     const labels = labelsForSs58(
       entityLabelsIndex(
-        entitiesArtifact.ok ? (entitiesArtifact.data as Row)?.entities : [],
+        entitiesArtifact.ok
+          ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
+          : [],
       ),
       ss58,
     );
@@ -7411,7 +7644,7 @@ const rootValue = {
       limit: data.limit ?? null,
       offset: data.offset ?? null,
       next_cursor: data.next_cursor ?? null,
-      entries: (data.entries ?? []).map((e: Row) => ({
+      entries: rowsOf(data.entries).map((e: Row) => ({
         observed_at: e.observed_at ?? null,
         name: e.name ?? null,
         url: e.url ?? null,
@@ -7504,10 +7737,12 @@ const rootValue = {
           relationship: rel,
         };
       } else {
-        data = buildCounterparties([], ss58, { limit: limit ?? undefined });
+        data = toRow(
+          buildCounterparties([], ss58, { limit: limit ?? undefined }),
+        );
       }
     }
-    const rel = data.relationship;
+    const rel = rowOf(data.relationship);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
@@ -7516,7 +7751,7 @@ const rootValue = {
       scan_capped: data.scan_capped ?? false,
       total_sent_tao: data.total_sent_tao ?? 0,
       total_received_tao: data.total_received_tao ?? 0,
-      counterparties: (data.counterparties ?? []).map((c: Row) => ({
+      counterparties: rowsOf(data.counterparties).map((c: Row) => ({
         address: c.address,
         sent_tao: c.sent_tao ?? 0,
         received_tao: c.received_tao ?? 0,
@@ -7540,7 +7775,7 @@ const rootValue = {
             first_seen_at: rel.first_seen_at ?? null,
             last_seen_at: rel.last_seen_at ?? null,
             limit: rel.limit ?? 0,
-            transfers: (rel.transfers ?? []).map((t: Row) => ({
+            transfers: rowsOf(rel.transfers).map((t: Row) => ({
               block_number: t.block_number ?? null,
               event_index: t.event_index ?? null,
               netuid: t.netuid ?? null,
@@ -7623,7 +7858,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      transfers: (data.transfers ?? []).map((t: Row) => ({
+      transfers: rowsOf(data.transfers).map((t: Row) => ({
         block_number: t.block_number ?? null,
         event_index: t.event_index ?? null,
         from: t.from ?? null,
@@ -7702,7 +7937,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      extrinsics: (data.extrinsics || []).map(extrinsicNode),
+      extrinsics: rowsOf(data.extrinsics).map(extrinsicNode),
     };
   },
 
@@ -7777,7 +8012,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      events: (data.events ?? []).map((e: Row) => ({
+      events: rowsOf(data.events).map((e: Row) => ({
         block_number: e.block_number ?? null,
         event_index: e.event_index ?? null,
         event_kind: e.event_kind ?? null,
@@ -7863,7 +8098,7 @@ const rootValue = {
       limit: data.limit ?? safeLimit,
       offset: data.offset ?? safeOffset,
       next_cursor: data.next_cursor ?? null,
-      days: (data.days ?? []).map((d: Row) => ({
+      days: rowsOf(data.days).map((d: Row) => ({
         day: d.day ?? null,
         netuid: d.netuid ?? null,
         event_count: d.event_count ?? null,
@@ -8073,7 +8308,7 @@ const rootValue = {
         sort: requestedSort,
         limit: requestedLimit,
       });
-    const network = data.network ?? {};
+    const network = rowOf(data.network) ?? EMPTY_ROW;
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -8213,7 +8448,7 @@ const rootValue = {
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
       day_count: data.day_count ?? 0,
-      days: (data.days ?? []).map((d: Row) => ({
+      days: rowsOf(data.days).map((d: Row) => ({
         day: d.day,
         block_count: d.block_count ?? 0,
         extrinsic_count: d.extrinsic_count ?? 0,
@@ -8300,7 +8535,7 @@ const rootValue = {
       observed_at: data.observed_at ?? null,
       total_extrinsics: data.total_extrinsics ?? 0,
       call_count: data.call_count ?? 0,
-      calls: (data.calls ?? []).map((c: Row) => ({
+      calls: rowsOf(data.calls).map((c: Row) => ({
         call_module: c.call_module,
         call_function: c.call_function ?? null,
         count: c.count ?? 0,
@@ -8367,7 +8602,7 @@ const rootValue = {
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
       day_count: data.day_count ?? 0,
-      daily: (data.daily ?? []).map((d: Row) => ({
+      daily: rowsOf(data.daily).map((d: Row) => ({
         day: d.day,
         extrinsic_count: d.extrinsic_count ?? 0,
         signed_extrinsic_count: d.signed_extrinsic_count ?? 0,
@@ -8378,7 +8613,7 @@ const rootValue = {
         avg_tip_tao: d.avg_tip_tao ?? null,
         median_tip_tao: d.median_tip_tao ?? null,
       })),
-      top_fee_payers: (data.top_fee_payers ?? []).map((p: Row) => ({
+      top_fee_payers: rowsOf(data.top_fee_payers).map((p: Row) => ({
         signer: p.signer,
         total_fee_tao: p.total_fee_tao ?? null,
         total_tip_tao: p.total_tip_tao ?? null,
@@ -8594,12 +8829,14 @@ const rootValue = {
         },
         chainNetworkFromChainName(network),
       )) as Row | null) ??
-      (markDeregistrationsNotDerived(
-        buildChainDeregistrations([], {
-          window: requestedWindow,
-          limit: safeLimit,
-        }),
-      ) as Row);
+      toRow(
+        markDeregistrationsNotDerived(
+          buildChainDeregistrations([], {
+            window: requestedWindow,
+            limit: safeLimit,
+          }),
+        ),
+      );
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -8821,7 +9058,7 @@ const rootValue = {
       sort: data.sort ?? CHAIN_SIGNERS_SORTS[0],
       observed_at: data.observed_at ?? null,
       signer_count: data.signer_count ?? 0,
-      signers: (data.signers ?? []).map((entry: Row) => ({
+      signers: rowsOf(data.signers).map((entry: Row) => ({
         signer: entry.signer,
         tx_count: entry.tx_count ?? 0,
         total_fee_tao: entry.total_fee_tao ?? null,
@@ -9582,9 +9819,9 @@ const rootValue = {
       window: requestedWindow,
       observedAt: await loadObservedAt(context),
     })) as Row;
-    const summary = data.summary ?? {};
-    const latency = summary.latency_ms ?? {};
-    const coverage = data.coverage ?? {};
+    const summary = rowOf(data.summary) ?? EMPTY_ROW;
+    const latency = rowOf(summary.latency_ms) ?? EMPTY_ROW;
+    const coverage = rowOf(data.coverage) ?? EMPTY_ROW;
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -9701,7 +9938,7 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/yield"),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ?? buildChainYield([]);
-    const distribution = data.distribution ?? null;
+    const distribution = rowOf(data.distribution);
     return {
       schema_version: data.schema_version ?? 1,
       subnet_count: data.subnet_count ?? 0,

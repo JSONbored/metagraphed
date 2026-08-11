@@ -18,13 +18,37 @@ import { subnetSurfaceKey } from "./registry-surface-key.ts";
 // Registry overlays are validated against the surface schema rather than a TS
 // type; threading `unknown` through every `?.` would add casts without adding
 // safety. Mirrors the readJson precedent in scripts/lib.ts.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Row = Record<string, any>;
+export type Row = Record<string, unknown>;
+
+/** The row under an untyped value, or null -- a nested artifact object. */
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
 
 const OPERATIONAL_KINDS = new Set<string>(OPERATIONAL_SURFACE_KINDS);
 
+/**
+ * The subnet row this lane writes.
+ *
+ * Named rather than `Row`, because `overlay` is the one member a reader goes
+ * INTO -- the sync asserts the surfaces array was stripped out of it -- and a
+ * bag makes that read an `unknown` two levels down (#10782).
+ */
+export interface SubnetSyncRow {
+  netuid: unknown;
+  slug: unknown;
+  name: unknown;
+  source: "community";
+  /** The file's own overlay, MINUS `surfaces`: those are stored as rows, not
+   *  as a blob nested inside the parent. */
+  overlay: Row;
+  source_commit: string;
+}
+
 export interface SubnetSyncRows {
-  subnet: Row;
+  subnet: SubnetSyncRow;
   surfaces: Row[];
   prune: Row;
 }
@@ -77,11 +101,11 @@ export function buildSubnetRows(
       kind: surface.kind,
       url: surface.url,
       authority: surface.authority || "community",
-      review_state: surface.review?.state || "community-submitted",
+      review_state: rowOf(surface.review)?.state || "community-submitted",
       probe_eligible: Boolean(
-        surface.probe?.enabled &&
+        rowOf(surface.probe)?.enabled &&
         surface.public_safe &&
-        OPERATIONAL_KINDS.has(surface.kind),
+        OPERATIONAL_KINDS.has(String(surface.kind)),
       ),
       public_safe: surface.public_safe !== false,
       overlay: surface,
@@ -109,7 +133,7 @@ export function buildSubnetRows(
 
 export interface RegistrySyncPayload {
   providers: Row[];
-  subnets: Row[];
+  subnets: SubnetSyncRow[];
   surfaces: Row[];
   prune_surfaces: Row[];
   delete_subnets: Row[];
