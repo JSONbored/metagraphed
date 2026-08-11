@@ -11786,10 +11786,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   test("a partial tier body falls back to defaults on every market-data field", async () => {
     // Exercises the `?? default` branches: a tier that answers with an empty
     // body must still yield the schema-stable card, never nulls or an error.
-    const volumeEnv = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ data: {} })),
-    };
+    // #10190: the tier is retired. What degrades now is a projection that cannot
+    // answer, and the floor is unchanged: the schema-stable card, never nulls or
+    // an error.
+    const volumeEnv = {} as unknown as Env;
     const vol = await gql(
       "{ subnet_volume(netuid: 9) { schema_version netuid window total_volume_alpha total_volume_tao buy_volume_alpha sell_volume_alpha buy_volume_tao sell_volume_tao buy_count sell_count net_volume_alpha sentiment sentiment_ratio vol_mcap_ratio } }",
       volumeEnv,
@@ -11798,7 +11798,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.deepEqual(vol.body.data.subnet_volume, {
       schema_version: 1,
       netuid: 9,
-      window: null,
+      // The lane's single window, stamped by the reader rather than echoed from a
+      // body: this projection carries only 24h, so the card can name it even when
+      // there is nothing to report for it.
+      window: "24h",
       total_volume_alpha: 0,
       total_volume_tao: 0,
       buy_volume_alpha: 0,
@@ -11808,7 +11811,11 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
       buy_count: 0,
       sell_count: 0,
       net_volume_alpha: 0,
-      sentiment: null,
+      // "neutral" by design, not null: src/alpha-volume.ts documents a
+      // zero-volume window as "no signal either way", which is a reading rather
+      // than an absence. The retired tier's `{}` body fell through to null and so
+      // never showed the classifier's own answer.
+      sentiment: "neutral",
       sentiment_ratio: null,
       vol_mcap_ratio: null,
     });
