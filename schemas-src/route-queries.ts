@@ -269,7 +269,6 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/subnets/{netuid}",
   "/api/v1/subnets/{netuid}/profile",
   "/api/v1/subnets/{netuid}/overview",
-  "/api/v1/agent-catalog",
   "/api/v1/agent-catalog/{netuid}",
   "/api/v1/providers/{slug}",
   "/api/v1/coverage",
@@ -279,7 +278,6 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/surfaces/{surface_id}/verify",
   "/api/v1/registry/summary",
   "/api/v1/lineage",
-  "/api/v1/fixtures",
   "/api/v1/fixtures/{surface_id}",
   "/api/v1/agent-resources",
   "/api/v1/subnets/{netuid}/health/trends",
@@ -337,7 +335,6 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   "/api/v1/changelog",
   "/api/v1/schemas",
   "/api/v1/adapters/{slug}",
-  "/api/v1/contracts",
   "/api/v1/openapi.json",
   "/api/v1/build",
 ];
@@ -463,9 +460,6 @@ export const ROUTE_QUERY_SCHEMAS = {
       ANALYTICS_WINDOWS as [string, ...string[]],
       "7d",
     ).optional(),
-  }),
-  "/api/v1/subnets/{netuid}/trajectory": z.object({
-    format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/performance/history": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const, "30d").optional(),

@@ -22519,7 +22519,18 @@ export interface operations {
     };
     agentCatalog: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
+                limit?: number;
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
+                cursor?: number;
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "netuid" | "callable_count" | "completeness_score" | "example_count";
+                /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
+                order?: "asc" | "desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -29515,7 +29526,18 @@ export interface operations {
     };
     contracts: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
+                limit?: number;
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
+                cursor?: number;
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "id" | "path" | "contract_version";
+                /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
+                order?: "asc" | "desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -33134,7 +33156,18 @@ export interface operations {
     };
     fixtures: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
+                limit?: number;
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
+                cursor?: number;
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "captured_at" | "netuid" | "surface_id";
+                /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
+                order?: "asc" | "desc";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -45987,7 +46020,17 @@ export interface operations {
     subnetTrajectory: {
         parameters: {
             query?: {
-                /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
+                /** @description Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, every matching row is returned. */
+                limit?: number;
+                /** @description Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one. */
+                cursor?: number;
+                /** @description Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported. */
+                sort?: "date" | "completeness_score" | "surface_count" | "endpoint_count";
+                /** @description Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`. */
+                order?: "asc" | "desc";
+                /** @description Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope. */
                 format?: "json" | "csv";
             };
             header?: never;
@@ -45998,7 +46041,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested. */
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope, or the transformed list as text/csv when CSV is requested. */
             200: {
                 headers: {
                     "cache-control": components["headers"]["CacheControl"];

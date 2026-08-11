@@ -141,11 +141,24 @@ export const SDL = /* GraphQL */ `
     "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
     saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
-    fixtures: JSON
+    fixtures(
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+      fields: String
+    ): JSON
     "One captured live request/response fixture by surface_id — the sanitized sample get_fixture / GET /api/v1/fixtures/{surface_id} return. Resolves deprecated surface_id aliases the same way MCP does. Null when no fixture exists for the id (rather than a GraphQL error). An invalid surface_id is BAD_USER_INPUT. Opaque JSON passed through verbatim. Mirrors GET /api/v1/fixtures/{surface_id}."
     fixture(surface_id: String!): JSON
     "The agent-callable service catalog: without a netuid, the global index of subnets exposing callable services; with one, that subnet's full per-service catalog. Both are overlaid with live health exactly as REST composes them. Null when the catalog has not been baked. Opaque JSON, matching the get_agent_catalog MCP/REST shape. Mirrors GET /api/v1/agent-catalog."
-    agent_catalog(netuid: Int): JSON
+    agent_catalog(
+      netuid: Int
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+      fields: String
+    ): JSON
     "Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness."
     freshness: JSON
     "The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when every holders tier is cold, never null. TWO TIERS (#9469): the net_flow_7d/30d/90d sorts are LIVE, recomputed daily from the account_events stake stream; the free_tao/delegated_tao/total_tao sorts are served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so on those captured_at/last_updated do not advance and balances are as of that date -- read that ranking as historical, and use account(ss58) for a live balance. On a flow-sorted page the three holdings columns are null, never zero. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders."
@@ -367,7 +380,13 @@ export const SDL = /* GraphQL */ `
       cursor: String
     ): SubnetIdentityHistory!
     "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory."
-    subnet_trajectory(netuid: Int!): SubnetTrajectory!
+    subnet_trajectory(
+      netuid: Int!
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): SubnetTrajectory!
     "One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph."
     subnet_metagraph(
       netuid: Int!
@@ -669,7 +688,13 @@ export const SDL = /* GraphQL */ `
     "The latest generated registry changelog: artifact added/modified/removed rows, subnet added/removed/renamed events, and coverage deltas since the previous publish. Resolves to a GraphQL error (not null) when the changelog artifact has not been baked in this environment, matching the REST route's 404 and the get_changelog MCP tool. Mirrors GET /api/v1/changelog."
     changelog: Changelog
     "The registry's public artifact contract metadata: every baked artifact path, storage tier, schema reference, and consumer notes. Resolves to a GraphQL error (not null) when the contracts artifact has not been baked in this environment, matching the REST route's 404 and the get_contracts MCP tool. Mirrors GET /api/v1/contracts."
-    contracts: Contracts
+    contracts(
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+      fields: String
+    ): Contracts
     "The generated build summary: artifact inventory counts and sizes, subnet/provider/surface totals, coverage rollup, and publish metadata. Resolves to a GraphQL error (not null) when the build-summary artifact has not been baked in this environment, matching the REST route's 404 and the get_build MCP tool. Mirrors GET /api/v1/build."
     build: BuildSummary!
     "metagraphed's OWN uptime: the api/site/publish component views with their latest probe state and trailing-90-day daily uptime ratios, plus the rolled-up operational/degraded/outage verdict. Scoped strictly to our own surfaces -- never third-party subnet health (that is the health rollup). Resolves to a GraphQL error (not null) when the self-health artifact has not been baked in this environment, matching the REST route's 404 and the get_self_health MCP tool. Mirrors GET /api/v1/self-health."

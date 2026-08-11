@@ -61,6 +61,16 @@ const SPEC = JSON.parse(
 const FULL_COLLECTION = new Set([
   "/api/v1/{network}/economics",
   "/api/v1/{network}/subnets",
+  // #9981: four routes that served a whole baked document until they declared
+  // a query collection. They are here rather than carrying a default because
+  // the change was deliberately ADDITIVE -- absent still means every matching
+  // row, so no existing caller's response moved. Choosing a default for them
+  // is a separate decision, per route, the same split #10027 used for
+  // /health/trends: capability first, default second.
+  "/api/v1/agent-catalog",
+  "/api/v1/contracts",
+  "/api/v1/fixtures",
+  "/api/v1/subnets/{netuid}/trajectory",
   "/api/v1/candidates",
   // Not a collection route: a CEILING with no default by an explicit decision
   // (see EMISSION_PIPELINE_LIMIT_MAX) -- one row per subnet, and the REST route

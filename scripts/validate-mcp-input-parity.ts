@@ -95,9 +95,7 @@ for (const [key, reason] of Object.entries({
   "ask.type": REQUEST_BODY,
   // --- MCP-native ----------------------------------------------------------
   "find_subnet_for_task.task": MCP_NATIVE,
-  "find_subnet_for_task.limit": MCP_NATIVE,
   "find_subnets_by_capability.capability": MCP_NATIVE,
-  "find_subnets_by_capability.limit": MCP_NATIVE,
   "how_do_i_call.subnet": MCP_NATIVE,
   "get_subnet_economics.include_summary": MCP_NATIVE,
   "get_provider_detail.include_endpoints": MCP_NATIVE,
@@ -166,6 +164,30 @@ for (const [key, reason] of Object.entries({
   // --- standing debt -------------------------------------------------------
   // Free-text search over a list the tool otherwise mirrors. Each of these
   // routes publishes `q` and the tool cannot pass it.
+  // #9981 gave four document-shaped routes a page. Their tools do not pass it
+  // YET, and that is a second decision rather than an oversight:
+  // applyMcpQueryFilters supplies MCP_LIST_LIMIT_DEFAULT, so exposing `limit`
+  // here changes each tool's DEFAULT payload -- a behaviour change for every
+  // agent already calling them. #9981 says that choice is per tool ("changing
+  // a default on a published route is a behaviour change... which is why this
+  // is not a one-line sweep"), so the capability landed first and the default
+  // is chosen next, tool by tool. Tracked in #10605.
+  "list_fixtures.limit": NOT_YET_EXPOSED,
+  "list_fixtures.sort": NOT_YET_EXPOSED,
+  "list_fixtures.order": NOT_YET_EXPOSED,
+  "get_contracts.limit": NOT_YET_EXPOSED,
+  "get_contracts.sort": NOT_YET_EXPOSED,
+  "get_contracts.order": NOT_YET_EXPOSED,
+  "get_agent_catalog.limit": NOT_YET_EXPOSED,
+  "get_agent_catalog.sort": NOT_YET_EXPOSED,
+  "get_agent_catalog.order": NOT_YET_EXPOSED,
+  "get_subnet_trajectory.limit": NOT_YET_EXPOSED,
+  "get_subnet_trajectory.sort": NOT_YET_EXPOSED,
+  "get_subnet_trajectory.order": NOT_YET_EXPOSED,
+  "find_subnets_by_capability.sort": NOT_YET_EXPOSED,
+  "find_subnets_by_capability.order": NOT_YET_EXPOSED,
+  "find_subnet_for_task.sort": NOT_YET_EXPOSED,
+  "find_subnet_for_task.order": NOT_YET_EXPOSED,
   "list_subnets.q": NOT_YET_EXPOSED,
   "get_subnet_economics.q": NOT_YET_EXPOSED,
   "get_subnet_evidence.q": NOT_YET_EXPOSED,

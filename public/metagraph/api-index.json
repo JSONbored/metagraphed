@@ -2925,9 +2925,58 @@
       ],
       "path": "/api/v1/agent-catalog",
       "public": true,
-      "query_collection": null,
+      "query_collection": "agent-catalog",
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        },
+        {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "netuid",
+              "callable_count",
+              "completeness_score",
+              "example_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/agent-catalog/{netuid}.json",
@@ -4850,9 +4899,57 @@
       ],
       "path": "/api/v1/fixtures",
       "public": true,
-      "query_collection": null,
+      "query_collection": "fixtures",
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        },
+        {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "captured_at",
+              "netuid",
+              "surface_id"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/fixtures/{surface_id}.json",
@@ -6891,11 +6988,59 @@
       ],
       "path": "/api/v1/subnets/{netuid}/trajectory",
       "public": true,
-      "query_collection": null,
+      "query_collection": "subnet-trajectory",
       "query_filter_names": [],
       "query_parameters": [
         {
-          "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+          "name": "fields",
+          "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        },
+        {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "date",
+              "completeness_score",
+              "surface_count",
+              "endpoint_count"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Response format override. Use `csv` to download the transformed list as text/csv; `json` keeps the default response envelope.",
           "name": "format",
           "schema": {
             "default": "json",
@@ -13364,9 +13509,57 @@
       ],
       "path": "/api/v1/contracts",
       "public": true,
-      "query_collection": null,
+      "query_collection": "contracts",
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "fields",
+          "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        },
+        {
+          "description": "Row offset to resume from — the numeric position of the first row to return, not an opaque token. Rows inserted since the previous page shift it, so prefer the keyset cursor where a tool offers one.",
+          "name": "cursor",
+          "schema": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "description": "Field to sort by — the bare field name only (e.g. `sort=total_stake_alpha`). Pair with the separate `order` parameter to choose direction; a combined `field:desc` token is NOT supported.",
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "id",
+              "path",
+              "contract_version"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "description": "Sort direction for `sort`: `asc` or `desc` (default `desc`). This is a separate parameter from `sort` — e.g. `?sort=emission_share&order=desc`.",
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/openapi.json",

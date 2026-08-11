@@ -3432,7 +3432,12 @@ export type QueryAdapterArgs = {
 
 
 export type QueryAgent_CatalogArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3681,6 +3686,15 @@ export type QueryCompare_ValidatorsArgs = {
 };
 
 
+export type QueryContractsArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryCoverageArgs = {
   network?: InputMaybe<Network>;
 };
@@ -3853,6 +3867,15 @@ export type QueryFailure_ReasonsArgs = {
 
 export type QueryFixtureArgs = {
   surface_id: Scalars['String']['input'];
+};
+
+
+export type QueryFixturesArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  fields?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4526,7 +4549,11 @@ export type QuerySubnet_Surface_HistoryArgs = {
 
 
 export type QuerySubnet_TrajectoryArgs = {
+  cursor?: InputMaybe<Scalars['Int']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
   netuid: Scalars['Int']['input'];
+  order?: InputMaybe<Scalars['String']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -9818,7 +9845,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   changelog?: Resolver<Maybe<ResolversTypes['Changelog']>, ParentType, ContextType>;
   compare?: Resolver<ResolversTypes['Compare'], ParentType, ContextType, RequireFields<QueryCompareArgs, 'netuids'>>;
   compare_validators?: Resolver<ResolversTypes['ValidatorComparison'], ParentType, ContextType, RequireFields<QueryCompare_ValidatorsArgs, 'hotkeys'>>;
-  contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType>;
+  contracts?: Resolver<Maybe<ResolversTypes['Contracts']>, ParentType, ContextType, Partial<QueryContractsArgs>>;
   coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCoverageArgs>>;
   coverage_depth?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryCoverage_DepthArgs>>;
   curation?: Resolver<ResolversTypes['CurationList'], ParentType, ContextType, Partial<QueryCurationArgs>>;
@@ -9838,7 +9865,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   extrinsics?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryExtrinsicsArgs>>;
   failure_reasons?: Resolver<ResolversTypes['FailureReasons'], ParentType, ContextType, Partial<QueryFailure_ReasonsArgs>>;
   fixture?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryFixtureArgs, 'surface_id'>>;
-  fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryFixturesArgs>>;
   freshness?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   gaps?: Resolver<ResolversTypes['GapsList'], ParentType, ContextType, Partial<QueryGapsArgs>>;
   global_incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryGlobal_IncidentsArgs>>;

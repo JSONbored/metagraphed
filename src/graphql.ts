@@ -2199,6 +2199,65 @@ async function listPage(
 // /api/v1/endpoints) and the list_endpoints MCP tool use -- kind/layer/
 // provider/publication_state/status/pool_eligible, the min_/max_latency_ms and
 // min_/max_score ranges, sort/order, and the fields projection -- so the
+// The list-query URL for a document-shaped collection route (#9981).
+//
+// /contracts, /fixtures, /agent-catalog and /subnets/{netuid}/trajectory served
+// a whole baked document until they declared a query collection. GraphQL takes
+// the same arguments so the three surfaces stay one contract -- the alternative
+// was a declared divergence, which is the thing this epic exists to remove.
+//
+// UNLIKE endpointsListQueryUrl above, limit/cursor ARE handed to
+// applyQueryFilters: these fields have no bespoke keyFn paginate() wrapping
+// them, so the collection's own pagination is the whole implementation and its
+// meta is what the caller reads.
+function documentListQueryUrl(args: Row): URL {
+  const url = new URL("https://graphql.internal/document-collection");
+  const set = (key: string, value: unknown) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value));
+    }
+  };
+  set("limit", args.limit);
+  set("cursor", args.cursor);
+  set("sort", args.sort);
+  set("order", args.order);
+  set("fields", args.fields);
+  return url;
+}
+
+/**
+ * Page a document-shaped artifact through its declared collection.
+ *
+ * A null/absent document passes through untouched -- these fields resolve to
+ * null for a cold artifact and paging nothing is not an error.
+ *
+ * EXPORTED for its test. The rejection path is unreachable through the four
+ * fields that use it today -- they declare no filters, so the only rejectable
+ * values are `sort`/`order` and parseArgumentsAtDispatch catches those first --
+ * but it stops being unreachable the moment one declares a filter, and a
+ * `v8 ignore` here would be counted by codecov/patch anyway. Injecting the
+ * collection is what makes it provable.
+ */
+export function pageDocumentCollection(
+  data: unknown,
+  collection: string,
+  args: Row,
+): unknown {
+  if (data === null || data === undefined) return data;
+  const transformed = applyQueryFilters(
+    data as Row,
+    documentListQueryUrl(args),
+    collection,
+    [],
+  );
+  if (transformed.error) {
+    throw new GraphQLError(transformed.error.message, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return transformed.data;
+}
+
 // GraphQL filter allowlist cannot drift from REST. Only the filter/sort/
 // projection params are handed to applyQueryFilters (never limit/cursor): with
 // neither present it returns the full matching set unpaged, and the existing
@@ -2595,8 +2654,12 @@ const rootValue = {
     return loadCandidatesList(mcpCtx(context), args, { readArtifact });
   },
 
-  fixtures(_args: unknown, context: GqlContext) {
-    return loadArtifact(context, "/metagraph/fixtures.json");
+  async fixtures(args: Row, context: GqlContext) {
+    return pageDocumentCollection(
+      await loadArtifact(context, "/metagraph/fixtures.json"),
+      "fixtures",
+      args,
+    );
   },
 
   // #7867: reuse loadFixture (the same loader get_fixture uses) unchanged --
@@ -2619,14 +2682,27 @@ const rootValue = {
     }
   },
 
-  async agent_catalog({ netuid }: QueryAgent_CatalogArgs, context: GqlContext) {
+  async agent_catalog(
+    { netuid, ...page }: QueryAgent_CatalogArgs & Row,
+    context: GqlContext,
+  ) {
     const live = await loadLiveHealth(context);
     if (netuid == null) {
       const index = await loadArtifact(
         context,
         "/metagraph/agent-catalog.json",
       );
-      return index && (overlayCatalogIndex(index, live) || index);
+      // Paged only on the INDEX. With a netuid this is one subnet's full
+      // catalog, which is a detail document rather than the `subnets`
+      // collection the route declares.
+      return (
+        index &&
+        pageDocumentCollection(
+          overlayCatalogIndex(index, live) || index,
+          "agent-catalog",
+          page,
+        )
+      );
     }
     const detail = await loadArtifact(
       context,
@@ -2689,7 +2765,7 @@ const rootValue = {
   },
 
   async subnet_trajectory(
-    { netuid }: QuerySubnet_TrajectoryArgs,
+    { netuid, ...page }: QuerySubnet_TrajectoryArgs & Row,
     context: GqlContext,
   ) {
     // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
@@ -2710,8 +2786,18 @@ const rootValue = {
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
+      // point_count keeps spanning the UNFILTERED series while `points` pages,
+      // the convention every other paged card here uses -- a caller asking for
+      // 20 points must not lose the denominator.
       point_count: data.point_count ?? 0,
-      points: data.points ?? [],
+      points:
+        ((
+          pageDocumentCollection(
+            { points: (data.points as Row[]) ?? [] },
+            "subnet-trajectory",
+            page,
+          ) as Row
+        ).points as Row[]) ?? [],
       // The REST envelope keys deltas by window ("7d"/"30d") -- names that
       // aren't valid GraphQL fields -- so flatten to a list carrying the label,
       // dropping windows with no comparable prior point (null delta).
@@ -4421,8 +4507,12 @@ const rootValue = {
     return { ...data, coverage_delta: data.coverage_delta ?? nested ?? null };
   },
 
-  contracts(_args: unknown, context: GqlContext) {
-    return loadContracts(mcpCtx(context), { readArtifact });
+  async contracts(args: Row, context: GqlContext) {
+    return pageDocumentCollection(
+      await loadContracts(mcpCtx(context), { readArtifact }),
+      "contracts",
+      args,
+    );
   },
 
   // #7431: reuse get_build's own loader unchanged (the same baked artifact read
