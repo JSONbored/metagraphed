@@ -18,6 +18,12 @@
 // own outage into a finding about somebody else — the same conflation
 // #10566 let stand for two months.
 import { isFinneySs58Address } from "./account-balance.ts";
+// The ROW shapes come from the live schema (generated/db/types.ts), not from a
+// hand-written guess at them. That is where `swept_at: number | string` comes
+// from: node-postgres returns BIGINT as a string unless the value is exactly
+// representable, and a hand-rolled `number` would be the #9782 class of bug
+// waiting to happen.
+import type { AttributionSweeps } from "../generated/db/types.ts";
 
 /** Verdicts, matching the CHECK constraint on attribution_sweeps. */
 export type SweepVerdict =
@@ -274,7 +280,7 @@ export async function loadSweepRecord(
       )
       .bind(netuid)
       .all?.();
-    const row = (res?.results ?? [])[0] as Record<string, unknown> | undefined;
+    const row = (res?.results ?? [])[0] as AttributionSweeps | undefined;
     if (!row) return null;
     const sweptAt = Number(row.swept_at);
     return {
@@ -339,7 +345,7 @@ export async function loadSweptAt(
       .prepare(`SELECT netuid, swept_at FROM attribution_sweeps`)
       .all?.();
     for (const raw of res?.results ?? []) {
-      const row = raw as Record<string, unknown>;
+      const row = raw as AttributionSweeps;
       const netuid = Number(row.netuid);
       const at = Number(row.swept_at);
       if (Number.isInteger(netuid) && Number.isFinite(at)) out.set(netuid, at);
