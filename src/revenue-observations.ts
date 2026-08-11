@@ -166,6 +166,34 @@ export const OPERATIONAL_SURFACES_ARTIFACT = "/metagraph/operational-surfaces";
  * because every row in the file has it. probeEligibility still checks it, so it
  * is restored here rather than assumed away, and
  * tests/revenue-observations.test.ts pins the build filter that makes it true.
+ *
+ * ## ELIGIBLE MEANS EXTRACTABLE, NOT MERELY ANNOTATED (#10783)
+ *
+ * The test was `!surface.revenue` -- any revenue block at all. `extractRevenue`
+ * opens with `if (!shape) return fail("no shape declared")` and fails the same
+ * way on a missing `currency`, so a surface carrying only `{provenance, role}`
+ * is one this lane can fetch and can never read.
+ *
+ * Measured on the live artifact 2026-08-11: 632 surfaces, **35** with a revenue
+ * block, **5** with a shape and a currency. So every hour the producer enqueued
+ * 35 messages, 30 of which were guaranteed to fetch a 200 and then fail
+ * extraction -- 30 wasted round trips against other people's APIs, 30 failure
+ * rows an hour, and the retries behind them are what put messages on
+ * `revenue-probes-dlq`. `/api/v1/chain/revenue-coverage` reported
+ * `observed_count: 1` of 129 subnets throughout.
+ *
+ * The 30 are not broken registry entries. `role: "not-revenue"` is a real and
+ * useful annotation -- it records that somebody looked at a surface and
+ * concluded it does not report revenue -- and so is a bare `provenance`. They
+ * are simply not probe inputs, and eligibility asking a different question from
+ * extraction is what made them look like ones.
+ *
+ * WHAT IS DELIBERATELY NOT CHECKED HERE: whether `shape` is in the
+ * REVENUE_SHAPES vocabulary. `extractRevenue` validates that and fails with
+ * `unknown shape "..."`, which writes a failure row naming the surface -- and a
+ * typo'd shape in the registry is exactly the thing that failure row should
+ * surface. Filtering it out here would make a registry error look like a
+ * surface that was never meant to be probed.
  */
 export function eligibleRevenueSurfaces(
   artifact: Row | null | undefined,
@@ -173,7 +201,12 @@ export function eligibleRevenueSurfaces(
   const surfaces = Array.isArray(artifact?.surfaces) ? artifact.surfaces : [];
   const out: ProbeSurfaceInput[] = [];
   for (const surface of surfaces as Row[]) {
-    if (!surface?.revenue) continue;
+    const revenue = surface?.revenue as Row | undefined;
+    if (!revenue) continue;
+    // The two `extractRevenue` refuses without, checked in the order it checks
+    // them so the reason a surface is skipped here matches the reason it would
+    // have failed there.
+    if (!revenue.shape || !revenue.currency) continue;
     out.push({
       id: String(surface.surface_id ?? ""),
       netuid: Number(surface.netuid),
