@@ -1746,6 +1746,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-wallets",
+    "/metagraph/subnets/{netuid}/wallets.json",
+    "One subnet's declared wallets with their roles, evidence and per-window activity (#10486/#10488), composed live at /api/v1/subnets/{netuid}/wallets (no static file). `owner` is CHAIN-DERIVED from SubtensorModule.SubnetOwner and carries chain_derived:true with no source_urls, because the chain is the source; every other role is a human attribution and carries the source_urls that prove it IN THE RESPONSE, so a consumer never has to make a second call to check an attribution it is about to repeat. TAO and alpha activity are reported on separate legs and never summed -- alpha is a different token per subnet, so a combined figure would be a unit error dressed as a total. An empty wallet list means nothing has been attributed for this subnet, which is not the same as nothing existing. Never 404s.",
+    "SubnetWalletsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-owner-cut",
+    "/metagraph/subnets/{netuid}/owner-cut.json",
+    "One subnet's owner-cut accrual and what became of it (#10484/#10485/#10488), composed live at /api/v1/subnets/{netuid}/owner-cut (no static file). The cut is 18% -- SubnetOwnerCut is 11796/65535, not one sixth -- and the storage item is UNSET on chain, so the effective share is the runtime default and is labelled reconstructed rather than measured. It is paid as STAKE rather than a liquid balance, so a disposition derived from transfers alone would report `held` for every subnet on the network; absence of flow evidence resolves to `unresolved` instead, and unresolved may be the majority state. The buckets do not have to sum: the residual is reported rather than balanced away, and a NEGATIVE residual is reported rather than clamped.",
+    "SubnetOwnerCutArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-revenue-coverage",
     "/metagraph/chain/revenue-coverage.json",
     "Every subnet's revenue coverage in ONE response (#10447), composed live at /api/v1/chain/revenue-coverage (no static file) -- the cross-subnet companion to /subnets/{netuid}/revenue. `observed_count` against `subnet_count` is the honest headline: it states how much of the network has a readable revenue figure at all rather than leaving a reader to infer it from nulls. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network.",
@@ -3763,6 +3777,42 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "subnet-wallets",
+    "GET",
+    "/api/v1/subnets/{netuid}/wallets",
+    "/metagraph/subnets/{netuid}/wallets.json",
+    "Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced. EVERY DECLARED WALLET CARRIES ITS source_urls HERE -- reporting an attribution without the evidence is an unsourced allegation, so the proof travels with the claim. `owner` is flagged chain_derived so a consumer can tell a chain read from a human attribution without knowing our schema. Activity is per denomination and never summed across TAO and alpha. An empty list means nothing has been attributed, not that nothing exists.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        in: "path",
+        required: true,
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
+    "subnet-owner-cut",
+    "GET",
+    "/api/v1/subnets/{netuid}/owner-cut",
+    "/metagraph/subnets/{netuid}/owner-cut.json",
+    "Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s.",
+    "short",
+    ["subnets"],
+    [],
+    [
+      {
+        name: "netuid",
+        in: "path",
+        required: true,
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "subnet-revenue",
     "GET",
     "/api/v1/subnets/{netuid}/revenue",
@@ -5298,6 +5348,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // `artifact_not_found`, which would report a contract decision as an incident.
   "/api/v1/chain/revenue-coverage",
   "/api/v1/subnets/{netuid}/revenue",
+  // #10488: registry-derived for the same reason as `revenue` -- both read the
+  // ENTITY registry plus SubnetOwner, and testnet has no entity records.
+  "/api/v1/subnets/{netuid}/wallets",
+  "/api/v1/subnets/{netuid}/owner-cut",
   "/api/v1/registry/summary",
   "/api/v1/lineage",
   "/api/v1/fixtures",

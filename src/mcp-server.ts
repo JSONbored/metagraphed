@@ -1594,6 +1594,18 @@ import {
   loadSubnetRevenue,
 } from "./revenue-load.ts";
 import {
+  loadSubnetOwnerCut,
+  subnetWalletRows,
+  SUBNET_OWNER_CUT_FIELD_SOURCES,
+  SUBNET_WALLETS_FIELD_SOURCES,
+} from "./wallets-load.ts";
+import {
+  GetSubnetOwnerCutInputSchema,
+  GetSubnetOwnerCutOutputSchema,
+  GetSubnetWalletsInputSchema,
+  GetSubnetWalletsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-wallets.ts";
+import {
   GetSubnetRevenueInputSchema,
   GetSubnetRevenueOutputSchema,
   ListRevenueCoverageInputSchema,
@@ -8757,6 +8769,110 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_wallets",
+    title: "Get a subnet's declared wallets and their evidence",
+    description:
+      "Fetch one subnet's declared wallets: the chain-derived owner keys, plus any " +
+      "treasury, burn, payment-collector or multisig address the team has published and " +
+      "somebody has evidenced. NEVER REPEAT AN ATTRIBUTION WITHOUT ITS `source_urls`: " +
+      "reporting that an address belongs to a team, without the proof, is an unsourced " +
+      "allegation made on our behalf to someone who cannot check it. `chain_derived` is " +
+      "true ONLY for `owner`, which is read from SubtensorModule.SubnetOwner and can never " +
+      "be hand-declared -- every other role is a human attribution and may be wrong. A " +
+      "`burn` role is a CLAIM until proven; read `unspendable_proof_basis`. Activity is " +
+      "reported per denomination and TAO and alpha are never summed, because alpha is a " +
+      "different token per subnet. AN EMPTY LIST MEANS NOTHING HAS BEEN ATTRIBUTED FOR " +
+      "THIS SUBNET, which is not the same as nothing existing. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/wallets.",
+    inputSchema: inputJsonSchema(GetSubnetWalletsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetWalletsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const economics = await mcpEconomicsRow(ctx, netuid);
+      const artifact = (await ctx.readArtifact!(
+        ctx.env,
+        ENTITY_LABELS_ARTIFACT,
+      )) as { ok?: boolean; data?: Record<string, unknown> } | null;
+      const entities = artifact?.ok
+        ? (artifact.data?.entities as
+            Array<Record<string, unknown>> | undefined)
+        : undefined;
+      const wallets = subnetWalletRows(
+        netuid,
+        economics,
+        entities ?? null,
+        null,
+      );
+      return {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        netuid,
+        window_days: 30,
+        wallet_count: wallets.length,
+        wallets,
+        field_sources: SUBNET_WALLETS_FIELD_SOURCES,
+      };
+    },
+  },
+  {
+    name: "get_subnet_owner_cut",
+    title: "Get a subnet's owner-cut accrual and where it went",
+    description:
+      "Fetch one subnet's owner-cut accrual and its disposition. The share is 18% -- " +
+      "SubnetOwnerCut is 11796/65535, NOT one sixth -- and is echoed on the response so " +
+      "you never have to assume it. READ `disposition.buckets.unresolved` AND " +
+      "`disposition.reconciles` BEFORE CITING ANY OF THIS. The cut is paid as STAKE rather " +
+      "than as a liquid balance, so where it went is frequently not determinable from what " +
+      "we index, and `unresolved` is a first-class answer rather than a failure -- it may " +
+      "be the majority state. NULL IS NOT ZERO: 'we could not determine where this went' " +
+      "and 'this owner kept nothing' are different claims. The buckets are not balanced to " +
+      "tie; `residual_alpha` reports what is unaccounted for, and a negative residual means " +
+      "the parts exceed the whole. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/owner-cut.",
+    inputSchema: inputJsonSchema(GetSubnetOwnerCutInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetOwnerCutInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const economics = await mcpEconomicsRow(ctx, netuid);
+      const parameters = (await ctx.readArtifact!(
+        ctx.env,
+        "/metagraph/network/parameters.json",
+      )) as { ok?: boolean; data?: Record<string, unknown> } | null;
+      const ownerCut = parameters?.ok
+        ? (parameters.data?.subnet_owner_cut_effective as
+            number | null | undefined)
+        : null;
+      const view = loadSubnetOwnerCut({
+        netuid,
+        window_days: 30,
+        economics,
+        owner_cut: typeof ownerCut === "number" ? ownerCut : null,
+      });
+      return {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        ...view,
+        field_sources: SUBNET_OWNER_CUT_FIELD_SOURCES,
+      };
+    },
+  },
+  {
     name: "get_subnet_revenue",
     title: "Get a subnet's external revenue against its emission",
     description:
@@ -14302,6 +14418,8 @@ const TOOL_OUTPUT_SCHEMAS = {
   ),
   get_subnet_conviction: outputJsonSchema(GetSubnetConvictionOutputSchema),
   get_subnet_recycled: outputJsonSchema(GetSubnetRecycledOutputSchema),
+  get_subnet_wallets: outputJsonSchema(GetSubnetWalletsOutputSchema),
+  get_subnet_owner_cut: outputJsonSchema(GetSubnetOwnerCutOutputSchema),
   get_subnet_revenue: outputJsonSchema(GetSubnetRevenueOutputSchema),
   list_revenue_coverage: outputJsonSchema(ListRevenueCoverageOutputSchema),
   get_subnet_burn_history: outputJsonSchema(GetSubnetBurnHistoryOutputSchema),

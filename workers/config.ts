@@ -576,6 +576,11 @@ export const SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN =
 // subnet with no revenue data, which is 127 of 129 of them.
 export const SUBNET_REVENUE_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/revenue$/;
+// #10488: the money map's two per-subnet routes.
+export const SUBNET_WALLETS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/wallets$/;
+export const SUBNET_OWNER_CUT_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/owner-cut$/;
 // The cross-subnet companion. Exact path.
 export const CHAIN_REVENUE_COVERAGE_PATH = "/api/v1/chain/revenue-coverage";
 export const SUBNET_RECYCLED_PATH_PATTERN =

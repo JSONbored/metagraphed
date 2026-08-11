@@ -1248,6 +1248,43 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/wallets",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.wallets), true);
+      assert.equal(body.data.wallet_count, body.data.wallets.length);
+      for (const w of body.data.wallets) {
+        // #10488: the evidence travels WITH the claim. A consumer repeating an
+        // attribution must be able to check it without a second call.
+        assert.equal(Array.isArray(w.source_urls), true);
+        assert.equal(typeof w.chain_derived, "boolean");
+        // `owner` is read from SubnetOwner and can never be declared, so it is
+        // the one role that is allowed to carry no evidence.
+        if (w.role === "owner") {
+          assert.equal(w.chain_derived, true);
+        } else {
+          assert.equal(w.chain_derived, false);
+        }
+        assert.equal(Array.isArray(w.activity.legs), true);
+      }
+    },
+  ],
+  [
+    "/api/v1/subnets/7/owner-cut",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      const d = body.data.disposition;
+      // #10485: absence of flow evidence is `unresolved`, never held. Claiming
+      // held from a read we did not do is the false negative that would report
+      // "still held" for every subnet on the network.
+      assert.equal(d.buckets["held-as-stake"], null);
+      assert.equal(typeof d.reconciles, "boolean");
+      assert.equal(Array.isArray(d.notes), true);
+      // #10484: the share is echoed so nobody has to assume 18%.
+      assert.equal("owner_cut" in body.data.accrual, true);
+    },
+  ],
+  [
     "/api/v1/subnets/7/revenue",
     (body) => {
       assert.equal(body.data.netuid, 7);

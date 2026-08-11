@@ -404,6 +404,12 @@ import {
   loadRevenueObservations,
   type RevenueStoreDb,
 } from "../../src/revenue-observations.ts";
+import {
+  loadSubnetOwnerCut,
+  subnetWalletRows,
+  SUBNET_OWNER_CUT_FIELD_SOURCES,
+  SUBNET_WALLETS_FIELD_SOURCES,
+} from "../../src/wallets-load.ts";
 import { withAlphaVolumeUsd } from "../../src/alpha-usd-overlay.ts";
 import { withUsdAtTx } from "../../src/price-at-tx.ts";
 import { readTaoUsdCurrentKv } from "../tao-usd-current.ts";
@@ -7130,6 +7136,105 @@ export async function handleExtrinsic(
 // that state, so an error there would make the normal case look like a broken
 // endpoint and a caller sweeping the network would see 127 failures instead of
 // 127 answers.
+// #10488: one subnet's declared wallets.
+//
+// NEVER 404s. Every subnet has an owner and almost none has a declared
+// treasury, so "nothing attributed" is the normal answer and must not be served
+// as an error -- a caller sweeping the network would see 128 failures instead
+// of 128 answers.
+//
+// The flow rows are deliberately NOT loaded yet: the transfer index read is
+// #10486's aggregation over a store this route does not own, and wiring it here
+// before the registry has a single declared address would be plumbing with
+// nothing to carry. Activity therefore reports empty legs, which is honest --
+// the wallets and their evidence are the part that exists today.
+export async function handleSubnetWallets(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const { row } = await resolveSubnetEconomicsRow(env, netuid);
+  const artifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
+  const entities = artifact.ok
+    ? ((artifact.data as Record<string, unknown> | undefined)?.entities as
+        Array<Record<string, unknown>> | undefined)
+    : undefined;
+  const wallets = subnetWalletRows(netuid, row, entities ?? null, null);
+  return envelopeResponse(
+    request,
+    {
+      data: {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        netuid,
+        window_days: 30,
+        wallet_count: wallets.length,
+        wallets,
+        field_sources: SUBNET_WALLETS_FIELD_SOURCES,
+      },
+      meta: { contract_version: contractVersion(env) },
+    },
+    "short",
+  );
+}
+
+// #10488: the accrual and what became of it.
+//
+// `flows_observed` is deliberately NOT set: the stake-move and transfer streams
+// are not read here yet, so the disposition resolves the whole accrual to
+// `unresolved` with a stated reason. That is the correct answer rather than a
+// placeholder -- claiming `held-as-stake` from the absence of a read is exactly
+// the false negative #10485 exists to prevent.
+export async function handleSubnetOwnerCut(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const { row } = await resolveSubnetEconomicsRow(env, netuid);
+  const parameters = await readArtifact(
+    env,
+    "/metagraph/network/parameters.json",
+  );
+  const ownerCut = parameters.ok
+    ? ((parameters.data as Record<string, unknown> | undefined)
+        ?.subnet_owner_cut_effective as number | null | undefined)
+    : null;
+  const view = loadSubnetOwnerCut({
+    netuid,
+    window_days: 30,
+    economics: row,
+    owner_cut: typeof ownerCut === "number" ? ownerCut : null,
+    usd_per_tao: await usdPerTaoOrNull(env),
+  });
+  return envelopeResponse(
+    request,
+    {
+      data: {
+        schema_version: 1,
+        generated_at: new Date().toISOString(),
+        ...view,
+        field_sources: SUBNET_OWNER_CUT_FIELD_SOURCES,
+      },
+      meta: { contract_version: contractVersion(env) },
+    },
+    "short",
+  );
+}
+
 export async function handleSubnetRevenue(
   request: Request,
   env: Env,

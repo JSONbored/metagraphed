@@ -168,6 +168,8 @@ import {
   handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
   handleSubnetRevenue,
+  handleSubnetWallets,
+  handleSubnetOwnerCut,
   handleChainRevenueCoverage,
   handleSubnetBurn,
   handleChainBurn,
@@ -585,6 +587,8 @@ import {
   SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_REVENUE_PATH_PATTERN,
+  SUBNET_WALLETS_PATH_PATTERN,
+  SUBNET_OWNER_CUT_PATH_PATTERN,
   CHAIN_REVENUE_COVERAGE_PATH,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
@@ -6479,6 +6483,12 @@ const REGISTRY_ONLY_SUBNET_LEAVES = new Set([
   // The per-subnet half of /api/v1/chain/revenue-coverage, declared above for
   // the same reason: the numerator comes from registry surface records.
   "revenue",
+  // #10488: the money map. Both read the ENTITY registry plus SubnetOwner --
+  // registry-derived exactly like `revenue`, and testnet has no entity records
+  // to attribute against, so an undeclared route would answer
+  // artifact_not_found there for what is really a contract decision.
+  "wallets",
+  "owner-cut",
 ]);
 
 /** Prefixes covering the registry's parameterised singletons. */
@@ -6666,6 +6676,15 @@ async function dispatchLiveChainRoute(
 ): Promise<Response | null> {
   const chain = chainNetworkId(network.id);
   const { pathname } = url;
+
+  const walletsMatch = SUBNET_WALLETS_PATH_PATTERN.exec(pathname);
+  if (walletsMatch) {
+    return handleSubnetWallets(request, env, Number(walletsMatch[1]));
+  }
+  const ownerCutMatch = SUBNET_OWNER_CUT_PATH_PATTERN.exec(pathname);
+  if (ownerCutMatch) {
+    return handleSubnetOwnerCut(request, env, Number(ownerCutMatch[1]));
+  }
 
   const revenueMatch = SUBNET_REVENUE_PATH_PATTERN.exec(pathname);
   if (revenueMatch) {

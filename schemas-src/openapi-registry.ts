@@ -97,6 +97,10 @@ import {
 import { SurfaceAliasesArtifactSchema } from "./artifacts/surface-aliases.ts";
 import { EntitiesArtifactSchema } from "./artifacts/entities.ts";
 import {
+  SubnetOwnerCutArtifactSchema,
+  SubnetWalletsArtifactSchema,
+} from "./routes/subnet-wallets.ts";
+import {
   SubnetVerificationArtifactSchema,
   VerificationArtifactSchema,
 } from "./artifacts/verification.ts";
@@ -1038,6 +1042,8 @@ register(EndpointPublicationStateSchema, "EndpointPublicationState");
 // schemas-src/artifacts/'s file headers.
 register(SurfaceAliasesArtifactSchema, "SurfaceAliasesArtifact");
 register(EntitiesArtifactSchema, "EntitiesArtifact");
+register(SubnetWalletsArtifactSchema, "SubnetWalletsArtifact");
+register(SubnetOwnerCutArtifactSchema, "SubnetOwnerCutArtifact");
 register(ReviewQueueArtifactSchema, "ReviewQueueArtifact");
 register(OperationalSurfacesArtifactSchema, "OperationalSurfacesArtifact");
 register(HealthLatestArtifactSchema, "HealthLatestArtifact");
@@ -1339,6 +1345,8 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "EndpointPublicationState",
   "SurfaceAliasesArtifact",
   "EntitiesArtifact",
+  "SubnetWalletsArtifact",
+  "SubnetOwnerCutArtifact",
   "ReviewQueueArtifact",
   "OperationalSurfacesArtifact",
   "HealthLatestArtifact",
