@@ -21,7 +21,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 // the seam; see tests/helpers/pg-mock.ts for why it is a module mock and why
 // the controller has to be built inside vi.hoisted.
 //
-// The three pure readers below (loadLaneStaleRuns, loadLaneCadence) still take
+// The pure readers below (loadLaneStaleRuns, loadLaneUnknownRuns, loadLaneMaxGap) take
 // a `db` argument, so they keep their own hand-rolled double -- injection is
 // still injection, and a module mock would say less about them than the fake
 // they are handed.
@@ -35,16 +35,15 @@ import {
   LANE_ALARM_MIN_STALE_MS,
   LANE_SILENCE_EXEMPT,
   LANE_ALARM_TITLE_PREFIX,
-  LANE_CADENCE_SQL,
+  LANE_MAX_GAP_SQL,
   LANE_STALE_RUN_SQL,
   laneAlarmGitHub,
   laneAlarmIssueBody,
   laneAlarmPlan,
   laneAlarmRecoveryComment,
   laneAlarmTitle,
-  laneCadenceMs,
   laneSilenceThresholdMs,
-  loadLaneCadence,
+  loadLaneMaxGap,
   loadLaneStaleRuns,
   runLaneAlarm,
   type LaneAlarm,
@@ -68,7 +67,7 @@ function record(over: Partial<LaneHealthRecord> = {}): LaneHealthRecord {
 
 /** A double for the `db` these two readers TAKE. They are the injectable half
  * of this module -- runLaneAlarm selects its own store, but loadLaneStaleRuns
- * and loadLaneCadence are handed one -- so a hand-rolled fake still says more
+ * and loadLaneMaxGap are handed one -- so a hand-rolled fake still says more
  * here than the module mock does. Returns rows, or throws however asked. */
 function fakeDb(rows: Record<string, unknown>[] | Error = []) {
   const calls: { sql: string; values: unknown[] }[] = [];
@@ -97,27 +96,10 @@ function fakeDb(rows: Record<string, unknown>[] | Error = []) {
   };
 }
 
-describe("laneCadenceMs", () => {
-  test("averages the gaps between ticks", () => {
-    // 5 verdicts spanning 60 minutes = 4 gaps of 15 minutes.
-    assert.equal(
-      laneCadenceMs({ n: 5, first: NOW - 60 * 60_000, last: NOW }),
-      15 * 60_000,
-    );
-  });
-
-  test("refuses to guess from too little history", () => {
-    // Two samples is one gap, and a wrong cadence produces exactly the false
-    // alarm the design is trying to avoid. Uncalibrated is the honest answer.
-    assert.equal(laneCadenceMs({ n: 2, first: NOW - 60_000, last: NOW }), null);
-  });
-
-  test("refuses a zero-width span", () => {
-    // Every verdict at the same instant: a real table state on the first tick
-    // after a deploy, and a cadence of 0 would make the silence threshold 0.
-    assert.equal(laneCadenceMs({ n: 5, first: NOW, last: NOW }), null);
-  });
-});
+// The `laneCadenceMs` describe was REMOVED (#10723) along with the function: it
+// documented a MEAN-gap computation nobody performs any more. Why the mean was the
+// wrong number is recorded in tests/lane-silence-cadence.test.ts and in
+// src/lane-alarm.ts's LANE_MAX_GAP_SQL comment.
 
 describe("laneSilenceThresholdMs", () => {
   test("three intervals for a slow lane", () => {
@@ -135,7 +117,7 @@ describe("laneAlarmPlan", () => {
     latest: {},
     runs: {},
     unknownRuns: {},
-    cadence: {},
+    observedMaxGap: {},
     openAlarms: {},
     nowMs: NOW,
     minStaleMs: LANE_ALARM_MIN_STALE_MS,
@@ -146,7 +128,7 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a" }) },
       runs: { a: { since: NOW - 28 * HOUR, ticks: 112 } },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.deepEqual(
@@ -181,7 +163,7 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a", verdict: "unknown" }) },
       unknownRuns: { a: { since: NOW - 4 * HOUR, ticks: 4 } },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].lane, "a");
@@ -199,7 +181,7 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a", verdict: "unknown" }) },
       unknownRuns: { a: { since: NOW - 60_000, ticks: 1 } },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     assert.deepEqual(plan.open, []);
   });
@@ -214,7 +196,7 @@ describe("laneAlarmPlan", () => {
         a: record({ lane: "a", verdict: "unknown", checked_at: NOW - 30_000 }),
       },
       unknownRuns: { a: { since: NOW - 6 * HOUR, ticks: 6 } },
-      cadence: { a: 60_000 },
+      observedMaxGap: { a: 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].kind, "unknown");
@@ -234,10 +216,69 @@ describe("laneAlarmPlan", () => {
         }),
       },
       unknownRuns: { a: { since: NOW - 6 * HOUR, ticks: 6 } },
-      cadence: { a: 60_000 },
+      observedMaxGap: { a: 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].kind, "silent");
+  });
+
+  // #10723: the assertion that would have caught four false alarms.
+  //
+  // `neon:account-balances` writes a verdict per BATCH -- 6,268 rows in seven days
+  // against a six-hourly producer -- so its observed MEAN gap is one minute. Judged
+  // by that, every gap between passes is an outage, and on 2026-08-11T02:28Z four
+  // Neon lanes alarmed at 1.7-1.8h against producers running every 6h and 24h.
+  //
+  // laneSilenceCadenceMs floors the observed gap by the producer's DECLARED cadence
+  // wherever LANE_PRODUCER names one, which is what src/self-health.ts already did.
+  test("a lane with a declared producer is not alarmed inside its interval", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        "neon:account-balances": record({
+          lane: "neon:account-balances",
+          verdict: "ok",
+          // Well past the 90-minute floor, and well inside the declared 6h.
+          checked_at: NOW - 2 * HOUR,
+        }),
+      },
+      // The mean-gap number that caused the false alarms.
+      observedMaxGap: { "neon:account-balances": 60_000 },
+    });
+    assert.deepEqual(plan.open, []);
+  });
+
+  test("a lane with a declared producer still alarms past three intervals", () => {
+    // The floor must not become a mute button: three cadences of slack, then it
+    // fires. account_balances is 6h, so 20h is past 3x.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        "neon:account-balances": record({
+          lane: "neon:account-balances",
+          verdict: "ok",
+          checked_at: NOW - 20 * HOUR,
+        }),
+      },
+      observedMaxGap: { "neon:account-balances": 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].kind, "silent");
+    // The DECLARED cadence is what it reports, not the one-minute observation.
+    assert.equal(plan.open[0].cadence_ms, 6 * HOUR);
+  });
+
+  test("a lane with NO declared producer still uses its observed gap", () => {
+    // The fallback has to survive: an undeclared lane behaves exactly as before.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        z: record({ lane: "z", verdict: "ok", checked_at: NOW - 4 * HOUR }),
+      },
+      observedMaxGap: { z: 30 * 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].cadence_ms, 30 * 60_000);
   });
 
   test("never alarms an exempt lane for silence, however long it is quiet", () => {
@@ -252,7 +293,7 @@ describe("laneAlarmPlan", () => {
       },
       // A calibrated cadence, which is exactly the state that produced the
       // false alarm — the exemption has to hold even so.
-      cadence: { "poller-build": 12 * HOUR },
+      observedMaxGap: { "poller-build": 12 * HOUR },
     });
     assert.deepEqual(plan.open, []);
   });
@@ -267,7 +308,7 @@ describe("laneAlarmPlan", () => {
         "poller-build": record({ lane: "poller-build", verdict: "stale" }),
       },
       runs: { "poller-build": { since: NOW - 28 * HOUR, ticks: 40 } },
-      cadence: { "poller-build": 12 * HOUR },
+      observedMaxGap: { "poller-build": 12 * HOUR },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].lane, "poller-build");
@@ -286,7 +327,7 @@ describe("laneAlarmPlan", () => {
           checked_at: NOW - 30 * 24 * HOUR,
         }),
       },
-      cadence: { neurons: 12 * HOUR },
+      observedMaxGap: { neurons: 12 * HOUR },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].lane, "neurons");
@@ -347,7 +388,7 @@ describe("laneAlarmPlan", () => {
           checked_at: NOW - 6 * HOUR,
         }),
       },
-      cadence: { a: 30 * 60_000 },
+      observedMaxGap: { a: 30 * 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].kind, "silent");
@@ -360,7 +401,7 @@ describe("laneAlarmPlan", () => {
       latest: {
         a: record({ lane: "a", verdict: "ok", checked_at: NOW - 20 * 60_000 }),
       },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     assert.deepEqual(plan.open, []);
   });
@@ -375,7 +416,7 @@ describe("laneAlarmPlan", () => {
           checked_at: NOW - 40 * 24 * HOUR,
         }),
       },
-      cadence: {},
+      observedMaxGap: {},
     });
     assert.deepEqual(plan.open, []);
   });
@@ -387,7 +428,7 @@ describe("laneAlarmPlan", () => {
       ...base,
       latest: { a: record({ lane: "a", checked_at: NOW - 9 * HOUR }) },
       runs: { a: { since: NOW - 9 * HOUR, ticks: 30 } },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     assert.equal(plan.open.length, 1);
     assert.equal(plan.open[0].kind, "stale");
@@ -403,7 +444,7 @@ describe("laneAlarmPlan", () => {
           checked_at: NOW - 9 * HOUR,
         }),
       },
-      cadence: { a: 15 * 60_000 },
+      observedMaxGap: { a: 15 * 60_000 },
     });
     // staleLanes() excludes `unknown`, so this cannot be a stale alarm. It is
     // 9 hours past a 15-minute cadence, though, so the silence detector still
@@ -582,7 +623,13 @@ describe("laneAlarmRecoveryComment", () => {
   });
 });
 
-describe("loadLaneStaleRuns / loadLaneCadence", () => {
+// RE-POINTED AT loadLaneMaxGap (#10723). These assertions were written against
+// loadLaneCadence -- the mean-gap loader, now deleted -- but what they actually
+// cover is the robustness contract every one of these readers shares: skip a row
+// with no lane, coerce an unreadable number, tolerate a driver that answers
+// without a `results` key, and decline to `{}` rather than throw. That contract
+// matters more on the loader the alarm actually issues.
+describe("loadLaneStaleRuns / loadLaneMaxGap", () => {
   test("read the current run and the observed cadence", async () => {
     const db = fakeDb([{ lane: "a", since: 10, ticks: 5 }]);
     assert.deepEqual(await loadLaneStaleRuns(db), {
@@ -590,14 +637,12 @@ describe("loadLaneStaleRuns / loadLaneCadence", () => {
     });
     assert.equal(db.calls[0].sql, LANE_STALE_RUN_SQL);
 
-    const cadenceDb = fakeDb([
-      { lane: "a", n: 5, first: NOW - 60 * 60_000, last: NOW },
-    ]);
-    assert.deepEqual(await loadLaneCadence(cadenceDb, NOW - 7 * 24 * HOUR), {
+    const gapDb = fakeDb([{ lane: "a", n: 5, max_gap: 15 * 60_000 }]);
+    assert.deepEqual(await loadLaneMaxGap(gapDb, NOW - 7 * 24 * HOUR), {
       a: 15 * 60_000,
     });
-    assert.equal(cadenceDb.calls[0].sql, LANE_CADENCE_SQL);
-    assert.deepEqual(cadenceDb.calls[0].values, [NOW - 7 * 24 * HOUR]);
+    assert.equal(gapDb.calls[0].sql, LANE_MAX_GAP_SQL);
+    assert.deepEqual(gapDb.calls[0].values, [NOW - 7 * 24 * HOUR]);
   });
 
   test("skip a row with no lane name rather than keying on an empty string", async () => {
@@ -605,7 +650,10 @@ describe("loadLaneStaleRuns / loadLaneCadence", () => {
       await loadLaneStaleRuns(fakeDb([{ since: 1, ticks: 1 }])),
       {},
     );
-    assert.deepEqual(await loadLaneCadence(fakeDb([{ n: 5 }]), 0), {});
+    assert.deepEqual(
+      await loadLaneMaxGap(fakeDb([{ n: 5, max_gap: 1 }]), 0),
+      {},
+    );
   });
 
   test("coerce an unreadable count to zero rather than NaN", async () => {
@@ -631,17 +679,17 @@ describe("loadLaneStaleRuns / loadLaneCadence", () => {
       }),
     };
     assert.deepEqual(await loadLaneStaleRuns(shim), {});
-    assert.deepEqual(await loadLaneCadence(shim, 0), {});
+    assert.deepEqual(await loadLaneMaxGap(shim, 0), {});
   });
 
   test("return empty on a missing binding or a failing query", async () => {
     assert.deepEqual(await loadLaneStaleRuns(null), {});
-    assert.deepEqual(await loadLaneCadence(undefined, 0), {});
+    assert.deepEqual(await loadLaneMaxGap(undefined, 0), {});
     assert.deepEqual(
       await loadLaneStaleRuns(fakeDb(new Error("no such table"))),
       {},
     );
-    assert.deepEqual(await loadLaneCadence(fakeDb(new Error("boom")), 0), {});
+    assert.deepEqual(await loadLaneMaxGap(fakeDb(new Error("boom")), 0), {});
   });
 });
 
@@ -804,7 +852,9 @@ describe("runLaneAlarm", () => {
   function healthDb(rows: {
     latest?: Record<string, unknown>[];
     runs?: Record<string, unknown>[];
-    cadence?: Record<string, unknown>[];
+    /** LANE_MAX_GAP_SQL rows: `{ lane, n, max_gap }` (#10723). The alarm reads the
+     * MAX gap now, not the mean, so this bucket answers that query's shape. */
+    maxGap?: Record<string, unknown>[];
   }) {
     const written: Record<string, unknown>[] = [];
     pg.control.queries.length = 0;
@@ -812,7 +862,7 @@ describe("runLaneAlarm", () => {
     pg.control.failNext = null;
     pg.control.answers = [
       { match: "MIN(checked_at) AS since", rows: rows.runs ?? [] },
-      { match: "COUNT(*) AS n", rows: rows.cadence ?? [] },
+      { match: "COUNT(*) AS n", rows: rows.maxGap ?? [] },
       {
         match: "SELECT lane, verdict, age_ms, detail, checked_at",
         rows: rows.latest ?? [],
@@ -841,14 +891,7 @@ describe("runLaneAlarm", () => {
         },
       ],
       runs: [{ lane: "neurons-staleness", since: NOW - 28 * HOUR, ticks: 112 }],
-      cadence: [
-        {
-          lane: "neurons-staleness",
-          n: 100,
-          first: NOW - 25 * HOUR,
-          last: NOW,
-        },
-      ],
+      maxGap: [{ lane: "neurons-staleness", n: 100, max_gap: 15 * 60_000 }],
     });
     const github = fakeGitHub();
     const out = await runLaneAlarm(
@@ -1104,9 +1147,7 @@ describe("runLaneAlarm", () => {
           checked_at: NOW - 40 * HOUR,
         },
       ],
-      cadence: [
-        { lane: "a", n: 50, first: NOW - 50 * HOUR, last: NOW - 40 * HOUR },
-      ],
+      maxGap: [{ lane: "a", n: 50, max_gap: 12 * 60_000 }],
     });
     const calls: string[] = [];
     const original = globalThis.fetch;
