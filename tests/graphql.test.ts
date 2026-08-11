@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { Blob } from "node:buffer";
 import {
   buildSchema,
@@ -15139,32 +15140,24 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_registrations: 7,
-            subnet_count: 2,
-            concentration: 0.63,
-            dominant_netuid: 1,
-            subnets: [
-              {
-                netuid: 1,
-                registrations: 5,
-                first_registered_at: "2026-04-01T00:00:00.000Z",
-                last_registered_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 2, registrations: 2 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 1,
+        registrations: 5,
+        // The lane's own column names, and epoch ms: the reader selects
+        // MIN/MAX(observed_at) AS first_observed/last_observed, and the builder
+        // formats those into first_registered_at / last_registered_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      { netuid: 2, registrations: 2 },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_registrations(ss58: "${SS58}", window: "90d") {
           address window total_registrations subnet_count concentration dominant_netuid
@@ -15177,7 +15170,9 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
     assert.equal(r.window, "90d");
     assert.equal(r.total_registrations, 7);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.63);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.63, a number nothing computed.
+    assert.equal(r.concentration, 0.5918);
     assert.equal(r.dominant_netuid, 1);
     assert.deepEqual(r.subnets, [
       {
@@ -15193,6 +15188,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
         last_registered_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15397,32 +15393,21 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_announcements: 8,
-            subnet_count: 2,
-            concentration: 0.68,
-            dominant_netuid: 4,
-            subnets: [
-              {
-                netuid: 4,
-                announcements: 6,
-                first_served_at: "2026-04-01T00:00:00.000Z",
-                last_served_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 9, announcements: 2 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 4,
+        announcements: 6,
+        first_served_at: "2026-04-01T00:00:00.000Z",
+        last_served_at: "2026-06-01T00:00:00.000Z",
+      },
+      { netuid: 9, announcements: 2 },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_serving(ss58: "${SS58}", window: "90d") {
           address window total_announcements subnet_count concentration dominant_netuid
@@ -15435,7 +15420,9 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
     assert.equal(r.window, "90d");
     assert.equal(r.total_announcements, 8);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.68);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.68, a number nothing computed.
+    assert.equal(r.concentration, 0.625);
     assert.equal(r.dominant_netuid, 4);
     assert.deepEqual(r.subnets, [
       {
@@ -15451,6 +15438,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
         last_served_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15655,33 +15643,22 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_movements: 6,
-            subnet_count: 2,
-            concentration: 0.61,
-            dominant_netuid: 8,
-            subnets: [
-              {
-                netuid: 8,
-                movements: 5,
-                first_moved_at: "2026-04-01T00:00:00.000Z",
-                last_moved_at: "2026-06-01T00:00:00.000Z",
-                price_tao_at_last_move: 0.042,
-              },
-              { netuid: 12, movements: 1 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 8,
+        movements: 5,
+        first_moved_at: "2026-04-01T00:00:00.000Z",
+        last_moved_at: "2026-06-01T00:00:00.000Z",
+        price_tao_at_last_move: 0.042,
+      },
+      { netuid: 12, movements: 1 },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_stake_moves(ss58: "${SS58}", window: "90d") {
           address window total_movements subnet_count concentration dominant_netuid
@@ -15694,7 +15671,9 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
     assert.equal(r.window, "90d");
     assert.equal(r.total_movements, 6);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.61);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.61, a number nothing computed.
+    assert.equal(r.concentration, 0.7222);
     assert.equal(r.dominant_netuid, 8);
     assert.deepEqual(r.subnets, [
       {
@@ -15712,6 +15691,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
         price_tao_at_last_move: null,
       },
     ]);
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -16585,30 +16565,23 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "b:1200:3",
-          transfers: [
-            {
-              block_number: 1200,
-              event_index: 3,
-              from: SS58,
-              to: OTHER,
-              amount_tao: 1.5,
-              direction: "sent",
-              observed_at: "2026-07-15T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        block_number: 1200,
+        event_index: 3,
+        from: SS58,
+        to: OTHER,
+        amount_tao: 1.5,
+        direction: "sent",
+        observed_at: "2026-07-15T00:00:00.000Z",
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
           schema_version ss58 transfer_count limit offset next_cursor
@@ -16637,25 +16610,18 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
     const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          transfers: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 5, offset: 2, cursor: "c:9:1", direction: "received", block_start: 10, block_end: 20) { transfer_count } }`,
       env as unknown as Env,
@@ -16668,6 +16634,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     assert.equal(capture.url.searchParams.get("direction"), "received");
     assert.equal(capture.url.searchParams.get("block_start"), "10");
     assert.equal(capture.url.searchParams.get("block_end"), "20");
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
@@ -16715,18 +16682,13 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("a transfer row with missing fields degrades each to null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 1,
-          next_cursor: null,
-          transfers: [{}],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([{}]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
           transfers { block_number event_index from to amount_tao direction observed_at }
@@ -16745,6 +16707,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
         observed_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
@@ -16812,34 +16775,27 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("resolves the Postgres-tier envelope, mapping each event's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "b:1200:3",
-          events: [
-            {
-              block_number: 1200,
-              event_index: 3,
-              event_kind: "StakeAdded",
-              hotkey: SS58,
-              coldkey: OTHER,
-              netuid: 7,
-              uid: 42,
-              amount_tao: 1.5,
-              alpha_amount: 2.25,
-              observed_at: "2026-07-15T00:00:00.000Z",
-              extrinsic_index: 4,
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "StakeAdded",
+        hotkey: SS58,
+        coldkey: OTHER,
+        netuid: 7,
+        uid: 42,
+        amount_tao: 1.5,
+        alpha_amount: 2.25,
+        observed_at: "2026-07-15T00:00:00.000Z",
+        extrinsic_index: 4,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16866,25 +16822,18 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
     const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          events: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
         `(ss58: "${SS58}", kind: "StakeAdded", netuid: 7, block_start: 10, block_end: 20, limit: 5, offset: 2, cursor: "c:9:1")`,
@@ -16900,6 +16849,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
     assert.equal(capture.url.searchParams.get("block_start"), "10");
     assert.equal(capture.url.searchParams.get("block_end"), "20");
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
@@ -16940,18 +16890,13 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("an event row with missing fields degrades each to null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 1,
-          next_cursor: null,
-          events: [{}],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([{}]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_events.events, [
@@ -16969,6 +16914,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
         extrinsic_index: null,
       },
     ]);
+    lake.restore();
   });
 
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
