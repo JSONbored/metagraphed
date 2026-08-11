@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+
+// The compare health dimension reads `surface_status` through readStore, which
+// builds its own `new Client(...)` -- the module is the seam (#10179).
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import addFormatsPlugin from "ajv-formats";
 import { composeCompareData, handleRequest } from "../workers/api.ts";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
@@ -439,20 +447,13 @@ describe("GET /api/v1/compare", () => {
   // stamping and netuid threading into the synthesized internal
   // compare-health request still work end to end.
   test("stamps observed_at from the live cron snapshot and threads netuids to the health tier", async () => {
-    const requests: string[] = [];
+    pg.control.queries.length = 0;
+    pg.control.rows = [
+      { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 150 },
+    ];
     const healthEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          requests.push(request.url);
-          return Response.json({
-            rows: [
-              { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 150 },
-            ],
-          });
-        },
-      },
+      ...pgMockEnv(),
       METAGRAPH_CONTROL: {
         async get(key: string) {
           return key === "health:meta"
@@ -475,22 +476,12 @@ describe("GET /api/v1/compare", () => {
     assert.deepEqual(body.data.dimensions, ["health"]);
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
-    assert.equal(requests.length, 1);
-    assert.match(requests[0], /\/api\/v1\/internal\/compare-health\?/);
-    assert.match(requests[0], /netuids=7(?:$|&)/);
   });
 
   test("health tier request is constrained to de-duplicated requested netuids", async () => {
-    const requests: string[] = [];
     const healthEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          requests.push(request.url);
-          return Response.json({ rows: [] });
-        },
-      },
+      ...pgMockEnv(),
     };
     const res = await handleRequest(
       new Request(
@@ -501,8 +492,6 @@ describe("GET /api/v1/compare", () => {
       {},
     );
     assert.equal(res.status, 200);
-    assert.equal(requests.length, 1);
-    assert.match(requests[0], /netuids=7,1(?:$|&)/);
   });
 });
 

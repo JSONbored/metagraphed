@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 // The generated row type, so these fixtures cannot drift from the schema.
 import type { SubnetSnapshots } from "../generated/db/types.ts";
 
@@ -128,13 +129,35 @@ function snapshotStoreEnv(rows: SnapshotFixture[]) {
   return storeEnv(rows as unknown as Row[]);
 }
 
-function postgresUptimeEnv(surfaces: Row[], window = "90d"): Env {
-  return {
-    METAGRAPH_HEALTH_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () => Response.json({ netuid: NETUID, window, surfaces }),
-    },
-  } as unknown as Env;
+// #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+// DATA_API_FORWARD_FLAGS, so the tier this doubled never answered --
+// loadSubnetUptime reads `surface_uptime_daily` through readStore. Doubled at
+// that transport, and given the (surface, day) ROWS the GROUP BY emits rather
+// than a built payload, so formatUptime runs here as it does in production.
+function postgresUptimeEnv(surfaces: Row[], _window = "90d"): Env {
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.rows = surfaces.flatMap((surface) =>
+    ((surface.days as Row[]) ?? []).map((day) => ({
+      surface_id: surface.surface_id,
+      surface_key: surface.surface_id,
+      day: day.day,
+      samples: day.samples,
+      ok_count:
+        Number(day.samples ?? 0) * Number((day.uptime_ratio as number) ?? 0),
+      uptime_ratio: day.uptime_ratio,
+      avg_latency_ms: day.avg_latency_ms,
+      // The GROUP BY emits this as `latency_samples`; formatUptime publishes it
+      // as latency_sample_count.
+      latency_samples: day.latency_sample_count,
+      p50: (day.latency_ms as Row | undefined)?.p50 ?? null,
+      p95: (day.latency_ms as Row | undefined)?.p95 ?? null,
+      p99: (day.latency_ms as Row | undefined)?.p99 ?? null,
+      status: day.status,
+    })),
+  );
+  return mockEnv(pgMockEnv()) as unknown as Env;
 }
 
 beforeEach(() => {
@@ -718,11 +741,16 @@ describe("handleUptime", () => {
       ],
       "1y",
     );
+    // THE ctx IS NOT PLUMBING (see storeEnv's note): observationsReadDb parks
+    // the pooled connection's teardown on waitUntil and answers `undefined`
+    // without one, which d1All reads as zero rows -- a header-only CSV that
+    // would pass every assertion except the row.
     const res = await handleUptime(
       req("/"),
       env,
       NETUID,
       url("/?window=1y&format=csv"),
+      { waitUntil: (promise: Promise<unknown>) => void promise } as never,
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
@@ -911,17 +939,27 @@ describe("handleCompare", () => {
   // isolation, same reused METAGRAPH_HEALTH_SOURCE flag as handleUptime
   // above. D1 fully eliminated (2026-07-17): a tier miss now always falls
   // through to an empty health row set, never a live D1 query.
-  test("health dimension: flag=postgres serves the DATA_API response", async () => {
+  test("health dimension: the store answers, and the retired tier is not consulted", async () => {
+    // #10190: the health dimension read METAGRAPH_HEALTH_SOURCE, a flag that
+    // reads "d1" and is absent from DATA_API_FORWARD_FLAGS -- so it returned
+    // null and this dimension published `health: null` for every subnet while
+    // the get_compare_subnets MCP tool served real numbers off the same table.
+    // It reads `surface_status` directly now, the same read MCP makes.
     const env = createLocalArtifactEnv();
-    env.METAGRAPH_HEALTH_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          rows: [
-            { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
-          ],
-        }),
-    };
+    Object.assign(env, pgMockEnv());
+    const tier = forbiddenDataApi();
+    Object.assign(env, tier);
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM surface_status",
+        rows: [
+          { netuid: 7, surface_count: 3, ok_count: 2, avg_latency_ms: 120 },
+        ],
+      },
+    ];
     const body = await json(
       await handleCompare(
         req("/api/v1/compare"),
@@ -929,6 +967,8 @@ describe("handleCompare", () => {
         url("/api/v1/compare?netuids=7&dimensions=health"),
       ),
     );
+    pg.control.answers = [];
+    assert.deepEqual(tier.paths, []);
     assert.equal(body.data.subnets[0].netuid, 7);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
   });
@@ -994,20 +1034,23 @@ describe("handleCompare", () => {
     // A fresh, unrelated env (real committed profiles.json, includes NETUID)
     // must resolve NETUID on its own data, not the poisoned cache above.
     const realEnv = createLocalArtifactEnv();
-    realEnv.METAGRAPH_HEALTH_SOURCE = "postgres";
-    realEnv.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          rows: [
-            {
-              netuid: NETUID,
-              surface_count: 3,
-              ok_count: 2,
-              avg_latency_ms: 120,
-            },
-          ],
-        }),
-    };
+    Object.assign(realEnv, pgMockEnv());
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM surface_status",
+        rows: [
+          {
+            netuid: NETUID,
+            surface_count: 3,
+            ok_count: 2,
+            avg_latency_ms: 120,
+          },
+        ],
+      },
+    ];
     const body = await json(
       await handleCompare(
         req("/"),
@@ -1018,6 +1061,7 @@ describe("handleCompare", () => {
     assert.equal(body.data.subnets[0].netuid, NETUID);
     assert.equal(body.data.subnets[0].found, true);
     assert.equal(body.data.subnets[0].health.ok_count, 2);
+    pg.control.answers = [];
   });
 });
 

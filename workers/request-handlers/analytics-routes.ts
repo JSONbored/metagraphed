@@ -77,6 +77,9 @@ import {
   buildDomainSummary,
 } from "../../src/domain-summary.ts";
 import { readStore } from "../../src/read-store.ts";
+import { COMPARE_SUBNETS_TABLES } from "../../src/read-store-tables.ts";
+import { d1All } from "../../src/analytics-live.ts";
+import { surfaceStatusAvgLatencySql } from "../../src/health-sql.ts";
 import {
   LEADERBOARD_TABLES,
   TAO_USD_TABLES,
@@ -846,18 +849,39 @@ export async function handleCompare(
   // caller's netuids=/dimensions= request unchanged (tryPostgresTier's usual
   // contract). D1 fully eliminated (2026-07-17): a tier miss now always
   // falls through to an empty row set (never a live D1 query).
+  // NO TIER READ (#10190), AND IT HAD NO RUNG. This synthesized an internal
+  // /api/v1/internal/compare-health request for METAGRAPH_HEALTH_SOURCE, a flag
+  // that reads "d1" and is absent from DATA_API_FORWARD_FLAGS -- so the read
+  // resolved to null and this leg returned `[]` on every request. The health
+  // dimension has been publishing `health: null` for every subnet while the
+  // get_compare_subnets MCP tool served real numbers for the same netuids, off
+  // the same table. That flag cannot be widened either: the same flag gates
+  // three routes data-api does not implement (see src/health-status-live.ts).
+  //
+  // So it reads `surface_status` directly, through the same store read and the
+  // same grouping loadCompareSubnets uses for MCP -- one source, two surfaces.
   let healthIsFallback = false;
   const healthPromise = dimensions.includes("health")
     ? (async () => {
-        const pgUrl = new URL(request.url);
-        pgUrl.pathname = "/api/v1/internal/compare-health";
-        pgUrl.search = `?netuids=${requestedNetuids.join(",")}`;
-        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
-        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier
-        // read that guarded this early return resolved to null on every call --
-        // the health leg has always been a fallback here.
-        healthIsFallback = true;
-        return [];
+        const wanted = new Set(
+          requestedNetuids.map((netuid) => Number(netuid)),
+        );
+        const grouped = await d1All(
+          readStore(env, COMPARE_SUBNETS_TABLES) as never,
+          `SELECT netuid,
+                  COUNT(*) AS surface_count,
+                  SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                  ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
+           FROM surface_status
+           GROUP BY netuid`,
+          [],
+        );
+        const rows = grouped.filter((row: Record<string, unknown>) =>
+          wanted.has(Number(row.netuid)),
+        );
+        // A store that cannot answer is a fallback, exactly as a tier miss was.
+        healthIsFallback = rows.length === 0;
+        return rows;
       })()
     : null;
   const [economicsRows, healthRows] = await Promise.all([
