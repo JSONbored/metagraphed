@@ -11205,25 +11205,36 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   });
 
   test("subnet_volume unwraps the tier's { data } envelope", async () => {
+    // #10190: the tier is retired; the #9146 alpha-volume projection answers. Its
+    // rows are per-event-kind sums, and the card's buy/sell split, totals and
+    // SENTIMENT are all derived from them -- the retired tier handed the sentiment
+    // over ready-made, so the classification never ran.
     const env = {
       ...fixtureEnv(POOL),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            netuid: 64,
-            window: "24h",
-            buy_volume_tao: 12,
-            sell_volume_tao: 8,
-            total_volume_tao: 20,
-            buy_count: 3,
-            sell_count: 2,
-            sentiment: "buying",
-            sentiment_ratio: 0.6,
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "24h": {
+            observed_at: "2026-07-14T00:00:00.000Z",
+            rows: [
+              {
+                netuid: 64,
+                event_kind: "StakeAdded",
+                alpha_volume: 3,
+                tao_volume: 12,
+                event_count: 3,
+              },
+              {
+                netuid: 64,
+                event_kind: "StakeRemoved",
+                alpha_volume: 2,
+                tao_volume: 8,
+                event_count: 2,
+              },
+            ],
           },
-        }),
-      ),
+        },
+      }),
     };
     const { status, body } = await gql(
       "{ subnet_volume(netuid: 64) { netuid window total_volume_tao buy_count sentiment sentiment_ratio } }",
@@ -11234,8 +11245,14 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     const v = body.data.subnet_volume;
     assert.equal(v.window, "24h");
     assert.equal(v.total_volume_tao, 20);
-    assert.equal(v.sentiment, "buying");
-    assert.equal(v.sentiment_ratio, 0.6);
+    // The BUILDER's own vocabulary. The retired tier's payload said "buying",
+    // a value nothing in src/alpha-volume.ts produces -- so this field was
+    // asserted against a string the code could not emit.
+    assert.equal(v.sentiment, "bullish");
+    // DERIVED as net/gross ALPHA -- (3 - 2) / (3 + 2) = 0.2 -- not the 0.6 the
+    // retired tier carried, which was neither this ratio nor any other the code
+    // computes. `sentimentRatio` is the single definition both surfaces share.
+    assert.equal(v.sentiment_ratio, 0.2);
   });
 
   test("subnet_ohlc cold store returns an empty candle list", async () => {
