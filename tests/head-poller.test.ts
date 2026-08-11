@@ -28,7 +28,10 @@ import {
   SYSTEM_EVENTS_STORAGE_KEY,
 } from "../src/head-poller.ts";
 import { DEFAULT_SS58_PREFIX, encodeAccountId32 } from "../src/ss58.ts";
-import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
+import {
+  CHAIN_HEAD_ALARM_OVERDUE_MS,
+  ChainFirehoseHub,
+} from "../workers/chain-firehose-hub.ts";
 
 const rpcFetch = (handlers: Record<string, (params: unknown[]) => unknown>) =>
   (async (_url: unknown, init?: { body?: string }) => {
@@ -344,14 +347,68 @@ test("poll-start arms the alarm once and is idempotent", async () => {
   const first = await hub.fetch(
     new Request("https://x/poll-start", { method: "POST" }),
   );
-  assert.deepEqual(await first.json(), { ok: true, armed: true });
+  assert.deepEqual(await first.json(), {
+    ok: true,
+    armed: true,
+    rearmed: false,
+  });
   const armedAt = alarm();
   assert.ok(armedAt !== null);
   const second = await hub.fetch(
     new Request("https://x/poll-start", { method: "POST" }),
   );
-  assert.deepEqual(await second.json(), { ok: true, armed: false });
+  assert.deepEqual(await second.json(), {
+    ok: true,
+    armed: false,
+    rearmed: false,
+  });
   assert.equal(alarm(), armedAt, "existing alarm untouched");
+});
+
+// #10668. The bootstrap could only repair a MISSING alarm, and `getAlarm()`
+// returns a scheduled TIME rather than a liveness check -- so an alarm whose
+// handler never ran (storage reset mid-setAlarm, eviction between scheduling
+// and firing) read as armed forever and this branch left it alone. The lane
+// then sat until something else happened to touch the object, which is what
+// `/api/v1/chain/indexer-lag` measured as a write-latency tail out to 24
+// minutes against a p50 of 36 seconds.
+test("poll-start re-arms an OVERDUE alarm, which the old idempotence could not", async () => {
+  const { hub, state, alarm } = hubWith({}, new Map());
+  const wedged = Date.now() - CHAIN_HEAD_ALARM_OVERDUE_MS - 60_000;
+  await state.storage.setAlarm(wedged);
+  const res = await hub.fetch(
+    new Request("https://x/poll-start", { method: "POST" }),
+  );
+  assert.deepEqual(await res.json(), {
+    ok: true,
+    // Reported apart from `armed` on purpose: "was not running" and "was
+    // wedged" have different causes and a reader should see which.
+    armed: false,
+    rearmed: true,
+  });
+  const rearmed = alarm();
+  assert.ok(
+    rearmed !== null && rearmed > wedged,
+    "the dead alarm was replaced",
+  );
+});
+
+test("poll-start leaves an alarm that is merely LATE alone", async () => {
+  // The floor the grace period buys: a tick catching up 25 blocks does 25
+  // serial round trips plus a write each, and re-arming underneath one that is
+  // still running would race two alarms against the same head:last_seen.
+  const { hub, state, alarm } = hubWith({}, new Map());
+  const stillWorking = Date.now() - CHAIN_HEAD_ALARM_OVERDUE_MS + 30_000;
+  await state.storage.setAlarm(stillWorking);
+  const res = await hub.fetch(
+    new Request("https://x/poll-start", { method: "POST" }),
+  );
+  assert.deepEqual(await res.json(), {
+    ok: true,
+    armed: false,
+    rearmed: false,
+  });
+  assert.equal(alarm(), stillWorking, "a working tick is not disturbed");
 });
 
 test("alarm: kill switch off -> no polling, but always re-arms", async () => {

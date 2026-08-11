@@ -202,6 +202,47 @@ export function chainFirehoseCapRefusal(
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
 
+/**
+ * How far past its scheduled time an alarm has to be before `/poll-start`
+ * treats it as dead and re-arms it (#10766).
+ *
+ * ## Why this one has a grace period and #10764's does not
+ *
+ * `enqueueStatement` in workers/neon-write-buffer-hub.ts fixed the identical
+ * class of bug -- an orphaned alarm read as "one is pending, nothing to do" --
+ * and arms on `existingAlarm === null || existingAlarm <= now`, with no slack
+ * at all. That is right THERE and would be wrong here, because the two alarms
+ * have opposite shapes.
+ *
+ * The buffer's alarm is scheduled ten minutes out and its handler is a drain
+ * that either runs or does not, so any scheduled time in the past is an
+ * orphan. This one is scheduled SIX SECONDS out and re-armed in a `finally`
+ * that runs when the tick FINISHES -- and a tick that catches up 25 blocks
+ * spends 25 serial `fetchBlockAt` calls (three RPC round trips each) plus a
+ * Neon write on every one. A scheduled time in the past is that lane's normal
+ * steady state while it is working, not evidence of anything.
+ *
+ * FIVE MINUTES, and the two bounds it sits between are what pick it:
+ *
+ *  * The FLOOR is one legitimate tick. The alarm re-arms at `Date.now() +
+ *    CHAIN_HEAD_POLL_INTERVAL_MS` (6s) in a `finally`, but that clock starts
+ *    when the tick FINISHES, and a tick that catches up 25 blocks does 25
+ *    serial `fetchBlockAt` round trips plus a Neon write each. A bound tight
+ *    enough to trip on a slow catch-up would re-arm an alarm that is merely
+ *    working, and two alarms racing the same `head:last_seen` is a worse
+ *    failure than the one being repaired.
+ *
+ *  * The CEILING is the bootstrap's own cadence. The cron that calls
+ *    `/poll-start` runs every 15 minutes, so anything at or over that would
+ *    let a wedged poller survive a tick of its own repair.
+ *
+ * Not derived from the poll interval, deliberately -- see
+ * src/producer-cadence.ts. Fifty missed 6-second ticks is arithmetic that
+ * means nothing; "longer than any real tick, shorter than the repair cadence"
+ * is the actual statement.
+ */
+export const CHAIN_HEAD_ALARM_OVERDUE_MS = 5 * 60 * 1000;
+
 // #8364: a periodic SSE comment (`: heartbeat\n\n`) so a client -- and any
 // intermediary proxy that times out an idle connection -- sees traffic even
 // during a chain-quiet stretch. A comment, never a named event: EventSource
@@ -1031,14 +1072,37 @@ export class ChainFirehoseHub implements DurableObject {
     // #204: arm (or re-arm) the head poller. Called from the main worker's
     // 15-minute cron as a self-healing bootstrap -- if the alarm chain ever
     // dies (deploy, DO eviction mid-error), the next cron tick restarts it.
-    // Idempotent: an already-scheduled alarm is left alone.
+    //
+    // AN OVERDUE ALARM IS A DEAD ONE, and repairing only the MISSING case was
+    // a bootstrap that could not reach the failure it exists for (#10766) --
+    // the same fault #10764 fixed in the neon write buffer's enqueue, on a
+    // different grace period and for the reason spelled out at
+    // CHAIN_HEAD_ALARM_OVERDUE_MS.
+    // `getAlarm()` returns the scheduled time, not a liveness check, so an
+    // alarm whose handler never ran -- the storage reset mid-`setAlarm`, the
+    // eviction between scheduling and firing -- reads as armed forever and
+    // this branch left it alone. The lane then sits until something else
+    // happens to touch the object, which is why `/api/v1/chain/indexer-lag`
+    // measured a write-latency tail out to 24 minutes against a p50 of 36
+    // seconds, and why the 20-minute chain-detail staleness alarm fires
+    // occasionally on a lane that is otherwise keeping pace.
     if (url.pathname === "/poll-start" && request.method === "POST") {
       const existing = await this.state.storage.getAlarm();
-      if (existing === null) {
-        await this.state.storage.setAlarm(Date.now() + 1000);
+      const now = Date.now();
+      const overdue =
+        existing !== null && existing < now - CHAIN_HEAD_ALARM_OVERDUE_MS;
+      if (existing === null || overdue) {
+        await this.state.storage.setAlarm(now + 1000);
       }
       return new Response(
-        JSON.stringify({ ok: true, armed: existing === null }),
+        JSON.stringify({
+          ok: true,
+          armed: existing === null,
+          // Distinct from `armed` on purpose: a caller (and the cron log)
+          // should be able to tell "the poller was not running" apart from
+          // "the poller was wedged", because they have different causes.
+          rearmed: overdue,
+        }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     }

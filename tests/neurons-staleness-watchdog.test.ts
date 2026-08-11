@@ -24,13 +24,16 @@ const { pg } = await vi.hoisted(async () => ({
 vi.mock("pg", () => pg.module);
 
 import {
+  NEURONS_BUFFER_LANE,
   NEURONS_COVERAGE_FLOOR_NETUIDS,
   NEURONS_EXPECTED_NETUIDS,
   NEURONS_PASS_WINDOW_MS,
   NEURONS_STALENESS_THRESHOLD_MS,
   evaluateNeuronsStaleness,
+  neuronsStalenessThresholdMs,
   runNeuronsStalenessWatchdog,
 } from "../src/neurons-staleness-watchdog.ts";
+import { FLUSH_INTERVAL_MS } from "../src/neon-write-buffer.ts";
 import { handleScheduled } from "../workers/api.ts";
 import * as workerConfig from "../workers/config.ts";
 
@@ -448,5 +451,138 @@ describe("handleScheduled NEURONS_STALENESS_WATCHDOG_CRON", () => {
       q.includes("INSERT INTO lane_health"),
     );
     assert.equal(writes.length, 2);
+  });
+});
+
+// ---- the threshold against the WRITE path (#10665) ----
+//
+// This watchdog reads `now - MAX(captured_at)`, and a row is only in the table
+// once it has been written. Until 2026-08-11 that second term was ~zero because
+// every lane wrote straight through. `neurons` is a buffered lane now (#10758),
+// and the buffer holds statements for up to FLUSH_INTERVAL_MS.
+//
+// Measured, not theorised: the buffer was enabled at 01:33 PDT that day and
+// this lane alarmed from 02:21 with an age climbing 80.6 -> 170.6 minutes in
+// exact 15-minute steps, falling back to 52.4 by 04:52 after it was disabled at
+// 03:47. Three hours of "the poller Container has missed at least three ticks"
+// for a poller that had missed nothing.
+describe("the staleness threshold absorbs write-visibility lag", () => {
+  const buffered = { NEON_WRITE_BUFFER_LANES: NEURONS_BUFFER_LANE };
+
+  test("an unbuffered lane keeps the bare three-missed-ticks bound", () => {
+    assert.equal(
+      neuronsStalenessThresholdMs({ NEON_WRITE_BUFFER_LANES: "" }),
+      NEURONS_STALENESS_THRESHOLD_MS,
+    );
+  });
+
+  test("a buffered lane adds the flush interval, so three ticks still means three", () => {
+    assert.equal(
+      neuronsStalenessThresholdMs(buffered),
+      NEURONS_STALENESS_THRESHOLD_MS + FLUSH_INTERVAL_MS,
+    );
+  });
+
+  test("turning the buffer off restores the tighter bound", () => {
+    // Conditional rather than a flat widening: ten minutes of permanent slack
+    // behind a flag nobody re-reads is how a threshold stops meaning anything.
+    assert.ok(
+      neuronsStalenessThresholdMs({ NEON_WRITE_BUFFER_LANES: "" }) <
+        neuronsStalenessThresholdMs(buffered),
+    );
+  });
+
+  test("the env override is still the base, and still absorbs the flush", () => {
+    assert.equal(
+      neuronsStalenessThresholdMs({
+        ...buffered,
+        NEURONS_STALENESS_THRESHOLD_MS: "300000",
+      }),
+      300_000 + FLUSH_INTERVAL_MS,
+    );
+  });
+
+  test("a lane held under the widened bound no longer alarms", async () => {
+    // 50 minutes: over the bare 45-minute threshold, under the buffered one.
+    // Before #10665 this was a page; the rows exist and the buffer has simply
+    // not flushed them yet.
+    const { env } = fakeDb(NOW - 50 * 60_000);
+    const result = await runNeuronsStalenessWatchdog(
+      { ...env, ...buffered },
+      { now: () => NOW, recordException: (async () => true) as never },
+    );
+    assert.equal(result.alerted, false);
+    assert.equal(
+      result.threshold_ms,
+      NEURONS_STALENESS_THRESHOLD_MS + FLUSH_INTERVAL_MS,
+    );
+  });
+
+  test("a genuinely dead lane still alarms through the widened bound", async () => {
+    // The direction that matters: absorbing the flush must not buy silence for
+    // a producer that really has stopped.
+    const recorded: { error?: Error }[] = [];
+    const { env } = fakeDb(NOW - 3 * 60 * 60_000);
+    const result = await runNeuronsStalenessWatchdog(
+      { ...env, ...buffered },
+      {
+        now: () => NOW,
+        recordException: (async (_e: never, event: never) => {
+          recorded.push(event);
+          return true;
+        }) as never,
+      },
+    );
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "stale");
+    assert.match(
+      String(recorded[0].error?.message),
+      /newest READABLE snapshot/,
+    );
+  });
+});
+
+describe("the stall message names what was measured, not a cause", () => {
+  test("a buffered lane names BOTH suspects", async () => {
+    // The watchdog reads the table, so a producer that stopped and a write
+    // path holding rows are the same observation to it. Asserting the first
+    // sends its reader to the wrong place before they reach the second line.
+    const recorded: { error?: Error }[] = [];
+    const { env } = fakeDb(NOW - 5 * 60 * 60_000);
+    await runNeuronsStalenessWatchdog(
+      { ...env, NEON_WRITE_BUFFER_LANES: NEURONS_BUFFER_LANE },
+      {
+        now: () => NOW,
+        recordException: (async (_e: never, event: never) => {
+          recorded.push(event);
+          return true;
+        }) as never,
+      },
+    );
+    const message = String(recorded[0].error?.message);
+    assert.match(message, /poller Container has stopped capturing/);
+    assert.match(message, /neon write buffer is not flushing/);
+    assert.ok(
+      !message.includes("missed at least three ticks"),
+      "the retired claim asserted a cause this watchdog cannot see",
+    );
+  });
+
+  test("an unbuffered lane names only the producer, because that is the only suspect", async () => {
+    const recorded: { error?: Error }[] = [];
+    const { env } = fakeDb(NOW - 5 * 60 * 60_000);
+    await runNeuronsStalenessWatchdog(
+      { ...env, NEON_WRITE_BUFFER_LANES: "" },
+      {
+        now: () => NOW,
+        recordException: (async (_e: never, event: never) => {
+          recorded.push(event);
+          return true;
+        }) as never,
+      },
+    );
+    const message = String(recorded[0].error?.message);
+    assert.match(message, /poller Container has stopped capturing/);
+    assert.ok(!message.includes("write buffer"));
   });
 });

@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  POSTGRES_TIER_RETRY_ATTEMPTS,
   currentPostgresTierFallbackGeneration,
   tryPostgresTier,
 } from "../workers/postgres-tier.ts";
@@ -225,4 +226,142 @@ test("tryPostgresTier: rewrites a HEAD request to GET before forwarding to DATA_
     "METAGRAPH_HEALTH_SOURCE",
   );
   assert.equal(receivedMethod, "GET");
+});
+
+// ---- the transient retry (#10665) ----
+//
+// The neurons tier degraded to the schema-stable empty response in BURSTS for
+// sixteen days, with clean days in between. That shape is a transient -- the
+// DATA_API service binding failing to produce a response while that Worker is
+// mid-deploy -- and degrading on the first refusal turned each blip into a
+// confidently wrong answer served to a caller. One retry is the difference
+// between a slow correct answer and a fast wrong one.
+
+test("tryPostgresTier: a 5xx is asked a second time, and a recovered retry ANSWERS", async () => {
+  const before = currentPostgresTierFallbackGeneration();
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      return calls === 1
+        ? new Response(null, { status: 503 })
+        : Response.json({ schema_version: 1, recovered: true });
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, 2, "the first 5xx must not be the final answer");
+  assert.deepEqual(result, { schema_version: 1, recovered: true });
+  assert.equal(
+    currentPostgresTierFallbackGeneration(),
+    before,
+    "a recovered retry is not a fallback and must not invalidate an edge write",
+  );
+});
+
+test("tryPostgresTier: a transport THROW is retried too, and a recovered retry answers", async () => {
+  // A thrown subrequest and a 5xx are the same fault from two sides: the
+  // binding could not reach a Worker able to answer.
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("Network connection lost.");
+      return Response.json({ schema_version: 1 });
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, 2);
+  assert.deepEqual(result, { schema_version: 1 });
+});
+
+test("tryPostgresTier: a 4xx is NOT retried -- it will be exactly as wrong twice", async () => {
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      return new Response(null, { status: 400 });
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, 1, "retrying a bad request only doubles the load");
+  assert.equal(result, null);
+});
+
+test("tryPostgresTier: a 2xx is not retried", async () => {
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      return Response.json({ ok: true });
+    }),
+  });
+  await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, 1);
+});
+
+test("tryPostgresTier: the retry is capped at one extra ask", async () => {
+  // A DATA_API that is genuinely down must degrade quickly rather than hold
+  // every request open behind an unbounded retry loop.
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      return new Response(null, { status: 502 });
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, POSTGRES_TIER_RETRY_ATTEMPTS);
+  assert.equal(calls, 2, "the cap is one retry, stated as a number here too");
+  assert.equal(result, null);
+});
+
+test("tryPostgresTier: a persistent transport throw still degrades after the cap", async () => {
+  const before = currentPostgresTierFallbackGeneration();
+  let calls = 0;
+  const env = mockEnv({
+    METAGRAPH_HEALTH_SOURCE: "postgres",
+    DATA_API: dataApi(async () => {
+      calls += 1;
+      throw new Error("Network connection lost.");
+    }),
+  });
+  const result = await tryPostgresTier(env, req(), "METAGRAPH_HEALTH_SOURCE");
+  assert.equal(calls, POSTGRES_TIER_RETRY_ATTEMPTS);
+  assert.equal(result, null);
+  assert.equal(currentPostgresTierFallbackGeneration(), before + 1);
+});
+
+test("tryPostgresTier: the failing request PATH is in the message, masked", async () => {
+  // #10665 was unanswerable for sixteen days because the capture named the
+  // FLAG and never the request: "DATA_API returned 502" with no way to tell
+  // which of the twenty-nine neurons-gated routes produced it. The path is
+  // masked with the analytics labeller so a per-account route cannot turn one
+  // recurring fault into one message per address.
+  const seen: string[] = [];
+  const realError = console.error;
+  console.error = (...args: unknown[]) => void seen.push(args.join(" "));
+  try {
+    const env = mockEnv({
+      METAGRAPH_NEURONS_SOURCE: "d1",
+      DATA_API: dataApi(async () => new Response(null, { status: 503 })),
+    });
+    await tryPostgresTier(
+      env,
+      new Request("https://api.metagraph.sh/api/v1/subnets/64/metagraph"),
+      "METAGRAPH_NEURONS_SOURCE",
+    );
+  } finally {
+    console.error = realError;
+  }
+  const line = seen.join("\n");
+  assert.match(line, /\/api\/v1\/subnets\/:n\/metagraph/);
+  assert.ok(
+    !line.includes("/64/"),
+    "the netuid must be masked, or one fault becomes one message per subnet",
+  );
 });
