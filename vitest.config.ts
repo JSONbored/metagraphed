@@ -63,6 +63,11 @@ export default defineConfig({
     setupFiles: [
       "tests/setup/clock-skew.ts",
       "tests/setup/reset-module-state.ts",
+      // Fails any test that reaches a host we do not operate. The convention
+      // was already per-test fetch stubs; this makes it enforced rather than
+      // remembered -- a live RPC read slipped into the suite and only surfaced
+      // as parallel-run flake.
+      "tests/setup/no-outbound-fetch.ts",
     ],
     // Vitest's 5s default is too tight for THIS suite under file parallelism,
     // and the gap was papered over by putting the real number on one npm
