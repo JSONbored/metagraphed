@@ -38,7 +38,10 @@ import {
 } from "./neon-write.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
-import { neonWriteRunner } from "./neon-write-buffer.ts";
+import {
+  neonWriteBufferEnabled,
+  neonWriteRunner,
+} from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
@@ -101,6 +104,12 @@ export async function mirrorNominatorPositionsToNeon(
     deps.sql ??
     neonWriteRunner(env, ctx, NOMINATOR_POSITIONS_NEON_LANE, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
+  // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
+  // honest per-lane one. A buffered FAILURE still does: that is the enqueue
+  // being refused, which nothing else reports. Only a runner we BUILT counts,
+  // since an injected deps.sql went wherever the caller pointed it.
+  const buffered =
+    !deps.sql && neonWriteBufferEnabled(env, NOMINATOR_POSITIONS_NEON_LANE);
   const now = deps.now ?? Date.now;
 
   if (!sql) {
@@ -116,6 +125,7 @@ export async function mirrorNominatorPositionsToNeon(
       NOMINATOR_POSITIONS_NEON_LANE,
       failure,
       now(),
+      buffered,
     );
     return { attempted: true };
   }
@@ -135,6 +145,7 @@ export async function mirrorNominatorPositionsToNeon(
     NOMINATOR_POSITIONS_NEON_LANE,
     write,
     now(),
+    buffered,
   );
 
   // THE PRUNE IS SKIPPED WHEN THE UPSERT FAILED, and that ordering is load
@@ -154,6 +165,7 @@ export async function mirrorNominatorPositionsToNeon(
     `${NOMINATOR_POSITIONS_NEON_LANE}-prune`,
     prune,
     now(),
+    buffered,
   );
 
   // AFTER THE PRUNE, not just after the upsert. This lane's pass is only
@@ -185,6 +197,7 @@ export async function mirrorNominatorPositionsToNeon(
         ...(tally.reason ? { reason: tally.reason } : {}),
       },
       now(),
+      buffered,
     );
   }
   return { attempted: true, write, prune, pass: passResult };

@@ -34,7 +34,10 @@ import {
 } from "./neon-write.ts";
 import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
-import { neonWriteRunner } from "./neon-write-buffer.ts";
+import {
+  neonWriteBufferEnabled,
+  neonWriteRunner,
+} from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 import {
   writePassTallyToNeon,
@@ -395,6 +398,11 @@ export async function mirrorNeuronSnapshotToNeon(
   // named the lane and the binding is missing, and that deserves a verdict
   // rather than silence. It is recorded under the lane so #9698 reports it.
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
+  // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
+  // honest per-lane one. A buffered FAILURE still does: that is the enqueue
+  // being refused, which nothing else reports. Only a runner we BUILT counts,
+  // since an injected deps.sql went wherever the caller pointed it.
+  const buffered = !deps.sql && neonWriteBufferEnabled(env, NEURONS_NEON_LANE);
   const now = deps.now ?? Date.now;
   if (!sql) {
     await recordNeonWriteVerdict(
@@ -402,6 +410,7 @@ export async function mirrorNeuronSnapshotToNeon(
       NEURONS_NEON_LANE,
       { ok: false, rows: 0, statements: 0, reason: "hyperdrive unbound" },
       now(),
+      buffered,
     );
     return { attempted: true, results: {} };
   }
@@ -425,7 +434,7 @@ export async function mirrorNeuronSnapshotToNeon(
       plan.guard,
     );
     results[name] = result;
-    await recordNeonWriteVerdict(laneDb, name, result, now());
+    await recordNeonWriteVerdict(laneDb, name, result, now(), buffered);
   }
 
   // THE DEREGISTRATION PRUNE (#10184). D1's writer ran this and the Neon mirror
@@ -466,6 +475,7 @@ export async function mirrorNeuronSnapshotToNeon(
       `${NEURONS_NEON_LANE}-prune`,
       prune,
       now(),
+      buffered,
     );
   }
 
@@ -496,6 +506,7 @@ export async function mirrorNeuronSnapshotToNeon(
       `${NEURONS_NEON_LANE}-pass`,
       verdict,
       now(),
+      buffered,
     );
     results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }

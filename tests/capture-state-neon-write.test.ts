@@ -282,3 +282,88 @@ describe("no store bound at all", () => {
     assert.equal(out.result, undefined);
   });
 });
+
+describe("a buffered lane writes no enqueue-time verdict (#10690)", () => {
+  function laneSpy() {
+    const rows: unknown[][] = [];
+    return {
+      rows,
+      db: {
+        prepare(sql: string) {
+          return {
+            bind(...values: unknown[]) {
+              return {
+                async run() {
+                  if (sql.startsWith("INSERT")) rows.push(values);
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+  function bufferNs(status = 200) {
+    return {
+      NEON_WRITE_BUFFER: {
+        idFromName: (n: string) => n,
+        get: () => ({
+          async fetch() {
+            return new Response("{}", { status });
+          },
+        }),
+      },
+    };
+  }
+  const enabled = {
+    NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
+    NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
+    HYPERDRIVE: HD,
+  };
+
+  test("a successful enqueue records nothing -- the flush owns the verdict", async () => {
+    const spy = laneSpy();
+    await mirrorRawCaptureStateToNeon(
+      { ...enabled, ...bufferNs() },
+      ctx,
+      "mainnet",
+      4321,
+      999,
+      { laneHealthDb: spy.db },
+    );
+    assert.deepEqual(spy.rows, []);
+  });
+
+  test("a REFUSED enqueue still records -- backpressure must stay visible", async () => {
+    const spy = laneSpy();
+    await mirrorRawCaptureStateToNeon(
+      { ...enabled, ...bufferNs(503) },
+      ctx,
+      "mainnet",
+      4321,
+      999,
+      { laneHealthDb: spy.db },
+    );
+    assert.equal(spy.rows.length, 1);
+    assert.equal(spy.rows[0][0], `neon:${RAW_CAPTURE_STATE_NEON_LANE}`);
+    assert.equal(spy.rows[0][1], "stale");
+  });
+
+  test("an INJECTED sql is never treated as buffered", async () => {
+    // deps.sql went wherever the caller pointed it -- a test double or a real
+    // connection. Calling that buffered would suppress a verdict for a write
+    // the buffer never saw.
+    const spy = laneSpy();
+    const rec = recordingSql();
+    await mirrorRawCaptureStateToNeon(
+      { ...enabled, ...bufferNs() },
+      ctx,
+      "mainnet",
+      4321,
+      999,
+      { laneHealthDb: spy.db, sql: rec.sql },
+    );
+    assert.equal(rec.calls.length, 1);
+    assert.equal(spy.rows.length, 1, "an injected write still reports");
+  });
+});

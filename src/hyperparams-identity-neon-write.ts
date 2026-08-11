@@ -27,7 +27,10 @@ import {
 } from "./account-identity.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
-import { neonWriteRunner } from "./neon-write-buffer.ts";
+import {
+  neonWriteBufferEnabled,
+  neonWriteRunner,
+} from "./neon-write-buffer.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -163,6 +166,11 @@ export async function mirrorFamilyToNeon(
   // (empty lane list), so this changes nothing until a lane is named.
   const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
+  // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
+  // honest per-lane one. A buffered FAILURE still does: that is the enqueue
+  // being refused, which nothing else reports. Only a runner we BUILT counts,
+  // since an injected deps.sql went wherever the caller pointed it.
+  const buffered = !deps.sql && neonWriteBufferEnabled(env, lane);
   const now = deps.now ?? Date.now;
 
   if (!sql) {
@@ -173,6 +181,7 @@ export async function mirrorFamilyToNeon(
       lane,
       { ok: false, rows: 0, statements: 0, reason: "hyperdrive unbound" },
       now(),
+      buffered,
     );
     return { attempted: true, results: {} };
   }
@@ -199,7 +208,13 @@ export async function mirrorFamilyToNeon(
       undefined,
     );
   }
-  await recordNeonWriteVerdict(laneDb, lane, summarise(results), now());
+  await recordNeonWriteVerdict(
+    laneDb,
+    lane,
+    summarise(results),
+    now(),
+    buffered,
+  );
   return { attempted: true, results };
 }
 

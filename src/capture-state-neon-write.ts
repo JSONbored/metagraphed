@@ -21,7 +21,10 @@
 // same shape as #9634's last_ok, one table over.
 import type { BlocksHead } from "../generated/db/types.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
-import { neonWriteRunner } from "./neon-write-buffer.ts";
+import {
+  neonWriteBufferEnabled,
+  neonWriteRunner,
+} from "./neon-write-buffer.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -54,11 +57,13 @@ async function runner(
   laneDb: LaneHealthDb | undefined;
   now: () => number;
   attempted: boolean;
+  /** Whether `sql` enqueues rather than writes -- see record() below. */
+  buffered: boolean;
 }> {
   const now = deps.now ?? Date.now;
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   if (!neonDualWriteEnabled(env, lane)) {
-    return { sql: null, laneDb, now, attempted: false };
+    return { sql: null, laneDb, now, attempted: false, buffered: false };
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
@@ -66,6 +71,10 @@ async function runner(
   const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   if (!sql) {
     // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op.
+    //
+    // No `buffered` argument, and it is not an oversight: this branch is only
+    // reachable when there is NO runner at all, so nothing was buffered -- and
+    // it is a failure either way, which records regardless.
     await recordNeonWriteVerdict(
       laneDb,
       lane,
@@ -73,7 +82,11 @@ async function runner(
       now(),
     );
   }
-  return { sql, laneDb, now, attempted: true };
+  // Only a runner we BUILT can be buffered: an injected deps.sql is whatever
+  // the caller handed us, and calling it buffered would suppress its verdict on
+  // a write that went straight to a test double or a real connection.
+  const buffered = !deps.sql && neonWriteBufferEnabled(env, lane);
+  return { sql, laneDb, now, attempted: true, buffered };
 }
 
 async function record(
@@ -82,6 +95,7 @@ async function record(
   rows: number,
   now: () => number,
   run: () => Promise<unknown>,
+  buffered = false,
 ): Promise<NeonWriteResult> {
   let result: NeonWriteResult;
   try {
@@ -95,7 +109,7 @@ async function record(
       reason: String((error as Error)?.message ?? error),
     };
   }
-  await recordNeonWriteVerdict(laneDb, lane, result, now());
+  await recordNeonWriteVerdict(laneDb, lane, result, now(), buffered);
   return result;
 }
 
@@ -107,16 +121,21 @@ export async function mirrorBlocksHeadToNeon(
   row: BlocksHead,
   deps: CaptureStateMirrorDeps = {},
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
-  const { sql, laneDb, now, attempted } = await runner(
+  const { sql, laneDb, now, attempted, buffered } = await runner(
     env,
     ctx,
     BLOCKS_HEAD_NEON_LANE,
     deps,
   );
   if (!attempted || !sql) return { attempted };
-  const result = await record(laneDb, BLOCKS_HEAD_NEON_LANE, 1, now, () =>
-    sql.unsafe(
-      `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, event_count, author, observed_at)
+  const result = await record(
+    laneDb,
+    BLOCKS_HEAD_NEON_LANE,
+    1,
+    now,
+    () =>
+      sql.unsafe(
+        `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, event_count, author, observed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(block_number) DO UPDATE SET
          block_hash=excluded.block_hash,
@@ -125,16 +144,17 @@ export async function mirrorBlocksHeadToNeon(
          event_count=COALESCE(excluded.event_count, blocks_head.event_count),
          author=COALESCE(excluded.author, blocks_head.author),
          observed_at=excluded.observed_at`,
-      [
-        row.block_number,
-        row.block_hash,
-        row.parent_hash,
-        row.extrinsic_count,
-        row.event_count,
-        row.author,
-        row.observed_at,
-      ],
-    ),
+        [
+          row.block_number,
+          row.block_hash,
+          row.parent_hash,
+          row.extrinsic_count,
+          row.event_count,
+          row.author,
+          row.observed_at,
+        ],
+      ),
+    buffered,
   );
   return { attempted: true, result };
 }
@@ -148,22 +168,28 @@ export async function mirrorRawCaptureStateToNeon(
   updatedAt: number,
   deps: CaptureStateMirrorDeps = {},
 ): Promise<{ attempted: boolean; result?: NeonWriteResult }> {
-  const { sql, laneDb, now, attempted } = await runner(
+  const { sql, laneDb, now, attempted, buffered } = await runner(
     env,
     ctx,
     RAW_CAPTURE_STATE_NEON_LANE,
     deps,
   );
   if (!attempted || !sql) return { attempted };
-  const result = await record(laneDb, RAW_CAPTURE_STATE_NEON_LANE, 1, now, () =>
-    sql.unsafe(
-      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
+  const result = await record(
+    laneDb,
+    RAW_CAPTURE_STATE_NEON_LANE,
+    1,
+    now,
+    () =>
+      sql.unsafe(
+        `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
          VALUES (?, ?, ?)
          ON CONFLICT(network) DO UPDATE SET
            last_contiguous_block = excluded.last_contiguous_block,
            updated_at = excluded.updated_at`,
-      [network, lastContiguousBlock, updatedAt],
-    ),
+        [network, lastContiguousBlock, updatedAt],
+      ),
+    buffered,
   );
   return { attempted: true, result };
 }

@@ -416,9 +416,27 @@ export async function recordNeonWriteVerdict(
   lane: string,
   result: NeonWriteResult,
   nowMs: number,
+  /**
+   * Whether this write went into the write-behind buffer rather than to Neon.
+   *
+   * A BUFFERED SUCCESS RECORDS NOTHING HERE (#10690). The verdict would say
+   * "ok" for rows that are durably enqueued and not yet in Neon, which is a
+   * weaker claim than the one the flush already records per lane -- and it
+   * would be written at ~758/hr to say it. The flush owns the honest verdict;
+   * this path owning a second, vaguer one is how the buffer ends up costing a
+   * Neon write per write it was built to defer.
+   *
+   * A BUFFERED FAILURE STILL RECORDS. `result.ok` is false when the enqueue
+   * itself was refused -- the buffer full, or the DO unreachable -- and that is
+   * backpressure nobody else reports. The flush cannot: the rows never reached
+   * it. Suppressing this is the one way this change could go quiet exactly when
+   * it matters.
+   */
+  buffered = false,
 ): Promise<boolean> {
   const key = `neon:${lane}`;
   const verdict: LaneVerdict = result.ok ? "ok" : "stale";
+  if (buffered && result.ok) return true;
   if (!shouldWriteNeonWriteVerdict(lastWrittenVerdict.get(key), verdict, nowMs))
     // TRUE, not false. `false` is this function's word for "the verdict is NOT
     // on record", and a coalesced verdict IS on record -- an identical row
