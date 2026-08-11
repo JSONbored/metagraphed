@@ -99,24 +99,35 @@ function fakeDb(
   };
 }
 
+/**
+ * The tables that actually exist, from the snapshot of the live Neon schema.
+ *
+ * db/schema.sql is regenerated from the database by scripts/snapshot-neon-schema.ts
+ * and gated by validate:db-types-drift, so it cannot quietly fall behind the
+ * store the sweep runs against -- which is the property the old fixture census
+ * did not have.
+ */
+function neonTables(): Set<string> {
+  const sql = readFileSync(path.join(process.cwd(), "db/schema.sql"), "utf8");
+  return new Set(
+    [...sql.matchAll(/CREATE TABLE public\.(\w+)/g)].map((m) => m[1]),
+  );
+}
+
 describe("TABLE_FRESHNESS coverage", () => {
-  test("every table in tests/fixtures/sqlite-schema is classified", () => {
+  test("every table in db/schema.sql is classified", () => {
     // THE LOAD-BEARING TEST. A table absent from the map is one nobody has
     // decided the freshness meaning of, and it would be swept by nothing --
     // exactly how the registry cluster went five days unnoticed (#9779).
-    const dir = path.join(process.cwd(), "tests/fixtures/sqlite-schema");
-    const declared = new Set<string>();
-    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
-      const sql = readFileSync(path.join(dir, file), "utf8");
-      for (const m of sql.matchAll(
-        /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)/gi,
-      )) {
-        declared.add(m[1]);
-      }
-    }
+    //
+    // THE CENSUS IS db/schema.sql, and was tests/fixtures/sqlite-schema until
+    // #10817. That fixture is the frozen D1-era set: 49 tables, which were
+    // exactly the 49 the map classified, so this assertion could never fail on
+    // a Neon-era table however long it went unwatched. Fourteen had.
+    const declared = neonTables();
     assert.ok(
-      declared.size >= 40,
-      `only ${declared.size} tables parsed out of tests/fixtures/sqlite-schema -- the parse ` +
+      declared.size >= 60,
+      `only ${declared.size} tables parsed out of db/schema.sql -- the parse ` +
         `broke, so this test is passing on nothing`,
     );
     const missing = [...declared].filter((t) => !TABLE_FRESHNESS[t]).sort();
@@ -132,15 +143,7 @@ describe("TABLE_FRESHNESS coverage", () => {
   test("the map names no table that does not exist", () => {
     // A stale entry would be swept forever against a dropped table, which
     // fails every batch it lands in and hides the tables beside it.
-    const dir = path.join(process.cwd(), "tests/fixtures/sqlite-schema");
-    const declared = new Set<string>();
-    for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
-      for (const m of readFileSync(path.join(dir, file), "utf8").matchAll(
-        /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(\w+)/gi,
-      )) {
-        declared.add(m[1]);
-      }
-    }
+    const declared = neonTables();
     for (const table of Object.keys(TABLE_FRESHNESS)) {
       assert.ok(
         declared.has(table),

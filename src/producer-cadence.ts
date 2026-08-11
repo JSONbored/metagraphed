@@ -80,6 +80,10 @@ export const PRODUCER_CADENCE_SECS = {
   /** SUBNET_HYPERPARAMS_POLL_SECS. Hourly, the fastest of the poller's
    * non-firehose lanes; observed writing at :05 every hour. */
   subnet_hyperparams: 3_600,
+  /** SUBNET_IDENTITY_POLL_SECS, and `SubnetIdentityWorkflow.intervalSeconds`.
+   * Hourly, the same cadence as its hyperparams sibling and written by the
+   * same shape of lane -- a card plus an append-on-change history. */
+  subnet_identity: 3_600,
   /**
    * SUBNET_OWNERSHIP_POLL_SECS, and `SubnetOwnershipWorkflow.intervalSeconds`.
    * Five minutes -- the fastest non-firehose lane by an order of magnitude,
@@ -131,6 +135,8 @@ export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "neon:account-identity": "account_identity",
   "subnet-hyperparams": "subnet_hyperparams",
   "neon:subnet-hyperparams": "subnet_hyperparams",
+  "subnet-identity": "subnet_identity",
+  "neon:subnet-identity": "subnet_identity",
   // No `neon:` sibling: this lane writes Postgres directly rather than through
   // a sync route, so there is no per-write verdict to map -- only the poller's
   // own lane-health report.
