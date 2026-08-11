@@ -8332,6 +8332,24 @@ export async function ingestTaoUsdIndex(
   }
 }
 
+/**
+ * Every cron expression this Worker handles, and the lane each one runs.
+ *
+ * DATA, AND THE DISPATCHER READS IT -- so the set cannot drift from the
+ * branches below, and tests/data-api-crons-have-handlers.test.ts can compare it
+ * against wrangler.data.jsonc in BOTH directions.
+ *
+ * The reverse direction is the one that was missing. Every cron gate in tests/
+ * asserted constant -> declared-in-wrangler; a declared expression whose
+ * constant had been deleted could not fail any of them. Three had been in that
+ * state since D1 was retired (#10814), firing ~23 no-op invocations an hour.
+ */
+export const DATA_API_CRON_LANES: Readonly<Record<string, string>> = {
+  [TAO_USD_INDEX_CRON]: "tao-usd-index",
+  [NEON_PRUNE_CRON]: "neon-prune",
+  [TABLE_FRESHNESS_CRON]: "table-freshness + tao-usd-index watchdog",
+};
+
 export default {
   // #8600: the data-api Worker's first cron. It lives here rather than on the
   // api Worker for the same locality reason it always has -- this Worker owns
@@ -8343,6 +8361,12 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ) {
+    // Declined BEFORE the branches, against the declared set, so an expression
+    // nobody handles is refused in one place rather than falling through three
+    // comparisons to a default that looks deliberate.
+    if (!controller?.cron || !(controller.cron in DATA_API_CRON_LANES)) {
+      return { ok: false, skipped: true, reason: "unknown cron" };
+    }
     if (controller?.cron === TABLE_FRESHNESS_CRON) {
       // Reads MAX(<timestamp>) per table and writes one verdict, all on Neon
       // through Hyperdrive. This line read "D1 only" until #10223 -- which is
@@ -8370,8 +8394,13 @@ export default {
       // the moment the producer breaks.
       return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
     }
-    if (controller?.cron !== TAO_USD_INDEX_CRON) {
-      return { ok: false, skipped: true, reason: "unknown cron" };
+    // Unreachable for anything DECLARED and branched, and deliberately kept:
+    // it is the net under `DATA_API_CRON_LANES` gaining an entry whose branch
+    // nobody wrote. Without it that expression would fall through to
+    // `ingestTaoUsdIndex` and run the wrong lane on the wrong schedule, which
+    // is a worse failure than the no-op this whole issue is about.
+    if (controller.cron !== TAO_USD_INDEX_CRON) {
+      return { ok: false, skipped: true, reason: "declared but unhandled" };
     }
     return ingestTaoUsdIndex(env, ctx);
   },
