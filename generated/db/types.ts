@@ -577,6 +577,22 @@ export interface SubnetHyperparamsHistory {
   yuma_version: number | null;
 }
 
+/** `public.subnet_identity_history` */
+export interface SubnetIdentityHistory {
+  block_number: number | string;
+  description: string | null;
+  discord: string | null;
+  github_repo: string | null;
+  id: number | string;
+  identity_hash: string;
+  logo_url: string | null;
+  netuid: number;
+  observed_at: number | string;
+  subnet_name: string | null;
+  subnet_url: string | null;
+  symbol: string | null;
+}
+
 /** `public.subnet_lifecycle` */
 export interface SubnetLifecycle {
   block_number: number | string | null;
@@ -802,6 +818,7 @@ export interface DatabaseTables {
   SubnetEmissionEnabledHistory: SubnetEmissionEnabledHistory;
   SubnetHyperparams: SubnetHyperparams;
   SubnetHyperparamsHistory: SubnetHyperparamsHistory;
+  SubnetIdentityHistory: SubnetIdentityHistory;
   SubnetLifecycle: SubnetLifecycle;
   SubnetSnapshots: SubnetSnapshots;
   Subnets: Subnets;
