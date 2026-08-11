@@ -338,6 +338,27 @@ export interface NeonWriteBufferNamespace {
 const RESULT_CONSUMING = /\bRETURNING\b/i;
 
 /**
+ * Errors that mean "try again", not "this write is wrong".
+ *
+ * A DEPLOY RESETS THE DURABLE OBJECT, and an enqueue in flight at that instant
+ * throws `Durable Object reset because its code was updated`. That is not a
+ * failure of the write -- the object comes back immediately on the new code --
+ * but without a retry it costs the row, and worse: a failed enqueue stores
+ * nothing, so it also arms no alarm. During the deploy churn of 2026-08-11
+ * (four deploys in twenty-five minutes) that was enough to keep the buffer
+ * from ever draining, because the one path that could have re-armed it was the
+ * path that kept failing (#10722, #10729).
+ *
+ * The other two are the ordinary Workers transients for a stub call crossing
+ * an isolate boundary.
+ */
+const TRANSIENT_STUB_ERROR =
+  /Durable Object reset|Network connection lost|internal error|cannot be reached/i;
+
+/** How many times an enqueue retries a transient stub failure. */
+export const ENQUEUE_ATTEMPTS = 3;
+
+/**
  * A `PgUnsafe` that enqueues instead of executing.
  *
  * Drop-in for `createPgSql` on the write lanes: `PgUnsafe` is a one-method
@@ -367,20 +388,40 @@ export function createBufferedPgSql(
           `neon write buffer cannot defer a statement that RETURNs rows (lane ${lane})`,
         );
       }
-      const stub = namespace.get(namespace.idFromName("global"));
-      const response = await stub.fetch(
-        new Request("https://neon-write-buffer/enqueue", {
-          method: "POST",
-          body: JSON.stringify({ lane, text, values }),
-          headers: { "content-type": "application/json" },
-        }),
-      );
-      if (!response.ok) {
-        throw new Error(
-          `neon write buffer refused the statement (${response.status})`,
-        );
+      const body = JSON.stringify({ lane, text, values });
+      let lastTransient: unknown;
+      for (let attempt = 0; attempt < ENQUEUE_ATTEMPTS; attempt += 1) {
+        // A FRESH STUB EACH ATTEMPT. Reusing one that just threw is how a
+        // retry retries the broken connection rather than the operation --
+        // idFromName is cheap and the point is to get a live object.
+        const stub = namespace.get(namespace.idFromName("global"));
+        try {
+          const response = await stub.fetch(
+            new Request("https://neon-write-buffer/enqueue", {
+              method: "POST",
+              body,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+          if (!response.ok) {
+            // A 503 is BACKPRESSURE, not a transient: the buffer is full and
+            // retrying immediately makes it fuller. It surfaces as a stale
+            // verdict and the producer's own cadence is the retry.
+            throw new Error(
+              `neon write buffer refused the statement (${response.status})`,
+            );
+          }
+          return [];
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          if (!TRANSIENT_STUB_ERROR.test(message)) throw error;
+          lastTransient = error;
+        }
       }
-      return [];
+      throw lastTransient instanceof Error
+        ? lastTransient
+        : new Error(String(lastTransient));
     },
   };
 }
