@@ -6240,11 +6240,11 @@ export interface components {
             block_count: number;
             block_time: {
                 count: number;
-                max_ms: number;
-                mean_ms: number;
-                min_ms: number;
-                p50_ms: number;
-                p90_ms: number;
+                max_ms: components["schemas"]["DurationMillis"];
+                mean_ms: components["schemas"]["DurationMillis"];
+                min_ms: components["schemas"]["DurationMillis"];
+                p50_ms: components["schemas"]["DurationMillis"];
+                p90_ms: components["schemas"]["DurationMillis"];
             } | null;
             distinct_authors: number;
             distinct_spec_versions: number;
@@ -7273,6 +7273,8 @@ export interface components {
             }[];
             window: ("7d" | "30d" | "90d") | null;
         };
+        /** @description An unsigned 64-bit integer read from chain storage. Published as Float in GraphQL: the runtime's range exceeds that of GraphQL's Int. */
+        ChainU64: number;
         /** @description Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights. */
         ChainWeightsArtifact: {
             /** @description Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
@@ -7902,6 +7904,8 @@ export interface components {
             /** @description This domain's member subnets' stake, TAO-priced through each subnet's own alpha_price_tao from the economics tier (#9051), rather than a sum of incomparable per-subnet alpha tokens. The economics tier carries a price for every subnet, so a member without one is a data defect and is excluded from the total. */
             total_stake_tao: number | null;
         };
+        /** @description A duration in milliseconds. Published as Float in GraphQL: a span past 24.8 days exceeds the 32-bit range of GraphQL's Int. */
+        DurationMillis: number;
         EconomicsArtifact: {
             captured_at: string | null;
             chain_state?: components["schemas"]["ChainState"];
@@ -10590,7 +10594,7 @@ export interface components {
             /** @description Trailing-90d daily ratios, oldest first; gaps are absent, never zero-filled. */
             days: components["schemas"]["SelfHealthDay"][];
             http_status: number | null;
-            latency_ms: number | null;
+            latency_ms: components["schemas"]["DurationMillis"] | null;
             /** @description Qualifies a false current_ok with why, for non-HTTP failure modes. Null when there's nothing to add. */
             note: string | null;
             /** @description Mean uptime across the days we actually have. Null when there are none. */
@@ -10624,7 +10628,7 @@ export interface components {
          *     it starts to matter.
          */
         SelfHealthLane: {
-            age_ms: number | null;
+            age_ms: components["schemas"]["DurationMillis"] | null;
             checked_at: string | null;
             detail: string | null;
             lane: string;
@@ -10907,11 +10911,11 @@ export interface components {
                 is_owner?: boolean;
                 locked_mass?: number;
             }[];
-            maturity_rate?: number | null;
+            maturity_rate?: components["schemas"]["ChainU64"] | null;
             netuid: number;
             queried_at_block?: number | null;
             schema_version: number;
-            unlock_rate?: number | null;
+            unlock_rate?: components["schemas"]["ChainU64"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -12950,7 +12954,7 @@ export interface components {
         };
         TaoUsdArtifact: {
             /** @description How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading. */
-            age_ms: number | null;
+            age_ms: components["schemas"]["DurationMillis"] | null;
             change_pct: number | null;
             change_usd: number | null;
             latest: components["schemas"]["TaoUsdLatest"] | null;
@@ -13024,6 +13028,7 @@ export interface components {
         /** @description One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope. */
         UptimeArtifact: {
             netuid: number;
+            observed_at: string | null;
             /** @description Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at. */
             reliability: ({
                 avg_latency_ms: number | null;
@@ -47203,6 +47208,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "reliability": {
                      *           "avg_latency_ms": 120,
                      *           "computed_at": "2026-06-01T00:00:00.000Z",

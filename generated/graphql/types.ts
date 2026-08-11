@@ -1767,7 +1767,7 @@ export type ChainTurnover = {
 export type ChainTurnoverNetwork = {
   __typename?: 'ChainTurnoverNetwork';
   /** 0-100 stability score; null on a cold/non-comparable window. */
-  stability_score?: Maybe<Scalars['Float']['output']>;
+  stability_score?: Maybe<Scalars['Int']['output']>;
   /** Jaccard retention of the start set into the end set; null on a cold/non-comparable window. */
   validator_retention?: Maybe<Scalars['Float']['output']>;
   validators_end: Scalars['Int']['output'];
@@ -1780,20 +1780,20 @@ export type ChainTurnoverNetwork = {
 export type ChainTurnoverStabilityDistribution = {
   __typename?: 'ChainTurnoverStabilityDistribution';
   count: Scalars['Int']['output'];
-  max: Scalars['Float']['output'];
+  max: Scalars['Int']['output'];
   mean: Scalars['Float']['output'];
   median: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p25: Scalars['Float']['output'];
-  p75: Scalars['Float']['output'];
-  p90: Scalars['Float']['output'];
+  min: Scalars['Int']['output'];
+  p25: Scalars['Int']['output'];
+  p75: Scalars['Int']['output'];
+  p90: Scalars['Int']['output'];
 };
 
 /** One subnet's validator-set churn, ranked by gross churn (entered + exited) then netuid. */
 export type ChainTurnoverSubnet = {
   __typename?: 'ChainTurnoverSubnet';
   netuid: Scalars['Int']['output'];
-  stability_score?: Maybe<Scalars['Float']['output']>;
+  stability_score?: Maybe<Scalars['Int']['output']>;
   validator_retention?: Maybe<Scalars['Float']['output']>;
   validators_end: Scalars['Int']['output'];
   validators_entered: Scalars['Int']['output'];
@@ -2066,6 +2066,8 @@ export type Contracts = {
   openapi_url?: Maybe<Scalars['String']['output']>;
   primary_domain?: Maybe<Scalars['String']['output']>;
   schema_version?: Maybe<Scalars['Int']['output']>;
+  /** Always null. The builder hardcodes it and the contract types it that way, so this is the schema stating a vestige rather than hiding one -- /api/v1/contracts has always served the key (#10214). */
+  status_domain?: Maybe<Scalars['String']['output']>;
   type_definitions_url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -2431,13 +2433,10 @@ export type EndpointIncident = {
   __typename?: 'EndpointIncident';
   classification?: Maybe<Scalars['String']['output']>;
   detected_at?: Maybe<Scalars['String']['output']>;
-  downtime_ms?: Maybe<Scalars['Int']['output']>;
   endpoint_id?: Maybe<Scalars['String']['output']>;
   health_source?: Maybe<Scalars['String']['output']>;
   health_stale?: Maybe<Scalars['Boolean']['output']>;
   id?: Maybe<Scalars['String']['output']>;
-  incident_count?: Maybe<Scalars['Int']['output']>;
-  incidents?: Maybe<Array<EndpointIncidentWindow>>;
   kind?: Maybe<Scalars['String']['output']>;
   last_checked?: Maybe<Scalars['String']['output']>;
   last_ok?: Maybe<Scalars['String']['output']>;
@@ -2457,8 +2456,6 @@ export type EndpointIncident = {
   subnet_slug?: Maybe<Scalars['String']['output']>;
   surface_id?: Maybe<Scalars['String']['output']>;
   surface_key?: Maybe<Scalars['String']['output']>;
-  transient_failed_samples?: Maybe<Scalars['Int']['output']>;
-  transient_failure_count?: Maybe<Scalars['Int']['output']>;
   user_reported?: Maybe<Scalars['Boolean']['output']>;
 };
 
@@ -3243,7 +3240,7 @@ export type Provider = {
   kind?: Maybe<Scalars['String']['output']>;
   logo_url?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
-  netuids: Array<Maybe<Scalars['Int']['output']>>;
+  netuids: Array<Scalars['Int']['output']>;
   notes?: Maybe<Scalars['String']['output']>;
   public_notes?: Maybe<Scalars['String']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
@@ -9964,7 +9961,7 @@ export type ChainTurnoverResolvers<ContextType = GqlContext, ParentType extends 
 }>;
 
 export type ChainTurnoverNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTurnoverNetwork'] = ResolversParentTypes['ChainTurnoverNetwork']> = ResolversObject<{
-  stability_score?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stability_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_retention?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validators_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validators_entered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9974,18 +9971,18 @@ export type ChainTurnoverNetworkResolvers<ContextType = GqlContext, ParentType e
 
 export type ChainTurnoverStabilityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTurnoverStabilityDistribution'] = ResolversParentTypes['ChainTurnoverStabilityDistribution']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  max?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  max?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   mean?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   median?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  min?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p25?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p75?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
-  p90?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  min?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  p25?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  p75?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  p90?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ChainTurnoverSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainTurnoverSubnet'] = ResolversParentTypes['ChainTurnoverSubnet']> = ResolversObject<{
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  stability_score?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stability_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_retention?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validators_end?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validators_entered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10220,6 +10217,7 @@ export type ContractsResolvers<ContextType = GqlContext, ParentType extends Reso
   openapi_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   primary_domain?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  status_domain?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   type_definitions_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10512,13 +10510,10 @@ export type EndpointResolvers<ContextType = GqlContext, ParentType extends Resol
 export type EndpointIncidentResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointIncident'] = ResolversParentTypes['EndpointIncident']> = ResolversObject<{
   classification?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   detected_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  downtime_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   endpoint_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   health_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   health_stale?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  incident_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  incidents?: Resolver<Maybe<Array<ResolversTypes['EndpointIncidentWindow']>>, ParentType, ContextType>;
   kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   last_checked?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   last_ok?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10537,8 +10532,6 @@ export type EndpointIncidentResolvers<ContextType = GqlContext, ParentType exten
   subnet_slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   surface_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   surface_key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  transient_failed_samples?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  transient_failure_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   user_reported?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
@@ -11184,7 +11177,7 @@ export type ProviderResolvers<ContextType = GqlContext, ParentType extends Resol
   kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   logo_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  netuids?: Resolver<Array<Maybe<ResolversTypes['Int']>>, ParentType, ContextType>;
+  netuids?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   public_notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;

@@ -42,6 +42,12 @@ const DECLARED: Record<string, string> = {
     "the REST envelope keys deltas by window ('7d'/'30d'), which are not valid GraphQL field names, " +
     "so they become a list of objects carrying `window`. Verified live — the query returns " +
     "[{window:'7d'},{window:'30d'}] with no errors. A shape difference the resolver owns, not drift.",
+  "Contracts.status_domain":
+    "GraphQL has no null type, so a field the contract types `z.null()` cannot be spelled exactly; " +
+    "String is the nullable carrier, and the value is null on every response. The alternative was " +
+    "the emitter's old behaviour -- drop the field and report it -- which is how this one and both " +
+    "`field_sources_usd.storage` fields left the schema with nothing reading the report (#10214). " +
+    "Verified live: /api/v1/contracts serves the key, always as null.",
 };
 
 const openapi = JSON.parse(readFileSync(OPENAPI_PATH, "utf8")) as Json;

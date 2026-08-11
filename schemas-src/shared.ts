@@ -27,14 +27,64 @@ import { QUERY_ENUMS } from "./query-enums.ts";
  * of all of them. The emitter stood a `/_at$/` name test in for the missing
  * fact, which rescued 7 fields and missed 8 that production proves overflow
  * -- `candles[].bucket_start` on 1371 of 1371 observed candles, and the six
- * `rpc-usage` coverage bounds. Use this schema for an instant; a DURATION
- * (`duration_ms`, `age_ms`) is a span, not an instant, and stays `z.int()`.
+ * `rpc-usage` coverage bounds. Use this schema for an instant; for a span, use
+ * {@link DurationMillisSchema}.
  */
 export const EpochMillisSchema = z
   .int()
   .min(0)
   .describe(
     "An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int.",
+  );
+
+/**
+ * A span in MILLISECONDS, published as an integer (#10214).
+ *
+ * A span is not an instant, and the comment this replaces concluded from that
+ * it was safe as `Int`. It is not: 2^31 milliseconds is 24.8 days, and two of
+ * these fields reach it on paths that already exist.
+ *
+ *   `SelfHealthLane.age_ms`  `nowMs - row.checked_at` over the newest
+ *                            `lane_health` row, with no recency filter on the
+ *                            read and retention pruning that only runs on a
+ *                            lane's OWN insert -- so a lane whose producer died
+ *                            never prunes, and its age climbs without bound. A
+ *                            watchdog's own `age_ms` is the same subtraction.
+ *   `TaoUsd.age_ms`          bounded by the requested window, and the window
+ *                            vocabulary includes `30d` = 2.59e9 ms, which is
+ *                            1.21x the ceiling.
+ *
+ * Both fail in the direction that matters most: an `Int` carrying an
+ * over-range value raises at execution time and nulls its surrounding object,
+ * so the surface reports NOTHING precisely when the thing it monitors has been
+ * broken longest. `conformance:graphql-int-range` cannot catch either, because
+ * it reads live values and neither is over-range right now.
+ *
+ * `schemas-src/graphql/emit.ts` maps this component id to `Float`, the only
+ * spelling GraphQL has for the value -- which is what the hand-written SDL
+ * chose for all eight of these fields by hand.
+ */
+export const DurationMillisSchema = z
+  .int()
+  .describe(
+    "A duration in milliseconds. Published as Float in GraphQL: a span past 24.8 days exceeds the 32-bit range of GraphQL's Int.",
+  );
+
+/**
+ * An unsigned 64-bit integer read straight from chain storage (#10214).
+ *
+ * `decodeLeU64Number` returns `Number(value)` with no range guard, so what the
+ * runtime holds is what the field carries. Today's values are small --
+ * `UnlockRate` 934,866 and `MaturityRate` 311,622 -- but they are governance
+ * -set u64s, and nothing between the storage read and the response narrows
+ * them to anything GraphQL's 32-bit `Int` can hold. Published as `Float`,
+ * which is what the SDL already does for both.
+ */
+export const ChainU64Schema = z
+  .int()
+  .min(0)
+  .describe(
+    "An unsigned 64-bit integer read from chain storage. Published as Float in GraphQL: the runtime's range exceeds that of GraphQL's Int.",
   );
 
 /** One vocabulary, owned by the leaf module so routes AND tools can import it

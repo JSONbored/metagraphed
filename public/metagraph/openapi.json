@@ -12695,6 +12695,7 @@
         "value": {
           "data": {
             "netuid": 7,
+            "observed_at": "2026-06-01T00:00:00.000Z",
             "reliability": {
               "avg_latency_ms": 120,
               "computed_at": "2026-06-01T00:00:00.000Z",
@@ -19843,29 +19844,19 @@
                     "type": "integer"
                   },
                   "max_ms": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/DurationMillis"
                   },
                   "mean_ms": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/DurationMillis"
                   },
                   "min_ms": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/DurationMillis"
                   },
                   "p50_ms": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/DurationMillis"
                   },
                   "p90_ms": {
-                    "maximum": 9007199254740991,
-                    "minimum": -9007199254740991,
-                    "type": "integer"
+                    "$ref": "#/components/schemas/DurationMillis"
                   }
                 },
                 "required": [
@@ -25608,6 +25599,12 @@
         ],
         "type": "object"
       },
+      "ChainU64": {
+        "description": "An unsigned 64-bit integer read from chain storage. Published as Float in GraphQL: the runtime's range exceeds that of GraphQL's Int.",
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "type": "integer"
+      },
       "ChainWeightsArtifact": {
         "additionalProperties": false,
         "description": "Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights.",
@@ -29047,6 +29044,12 @@
           "emission_concentration"
         ],
         "type": "object"
+      },
+      "DurationMillis": {
+        "description": "A duration in milliseconds. Published as Float in GraphQL: a span past 24.8 days exceeds the 32-bit range of GraphQL's Int.",
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "type": "integer"
       },
       "EconomicsArtifact": {
         "additionalProperties": {},
@@ -42669,9 +42672,7 @@
           "latency_ms": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "$ref": "#/components/schemas/DurationMillis"
               },
               {
                 "type": "null"
@@ -42754,9 +42755,8 @@
           "age_ms": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": 0,
-                "type": "integer"
+                "$ref": "#/components/schemas/DurationMillis",
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -44068,9 +44068,7 @@
           "maturity_rate": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "$ref": "#/components/schemas/ChainU64"
               },
               {
                 "type": "null"
@@ -44102,9 +44100,7 @@
           "unlock_rate": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "$ref": "#/components/schemas/ChainU64"
               },
               {
                 "type": "null"
@@ -55600,9 +55596,7 @@
           "age_ms": {
             "anyOf": [
               {
-                "maximum": 9007199254740991,
-                "minimum": -9007199254740991,
-                "type": "integer"
+                "$ref": "#/components/schemas/DurationMillis"
               },
               {
                 "type": "null"
@@ -56019,6 +56013,16 @@
             "minimum": 0,
             "type": "integer"
           },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reliability": {
             "anyOf": [
               {
@@ -56377,6 +56381,7 @@
         "required": [
           "schema_version",
           "netuid",
+          "observed_at",
           "source",
           "reliability",
           "surfaces"

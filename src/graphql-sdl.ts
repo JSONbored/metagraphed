@@ -1178,7 +1178,7 @@ export const SDL = /* GraphQL */ `
     endpoint_count: Int
     surface_count: Int
     subnet_count: Int
-    netuids: [Int]!
+    netuids: [Int!]!
     "The subnets this provider operates surfaces on."
     subnets: [Subnet!]!
     "This provider's endpoint/resource registry rows -- the nested companion to endpoint_count, mirroring GET /api/v1/providers/{slug}/endpoints."
@@ -1645,19 +1645,19 @@ export const SDL = /* GraphQL */ `
     "Jaccard retention of the start set into the end set; null on a cold/non-comparable window."
     validator_retention: Float
     "0-100 stability score; null on a cold/non-comparable window."
-    stability_score: Float
+    stability_score: Int
   }
 
   "Spread of per-subnet stability score across EVERY subnet in the window (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard)."
   type ChainTurnoverStabilityDistribution {
     count: Int!
     mean: Float!
-    min: Float!
-    p25: Float!
+    min: Int!
+    p25: Int!
     median: Float!
-    p75: Float!
-    p90: Float!
-    max: Float!
+    p75: Int!
+    p90: Int!
+    max: Int!
   }
 
   "One subnet's validator-set churn, ranked by gross churn (entered + exited) then netuid."
@@ -1668,7 +1668,7 @@ export const SDL = /* GraphQL */ `
     validators_entered: Int!
     validators_exited: Int!
     validator_retention: Float
-    stability_score: Float
+    stability_score: Int
   }
 
   "Network-wide validator weight-setting activity over a lookback window, summed live from the account_events WeightsSet stream. Mirrors GET /api/v1/chain/weights."
@@ -2588,6 +2588,8 @@ export const SDL = /* GraphQL */ `
     name: String
     base_path: String
     primary_domain: String
+    "Always null. The builder hardcodes it and the contract types it that way, so this is the schema stating a vestige rather than hiding one -- /api/v1/contracts has always served the key (#10214)."
+    status_domain: String
     openapi_url: String
     type_definitions_url: String
     notes: JSON
@@ -3826,11 +3828,6 @@ export const SDL = /* GraphQL */ `
     source: String
     pool_eligible: Boolean
     user_reported: Boolean
-    incident_count: Int
-    downtime_ms: Int
-    transient_failure_count: Int
-    transient_failed_samples: Int
-    incidents: [EndpointIncidentWindow!]
   }
 
   "One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope."

@@ -40,12 +40,14 @@ import type {
   TypeNode,
 } from "graphql";
 import { JSONScalar, emitTypes } from "./emit.ts";
-import { GRAPHQL_ENUMS } from "./enums.ts";
+import { GRAPHQL_ENUMS, enumFieldSites } from "./enums.ts";
 import {
   ALIASED_TYPE_NAMES,
+  MIRROR_OVERLAYS,
   PROJECTED_TYPES,
   PUBLISHED_TYPE_NAMES,
   QUERY_BINDINGS,
+  RETYPED_FIELDS,
   SUBSCRIPTION_BINDINGS,
 } from "./published-names.ts";
 import {
@@ -77,6 +79,14 @@ export function buildGeneratedSchema(
   projections: Readonly<
     Record<string, (typeof PROJECTED_TYPES)[string]>
   > = PROJECTED_TYPES,
+  // Injectable for the same reason, and for one more: both rules `retype`
+  // enforces THROW, and a rule that only ever runs against declarations known
+  // to satisfy it is a rule nothing has shown can fail.
+  retypedFields: Readonly<Record<string, string>> = RETYPED_FIELDS,
+  enumSites: ReadonlyMap<string, string> = enumFieldSites(),
+  overlays: Readonly<
+    Record<string, (typeof MIRROR_OVERLAYS)[string]>
+  > = MIRROR_OVERLAYS,
 ): BuiltSchema {
   const { types: emitted } = emitTypes();
   const sources = new Map<string, string>();
@@ -176,6 +186,16 @@ export function buildGeneratedSchema(
     });
     const source = contributors[0];
     const projection = projections[name];
+    // A type is one or the other: a view of a component, or a mirror with
+    // resolver edits. Declaring it both ways is two answers to "what is this
+    // type's shape", and the builder cannot pick between them.
+    const overlay = overlays[name];
+    if (projection && overlay) {
+      throw new Error(
+        `${name} is declared as both a projection of ${projection.component} and a mirror overlay`,
+      );
+    }
+    const edits = projection ?? overlay;
     const type = new GraphQLObjectType({
       name,
       description: source.description ?? undefined,
@@ -183,7 +203,7 @@ export function buildGeneratedSchema(
       // resolves rather than recursing while it is still being constructed.
       fields: () => {
         const fields: Record<string, GraphQLFieldConfig<unknown, unknown>> = {};
-        const dropped = new Set(projection?.dropped ?? []);
+        const dropped = new Set(edits?.dropped ?? []);
         const renamed = new Map<string, string>();
         if (projection?.itemsFrom) renamed.set(projection.itemsFrom, "items");
         if (projection?.totalFrom) renamed.set(projection.totalFrom, "total");
@@ -207,17 +227,18 @@ export function buildGeneratedSchema(
           // `featured`, `uid_count` and `stake_dominance`.
           const everywhere = carriers.length === contributors.length;
           const republished = republish(field.type);
-          fields[renamed.get(fieldName) ?? fieldName] = {
-            type:
+          const published = renamed.get(fieldName) ?? fieldName;
+          fields[published] = {
+            type: retype(
+              `${name}.${published}`,
               everywhere || !(republished instanceof GraphQLNonNull)
                 ? republished
                 : (republished.ofType as GraphQLOutputType),
+            ),
             description: field.description ?? undefined,
           };
         }
-        for (const [fieldName, added] of Object.entries(
-          projection?.added ?? {},
-        )) {
+        for (const [fieldName, added] of Object.entries(edits?.added ?? {})) {
           fields[fieldName] = {
             type: fromSpelling(added) as GraphQLOutputType,
           };
@@ -228,6 +249,87 @@ export function buildGeneratedSchema(
     built.set(name, type);
     sources.set(name, components.join(" + "));
     return type;
+  }
+
+  /**
+   * A field's published type where it is not the one its component emits.
+   *
+   * TWO SOURCES, one rule each, and the rule is the point -- a mechanism that
+   * lets a declaration say anything about a field's type is a second
+   * hand-written SDL with extra steps.
+   *
+   * An ENUM site may only replace `String` (in whatever nullability the
+   * component gave it), because that is what the emitter maps every registered
+   * Zod enum to. Anything else means the site names a field that is not an
+   * enum, which is a typo rather than a narrowing.
+   *
+   * A RETYPE may change the named type and NOTHING else: same list depth, same
+   * `!` in the same places. The exception is `JSON`, which carries no shape at
+   * all, so replacing it cannot contradict anything -- that is the direction
+   * this epic moves in. Without the rule, `X!` -> `X` would be spelled the
+   * same way as a rename, and relaxing a promise is the one change a client
+   * can be broken by.
+   */
+  function retype(
+    site: string,
+    emittedType: GraphQLOutputType,
+  ): GraphQLOutputType {
+    const enumName = enumSites.get(site);
+    if (enumName) {
+      const inner = nullableInner(emittedType);
+      if (inner !== GraphQLString) {
+        throw new Error(
+          `${site} is declared as the enum ${enumName}, but its component emits ${String(emittedType)}`,
+        );
+      }
+      return rewrap(emittedType, enums.get(enumName)!);
+    }
+    const spelling = retypedFields[site];
+    if (!spelling) return emittedType;
+    const replacement = fromSpelling(spelling) as GraphQLOutputType;
+    if (
+      nullableInner(emittedType) !== JSONScalar &&
+      wrapping(emittedType) !== wrapping(replacement)
+    ) {
+      throw new Error(
+        `${site} is retyped from ${String(emittedType)} to ${spelling}, which changes ` +
+          `more than the named type; only a JSON field may change shape`,
+      );
+    }
+    return replacement;
+  }
+
+  /** The type inside every list and non-null wrapper. */
+  function nullableInner(type: GraphQLType): GraphQLNamedType {
+    let inner = type;
+    while (inner instanceof GraphQLNonNull || inner instanceof GraphQLList) {
+      inner = inner.ofType as GraphQLType;
+    }
+    return inner as GraphQLNamedType;
+  }
+
+  /** `[Foo!]!` -> `[_!]!` -- the shape with the name taken out. */
+  function wrapping(type: GraphQLType): string {
+    return String(type).replace(/[A-Za-z_][A-Za-z0-9_]*/, "_");
+  }
+
+  /** Put `inner` back inside the wrappers `type` carries. */
+  function rewrap(
+    type: GraphQLOutputType,
+    inner: GraphQLNamedType,
+  ): GraphQLOutputType {
+    if (type instanceof GraphQLNonNull) {
+      return new GraphQLNonNull(
+        rewrap(
+          type.ofType as GraphQLOutputType,
+          inner,
+        ) as GraphQLNullableOutputType,
+      );
+    }
+    if (type instanceof GraphQLList) {
+      return new GraphQLList(rewrap(type.ofType as GraphQLOutputType, inner));
+    }
+    return inner as GraphQLOutputType;
   }
 
   /** An emitted field's type, with every object swapped for its published one. */

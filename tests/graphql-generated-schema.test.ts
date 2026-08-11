@@ -10,10 +10,15 @@ import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
 import {
   GRAPHQL_ENUMS,
   assertEnumVocabularies,
+  enumFieldSites,
 } from "../schemas-src/graphql/enums.ts";
 import { diffSchemas } from "../scripts/report-graphql-schema-diff.ts";
 import { SDL } from "../src/graphql-sdl.ts";
-import { PROJECTED_TYPES } from "../schemas-src/graphql/published-names.ts";
+import {
+  PROJECTED_TYPES,
+  RETYPED_FIELDS,
+} from "../schemas-src/graphql/published-names.ts";
+import type { GraphQLObjectType } from "graphql";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
 
 const openapi = JSON.parse(
@@ -124,6 +129,91 @@ describe("the generated schema", () => {
       SubnetAlias: { ...PROJECTED_TYPES.Subnet },
     });
     assert.ok(schema.getType("Subnet"), "the first-declared name must survive");
+  });
+
+  test("a retype may change the named type, not the promise", () => {
+    // The rule that keeps `RETYPED_FIELDS` from being a second hand-written
+    // SDL. `SubnetVolume` -> `ChainAlphaVolumeSubnet` is a rename and passes;
+    // dropping the `!` is a relaxed promise wearing a rename's spelling, and
+    // it is the one direction a client can be broken by.
+    assert.throws(
+      () =>
+        buildGeneratedSchema(openapi, PROJECTED_TYPES, {
+          "ChainAlphaVolume.subnets": "[ChainAlphaVolumeSubnet!]",
+        }),
+      /changes more than the named type/,
+    );
+  });
+
+  test("a JSON field may be retyped to any shape", () => {
+    // The exception, and the direction the epic moves in: `JSON` carries no
+    // shape, so replacing it cannot contradict anything. Both live entries
+    // rely on this -- REST serves an un-flattened union and a window-keyed
+    // record, neither of which GraphQL can spell.
+    const { schema } = buildGeneratedSchema(openapi);
+    assert.equal(
+      String(
+        (schema.getType("SubnetTrajectory") as GraphQLObjectType).getFields()
+          .deltas.type,
+      ),
+      "[SubnetTrajectoryDelta!]!",
+    );
+  });
+
+  test("an enum site over a field that is not a String FAILS loudly", () => {
+    // The emitter maps every registered Zod enum to `String`, so an enum site
+    // naming anything else names a field that is not an enum -- a typo, not a
+    // narrowing.
+    assert.throws(
+      () =>
+        buildGeneratedSchema(
+          openapi,
+          PROJECTED_TYPES,
+          RETYPED_FIELDS,
+          new Map([["ChainEvent.block_number", "ChainFirehoseTable"]]),
+        ),
+      /declared as the enum ChainFirehoseTable, but its component emits/,
+    );
+  });
+
+  test("one field cannot publish two enums", () => {
+    assert.throws(
+      () =>
+        enumFieldSites({
+          A: { description: "", values: [], from: [], fields: ["X.y"] },
+          B: { description: "", values: [], from: [], fields: ["X.y"] },
+        }),
+      /X\.y is declared as both A and B/,
+    );
+  });
+
+  test("a type declared BOTH a projection and a mirror overlay FAILS loudly", () => {
+    // Two answers to "what is this type's shape", and the builder cannot pick.
+    assert.throws(
+      () =>
+        buildGeneratedSchema(
+          openapi,
+          PROJECTED_TYPES,
+          RETYPED_FIELDS,
+          enumFieldSites(),
+          { SubnetHealth: { added: { invented: "String" } } },
+        ),
+      /both a projection of HealthSubnetSummary and a mirror overlay/,
+    );
+  });
+
+  test("a mirror overlay drops the field it names", () => {
+    // `Validator` is the union of two producers that spell one fact two ways;
+    // the resolver publishes one spelling, so the other must not be served as
+    // a permanent null beside the value it duplicates.
+    const validator = buildGeneratedSchema(openapi).schema.getType(
+      "Validator",
+    ) as GraphQLObjectType;
+    assert.equal(validator.getFields().latest_captured_at, undefined);
+    assert.ok(
+      validator.getFields().captured_at,
+      "the spelling the resolver DOES publish has to survive",
+    );
   });
 
   test("the type set is what the ROOTS REACH", () => {

@@ -20,6 +20,19 @@ export interface PublishedEnum {
   readonly from: readonly string[];
   /** Values the producer has that GraphQL does not publish, and why. */
   readonly excluded?: Readonly<Record<string, string>>;
+  /**
+   * The `PublishedType.field` sites that publish this enum rather than String.
+   *
+   * The emitter maps every registered Zod enum to `String` -- the decision
+   * above -- so a field the SDL publishes as an enum has to say so somewhere.
+   * Here rather than in a general retype map, because THIS declaration can be
+   * checked against the field's own vocabulary: `assertEnumFieldVocabularies`
+   * reads the Zod behind each site and fails when its values are not the ones
+   * the enum publishes. A blanket "retype this field to that name" could not.
+   *
+   * Empty on `Network`, which is an ARGUMENT type only -- no field returns it.
+   */
+  readonly fields?: readonly string[];
 }
 
 export const GRAPHQL_ENUMS: Readonly<Record<string, PublishedEnum>> = {
@@ -41,8 +54,33 @@ export const GRAPHQL_ENUMS: Readonly<Record<string, PublishedEnum>> = {
       "Which source table a live chain event came from. The same four topics the SSE firehose and the ingest validator accept.",
     values: [...CHAIN_FIREHOSE_TABLES],
     from: [...CHAIN_FIREHOSE_TABLES],
+    fields: ["ChainEvent.table"],
   },
 };
+
+/**
+ * `PublishedType.field` -> the enum it publishes, inverted from the above.
+ *
+ * One field cannot publish two enums, so a second declaration of the same site
+ * is a contradiction rather than an override, and this throws on it.
+ */
+export function enumFieldSites(
+  declarations: Readonly<Record<string, PublishedEnum>> = GRAPHQL_ENUMS,
+): ReadonlyMap<string, string> {
+  const sites = new Map<string, string>();
+  for (const [name, declaration] of Object.entries(declarations)) {
+    for (const site of declaration.fields ?? []) {
+      const existing = sites.get(site);
+      if (existing) {
+        throw new Error(
+          `${site} is declared as both ${existing} and ${name}; a field publishes one enum`,
+        );
+      }
+      sites.set(site, name);
+    }
+  }
+  return sites;
+}
 
 /**
  * Every published value must exist in the producer's vocabulary, and every

@@ -2654,6 +2654,103 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   },
 };
 
+/** A resolver's edits to a MIRROR -- the projection mechanism, for types that
+ *  are not views (#10214). */
+export interface MirrorOverlay {
+  /**
+   * Fields the resolver supplies that no contributing component does, each
+   * with the type it publishes -- the same declaration `ProjectedType.added`
+   * makes, for a type that mirrors its component rather than projecting one.
+   */
+  readonly added?: Readonly<Record<string, string>>;
+  /**
+   * Component fields the resolver does NOT republish under that name.
+   *
+   * Deliberately narrow: a mirror's rule is that every component field appears,
+   * so each entry here weakens the strongest gate on the type and has to say
+   * why in a comment. The only entries today are one producer's spelling of a
+   * fact the union already publishes under the other's.
+   */
+  readonly dropped?: readonly string[];
+}
+
+/**
+ * Mirrors whose published shape is not exactly their component's.
+ *
+ * WHY NOT `PROJECTED_TYPES`. A projection is exempt from the mirror rule --
+ * "every component field must appear" -- because publishing a subset is what
+ * it is for. Moving a mirror into that map to give it one added field would
+ * hand it that exemption for all its other fields too, which is the gate
+ * getting weaker as a side effect of an unrelated change. Two maps keep the
+ * two rules separate: `dropped` here is the only exemption, and it is per
+ * field.
+ */
+export const MIRROR_OVERLAYS: Readonly<Record<string, MirrorOverlay>> = {
+  // `validatorNode` normalizes two producers into one shape, and the list
+  // producer spells the detail's `captured_at`/`block_number` as
+  // `latest_captured_at`/`latest_block_number` (the comment on
+  // `GlobalValidatorsArtifactValidators` above says so). The union carries all
+  // four names; the resolver publishes one pair, so the other is dropped
+  // rather than served as a permanent null beside the value it duplicates.
+  Validator: { dropped: ["latest_captured_at", "latest_block_number"] },
+  // The artifact nests this INSIDE `summary` and REST serves it there; the
+  // Query resolver lifts it to the top as well (#9892, after the flattened
+  // path resolved null on every call). So it is a GraphQL-only field over a
+  // component that legitimately does not carry it -- `JSON` because the value
+  // is a record keyed by subnet slug, which is the same reason
+  // `ChangelogArtifactSummary.coverage_delta` is JSON where it is nested.
+  Changelog: { added: { coverage_delta: "JSON" } },
+};
+
+/**
+ * Fields whose published type is not the one their component's Zod emits.
+ *
+ * TWO THINGS LIVE HERE, and both are about the type a field REFERENCES rather
+ * than the nullability it promises -- which is the rule the builder enforces:
+ * a retype may change the named type and nothing else, unless what it replaces
+ * is `JSON`, in which case any spelling is allowed because `JSON` says nothing
+ * about shape at all. So this cannot be used to quietly relax a `!`, which is
+ * the one direction that would matter to a client.
+ *
+ * ONE SHAPE, TWO PUBLISHED NAMES. `publishedName()` answers per COMPONENT, so
+ * a component the schema names twice comes out under whichever name won, and
+ * the other is registered but never reached -- `ChainAlphaVolumeSubnet` and
+ * `OpportunityEntry` were two of the four types the generator did not build
+ * for exactly this reason. The name belongs to the REFERENCE, not the shape:
+ * `SubnetAlphaVolumeArtifact` is `SubnetVolume` from its own route and
+ * `ChainAlphaVolumeSubnet` from inside the chain rollup, and only the field
+ * knows which.
+ *
+ * A CONCRETE SHAPE BEHIND AN OPAQUE ONE. `EmissionGateChanges.changes` and
+ * `SubnetTrajectory.deltas` are `JSON` in the Zod because REST genuinely
+ * serves what GraphQL cannot: an un-flattened union whose arms have different
+ * keys, and a record keyed by window ("7d", "30d") rather than by field.
+ * GraphQL publishes the flattened/re-keyed form, and the component behind it
+ * is registered -- `EmissionGateChange`, `SubnetTrajectoryDelta` -- so naming
+ * it here is what stops those rows from being served as opaque blobs. This is
+ * the direction the epic exists to move in, not an exception to it.
+ */
+export const RETYPED_FIELDS: Readonly<Record<string, string>> = {
+  // The chain rollup's rows are the per-subnet volume card, published under
+  // the rollup's own name -- `ALIASED_TYPE_NAMES` says so, and this is the
+  // reference that reaches it.
+  "ChainAlphaVolume.subnets": "[ChainAlphaVolumeSubnet!]!",
+  // Every board is the economics card minus the 26 fields a ranking has no use
+  // for, plus the headroom the ranker derives: `PROJECTED_TYPES.OpportunityEntry`
+  // is that view, and these six are its only reference sites.
+  "OpportunityBoards.open_slots": "[OpportunityEntry!]!",
+  "OpportunityBoards.cheapest_registration": "[OpportunityEntry!]!",
+  "OpportunityBoards.highest_emission": "[OpportunityEntry!]!",
+  "OpportunityBoards.validator_headroom": "[OpportunityEntry!]!",
+  "OpportunityBoards.biggest_alpha_gain_1d": "[OpportunityEntry!]!",
+  "OpportunityBoards.biggest_alpha_gain_7d": "[OpportunityEntry!]!",
+  // The two opaque ones. REST serves the union un-flattened and the deltas
+  // keyed by window; both are `JSON` in the Zod for that reason, and both have
+  // a registered component describing the form GraphQL publishes.
+  "EmissionGateChanges.changes": "[EmissionGateChange!]!",
+  "SubnetTrajectory.deltas": "[SubnetTrajectoryDelta!]!",
+};
+
 /**
  * The Subscription root, declared the way `QUERY_BINDINGS` declares the Query
  * root (#10409).
