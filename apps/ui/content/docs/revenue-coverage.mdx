@@ -1,0 +1,109 @@
+---
+title: Revenue coverage
+description: How the subnet revenue-vs-emissions ratio is derived — the provenance ladder, the two hard rules, the traps that produce wrong answers, and a worked SN64 derivation you can re-run.
+---
+
+Every subnet receives TAO from the network. Some subnets also earn money from outside Bittensor. The ratio between the two is the most-asked unanswered question in the ecosystem, and every existing answer is human-curated, login-walled, or has no published method.
+
+This page is the method. It is the only part of this feature that matters, because a coverage ratio without a method is a number somebody made up.
+
+```
+GET https://api.metagraph.sh/api/v1/subnets/64/revenue
+GET https://api.metagraph.sh/api/v1/chain/revenue-coverage
+```
+
+## Read this first: what the number does not mean
+
+**A high subsidy multiple is not an accusation, and a low one is not a badge.** An 8:1 ratio means the network directs eight dollars of emission into a subnet for every dollar it earns externally. For an early network deliberately subsidising the creation of capacity, that is a normal number, not a scandal. Bittensor's emission schedule exists precisely to fund work ahead of revenue.
+
+**"No observable external revenue" is not "no revenue."** It is the honest description of 127 of 129 subnets, and about a quarter of the network visibly sells things while publishing no figure at all — pricing pages, billing endpoints, checkout flows, none of it readable on a schedule. A subnet reporting `null` here has not been measured; it has not been judged.
+
+**A subnet that publishes its revenue will usually look worse than one that hides it.** That is the perverse incentive built into any transparency metric, and it is worth stating plainly: SN64 appears in this dataset with an 8:1 ratio *because Chutes publishes a public revenue endpoint*. Subnets that publish nothing get a `null`, not a bad score. Do not read the ranking as a quality ordering.
+
+**The ratio is not profitability.** The numerator is external revenue, not profit; the denominator is emission received, not cost. Nothing here accounts for what a team spends.
+
+## The two hard rules
+
+1. **No estimation, no modelling, no gap-filling.** Only figures that were read from a public source or observed on-chain reach the headline. Nothing is extrapolated from a sample, inferred from usage, or scaled from a comparable subnet.
+2. **Absent revenue is `null`, never `0`.** `coverage_ratio` and `subsidy_multiple` are `null` whenever revenue is unobserved. A subnet that earned nothing and a subnet nobody could measure are different facts, and rendering the second as "0% covered" would be a false claim about 127 subnets at once.
+
+Both rules are enforced in code rather than by convention, and the response carries a `verification` block whose checks fail loudly when they are violated.
+
+## The provenance ladder
+
+Every figure carries an evidence class. It is a **required** field on every response — there is no shape in which a caller receives a revenue number without knowing how it was obtained.
+
+| Tier | Value | Counts toward the headline? |
+|---|---|---|
+| A | `chain-verified` — payments observed in our own transfer index against an attributed address | **yes** |
+| B | `probe-derived` — a public endpoint polled on a schedule, hashed and timestamped | **yes** |
+| C | `operator-attested` — a citable URL, or an endpoint that exists but is auth-gated | no — shown beside |
+| D | `third-party-reported` — a press figure or a curated dataset, cited | no — shown beside |
+| E | `proxy-only` — usage figures, no money | no |
+| F | `none` — searched, absent, with a date | no |
+
+**Tier A is a spot-check, not a substitute for Tier B.** Measured on SN64 for 2026-08-08, the on-chain TAO channel carried **$1,036.50 against $9,776.06 of total revenue — 10.6%**. The rest is card and pay-as-you-go, off-chain and unverifiable by construction. Chain verification corroborates an operator's honesty on the slice it can see; the headline still rests on `probe-derived`.
+
+## The denominator
+
+The published basis is **`tao_total`** — `SubnetTaoInEmission + SubnetExcessTao`, the TAO the network directs into a subnet. It is chosen because it is fully *measured*: both components are read from chain storage rather than reconstructed.
+
+Two alternates are computed and published alongside, and **never silently substituted**:
+
+- `alpha_out_priced` — alpha emitted, priced at the subnet's alpha price
+- `owner_take` — the owner's share, which is **18%** (`SubnetOwnerCut = 11796/65535 = 0.17999…`), not one sixth
+
+A ratio whose denominator changed without saying so is worse than no ratio, so the basis is a field in the response.
+
+## The worked example
+
+SN64 (Chutes), entirely from public sources, as of **2026-08-10**:
+
+```
+emission   tao_total 0.063615264 TAO/block x 7200 blocks   = 458.0 TAO/day
+           x $204.03/TAO                                    = $93,452/day
+revenue    api.chutes.ai/daily_revenue_summary              = $11,668/day
+
+COVERAGE RATIO   11,668 / 93,452  = 12.5 %
+SUBSIDY MULTIPLE 93,452 / 11,668  = 8.01 : 1
+```
+
+Every input is a public route. The emission side comes from [`/chain/emission-pipeline`](/docs/api-reference/subnets/emission-pipeline), the price from [`/network/tao-usd`](/docs/api-reference/accounts/tao-usd), and the revenue from the subnet's own endpoint. Re-running it is the point; if you cannot reproduce a figure on this site, that is a bug worth reporting.
+
+The ecosystem is still widely quoting a 22–40:1 range for this subnet from a March 2026 essay.
+
+## The traps
+
+Each of these produced a wrong answer during the survey of all 129 subnets. They are listed because a reader re-deriving these numbers will meet the same ones.
+
+**1. A miner payout is not revenue — it is the denominator.** SN4 Targon's `stats.targon.com/api/miners` exposes `payout`, which is emission flowing *out* to miners. Counting it as revenue puts the denominator in the numerator. Same class: SN46 and SN60 publish prize pools, SN74 publishes contributor rewards, SN11 publishes what it *spends*. **A "stats" endpoint is guilty until proven revenue.**
+
+**2. The unit is not in the path.** `api.chutes.ai/payments/summary/tao` is named for TAO and reconciles as USD. Currency is declared per surface, never inferred from a URL.
+
+**3. A channel is a subset, not an addend.** Chutes publishes both `/payments` (the TAO channel, ~$1k/day) and `daily_revenue_summary` (all channels, ~$11k/day). The first is contained in the second. The registry declares this with `supersedes`, and a subsumed surface is reported with its own figure and **never** summed into the headline — including when its superseder is unavailable, because reporting a tenth of the truth as the whole reads as a real number and is worse than the `null` it replaces.
+
+**4. A cumulative total is not a windowed figure.** A lifetime total of $2.3M and a daily figure of $11.7k cannot be added, and a grain contributes to a window only when the window is a whole number of its periods. A `cumulative` surface never reaches a windowed sum; a `monthly` one cannot answer "yesterday".
+
+**5. Gross is not external.** `sponsored_inference` is subnet-funded, `pending_instance_revenue` is unrecognised. Both are excluded from the headline and shown separately.
+
+**6. Attribution is evidence, not inference.** A high-volume address receiving from many parties looks exactly like a payment collector — and on SN64 the address that looked most like one turned out to be the subnet's own protocol TAO reserve, whose inbound is users staking. That is a capital flow, not revenue, and counting it would have overstated the subnet by orders of magnitude. Protocol-derived accounts are rejected at the schema level, because being careful is not enough when the wrong answer looks right.
+
+**7. Surfaces rot, and feeds get withdrawn.** An operator can remove a revenue endpoint once an unflattering ratio is published. Each observation retains a hash of the exact response it was read from, so a withdrawal degrades to a dated record rather than vanishing.
+
+**Circularity** is tracked separately: revenue paid in a subnet's own alpha, or funded by a team selling its emissions, is not external. The flag defaults to `unknown` rather than to `external`.
+
+## How the figures are collected
+
+Surfaces that declare a readable revenue figure are polled **hourly**. The cadence is chosen for restatement rather than freshness: a daily total grows through the day, so an hourly pass settles each day's final value where a single daily snapshot would capture a mid-afternoon number and store it as the day.
+
+Only `USD` figures reach the headline. A TAO-denominated figure would need the exchange rate at each observation's own instant to become comparable, which is a conversion rather than a cast, so such a surface is declared `operator-attested` instead of being silently converted.
+
+A fetch that fails is recorded as a failure, never as a zero.
+
+## What we would still call unknown
+
+- **Most of the network.** Two subnets publish a readable figure. Three more declare revenue endpoints that are auth-gated. Roughly a quarter visibly sell something and publish no number.
+- **Off-chain revenue, in general.** Card payments cannot be verified independently; the chain sees ~10% of SN64's.
+- **Whether a published figure is complete.** We report what an operator publishes and can corroborate; we cannot see revenue they do not publish.
+
+Absence is recorded with a date and a list of where the search looked, so that "we found nothing" is a claim somebody else can re-run and disagree with.
