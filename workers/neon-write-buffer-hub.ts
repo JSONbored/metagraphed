@@ -17,7 +17,8 @@
 //
 // A lane's `record()` reports `ok` when its statement did not throw. Against
 // this buffer that means "durably enqueued", which is a weaker claim than "in
-// Neon", so the flush records its OWN verdict per lane and a
+// Neon", so the flush records its OWN verdict per lane -- under `neon:<lane>`,
+// the same key that path uses (#10851), or it clears nothing -- and a
 // `neon:buffer-flush` verdict for the drain itself. A flush that fails leaves
 // the backlog in place and says so; and because every buffered table is held to
 // `2 * HOUR` by src/table-freshness-watchdog.ts, a flush that stays broken
@@ -51,6 +52,7 @@ import {
 import { createPgSql, type HyperdriveLike } from "../src/pg-sql.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "../src/lane-health.ts";
+import { neonLaneKey } from "../src/neon-write.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 
 /** The lane the drain itself reports under. */
@@ -410,7 +412,12 @@ async function recordFlushVerdicts(
 ): Promise<void> {
   for (const [lane, tally] of perLane) {
     await recordLaneVerdict(laneDb, {
-      lane,
+      // `neon:`-PREFIXED, matching recordNeonWriteVerdict (#10851). The tag on
+      // a buffered statement is the bare lane name, and filing the verdict
+      // under it put this in the wrong bucket twice over: it never cleared the
+      // failure that path records, and it collided with the poller's own report
+      // for the same lane. See neonLaneKey for the measurement.
+      lane: neonLaneKey(lane),
       verdict: tally.failed > 0 ? "stale" : "ok",
       age_ms: null,
       detail:

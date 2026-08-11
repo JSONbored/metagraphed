@@ -521,6 +521,36 @@ export function shouldWriteNeonWriteVerdict(
 }
 
 /**
+ * The `lane_health` key a Neon write verdict is filed under, for one lane.
+ *
+ * ONE FUNCTION BECAUSE TWO WRITERS SHARE THE KEY, and until #10851 they did not
+ * agree on it. `recordNeonWriteVerdict` spelled `neon:${lane}` here; the buffer
+ * hub's flush spelled the BARE lane name, taken from the tag on the buffered
+ * statement. Two literals, two files, no test that could see the difference.
+ *
+ * WHAT THAT COST. A buffered SUCCESS records nothing here (see `buffered`
+ * below) on the stated assumption that the flush will file an honest verdict
+ * for the lane later. The flush does file one -- under the other key. So a
+ * buffered FAILURE, which does record here, could never be cleared: the only
+ * writer that could clear it is the one that just suppressed itself. Measured
+ * on production 2026-08-11, `neon:validator-nominator-counts` held `stale` from
+ * 10:15 UTC ("Durable Object reset because its code was updated", from a
+ * deploy) while its table wrote 112,250 rows at 11:30 and the lane alarm
+ * escalated over it for twelve hours.
+ *
+ * The bare name was not free either: the poller reports its OWN lane outcome
+ * under it ("558009 scanned, 366107 written"), so the flush's rows landed in
+ * the same bucket as the scan's. Freshness on that key could mean the lane ran
+ * or merely that the buffer drained on some other lane's behalf.
+ *
+ * So the prefix is applied HERE, once, and both callers ask for it rather than
+ * spelling it. A lane name is what a caller has; the key is this module's.
+ */
+export function neonLaneKey(lane: string): string {
+  return `neon:${lane}`;
+}
+
+/**
  * Record one Neon write's outcome as a lane verdict.
  *
  * THIS IS THE INVARIANT THE PILOT WAS MISSING. A store with no lane is
@@ -580,9 +610,15 @@ export async function recordNeonWriteVerdict(
    *
    * The suppression above assumes the flush will record an honest verdict for
    * this lane later. That holds for a row lane, whose statements carry its
-   * name -- and it is FALSE for the `-pass` and `-prune` sub-lanes, which share
-   * the base lane's buffered runner and so never appear in the flush's own
-   * per-lane tally. Nothing can ever write them again once buffering is on.
+   * name -- SINCE #10851, which is what made it true: the flush filed those
+   * verdicts under the bare lane name while this path files `neon:`-prefixed
+   * ones, so the assumption was false for row lanes too until both writers were
+   * put on `neonLaneKey`.
+   *
+   * It remains FALSE for the `-pass` and `-prune` sub-lanes, which share the
+   * base lane's buffered runner and so never appear in the flush's per-lane
+   * tally under any key. Nothing can ever write them again once buffering is
+   * on, which is what `oncePerPass` exists for.
    *
    * Measured on production 2026-08-11: `neon:nominator-positions-prune` and
    * `neon:nominator-positions-pass` held a `stale` verdict from 10:23 UTC --
@@ -602,7 +638,7 @@ export async function recordNeonWriteVerdict(
    */
   oncePerPass = false,
 ): Promise<boolean> {
-  const key = `neon:${lane}`;
+  const key = neonLaneKey(lane);
   const verdict: LaneVerdict = result.ok ? "ok" : "stale";
   if (buffered && result.ok && !oncePerPass) return true;
   if (!shouldWriteNeonWriteVerdict(lastWrittenVerdict.get(key), verdict, nowMs))
