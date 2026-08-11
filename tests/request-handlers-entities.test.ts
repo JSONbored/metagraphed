@@ -66,7 +66,6 @@ import {
   handleAccountPortfolio,
   handleAccountPositions,
   handleAccountsList,
-  handleTopHoldersList,
   handleSubnetConcentrationHistory,
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
@@ -461,19 +460,6 @@ beforeEach(() => {
   pg.control.onQuery = null;
   pg.control.db = null;
 });
-
-/**
- * The captured statements MINUS the lane-health read.
- *
- * lane_health is the one table a handler reads no matter which tier served
- * (#9330/#9340: a lane's verdict has to stay readable when the serving tier is
- * not), and it now lives in the same store as the serving tables -- so a
- * "the serving tier was never asked" assertion has to say which reads it
- * means, or it starts failing for the reason the feature exists.
- */
-function servingSql(captures: { sql: string[] }): string[] {
-  return captures.sql.filter((sql) => !/FROM lane_health/i.test(sql));
-}
 
 // A store mock that routes SQL by regex patterns (order-sensitive: specific
 // first). Named buckets let each handler test supply only the rows it needs.

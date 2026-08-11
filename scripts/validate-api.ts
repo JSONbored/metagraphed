@@ -22,7 +22,6 @@ import { buildSubnetMetagraph } from "../src/metagraph-neurons.ts";
 import { buildSubnetHyperparams } from "../src/subnet-hyperparams.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.ts";
-import { formatRpcUsage } from "../src/health-serving.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 import { taoToRao } from "../src/emission-decomposition.ts";
 import {

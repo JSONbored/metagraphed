@@ -2741,10 +2741,8 @@ const rootValue = {
       defaultLimit: TOP_HOLDERS_LIMIT_DEFAULT,
       maxLimit: TOP_HOLDERS_LIMIT_MAX,
     });
-    const params = new URLSearchParams({
-      sort: safeSort,
-      limit: String(safeLimit),
-    });
+    // `params` used to be built here for the removed tier's upstream request;
+    // the live flow lane takes `sort`/`limit` directly.
     return (
       // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and
       // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
