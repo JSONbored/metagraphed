@@ -68,6 +68,43 @@ export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
 
 export const SUBNET_HYPERPARAMS_NEON_LANE = "subnet-hyperparams";
 export const ACCOUNT_IDENTITY_NEON_LANE = "account-identity";
+export const SUBNET_IDENTITY_NEON_LANE = "subnet-identity";
+
+/**
+ * The identity fields a SUBNET declares on chain (SubnetIdentitiesV3).
+ *
+ * Deliberately NOT the account IDENTITY_FIELDS: a subnet has `symbol` and no
+ * `additional`, and reusing the account list would silently write nulls into a
+ * column the producer never sends and drop one it does.
+ */
+export const SUBNET_IDENTITY_FIELDS = [
+  "subnet_name",
+  "symbol",
+  "description",
+  "github_repo",
+  "subnet_url",
+  "discord",
+  "logo_url",
+] as const;
+
+/** subnet_identity, the latest-only card. */
+export const SUBNET_IDENTITY_INSERT_COLUMNS = [
+  "netuid",
+  "block_number",
+  "captured_at",
+  ...SUBNET_IDENTITY_FIELDS,
+  "identity_hash",
+];
+
+/** subnet_identity_history, the append-on-change revisions. `observed_at`
+ * rather than `captured_at`, matching the column the reader pages on. */
+export const SUBNET_IDENTITY_HISTORY_COLUMNS = [
+  "netuid",
+  "block_number",
+  "observed_at",
+  ...SUBNET_IDENTITY_FIELDS,
+  "identity_hash",
+];
 
 type Row = Record<string, unknown>;
 
@@ -103,6 +140,25 @@ export const FAMILY_MIRROR_PLANS: Readonly<Record<string, FamilyPlan>> = {
       table: "subnet_hyperparams_history",
       columns: SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
       conflict: ["netuid", "observed_at"],
+    },
+  },
+  [SUBNET_IDENTITY_NEON_LANE]: {
+    lane: SUBNET_IDENTITY_NEON_LANE,
+    latest: {
+      table: "subnet_identity",
+      columns: SUBNET_IDENTITY_INSERT_COLUMNS,
+      conflict: ["netuid"],
+    },
+    history: {
+      table: "subnet_identity_history",
+      // (netuid, identity_hash), NOT (netuid, observed_at) like its siblings.
+      // The producer re-reads the whole identity set every pass, so the same
+      // revision arrives again and again at DIFFERENT observed_at values --
+      // conflicting on the timestamp would append a duplicate row every pass
+      // and turn the provenance this table exists for into noise. The hash is
+      // what identifies a revision, and 0021's unique index enforces it.
+      conflict: ["netuid", "identity_hash"],
+      columns: SUBNET_IDENTITY_HISTORY_COLUMNS,
     },
   },
   [ACCOUNT_IDENTITY_NEON_LANE]: {

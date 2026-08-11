@@ -4161,6 +4161,21 @@ async function handleAccountIdentitySyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/subnet-identity-sync -- the write path into
+// subnet_identity + subnet_identity_history (#10710). The producer is
+// metagraphed-infra's chain-direct `subnet-identity` poller lane, which has
+// been POSTing here and receiving a 404 since it shipped, because this route
+// never existed.
+async function handleSubnetIdentitySyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_identity_sync_unavailable",
+    notBoundMessage:
+      "The subnet-identity sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-identity sync tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/validator-nominator-counts-sync -- the write
 // path into validator_nominator_counts (#2549). Same DATA_API service
 // binding as the other internal sync routes above.
@@ -5106,6 +5121,9 @@ async function dispatchRequest(
   }
   if (url.pathname === "/api/v1/internal/account-identity-sync") {
     return handleAccountIdentitySyncProxy(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/subnet-identity-sync") {
+    return handleSubnetIdentitySyncProxy(request, env);
   }
   // The write path into validator_nominator_counts (#2549) --
   // refresh-validator-nominator-counts's own low-frequency cron calls this,
