@@ -17,6 +17,7 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import { repoRoot } from "../scripts/lib.ts";
 import {
+  DECODER_TABLES,
   emitRustTypes,
   emitTypes,
   readSnapshot,
@@ -34,21 +35,67 @@ import {
 const snapshot = readSnapshot();
 
 describe("the committed snapshot", () => {
-  test("covers the four tables the decoder appends to", () => {
+  test("covers every chain.* table this repo reads", () => {
     // Named rather than derived from the file: the file is what could be
-    // wrong. #10315's whole subject is the four-table ground truth.
+    // wrong. The four the decoder appends to, plus the nine the cold tiers
+    // read -- the set was four until the readers were included, which left
+    // ten queried tables with no snapshot and no drift coverage.
+    //
+    // account_events_daily is NOT here on purpose: it is named in four
+    // comments and a route description and queried by nothing, because
+    // src/account-history-cold-tier.ts computes its own day bucket from
+    // account_events instead.
     assert.deepEqual([...new Set(snapshot.map((c) => c.table))].sort(), [
       "account_events",
+      "account_identity",
+      "account_identity_history",
       "blocks",
       "chain_events",
       "extrinsics",
+      "nominator_positions",
+      "rpc_proxy_events",
+      "self_health_daily",
+      "subnet_hyperparams",
+      "subnet_hyperparams_history",
+      "subnet_identity_history",
+      "subnet_ownership_history",
     ]);
-    assert.deepEqual([...LAKEHOUSE_TABLES].sort(), [
+    // The TS side mirrors the snapshot -- it is the READER's list.
+    assert.deepEqual(
+      [...LAKEHOUSE_TABLES].sort(),
+      [...new Set(snapshot.map((c) => c.table))].sort(),
+    );
+  });
+
+  test("the Rust side covers only the tables the decoder writes", () => {
+    // THE TWO SIDES ARE DIFFERENT SETS. The snapshot spans what this repo
+    // reads; the decoder writes four of them. A producer struct for
+    // self_health_daily would assert a write that has never happened.
+    assert.deepEqual([...DECODER_TABLES].sort(), [
       "account_events",
       "blocks",
       "chain_events",
       "extrinsics",
     ]);
+    const snapshotTables = new Set(snapshot.map((c) => c.table));
+    for (const t of DECODER_TABLES) {
+      assert.ok(
+        snapshotTables.has(t),
+        `${t} is emitted as a producer struct but has no snapshot to emit from`,
+      );
+    }
+    const rust = readFileSync(path.join(repoRoot, RUST_PATH), "utf8");
+    for (const t of snapshotTables) {
+      const struct = `pub struct ${t
+        .split("_")
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join("")}Row`;
+      assert.equal(
+        rust.includes(struct),
+        DECODER_TABLES.includes(t),
+        `${t}: producer struct presence must match DECODER_TABLES`,
+      );
+    }
   });
 
   test("every column carries a field id, and ids are unique per table", () => {
@@ -174,7 +221,7 @@ describe("emitRustTypes", () => {
   ];
 
   test("emits one struct per table, fields in FIELD-ID order", () => {
-    const out = emitRustTypes(columns);
+    const out = emitRustTypes(columns, ["t"]);
     assert.match(out, /pub struct TRow \{/);
     // serde preserves declaration order, so this order IS the append order.
     assert.ok(
@@ -184,15 +231,16 @@ describe("emitRustTypes", () => {
   });
 
   test("maps Iceberg primitives to Rust, Option for every non-required column", () => {
-    const out = emitRustTypes(columns);
+    const out = emitRustTypes(columns, ["t"]);
     assert.match(out, /pub a: Option<i64>,/);
     assert.match(out, /pub b: Option<String>,/);
   });
 
   test("a required column is not wrapped in Option", () => {
-    const out = emitRustTypes([
-      { table: "t", field_id: 1, column: "a", type: "int", required: true },
-    ]);
+    const out = emitRustTypes(
+      [{ table: "t", field_id: 1, column: "a", type: "int", required: true }],
+      ["t"],
+    );
     assert.match(out, /pub a: i32,/);
   });
 
@@ -201,21 +249,24 @@ describe("emitRustTypes", () => {
   test("throws on an Iceberg type it has no Rust mapping for", () => {
     assert.throws(
       () =>
-        emitRustTypes([
-          {
-            table: "t",
-            field_id: 1,
-            column: "a",
-            type: "timestamptz",
-            required: false,
-          },
-        ]),
+        emitRustTypes(
+          [
+            {
+              table: "t",
+              field_id: 1,
+              column: "a",
+              type: "timestamptz",
+              required: false,
+            },
+          ],
+          ["t"],
+        ),
       /unmapped Iceberg type/,
     );
   });
 
   test("the column constant is sized and ordered like the struct", () => {
-    const out = emitRustTypes(columns);
+    const out = emitRustTypes(columns, ["t"]);
     assert.match(
       out,
       /pub const T_COLUMNS: \[&str; 2\] = \[\n {4}"a",\n {4}"b",\n\];/,
