@@ -22,7 +22,7 @@
 //
 // Worker-computed image/svg+xml, read-only, edge-cached, CORS-open. Unknown
 // entities or missing data render an "n/a" badge (200) so an <img> never breaks.
-import { loadReliabilityAggregate } from "./health-serving.ts";
+import { loadReliabilityAggregate } from "./reliability-badge.ts";
 import { ifNoneMatchSatisfied, weakEtag } from "../workers/http.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 
@@ -556,12 +556,13 @@ export async function handleBadgeRequest(
     target: target as BadgeTarget,
     readArtifact: readArtifact as ReadArtifactFn,
     env,
-    // #8329: bound to this request so the aggregate can synthesize its own
-    // internal /uptime reads through the Postgres tier. The injected `deps`
-    // form stays the test seam.
+    // #8329 bound this to the request so the aggregate could synthesize its own
+    // internal /uptime reads through the Postgres tier. It reads the store
+    // directly now (#10190), so there is no request to bind. The injected
+    // `deps` form stays the test seam.
     loadReliability:
       deps.loadReliability ||
-      ((options) => loadReliabilityAggregate(env, request, options)),
+      ((options) => loadReliabilityAggregate(env, options)),
   };
 
   let content: BadgeContent = NA_CONTENT;

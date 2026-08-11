@@ -10074,15 +10074,23 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const entitiesArtifact = rowOf(
         await ctx.readArtifact!(ctx.env, ENTITY_LABELS_ARTIFACT),
       );
-      (data as Row).labels = labelsForSs58(
-        entityLabelsIndex(
-          entitiesArtifact?.ok
-            ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
-            : [],
+      // SPREAD, not `(data as Row).labels = …`. That assertion compiled only
+      // while the tier arm widened `data` to a row: with the arm deleted
+      // (#10190) it narrows to AccountSummaryResult, and an interface has no
+      // index signature, so #10782's stricter `Row` rejects the cast. Building
+      // a fresh object is the structural conversion rather than an assertion
+      // over it -- and it stops mutating a value the composer owns.
+      return {
+        ...data,
+        labels: labelsForSs58(
+          entityLabelsIndex(
+            entitiesArtifact?.ok
+              ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
+              : [],
+          ),
+          ss58,
         ),
-        ss58,
-      );
-      return data;
+      };
     },
   },
   {

@@ -6787,7 +6787,12 @@ const rootValue = {
         ...data,
         labels: labelsForSs58(
           entityLabelsIndex(
-            entitiesArtifact.ok ? toRow(entitiesArtifact.data)?.entities : [],
+            // rowsOf, not a bare property read: a cold or malformed artifact can
+            // put a non-array under `entities`, and #10782's typing is what
+            // makes that visible here rather than at the first `.map`.
+            entitiesArtifact.ok
+              ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
+              : [],
           ),
           ss58,
         ),
