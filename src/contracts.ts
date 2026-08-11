@@ -6381,10 +6381,7 @@ export function compileRoutePattern(pathTemplate: string) {
  */
 const ROUTE_PATTERNS = (() => {
   const paths = new Set<string>();
-  for (const route of API_ROUTES as unknown as {
-    path: string;
-    method: string;
-  }[]) {
+  for (const route of API_ROUTES) {
     if (route.method !== "GET") continue;
     paths.add(route.path);
     // The /{network}/ twins are not their own API_ROUTES entries -- they are

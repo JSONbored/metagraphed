@@ -49,11 +49,32 @@ import { repoRoot } from "./lib.ts";
  *
  * 105 at the inversion (#10311): 104 in `workers/data-api.ts` and one D1
  * `.all<Record<string, unknown>>()` in `src/subnet-burn-coverage-watchdog.ts`.
- * Lower it whenever a read is given a real row type.
+ *
+ * ZERO now. Every read in `src/` and `workers/` names the row it returns, so
+ * this stopped being a ratchet and became a rule: the next
+ * `Record<string, unknown>` read fails here rather than being counted.
+ *
+ * How they were typed matters more than that they were. A read is not typed by
+ * writing down what its author believed the row looked like -- that is the
+ * same hand-rolling in a longer form. Each one names the GENERATED interface
+ * for its table (`generated/db/types.ts`, introspected from Neon), narrowed
+ * with `Pick` to the columns it selects and indexed access for a single
+ * column, so a column whose Postgres type changes changes the read's type
+ * without anybody being told to look. Where a constant builds the SQL text,
+ * the row type is derived from that same constant -- `NEURON_COLUMNS`,
+ * `ACCOUNT_IDENTITY_INSERT_COLUMNS` and `SUBNET_HYPERPARAMS_INSERT_COLUMNS`
+ * are `as const` for exactly that reason, so the column list and the row type
+ * are one statement rather than two that agree today.
+ *
+ * Two shapes are deliberately NOT the column's type. An aggregate over BIGINT
+ * (`COUNT`, `SUM`) returns NUMERIC, which the driver hands back as a STRING
+ * (#8607) -- typing those as the column understates them. And a write with no
+ * `RETURNING` returns no rows at all, so its rows are `never`: not "unknown
+ * shape", but "there is nothing here to read".
  */
 // Annotated `number` rather than left as the literal so the "none left"
 // message below stays reachable code as the ceiling falls to zero.
-export const MAX_UNTYPED_READS: number = 104;
+export const MAX_UNTYPED_READS: number = 0;
 
 /** Where a read can live. `scripts/` is excluded: it does not serve traffic. */
 const SOURCE_DIRS = ["src", "workers"];

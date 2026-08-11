@@ -19,6 +19,7 @@ import {
   unknownAgainstSchema,
   type FieldProjectionResult,
 } from "./field-projection.ts";
+import type { Neurons } from "../generated/db/types.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -209,6 +210,38 @@ export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
   "consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, " +
   "is_immunity_period, axon, block_number, captured_at, take";
+
+/**
+ * The row `NEURON_COLUMNS` selects, typed from the live schema.
+ *
+ * Declared HERE, beside the column list, because the two are one fact said
+ * twice: add a column to the string and this `Pick` fails to compile until it
+ * is added here too. Typed through the generated `Neurons` interface rather
+ * than by hand, so a column whose Postgres type changes changes here without
+ * anyone noticing it needed to.
+ */
+export type NeuronColumnsRow = Pick<
+  Neurons,
+  | "uid"
+  | "hotkey"
+  | "coldkey"
+  | "active"
+  | "validator_permit"
+  | "rank"
+  | "trust"
+  | "validator_trust"
+  | "consensus"
+  | "incentive"
+  | "dividends"
+  | "emission_tao"
+  | "stake_tao"
+  | "registered_at_block"
+  | "is_immunity_period"
+  | "axon"
+  | "block_number"
+  | "captured_at"
+  | "take"
+>;
 
 // The full column set written to the neurons table (matches migration 0007 and
 // the normalizeNeuron row shape). Used by the cron's parameterized bulk load

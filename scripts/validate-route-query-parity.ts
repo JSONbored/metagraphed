@@ -54,14 +54,23 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** One parameter's constraints, as both sides express them. */
-function constraints(schema: Row): string {
+/**
+ * One parameter's constraints, as both sides express them.
+ *
+ * Takes `unknown` because that is what `QueryParameterSpec.schema` IS -- a
+ * JSON Schema fragment the route builds from its Zod, which `src/contracts.ts`
+ * declares honestly rather than pretending to know the shape of. Narrowing
+ * once, here, is what that honesty costs; the alternative was casting the
+ * whole `API_ROUTES` array to a hand-written shape at the call site, which
+ * also threw away every other field's real type on the way past.
+ */
+function constraints(schema: unknown): string {
   const {
     $schema: _schema,
     description: _description,
     examples: _examples,
     ...rest
-  } = schema;
+  } = (schema ?? {}) as Row;
   return canonical(stripSentinelIntegerBounds(rest));
 }
 
@@ -80,14 +89,7 @@ function emittedProperties(schema: z.ZodObject): Map<string, string> {
   return out;
 }
 
-const routes = API_ROUTES as unknown as {
-  path: string;
-  method: string;
-  query_collection?: string | null;
-  query_filter_names?: string[];
-  csv_response?: boolean;
-  query_parameters?: { name: string; schema: Row }[];
-}[];
+const routes = API_ROUTES;
 
 const unclassified: string[] = [];
 const mismatches: string[] = [];

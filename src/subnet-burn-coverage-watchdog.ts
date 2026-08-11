@@ -45,6 +45,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
+import type { SubnetBurnHistory } from "../generated/db/types.ts";
 
 export const SUBNET_BURN_COVERAGE_LANE = "subnet-burn-coverage";
 
@@ -83,6 +84,23 @@ const SUBNET_BURN_COVERAGE_SQL =
   " WHERE observed_at = (SELECT MAX(observed_at) FROM subnet_burn_history))" +
   " AS covered," +
   " (SELECT COUNT(DISTINCT netuid) FROM subnet_hyperparams) AS expected";
+
+/**
+ * The single row that query returns.
+ *
+ * `latest` is `subnet_burn_history.observed_at`, typed through the generated
+ * interface so a column that changes type in Neon changes here. The two counts
+ * are NOT: COUNT() returns BIGINT, which the driver hands back as a string
+ * whenever the value is not exactly representable, and the column's own type
+ * would understate that. Every member is nullable because each subselect
+ * answers NULL over an empty table -- which is exactly the state this watchdog
+ * exists to notice.
+ */
+interface SubnetBurnCoverageRow {
+  latest: SubnetBurnHistory["observed_at"] | null;
+  covered: string | number | null;
+  expected: string | number | null;
+}
 
 export type SubnetBurnCoverageReason = "no_rows" | "stale" | "partial" | null;
 
@@ -176,11 +194,11 @@ export async function runSubnetBurnCoverageWatchdog(
   const record = deps.recordVerdict ?? recordLaneVerdict;
   const db = readStore(env, SUBNET_BURN_COVERAGE_TABLES as unknown as string[]);
   if (!db) return null;
-  let row: Record<string, unknown> | undefined;
+  let row: SubnetBurnCoverageRow | undefined;
   try {
     const result = await db
       .prepare(SUBNET_BURN_COVERAGE_SQL)
-      .all<Record<string, unknown>>();
+      .all<SubnetBurnCoverageRow>();
     row = result?.results?.[0];
   } catch {
     // An unreadable store is not a verdict about the producer.

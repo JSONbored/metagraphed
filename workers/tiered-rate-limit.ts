@@ -134,8 +134,7 @@ async function loadBlockVerdict(
   env: Env,
   accountId: unknown,
 ): Promise<BlockVerdict> {
-  const kv = (env as unknown as { METAGRAPH_CONTROL?: KVNamespace })
-    .METAGRAPH_CONTROL;
+  const kv = env.METAGRAPH_CONTROL;
   if (!kv?.get) return evaluateBlock(null, accountId);
   try {
     const snapshot = (await kv.get(BLOCKLIST_KV_KEY, { type: "json" })) as {
@@ -171,14 +170,8 @@ async function spendDailyQuota(
   /** Explicit cost, when the pathname cannot price the work. See below. */
   costUnitsOverride?: number,
 ): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
-  const dataApi = (
-    env as unknown as {
-      DATA_API?: { fetch: (request: Request) => Promise<Response> };
-      API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
-    }
-  ).DATA_API;
-  const token = (env as unknown as { API_KEY_LOOKUP_INTERNAL_TOKEN?: string })
-    .API_KEY_LOOKUP_INTERNAL_TOKEN;
+  const dataApi = env.DATA_API;
+  const token = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!dataApi?.fetch || !token) return null as never;
   // The pathname prices the work for REST, where one path IS one operation.
   // It cannot for a multiplexed transport: every MCP call is POST /mcp, which

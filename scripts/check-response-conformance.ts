@@ -138,10 +138,7 @@ async function main(): Promise<void> {
   let checked = 0;
   let skipped = 0;
 
-  for (const route of API_ROUTES as unknown as {
-    path: string;
-    method: string;
-  }[]) {
+  for (const route of API_ROUTES) {
     if (route.method !== "GET") continue;
 
     let url: string;

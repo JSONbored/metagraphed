@@ -45,7 +45,9 @@ export const SUBNET_HYPERPARAMS_INSERT_COLUMNS = [
   "min_childkey_take_ratio",
   "block_number",
   "captured_at",
-];
+  // `as const` so the list is also the row TYPE for every read that selects
+  // it -- see SUBNET_HYPERPARAMS_D1_READ_COLUMNS in workers/data-api.ts.
+] as const;
 
 // Same D1-cell coercion helpers as src/metagraph-neurons.ts (each domain file
 // owns its own small copies rather than a shared util — see formatNeuron's
