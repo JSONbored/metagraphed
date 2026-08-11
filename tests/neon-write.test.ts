@@ -711,6 +711,73 @@ describe("a buffered lane's enqueue-time verdict", () => {
     assert.deepEqual(s.rows, []);
   });
 
+  test("a buffered ONCE-PER-PASS success records, so its verdict can be cleared", async () => {
+    // #10826. The suppression above is safe only because the flush records an
+    // honest verdict for that lane later. It does not for `-pass` and `-prune`:
+    // they share the base lane's buffered runner, so the flush's per-lane tally
+    // NEVER names them, and a suppressed success here can be recorded by
+    // nothing at all.
+    //
+    // Measured on production 2026-08-11: `neon:nominator-positions-prune` and
+    // `-pass` held "prune did not land; tally withheld" from 10:23 UTC -- one
+    // Durable Object reset during a deploy -- while nominator_positions wrote
+    // 123,057 rows at 11:30 and the base lane went ok. The failure verdict
+    // outlived its own recovery by eight hours and the lane alarm escalated
+    // over it the whole time.
+    const s = countingDb();
+    const landed = await recordNeonWriteVerdict(
+      s.db,
+      "nominator-positions-pass",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+      true,
+      true,
+    );
+    assert.equal(landed, true);
+    assert.deepEqual(
+      s.rows,
+      [{ lane: "neon:nominator-positions-pass", verdict: "ok" }],
+      "a once-per-pass success must reach lane_health, or nothing can clear it",
+    );
+  });
+
+  test("...and it says ENQUEUED, because that is what is true at that point", async () => {
+    // The reason #10690 suppressed these in the first place: at enqueue time
+    // the rows are in the buffer, not in Neon. Recording the verdict is what
+    // makes the lane clearable; claiming the rows LANDED would be the overclaim
+    // that argument correctly refused. Both can hold at once, and the detail is
+    // where the distinction lives.
+    const details: string[] = [];
+    const db = {
+      prepare(sql: string) {
+        return {
+          bind(...values: unknown[]) {
+            return {
+              async run() {
+                if (sql.startsWith("INSERT")) details.push(String(values[3]));
+              },
+            };
+          },
+        };
+      },
+    };
+    await recordNeonWriteVerdict(
+      db,
+      "nominator-positions-prune",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+      true,
+      true,
+    );
+    assert.equal(details.length, 1);
+    assert.match(details[0]!, /enqueued/);
+    assert.doesNotMatch(
+      details[0]!,
+      /^1 row\(s\) in /,
+      "an enqueued write must not be reported as landed",
+    );
+  });
+
   test("a buffered FAILURE still records -- nothing else reports backpressure", async () => {
     // ok:false here is the ENQUEUE being refused (buffer full, DO unreachable).
     // The flush cannot report it: those rows never reached the flush. This is
