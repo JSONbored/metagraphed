@@ -18,6 +18,7 @@ import {
   WORKER_CONFIGS,
   classifyDeployReadError,
   judgeDeploy,
+  oldestUndeployedSha,
   workerName,
 } from "../scripts/check-worker-deploys.ts";
 
@@ -31,7 +32,7 @@ const base = {
 
 describe("the three states that all look like `behind`", () => {
   test("at HEAD is ok", () => {
-    const v = judgeDeploy({ ...base, behind: 0, headAgeMs: 90 * MIN });
+    const v = judgeDeploy({ ...base, behind: 0, undeployedAgeMs: 90 * MIN });
     assert.equal(v.verdict, "ok");
   });
 
@@ -39,7 +40,7 @@ describe("the three states that all look like `behind`", () => {
     // Measured 2026-08-10, minutes after a merge: wss-lb was at HEAD while the
     // ~1 MB gzip data-api was three commits back. Demanding equality would
     // alarm on every merge for as long as the slowest build takes.
-    const v = judgeDeploy({ ...base, behind: 3, headAgeMs: 9 * MIN });
+    const v = judgeDeploy({ ...base, behind: 3, undeployedAgeMs: 9 * MIN });
     assert.equal(v.verdict, "lagging");
     assert.match(v.detail, /inside the 30m grace/);
   });
@@ -48,7 +49,7 @@ describe("the three states that all look like `behind`", () => {
     const v = judgeDeploy({
       ...base,
       behind: 3,
-      headAgeMs: DEPLOY_GRACE_MS + MIN,
+      undeployedAgeMs: DEPLOY_GRACE_MS + MIN,
     });
     assert.equal(v.verdict, "stale");
     assert.match(v.detail, /the build did not land/);
@@ -59,12 +60,12 @@ describe("the three states that all look like `behind`", () => {
     const inside = judgeDeploy({
       ...base,
       behind: 1,
-      headAgeMs: DEPLOY_GRACE_MS - 1,
+      undeployedAgeMs: DEPLOY_GRACE_MS - 1,
     });
     const outside = judgeDeploy({
       ...base,
       behind: 1,
-      headAgeMs: DEPLOY_GRACE_MS,
+      undeployedAgeMs: DEPLOY_GRACE_MS,
     });
     assert.equal(inside.verdict, "lagging");
     assert.equal(outside.verdict, "stale");
@@ -79,7 +80,7 @@ describe("the states that are never merely slow", () => {
       ...base,
       ancestor: false,
       behind: 0,
-      headAgeMs: 0,
+      undeployedAgeMs: 0,
     });
     assert.equal(v.verdict, "forked");
   });
@@ -92,7 +93,7 @@ describe("the states that are never merely slow", () => {
       deployed: null,
       ancestor: false,
       behind: 0,
-      headAgeMs: 0,
+      undeployedAgeMs: 0,
     });
     assert.equal(v.verdict, "unknown");
     assert.match(v.detail, /could not be read/);
@@ -129,7 +130,12 @@ describe("an unreadable deployment names WHICH kind of unreadable (#10357)", () 
   // line of output. They have different owners: one needs a maintainer to
   // rotate a secret, the other needs nothing at all. The older check this
   // replaced (#5538) distinguished them, and that is the piece worth keeping.
-  const unread = { ...base, deployed: null, behind: 0, headAgeMs: 90 * MIN };
+  const unread = {
+    ...base,
+    deployed: null,
+    behind: 0,
+    undeployedAgeMs: 90 * MIN,
+  };
 
   test("an auth failure says a maintainer has to fix the token", () => {
     const v = judgeDeploy({ ...unread, failure: "auth" });
@@ -269,5 +275,54 @@ describe("the build target, not main's HEAD (#10370)", () => {
   test("the search depth is bounded and stated", () => {
     assert.ok(BUILD_TARGET_SEARCH_DEPTH >= 10);
     assert.ok(BUILD_TARGET_SEARCH_DEPTH <= 100);
+  });
+});
+
+// #10597: the verdict logic was never wrong. It was handed the wrong commit.
+//
+// The grace window was measured against the BUILD TARGET -- the newest commit
+// that should have built -- so on a repo with steady merges it reset on every
+// merge and `stale` required main to go quiet for a full thirty minutes.
+// Measured: `metagraphed` sat 6 commits behind with three consecutive failed
+// builds over 58 minutes and the check exited 0, because somebody had merged
+// ten minutes earlier. Activity silenced the alarm.
+//
+// judgeDeploy tests cannot catch that -- they pass whichever number they are
+// given. This pins the derivation instead.
+describe("which undeployed commit the grace window is measured against", () => {
+  // rev-list prints newest-first.
+  const NEWEST = "c8bf0843139028c9e6e3d44d7cb4c660f4cf9872";
+  const MIDDLE = "005dd7e16a1b2c3d4e5f60718293a4b5c6d7e8f9";
+  const OLDEST = "c424b1b66e45412bedb952b849fa3a97bdb1aa07";
+
+  test("takes the OLDEST undeployed commit, not the newest", () => {
+    assert.equal(
+      oldestUndeployedSha([NEWEST, MIDDLE, OLDEST].join("\n")),
+      OLDEST,
+    );
+  });
+
+  test("a single undeployed commit is both newest and oldest", () => {
+    assert.equal(oldestUndeployedSha(NEWEST), NEWEST);
+  });
+
+  test("nothing undeployed yields null rather than an empty sha", () => {
+    // An empty string here would be handed to `git log -1 ''`, which resolves
+    // to HEAD -- a silent wrong answer instead of "there is nothing to age".
+    assert.equal(oldestUndeployedSha(""), null);
+    assert.equal(oldestUndeployedSha("\n\n"), null);
+  });
+
+  // The property that actually failed, stated end to end: a fresh merge must
+  // not rescue a Worker whose oldest undeployed commit is past the window.
+  test("a fresh merge does not reset the window on an old freeze", () => {
+    const oldest = oldestUndeployedSha([NEWEST, MIDDLE, OLDEST].join("\n"))!;
+    assert.equal(oldest, OLDEST, "must age the freeze, not the newest merge");
+    const verdict = judgeDeploy({
+      ...base,
+      behind: 3,
+      undeployedAgeMs: 58 * MIN,
+    });
+    assert.equal(verdict.verdict, "stale");
   });
 });

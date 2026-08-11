@@ -51,10 +51,30 @@
 //
 //   FORKED   the deployed SHA is not an ancestor of main. Always wrong: it
 //            means a deploy from a branch, or a rollback nobody recorded.
-//   STALE    behind, and main's HEAD is older than the grace window. This is
-//            the failure the issue is about.
-//   LAGGING  behind, but HEAD is younger than the grace window -- a build in
-//            flight, which is the ordinary state right after a merge.
+//   STALE    behind, and the OLDEST undeployed commit is older than the grace
+//            window. This is the failure the issue is about.
+//   LAGGING  behind, but even the oldest undeployed commit is younger than the
+//            grace window -- a build in flight, the ordinary state after a merge.
+//
+// ## The grace window measures the OLDEST undeployed commit, not the newest
+//
+// It used to measure the build TARGET -- the newest commit that should have
+// built -- and that made the check unable to report the thing it exists for.
+// A repo with steady merges always has a young newest-commit, so the grace
+// window reset on every merge and `stale` required main to go quiet for a full
+// thirty minutes. Activity silenced the alarm, which is backwards: a busy repo
+// is when a frozen deploy does the most damage.
+//
+// Measured 2026-08-10 (#10597): `metagraphed` sat SIX commits behind with three
+// consecutive failed builds over ~50 minutes, and this check exited 0 --
+// "LAGGING, HEAD is 10m old -- inside the 30m grace" -- because someone had
+// merged ten minutes earlier. The freeze was found by hand instead.
+//
+// Asking how long the OLDEST undeployed commit has waited keeps the property
+// the grace window was added for (#9301: do not alarm while a build is legitimately
+// in flight -- right after a merge the oldest undeployed commit IS the newest one,
+// so the verdict is unchanged) while making a stuck build impossible to hide
+// behind later merges.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -79,6 +99,20 @@ export const WORKER_CONFIGS = [
   "wrangler.wss-lb.jsonc",
 ] as const;
 
+/**
+ * The oldest commit still not deployed, from `git rev-list deployed..target`.
+ *
+ * Exported and pure because THIS is where the bug was, and a test of
+ * `judgeDeploy` cannot reach it: the verdict logic was always right, it was
+ * being handed the wrong commit. `rev-list` prints newest-first, so the oldest
+ * is the LAST line -- taking the first is what let a 58-minute freeze report
+ * "10m old, inside the grace" every time somebody merged again (#10597).
+ */
+export function oldestUndeployedSha(revList: string): string | null {
+  const shas = revList.split("\n").filter(Boolean);
+  return shas.length ? shas[shas.length - 1] : null;
+}
+
 export type DeployVerdict = "ok" | "lagging" | "stale" | "forked" | "unknown";
 
 export interface DeployStatus {
@@ -101,11 +135,13 @@ export function judgeDeploy(input: {
   deployed: string | null;
   ancestor: boolean;
   behind: number;
-  headAgeMs: number;
+  /** How long the OLDEST undeployed commit has been waiting. NOT the newest:
+   * see this file's header for the freeze that hid behind later merges. */
+  undeployedAgeMs: number;
   graceMs?: number;
   failure?: DeployReadFailure;
 }): DeployStatus {
-  const { config, worker, deployed, ancestor, behind, headAgeMs } = input;
+  const { config, worker, deployed, ancestor, behind, undeployedAgeMs } = input;
   const graceMs = input.graceMs ?? DEPLOY_GRACE_MS;
   const base = { config, worker, deployed, ancestor, behind };
   if (!deployed) {
@@ -147,13 +183,13 @@ export function judgeDeploy(input: {
       detail: "running the newest commit it was asked to build",
     };
   }
-  if (headAgeMs < graceMs) {
+  if (undeployedAgeMs < graceMs) {
     return {
       ...base,
       verdict: "lagging",
       detail:
-        `${behind} commit(s) behind, HEAD is ` +
-        `${Math.round(headAgeMs / 60_000)}m old -- inside the ` +
+        `${behind} commit(s) behind, oldest undeployed is ` +
+        `${Math.round(undeployedAgeMs / 60_000)}m old -- inside the ` +
         `${Math.round(graceMs / 60_000)}m grace`,
     };
   }
@@ -161,8 +197,8 @@ export function judgeDeploy(input: {
     ...base,
     verdict: "stale",
     detail:
-      `${behind} commit(s) behind and HEAD is ` +
-      `${Math.round(headAgeMs / 60_000)}m old -- the build did not land`,
+      `${behind} commit(s) behind and the oldest undeployed is ` +
+      `${Math.round(undeployedAgeMs / 60_000)}m old -- the build did not land`,
   };
 }
 
@@ -335,19 +371,27 @@ export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
     // when no build is visible in the window -- which keeps the old behaviour
     // for a repo state this cannot explain, rather than silently passing.
     const target = buildTargetSha(worker) ?? "origin/main";
-    const targetAgeMs =
-      nowMs - Number(git(["log", "-1", "--format=%ct", target])) * 1000;
     const read = deployedSha(config);
     const deployed = "sha" in read ? read.sha : null;
     let ancestor = false;
     let behind = 0;
+    // Falls back to the target's own age, which is what a Worker with nothing
+    // undeployed (or an unreadable deployment) should be judged on.
+    let undeployedAgeMs =
+      nowMs - Number(git(["log", "-1", "--format=%ct", target])) * 1000;
     if (deployed) {
       try {
         git(["merge-base", "--is-ancestor", deployed, "origin/main"]);
         ancestor = true;
         // Counted to the BUILD TARGET, not to HEAD: commits that rebuilt
         // nothing for this Worker are not commits it is behind on.
-        behind = Number(git(["rev-list", "--count", `${deployed}..${target}`]));
+        const revList = git(["rev-list", `${deployed}..${target}`]);
+        behind = revList.split("\n").filter(Boolean).length;
+        const oldest = oldestUndeployedSha(revList);
+        if (oldest) {
+          undeployedAgeMs =
+            nowMs - Number(git(["log", "-1", "--format=%ct", oldest])) * 1000;
+        }
       } catch {
         ancestor = false;
       }
@@ -358,7 +402,7 @@ export function checkWorkerDeploys(nowMs = Date.now()): DeployStatus[] {
       deployed,
       ancestor,
       behind,
-      headAgeMs: targetAgeMs,
+      undeployedAgeMs,
       failure: "failure" in read ? read.failure : undefined,
     });
   });
