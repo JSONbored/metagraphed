@@ -1143,6 +1143,141 @@ export async function recordMcpToolsListEvent(
   }
 }
 
+// ─── Resource + prompt traffic ──────────────────────────────────────────────
+//
+// The other half of this server's MCP surface was uninstrumented. It advertises
+// both `resources` and `prompts` in MCP_CAPABILITIES and serves four methods
+// behind them -- resources/list, resources/read, prompts/list, prompts/get --
+// and PostHog defines an event for each ($mcp_resources_list,
+// $mcp_resource_read, $mcp_prompts_list, $mcp_prompt_get). None were emitted.
+//
+// On the analytics side that traffic therefore did not exist. A client that
+// read a resource on every turn was indistinguishable from one that never
+// touched the surface, and there was no way to ask which resources or prompts
+// were earning their place in the catalogue -- the same blind spot #8963 closed
+// for tools/list, left open one method family over.
+//
+// PostHog names the resource AND the prompt with the same property,
+// `$mcp_resource_name` -- there is no `$mcp_prompt_name` -- so both travel
+// under one field here rather than being invented separately.
+
+/** Inputs for the resource/prompt MCP analytics events. */
+export interface McpResourceEvent extends McpServerIdentity {
+  /**
+   * The resource URI, or the prompt name. Emitted as `$mcp_resource_name`.
+   * Caller-supplied, so it is sanitized to a label like every other dimension
+   * on this family. Absent on the two list events, which name nothing.
+   */
+  resourceName?: string;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  authTier?: string;
+  sessionId?: string | null;
+  /**
+   * The read/get arguments and result. Redacted (redactMcpSensitiveFields) and
+   * size-capped (boundedMcpPayload) by this module before posting, exactly as
+   * on `$mcp_tool_call` -- a resource body can be the whole agent catalogue.
+   */
+  parameters?: unknown;
+  response?: unknown;
+}
+
+/**
+ * The one poster behind all four resource/prompt events.
+ *
+ * Written once rather than four times: these differ only in the event name and
+ * in which optional fields the caller populates, and four hand-copied bodies is
+ * how the deployment stamp ends up on three of them.
+ */
+async function postMcpResourceEvent(
+  env: Env | null | undefined,
+  eventName: string,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps,
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    const resourceName = sanitizeLabel(event.resourceName);
+    if (resourceName !== undefined) {
+      properties["$mcp_resource_name"] = resourceName;
+    }
+
+    assignMcpAttribution(properties, event);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    const parameters = boundedMcpPayload(event.parameters);
+    if (parameters !== undefined) properties["$mcp_parameters"] = parameters;
+
+    const responseBody = boundedMcpPayload(event.response);
+    if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
+
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: eventName,
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Emit `$mcp_resources_list`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpResourcesListEvent(
+  env: Env | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_resources_list", event, deps);
+}
+
+/** Emit `$mcp_resource_read`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpResourceReadEvent(
+  env: Env | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_resource_read", event, deps);
+}
+
+/** Emit `$mcp_prompts_list`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpPromptsListEvent(
+  env: Env | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_prompts_list", event, deps);
+}
+
+/** Emit `$mcp_prompt_get`. Same no-throw contract as recordUsageEvent. */
+export async function recordMcpPromptGetEvent(
+  env: Env | null | undefined,
+  event: McpResourceEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  return postMcpResourceEvent(env, "$mcp_prompt_get", event, deps);
+}
+
 // Error tracking via PostHog's `$exception` capture (#7758).
 //
 // The exception SHAPE is built by @posthog/core's own ErrorPropertiesBuilder

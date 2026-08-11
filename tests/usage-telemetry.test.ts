@@ -23,6 +23,10 @@ import {
   recordMcpInitializeEvent,
   normalizeExceptionMessage,
   recordMcpToolCallEvent,
+  recordMcpPromptGetEvent,
+  recordMcpPromptsListEvent,
+  recordMcpResourceReadEvent,
+  recordMcpResourcesListEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
@@ -2870,6 +2874,35 @@ describe("every recorder stamps the deployment dimensions", () => {
     [
       "$mcp_tools_list",
       (env, deps) => recordMcpToolsListEvent(env, { toolCount: 3 }, deps),
+    ],
+    // The resource/prompt four. They share one poster
+    // (postMcpResourceEvent), so these four rows prove the shared stamp is
+    // reached from each entry point rather than four separate stamps.
+    [
+      "$mcp_resources_list",
+      (env, deps) => recordMcpResourcesListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_resource_read",
+      (env, deps) =>
+        recordMcpResourceReadEvent(
+          env,
+          { resourceName: "metagraph://registry/summary" },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_prompts_list",
+      (env, deps) => recordMcpPromptsListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_prompt_get",
+      (env, deps) =>
+        recordMcpPromptGetEvent(
+          env,
+          { resourceName: "integrate_with_subnet" },
+          deps,
+        ),
     ],
     [
       "ai_degraded",
