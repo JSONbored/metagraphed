@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
+import { afterEach, describe, test } from "vitest";
 import {
   buildSubnetOhlc,
   buildSubnetOhlcFromBuckets,
@@ -617,35 +618,24 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
   });
 
   test("flag=postgres routes through DATA_API and unwraps {data, generatedAt}", async () => {
-    const env = {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              netuid: 7,
-              interval: "1h",
-              candles: [
-                {
-                  bucket_start: BASE,
-                  bucket_start_iso: new Date(BASE).toISOString(),
-                  open: 1,
-                  high: 1,
-                  low: 1,
-                  close: 1,
-                  volume_alpha: 5,
-                  volume_tao: 5,
-                  event_count: 1,
-                },
-              ],
-              root_excluded: false,
-            },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was
+    // never asked. loadSubnetOhlcColdTier answers, and the candle below is what
+    // the SAME builder makes of the lane's own bucket row.
+    const lake = lakehouse([
+      {
+        bucket_start: BASE,
+        open_price: 1,
+        close_price: 1,
+        high_price: 1,
+        low_price: 1,
+        volume_alpha: 5,
+        volume_tao: 5,
+        event_count: 1,
+        newest_observed: BASE,
       },
-    };
+    ]);
+    const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/subnets/7/ohlc"),
       env as unknown as Env,
@@ -655,7 +645,9 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
     const body = await res.json();
     assert.equal(body.data.candles.length, 1);
     assert.equal(body.data.candles[0].volume_alpha, 5);
-    assert.equal(body.meta.generated_at, "2026-07-01T00:00:00.000Z");
+    // The retired tier carried its own `generatedAt`; the cold tier has no such
+    // stamp, so the envelope's generated_at is the route's own.
+    assert.ok("generated_at" in body.meta);
   });
 
   // The route stopped serving candles when Postgres went away; the lakehouse
@@ -777,37 +769,32 @@ describe("buildSubnetOhlcFromBuckets", () => {
 
 describe("GET /api/v1/subnets/{netuid}/ohlc carries USD", () => {
   const BUCKET = Date.parse("2026-08-08T00:00:00.000Z");
-  const ohlcTierEnv = () =>
-    ({
-      ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              netuid: 7,
-              interval: "1h",
-              candles: [
-                {
-                  bucket_start: BUCKET,
-                  bucket_start_iso: new Date(BUCKET).toISOString(),
-                  open: 0.08,
-                  high: 0.09,
-                  low: 0.07,
-                  close: 0.088,
-                  volume_alpha: 100,
-                  volume_tao: 12.5,
-                  event_count: 3,
-                },
-              ],
-              candle_count: 1,
-              root_excluded: false,
-            },
-            generatedAt: null,
-          }),
+  // #10190: the tier is retired; loadSubnetOhlcColdTier answers, so the candle
+  // the USD overlay decorates is built from the lane's own bucket row.
+  let lake: ReturnType<typeof lakehouse> | undefined;
+  afterEach(() => {
+    lake?.restore();
+    lake = undefined;
+  });
+  const ohlcTierEnv = () => {
+    lake = lakehouse([
+      {
+        bucket_start: BUCKET,
+        open_price: 0.08,
+        high_price: 0.09,
+        low_price: 0.07,
+        close_price: 0.088,
+        volume_alpha: 100,
+        volume_tao: 12.5,
+        event_count: 3,
+        newest_observed: BUCKET,
       },
-    }) as unknown as Env;
+    ]);
+    return {
+      ...createLocalArtifactEnv(),
+      ...LAKEHOUSE_ENV,
+    } as unknown as Env;
+  };
 
   test("every candle carries the USD keys, even with no index behind them", async () => {
     // The index is unreachable in this env, which is exactly the case that
