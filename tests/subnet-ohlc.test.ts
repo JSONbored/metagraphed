@@ -648,6 +648,7 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
     // The retired tier carried its own `generatedAt`; the cold tier has no such
     // stamp, so the envelope's generated_at is the route's own.
     assert.ok("generated_at" in body.meta);
+    lake.restore();
   });
 
   // The route stopped serving candles when Postgres went away; the lakehouse
