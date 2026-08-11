@@ -55,6 +55,12 @@ const EntityReviewSchema = z
     state: SubmissionReviewStateSchema,
     submitted_by: z.string().optional(),
     submitted_at: z.string().optional(),
+    reviewed_at: z
+      .string()
+      .optional()
+      .describe(
+        "When a maintainer last acted on this entry (#10512). Distinct from submitted_at: a submission and a review are different claims, and without a separate date the two are indistinguishable in a snapshot -- so a review-state CHANGE could not be reported at all.",
+      ),
     review_notes: z.string().optional(),
   })
   .passthrough()

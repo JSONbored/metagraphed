@@ -2767,6 +2767,60 @@
         "application/atom+xml",
         "application/feed+json"
       ],
+      "description": "Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.",
+      "formats": [
+        "rss",
+        "atom",
+        "json"
+      ],
+      "id": "feed-wallets",
+      "kind": "wallets",
+      "method": "GET",
+      "path": "/api/v1/feeds/wallets",
+      "path_parameters": [],
+      "public": true,
+      "query_parameters": [
+        {
+          "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+          "name": "tag",
+          "schema": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+          "name": "since",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+          "name": "until",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "Maximum items to return (1-50). Defaults to 50.",
+          "name": "limit",
+          "schema": {
+            "default": 50,
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        }
+      ]
+    },
+    {
+      "content_types": [
+        "application/rss+xml",
+        "application/atom+xml",
+        "application/feed+json"
+      ],
       "description": "A personal watchlist feed built entirely from the URL: `?ids=s7,s64` selects subnets by netuid. Registry changes and incidents for the named entities only. There is no server-side subscription — anyone holding the URL sees which entities it tracks, so treat it as unlisted rather than private.",
       "formats": [
         "rss",

@@ -5073,6 +5073,12 @@ export const FEED_ROUTES = [
     "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
   ),
   feedRoute(
+    "feed-wallets",
+    "wallets",
+    "/api/v1/feeds/wallets",
+    "Movement across declared subnet wallets (#10512): new attributions, maintainer reviews, material treasury flow, and OUTBOUND MOVEMENT FROM AN ADDRESS DECLARED UNSPENDABLE. That last item is the highest-consequence thing this API emits: it states the published claim, the observed movement and the delta between them, names our own misattribution as a possible explanation, and asserts nothing about intent. Do not repeat one without its reading. Also folded into the registry feed, where `?tag=wallets` narrows to exactly these.",
+  ),
+  feedRoute(
     "feed-watch",
     "watch",
     "/api/v1/feeds/watch",
