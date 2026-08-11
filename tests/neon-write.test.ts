@@ -13,7 +13,7 @@
 //   * THE FLAG DEFAULTS OFF. A flag defaulting on would repeat the pilot's
 //     failure on the very deploy that introduced it.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
   buildPgUpsert,
   neonDualWriteEnabled,
@@ -22,8 +22,11 @@ import {
   PG_PARAM_LIMIT,
   pgFlatValues,
   pgValuesClause,
+  NEON_WRITE_VERDICT_COALESCE_MS,
   recordNeonWriteVerdict,
+  resetNeonWriteVerdictMemo,
   rowsPerPgStatement,
+  shouldWriteNeonWriteVerdict,
   writeRowsToNeon,
 } from "../src/neon-write.ts";
 
@@ -315,6 +318,10 @@ describe("writeRowsToNeon", () => {
 });
 
 describe("recordNeonWriteVerdict", () => {
+  // The coalescing memo is module-level and every test here shares one frozen
+  // clock, so without this a later test's unchanged `ok` reads as unwritten.
+  beforeEach(resetNeonWriteVerdictMemo);
+
   function spy() {
     const rows: Record<string, unknown>[] = [];
     return {
@@ -444,5 +451,222 @@ describe("neonDualWriteLanes", () => {
     assert.equal(neonDualWriteEnabled(env, "neurons"), true);
     assert.equal(neonDualWriteEnabled(env, "neuron_daily"), false);
     assert.equal(neonDualWriteEnabled({}, "neurons"), false);
+  });
+});
+
+describe("shouldWriteNeonWriteVerdict", () => {
+  // The POLICY, asserted directly rather than inferred from a mock's call
+  // count. What matters is not that writes get skipped -- it is exactly WHICH
+  // ones never can.
+  const PREV_OK = { verdict: "ok" as const, checkedAt: NOW };
+
+  test("a failure always writes, however often it repeats", () => {
+    // Failures are rare, so they cost no volume, and their detail carries the
+    // reason triage needs. Withholding it for the window would trade the only
+    // thing worth having for nothing.
+    assert.equal(
+      shouldWriteNeonWriteVerdict(
+        { verdict: "stale", checkedAt: NOW },
+        "stale",
+        NOW + 1,
+      ),
+      true,
+    );
+  });
+
+  test("a lane this isolate has not seen writes", () => {
+    assert.equal(shouldWriteNeonWriteVerdict(undefined, "ok", NOW), true);
+  });
+
+  test("a RECOVERY writes immediately, not on the next heartbeat", () => {
+    // stale -> ok is a transition, and a transition delayed is a transition
+    // suppressed.
+    assert.equal(
+      shouldWriteNeonWriteVerdict(
+        { verdict: "stale", checkedAt: NOW },
+        "ok",
+        NOW + 1,
+      ),
+      true,
+    );
+  });
+
+  test("a clock that moved backwards writes rather than guessing", () => {
+    // A replay, a fixed clock, or two isolates disagreeing. Unknown state
+    // resolves to "write", never to "skip".
+    assert.equal(shouldWriteNeonWriteVerdict(PREV_OK, "ok", NOW - 1), true);
+  });
+
+  test("an unchanged ok inside the window does NOT write", () => {
+    assert.equal(
+      shouldWriteNeonWriteVerdict(
+        PREV_OK,
+        "ok",
+        NOW + NEON_WRITE_VERDICT_COALESCE_MS - 1,
+      ),
+      false,
+    );
+  });
+
+  test("an unchanged ok AT the window writes -- the heartbeat", () => {
+    // Boundary is inclusive, so a lane cannot drift past its own freshness
+    // bound by repeatedly landing one millisecond short of it.
+    assert.equal(
+      shouldWriteNeonWriteVerdict(
+        PREV_OK,
+        "ok",
+        NOW + NEON_WRITE_VERDICT_COALESCE_MS,
+      ),
+      true,
+    );
+  });
+
+  test("the window is twelve heartbeats inside lane_health's own bound", () => {
+    // src/table-freshness-watchdog.ts holds lane_health to 2 * HOUR. If this
+    // ever exceeds that, a healthy lane starts tripping its own watchdog.
+    assert.ok(NEON_WRITE_VERDICT_COALESCE_MS * 12 <= 2 * 60 * 60 * 1000);
+  });
+});
+
+describe("verdict coalescing, end to end", () => {
+  beforeEach(resetNeonWriteVerdictMemo);
+
+  function countingDb() {
+    const inserts: Record<string, unknown>[] = [];
+    return {
+      inserts,
+      db: {
+        prepare(sql: string) {
+          return {
+            bind(...values: unknown[]) {
+              return {
+                async run() {
+                  if (sql.startsWith("INSERT"))
+                    inserts.push({ lane: values[0], verdict: values[1] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("a repeated ok costs ONE row, not one per write", async () => {
+    const s = countingDb();
+    for (let i = 0; i < 50; i += 1) {
+      await recordNeonWriteVerdict(
+        s.db,
+        "blocks-head",
+        { ok: true, rows: 1, statements: 1 },
+        NOW + i * 1000,
+      );
+    }
+    assert.equal(s.inserts.length, 1);
+  });
+
+  test("and reports true while coalescing -- the verdict IS on record", async () => {
+    // `false` means "not on record". Every call site awaits this bare today,
+    // so nothing would catch a wrong value until the first caller reads it as
+    // health -- which is why it has to be right before one does.
+    const s = countingDb();
+    const first = await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+    );
+    const second = await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW + 1000,
+    );
+    assert.equal(first, true);
+    assert.equal(second, true);
+    assert.equal(s.inserts.length, 1);
+  });
+
+  test("a failure lands even between two coalesced oks", async () => {
+    const s = countingDb();
+    await recordNeonWriteVerdict(
+      s.db,
+      "chain-detail",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+    );
+    await recordNeonWriteVerdict(
+      s.db,
+      "chain-detail",
+      { ok: false, rows: 0, statements: 0, reason: "deadlock" },
+      NOW + 1000,
+    );
+    await recordNeonWriteVerdict(
+      s.db,
+      "chain-detail",
+      { ok: true, rows: 1, statements: 1 },
+      NOW + 2000,
+    );
+    assert.deepEqual(
+      s.inserts.map((r) => r.verdict),
+      ["ok", "stale", "ok"],
+    );
+  });
+
+  test("a write that did NOT land cannot suppress the next one", async () => {
+    // Recording the attempt rather than the landing would let a database
+    // outage silence the lane for the whole window -- the lane going quiet at
+    // precisely the moment it matters most.
+    const s = countingDb();
+    assert.equal(
+      await recordNeonWriteVerdict(
+        null,
+        "blocks-head",
+        { ok: true, rows: 1, statements: 1 },
+        NOW,
+      ),
+      false,
+    );
+    await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW + 1000,
+    );
+    assert.equal(s.inserts.length, 1);
+  });
+
+  test("lanes coalesce independently of one another", async () => {
+    const s = countingDb();
+    for (const lane of ["blocks-head", "chain-detail", "account-balances"]) {
+      await recordNeonWriteVerdict(
+        s.db,
+        lane,
+        { ok: true, rows: 1, statements: 1 },
+        NOW,
+      );
+    }
+    assert.deepEqual(
+      s.inserts.map((r) => r.lane),
+      ["neon:blocks-head", "neon:chain-detail", "neon:account-balances"],
+    );
+  });
+
+  test("the memo reset makes the next verdict unconditional", async () => {
+    const s = countingDb();
+    await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+    );
+    resetNeonWriteVerdictMemo();
+    await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW + 1000,
+    );
+    assert.equal(s.inserts.length, 2);
   });
 });
