@@ -22,6 +22,13 @@ import {
   type RevenueProbeResult,
 } from "./revenue-probe.ts";
 import type { RevenueObservation } from "./revenue-serving.ts";
+import {
+  consumeBatch,
+  enqueueAll,
+  type ConsumeResult,
+  type LaneMessage,
+  type LaneQueue,
+} from "./lane-queue.ts";
 
 export const REVENUE_OBSERVATIONS_TABLE = "revenue_observations";
 export const REVENUE_PROBE_FAILURES_TABLE = "revenue_probe_failures";
@@ -299,109 +306,36 @@ export interface RevenueProbeMessage {
 
 export const REVENUE_PROBE_QUEUE = "revenue-probes";
 
-export interface RevenueProbeQueue {
-  sendBatch(messages: Array<{ body: RevenueProbeMessage }>): Promise<unknown>;
-}
-
-/** Cloudflare caps a sendBatch at 100. */
-export const REVENUE_SEND_BATCH_MAX = 100;
-
-export interface RevenueEnqueueResult {
-  ok: boolean;
-  enqueued: number;
-  reason?: string;
-}
-
-/** Enqueue every eligible revenue surface. */
 export async function enqueueRevenueProbes(
-  queue: RevenueProbeQueue | null | undefined,
+  queue: LaneQueue<RevenueProbeMessage> | null | undefined,
   surfaceIds: string[],
-): Promise<RevenueEnqueueResult> {
-  if (!queue?.sendBatch) {
-    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
-  }
-  if (surfaceIds.length === 0) {
-    // Not a success, and THIS lane is why the rule exists: it shipped in #10444
-    // with no caller and no trigger, so revenue_observations was never written
-    // and every revenue route reported null for 129 subnets for two months
-    // (#10566). A producer that enqueues nothing must say so.
-    return { ok: false, enqueued: 0, reason: "no_eligible_surfaces" };
-  }
-  let enqueued = 0;
-  try {
-    for (let i = 0; i < surfaceIds.length; i += REVENUE_SEND_BATCH_MAX) {
-      const slice = surfaceIds.slice(i, i + REVENUE_SEND_BATCH_MAX);
-      await queue.sendBatch(
-        slice.map((surface_id) => ({ body: { surface_id } })),
-      );
-      enqueued += slice.length;
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      enqueued,
-      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
-    };
-  }
-  return { ok: true, enqueued };
+) {
+  // The empty reason matters here more than anywhere: THIS lane shipped with no
+  // caller and reported null for 129 subnets for two months (#10566).
+  return enqueueAll(
+    queue,
+    surfaceIds.map((surface_id) => ({ surface_id })),
+    "no_eligible_surfaces",
+  );
 }
 
-export interface RevenueBatchMessage {
-  body: unknown;
-  ack(): void;
-  retry(): void;
-}
-
-export interface RevenueBatchResult {
-  probed: number;
-  retried: number;
-  malformed: number;
-}
-
-/**
- * Consume a batch: one surface per message.
- *
- * A surface no longer in the eligible set is ACKED, not retried -- the registry
- * has withdrawn it, and re-delivering will not bring it back.
- */
+/** Probe one surface. A surface no longer in the eligible set parses to NULL --
+ * acked, not retried, because the registry withdrew it and redelivery will not
+ * bring it back. */
 export async function handleRevenueProbeBatch(
-  messages: RevenueBatchMessage[],
+  messages: LaneMessage[],
   db: RevenueStoreDb | null | undefined,
   deps: Parameters<typeof runRevenueProbeLane>[2] & {
     /** The eligible surfaces, re-read at DELIVERY time. */
-    surfaceFor: (id: string) => Promise<ProbeSurfaceInput | null>;
+    surfaceFor: (id: string) => ProbeSurfaceInput | null;
   },
-): Promise<RevenueBatchResult> {
-  let probed = 0;
-  let retried = 0;
-  let malformed = 0;
-  for (const message of messages) {
-    const body = message.body as RevenueProbeMessage | null;
-    const id = typeof body?.surface_id === "string" ? body.surface_id : "";
-    if (!id) {
-      message.ack();
-      malformed += 1;
-      continue;
-    }
-    try {
-      const surface = await deps.surfaceFor(id);
-      if (!surface) {
-        message.ack();
-        malformed += 1;
-        continue;
-      }
-      const result = await runRevenueProbeLane([surface], db, deps);
-      if (!result.ok) {
-        message.retry();
-        retried += 1;
-        continue;
-      }
-      message.ack();
-      probed += 1;
-    } catch {
-      message.retry();
-      retried += 1;
-    }
-  }
-  return { probed, retried, malformed };
+): Promise<ConsumeResult> {
+  return consumeBatch(messages, {
+    parse: (body) => {
+      const id = (body as RevenueProbeMessage | null)?.surface_id;
+      if (typeof id !== "string" || !id) return null;
+      return deps.surfaceFor(id);
+    },
+    run: async (surface) => (await runRevenueProbeLane([surface], db, deps)).ok,
+  });
 }
