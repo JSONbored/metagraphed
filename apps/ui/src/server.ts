@@ -519,6 +519,13 @@ export const OG_SECTIONS: Record<string, OgCopy> = {
     subtitle: "Where each block's TAO goes, decomposed per subnet",
     eyebrow: "Explorer",
   },
+  "/revenue": {
+    title: "Revenue coverage",
+    // "not observed", not "0%" -- the card is the most-shared surface this
+    // page has, and it must not assert a measurement nobody made (#10478).
+    subtitle: "What each subnet earns outside Bittensor, against what it is emitted",
+    eyebrow: "Explorer",
+  },
   "/chain/blocks": {
     title: "Blocks",
     subtitle: "Recent Bittensor blocks, extrinsics and events",

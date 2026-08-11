@@ -85,7 +85,7 @@ function roundTao(value: unknown): number {
 // Sum in rao-integer BigInt space, not float space — mirrors
 // buildGlobalValidators' own toRaoBig/raoBigToTao pair and its cited
 // rationale (metagraphed#2922): summing many already-rounded per-UID
-// stake_tao/emission_tao values per hotkey with plain `+=` compounds
+// stake_tao/emission_tao COLUMN values per hotkey with plain `+=` compounds
 // float error across the accumulation even when each input is exact.
 function toRaoBig(tao: number): bigint {
   return BigInt(Math.round(tao * RAO_PER_TAO));
@@ -113,8 +113,11 @@ function primaryColdkey(coldkeys: Map<string, number>): string | null {
 export interface AccountsListSubnetEntry {
   netuid: number;
   uid: number;
-  stake_tao: number;
-  emission_tao: number;
+  /** ALPHA on every non-root subnet, and named so (#10514). The sibling
+   * `total_stake_tao` on the entry above IS priced TAO, and two fields sharing
+   * a `_tao` suffix across different units is the trap this rename removes. */
+  stake_alpha: number;
+  emission_alpha: number;
 }
 
 interface AccountAccumulator {
@@ -160,8 +163,8 @@ function buildAccountEntry(entry: AccountAccumulator): AccountsListEntry {
   const subnets = entry.subnets
     .sort(
       (a, b) =>
-        b.stake_tao - a.stake_tao ||
-        b.emission_tao - a.emission_tao ||
+        b.stake_alpha - a.stake_alpha ||
+        b.emission_alpha - a.emission_alpha ||
         a.netuid - b.netuid ||
         a.uid - b.uid,
     )
@@ -338,8 +341,8 @@ export function buildAccountsList(
     entry.subnets.push({
       netuid,
       uid,
-      stake_tao: roundTao(stake),
-      emission_tao: roundTao(emission),
+      stake_alpha: roundTao(stake),
+      emission_alpha: roundTao(emission),
     });
   }
 

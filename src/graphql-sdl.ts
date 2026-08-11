@@ -4849,8 +4849,10 @@ export const SDL = /* GraphQL */ `
   type ValidatorSubnet {
     netuid: Int!
     uid: Int
-    stake_tao: Float
-    emission_tao: Float
+    "ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the parent's total_stake_tao IS priced TAO, and the shared _tao suffix across different units was the trap."
+    stake_alpha: Float
+    "ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field."
+    emission_alpha: Float
     validator_trust: Float
     hotkey: String
     coldkey: String
@@ -4910,8 +4912,10 @@ export const SDL = /* GraphQL */ `
   type AccountSubnet {
     netuid: Int!
     uid: Int
-    stake_tao: Float
-    emission_tao: Float
+    "ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the parent's total_stake_tao IS priced TAO, and the shared suffix across different units was the trap."
+    stake_alpha: Float
+    "ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field."
+    emission_alpha: Float
   }
 
   type AccountSummary {
@@ -5409,8 +5413,10 @@ export const SDL = /* GraphQL */ `
     uid: Int
     role: String!
     active: Boolean!
-    stake_tao: Float!
-    emission_tao: Float!
+    "ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the sibling total_stake_tao on the parent IS priced TAO, and two fields sharing the _tao suffix across different units is a trap no description undoes."
+    stake_alpha: Float!
+    "ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field."
+    emission_alpha: Float!
     rank: Float
     trust: Float
     incentive: Float

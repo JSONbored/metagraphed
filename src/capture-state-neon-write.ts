@@ -21,6 +21,11 @@
 // same shape as #9634's last_ok, one table over.
 import { laneHealthStore } from "./lane-health-store.ts";
 import {
+  createBufferedPgSql,
+  neonWriteBufferEnabled,
+  type NeonWriteBufferNamespace,
+} from "./neon-write-buffer.ts";
+import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
   type NeonWriteResult,
@@ -63,9 +68,19 @@ async function runner(
     return { sql: null, laneDb, now, attempted: false };
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
+  // #10659: a flagged lane enqueues into the write-behind buffer instead of
+  // opening its own connection. Drop-in because PgUnsafe is one method, these
+  // statements carry no RETURNING, and the caller awaits the result bare --
+  // see src/neon-write-buffer.ts for how that was established. Defaults OFF
+  // (empty lane list), so this deploy changes nothing until a lane is named.
+  const buffer = env?.NEON_WRITE_BUFFER as NeonWriteBufferNamespace | undefined;
   const sql =
     deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+    (buffer && neonWriteBufferEnabled(env, lane)
+      ? createBufferedPgSql(buffer, lane)
+      : hyperdrive?.connectionString && ctx
+        ? createPgSql(hyperdrive, ctx)
+        : null);
   if (!sql) {
     // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op.
     await recordNeonWriteVerdict(

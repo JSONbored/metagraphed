@@ -28,6 +28,10 @@ import {
   TABLE_FRESHNESS_LANE,
   type FreshnessExpectation,
 } from "../src/table-freshness-watchdog.ts";
+// Imported, not spelled as a literal: the registry cluster's `coveredBy` has to
+// stay pinned to the lane the producer actually writes, so renaming that lane
+// breaks this test instead of silently orphaning four tables (#10657).
+import { REGISTRY_SYNC_LANE } from "../src/registry-sync-lane.ts";
 
 const HOUR = 60 * 60 * 1000;
 const NOW = 1_785_800_000_000;
@@ -231,13 +235,66 @@ describe("TABLE_FRESHNESS coverage", () => {
     }
   });
 
-  test("the registry cluster is NOT exempted", () => {
-    // #9779 is a live outage. Classifying these `null` to keep the lane green
-    // is precisely what a watchdog must never do -- quiet only when healthy.
-    for (const table of ["subnets", "surfaces", "providers"]) {
+  // WHAT REPLACED "the registry cluster is NOT exempted" (#10657).
+  //
+  // That test required these three to keep a time bound, because #9779 was a
+  // live outage and classifying them `null` to keep the lane green is exactly
+  // what a watchdog must never do. Both halves of its premise have since
+  // changed: #9779 is closed completed (2026-08-08), and its own closing ask --
+  // a lane_health lane for the cluster -- was built. The 48h bound meanwhile
+  // measured time since the last registry CHANGE, so a quiet registry breached
+  // it with nothing wrong.
+  //
+  // The protection has to survive that, or this is just the exemption the old
+  // test forbade with a nicer comment. So the invariant moves rather than
+  // disappearing: a registry-cluster table may drop its bound ONLY by naming
+  // the lane that answers the question instead, and that name is checked
+  // against the producer's own exported constant -- not a string literal that
+  // could rot the way `knownIssue: "#9779"` did.
+  test("the registry cluster names its covering lane instead of a bound", () => {
+    for (const table of [
+      "subnets",
+      "surfaces",
+      "providers",
+      "surface_history",
+    ]) {
       const e = TABLE_FRESHNESS[table];
-      assert.ok(e.maxAgeMs !== null, `${table} must stay alarmed`);
-      assert.equal(e.knownIssue, "#9779", `${table} should point at its issue`);
+      assert.equal(
+        e.maxAgeMs,
+        null,
+        `${table}: a change-driven producer cannot carry a time bound`,
+      );
+      assert.equal(
+        e.coveredBy,
+        REGISTRY_SYNC_LANE,
+        `${table} must name the lane that carries its liveness`,
+      );
+      // The dead citation this issue was about. #9779 is closed; pointing at it
+      // sent readers to a completed fix with no explanation for 57.2h.
+      assert.equal(
+        e.knownIssue,
+        undefined,
+        `${table} should not cite a closed issue`,
+      );
+    }
+  });
+
+  test("no table drops its bound without naming a covering lane", () => {
+    // The general form, so a future `maxAgeMs: null` cannot quietly mean
+    // "silenced". Either staleness is genuinely meaningless here -- the
+    // signup-driven and append-on-change tables, which say so in `reason` --
+    // or something else is watching and this says which.
+    for (const [table, e] of Object.entries(TABLE_FRESHNESS)) {
+      if (e.coveredBy === undefined) continue;
+      assert.equal(
+        e.maxAgeMs,
+        null,
+        `${table}: coveredBy is only meaningful without a bound`,
+      );
+      assert.ok(
+        e.reason.length > 0,
+        `${table}: a redirected table still owes a reason`,
+      );
     }
   });
 });

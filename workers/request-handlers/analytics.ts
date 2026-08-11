@@ -2763,7 +2763,7 @@ export async function handleChainFees(
       // pre-check, and the var has read "retired" since #9193 -- so the whole
       // block, its rate-limiter call included, had stopped executing. Three
       // independent facts make it unrevivable rather than merely parked: the
-      // flag is not in postgres-tier.ts's DATA_API_D1_FLAGS, so a "d1" value
+      // flag is not in postgres-tier.ts's DATA_API_FORWARD_FLAGS, so a "d1" value
       // would not forward either; DATA_API serves no chain-fees route to
       // forward TO; and no deployed flag anywhere holds "postgres" now.
       // Deleting it is what the route already does at runtime.

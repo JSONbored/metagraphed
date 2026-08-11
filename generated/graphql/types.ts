@@ -408,12 +408,14 @@ export type AccountPortfolioPosition = {
   __typename?: 'AccountPortfolioPosition';
   active: Scalars['Boolean']['output'];
   dividends?: Maybe<Scalars['Float']['output']>;
-  emission_tao: Scalars['Float']['output'];
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field. */
+  emission_alpha: Scalars['Float']['output'];
   incentive?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
   rank?: Maybe<Scalars['Float']['output']>;
   role: Scalars['String']['output'];
-  stake_tao: Scalars['Float']['output'];
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the sibling total_stake_tao on the parent IS priced TAO, and two fields sharing the _tao suffix across different units is a trap no description undoes. */
+  stake_alpha: Scalars['Float']['output'];
   trust?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
   /** Emission over stake for this position; null when stake is 0. */
@@ -621,9 +623,11 @@ export type AccountStakeMoves = {
 
 export type AccountSubnet = {
   __typename?: 'AccountSubnet';
-  emission_tao?: Maybe<Scalars['Float']['output']>;
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field. */
+  emission_alpha?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
-  stake_tao?: Maybe<Scalars['Float']['output']>;
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the parent's total_stake_tao IS priced TAO, and the shared suffix across different units was the trap. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
 };
 
@@ -6691,14 +6695,16 @@ export type ValidatorSubnet = {
   coldkey?: Maybe<Scalars['String']['output']>;
   consensus?: Maybe<Scalars['Float']['output']>;
   dividends?: Maybe<Scalars['Float']['output']>;
-  emission_tao?: Maybe<Scalars['Float']['output']>;
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from emission_tao in #10514, for the same reason as the sibling stake field. */
+  emission_alpha?: Maybe<Scalars['Float']['output']>;
   hotkey?: Maybe<Scalars['String']['output']>;
   incentive?: Maybe<Scalars['Float']['output']>;
   is_immunity_period?: Maybe<Scalars['Boolean']['output']>;
   netuid: Scalars['Int']['output'];
   rank?: Maybe<Scalars['Float']['output']>;
   registered_at_block?: Maybe<Scalars['Int']['output']>;
-  stake_tao?: Maybe<Scalars['Float']['output']>;
+  /** ALPHA on every non-root subnet, TAO on root. Renamed from stake_tao in #10514: the parent's total_stake_tao IS priced TAO, and the shared _tao suffix across different units was the trap. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
   take?: Maybe<Scalars['Float']['output']>;
   trust?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
@@ -7845,12 +7851,12 @@ export type AccountPortfolioResolvers<ContextType = GqlContext, ParentType exten
 export type AccountPortfolioPositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPortfolioPosition'] = ResolversParentTypes['AccountPortfolioPosition']> = ResolversObject<{
   active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  emission_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   role?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  stake_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stake_alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   yield?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -8019,9 +8025,9 @@ export type AccountStakeMovesResolvers<ContextType = GqlContext, ParentType exte
 }>;
 
 export type AccountSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountSubnet'] = ResolversParentTypes['AccountSubnet']> = ResolversObject<{
-  emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
@@ -11467,14 +11473,14 @@ export type ValidatorSubnetResolvers<ContextType = GqlContext, ParentType extend
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   is_immunity_period?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;

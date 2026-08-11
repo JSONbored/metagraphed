@@ -327,10 +327,11 @@ describe("TAO-priced portfolio totals (#9051)", () => {
     // under-reporting beats mis-denominating).
     // overall_yield is priced/priced -- dimensionally coherent (25/450).
     assert.equal(out.overall_yield, Math.round((25 / 450) * 1e9) / 1e9);
-    // Per-position stake_tao stays the RAW single-subnet figure: it is that
-    // subnet's own alpha count and is not a cross-subnet sum.
+    // Per-position stake_alpha stays the RAW single-subnet figure: it is that
+    // subnet's own alpha count and is not a cross-subnet sum. The name says so
+    // since #10514, because it sits beside a total_stake_tao that IS priced.
     const sn1 = out.positions.find((p) => p.netuid === 1)!;
-    assert.equal(sn1.stake_tao, 800);
+    assert.equal(sn1.stake_alpha, 800);
     // The priceless position is still listed -- exclusion is from the totals.
     assert.equal(out.position_count, 3);
   });

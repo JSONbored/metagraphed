@@ -7772,8 +7772,8 @@ export async function ingestTaoUsdIndex(
 export default {
   // #8600: the data-api Worker's first cron. It lives here rather than on the
   // api Worker for the same locality reason it always has -- this Worker owns
-  // the tick end to end (RPC reads + the tao_usd_index write, now on the
-  // shared user-state D1) -- routing a write through a service binding to
+  // the tick end to end (RPC reads + the tao_usd_index write, on Neon through
+  // Hyperdrive) -- routing a write through a service binding to
   // reach another Worker is the hop #4832 removed, not one to add back.
   async scheduled(
     controller: ScheduledController,
@@ -7781,7 +7781,10 @@ export default {
     ctx: ExecutionContext,
   ) {
     if (controller?.cron === TABLE_FRESHNESS_CRON) {
-      // D1 only. It reads MAX(<timestamp>) per table and writes one verdict.
+      // Reads MAX(<timestamp>) per table and writes one verdict, all on Neon
+      // through Hyperdrive. This line read "D1 only" until #10223 -- which is
+      // exactly the kind of stale marker that sends an investigation looking
+      // for a dead store instead of at the verdict (#10635).
       const bag = env as unknown as Record<string, unknown>;
       // The TAO/USD index rides this cron rather than its own (#8603). Its
       // staleness bound already lives in TABLE_FRESHNESS, the store is already
@@ -7796,10 +7799,12 @@ export default {
       return freshness;
     }
     if (controller?.cron === NEON_PRUNE_CRON) {
-      // Neon's own retention for the rolling windows (#9891). Independent of
-      // D1's prune by design -- two stores computing the same boundary from
-      // the same constant stay aligned, whereas one waiting on the other stops
-      // pruning the moment the other breaks.
+      // Neon's retention for the rolling windows (#9891). Built as a prune
+      // independent of D1's, back when there were two stores computing the same
+      // boundary from the same constant; D1 is gone, so this is now simply the
+      // prune. Kept separate from the lane that produces the rows it trims for
+      // the original reason -- a prune that waits on its producer stops pruning
+      // the moment the producer breaks.
       return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
     }
     if (controller?.cron !== TAO_USD_INDEX_CRON) {

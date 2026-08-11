@@ -23,6 +23,7 @@ import { Route as GapsRouteImport } from './routes/gaps'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as LeaderboardsRouteImport } from './routes/leaderboards'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
+import { Route as RevenueRouteImport } from './routes/revenue'
 import { Route as SchemasRouteImport } from './routes/schemas'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatusRouteImport } from './routes/status'
@@ -132,6 +133,11 @@ const LeaderboardsRoute = LeaderboardsRouteImport.update({
 const PortfolioRoute = PortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevenueRoute = RevenueRouteImport.update({
+  id: '/revenue',
+  path: '/revenue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SchemasRoute = SchemasRouteImport.update({
@@ -350,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
@@ -404,6 +411,7 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
@@ -461,6 +469,7 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/leaderboards': typeof LeaderboardsRoute
   '/portfolio': typeof PortfolioRoute
+  '/revenue': typeof RevenueRoute
   '/schemas': typeof SchemasRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
@@ -519,6 +528,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
@@ -629,6 +640,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/leaderboards'
     | '/portfolio'
+    | '/revenue'
     | '/schemas'
     | '/settings'
     | '/status'
@@ -686,6 +698,7 @@ export interface RootRouteChildren {
   HealthRoute: typeof HealthRoute
   LeaderboardsRoute: typeof LeaderboardsRoute
   PortfolioRoute: typeof PortfolioRoute
+  RevenueRoute: typeof RevenueRoute
   SchemasRoute: typeof SchemasRoute
   SettingsRoute: typeof SettingsRoute
   StatusRoute: typeof StatusRoute
@@ -814,6 +827,13 @@ declare module '@tanstack/react-router' {
       path: '/portfolio'
       fullPath: '/portfolio'
       preLoaderRoute: typeof PortfolioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revenue': {
+      id: '/revenue'
+      path: '/revenue'
+      fullPath: '/revenue'
+      preLoaderRoute: typeof RevenueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/schemas': {
@@ -1154,6 +1174,7 @@ const rootRouteChildren: RootRouteChildren = {
   HealthRoute: HealthRoute,
   LeaderboardsRoute: LeaderboardsRoute,
   PortfolioRoute: PortfolioRoute,
+  RevenueRoute: RevenueRoute,
   SchemasRoute: SchemasRoute,
   SettingsRoute: SettingsRoute,
   StatusRoute: StatusRoute,

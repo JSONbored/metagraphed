@@ -787,16 +787,19 @@ function buildGlobalValidatorEntry(
   // pricing at exactly 1:1, so subtracting the raw root row still yields the
   // priced alpha leg -- alpha_stake_tao is now genuinely TAO, the current
   // market value of the non-root delegations the priced total covers.
+  // `stake_alpha` since #10514, and root's row is the one case where that name
+  // is a TAO figure -- netuid 0 stake IS TAO, which is exactly why it can be
+  // subtracted from the priced total without conversion.
   const rootSubnet = entry.subnets.find((s) => s.netuid === 0) ?? null;
   const rootStakeRao = rootSubnet
-    ? toRaoBig(rootSubnet.stake_tao as number)
+    ? toRaoBig(rootSubnet.stake_alpha as number)
     : 0n;
   const alphaStakeRao = entry.stakeTotalRao - rootStakeRao;
   const subnets = entry.subnets
     .sort(
       (a, b) =>
-        (b.stake_tao as number) - (a.stake_tao as number) ||
-        (b.emission_tao as number) - (a.emission_tao as number) ||
+        (b.stake_alpha as number) - (a.stake_alpha as number) ||
+        (b.emission_alpha as number) - (a.emission_alpha as number) ||
         (a.netuid as number) - (b.netuid as number) ||
         (a.uid as number) - (b.uid as number),
     )
@@ -1028,8 +1031,11 @@ export function buildGlobalValidators(
     entry.subnets.push({
       netuid,
       uid,
-      stake_tao: roundTao(stake),
-      emission_tao: roundTao(emission),
+      // ALPHA on every non-root subnet, and named so since #10514: the entry
+      // carries a PRICED total_stake_tao, and a row field sharing that suffix
+      // across a different unit is the trap the rename removes.
+      stake_alpha: roundTao(stake),
+      emission_alpha: roundTao(emission),
       validator_trust: round(trust),
     });
   }
@@ -1352,7 +1358,25 @@ export function buildValidatorDetail(
       latestCapturedAt = capturedAt;
       latestBlockNumber = blockNumber;
     }
-    subnets.push({ netuid, ...neuron });
+    // #10514: this ROW is alpha on every non-root subnet, and the entry it
+    // sits in carries a PRICED total_stake_tao. Two fields sharing the `_tao`
+    // suffix across different units is the trap the rename removes -- but only
+    // HERE. `formatNeuron`'s own output also feeds /subnets/{netuid}/metagraph,
+    // where there is no priced total in the payload and #8945's reasoning (the
+    // netuid denominates the row, and the chain calls the column stake_tao)
+    // still holds. So the projection is at this call site, not in the shared
+    // formatter.
+    const {
+      stake_tao: rowStake,
+      emission_tao: rowEmission,
+      ...rest
+    } = neuron as Record<string, unknown>;
+    subnets.push({
+      netuid,
+      ...rest,
+      stake_alpha: rowStake ?? null,
+      emission_alpha: rowEmission ?? null,
+    });
   }
 
   const avgTrust =

@@ -1463,6 +1463,30 @@ export interface ExceptionEvent {
   queryKind?: string;
   queryShape?: string;
   /**
+   * An extra grouping key, appended to the fingerprint between `route` and the
+   * error type. Use it ONLY where one route legitimately reports N independent
+   * subjects, and set it to the thing that makes them independent.
+   *
+   * WHY THIS EXISTS. The fingerprint is also the storm guard's throttle key, so
+   * two different findings that share a route share a window — and the second
+   * one is dropped as if it were a repeat of the first. `watchdog:lane-alarm`
+   * was doing exactly that: it emits once per alarming lane in a single tick,
+   * every emit fingerprinted `watchdog:lane-alarm:Error`, and the 5-minute
+   * window meant only the first lane in each tick was ever recorded. Measured
+   * before the fix: exactly 1 event per tick for 6 consecutive hours while the
+   * lane-alarm verdict itself read "4 alarming".
+   *
+   * KEEP THE VALUE A CLOSED SET. It multiplies both the number of PostHog
+   * issues and the number of throttle windows, so a request-derived value
+   * (an id, a path, a message) belongs in `queryShape`, not here. A declared
+   * lane name is fine; anything a caller could supply unbounded is not.
+   * `sanitizeLabel` bounds the length but cannot bound the cardinality.
+   *
+   * Omitted means the fingerprint is unchanged, so no existing capture site
+   * moves issues.
+   */
+  fingerprintDetail?: string;
+  /**
    * This failure is an EXPECTED operational condition, not a code defect.
    *
    * Set it and the occurrence is recorded as a `usage_event` (`ok: false`,
@@ -1846,7 +1870,16 @@ export async function recordExceptionEvent(
     // error type" into one PostHog issue -- matching the route/mcp_tool
     // tag Sentry already gets at these sites, so the two dashboards read
     // consistently. Falls back to "unknown" only if neither is supplied.
-    const fingerprint = `${route ?? mcpTool ?? "unknown"}:${type}`;
+    //
+    // `fingerprintDetail` splits a route that reports several independent
+    // subjects (see its doc comment). It is NOT folded into `route`, because
+    // route mirrors UsageEvent's vocabulary so insights filter consistently
+    // across usage_event/$mcp_tool_call/$exception -- a lane name is not a
+    // route, and putting it there would break that mirroring.
+    const detail = sanitizeLabel(event.fingerprintDetail);
+    const fingerprint = `${route ?? mcpTool ?? "unknown"}${
+      detail === undefined ? "" : `:${detail}`
+    }:${type}`;
 
     // Throttled on the same key PostHog groups by, so a storm of one fault
     // costs one event per window while a genuinely new fault is never delayed.

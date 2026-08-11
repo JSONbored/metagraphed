@@ -2861,11 +2861,20 @@ for (const [route, assertion, options = {}] of checks) {
   assertion(body);
 }
 
-// #6359: production wrangler.jsonc flips eight METAGRAPH_*_SOURCE flags to
-// "postgres", so the live Worker serves these routes via tryPostgresTier →
-// DATA_API. The cold harness above never sets those flags, so AJV only saw the
-// D1/empty fallback. Validate one representative route per flag with a DATA_API
-// mock whose body is built by the same src/* builders workers/data-api.ts uses.
+// #6359: eight METAGRAPH_*_SOURCE flags make the live Worker serve their routes
+// via tryPostgresTier → DATA_API rather than answering from the cold artifact.
+// The cold harness above never sets them, so AJV only ever saw the empty
+// fallback. Validate one representative route per flag with a DATA_API mock
+// whose body is built by the same src/* builders workers/data-api.ts uses.
+//
+// THE VALUE USED BELOW IS "postgres", WHICH NO DEPLOYMENT SETS. Measured
+// 2026-08-11 against the deployed Workers, not just the configs: metagraphed
+// reads "retired" x8 and "d1" x5, metagraphed-data-api reads "d1" x3, and
+// nothing anywhere reads "postgres". So this exercises the forwarding path
+// through the one disjunct production cannot take -- the three flags that
+// really forward do so via "d1" plus DATA_API_FORWARD_FLAGS membership, which
+// no case here covers. The AJV shapes it proves are still worth proving; the
+// gap is that the gate does not test the branch production runs. #10223.
 {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const OBSERVED_AT_MS = 1_750_009_000_000;
@@ -3082,7 +3091,7 @@ for (const [route, assertion, options = {}] of checks) {
   assert.equal(
     postgresTierChecks.length,
     8,
-    "postgres-tier AJV coverage must include all 8 production SOURCE flags",
+    "postgres-tier AJV coverage must include all 8 flags that gate a DATA_API leg",
   );
 
   for (const {
@@ -3124,8 +3133,106 @@ for (const [route, assertion, options = {}] of checks) {
     assertion(body);
   }
 
+  // THE BRANCH PRODUCTION ACTUALLY RUNS (#10660). Every case above drives the
+  // gate with "postgres", and no deployment sets that: measured 2026-08-11
+  // against the deployed Workers, `metagraphed` reads "retired" x8 + "d1" x5,
+  // `metagraphed-data-api` reads "d1" x3, and nothing reads "postgres". So the
+  // forwarding proven above is proven through the one disjunct production
+  // cannot take, while the live one -- `"d1"` AND membership in
+  // postgres-tier.ts's DATA_API_FORWARD_FLAGS -- had no coverage at all.
+  //
+  // Both directions matter, and the negative is the load-bearing one:
+  //
+  //   forwards     the three flags in the set must forward on "d1", or three
+  //                live routes silently start serving the empty fallback.
+  //   does NOT     a flag outside the set must not forward on "d1". That is
+  //                the condition src/health-status-live.ts argues at length
+  //                and nothing pinned. Widening the set (or fat-fingering a
+  //                flag name into it) would make those routes forward, take a
+  //                non-2xx, and fire capturePostgresTierFallback on every
+  //                request -- with this gate still green.
+  //
+  // Mirrored rather than imported because the real set is module-private to
+  // workers/postgres-tier.ts. The membership assertion below is what keeps the
+  // mirror honest: add a flag there without adding a case here and it fails.
+  const d1ForwardFlags = new Set<string>([
+    "METAGRAPH_NEURONS_SOURCE",
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+  ]);
+  assert.equal(
+    postgresTierChecks.filter((check) => d1ForwardFlags.has(check.flag)).length,
+    d1ForwardFlags.size,
+    'every DATA_API_FORWARD_FLAGS flag needs a case here to drive at "d1"',
+  );
+
+  for (const {
+    flag,
+    route,
+    upstreamPath,
+    data,
+    assertion,
+  } of postgresTierChecks) {
+    const shouldForward = d1ForwardFlags.has(flag);
+    let capturedPath: string | null = null;
+    const d1Env = createLocalArtifactEnv({
+      [flag]: "d1",
+      DATA_API: {
+        async fetch(request: Request) {
+          const url = new URL(request.url);
+          capturedPath = `${url.pathname}${url.search}`;
+          return new Response(JSON.stringify(data), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    });
+    const response = await handleRequest(
+      new Request(`https://metagraph.sh${route}`),
+      d1Env as unknown as Env,
+      {},
+    );
+    if (!shouldForward) {
+      // Only that DATA_API was never asked. The status is deliberately not
+      // asserted: what this route answers with no tier is the cold-artifact
+      // path's business, and pinning it here would couple this check to it.
+      assert.equal(
+        capturedPath,
+        null,
+        `${flag} at "d1": must NOT forward (absent from DATA_API_FORWARD_FLAGS)`,
+      );
+      continue;
+    }
+    assert.equal(
+      response.status,
+      200,
+      `${flag} ${route} at "d1": expected 200`,
+    );
+    assert.equal(
+      capturedPath,
+      upstreamPath,
+      `${flag} at "d1": DATA_API must receive the forwarded path`,
+    );
+    const body = (await response.json()) as Row;
+    assert.equal(
+      body.ok,
+      true,
+      `${flag} ${route} at "d1": expected ok envelope`,
+    );
+    assert.equal(
+      body.schema_version,
+      1,
+      `${flag} ${route} at "d1": schema_version`,
+    );
+    validateWorkerResponse(route, body);
+    assertion(body);
+  }
+
   console.log(
-    `Validated ${postgresTierChecks.length} Postgres-tier Worker API route(s).`,
+    `Validated ${postgresTierChecks.length} Postgres-tier Worker API route(s) ` +
+      `at "postgres", plus ${d1ForwardFlags.size} forwarding and ` +
+      `${postgresTierChecks.length - d1ForwardFlags.size} non-forwarding at "d1".`,
   );
 }
 

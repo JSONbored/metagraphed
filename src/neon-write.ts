@@ -34,7 +34,12 @@
 // this records on every attempt: metagraphed#9698 reads it, so a Neon store
 // that stops accepting writes surfaces the same way any other lane does.
 
-import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import {
+  recordLaneVerdict,
+  type LaneHealthDb,
+  type LaneVerdict,
+} from "./lane-health.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 
 /**
  * Postgres' hard ceiling on bound parameters in one statement.
@@ -297,6 +302,83 @@ export async function pruneKeysInNeon(
 }
 
 /**
+ * How long an UNCHANGED `ok` verdict may be re-asserted without writing again.
+ *
+ * TEN MINUTES, against a bound of two hours. `lane_health`'s own freshness
+ * expectation is `2 * HOUR` (src/table-freshness-watchdog.ts, "every watchdog
+ * writes here; silence means they all stopped"), so a heartbeat at ten minutes
+ * sits twelve ticks inside the contract that already exists -- the window can
+ * be widened later without renegotiating anything, and a lane that genuinely
+ * dies still trips the same watchdog at the same threshold it always did.
+ */
+export const NEON_WRITE_VERDICT_COALESCE_MS = 10 * 60 * 1000;
+
+/**
+ * The last verdict actually WRITTEN per lane, per isolate.
+ *
+ * Per-isolate is the honest description and not a caveat to apologise for: a
+ * fresh isolate simply writes once more than it strictly had to, which is the
+ * safe direction. The map is bounded by the lane set (~50 compile-time
+ * constants, never user input), so it cannot grow without bound.
+ *
+ * It gates WRITES ONLY. Every read of lane health still goes to the database,
+ * so a stale or missing entry here can never produce a wrong verdict -- at
+ * worst it produces a redundant row.
+ */
+const lastWrittenVerdict = new Map<
+  string,
+  { verdict: LaneVerdict; checkedAt: number }
+>();
+
+/**
+ * Forget which verdicts have been written, so the next one is unconditional.
+ *
+ * Exported for tests, which drive many mirror runs through one isolate on a
+ * frozen clock — a shape production never has, and one where a coalesced write
+ * looks like a missing write. Registered centrally too, so the memo cannot leak
+ * ACROSS test files (see src/module-state-registry.ts).
+ */
+export function resetNeonWriteVerdictMemo(): void {
+  lastWrittenVerdict.clear();
+}
+
+registerModuleStateReset("src/neon-write.ts", resetNeonWriteVerdictMemo);
+
+/**
+ * Whether this verdict has to be written, or is a repeat inside the window.
+ *
+ * Pure and exported so the policy can be asserted directly rather than
+ * inferred from a mock's call count -- the same reason `pgValuesClause` above
+ * is exported.
+ *
+ * THREE THINGS ALWAYS WRITE, and the order matters less than the fact that
+ * none of them can be coalesced away:
+ *
+ *   1. A FAILURE. Never suppressed, however often it repeats. Failures are
+ *      rare, so they cost no volume, and their `detail` carries the reason
+ *      triage actually needs -- withholding it for up to ten minutes would
+ *      trade the only thing worth having for nothing.
+ *   2. A CHANGED VERDICT. `ok` -> `stale` is the transition every watchdog
+ *      exists to catch, and delaying it by even one tick would make this a
+ *      suppression rather than a coalescing.
+ *   3. A LANE THIS ISOLATE HAS NOT SEEN, or one whose clock moved backwards
+ *      (a replay, a fixed clock in a test, two isolates disagreeing). Unknown
+ *      state resolves to "write", never to "skip".
+ */
+export function shouldWriteNeonWriteVerdict(
+  previous: { verdict: LaneVerdict; checkedAt: number } | undefined,
+  verdict: LaneVerdict,
+  nowMs: number,
+  coalesceMs: number = NEON_WRITE_VERDICT_COALESCE_MS,
+): boolean {
+  if (verdict !== "ok") return true;
+  if (!previous) return true;
+  if (previous.verdict !== verdict) return true;
+  if (nowMs < previous.checkedAt) return true;
+  return nowMs - previous.checkedAt >= coalesceMs;
+}
+
+/**
  * Record one Neon write's outcome as a lane verdict.
  *
  * THIS IS THE INVARIANT THE PILOT WAS MISSING. A store with no lane is
@@ -307,6 +389,27 @@ export async function pruneKeysInNeon(
  * `age_ms` is deliberately null: this is a write outcome, and there is no
  * meaningful "how far behind" to report from inside a single write. Inventing
  * one would put a fabricated number in the column triage reads.
+ *
+ * ## Why this coalesces, and why that is not a weakened invariant
+ *
+ * The invariant above is "a Neon that stops accepting writes surfaces as a
+ * lane", and it is satisfied by the NEWEST row per lane -- which is the only
+ * row `loadLatestLaneHealth` ever reads (src/lane-health.ts: `WHERE (lane,
+ * checked_at) IN (SELECT lane, MAX(checked_at) ...)`). Every additional row
+ * written between two reads is written to be discarded.
+ *
+ * That cost was invisible while this was dual-write bookkeeping and became the
+ * dominant one once Neon was the sole store: measured 2026-08-11, `lane_health`
+ * took 8,953 writes in six hours, a maximum inter-write gap of 16.7s, and every
+ * one of them carried a second statement (the retention DELETE inside
+ * `recordLaneVerdict`). A gap that never reaches 60s is a compute that can
+ * never autosuspend, at ~2.8% utilisation -- see #10659.
+ *
+ * So the repetition goes and the signal stays: failures and transitions write
+ * immediately, and a steady `ok` heartbeats. `detail` is the one thing that
+ * lags -- a coalesced `ok` holds the previous row count for up to the window --
+ * and it lags deliberately, because it changes on EVERY write (row counts) and
+ * keying on it would coalesce exactly nothing.
  */
 export async function recordNeonWriteVerdict(
   db: LaneHealthDb | null | undefined,
@@ -314,15 +417,29 @@ export async function recordNeonWriteVerdict(
   result: NeonWriteResult,
   nowMs: number,
 ): Promise<boolean> {
-  return recordLaneVerdict(db, {
-    lane: `neon:${lane}`,
-    verdict: result.ok ? "ok" : "stale",
+  const key = `neon:${lane}`;
+  const verdict: LaneVerdict = result.ok ? "ok" : "stale";
+  if (!shouldWriteNeonWriteVerdict(lastWrittenVerdict.get(key), verdict, nowMs))
+    // TRUE, not false. `false` is this function's word for "the verdict is NOT
+    // on record", and a coalesced verdict IS on record -- an identical row
+    // inside the window says the same thing. No caller reads the return today
+    // (every call site awaits it bare), which is exactly why the value has to
+    // be right now: the first one that does will be reading it as health.
+    return true;
+  const written = await recordLaneVerdict(db, {
+    lane: key,
+    verdict,
     age_ms: null,
     detail: result.ok
       ? `${result.rows} row(s) in ${result.statements} statement(s)`
       : `${result.rows} row(s) written before failure: ${result.reason ?? "unknown"}`,
     checked_at: nowMs,
   });
+  // Only a row that LANDED may suppress the next one. Recording the attempt
+  // instead would let a database outage silence the lane for the whole window,
+  // which is precisely the lane going quiet when it matters most.
+  if (written) lastWrittenVerdict.set(key, { verdict, checkedAt: nowMs });
+  return written;
 }
 
 /**
