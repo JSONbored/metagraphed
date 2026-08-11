@@ -6763,11 +6763,37 @@ const rootValue = {
         },
       });
     }
+    // Both changes: #10802's toRow() typing over the tier deletion's shape, plus
+    // the entity-label join below.
     const data =
       answer?.kind === "answer"
         ? toRow(answer.data)
         : toRow(buildAccountSummary(ss58, {}));
-    return accountSummaryNode(data, ss58);
+    // #6739's entity labels, joined HERE. handleAccount and get_account both do
+    // this join; this resolver never did -- it read `labels` out of the Postgres
+    // tier's own payload, which is where data-api put them. That flag reads
+    // "retired" and cannot forward (#10190), so `account.labels` has been null
+    // over GraphQL while REST served the same account's exchange label. The
+    // enumerated return shape is exactly what #10214 was about.
+    //
+    // A missing or cold artifact degrades to an empty list, matching the
+    // never-404 contract the sibling surfaces keep.
+    const entitiesArtifact = await readArtifact(
+      context.env,
+      ENTITY_LABELS_ARTIFACT,
+    );
+    return accountSummaryNode(
+      {
+        ...data,
+        labels: labelsForSs58(
+          entityLabelsIndex(
+            entitiesArtifact.ok ? toRow(entitiesArtifact.data)?.entities : [],
+          ),
+          ss58,
+        ),
+      },
+      ss58,
+    );
   },
 
   async account_prometheus(

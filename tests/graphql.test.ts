@@ -24302,23 +24302,34 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       `{ account(ss58: "${SS58}") {
           schema_version labels { name category url source_urls }
         } }`,
-      api(
-        {
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 0,
-          labels: [
-            {
-              name: "Example Exchange",
-              category: "exchange",
-              notes: null,
-              url: "https://example.com",
-              source_urls: ["https://example.com/proof"],
-            },
-          ],
+      // #10190: the tier is retired, and these two fields never came from the same
+      // place anyway. `schema_version` is the composer's; the LABELS are an
+      // additive join over the baked entities.json artifact (#6739), which is the
+      // read this now doubles -- one join site, and a missing artifact degrades to
+      // an empty label list rather than failing the card.
+      {
+        METAGRAPH_ARCHIVE: {
+          async get(key: string) {
+            if (!key.includes("entities")) return null;
+            return {
+              async json() {
+                return {
+                  entities: [
+                    {
+                      ss58: SS58,
+                      name: "Example Exchange",
+                      category: "exchange",
+                      notes: null,
+                      url: "https://example.com",
+                      source_urls: ["https://example.com/proof"],
+                    },
+                  ],
+                };
+              },
+            };
+          },
         },
-        events,
-      ),
+      } as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.equal(body.data.account.schema_version, 1);
