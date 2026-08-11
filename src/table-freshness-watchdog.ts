@@ -67,6 +67,31 @@ export interface FreshnessExpectation {
    * exist.
    */
   producer?: ProducerLane;
+  /**
+   * Read the stamp from a DIFFERENT table that carries the same value.
+   *
+   * WHY A TABLE WOULD NOT ANSWER ITS OWN QUESTION. `captured_at` is the
+   * freshness stamp, so it changes on every upsert -- which means it can never
+   * be indexed on an upsert-heavy table without cost. Postgres skips the HOT
+   * path whenever an indexed column changes, and `account_position_daily`
+   * takes ~10M updates per 3.5 days at a 33.6% HOT rate; an index on
+   * `captured_at` would drive that toward zero and add ~10M index writes to
+   * save the ~24 reads a day this sweep makes. So the choice is not
+   * "index or scan", it is "scan a 497 MB table, or ask something smaller".
+   *
+   * Every lane in PASS_TABLES (src/pass-completeness.ts) already writes a
+   * `*_passes` row per producer pass, carrying the same `captured_at`.
+   * Measured 2026-08-11, `neurons_passes` is 88 kB against
+   * `account_position_daily`'s 497 MB and reports the identical value.
+   *
+   * NOT A FREE SUBSTITUTION, which is why crossCheckSql exists below. A pass
+   * row and the rows it describes are two different writes, so a stamp read
+   * from the pass table asserts "a pass was recorded", not "its rows landed" --
+   * and #9530 is this repo's own case of a freshness signal advancing over data
+   * that had not arrived. The sweep takes the cheap read; the cross-check
+   * proves the two agree and says so out loud when they do not.
+   */
+  stampFrom?: string;
   /** An open issue explaining a table that is ALREADY breaching, so the alarm
    * points somewhere instead of merely being loud. */
   knownIssue?: string;
@@ -162,6 +187,10 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "8 ticks of METAGRAPH_POLL_SECS (15 min)",
     producer: "metagraph",
+    // The lane this pass table is FOR (src/pass-completeness.ts:57). Redirected
+    // with its two siblings so all three read one 88 kB table rather than three
+    // scans of the same pass.
+    stampFrom: "neurons_passes",
   },
   // Added by 0030 after this map was written -- the same coverage test that
   // caught 0029's two tables caught this one, which is what it is for.
@@ -178,6 +207,11 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "derived from the same sync",
     producer: "metagraph",
+    // 486 MB, and MAX(captured_at) over it measured 850 ms / 40,344 buffers on
+    // a parallel sequential scan. One metagraph pass writes neurons,
+    // neuron_daily and account_position_daily from the same clock read, so
+    // neurons_passes (88 kB) carries this exact stamp.
+    stampFrom: "neurons_passes",
   },
   account_position_daily: {
     column: "captured_at",
@@ -185,6 +219,8 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: missedTicksMs("metagraph", 8),
     reason: "derived from the same sync",
     producer: "metagraph",
+    // 497 MB, 551 ms / 32,632 buffers. Same pass, same stamp.
+    stampFrom: "neurons_passes",
   },
   subnet_snapshots: {
     column: "captured_at",
@@ -231,6 +267,8 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: missedTicksMs("account_balances", 4),
     reason: "4 ticks of ACCOUNT_BALANCES_POLL_SECS (6h)",
     producer: "account_balances",
+    // 74 MB scanned for a stamp account_balances_passes holds in 80 kB.
+    stampFrom: "account_balances_passes",
   },
   account_balances_passes: {
     column: "captured_at",
@@ -480,8 +518,84 @@ export function freshnessSql(
   spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
 ): string {
   return tables
-    .map((t) => `SELECT '${t}' AS t, MAX(${spec[t].column}) AS mx FROM ${t}`)
+    .map(
+      (t) =>
+        // The label stays `t` -- the caller asked about THIS table and every
+        // downstream map keys on it. Only the FROM moves, so a stampFrom entry
+        // is invisible to staleTables, the verdict, and the alarm text.
+        `SELECT '${t}' AS t, MAX(${spec[t].column}) AS mx FROM ${spec[t].stampFrom ?? t}`,
+    )
     .join(" UNION ALL ");
+}
+
+/**
+ * The other half of `stampFrom`: does the cheap stamp still equal the real one?
+ *
+ * One row per redirected table, carrying both values, so a divergence is
+ * reported as the two numbers rather than as a boolean. Runs on its own cadence
+ * (hourly, beside the sweep) rather than per tick -- the whole point of the
+ * redirect is not to scan these tables every time, and a cross-check that ran
+ * as often as the sweep would give the saving straight back.
+ *
+ * EQUALITY, NOT "CLOSE ENOUGH". Both sides are written by the same producer
+ * pass from the same clock read, so they are equal or something is wrong; a
+ * tolerance here would only be a way to not notice.
+ */
+export function crossCheckSql(
+  spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+): string {
+  return Object.entries(spec)
+    .filter(([, e]) => e.stampFrom && e.column !== "")
+    .map(
+      ([t, e]) =>
+        `SELECT '${t}' AS t, ` +
+        `(SELECT MAX(${e.column}) FROM ${e.stampFrom}) AS cheap, ` +
+        `(SELECT MAX(${e.column}) FROM ${t}) AS actual`,
+    )
+    .sort()
+    .join(" UNION ALL ");
+}
+
+/** The entries that read someone else's stamp, and therefore need proving. */
+export function redirectedTables(
+  spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+): [string, FreshnessExpectation][] {
+  return Object.entries(spec).filter(
+    ([, e]) => e.stampFrom && e.column !== "",
+  ) as [string, FreshnessExpectation][];
+}
+
+export interface StampDivergence {
+  table: string;
+  stampFrom: string;
+  cheap: number | null;
+  actual: number | null;
+}
+
+/**
+ * Rows where the redirected stamp and the table's own disagree.
+ *
+ * A null on EITHER side counts as a divergence rather than being skipped: an
+ * empty pass table beside a populated fact table is exactly the "the redirect
+ * is reading nothing" failure, and skipping nulls would make it look healthy.
+ * The one exception is both-null, which is a table nothing has written yet.
+ */
+export function stampDivergences(
+  rows: readonly Record<string, unknown>[],
+  spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+): StampDivergence[] {
+  const out: StampDivergence[] = [];
+  for (const row of rows) {
+    const table = String(row.t ?? "");
+    const entry = spec[table];
+    if (!entry?.stampFrom) continue;
+    const cheap = row.cheap == null ? null : Number(row.cheap);
+    const actual = row.actual == null ? null : Number(row.actual);
+    if (cheap == null && actual == null) continue;
+    if (cheap === actual) continue;
+    out.push({ table, stampFrom: entry.stampFrom, cheap, actual });
+  }
+  return out;
 }
 
 export interface StaleTable {
@@ -562,11 +676,51 @@ export interface FreshnessDeps {
   spec?: Readonly<Record<string, FreshnessExpectation>>;
 }
 
+/**
+ * Ask whether every redirected stamp still equals the table's own.
+ *
+ * ITS OWN FUNCTION, not inline in the sweep, because the sweep's early returns
+ * make the failure paths here unreachable from outside — and these are exactly
+ * the paths that matter. `failed` and `divergences.length > 0` are different
+ * findings and both have to be provable in a test.
+ *
+ * Resolves its own store rather than taking a db, so an environment that cannot
+ * reach one produces `failed` rather than a crash: no store means the redirect
+ * went unverified this tick, which is a thing to report, not a thing to throw.
+ */
+export async function crossCheckStamps(
+  env: Record<string, unknown> | null | undefined,
+  deps: FreshnessDeps = {},
+  spec: Readonly<Record<string, FreshnessExpectation>> = TABLE_FRESHNESS,
+): Promise<{ divergences: StampDivergence[]; failed: boolean }> {
+  const redirected = redirectedTables(spec);
+  if (redirected.length === 0) return { divergences: [], failed: false };
+  const involved = redirected.flatMap(([t, e]) => [t, e.stampFrom as string]);
+  const db = deps.db ?? (readStore(env, involved) as FreshnessDb | undefined);
+  try {
+    const result = await db?.prepare(crossCheckSql(spec)).all();
+    if (!result) throw new Error("no result");
+    return {
+      divergences: stampDivergences(
+        (result.results ?? []) as Record<string, unknown>[],
+        spec,
+      ),
+      failed: false,
+    };
+  } catch {
+    return { divergences: [], failed: true };
+  }
+}
+
 export interface FreshnessOutcome {
   attempted: boolean;
   stale?: StaleTable[];
   checked?: number;
   reason?: string;
+  /** Redirected tables whose pass stamp no longer matches their own, empty when
+   * they all agree. Surfaced on the outcome as well as in the lane detail so a
+   * caller can act on the pair of numbers rather than parse the prose. */
+  divergences?: StampDivergence[];
 }
 
 /**
@@ -665,6 +819,43 @@ export async function runTableFreshnessWatchdog(
   }
 
   const stale = staleTables(newest, now(), spec);
+
+  // THE OTHER HALF OF `stampFrom`. Every redirected table above answered from
+  // its pass companion instead of itself, which is only sound while the two
+  // agree. This is the hour's proof that they do -- one UNION carrying both
+  // numbers per redirected table, and the only place these tables are scanned
+  // now.
+  //
+  // A DIVERGENCE IS AN `unknown`, NOT A `stale`. The data may be perfectly
+  // fresh; what has failed is the measurement, and this watchdog's job is to
+  // say what it actually established. Calling it `stale` would report a data
+  // outage that may not exist, and calling it `ok` would publish an age read
+  // off a stamp just proven wrong. #9530 is this repo's own case of a freshness
+  // signal advancing over data that had not arrived -- the redirect is exactly
+  // the shape that could reintroduce it, so it is watched rather than trusted.
+  //
+  // A cross-check that THROWS is also not a green: it means this hour proved
+  // nothing about the redirect. Recorded separately from a divergence, because
+  // "they disagree" and "we could not ask" are different findings.
+  const redirected = redirectedTables(spec);
+  const { divergences, failed: crossCheckFailed } = await crossCheckStamps(
+    env,
+    deps,
+    spec,
+  );
+  const crossCheckDetail =
+    divergences.length > 0
+      ? ` | stampFrom DIVERGED: ${divergences
+          .map(
+            (d) =>
+              `${d.table} reads ${d.cheap} from ${d.stampFrom} but holds ${d.actual}`,
+          )
+          .slice(0, 3)
+          .join("; ")}`
+      : crossCheckFailed
+        ? ` | stampFrom cross-check unreadable (${redirected.length} redirected table(s) unverified this tick)`
+        : "";
+
   // #9866: an unreadable table must reach the VERDICT, not just the detail
   // string. It used to reach only the prose, so a sweep that read 5 of 12
   // batches still published `ok` -- "every table is within its expected age |
@@ -688,7 +879,10 @@ export async function runTableFreshnessWatchdog(
   const verdict =
     stale.length > 0
       ? "stale"
-      : unreadable.length > 0 || measuredNothing
+      : unreadable.length > 0 ||
+          measuredNothing ||
+          divergences.length > 0 ||
+          crossCheckFailed
         ? "unknown"
         : ("ok" as const);
   await recordLaneVerdict(laneDb, {
@@ -699,8 +893,9 @@ export async function runTableFreshnessWatchdog(
       describeStaleTables(stale) +
       (unreadable.length > 0
         ? ` | ${unreadable.length} unreadable: ${unreadable.slice(0, 6).join(", ")}`
-        : ""),
+        : "") +
+      crossCheckDetail,
     checked_at: now(),
   });
-  return { attempted: true, stale, checked: newest.size };
+  return { attempted: true, stale, checked: newest.size, divergences };
 }

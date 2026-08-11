@@ -14,6 +14,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, test } from "vitest";
 import {
+  crossCheckSql,
+  crossCheckStamps,
   describeStaleTables,
   FRESHNESS_BATCH,
   freshnessSql,
@@ -21,6 +23,7 @@ import {
   parseFreshnessRows,
   runTableFreshnessWatchdog,
   staleTables,
+  stampDivergences,
   TABLE_FRESHNESS,
   TABLE_FRESHNESS_LANE,
   type FreshnessExpectation,
@@ -29,7 +32,17 @@ import {
 const HOUR = 60 * 60 * 1000;
 const NOW = 1_785_800_000_000;
 
-function fakeDb(byTable: Record<string, unknown>, failOn: string[] = []) {
+function fakeDb(
+  byTable: Record<string, unknown>,
+  failOn: string[] = [],
+  // The cross-check asks a different shape -- `{t, cheap, actual}` rather than
+  // `{t, mx}` -- so the fake has to answer it as a different statement, not as
+  // the sweep with extra columns.
+  crossCheck: Record<
+    string,
+    { cheap: number | null; actual: number | null }
+  > = {},
+) {
   const calls: string[] = [];
   const written: Record<string, unknown>[] = [];
   return {
@@ -46,6 +59,15 @@ function fakeDb(byTable: Record<string, unknown>, failOn: string[] = []) {
             const names = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
               (m) => m[1],
             );
+            if (sql.includes("AS cheap")) {
+              return {
+                results: names.map((t) => ({
+                  t,
+                  cheap: crossCheck[t]?.cheap ?? null,
+                  actual: crossCheck[t]?.actual ?? null,
+                })),
+              };
+            }
             return {
               results: names.map((t) => ({ t, mx: byTable[t] ?? null })),
             };
@@ -222,11 +244,73 @@ describe("TABLE_FRESHNESS coverage", () => {
 
 describe("freshnessSql", () => {
   test("asks a batch in one statement", () => {
+    // Two tables that read themselves, so this stays a test about BATCHING.
+    // The redirect has its own tests below.
     assert.equal(
-      freshnessSql(["neurons", "lane_health"]),
-      "SELECT 'neurons' AS t, MAX(captured_at) AS mx FROM neurons UNION ALL " +
+      freshnessSql(["tao_usd_index", "lane_health"]),
+      "SELECT 'tao_usd_index' AS t, MAX(observed_at) AS mx FROM tao_usd_index UNION ALL " +
         "SELECT 'lane_health' AS t, MAX(checked_at) AS mx FROM lane_health",
     );
+  });
+
+  test("a stampFrom entry reads its companion but keeps its own label", () => {
+    // The label is what every downstream map keys on -- staleTables, the
+    // verdict and the alarm text all look up `neurons`. Only the FROM moves.
+    assert.equal(
+      freshnessSql(["neurons"]),
+      "SELECT 'neurons' AS t, MAX(captured_at) AS mx FROM neurons_passes",
+    );
+  });
+
+  test("the metagraph family all redirect to the one pass table", () => {
+    // One 15-minute pass writes all three from the same clock read, so three
+    // scans of 19 MB + 486 MB + 497 MB collapse to one read of 88 kB.
+    for (const t of ["neurons", "neuron_daily", "account_position_daily"]) {
+      assert.match(
+        freshnessSql([t]),
+        /FROM neurons_passes$/,
+        `${t} should read the pass table`,
+      );
+    }
+  });
+
+  test("every stampFrom names a table that is itself swept", () => {
+    // A redirect target that nothing watches would be a blind spot one level
+    // down: the sweep would trust a stamp from a table it never checks.
+    const swept = new Set(freshnessTables());
+    for (const [table, entry] of Object.entries(TABLE_FRESHNESS)) {
+      if (!entry.stampFrom) continue;
+      assert.ok(
+        swept.has(entry.stampFrom),
+        `${table} redirects to ${entry.stampFrom}, which is not swept itself`,
+      );
+    }
+  });
+
+  test("the cross-check asks for both numbers, per redirected table", () => {
+    const spec: Record<string, FreshnessExpectation> = {
+      big: {
+        column: "captured_at",
+        kind: "ms",
+        maxAgeMs: HOUR,
+        reason: "x",
+        stampFrom: "big_passes",
+      },
+      plain: { column: "captured_at", kind: "ms", maxAgeMs: HOUR, reason: "y" },
+    };
+    assert.equal(
+      crossCheckSql(spec),
+      "SELECT 'big' AS t, (SELECT MAX(captured_at) FROM big_passes) AS cheap, " +
+        "(SELECT MAX(captured_at) FROM big) AS actual",
+    );
+  });
+
+  test("a table with no stampFrom is not cross-checked", () => {
+    // It reads itself, so there is nothing to disagree with.
+    const spec: Record<string, FreshnessExpectation> = {
+      plain: { column: "captured_at", kind: "ms", maxAgeMs: HOUR, reason: "y" },
+    };
+    assert.equal(crossCheckSql(spec), "");
   });
 
   test("batches stay under D1's compound-SELECT term limit", () => {
@@ -238,6 +322,146 @@ describe("freshnessSql", () => {
     const swept = freshnessTables();
     assert.ok(!swept.includes("api_key_blocks"), "no timestamp column");
     assert.ok(swept.includes("neurons"));
+  });
+});
+
+describe("stampDivergences", () => {
+  const spec: Record<string, FreshnessExpectation> = {
+    big: {
+      column: "captured_at",
+      kind: "ms",
+      maxAgeMs: HOUR,
+      reason: "x",
+      stampFrom: "big_passes",
+    },
+    plain: { column: "captured_at", kind: "ms", maxAgeMs: HOUR, reason: "y" },
+  };
+
+  test("agreement is silence", () => {
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: 1000, actual: 1000 }], spec),
+      [],
+    );
+  });
+
+  test("a disagreement carries BOTH numbers, not a boolean", () => {
+    // Whoever reads the alarm needs to know which way it drifted and by how
+    // much -- "they disagree" is not actionable on its own.
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: 2000, actual: 1000 }], spec),
+      [{ table: "big", stampFrom: "big_passes", cheap: 2000, actual: 1000 }],
+    );
+  });
+
+  test("an empty pass table beside a populated one IS a divergence", () => {
+    // This is the redirect reading nothing at all -- the failure the
+    // cross-check exists for. Skipping nulls would make it look healthy.
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: null, actual: 1000 }], spec),
+      [{ table: "big", stampFrom: "big_passes", cheap: null, actual: 1000 }],
+    );
+  });
+
+  test("both empty is a table nothing has written yet, not a divergence", () => {
+    assert.deepEqual(
+      stampDivergences([{ t: "big", cheap: null, actual: null }], spec),
+      [],
+    );
+  });
+
+  test("a row for a table with no stampFrom is ignored", () => {
+    assert.deepEqual(
+      stampDivergences([{ t: "plain", cheap: 1, actual: 2 }], spec),
+      [],
+    );
+  });
+
+  test("a row with no table name is ignored rather than crashed on", () => {
+    // A store that answers without the label column must not take the sweep
+    // down with it -- the freshness result beside it is still real.
+    assert.deepEqual(stampDivergences([{ cheap: 1, actual: 2 }], spec), []);
+  });
+});
+
+describe("crossCheckStamps", () => {
+  const redirected: Record<string, FreshnessExpectation> = {
+    big: {
+      column: "captured_at",
+      kind: "ms",
+      maxAgeMs: HOUR,
+      reason: "x",
+      stampFrom: "big_passes",
+    },
+  };
+  const plainOnly: Record<string, FreshnessExpectation> = {
+    plain: { column: "captured_at", kind: "ms", maxAgeMs: HOUR, reason: "y" },
+  };
+
+  test("a spec with no redirects asks nothing and reports no failure", async () => {
+    // Nothing to prove is not the same as failing to prove it.
+    assert.deepEqual(await crossCheckStamps(null, {}, plainOnly), {
+      divergences: [],
+      failed: false,
+    });
+  });
+
+  test("no reachable store is a FAILURE, not a silent pass", async () => {
+    // readStore(null, ...) yields no db. The redirect went unverified this
+    // tick, which the sweep must escalate rather than absorb.
+    assert.deepEqual(await crossCheckStamps(null, {}, redirected), {
+      divergences: [],
+      failed: true,
+    });
+  });
+
+  test("a result with no rows key is treated as agreement, not a crash", async () => {
+    // D1 can answer without a `results` key at all.
+    const db = {
+      prepare() {
+        return {
+          async all() {
+            return {} as { results?: unknown[] };
+          },
+        };
+      },
+    };
+    assert.deepEqual(
+      await crossCheckStamps(null, { db: db as never }, redirected),
+      { divergences: [], failed: false },
+    );
+  });
+
+  test("rows that disagree come back as divergences", async () => {
+    const db = {
+      prepare() {
+        return {
+          async all() {
+            return { results: [{ t: "big", cheap: 2, actual: 1 }] };
+          },
+        };
+      },
+    };
+    const out = await crossCheckStamps(null, { db: db as never }, redirected);
+    assert.equal(out.failed, false);
+    assert.deepEqual(out.divergences, [
+      { table: "big", stampFrom: "big_passes", cheap: 2, actual: 1 },
+    ]);
+  });
+
+  test("a throwing store is a failure, not an exception", async () => {
+    const db = {
+      prepare() {
+        return {
+          async all(): Promise<never> {
+            throw new Error("D1_ERROR: overloaded");
+          },
+        };
+      },
+    };
+    assert.deepEqual(
+      await crossCheckStamps(null, { db: db as never }, redirected),
+      { divergences: [], failed: true },
+    );
   });
 });
 
@@ -364,6 +588,92 @@ describe("runTableFreshnessWatchdog", () => {
     skip: { column: "", kind: "ms", maxAgeMs: null, reason: "no column" },
   };
   const fresh = { a: NOW, b: NOW, c: NOW, d: NOW, e: NOW };
+
+  // --- the stampFrom cross-check ----------------------------------------
+  //
+  // The redirect is only sound while the pass stamp equals the table's own, so
+  // these cover the three outcomes of proving it: agree, disagree, unaskable.
+  const redirectSpec: Record<string, FreshnessExpectation> = {
+    big: {
+      column: "captured_at",
+      kind: "ms",
+      maxAgeMs: 8 * HOUR,
+      reason: "redirected",
+      stampFrom: "big_passes",
+    },
+    big_passes: {
+      column: "captured_at",
+      kind: "ms",
+      maxAgeMs: 8 * HOUR,
+      reason: "the pass table itself",
+    },
+  };
+
+  test("agreement leaves the verdict alone", async () => {
+    const spy = fakeDb({ big: NOW, big_passes: NOW }, [], {
+      big: { cheap: NOW, actual: NOW },
+    });
+    const out = await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec: redirectSpec,
+    });
+    assert.deepEqual(out.divergences, []);
+    assert.equal(spy.written[0].verdict, "ok");
+    assert.ok(!String(spy.written[0].detail).includes("stampFrom"));
+  });
+
+  test("a divergence is UNKNOWN, not stale, and names both numbers", async () => {
+    // The data may be perfectly fresh -- what failed is the measurement. Saying
+    // "stale" would report an outage that may not exist.
+    const spy = fakeDb({ big: NOW, big_passes: NOW }, [], {
+      big: { cheap: NOW, actual: NOW - 5 * HOUR },
+    });
+    const out = await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec: redirectSpec,
+    });
+    assert.equal(out.divergences?.length, 1);
+    assert.equal(spy.written[0].verdict, "unknown");
+    const detail = String(spy.written[0].detail);
+    assert.ok(detail.includes("stampFrom DIVERGED"), detail);
+    assert.ok(detail.includes(String(NOW)), detail);
+    assert.ok(detail.includes(String(NOW - 5 * HOUR)), detail);
+  });
+
+  test("an unaskable cross-check is UNKNOWN and says so distinctly", async () => {
+    // "they disagree" and "we could not ask" are different findings, and the
+    // detail has to tell them apart or the alarm points nowhere.
+    const spy = fakeDb({ big: NOW, big_passes: NOW }, ["AS cheap"]);
+    const out = await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec: redirectSpec,
+    });
+    assert.deepEqual(out.divergences, []);
+    assert.equal(spy.written[0].verdict, "unknown");
+    const detail = String(spy.written[0].detail);
+    assert.ok(detail.includes("cross-check unreadable"), detail);
+    assert.ok(!detail.includes("DIVERGED"), detail);
+  });
+
+  test("a spec with no redirects never issues a cross-check", async () => {
+    const spy = fakeDb(fresh);
+    await runTableFreshnessWatchdog(null, {
+      db: spy.db,
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      spec,
+    });
+    assert.ok(
+      !spy.calls.some((c) => c.includes("AS cheap")),
+      "nothing to cross-check, so nothing should be asked",
+    );
+  });
 
   test("records OK when every table is within its age", async () => {
     const spy = fakeDb(fresh);
