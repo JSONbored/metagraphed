@@ -68,8 +68,13 @@ import { repoRoot } from "./lib.ts";
  * hid behind it. Nothing was deleted to earn this one either: the narrowing
  * moved a single export across the referenced/unreferenced line, and the
  * ceiling takes a measurement change the same way it takes a deletion.
+ *
+ * 734 after #10784: six hand-written types that were field-for-field a
+ * generated one became aliases of it, so the shapes they restated stopped
+ * being separate declarations. A deletion this time, and the RIGHT kind --
+ * nothing lost, because the thing deleted was a copy.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 737;
+export const MAX_UNREFERENCED_EXPORTS: number = 734;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {

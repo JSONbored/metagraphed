@@ -26,26 +26,18 @@
 //
 // So the resolver returns every candidate, ordered by likelihood, and the
 // caller shows them. A disambiguation UI is a better answer than a coin flip.
+import type { ResolvedIdentifierEntry } from "../schemas-src/routes/search-resolve.ts";
 import { decodeSs58 } from "./ss58.ts";
 
-/** One place the resolver thinks the query might lead. */
-export interface ResolvedIdentifier {
-  kind: "account" | "block" | "extrinsic" | "evm-account" | "subnet" | "neuron";
-  /** The canonical value, normalised (hex lowercased, integers as numbers). */
-  value: string;
-  /** The API path that answers for it. */
-  api_path: string;
-  /** The site path a UI should link to. */
-  ui_path: string;
-  /**
-   * Whether this candidate is the only possible reading of the input.
-   *
-   * `false` means the SHAPE matched but another kind matches the same shape --
-   * the caller should present alternatives rather than redirect. It does NOT
-   * mean the entity exists; the resolver never looks anything up.
-   */
-  exact: boolean;
-}
+/**
+ * One place the resolver thinks the query might lead.
+ *
+ * The ROUTE's own inferred type (#10784). This was a hand-written interface
+ * field-for-field identical to `ResolvedIdentifierSchema`'s inference, with
+ * nothing connecting the two -- so a `kind` added to the published enum would
+ * have compiled fine here and answered a value the schema does not admit.
+ */
+export type ResolvedIdentifier = ResolvedIdentifierEntry;
 
 /**
  * The netuid ceiling used to decide whether a bare integer could be a subnet.
