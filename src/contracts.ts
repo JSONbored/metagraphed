@@ -6965,6 +6965,7 @@ export interface RouteQuerySchemas {
   plain: z.ZodObject;
   args: z.ZodObject;
   wire: z.ZodObject;
+  graphql: z.ZodObject;
 }
 
 const routeQuerySchemas = new Map<string, RouteQuerySchemas | null>();
@@ -7025,6 +7026,7 @@ export function routeQuerySchemasForPathname(
       plain: feed,
       args: argsSchema(feed),
       wire: wireSchema(feed),
+      graphql: graphqlSchema(feed),
     };
     routeQuerySchemas.set(pathname, schemas);
     return schemas;
@@ -7033,7 +7035,12 @@ export function routeQuerySchemasForPathname(
   if (cached !== undefined) return cached;
   const plain = querySchemaForRoute(entry);
   const schemas = plain
-    ? { plain, args: argsSchema(plain), wire: wireSchema(plain) }
+    ? {
+        plain,
+        args: argsSchema(plain),
+        wire: wireSchema(plain),
+        graphql: graphqlSchema(plain),
+      }
     : null;
   // Built once per route: the shape never changes at runtime, and this sits on
   // the request path for every GET.
@@ -7072,7 +7079,12 @@ export function collectionQuerySchemas(
         : [],
     csvResponse,
   });
-  const schemas = { plain, args: argsSchema(plain), wire: wireSchema(plain) };
+  const schemas = {
+    plain,
+    args: argsSchema(plain),
+    wire: wireSchema(plain),
+    graphql: graphqlSchema(plain),
+  };
   routeQuerySchemas.set(key, schemas);
   return schemas;
 }
@@ -7210,6 +7222,115 @@ function argsSchema(schema: z.ZodObject): z.ZodObject {
   const shape: Record<string, z.ZodType> = {};
   for (const [name, field] of Object.entries(schema.shape)) {
     shape[name] = vocabularyField(field as z.ZodType);
+  }
+  return z.object(shape);
+}
+
+/**
+ * Is this parameter's published enum the QUERY-STRING SPELLING of a boolean?
+ *
+ * Answers for ANY field, not only an enum -- a caller that had to establish
+ * that first would be asking the same question twice, and the second ask is
+ * where the two drift.
+ *
+ * EVERY value being a boolean word, not exactly two of them.
+ * `/subnets/{netuid}/metagraph` publishes `validator_permit` as `["true"]`
+ * alone -- absent means "both", so "false" would be a third answer rather than
+ * the other half of a pair. It is still the spelling a query string has for a
+ * boolean, and requiring arity 2 read it as an ordinary enum.
+ *
+ * Read off `def` for the reason `declaredBaseType` gives: serializing every
+ * field to JSON Schema is far more work and a second representation to keep
+ * honest.
+ */
+export function isBooleanWordEnum(field: z.ZodType): boolean {
+  type Wrapper = { innerType?: { def?: z.core.$ZodTypeDef } };
+  type EnumDef = { entries?: Record<string, unknown> };
+  let current: z.core.$ZodTypeDef = field.def;
+  for (let hops = 0; hops < 10; hops += 1) {
+    const inner = (current as Wrapper).innerType?.def;
+    if (!inner) break;
+    current = inner;
+  }
+  const values = Object.values((current as EnumDef).entries ?? {});
+  return (
+    values.length > 0 &&
+    values.every((value) => value === "true" || value === "false")
+  );
+}
+
+/**
+ * Re-type one field for the shape GRAPHQL carries (#10787).
+ *
+ * THE THIRD LAYER, and it was the missing one. `wire` is REST's codec and
+ * `args` is MCP's, both derived from the field's own declared type -- while
+ * GraphQL's lived in `src/route-query.ts` as a hand-written switch over a
+ * `RouteShape` union, reached through a second table nothing else read. One
+ * canonical schema with two codecs beside it and a third somewhere else is how
+ * a surface comes to decode differently from the gate that checks it, which is
+ * the failure #10772 shipped and this issue exists to close.
+ *
+ * Two conversions, and each is a SPELLING rather than a divergence:
+ *
+ *   a GraphQL Boolean against a published `["true","false"]` enum. A query
+ *   string can carry those two words only as text; GraphQL has a real Boolean,
+ *   so the SDL publishes the stricter of the two spellings and this writes it
+ *   back in the route's terms.
+ *
+ *   a GraphQL list against a comma-joined string. `/api/v1/compare` bounds its
+ *   arity with a regex because a query string has no list type; GraphQL has
+ *   one, so the SDL takes a list and this joins it.
+ *
+ * The DESTINATION decides, never the value. Converting every boolean seen is
+ * wrong wherever the route's own parameter is a real boolean:
+ * `validator_economics(emission_gate_open: true)` became `"true"` and the parse
+ * answered `emission_gate_open must be true or false` (#10772).
+ */
+function graphqlField(field: z.ZodType): z.ZodType {
+  const declared = declaredBaseType(field);
+  if (declared === "enum") {
+    const vocabulary = vocabularyField(field);
+    return isBooleanWordEnum(field)
+      ? z.preprocess(booleanWord, vocabulary)
+      : vocabulary;
+  }
+  if (declared === "string") {
+    return z.preprocess(
+      (value) => (Array.isArray(value) ? value.join(",") : value),
+      field,
+    );
+  }
+  return field;
+}
+
+/**
+ * Does the GraphQL codec RESHAPE this parameter, rather than pass it through?
+ *
+ * Asked by the argument boundary, and the answer decides ownership: a spelling
+ * the codec converts is one the route can still validate a line later, so the
+ * route keeps its bounds and its published default. Reading the two kinds and
+ * comparing them without asking this cost two arguments their validation --
+ * a GraphQL list against a comma-joined string and a Boolean against a
+ * `["true","false"]` enum are different KINDS that the codec turns into the
+ * route's spelling, so `compare_validators(hotkeys: [])` was rejected by a
+ * parse that was right about the route and wrong about the field (#10772).
+ */
+export function graphqlReshapes(field: z.ZodType): boolean {
+  return declaredBaseType(field) === "string" || isBooleanWordEnum(field);
+}
+
+/** A GraphQL Boolean in the words a query string spells it with. */
+function booleanWord(value: unknown): unknown {
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return value;
+}
+
+/** `plain` with the two shape conversions GraphQL's type system forces. */
+function graphqlSchema(schema: z.ZodObject): z.ZodObject {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [name, field] of Object.entries(schema.shape)) {
+    shape[name] = graphqlField(field as z.ZodType);
   }
   return z.object(shape);
 }

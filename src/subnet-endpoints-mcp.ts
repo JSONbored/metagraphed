@@ -4,7 +4,12 @@
 // /metagraph/endpoints/{netuid}.json artifact.
 
 import { clampToolLimit } from "../workers/request-params.ts";
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  BOOLEAN_WORDS,
+  withBooleanWords,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -18,7 +23,6 @@ const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
 const ENDPOINT_LAYERS = QUERY_ENUMS.endpointLayer;
 const PUBLICATION_STATES = QUERY_ENUMS.endpointPublicationState;
 const HEALTH_STATUSES = QUERY_ENUMS.healthStatus;
-const BOOLEAN_STRINGS = ["true", "false"];
 const SUBNET_ENDPOINTS_QUERY_FILTER_NAMES = [
   "kind",
   "layer",
@@ -118,7 +122,10 @@ export function subnetEndpointsQueryUrl(
   if (kind) url.searchParams.set("kind", kind);
   const layer = optionalEnum(args, "layer", ENDPOINT_LAYERS);
   if (layer) url.searchParams.set("layer", layer);
-  const poolEligible = optionalEnum(args, "pool_eligible", BOOLEAN_STRINGS);
+  // The route spells this filter `["true","false"]` because a query string
+  // has no boolean; GraphQL publishes a real `Boolean` and this decodes it.
+  const decoded = withBooleanWords(args, ["pool_eligible"]);
+  const poolEligible = optionalEnum(decoded, "pool_eligible", BOOLEAN_WORDS);
   if (poolEligible) url.searchParams.set("pool_eligible", poolEligible);
   const provider = optionalString(args, "provider");
   if (provider) url.searchParams.set("provider", provider);

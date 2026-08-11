@@ -32,54 +32,48 @@ const EPOCH_MS_BOUND =
   "The route's `integer` and the SDL's `String` are the same value in the two " +
   "type systems that can each hold it.";
 
-/** SDL arguments the mirrored route does not publish, each with the reason. */
-export const DECLARED_ARGUMENTS: Readonly<Record<string, string>> = {
-  "agent_catalog.netuid":
-    "the field merges TWO routes: netuid absent reads /api/v1/agent-catalog, " +
-    "netuid present reads the sibling detail route /api/v1/agent-catalog/{netuid} " +
-    "(src/graphql.ts `agent_catalog`), where it is a path parameter. The doc " +
-    "annotation can only name one of the two.",
-  "validators.cursor":
-    "GraphQL-only pagination. /api/v1/validators publishes sort+limit and 400s " +
-    "on cursor (verified live: 'cursor is not supported for this route'); the " +
-    "resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once and paginates in-process, " +
-    "keyed by hotkey, the way providers/economics do. A capability GraphQL adds, " +
-    "not a claim about the route.",
-  "endpoints.cursor":
-    "an OPAQUE id keyset, not REST's integer offset -- the same GraphQL-only " +
-    "pagination contract #7920 established for `providers`. Verified live: " +
-    'endpoints(limit:1) answers next_cursor "endpoint-srf-2d3306d2cfa2223e" ' +
-    'and endpoints(cursor:"abc") is accepted, where the four sibling list ' +
-    'fields answer "cursor must be a non-negative integer". Typing this Int ' +
-    "to match the route would break the only pagination the field has.",
-  "compare.netuids":
-    "/api/v1/compare takes a comma-joined string (pattern ^\\d{1,5}(,\\d{1,5}){0,127}$) " +
-    "because a query string has no list type. GraphQL does, so the SDL takes " +
-    "[Int!]! and the resolver joins -- the stricter spelling of the same input, " +
-    "with the arity bound enforced by the schema instead of a regex.",
-  "extrinsics.from": EPOCH_MS_BOUND,
-  "extrinsics.to": EPOCH_MS_BOUND,
-  "blocks.from": EPOCH_MS_BOUND,
-  "blocks.to": EPOCH_MS_BOUND,
-  "sudo.from": EPOCH_MS_BOUND,
-  "sudo.to": EPOCH_MS_BOUND,
-};
-
 /**
- * The published GraphQL type for an argument the route's parameter does not
- * derive to (#10214).
+ * ONE argument's codec: the spelling GraphQL publishes, and who validates it.
  *
- * `DECLARED_ARGUMENTS` above says an argument's PRESENCE is intentional; this
- * says its TYPE is. The generator reads it, so an entry here is not an
- * exemption from a check -- it is the spelling that gets published.
+ * ── Why this is one table and was two ──────────────────────────────────────
+ *
+ * `DECLARED_ARGUMENTS` said an argument's PRESENCE was GraphQL's and
+ * `DECLARED_ARGUMENT_TYPES` said its TYPE was, and they were the same fact
+ * written twice: every one of the ten keys in the first list was already in
+ * the second. #10772 shipped the failure that shape guarantees -- the runtime
+ * parse read one list while the generator and the gate read the other, so
+ * `providers(cursor: "<opaque string>")` was rejected by a route parameter it
+ * was never given. A list not consumed by every acting component will be
+ * half-fed; a list that restates a sibling will be half-fed by construction.
+ *
+ * ── Why `owner` is almost never written ────────────────────────────────────
+ *
+ * Ownership is DERIVED, from this entry against the route's own schema: the
+ * route keeps the argument when its schema can hold the published value, and
+ * GraphQL takes it when it cannot. Measured against the ten declarations that
+ * list held, the derivation already answered NINE -- the six epoch-ms bounds
+ * (`String` over an `integer`), both opaque cursors, and `agent_catalog.netuid`
+ * (a path parameter on a sibling route, so there is no query parameter at all).
+ *
+ * The tenth is `compare.netuids`, and it is declared because the CODEC is what
+ * hides it: the array is joined into the route's comma-joined string a line
+ * later, so the route's schema can hold it and the derivation says so. See its
+ * entry for why the route must not be the one to reject it.
  */
-export interface DeclaredArgumentType {
-  /** The published GraphQL spelling. */
-  type: string;
+export interface ArgumentCodec {
+  /** The spelling the SDL publishes. */
+  graphql: string;
   /** Why the route's own parameter does not derive to it. */
   reason: string;
   /** True when the route publishes no such parameter at all. */
   addedByGraphql?: boolean;
+  /**
+   * Declared only where the derivation cannot see the divergence.
+   *
+   * One entry uses it. An entry that merely restates what the derivation
+   * already answers is the second list coming back under a new name.
+   */
+  owner?: "graphql";
 }
 
 const SURFACES_UNFORWARDED =
@@ -135,14 +129,6 @@ const NETUID_RANGE =
   "a RANGE bound on netuid, which no route parameter expresses: #10014 gave " +
   "both surfaces `netuid` (exactly one subnet) and neither a range. A " +
   "capability GraphQL adds, not a claim about the route.";
-
-const BOOLEAN_STRING_FORWARDING =
-  'the route publishes a ["true","false"] STRING enum and GraphQL has a ' +
-  "real Boolean, which is the stricter spelling -- but this field's resolver " +
-  "hands the argument to an MCP loader that validates it with " +
-  "`optionalEnum(args, name, BOOLEAN_STRINGS)`, so a JS boolean is rejected " +
-  "where the string is accepted. Moving the spelling means moving the " +
-  "forwarding with it.";
 
 const COMMA_JOINED_LIST =
   "a query string has no list type, so the route takes the values comma-" +
@@ -257,27 +243,41 @@ export const DECLARED_UNPUBLISHED_ARGUMENTS: Readonly<Record<string, string>> =
       "String here would add the one spelling GraphQL exists to avoid.",
   };
 
-export const DECLARED_ARGUMENT_TYPES: Readonly<
-  Record<string, DeclaredArgumentType>
-> = {
+export const ARGUMENT_CODECS: Readonly<Record<string, ArgumentCodec>> = {
   // ── an epoch-ms bound cannot be an Int ────────────────────────────────────
-  "blocks.from": { type: "String", reason: EPOCH_MS_BOUND },
-  "blocks.to": { type: "String", reason: EPOCH_MS_BOUND },
-  "extrinsics.from": { type: "String", reason: EPOCH_MS_BOUND },
-  "extrinsics.to": { type: "String", reason: EPOCH_MS_BOUND },
-  "sudo.from": { type: "String", reason: EPOCH_MS_BOUND },
-  "sudo.to": { type: "String", reason: EPOCH_MS_BOUND },
+  "blocks.from": { graphql: "String", reason: EPOCH_MS_BOUND },
+  "blocks.to": { graphql: "String", reason: EPOCH_MS_BOUND },
+  "extrinsics.from": { graphql: "String", reason: EPOCH_MS_BOUND },
+  "extrinsics.to": { graphql: "String", reason: EPOCH_MS_BOUND },
+  "sudo.from": { graphql: "String", reason: EPOCH_MS_BOUND },
+  "sudo.to": { graphql: "String", reason: EPOCH_MS_BOUND },
 
   // ── a comma-joined string is a list ───────────────────────────────────────
-  "compare.netuids": { type: "[Int!]!", reason: COMMA_JOINED_LIST },
-  "compare.dimensions": { type: "[String!]", reason: COMMA_JOINED_LIST },
-  "compare_validators.hotkeys": {
-    type: "[String!]!",
+  //
+  // THE ONE DECLARED OWNER (#10787). Every other entry's ownership derives from
+  // this table against the route's schema; this one cannot, because the codec
+  // is what hides it -- the array is joined into the route's comma-joined
+  // string a line later, so the route's schema CAN hold the value and the
+  // derivation says the route keeps it.
+  //
+  // It must not. The route's parameter is a regex over a comma-joined string,
+  // and its rejection message describes a spelling a GraphQL caller cannot
+  // send. `parseCompareNetuidList` in the resolver bounds the same arity (1-128
+  // distinct, non-negative) and says so in the caller's own terms, which is why
+  // `compare(netuids: [])` and `compare(netuids: [-1])` answer what they do.
+  "compare.netuids": {
+    graphql: "[Int!]!",
+    owner: "graphql",
     reason: COMMA_JOINED_LIST,
   },
-  "rpc_endpoints.fields": { type: "[String!]", reason: COMMA_JOINED_LIST },
+  "compare.dimensions": { graphql: "[String!]", reason: COMMA_JOINED_LIST },
+  "compare_validators.hotkeys": {
+    graphql: "[String!]!",
+    reason: COMMA_JOINED_LIST,
+  },
+  "rpc_endpoints.fields": { graphql: "[String!]", reason: COMMA_JOINED_LIST },
   "endpoints.fields": {
-    type: "[String!]",
+    graphql: "[String!]",
     reason:
       COMMA_JOINED_LIST +
       " Kept at all -- unlike the fields whose `fields` is dropped -- because " +
@@ -286,7 +286,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
     addedByGraphql: true,
   },
   "surfaces.fields": {
-    type: "String",
+    graphql: "String",
     reason:
       "same reason as `endpoints.fields`: the return type is not fully " +
       "projectable, so REST's projection parameter still has work to do. " +
@@ -304,20 +304,20 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // `Int`. Narrowing the Zod instead would 400 a REST caller sending
   // `min_tempo=99.5` today for no gain: the quantity is integral either way,
   // and GraphQL already refuses fractions here.
-  "subnets.min_block": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_block": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_candidate_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_candidate_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_mechanism_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_mechanism_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_participant_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_participant_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_probed_surface_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_probed_surface_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_surface_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_surface_count": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.min_tempo": { type: "Int", reason: INTEGER_BOUND },
-  "subnets.max_tempo": { type: "Int", reason: INTEGER_BOUND },
+  "subnets.min_block": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_block": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_candidate_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_candidate_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_mechanism_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_mechanism_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_participant_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_participant_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_probed_surface_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_probed_surface_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_surface_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_surface_count": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.min_tempo": { graphql: "Int", reason: INTEGER_BOUND },
+  "subnets.max_tempo": { graphql: "Int", reason: INTEGER_BOUND },
 
   // ── the canonical readiness names, and the aliases beside them ────────────
   //
@@ -331,20 +331,20 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // reappearing on the surface nothing was checking. The canonical pair now
   // derives from the route; these two are the aliases kept beside them.
   "subnets.min_integration_readiness": {
-    type: "Int",
+    graphql: "Int",
     reason: READINESS_BOUND,
   },
   "subnets.max_integration_readiness": {
-    type: "Int",
+    graphql: "Int",
     reason: READINESS_BOUND,
   },
   "subnets.min_readiness": {
-    type: "Int",
+    graphql: "Int",
     reason: READINESS_ALIAS,
     addedByGraphql: true,
   },
   "subnets.max_readiness": {
-    type: "Int",
+    graphql: "Int",
     reason: READINESS_ALIAS,
     addedByGraphql: true,
   },
@@ -357,27 +357,27 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // of REST here rather than drifted from it -- the resolver reaches the same
   // shared `listPage` filters the list_subnets MCP tool does.
   "subnets.not_coverage_level": {
-    type: "String",
+    graphql: "String",
     reason: NEGATION_FILTER,
     addedByGraphql: true,
   },
   "subnets.not_curation_level": {
-    type: "String",
+    graphql: "String",
     reason: NEGATION_FILTER,
     addedByGraphql: true,
   },
   "subnets.not_domain": {
-    type: "String",
+    graphql: "String",
     reason: NEGATION_FILTER,
     addedByGraphql: true,
   },
   "subnets.not_status": {
-    type: "String",
+    graphql: "String",
     reason: NEGATION_FILTER,
     addedByGraphql: true,
   },
   "subnets.not_subnet_type": {
-    type: "String",
+    graphql: "String",
     reason: NEGATION_FILTER,
     addedByGraphql: true,
   },
@@ -394,12 +394,12 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // measures whole milliseconds, and the sibling root field `endpoints`
   // publishes `Int` from a route that says integer. Same reasoning as
   // INTEGER_BOUND, on the one nested field that takes arguments.
-  "Subnet.endpoints.min_latency_ms": { type: "Int", reason: INTEGER_BOUND },
-  "Subnet.endpoints.max_latency_ms": { type: "Int", reason: INTEGER_BOUND },
+  "Subnet.endpoints.min_latency_ms": { graphql: "Int", reason: INTEGER_BOUND },
+  "Subnet.endpoints.max_latency_ms": { graphql: "Int", reason: INTEGER_BOUND },
 
   // ── the Subscription root's only argument ─────────────────────────────────
   "chainEvents.tables": {
-    type: "[ChainFirehoseTable!]",
+    graphql: "[ChainFirehoseTable!]",
     addedByGraphql: true,
     reason:
       "the firehose topics to subscribe to. No REST route serves the " +
@@ -414,14 +414,14 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // -- so `saved_query` has no parameters to derive from and these two ARE the
   // declaration.
   "saved_query.id": {
-    type: "String!",
+    graphql: "String!",
     addedByGraphql: true,
     reason:
       "the saved query to run, by id. No REST route serves this field, so " +
       "nothing derives the argument and this entry is where it is published.",
   },
   "saved_query.params": {
-    type: "JSON",
+    graphql: "JSON",
     addedByGraphql: true,
     reason:
       "the saved query's bound parameters, an opaque record keyed by the " +
@@ -430,7 +430,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   },
 
   "extrinsic.ref": {
-    type: "String!",
+    graphql: "String!",
     addedByGraphql: true,
     reason:
       "accepts a transaction hash OR a composite block_number-extrinsic_index " +
@@ -438,7 +438,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
       "wider name for the wider input, not a second spelling of the same one.",
   },
   "block_chain_events.block_number": {
-    type: "Int!",
+    graphql: "Int!",
     addedByGraphql: true,
     reason:
       "the route's path parameter is `{ref}`; this field takes the NUMERIC " +
@@ -448,7 +448,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
 
   // ── one path parameter, two names ─────────────────────────────────────────
   "provider.id": {
-    type: "String!",
+    graphql: "String!",
     addedByGraphql: true,
     reason:
       "the route's path parameter is `slug`; this field has always taken " +
@@ -463,12 +463,12 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // opaque id keyset where REST takes an integer offset. Both bindings say so
   // in prose already -- `providers`' description reads "Cursor remains the
   // pre-existing opaque string id-keyset (not REST's integer offset)".
-  "subnets.cursor": { type: "String", reason: OPAQUE_KEYSET },
-  "providers.cursor": { type: "String", reason: OPAQUE_KEYSET },
+  "subnets.cursor": { graphql: "String", reason: OPAQUE_KEYSET },
+  "providers.cursor": { graphql: "String", reason: OPAQUE_KEYSET },
 
   // ── projection the selection set cannot replace ───────────────────────────
   "providers.fields": {
-    type: "String",
+    graphql: "String",
     addedByGraphql: true,
     reason:
       "same reason as `endpoints.fields` and `surfaces.fields`: `fields` is " +
@@ -482,19 +482,19 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // #10014 added `netuid` (exactly one subnet) to the route and this field.
   // Neither route nor field has a range, and GraphQL published one first.
   "subnets.min_netuid": {
-    type: "Int",
+    graphql: "Int",
     reason: NETUID_RANGE,
     addedByGraphql: true,
   },
   "subnets.max_netuid": {
-    type: "Int",
+    graphql: "Int",
     reason: NETUID_RANGE,
     addedByGraphql: true,
   },
 
   // ── pagination GraphQL owns ───────────────────────────────────────────────
   "endpoints.cursor": {
-    type: "String",
+    graphql: "String",
     reason:
       "an OPAQUE id keyset, not REST's integer offset -- the GraphQL-only " +
       "pagination contract #7920 established for `providers`. Verified live: " +
@@ -503,7 +503,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
       "field has.",
   },
   "validators.cursor": {
-    type: "String",
+    graphql: "String",
     reason:
       "GraphQL-only pagination. /api/v1/validators publishes sort+limit and " +
       "400s on cursor; the resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once " +
@@ -514,7 +514,7 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
 
   // ── one field, two routes ─────────────────────────────────────────────────
   "agent_catalog.netuid": {
-    type: "Int",
+    graphql: "Int",
     reason:
       "the field merges TWO routes: netuid absent reads /api/v1/agent-catalog, " +
       "netuid present reads the sibling detail route " +
@@ -523,32 +523,21 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
     addedByGraphql: true,
   },
 
-  // ── a true/false enum the resolver's forwarding still expects as text ─────
+  // ── the four true/false arguments that are gone from here (#10787) ────────
   //
-  // `Boolean` is the honest spelling and ~20 sibling arguments already use it
-  // -- but these four reach an MCP loader that validates with
-  // `optionalEnum(args, name, BOOLEAN_STRINGS)`, which wants the STRING
-  // "true". `endpoints.pool_eligible` is Boolean and safe only because ITS
-  // resolver takes a different path (`endpointsListQueryUrl`'s `set()`, which
-  // does `String(value)`). So the spelling cannot move without moving the
-  // forwarding with it, per field -- an input-type change that needs its own
-  // verification rather than a rename inside a generator change.
-  "subnet_endpoints.pool_eligible": {
-    type: "String",
-    reason: BOOLEAN_STRING_FORWARDING,
-  },
-  "review_enrichment_queue.manual_review_required": {
-    type: "String",
-    reason: BOOLEAN_STRING_FORWARDING,
-  },
-  "review_enrichment_targets.auto_review_candidate": {
-    type: "String",
-    reason: BOOLEAN_STRING_FORWARDING,
-  },
-  "review_enrichment_targets.manual_review_required": {
-    type: "String",
-    reason: BOOLEAN_STRING_FORWARDING,
-  },
+  // `subnet_endpoints.pool_eligible` and the three review filters published
+  // `String` while ~20 siblings published `Boolean`, and the reason was not a
+  // divergence at all: their resolvers hand the argument to an MCP loader that
+  // validated it with `optionalEnum(args, name, ["true","false"])`, so a JS
+  // boolean was rejected where the string was accepted. NOTHING PREVENTED THAT
+  // BUT THIS PARAGRAPH, which said "the spelling cannot move without moving
+  // the forwarding with it" and left both where they were.
+  //
+  // The forwarding moved. `withBooleanWords` in src/mcp-list-query.ts is the
+  // one decoder for the route's query-string spelling of a boolean, the four
+  // arguments publish `Boolean` like their siblings, and `scalarFor` derives
+  // that from the route's own `["true","false"]` enum -- so there is nothing
+  // left to declare.
 
   // `subnet_stake_quote.amount` was declared here as `Float!` while the route
   // called it optional and rejected every request without it. #10401 fixed the
@@ -558,9 +547,25 @@ export const DECLARED_ARGUMENT_TYPES: Readonly<
   // closes is a lie that validate:graphql-query-arguments would fail on.
 };
 
-/** Does the route's parse own this field's argument, or does GraphQL? */
-export function isDeclaredDivergence(field: string, argument: string): boolean {
-  return `${field}.${argument}` in DECLARED_ARGUMENTS;
+/** The codec declared for one field's argument, or null. */
+export function argumentCodec(
+  field: string,
+  argument: string,
+): ArgumentCodec | null {
+  return ARGUMENT_CODECS[`${field}.${argument}`] ?? null;
+}
+
+/**
+ * Is this argument's spelling declared -- including the `addedByGraphql` case,
+ * where the route publishes no such parameter at all?
+ *
+ * `validate:graphql-route-parity` asks the same question from the other side:
+ * an SDL argument with no route parameter behind it. That is precisely what an
+ * `addedByGraphql` entry records, so the gate reads this rather than keeping a
+ * list of its own (#10772).
+ */
+export function hasArgumentCodec(field: string, argument: string): boolean {
+  return `${field}.${argument}` in ARGUMENT_CODECS;
 }
 
 /**
@@ -581,81 +586,30 @@ function graphqlJsonKind(type: string): string {
 }
 
 /**
- * The kind GraphQL publishes for an argument whose TYPE is declared, or null.
+ * The kind GraphQL publishes for an argument whose spelling is declared, or
+ * null.
  *
- * THE SECOND READER OF ONE LIST, and the reason this exists (#10772).
- * `DECLARED_ARGUMENTS` says an argument's presence is GraphQL's; the runtime
- * parse read only that, so `providers(cursor: "<opaque string>")` was rejected
- * by the route's integer `cursor` -- a divergence declared, correctly, in
- * `DECLARED_ARGUMENT_TYPES` instead. Two lists for one concept is the trap
- * this file's own header records from last time; the fix is a second reader,
- * not a third list. The caller compares this against the route's declared kind
- * and skips only where the route's schema genuinely cannot hold the value.
+ * The caller compares this against the route's declared kind and takes the
+ * argument away from the route only where the route's schema genuinely cannot
+ * hold the value -- so `Int` over a `z.number()` bound stays the route's,
+ * keeping its clamping and its published default, while `String` over that
+ * same bound does not. Skipping every declared spelling instead would strip
+ * the bounds off fourteen arguments to fix two.
  */
-/**
- * Is this argument's TYPE declared -- including the `addedByGraphql` case,
- * where the route publishes no such parameter at all?
- *
- * `validate:graphql-route-parity` asks the same question from the other side:
- * an SDL argument with no route parameter behind it. That is precisely what an
- * `addedByGraphql` entry records, so the gate reads this rather than keeping a
- * list of its own (#10772).
- */
-export function isDeclaredArgumentType(
-  field: string,
-  argument: string,
-): boolean {
-  return `${field}.${argument}` in DECLARED_ARGUMENT_TYPES;
-}
-
-export function declaredArgumentKind(
+export function publishedArgumentKind(
   field: string,
   argument: string,
 ): string | null {
-  const entry = DECLARED_ARGUMENT_TYPES[`${field}.${argument}`];
-  return entry ? graphqlJsonKind(entry.type) : null;
+  const codec = argumentCodec(field, argument);
+  return codec ? graphqlJsonKind(codec.graphql) : null;
 }
 
 /**
- * The two shape conversions a resolver performs before it calls the route, and
- * the reason each is a SPELLING rather than a divergence.
+ * Does this entry take the argument away from the route outright?
  *
- * `validate-graphql-route-parity.ts` documents both and deliberately does not
- * flag them:
- *
- *   BOOLEAN against a published ["true","false"] string enum. A query string
- *   can only carry those two words as text; GraphQL has a real Boolean, so the
- *   SDL is the stricter and more honest of the two spellings. Every resolver on
- *   this shape normalises the same way -- `if (changes === true)
- *   params.set("changes", "true")`.
- *
- *   LIST against a comma-joined string. `/api/v1/compare` takes a bounded
- *   comma-joined pattern because a query string has no list type. GraphQL does,
- *   so the SDL takes [Int!]! and the resolver joins.
- *
- * A dispatch-level parse sees the GraphQL-shaped value while the route's Zod
- * object describes the route-shaped one. Converting first is what lets ONE
- * parse serve both spellings; without it the parse rejects `changes: true`
- * against a string enum and a list against a string -- the parse being wrong
- * about the field rather than the field being wrong.
- *
- * ── It must ask the schema, not the value ──────────────────────────────────
- *
- * The first version of this converted every boolean it saw, which is wrong
- * whenever the route's own parameter is a real boolean rather than the
- * two-word enum: `validator_economics(emission_gate_open: true)` became
- * `"true"` and the parse answered `emission_gate_open must be true or false`.
- * A conversion is only correct when the DESTINATION is the other spelling, so
- * the target type decides, and a value the route already accepts is left alone.
+ * Declared, not derived, and used ONCE -- see `ArgumentCodec.owner` and the
+ * `compare.netuids` entry for why that one cannot be derived.
  */
-export type RouteShape = "string-enum" | "delimited-string" | "as-is";
-
-export function toRouteShape(value: unknown, target: RouteShape): unknown {
-  if (target === "string-enum" && typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (target === "delimited-string" && Array.isArray(value)) {
-    return value.join(",");
-  }
-  return value;
+export function codecOwnsArgument(field: string, argument: string): boolean {
+  return argumentCodec(field, argument)?.owner === "graphql";
 }

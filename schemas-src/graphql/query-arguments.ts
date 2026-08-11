@@ -13,10 +13,10 @@
 // simply cannot reach. Deriving both from the route makes the two impossible
 // to drift apart -- which is the thing the hand-written SDL could not promise.
 import {
-  DECLARED_ARGUMENT_TYPES,
+  ARGUMENT_CODECS,
   DECLARED_MISSING_NETWORK,
   DECLARED_UNPUBLISHED_ARGUMENTS,
-  type DeclaredArgumentType,
+  type ArgumentCodec,
 } from "./argument-divergences.ts";
 
 /** One published argument, written the way the SDL writes it. */
@@ -154,7 +154,7 @@ export interface DeriveOptions {
  *
  * Anything else the published parameter cannot express -- a comma-joined list
  * GraphQL spells as a real list, an epoch-ms bound that overflows `Int` --
- * comes from `DECLARED_ARGUMENT_TYPES`, whose entries must stay live.
+ * comes from `ARGUMENT_CODECS`, whose entries must stay live.
  */
 export function deriveQueryArguments(
   field: string,
@@ -175,9 +175,9 @@ export function deriveQueryArguments(
     .filter((parameter): parameter is Parameter => Boolean(parameter?.name));
 
   const declaredType = (name: string, derived: string): string => {
-    const entry: DeclaredArgumentType | undefined =
-      DECLARED_ARGUMENT_TYPES[`${field}.${name}`];
-    return entry?.type ?? derived;
+    const codec: ArgumentCodec | undefined =
+      ARGUMENT_CODECS[`${field}.${name}`];
+    return codec?.graphql ?? derived;
   };
 
   // A route parameter GraphQL deliberately does not publish -- a capability
@@ -223,11 +223,11 @@ export function deriveQueryArguments(
   // Arguments the route does not publish at all -- a capability GraphQL adds,
   // like `validators(cursor:)`'s in-process pagination. Appended last so the
   // derived order stays the route's.
-  for (const [key, entry] of Object.entries(DECLARED_ARGUMENT_TYPES)) {
+  for (const [key, codec] of Object.entries(ARGUMENT_CODECS)) {
     const [owner, name] = key.split(".");
-    if (owner !== field || !entry.addedByGraphql) continue;
+    if (owner !== field || !codec.addedByGraphql) continue;
     if (args.some((a) => a.name === name)) continue;
-    args.push({ name, type: entry.type });
+    args.push({ name, type: codec.graphql });
   }
   return args;
 }

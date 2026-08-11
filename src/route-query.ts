@@ -34,15 +34,14 @@
 import { z } from "zod";
 import {
   collectionQuerySchemas,
+  graphqlReshapes,
   routeParameterKind,
   routeQuerySchemasForPathname,
   type RouteQuerySchemas,
 } from "./contracts.ts";
 import {
-  declaredArgumentKind,
-  isDeclaredDivergence,
-  toRouteShape,
-  type RouteShape,
+  codecOwnsArgument,
+  publishedArgumentKind,
 } from "../schemas-src/graphql/argument-divergences.ts";
 import { SERVING_BOUND } from "../schemas-src/query-params.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
@@ -175,7 +174,7 @@ export function validateRouteArgs(
       supplied[name] = value;
     }
   }
-  const parsed = schemas.args.safeParse(supplied);
+  const parsed = schemas.graphql.safeParse(supplied);
   if (parsed.success) return null;
   const issue = parsed.error.issues[0];
   const parameter = String(issue?.path[0] ?? "");
@@ -210,7 +209,7 @@ export function parseRouteArgs<T = Record<string, unknown>>(
       supplied[name] = value;
     }
   }
-  const parsed = schemas.args.safeParse(supplied);
+  const parsed = schemas.graphql.safeParse(supplied);
   if (!parsed.success) return null;
   // `.meta({ default })` is published, not applied by parse -- the same reason
   // `pageLimit` reads it back rather than trusting the parsed object.
@@ -280,31 +279,6 @@ function isServingBound(field: z.ZodType | undefined): boolean {
 function unwrapOptional(field: z.ZodType | undefined): z.ZodType | undefined {
   if (!field) return undefined;
   return field instanceof z.ZodOptional ? (field.unwrap() as z.ZodType) : field;
-}
-
-/**
- * Which spelling the route wants for this parameter.
- *
- * A published `["true","false"]` enum is the query-string spelling of a
- * boolean; a published string with a delimited pattern is the query-string
- * spelling of a list. Anything else already matches what GraphQL sends.
- */
-function routeShapeOf(field: z.ZodType | undefined): RouteShape {
-  const inner = unwrapOptional(field);
-  if (!inner) return "as-is";
-  const json = publishedShape(inner);
-  if (Array.isArray(json.enum)) {
-    // EVERY value being a boolean word, not exactly two of them.
-    // `/subnets/{netuid}/metagraph` publishes `validator_permit` as `["true"]`
-    // alone -- absent means "both", so "false" would be a third answer rather
-    // than the other half of a pair. It is still the query-string spelling of
-    // a boolean, and requiring arity 2 read it as an ordinary enum and rejected
-    // the SDL's `Boolean`.
-    return json.enum.every((value) => value === "true" || value === "false")
-      ? "string-enum"
-      : "as-is";
-  }
-  return json.type === "string" ? "delimited-string" : "as-is";
 }
 
 /**
@@ -428,13 +402,12 @@ function graphqlOwnsSpelling(
   field: string,
   name: string,
   declared: z.ZodType | undefined,
-  shape: RouteShape,
 ): boolean {
-  if (isDeclaredDivergence(field, name)) return true;
-  const published = declaredArgumentKind(field, name);
+  if (codecOwnsArgument(field, name)) return true;
+  const published = publishedArgumentKind(field, name);
   if (published === null) return false;
   if (!declared) return true;
-  if (shape !== "as-is") return false;
+  if (graphqlReshapes(declared)) return false;
   return published !== routeParameterKind(declared);
 }
 
@@ -449,15 +422,15 @@ export function resolveRouteArgs<T = Record<string, unknown>>(
   for (const [name, value] of Object.entries(args)) {
     if (value === null || value === undefined) continue;
     const declared = schemas?.plain.shape[name] as z.ZodType | undefined;
-    // Resolved once and used twice: it decides whether the route can hold this
-    // spelling at all, and then how to write it in the route's terms.
-    const shape = routeShapeOf(declared);
-    if (graphqlOwnsSpelling(field, name, declared, shape)) continue;
+    if (graphqlOwnsSpelling(field, name, declared)) continue;
     if (declared && isServingBound(declared)) {
       owned[name] = clampToPublished(declared, value);
       clamped.add(name);
     } else {
-      owned[name] = toRouteShape(value, shape);
+      // NOT converted here. The `graphql` codec layer both parse entries below
+      // read does it, so the conversion has ONE definition rather than a
+      // hand-written switch beside the schema that already describes it.
+      owned[name] = value;
     }
   }
   const error = validateRouteArgs(routePath, owned);

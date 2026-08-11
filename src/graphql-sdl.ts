@@ -278,7 +278,7 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): JSON
-    "One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible (a true/false string); threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints."
+    "One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints."
     subnet_endpoints(
       netuid: Int!
       kind: String
@@ -286,7 +286,7 @@ export const SDL = /* GraphQL */ `
       provider: String
       publication_state: String
       status: String
-      pool_eligible: String
+      pool_eligible: Boolean
       min_latency_ms: Float
       max_latency_ms: Float
       min_score: Float
@@ -597,7 +597,7 @@ export const SDL = /* GraphQL */ `
       profile_level: String
       direct_submission_kinds: String
       missing_kinds: String
-      manual_review_required: String
+      manual_review_required: Boolean
       reason_codes: String
       review_state: String
       sort: String
@@ -617,8 +617,8 @@ export const SDL = /* GraphQL */ `
       identity_level: String
       profile_level: String
       submission_route: String
-      auto_review_candidate: String
-      manual_review_required: String
+      auto_review_candidate: Boolean
+      manual_review_required: Boolean
       missing_kinds: String
       reason_codes: String
       sort: String
