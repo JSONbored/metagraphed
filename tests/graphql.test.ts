@@ -16478,21 +16478,25 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
-    assert.deepEqual(body.data.account_events.events, [
-      {
-        block_number: null,
-        event_index: null,
-        event_kind: null,
-        hotkey: null,
-        coldkey: null,
-        netuid: null,
-        uid: null,
-        amount_tao: null,
-        alpha_amount: null,
-        observed_at: null,
-        extrinsic_index: null,
-      },
-    ]);
+    assert.deepEqual(
+      body.data.account_events.events,
+      [
+        {
+          block_number: null,
+          event_index: null,
+          event_kind: null,
+          hotkey: null,
+          coldkey: null,
+          netuid: null,
+          uid: null,
+          amount_tao: null,
+          alpha_amount: null,
+          observed_at: null,
+          extrinsic_index: null,
+        },
+      ],
+      { once: true },
+    );
     lake.restore();
   });
 
@@ -16658,29 +16662,27 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("resolves the Postgres-tier envelope, mapping each day's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          day_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "c:20260625:7",
-          days: [
+    // #10190: the tier is retired. loadAccountHistoryColdTier issues TWO reads --
+    // the (day, netuid) rollup, and a separate (day, netuid, event_kind) grouping
+    // because R2 SQL rejects `string_agg(DISTINCT ...)`. A double that answered
+    // both alike would yield empty kinds, so it routes on the SQL.
+    const lake = lakehouse((sql) =>
+      sql.includes("event_kind")
+        ? [
+            { day: "2026-06-25", netuid: 7, event_kind: "StakeAdded" },
+            { day: "2026-06-25", netuid: 7, event_kind: "WeightsSet" },
+          ]
+        : [
             {
               day: "2026-06-25",
               netuid: 7,
               event_count: 3,
-              event_kinds: ["StakeAdded", "WeightsSet"],
               first_block: 1000,
               last_block: 1200,
             },
           ],
-        }),
-      ),
-    };
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16688,9 +16690,10 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       schema_version: 1,
       ss58: SS58,
       day_count: 1,
-      limit: 50,
+      // DERIVED: the query's own default limit, and null for a short page.
+      limit: 100,
       offset: 0,
-      next_cursor: "c:20260625:7",
+      next_cursor: null,
       days: [
         {
           day: "2026-06-25",
@@ -16702,6 +16705,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
@@ -16771,16 +16775,20 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
-    assert.deepEqual(body.data.account_history.days, [
-      {
-        day: null,
-        netuid: null,
-        event_count: null,
-        event_kinds: [],
-        first_block: null,
-        last_block: null,
-      },
-    ]);
+    assert.deepEqual(
+      body.data.account_history.days,
+      [
+        {
+          day: null,
+          netuid: null,
+          event_count: null,
+          event_kinds: [],
+          first_block: null,
+          last_block: null,
+        },
+      ],
+      { once: true },
+    );
   });
 
   // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
