@@ -5170,7 +5170,17 @@ const rootValue = {
       sell_count: data.sell_count ?? 0,
       net_volume_alpha: data.net_volume_alpha ?? 0,
       sentiment_ratio: data.sentiment_ratio ?? null,
-      sentiment: data.sentiment ?? null,
+      // THE PRODUCER (#10786), and here the compiler settles it outright.
+      // `buildAlphaVolume` returns the inferred artifact type since #10782, so
+      // the checker types this expression `AlphaVolumeSentiment` -- the `??`
+      // has no reachable right side, on either leg. That is why the nullability
+      // report does not flag it while the sibling clusters were real: it is
+      // reading the same producer and can see the difference.
+      //
+      // Its siblings above stay `?? null` because their declared type IS
+      // `number | null`; the bucket is a closed enum the builder always picks
+      // from, so the card cannot be missing a reading of a ratio it has.
+      sentiment: data.sentiment,
       vol_mcap_ratio: data.vol_mcap_ratio ?? null,
     };
   },
