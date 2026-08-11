@@ -17,9 +17,16 @@ import {
   loadSubnetHistoryColdTier,
   mergeHistoryDays,
   needsColdRead,
+  coverageOf,
+  loadAccountPositionHistoryColdTier,
+  loadValidatorHistoryColdTier,
+  overlayAccountPositionHistoryColdTier,
   overlayNeuronHistoryColdTier,
   overlaySubnetHistoryColdTier,
+  overlayValidatorHistoryColdTier,
 } from "../src/neuron-daily-cold-tier.ts";
+import { buildAccountPositionHistory } from "../src/account-position-history.ts";
+import { buildValidatorHistory } from "../src/validator-history.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -28,6 +35,7 @@ import { R2_SQL_TOKEN_ENV, safeIsoDate } from "../src/r2-sql.ts";
 import { shiftIsoDate } from "../src/iso-date-window.ts";
 
 const ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
+const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
 
 /** Stubs the engine and captures the statement the reader built. `null` rows
  * stand for a declining engine (the sibling cold tiers' idiom). */
@@ -655,5 +663,328 @@ describe("the last three branches, on the neuron overlay", () => {
       r.deps,
     );
     assert.equal(out.point_count, 1);
+  });
+});
+
+describe("the other two families that reach 1y and all", () => {
+  test("coverageOf reads the seam off the POINTS, for builders with no coverage fields", () => {
+    // buildValidatorHistory and buildAccountPositionHistory publish no
+    // oldest_day, so the seam is computed rather than read. This is the more
+    // general form -- oldest_day is only ever a cached answer to it.
+    assert.deepEqual(
+      coverageOf([
+        { snapshot_date: "2026-08-04" },
+        { snapshot_date: "2026-07-10" },
+        { snapshot_date: "2026-08-11" },
+      ]),
+      { oldest_day: "2026-07-10", newest_day: "2026-08-11" },
+    );
+    assert.deepEqual(coverageOf([]), {
+      oldest_day: null,
+      newest_day: null,
+    });
+    assert.deepEqual(coverageOf(undefined), {
+      oldest_day: null,
+      newest_day: null,
+    });
+    assert.deepEqual(coverageOf([{ snapshot_date: 7 }, null]), {
+      oldest_day: null,
+      newest_day: null,
+    });
+  });
+
+  test("the account-position leg is keyed by account AND netuid", async () => {
+    const r = reader([{ snapshot_date: "2026-07-01", uid: 3 }]);
+    const rows = await loadAccountPositionHistoryColdTier(
+      ENV,
+      ADDR,
+      64,
+      null,
+      "2026-07-10",
+      400,
+      r.deps,
+    );
+    assert.equal(rows?.length, 1);
+    const sql = r.seen[0]!;
+    assert.match(sql, /FROM chain\.account_position_daily/);
+    assert.match(sql, new RegExp(`account = '${ADDR}'`));
+    assert.match(sql, /netuid = 64/);
+    assert.match(sql, /snapshot_date < '2026-07-10'/);
+  });
+
+  test("a malformed ss58 never reaches the engine", async () => {
+    const r = reader([]);
+    assert.equal(
+      await loadAccountPositionHistoryColdTier(
+        ENV,
+        "not-an-address'; DROP",
+        64,
+        null,
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.equal(
+      await loadAccountPositionHistoryColdTier(
+        ENV,
+        ADDR,
+        "x",
+        null,
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("the validator leg JOINs subnet_snapshots for the TAO pricing", async () => {
+    const r = reader([{ snapshot_date: "2026-07-01", netuid: 1 }]);
+    await loadValidatorHistoryColdTier(
+      ENV,
+      ADDR,
+      null,
+      null,
+      "2026-07-10",
+      400,
+      r.deps,
+    );
+    const sql = r.seen[0]!;
+    assert.match(sql, /FROM chain\.neuron_daily nd/);
+    // Without this join the route can only serve alpha, never TAO -- which is
+    // why metagraphed-infra#447 carries subnet_snapshots at all.
+    assert.match(sql, /LEFT JOIN chain\.subnet_snapshots s/);
+    assert.match(sql, new RegExp(`nd\\.hotkey = '${ADDR}'`));
+    // The date bound must name nd's column: BOTH tables carry snapshot_date.
+    assert.match(sql, /nd\.snapshot_date < '2026-07-10'/);
+    assert.doesNotMatch(sql, /[^.]snapshot_date < '/);
+  });
+
+  test("the validator leg scopes to one subnet when asked, and refuses a bad one", async () => {
+    const r = reader([]);
+    await loadValidatorHistoryColdTier(ENV, ADDR, 7, null, null, 400, r.deps);
+    assert.match(r.seen[0]!, /nd\.netuid = 7/);
+    const r2 = reader([]);
+    assert.equal(
+      await loadValidatorHistoryColdTier(
+        ENV,
+        ADDR,
+        -3,
+        null,
+        null,
+        400,
+        r2.deps,
+      ),
+      null,
+    );
+    assert.deepEqual(r2.seen, []);
+  });
+
+  test("a malformed hotkey never reaches the engine", async () => {
+    const r = reader([]);
+    assert.equal(
+      await loadValidatorHistoryColdTier(
+        ENV,
+        "nope",
+        null,
+        null,
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("both new overlays extend, decline and pass through like the others", async () => {
+    // Extends.
+    const ext = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const hotAcct = buildAccountPositionHistory(
+      [{ snapshot_date: "2026-07-10", uid: 1 }],
+      ADDR,
+      64,
+      { window: "all" },
+    );
+    const out = await overlayAccountPositionHistoryColdTier(
+      ENV,
+      hotAcct,
+      ADDR,
+      64,
+      { label: "all", days: null },
+      ext.deps,
+    );
+    assert.equal(out.point_count, 2);
+
+    // Declines -> unchanged.
+    assert.equal(
+      await overlayAccountPositionHistoryColdTier(
+        ENV,
+        hotAcct,
+        ADDR,
+        64,
+        { label: "all", days: null },
+        reader(null).deps,
+      ),
+      hotAcct,
+    );
+
+    // Empty cold -> unchanged.
+    assert.equal(
+      await overlayAccountPositionHistoryColdTier(
+        ENV,
+        hotAcct,
+        ADDR,
+        64,
+        { label: "all", days: null },
+        reader([]).deps,
+      ),
+      hotAcct,
+    );
+
+    // Window already satisfied -> no query at all.
+    const none = reader([]);
+    const wide = buildAccountPositionHistory(
+      [{ snapshot_date: "2026-08-11" }, { snapshot_date: "2026-08-04" }],
+      ADDR,
+      64,
+      { window: "7d" },
+    );
+    assert.equal(
+      await overlayAccountPositionHistoryColdTier(
+        ENV,
+        wide,
+        ADDR,
+        64,
+        { label: "7d", days: 7 },
+        none.deps,
+      ),
+      wide,
+    );
+    assert.deepEqual(none.seen, []);
+  });
+
+  test("the validator overlay extends, declines and passes through too", async () => {
+    const ext = reader([{ snapshot_date: "2026-07-05", netuid: 1 }]);
+    const hotVal = buildValidatorHistory(
+      [{ snapshot_date: "2026-07-10", netuid: 1 }],
+      ADDR,
+      { window: "all", netuid: null },
+    );
+    const out = await overlayValidatorHistoryColdTier(
+      ENV,
+      hotVal,
+      ADDR,
+      null,
+      { label: "all", days: null },
+      ext.deps,
+    );
+    assert.equal(out.point_count, 2);
+
+    assert.equal(
+      await overlayValidatorHistoryColdTier(
+        ENV,
+        hotVal,
+        ADDR,
+        null,
+        { label: "all", days: null },
+        reader(null).deps,
+      ),
+      hotVal,
+    );
+    assert.equal(
+      await overlayValidatorHistoryColdTier(
+        ENV,
+        hotVal,
+        ADDR,
+        null,
+        { label: "all", days: null },
+        reader([]).deps,
+      ),
+      hotVal,
+    );
+
+    const none = reader([]);
+    const wide = buildValidatorHistory(
+      [{ snapshot_date: "2026-08-11" }, { snapshot_date: "2026-08-04" }],
+      ADDR,
+      { window: "7d", netuid: null },
+    );
+    assert.equal(
+      await overlayValidatorHistoryColdTier(
+        ENV,
+        wide,
+        ADDR,
+        null,
+        { label: "7d", days: 7 },
+        none.deps,
+      ),
+      wide,
+    );
+    assert.deepEqual(none.seen, []);
+  });
+});
+
+describe("the last edges on the two new legs", () => {
+  test("a malformed day is refused on both new legs, before any query", async () => {
+    const r = reader([]);
+    assert.equal(
+      await loadAccountPositionHistoryColdTier(
+        ENV,
+        ADDR,
+        64,
+        "2026-02-31",
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.equal(
+      await loadValidatorHistoryColdTier(
+        ENV,
+        ADDR,
+        null,
+        "2026-13-01",
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("both new overlays cope with a payload carrying no points array", async () => {
+    const acct = {
+      ...buildAccountPositionHistory([], ADDR, 64, { window: "all" }),
+    };
+    delete (acct as Record<string, unknown>).points;
+    const outA = await overlayAccountPositionHistoryColdTier(
+      ENV,
+      acct as ReturnType<typeof buildAccountPositionHistory>,
+      ADDR,
+      64,
+      { label: "all", days: null },
+      reader([{ snapshot_date: "2026-07-05", uid: 1 }]).deps,
+    );
+    assert.equal(outA.point_count, 1);
+
+    const val = {
+      ...buildValidatorHistory([], ADDR, { window: "all", netuid: null }),
+    };
+    delete (val as Record<string, unknown>).points;
+    const outV = await overlayValidatorHistoryColdTier(
+      ENV,
+      val,
+      ADDR,
+      null,
+      { label: "all", days: null },
+      reader([{ snapshot_date: "2026-07-05", netuid: 1 }]).deps,
+    );
+    assert.equal(outV.point_count, 1);
   });
 });

@@ -1394,8 +1394,10 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.ts";
 import {
+  overlayAccountPositionHistoryColdTier,
   overlayNeuronHistoryColdTier,
   overlaySubnetHistoryColdTier,
+  overlayValidatorHistoryColdTier,
 } from "./neuron-daily-cold-tier.ts";
 import {
   buildTurnover,
@@ -8440,11 +8442,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const hotkey = requireHotkey(args);
-      const { label } = requireHistoryWindow(args);
+      const { label, days } = requireHistoryWindow(args);
       // #9383 parity: the same netuid scope the REST route takes, forwarded as a
       // query param so both surfaces hit one query rather than two.
       const netuid = args.netuid ?? null;
-      return (
+      const hot =
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/validators/${hotkey}/history`, {
@@ -8452,7 +8454,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ...(netuid == null ? {} : { netuid: String(netuid) }),
           }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildValidatorHistory([], hotkey, { window: label, netuid })
+        )) ?? buildValidatorHistory([], hotkey, { window: label, netuid });
+      return overlayValidatorHistoryColdTier(
+        ctx.env,
+        hot,
+        hotkey,
+        netuid as number | null,
+        { label: label as string, days: days as number | null },
       );
     },
   },
@@ -10448,8 +10456,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const ss58 = requireSs58(args);
       const netuid = requireNetuid(args);
-      const { label } = requireHistoryWindow(args);
-      return (
+      const { label, days } = requireHistoryWindow(args);
+      const hot =
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(
@@ -10457,7 +10465,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             { window: label },
           ),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label })
+        )) ?? buildAccountPositionHistory([], ss58, netuid, { window: label });
+      return overlayAccountPositionHistoryColdTier(
+        ctx.env,
+        // tryPostgresTier is typed as the generic tier row; the builder's own
+        // fallback fixes the shape, and the overlay only reads `points`.
+        hot as ReturnType<typeof buildAccountPositionHistory>,
+        ss58,
+        netuid,
+        { label: label as string, days: days as number | null },
       );
     },
   },

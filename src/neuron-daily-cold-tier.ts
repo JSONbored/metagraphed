@@ -44,16 +44,25 @@ import {
   r2SqlQuery,
   safeBlockNumber,
   safeIsoDate,
+  safeSs58Literal,
   type R2SqlDeps,
 } from "./r2-sql.ts";
-import { NEURON_DAILY_COLUMNS } from "../generated/lakehouse/types.ts";
-import type { NeuronDailyRow } from "../generated/lakehouse/types.ts";
+import {
+  ACCOUNT_POSITION_DAILY_COLUMNS,
+  NEURON_DAILY_COLUMNS,
+} from "../generated/lakehouse/types.ts";
+import type {
+  AccountPositionDailyRow,
+  NeuronDailyRow,
+} from "../generated/lakehouse/types.ts";
 import { shiftIsoDate } from "./iso-date-window.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
   MAX_HISTORY_POINTS,
 } from "./neuron-history.ts";
+import { buildAccountPositionHistory } from "./account-position-history.ts";
+import { buildValidatorHistory } from "./validator-history.ts";
 
 /** The lakehouse namespace holding the decoded/copied chain tables. */
 const NAMESPACE = "chain";
@@ -439,5 +448,241 @@ export async function overlayNeuronHistoryColdTier(
   );
   return buildNeuronHistory(merged as never[], netuid, uid, {
     window: window.label,
+  });
+}
+
+/**
+ * The columns `/accounts/{ss58}/subnets/{netuid}/history` reads, again derived
+ * from the generated tuple rather than restated.
+ */
+const ACCOUNT_POSITION_FIELDS = [
+  "snapshot_date",
+  "captured_at",
+  "uid",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "incentive",
+  "dividends",
+  "stake_tao",
+  "emission_tao",
+] as const satisfies readonly (typeof ACCOUNT_POSITION_DAILY_COLUMNS)[number][];
+
+export type ColdAccountPositionRow = Pick<
+  AccountPositionDailyRow,
+  (typeof ACCOUNT_POSITION_FIELDS)[number]
+>;
+
+/**
+ * One account's position in one subnet, below the seam.
+ *
+ * `account` is the HOTKEY here, not the coldkey -- the row carries `coldkey`
+ * as a separate column, and reading it the other way round would silently
+ * return nothing for every caller. Verified against the live table rather than
+ * inferred from the name.
+ */
+export async function loadAccountPositionHistoryColdTier(
+  env: Env | null | undefined,
+  ss58: unknown,
+  netuid: unknown,
+  start: string | null,
+  seam: string | null,
+  limit: number,
+  deps: R2SqlDeps = {},
+): Promise<ColdAccountPositionRow[] | null> {
+  const account = safeSs58Literal(ss58);
+  const id = safeBlockNumber(netuid);
+  if (account == null || id == null) return null;
+  const range = coldDateRange(start, seam);
+  if (range == null) return null;
+  const rows = await r2SqlQuery<ColdAccountPositionRow>(
+    env,
+    `SELECT ${ACCOUNT_POSITION_FIELDS.join(", ")}
+      FROM ${NAMESPACE}.account_position_daily
+      WHERE account = '${account}' AND netuid = ${id}${datePredicate(range)}
+      ORDER BY snapshot_date DESC
+      LIMIT ${Math.max(1, Math.trunc(limit))}`,
+    deps,
+  );
+  return rows ?? null;
+}
+
+/** The account-position twin of the history overlays; same seam, same rules. */
+export async function overlayAccountPositionHistoryColdTier(
+  env: Env | null | undefined,
+  data: ReturnType<typeof buildAccountPositionHistory>,
+  ss58: string,
+  netuid: number,
+  window: { label: string; days: number | null },
+  deps: R2SqlDeps = {},
+): Promise<ReturnType<typeof buildAccountPositionHistory>> {
+  // This builder publishes no coverage fields, so the seam is read off the
+  // POINTS. That is the more general form -- `oldest_day` is only ever a
+  // cached answer to this same question -- and it keeps the seam from
+  // depending on a payload contract that differs per family.
+  const range = coldWindow(coverageOf(data.points), window.days, shiftIsoDate);
+  if (range == null) return data;
+  const cold = await loadAccountPositionHistoryColdTier(
+    env,
+    ss58,
+    netuid,
+    range.start,
+    range.seam,
+    MAX_HISTORY_POINTS,
+    deps,
+  );
+  if (cold == null || cold.length === 0) return data;
+  const merged = mergeHistoryDays(
+    (data.points ?? []) as { snapshot_date?: unknown }[],
+    cold,
+    window.days,
+    MAX_HISTORY_POINTS,
+    shiftIsoDate,
+  );
+  return buildAccountPositionHistory(
+    merged as Array<Record<string, unknown>>,
+    ss58,
+    netuid,
+    { window: window.label },
+  );
+}
+
+/**
+ * Oldest and newest day in a points array.
+ *
+ * The seam only ever needs these two values, and computing them from the rows
+ * works for every history family -- including the ones whose builders publish
+ * no coverage fields at all.
+ */
+export function coverageOf(points: unknown): {
+  oldest_day: string | null;
+  newest_day: string | null;
+} {
+  const days: string[] = [];
+  for (const row of Array.isArray(points) ? points : []) {
+    const day = asDay((row as { snapshot_date?: unknown })?.snapshot_date);
+    if (day != null) days.push(day);
+  }
+  if (days.length === 0) return { oldest_day: null, newest_day: null };
+  days.sort();
+  return { oldest_day: days[0]!, newest_day: days[days.length - 1]! };
+}
+
+/**
+ * One day of one validator, as the hot tier's SELECT list shapes it.
+ *
+ * Named rather than `Record<string, unknown>` because this projection is
+ * COMPUTED -- aliases plus the TAO conversion -- so no generated row describes
+ * it and `validate:untyped-db-reads` is right to insist it be written down.
+ * The alpha/TAO pairing is the part worth stating: `stake_alpha` is the raw
+ * column and `total_stake_tao` is it priced through subnet_snapshots, which is
+ * why that join has to exist at all.
+ */
+export interface ColdValidatorHistoryRow {
+  snapshot_date: string | null;
+  subnet_count: number | null;
+  netuid: number | null;
+  uid: number | null;
+  stake_alpha: number | null;
+  emission_alpha: number | null;
+  validator_trust: number | null;
+  consensus: number | null;
+  dividends: number | null;
+  take: number | null;
+  validator_permit: boolean | null;
+  subnet_total_stake: number | null;
+  total_stake_tao: number | null;
+  total_emission_tao: number | null;
+}
+
+/**
+ * One validator's per-day series, below the seam.
+ *
+ * THE JOIN IS WHY infra#447 EXISTS. The hot query prices stake and emission in
+ * TAO through `LEFT JOIN subnet_snapshots ON netuid AND snapshot_date`, so a
+ * lakehouse copy of neuron_daily alone cannot answer this route -- it would
+ * have to serve the alpha-denominated columns and quietly drop the TAO ones,
+ * which is the silent-shortening failure the seam exists to prevent. Carrying
+ * subnet_snapshots costs ~124 rows a day and makes this expressible.
+ *
+ * netuid is OPTIONAL: the route is chain-wide by default and scoped on
+ * request, exactly as the hot tier reads it.
+ */
+export async function loadValidatorHistoryColdTier(
+  env: Env | null | undefined,
+  hotkey: unknown,
+  netuid: number | null,
+  start: string | null,
+  seam: string | null,
+  limit: number,
+  deps: R2SqlDeps = {},
+): Promise<ColdValidatorHistoryRow[] | null> {
+  const key = safeSs58Literal(hotkey);
+  if (key == null) return null;
+  const scoped = netuid == null ? null : safeBlockNumber(netuid);
+  if (netuid != null && scoped == null) return null;
+  const range = coldDateRange(start, seam);
+  if (range == null) return null;
+  // `nd.` prefixed, because datePredicate names the bare column and this is
+  // the one query here with two tables carrying a snapshot_date.
+  const dates = datePredicate(range).replaceAll(
+    "snapshot_date",
+    "nd.snapshot_date",
+  );
+  const rows = await r2SqlQuery<ColdValidatorHistoryRow>(
+    env,
+    `SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
+        nd.netuid AS netuid, nd.uid AS uid,
+        nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
+        nd.validator_trust AS validator_trust, nd.consensus AS consensus,
+        nd.dividends AS dividends, nd.take AS take,
+        nd.validator_permit AS validator_permit,
+        s.total_stake_tao AS subnet_total_stake,
+        nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_stake_tao,
+        nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_emission_tao
+      FROM ${NAMESPACE}.neuron_daily nd
+      LEFT JOIN ${NAMESPACE}.subnet_snapshots s
+        ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+      WHERE nd.hotkey = '${key}'${scoped == null ? "" : ` AND nd.netuid = ${scoped}`}${dates}
+      ORDER BY nd.snapshot_date DESC
+      LIMIT ${Math.max(1, Math.trunc(limit))}`,
+    deps,
+  );
+  return rows ?? null;
+}
+
+/** The validator twin of the history overlays. */
+export async function overlayValidatorHistoryColdTier(
+  env: Env | null | undefined,
+  data: ReturnType<typeof buildValidatorHistory>,
+  hotkey: string,
+  netuid: number | null,
+  window: { label: string; days: number | null },
+  deps: R2SqlDeps = {},
+): Promise<ReturnType<typeof buildValidatorHistory>> {
+  const range = coldWindow(coverageOf(data.points), window.days, shiftIsoDate);
+  if (range == null) return data;
+  const cold = await loadValidatorHistoryColdTier(
+    env,
+    hotkey,
+    netuid,
+    range.start,
+    range.seam,
+    MAX_HISTORY_POINTS,
+    deps,
+  );
+  if (cold == null || cold.length === 0) return data;
+  const merged = mergeHistoryDays(
+    (data.points ?? []) as { snapshot_date?: unknown }[],
+    cold,
+    window.days,
+    MAX_HISTORY_POINTS,
+    shiftIsoDate,
+  );
+  return buildValidatorHistory(merged as never[], hotkey, {
+    window: window.label,
+    netuid,
   });
 }
