@@ -386,6 +386,15 @@ export interface NominatorPositionsPasses {
   received_rows: number;
 }
 
+/** `public.origin_reachability` */
+export interface OriginReachability {
+  checked_at: number | string;
+  origin: string;
+  samples: number;
+  surface_count: number;
+  verdict: string;
+}
+
 /** `public.providers` */
 export interface Providers {
   id: string;
@@ -779,6 +788,7 @@ export interface DatabaseTables {
   NeuronsPasses: NeuronsPasses;
   NominatorPositions: NominatorPositions;
   NominatorPositionsPasses: NominatorPositionsPasses;
+  OriginReachability: OriginReachability;
   Providers: Providers;
   RawCaptureState: RawCaptureState;
   RevenueObservations: RevenueObservations;
