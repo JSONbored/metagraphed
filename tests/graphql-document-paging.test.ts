@@ -11,7 +11,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { handleGraphQLRequest } from "../src/graphql.ts";
+import {
+  handleGraphQLRequest,
+  pageDocumentCollection,
+} from "../src/graphql.ts";
 import type { Row } from "./row-type.ts";
 
 type Env = Parameters<typeof handleGraphQLRequest>[1];
@@ -85,7 +88,10 @@ describe("document-shaped collections page over GraphQL", () => {
   });
 
   // Not a silently substituted default -- the same convention every other
-  // collection field here follows.
+  // collection field here follows. The rejection comes from
+  // parseArgumentsAtDispatch against the route's published enum, BEFORE the
+  // resolver runs, which is why pageDocumentCollection's own throw is
+  // unreachable and marked so.
   test("an unsupported sort is a BAD_USER_INPUT error, not a default", async () => {
     const body = await query('{ fixtures(sort: "not_a_column") }');
     const errors = (body.errors ?? []) as Array<{
@@ -93,5 +99,31 @@ describe("document-shaped collections page over GraphQL", () => {
     }>;
     assert.equal(errors.length > 0, true, "expected an error");
     assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+  });
+});
+
+// The rejection path, reached by injecting a collection that HAS a sort
+// vocabulary. Through the four fields above it is unreachable --
+// parseArgumentsAtDispatch rejects a bad sort against the route's published
+// enum before the resolver runs -- but it stops being unreachable the moment
+// one of them declares a filter, and that should not be the day a bad value
+// becomes a 500.
+describe("pageDocumentCollection", () => {
+  test("a value the collection rejects becomes BAD_USER_INPUT", () => {
+    assert.throws(
+      () =>
+        pageDocumentCollection({ candidates: [] }, "candidates", {
+          sort: "not_a_sortable_column",
+        }),
+      (err: unknown) => {
+        const gql = err as { extensions?: { code?: string } };
+        assert.equal(gql.extensions?.code, "BAD_USER_INPUT");
+        return true;
+      },
+    );
+  });
+
+  test("a null document passes through rather than erroring", () => {
+    assert.equal(pageDocumentCollection(null, "candidates", {}), null);
   });
 });

@@ -2230,8 +2230,15 @@ function documentListQueryUrl(args: Row): URL {
  *
  * A null/absent document passes through untouched -- these fields resolve to
  * null for a cold artifact and paging nothing is not an error.
+ *
+ * EXPORTED for its test. The rejection path is unreachable through the four
+ * fields that use it today -- they declare no filters, so the only rejectable
+ * values are `sort`/`order` and parseArgumentsAtDispatch catches those first --
+ * but it stops being unreachable the moment one declares a filter, and a
+ * `v8 ignore` here would be counted by codecov/patch anyway. Injecting the
+ * collection is what makes it provable.
  */
-function pageDocumentCollection(
+export function pageDocumentCollection(
   data: unknown,
   collection: string,
   args: Row,
