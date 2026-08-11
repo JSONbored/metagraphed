@@ -264,5 +264,915 @@
     "column": "observed_at",
     "type": "long",
     "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 1,
+    "column": "account",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 2,
+    "column": "name",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 3,
+    "column": "url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 4,
+    "column": "github",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 5,
+    "column": "image",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 6,
+    "column": "discord",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 7,
+    "column": "description",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 8,
+    "column": "additional",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity",
+    "field_id": 9,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 2,
+    "column": "account",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 3,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 4,
+    "column": "name",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 5,
+    "column": "url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 6,
+    "column": "github",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 7,
+    "column": "image",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 8,
+    "column": "discord",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 9,
+    "column": "description",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 10,
+    "column": "additional",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_identity_history",
+    "field_id": 11,
+    "column": "identity_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 1,
+    "column": "coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 2,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 3,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 4,
+    "column": "share_fraction",
+    "type": "float",
+    "required": false
+  },
+  {
+    "table": "nominator_positions",
+    "field_id": 5,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 2,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 3,
+    "column": "network",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 4,
+    "column": "endpoint_id",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 5,
+    "column": "provider",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 6,
+    "column": "ok",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 7,
+    "column": "status",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 8,
+    "column": "attempts",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 9,
+    "column": "latency_ms",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "rpc_proxy_events",
+    "field_id": 10,
+    "column": "cache",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "self_health_daily",
+    "field_id": 1,
+    "column": "day",
+    "type": "date",
+    "required": false
+  },
+  {
+    "table": "self_health_daily",
+    "field_id": 2,
+    "column": "component",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "self_health_daily",
+    "field_id": 3,
+    "column": "checks",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "self_health_daily",
+    "field_id": 4,
+    "column": "ok_count",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 2,
+    "column": "kappa_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 3,
+    "column": "immunity_period",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 4,
+    "column": "min_allowed_weights",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 5,
+    "column": "max_weight_limit_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 6,
+    "column": "tempo",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 7,
+    "column": "weights_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 8,
+    "column": "weights_rate_limit",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 9,
+    "column": "activity_cutoff",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 10,
+    "column": "activity_cutoff_factor",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 11,
+    "column": "registration_allowed",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 12,
+    "column": "target_regs_per_interval",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 13,
+    "column": "min_burn_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 14,
+    "column": "max_burn_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 15,
+    "column": "burn_half_life",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 16,
+    "column": "burn_increase_mult",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 17,
+    "column": "bonds_moving_avg_raw",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 18,
+    "column": "max_regs_per_block",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 19,
+    "column": "serving_rate_limit",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 20,
+    "column": "max_validators",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 21,
+    "column": "commit_reveal_period",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 22,
+    "column": "commit_reveal_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 23,
+    "column": "alpha_high_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 24,
+    "column": "alpha_low_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 25,
+    "column": "liquid_alpha_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 26,
+    "column": "alpha_sigmoid_steepness",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 27,
+    "column": "yuma_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 28,
+    "column": "subnet_is_active",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 29,
+    "column": "transfers_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 30,
+    "column": "bonds_reset_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 31,
+    "column": "user_liquidity_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 32,
+    "column": "owner_cut_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 33,
+    "column": "owner_cut_auto_lock_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 34,
+    "column": "min_childkey_take_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 35,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams",
+    "field_id": 36,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 3,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 4,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 5,
+    "column": "kappa_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 6,
+    "column": "immunity_period",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 7,
+    "column": "min_allowed_weights",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 8,
+    "column": "max_weight_limit_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 9,
+    "column": "tempo",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 10,
+    "column": "weights_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 11,
+    "column": "weights_rate_limit",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 12,
+    "column": "activity_cutoff",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 13,
+    "column": "activity_cutoff_factor",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 14,
+    "column": "registration_allowed",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 15,
+    "column": "target_regs_per_interval",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 16,
+    "column": "min_burn_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 17,
+    "column": "max_burn_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 18,
+    "column": "burn_half_life",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 19,
+    "column": "burn_increase_mult",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 20,
+    "column": "bonds_moving_avg_raw",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 21,
+    "column": "max_regs_per_block",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 22,
+    "column": "serving_rate_limit",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 23,
+    "column": "max_validators",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 24,
+    "column": "commit_reveal_period",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 25,
+    "column": "commit_reveal_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 26,
+    "column": "alpha_high_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 27,
+    "column": "alpha_low_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 28,
+    "column": "liquid_alpha_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 29,
+    "column": "alpha_sigmoid_steepness",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 30,
+    "column": "yuma_version",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 31,
+    "column": "subnet_is_active",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 32,
+    "column": "transfers_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 33,
+    "column": "bonds_reset_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 34,
+    "column": "user_liquidity_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 35,
+    "column": "owner_cut_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 36,
+    "column": "owner_cut_auto_lock_enabled",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 37,
+    "column": "min_childkey_take_ratio",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "subnet_hyperparams_history",
+    "field_id": 38,
+    "column": "hyperparams_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 3,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 4,
+    "column": "observed_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 5,
+    "column": "subnet_name",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 6,
+    "column": "symbol",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 7,
+    "column": "description",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 8,
+    "column": "github_repo",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 9,
+    "column": "subnet_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 10,
+    "column": "discord",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 11,
+    "column": "logo_url",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_identity_history",
+    "field_id": 12,
+    "column": "identity_hash",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "field_id": 1,
+    "column": "id",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "field_id": 3,
+    "column": "owner_hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "field_id": 4,
+    "column": "owner_coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "field_id": 5,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
   }
 ]

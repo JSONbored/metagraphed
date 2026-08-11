@@ -28,8 +28,46 @@ const WAREHOUSE =
   process.env.R2_WAREHOUSE ??
   "918f0f0e2eb26709d1cf4fb76085c8fb_metagraphed-lakehouse";
 
-/** The tables the decoder appends to, in the order it appends them. */
-const TABLES = ["blocks", "extrinsics", "chain_events", "account_events"];
+/**
+ * Every `chain.*` table this repo READS, not every table the catalog holds.
+ *
+ * The first four are the ones the decoder appends to. The rest are the cold
+ * tiers' own tables, and they were the gap: `chain` carries 26 tables, this
+ * list named 4, and the other ten that `src/*-cold-tier.ts` queries had no
+ * snapshot, no generated tuple and no drift coverage -- exactly the "checks
+ * nothing until the append" condition #10315 was filed about, one layer out.
+ *
+ * READ, rather than "all 26", on purpose. A type for a table nothing queries is
+ * dead code the moment it is generated -- `DatabaseTables` and `TableName` on
+ * the Neon side are the standing example, generated and imported by nothing.
+ * The twelve unlisted tables (account_balances, featured_validators, neurons,
+ * neuron_daily, account_position_daily, providers, rehearsal, subnet_ownership,
+ * subnet_snapshots, subnets, surfaces, validator_nominator_counts) are written
+ * by producers outside this repo and never read through R2 SQL here; add one
+ * here the moment a reader does.
+ */
+const TABLES = [
+  // The four the decoder appends to.
+  "blocks",
+  "extrinsics",
+  "chain_events",
+  "account_events",
+  // The nine the cold tiers read. Taken from the FROM/JOIN targets in `src/`
+  // with comments STRIPPED -- a plain grep for `chain.<name>` also matches
+  // prose, and `chain.account_events_daily` is exactly that trap: it is named
+  // in four comments and one route description, and queried by nothing.
+  // src/account-history-cold-tier.ts computes its own day bucket from
+  // `account_events` instead, which its header says in as many words.
+  "account_identity",
+  "account_identity_history",
+  "nominator_positions",
+  "rpc_proxy_events",
+  "self_health_daily",
+  "subnet_hyperparams",
+  "subnet_hyperparams_history",
+  "subnet_identity_history",
+  "subnet_ownership_history",
+];
 
 const token = process.env.R2_CATALOG_TOKEN ?? "";
 if (!token) {

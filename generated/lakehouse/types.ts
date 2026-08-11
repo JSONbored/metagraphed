@@ -114,10 +114,351 @@ export const ACCOUNT_EVENTS_COLUMNS = [
   "observed_at",
 ] as const;
 
+/** `chain.account_identity` */
+export interface AccountIdentityRow {
+  account: string | null;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+  captured_at: number | null;
+}
+
+/** `chain.account_identity` columns, in field-id order. */
+export const ACCOUNT_IDENTITY_COLUMNS = [
+  "account",
+  "name",
+  "url",
+  "github",
+  "image",
+  "discord",
+  "description",
+  "additional",
+  "captured_at",
+] as const;
+
+/** `chain.account_identity_history` */
+export interface AccountIdentityHistoryRow {
+  id: number | null;
+  account: string | null;
+  observed_at: number | null;
+  name: string | null;
+  url: string | null;
+  github: string | null;
+  image: string | null;
+  discord: string | null;
+  description: string | null;
+  additional: string | null;
+  identity_hash: string | null;
+}
+
+/** `chain.account_identity_history` columns, in field-id order. */
+export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
+  "id",
+  "account",
+  "observed_at",
+  "name",
+  "url",
+  "github",
+  "image",
+  "discord",
+  "description",
+  "additional",
+  "identity_hash",
+] as const;
+
+/** `chain.nominator_positions` */
+export interface NominatorPositionsRow {
+  coldkey: string | null;
+  hotkey: string | null;
+  netuid: number | null;
+  share_fraction: number | null;
+  captured_at: number | null;
+}
+
+/** `chain.nominator_positions` columns, in field-id order. */
+export const NOMINATOR_POSITIONS_COLUMNS = [
+  "coldkey",
+  "hotkey",
+  "netuid",
+  "share_fraction",
+  "captured_at",
+] as const;
+
+/** `chain.rpc_proxy_events` */
+export interface RpcProxyEventsRow {
+  id: number | null;
+  observed_at: number | null;
+  network: string | null;
+  endpoint_id: string | null;
+  provider: string | null;
+  ok: boolean | null;
+  status: number | null;
+  attempts: number | null;
+  latency_ms: number | null;
+  cache: string | null;
+}
+
+/** `chain.rpc_proxy_events` columns, in field-id order. */
+export const RPC_PROXY_EVENTS_COLUMNS = [
+  "id",
+  "observed_at",
+  "network",
+  "endpoint_id",
+  "provider",
+  "ok",
+  "status",
+  "attempts",
+  "latency_ms",
+  "cache",
+] as const;
+
+/** `chain.self_health_daily` */
+export interface SelfHealthDailyRow {
+  day: string | null;
+  component: string | null;
+  checks: number | null;
+  ok_count: number | null;
+}
+
+/** `chain.self_health_daily` columns, in field-id order. */
+export const SELF_HEALTH_DAILY_COLUMNS = [
+  "day",
+  "component",
+  "checks",
+  "ok_count",
+] as const;
+
+/** `chain.subnet_hyperparams` */
+export interface SubnetHyperparamsRow {
+  netuid: number | null;
+  kappa_ratio: number | null;
+  immunity_period: number | null;
+  min_allowed_weights: number | null;
+  max_weight_limit_ratio: number | null;
+  tempo: number | null;
+  weights_version: number | null;
+  weights_rate_limit: number | null;
+  activity_cutoff: number | null;
+  activity_cutoff_factor: number | null;
+  registration_allowed: boolean | null;
+  target_regs_per_interval: number | null;
+  min_burn_tao: number | null;
+  max_burn_tao: number | null;
+  burn_half_life: number | null;
+  burn_increase_mult: number | null;
+  bonds_moving_avg_raw: number | null;
+  max_regs_per_block: number | null;
+  serving_rate_limit: number | null;
+  max_validators: number | null;
+  commit_reveal_period: number | null;
+  commit_reveal_enabled: boolean | null;
+  alpha_high_ratio: number | null;
+  alpha_low_ratio: number | null;
+  liquid_alpha_enabled: boolean | null;
+  alpha_sigmoid_steepness: number | null;
+  yuma_version: number | null;
+  subnet_is_active: boolean | null;
+  transfers_enabled: boolean | null;
+  bonds_reset_enabled: boolean | null;
+  user_liquidity_enabled: boolean | null;
+  owner_cut_enabled: boolean | null;
+  owner_cut_auto_lock_enabled: boolean | null;
+  min_childkey_take_ratio: number | null;
+  block_number: number | null;
+  captured_at: number | null;
+}
+
+/** `chain.subnet_hyperparams` columns, in field-id order. */
+export const SUBNET_HYPERPARAMS_COLUMNS = [
+  "netuid",
+  "kappa_ratio",
+  "immunity_period",
+  "min_allowed_weights",
+  "max_weight_limit_ratio",
+  "tempo",
+  "weights_version",
+  "weights_rate_limit",
+  "activity_cutoff",
+  "activity_cutoff_factor",
+  "registration_allowed",
+  "target_regs_per_interval",
+  "min_burn_tao",
+  "max_burn_tao",
+  "burn_half_life",
+  "burn_increase_mult",
+  "bonds_moving_avg_raw",
+  "max_regs_per_block",
+  "serving_rate_limit",
+  "max_validators",
+  "commit_reveal_period",
+  "commit_reveal_enabled",
+  "alpha_high_ratio",
+  "alpha_low_ratio",
+  "liquid_alpha_enabled",
+  "alpha_sigmoid_steepness",
+  "yuma_version",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
+  "min_childkey_take_ratio",
+  "block_number",
+  "captured_at",
+] as const;
+
+/** `chain.subnet_hyperparams_history` */
+export interface SubnetHyperparamsHistoryRow {
+  id: number | null;
+  netuid: number | null;
+  block_number: number | null;
+  observed_at: number | null;
+  kappa_ratio: number | null;
+  immunity_period: number | null;
+  min_allowed_weights: number | null;
+  max_weight_limit_ratio: number | null;
+  tempo: number | null;
+  weights_version: number | null;
+  weights_rate_limit: number | null;
+  activity_cutoff: number | null;
+  activity_cutoff_factor: number | null;
+  registration_allowed: boolean | null;
+  target_regs_per_interval: number | null;
+  min_burn_tao: number | null;
+  max_burn_tao: number | null;
+  burn_half_life: number | null;
+  burn_increase_mult: number | null;
+  bonds_moving_avg_raw: number | null;
+  max_regs_per_block: number | null;
+  serving_rate_limit: number | null;
+  max_validators: number | null;
+  commit_reveal_period: number | null;
+  commit_reveal_enabled: boolean | null;
+  alpha_high_ratio: number | null;
+  alpha_low_ratio: number | null;
+  liquid_alpha_enabled: boolean | null;
+  alpha_sigmoid_steepness: number | null;
+  yuma_version: number | null;
+  subnet_is_active: boolean | null;
+  transfers_enabled: boolean | null;
+  bonds_reset_enabled: boolean | null;
+  user_liquidity_enabled: boolean | null;
+  owner_cut_enabled: boolean | null;
+  owner_cut_auto_lock_enabled: boolean | null;
+  min_childkey_take_ratio: number | null;
+  hyperparams_hash: string | null;
+}
+
+/** `chain.subnet_hyperparams_history` columns, in field-id order. */
+export const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
+  "id",
+  "netuid",
+  "block_number",
+  "observed_at",
+  "kappa_ratio",
+  "immunity_period",
+  "min_allowed_weights",
+  "max_weight_limit_ratio",
+  "tempo",
+  "weights_version",
+  "weights_rate_limit",
+  "activity_cutoff",
+  "activity_cutoff_factor",
+  "registration_allowed",
+  "target_regs_per_interval",
+  "min_burn_tao",
+  "max_burn_tao",
+  "burn_half_life",
+  "burn_increase_mult",
+  "bonds_moving_avg_raw",
+  "max_regs_per_block",
+  "serving_rate_limit",
+  "max_validators",
+  "commit_reveal_period",
+  "commit_reveal_enabled",
+  "alpha_high_ratio",
+  "alpha_low_ratio",
+  "liquid_alpha_enabled",
+  "alpha_sigmoid_steepness",
+  "yuma_version",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
+  "min_childkey_take_ratio",
+  "hyperparams_hash",
+] as const;
+
+/** `chain.subnet_identity_history` */
+export interface SubnetIdentityHistoryRow {
+  id: number | null;
+  netuid: number | null;
+  block_number: number | null;
+  observed_at: number | null;
+  subnet_name: string | null;
+  symbol: string | null;
+  description: string | null;
+  github_repo: string | null;
+  subnet_url: string | null;
+  discord: string | null;
+  logo_url: string | null;
+  identity_hash: string | null;
+}
+
+/** `chain.subnet_identity_history` columns, in field-id order. */
+export const SUBNET_IDENTITY_HISTORY_COLUMNS = [
+  "id",
+  "netuid",
+  "block_number",
+  "observed_at",
+  "subnet_name",
+  "symbol",
+  "description",
+  "github_repo",
+  "subnet_url",
+  "discord",
+  "logo_url",
+  "identity_hash",
+] as const;
+
+/** `chain.subnet_ownership_history` */
+export interface SubnetOwnershipHistoryRow {
+  id: number | null;
+  netuid: number | null;
+  owner_hotkey: string | null;
+  owner_coldkey: string | null;
+  captured_at: number | null;
+}
+
+/** `chain.subnet_ownership_history` columns, in field-id order. */
+export const SUBNET_OWNERSHIP_HISTORY_COLUMNS = [
+  "id",
+  "netuid",
+  "owner_hotkey",
+  "owner_coldkey",
+  "captured_at",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
   "extrinsics",
   "chain_events",
   "account_events",
+  "account_identity",
+  "account_identity_history",
+  "nominator_positions",
+  "rpc_proxy_events",
+  "self_health_daily",
+  "subnet_hyperparams",
+  "subnet_hyperparams_history",
+  "subnet_identity_history",
+  "subnet_ownership_history",
 ] as const;
