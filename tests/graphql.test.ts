@@ -15250,13 +15250,27 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
       {
         netuid: 8,
         movements: 5,
-        first_moved_at: "2026-04-01T00:00:00.000Z",
-        last_moved_at: "2026-06-01T00:00:00.000Z",
-        price_tao_at_last_move: 0.042,
+        // MIN/MAX(observed_at) AS first_observed/last_observed, epoch ms -- the
+        // builder renames them to first_moved_at / last_moved_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
       },
       { netuid: 12, movements: 1 },
     ]);
-    const env = { ...LAKEHOUSE_ENV };
+    // The #4332 price enrichment reads `subnet_snapshots` through the store, so
+    // the day of the last move must have a snapshot for the price to exist.
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM subnet_snapshots",
+        rows: [
+          { netuid: 8, snapshot_date: "2026-06-01", alpha_price_tao: 0.042 },
+        ],
+      },
+    ];
+    const env = { ...LAKEHOUSE_ENV, ...pgMockEnv() };
     const { status, body } = await gql(
       `{ account_stake_moves(ss58: "${SS58}", window: "90d") {
           address window total_movements subnet_count concentration dominant_netuid
@@ -15289,6 +15303,7 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
         price_tao_at_last_move: null,
       },
     ]);
+    pg.control.answers = [];
     lake.restore();
   });
 
@@ -18913,12 +18928,15 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     const env = {} as unknown as Env;
     const { status, body } = await gql(uptimeQuery(), env);
     assert.equal(status, 200);
+    // `source` is the prober label the BUILDER stamps; the retired tier's `{}`
+    // body fell through the resolver's `??` to null instead, so this field never
+    // showed what production serves (#10190).
     assert.deepEqual(body.data.subnet_uptime, {
       schema_version: 1,
       netuid: NETUID,
       window: "90d",
       observed_at: null,
-      source: null,
+      source: "live-cron-prober",
       reliability: null,
       surfaces: [],
     });
@@ -19523,15 +19541,11 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    // The tier answers with the right { data, generatedAt } envelope but an empty
-    // data object -- every field falls through to its own default rather than
-    // surfacing undefined or throwing.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => Response.json({ data: {}, generatedAt: null }),
-      },
-    };
+    // #10190: the tier that answered with an empty `{ data }` envelope is
+    // retired. What degrades now is a reader that cannot answer, and the fields
+    // below come from the BUILDER rather than from the resolver's `??` -- which
+    // is why `limit` is the query's own default here instead of 0.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
       env as unknown as Env,
@@ -19542,7 +19556,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       hotkey: HOTKEY,
       window: "30d",
       sort: "net_staked",
-      limit: 0,
+      limit: 20,
       offset: 0,
       nominator_count: 0,
       nominators: [],

@@ -97,6 +97,8 @@ import {
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
 } from "./validator-nominators.ts";
+import { ACCOUNT_STAKE_MOVES_PRICE_TABLES } from "./read-store-tables.ts";
+import { d1All } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import type { R2SqlReader } from "./r2-sql.ts";
@@ -340,9 +342,61 @@ export async function loadAccountStakeMovesColdTier(
   );
   if (rows === null) return null;
   return {
-    data: buildAccountStakeMoves(rows, ss58, { window: label }),
+    data: buildAccountStakeMoves(rows, ss58, {
+      window: label,
+      // #4332's price-at-tx enrichment, restored. buildAccountStakeMoves has
+      // always taken this map, and NOBODY passed it once the Postgres tier was
+      // retired (#10190) -- data-api computed it, so `price_tao_at_last_move`
+      // has been null on REST, GraphQL and MCP alike ever since. The tests
+      // could not show it: they doubled the tier, which supplied the field.
+      priceByNetuidDate: await alphaPriceByNetuidDate(env, rows, cutoff),
+    }),
     generatedAt: latestObservedIso(rows),
   };
+}
+
+/**
+ * `netuid:YYYY-MM-DD -> alpha_price_tao`, for the days the rows actually land
+ * on.
+ *
+ * Scoped to those days rather than the whole window: the map is keyed by the
+ * date of each subnet's LAST move, so a wider read would cost more and answer
+ * the same. A store that cannot answer yields an empty map, which the builder
+ * already reads as "no price for that day" -- the same null it published while
+ * this enrichment had no caller at all.
+ */
+async function alphaPriceByNetuidDate(
+  env: Env | null | undefined,
+  rows: Array<Record<string, unknown>>,
+  cutoff: number,
+): Promise<Map<string, number>> {
+  const prices = new Map<string, number>();
+  const netuids = [
+    ...new Set(
+      rows
+        .map((row) => Number(row.netuid))
+        .filter((netuid) => Number.isSafeInteger(netuid)),
+    ),
+  ];
+  if (netuids.length === 0) return prices;
+  try {
+    const since = new Date(cutoff).toISOString().slice(0, 10);
+    const snapshots = await d1All(
+      readStore(env, ACCOUNT_STAKE_MOVES_PRICE_TABLES) as never,
+      `SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots
+       WHERE snapshot_date >= ? AND netuid IN (${netuids.join(", ")})
+         AND alpha_price_tao IS NOT NULL`,
+      [since],
+    );
+    for (const row of snapshots) {
+      const price = Number(row.alpha_price_tao);
+      if (!Number.isFinite(price)) continue;
+      prices.set(`${Number(row.netuid)}:${String(row.snapshot_date)}`, price);
+    }
+  } catch {
+    // A price the store cannot serve is a null price, never a failed feed.
+  }
+  return prices;
 }
 
 /**
