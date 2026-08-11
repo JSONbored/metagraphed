@@ -1506,6 +1506,84 @@
     "nullable": false
   },
   {
+    "table": "revenue_observations",
+    "column": "amount",
+    "udt": "float8",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "currency",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "grain",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "period",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "provenance",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "response_hash",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_observations",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_probe_failures",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "revenue_probe_failures",
+    "column": "observed_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "revenue_probe_failures",
+    "column": "reason",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "revenue_probe_failures",
+    "column": "surface_id",
+    "udt": "text",
+    "nullable": false
+  },
+  {
     "table": "rpc_accounts",
     "column": "created_at",
     "udt": "int8",
@@ -1618,6 +1696,54 @@
     "column": "observed_at",
     "udt": "int8",
     "nullable": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "moving_price",
+    "udt": "float8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "network_immunity_period",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "pinned_block",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "registered_at_block",
+    "udt": "int8",
+    "nullable": true
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "snapshot_date",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_deregistration_daily",
+    "column": "subnet_mechanism",
+    "udt": "int4",
+    "nullable": true
   },
   {
     "table": "subnet_emission_enabled_history",
