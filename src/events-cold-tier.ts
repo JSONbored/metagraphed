@@ -50,6 +50,7 @@ import {
 } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -120,7 +121,7 @@ export async function loadAccountEventsColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<AccountEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
@@ -212,7 +213,7 @@ export async function loadSubnetEventsColdTier(
 
   // Cursor pages never carry an offset, mirroring the account feed.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<AccountEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
@@ -252,7 +253,7 @@ export async function loadBlockEventsColdTier(
   const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
 
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<AccountEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
       `WHERE block_number = ${height} ` +

@@ -34,6 +34,7 @@
 // them duplicated as a repository secret, plus a third-party trigger hop, to
 // ask a question the Worker can ask itself.
 import { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
   recordLaneVerdict,
@@ -261,12 +262,12 @@ const LAKEHOUSE_SEAM_LANE = "lakehouse-seam";
 type LaneVerdictInput = Omit<LaneHealthRecord, "lane" | "checked_at">;
 
 export async function runLakehouseSeamWatchdog(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   // Injectable so the MEASURED path is testable without a lakehouse. Same seam
   // as r2-sql.ts's scheduleAbort and webhooks.ts's sleepFn: a branch that can
   // only run against live infrastructure is a branch nothing verifies.
   deps: {
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
     now?: () => number;
     laneHealthDb?: LaneHealthDb;
     recordExceptionEvent?: typeof recordExceptionEvent;

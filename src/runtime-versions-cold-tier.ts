@@ -26,6 +26,7 @@
 // genuinely absent — and `coverage_complete` finally means what it says
 // instead of being true only because an empty timeline has no gaps in it.
 import { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 
 // One row per distinct spec_version: the earliest block that carried that
@@ -63,8 +64,8 @@ const LATEST_SQL =
  * failure this route was already shipping.
  */
 export async function loadRuntimeVersionHistoryColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
-  { query = r2SqlQuery }: { query?: typeof r2SqlQuery } = {},
+  env: Parameters<R2SqlReader>[0],
+  { query = r2SqlQuery }: { query?: R2SqlReader } = {},
 ): Promise<ReturnType<typeof buildRuntimeVersionHistory> | null> {
   const [rows, latestRows] = await Promise.all([
     query(env, TRANSITIONS_SQL),

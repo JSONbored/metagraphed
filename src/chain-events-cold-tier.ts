@@ -41,6 +41,7 @@ import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { ChainEventsRow } from "../generated/lakehouse/types.ts";
 import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
@@ -216,7 +217,7 @@ export async function loadChainEventsColdTier(
     }
   }
 
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<ChainEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,

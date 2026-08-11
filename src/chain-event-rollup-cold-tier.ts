@@ -27,6 +27,7 @@
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -185,7 +186,7 @@ export interface ChainEventRollup {
  * degrades to null instead of blanking the card (#10249).
  */
 export async function loadChainEventRollup(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   spec: ChainEventRollupSpec,
   {
     windowDays,
@@ -199,7 +200,7 @@ export async function loadChainEventRollup(
     windowDays: number;
     now?: number;
     limit?: number;
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ChainEventRollup | null> {
   const kind = safeEventKind(spec.eventKind);
@@ -364,7 +365,7 @@ export interface ChainEventIdentityRollup {
  * COUNT(DISTINCT) left is in the ungrouped totals, over a single row.
  */
 export async function loadChainEventIdentityRollup(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   spec: ChainEventRollupSpec,
   {
     windowDays,
@@ -382,7 +383,7 @@ export async function loadChainEventIdentityRollup(
      * the identity shape the builders read either way.
      */
     netuid?: number;
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ChainEventIdentityRollup | null> {
   const kind = safeEventKind(spec.eventKind);

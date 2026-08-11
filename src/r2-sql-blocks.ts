@@ -26,6 +26,7 @@ import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { BlocksRow } from "../generated/lakehouse/types.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -206,7 +207,7 @@ export async function loadBlockFromR2Sql(
     asNumber !== null
       ? `block_number = ${asNumber}`
       : `block_hash = '${asHash}'`;
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<BlocksRow>(
     env,
     `SELECT ${BLOCK_COLUMNS} FROM ${chainTable("blocks", network)} WHERE ${predicate} LIMIT 1`,
   );

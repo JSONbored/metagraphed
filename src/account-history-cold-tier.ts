@@ -38,6 +38,7 @@ import {
 } from "./account-events.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -102,7 +103,7 @@ export async function loadAccountHistoryColdTier(
   env: Env | null | undefined,
   ss58: string,
   query: AccountHistoryQuery,
-  { queryFn = r2SqlQuery }: { queryFn?: typeof r2SqlQuery } = {},
+  { queryFn = r2SqlQuery }: { queryFn?: R2SqlReader } = {},
 ): Promise<AccountHistoryResult | null> {
   // An unusable address is a decline, not an unfiltered scan of every account.
   const addr = safeSs58Literal(ss58);
@@ -210,7 +211,7 @@ async function loadKindsForPage(
   env: Env | null | undefined,
   where: string[],
   page: Array<Row & { day: string }>,
-  queryFn: typeof r2SqlQuery,
+  queryFn: R2SqlReader,
 ): Promise<Map<string, string> | null> {
   if (page.length === 0) return new Map();
   const newest = dayStartMs(page[0]!.day);

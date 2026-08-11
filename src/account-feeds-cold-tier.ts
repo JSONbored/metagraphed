@@ -99,8 +99,10 @@ import {
 } from "./validator-nominators.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
@@ -219,7 +221,7 @@ export async function loadAccountTransfersColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<AccountEventsRow>(
     env,
     `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where.join(" AND ")}` +
       ` ${FEED_ORDER} LIMIT ${limit + paged}`,
@@ -871,7 +873,7 @@ export async function loadAccountSummaryColdTier(
     query = r2SqlQuery,
   }: {
     recentLimit?: number;
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   } = {},
 ): Promise<AccountSummaryColdTierResult> {
   const addr = safeSs58Literal(ss58);

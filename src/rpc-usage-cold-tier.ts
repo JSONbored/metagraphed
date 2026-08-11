@@ -33,6 +33,7 @@
 import { ANALYTICS_WINDOW_DAYS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -81,7 +82,7 @@ export function windowCutoffMs(
  * different and wrong claim.
  */
 export async function loadRpcUsageColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   {
     window = "7d",
     now = Date.now(),
@@ -101,7 +102,7 @@ export async function loadRpcUsageColdTier(
     window?: string;
     now?: number;
     until?: number | null;
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   } = {},
 ): Promise<Record<string, unknown> | null> {
   const windowLabel = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)

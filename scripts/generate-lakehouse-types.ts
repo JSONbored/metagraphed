@@ -114,12 +114,18 @@ export function emitTypes(columns: LakehouseColumn[]): string {
       );
     }
     out.push(`/** \`chain.${table}\` */`);
-    out.push(`export interface ${pascal(table)}Row {`);
+    // A TYPE ALIAS, NOT AN INTERFACE, and the difference is load-bearing. An
+    // interface has no implicit index signature, so `BlocksRow` is not
+    // assignable to `Record<string, unknown>` -- and every formatter these rows
+    // feed takes exactly that. Emitting an interface made the generated types
+    // unusable at the boundary they exist to cross; a type alias gets the
+    // implicit signature and passes straight through.
+    out.push(`export type ${pascal(table)}Row = {`);
     for (const c of cols) {
       const optional = c.required ? "" : " | null";
       out.push(`  ${c.column}: ${TS_TYPE[c.type]}${optional};`);
     }
-    out.push("}");
+    out.push("};");
     out.push("");
     out.push(`/** \`chain.${table}\` columns, in field-id order. */`);
     out.push(

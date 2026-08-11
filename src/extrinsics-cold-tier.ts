@@ -52,6 +52,10 @@ import {
   ACCOUNT_EVENTS_COLUMNS,
   EXTRINSICS_COLUMNS,
 } from "../generated/lakehouse/types.ts";
+import type {
+  AccountEventsRow,
+  ExtrinsicsRow,
+} from "../generated/lakehouse/types.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
@@ -314,7 +318,7 @@ export async function loadExtrinsicColdTier(
     predicate = `extrinsic_hash = '${hash}'`;
   }
 
-  const rows = await r2SqlQuery(
+  const rows = await r2SqlQuery<ExtrinsicsRow>(
     env,
     `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
   );
@@ -328,7 +332,7 @@ export async function loadExtrinsicColdTier(
   const index = safeBlockNumber(row.extrinsic_index);
   let events: unknown[] = [];
   if (block !== null && index !== null) {
-    const found = await r2SqlQuery(
+    const found = await r2SqlQuery<AccountEventsRow>(
       env,
       `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
         `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +

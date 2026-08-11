@@ -37,6 +37,7 @@ import {
 } from "./account-events.ts";
 import { SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT } from "./route-limits.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 
 type Row = Record<string, unknown>;
@@ -131,7 +132,7 @@ export async function loadSubnetEventSummaryColdTier(
      * `?limit=` must serve the default page, not an empty card. */
     limit?: number | null;
     /** Injectable for tests. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildSubnetEventSummary> | null> {
   // An unusable netuid is a decline, not an unfiltered scan of every subnet.
