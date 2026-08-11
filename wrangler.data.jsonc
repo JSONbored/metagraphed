@@ -1,8 +1,35 @@
 {
-  // Dedicated Postgres-serving Worker (ADR 0013). Deployed separately from the main
-  // api.ts Worker so the postgres.js driver + growing read surface don't eat the
-  // main Worker's bundle budget. Reached only via the main Worker's DATA_API service
-  // binding (no public routes of its own). Deploy: wrangler deploy -c wrangler.data.jsonc
+  // Dedicated Postgres-serving Worker. Reached only via the main Worker's
+  // DATA_API service binding (no public routes of its own).
+  // Deploy: wrangler deploy -c wrangler.data.jsonc
+  //
+  // WHY THIS IS STILL A SEPARATE WORKER — and it is no longer the reason first
+  // written here (#10619).
+  //
+  // The original claim was ADR 0013 plus "so the postgres.js driver + growing
+  // read surface don't eat the main Worker's bundle budget". Both have expired:
+  // ADR 0013 is SUPERSEDED (by ADR 0014, Postgres cutover), and the budget
+  // argument is measurably not binding. Measured 2026-08-11:
+  //
+  //   metagraphed            944.8 KiB gzipped   9.2% of the 10 MB paid limit
+  //   metagraphed-data-api   384.3 KiB gzipped
+  //   both, merged          ~1.3 MB   gzipped  ~13%
+  //
+  // Nor is placement the differentiator — both Workers are `mode: "smart"`.
+  // On size alone these could be one Worker today.
+  //
+  // What keeps them apart is BLAST RADIUS, not bytes. This Worker holds every
+  // read AND every write route into the one Postgres instance, on its own cron
+  // schedule and its own queue consumer. Behind a service binding, a bad deploy
+  // or a runaway query here cannot take api.metagraph.sh down with it, and it
+  // redeploys without touching the public API. Merging would also put
+  // DB-latency-bound work in the same isolate as the edge API and add this
+  // Worker's crons to a main Worker already dispatching 37 of them.
+  //
+  // So: keep the split, but keep it for the reason that is actually true. If
+  // the day comes that the isolation stops earning its keep, the merge is
+  // mechanically easy -- which was NOT true when the bundle argument was
+  // written, and is the part worth re-checking rather than assuming.
   //
   // Also owns every write route into this same Postgres instance (#4771's
   // neurons-sync, subnet-hyperparams-sync, account-identity-sync,
