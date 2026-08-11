@@ -16254,30 +16254,46 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 
   test("get_account_transfers treats direction='all' identically to omitting direction", async () => {
-    const seenDirectionParams: (string | null)[] = [];
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          const url = new URL(request.url);
-          seenDirectionParams.push(url.searchParams.get("direction"));
-          return Response.json(
-            buildAccountTransfers([], SS58, {
-              limit: 100,
-              offset: 0,
-              nextCursor: null,
-            }),
-          );
-        },
-      },
+    // WAS asserted on the `direction` query param tryPostgresTier sent (null in
+    // both cases). The flag forwards nothing, so that proved only that the tool
+    // dropped the argument. The claim is about the ROWS: "all" and omitted must
+    // select the same set, which on the lakehouse means the same predicate --
+    // both sides of the key, `hotkey = addr OR coldkey = addr`.
+    const ROW = {
+      block_number: 4200000,
+      event_index: 0,
+      extrinsic_index: 1,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      netuid: null,
+      uid: null,
+      amount_tao: 1.5,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
     };
-    await callTool(
-      "get_account_transfers",
-      { ss58: SS58, direction: "all" },
-      { env },
-    );
-    await callTool("get_account_transfers", { ss58: SS58 }, { env });
-    assert.deepEqual(seenDirectionParams, [null, null]);
+    const seen: string[] = [];
+    for (const args of [{ direction: "all" }, {}]) {
+      const lake = lakehouse([ROW], { once: true });
+      try {
+        const res = await callTool(
+          "get_account_transfers",
+          { ss58: SS58, ...args },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(
+          res.body.result.structuredContent.transfers.length,
+          1,
+          JSON.stringify(args),
+        );
+        seen.push(lake.queries[0]);
+      } finally {
+        lake.restore();
+      }
+    }
+    assert.equal(seen[0], seen[1], "'all' and omitted must be one query");
+    assert.match(seen[0], /hotkey = '5G9hfkx/);
+    assert.match(seen[0], /coldkey = '5G9hfkx/);
   });
 
   test("get_account_transfers rejects a non-integer block_end", async () => {
@@ -17556,46 +17572,63 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       return { fetch: async (request: Request) => response ?? { request } };
     }
 
-    test("list_extrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 99,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [],
-        }),
-      );
-      const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 99);
+    test("list_extrinsics: the lakehouse feed is what the page carries", async () => {
+      // WAS "flag=postgres uses Postgres data, D1 never queried", reading an
+      // `extrinsic_count: 99` off a tier response with an EMPTY extrinsics list
+      // -- a count no reader could produce from those rows, which is the tell
+      // that nothing derived it. METAGRAPH_EXTRINSICS_SOURCE reads "retired"
+      // and forwards nothing, so the request was never made either.
+      //
+      // loadExtrinsicFeedColdTier answers now, over chain.extrinsics with the
+      // generated EXTRINSICS_COLUMNS. The count is the page length, derived.
+      const tier = forbiddenDataApi();
+      const lake = lakehouse([
+        EXTRINSIC_ROW,
+        { ...EXTRINSIC_ROW, extrinsic_index: 4 },
+      ]);
+      try {
+        const res = await callTool(
+          "list_extrinsics",
+          {},
+          { env: { ...LAKEHOUSE_ENV, ...tier } },
+        );
+        const out = res.body.result.structuredContent;
+        assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+        assert.equal(out.extrinsic_count, 2);
+        assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
+        assert.match(lake.queries[0], /FROM chain\.extrinsics/);
+      } finally {
+        lake.restore();
+      }
     });
 
     test("list_extrinsics: surfaces the action-sentence summary field, null for an unmatched call (#8525)", async () => {
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 2,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [
-            { ...EXTRINSIC_ROW, summary: "Set the chain timestamp." },
-            {
-              ...EXTRINSIC_ROW,
-              call_module: "NoSuchModule",
-              call_function: "no_such_function",
-              summary: null,
-            },
-          ],
-        }),
-      );
-      const res = await callTool("list_extrinsics", {}, { env });
-      const items = res.body.result.structuredContent.extrinsics;
-      assert.equal(items[0].summary, "Set the chain timestamp.");
-      assert.equal(items[1].summary, null);
+      // The summary is DERIVED from (call_module, call_function), so the retired
+      // tier's double handing back a `summary` string of its own proved nothing
+      // -- it asserted an echo. These rows carry no summary at all; the one
+      // below is composed by the formatter, and the unmatched call gets null
+      // because no sentence exists for it.
+      const lake = lakehouse([
+        { ...EXTRINSIC_ROW, call_module: "Timestamp", call_function: "set" },
+        {
+          ...EXTRINSIC_ROW,
+          extrinsic_index: 4,
+          call_module: "NoSuchModule",
+          call_function: "no_such_function",
+        },
+      ]);
+      try {
+        const res = await callTool(
+          "list_extrinsics",
+          {},
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        const items = res.body.result.structuredContent.extrinsics;
+        assert.equal(items[0].summary, "Set the chain timestamp.");
+        assert.equal(items[1].summary, null);
+      } finally {
+        lake.restore();
+      }
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
@@ -17627,85 +17660,47 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     });
 
-    test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
-      const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-      let seenUrl: URL | undefined;
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = {
-        fetch: async (request: Request) => {
-          seenUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            extrinsics: [],
-          });
-        },
-      };
-      const callHash = "0x" + "b".repeat(64);
-      await callTool(
-        "list_extrinsics",
-        {
-          block: 4200000,
-          signer: SS58,
-          call_module: "SubtensorModule",
-          call_function: "set_weights",
-          call_hash: callHash,
-          success: true,
-          limit: 10,
-          offset: 20,
-        },
-        { env },
-      );
-      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics");
-      assert.equal(seenUrl!.searchParams.get("block"), "4200000");
-      assert.equal(seenUrl!.searchParams.get("offset"), "20");
-      assert.equal(seenUrl!.searchParams.get("signer"), SS58);
-      assert.equal(seenUrl!.searchParams.get("call_module"), "SubtensorModule");
-      assert.equal(seenUrl!.searchParams.get("call_function"), "set_weights");
-      assert.equal(seenUrl!.searchParams.get("call_hash"), callHash);
-      assert.equal(seenUrl!.searchParams.get("success"), "true");
-      assert.equal(seenUrl!.searchParams.get("limit"), "10");
-    });
-
-    test("get_extrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
-      const hash = "0x" + "c".repeat(64);
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          ref: hash,
-          extrinsic: { ...EXTRINSIC_ROW, signer: "postgres-signer" },
-          events: [],
-        }),
-      );
-      const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.signer,
-        "postgres-signer",
-      );
-    });
+    // "list_extrinsics: flag=postgres forwards filters as REST-equivalent query
+    // params" was here, asserting the query string tryPostgresTier built. The
+    // flag forwards nothing, and every filter it listed is now a SQL predicate
+    // -- asserted where it lands, in "list_extrinsics expresses every filter and
+    // skips the tier on call_hash" above, including the call_hash gate that
+    // keeps an unexpressible filter from being silently dropped.
+    // "get_extrinsic: flag=postgres uses Postgres data, D1 never queried"
+    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // back off the mocked tier. That flag forwards nothing (#10190), so the
+    // request was never made -- covered by "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
 
     test("get_extrinsic: surfaces the action-sentence summary field (#8525)", async () => {
+      // The summary is DERIVED from (call_module, call_function) by the shared
+      // formatter, so a tier double returning its own `summary` string asserted
+      // an echo. This row carries none; the sentence below is composed.
       const hash = "0x" + "d".repeat(64);
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          ref: hash,
-          extrinsic: {
-            ...EXTRINSIC_ROW,
-            call_module: "Timestamp",
-            call_function: "set",
-            summary: "Set the chain timestamp.",
-          },
-          events: [],
-        }),
+      const lake = lakehouse((sql: string) =>
+        sql.includes("FROM chain.account_events")
+          ? []
+          : [
+              {
+                ...EXTRINSIC_ROW,
+                extrinsic_hash: hash,
+                call_module: "Timestamp",
+                call_function: "set",
+              },
+            ],
       );
-      const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.summary,
-        "Set the chain timestamp.",
-      );
+      try {
+        const res = await callTool(
+          "get_extrinsic",
+          { ref: hash },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(
+          res.body.result.structuredContent.extrinsic.summary,
+          "Set the chain timestamp.",
+        );
+      } finally {
+        lake.restore();
+      }
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
@@ -17725,23 +17720,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(out.extrinsic, null);
     });
 
-    test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
-      let seenUrl: URL | undefined;
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = {
-        fetch: async (request: Request) => {
-          seenUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            ref: "4200000-3",
-            extrinsic: null,
-            events: [],
-          });
-        },
-      };
-      await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics/4200000-3");
-    });
+    // "get_extrinsic: flag=postgres forwards the ref in the request path"
+    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // back off the mocked tier. That flag forwards nothing (#10190), so the
+    // request was never made -- the ref is now resolved into a SQL predicate, asserted in "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
   });
 
   test("block-explorer payloads validate against their declared outputSchemas", async () => {
@@ -21494,53 +21476,10 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.match(badColdkey.body.result.content[0].text, /coldkey/);
   });
 
-  test("get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level", async () => {
-    // workers/data-api.ts's own nominators route wraps its response as
-    // { data: buildValidatorNominators(...), generatedAt } -- unlike the
-    // flat-shaped neurons-tier routes. Assert hotkey/nominator_count/
-    // nominators land at the TOP of structuredContent (matching this tool's
-    // own outputSchema), not nested under .data, so a future regression to a
-    // bare `tryPostgresTier(...) ?? builder(...)` (no unwrap) fails loudly
-    // here instead of only violating the schema silently in production.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5Cold",
-                  net_staked_tao: 10,
-                  gross_staked_tao: 10,
-                  unstaked_tao: 0,
-                  event_count: 1,
-                  last_observed_at: "2026-07-01T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_validator_nominators",
-      { hotkey: HOTKEY },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.data, undefined);
-    assert.equal(out.hotkey, HOTKEY);
-    assert.equal(out.nominator_count, 1);
-    assert.equal(out.nominators[0].coldkey, "5Cold");
-  });
+  // "get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- there is no envelope to unwrap now; the reader returns the built card, asserted in "get_validator_nominators serves the nominator list from the lakehouse", through the transport that answers.
 
   test("get_validator_history returns a schema-stable empty point series", async () => {
     const res = await callTool("get_validator_history", { hotkey: HOTKEY });
@@ -22431,32 +22370,10 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.deepEqual(out.extrinsics, []);
   });
 
-  test("get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried", async () => {
-    let capturedPath;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedPath = new URL(req.url).pathname;
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 1,
-            extrinsics: [{ call_module: "Sudo" }],
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_sudo",
-      { call_function: "sudo_set_weights_set_rate_limit" },
-      { env },
-    );
-    assert.equal(capturedPath, "/api/v1/sudo");
-    assert.equal(
-      res.body.result.structuredContent.extrinsics[0].call_module,
-      "Sudo",
-    );
-  });
+  // "get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
   test("get_sudo rejects a non-boolean success filter", async () => {
     const res = await callTool("get_sudo", { success: "maybe" });
@@ -22470,24 +22387,10 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.deepEqual(out.extrinsics, []);
   });
 
-  test("get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes", async () => {
-    let capturedPath;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedPath = new URL(req.url).pathname;
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await callTool("get_governance_config_changes", {}, { env });
-    assert.equal(capturedPath, "/api/v1/governance/config-changes");
-  });
+  // "get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
   test("get_sudo_key returns hotkey:null for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
@@ -23949,28 +23852,47 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 // and the DATA_API mock here must nest the marker under `data` to exercise
 // that unwrap, not sit at the top level like the flat-shaped CASES tools.
 describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring", () => {
-  test("get_subnet_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
+  test("get_subnet_stake_flow reads one subnet's rows out of the chain projection", async () => {
+    // WAS an assertion on "/api/v1/subnets/7/stake-flow?window=30d&direction=all"
+    // and a `marker` echoed back from the mocked tier. The flag forwards nothing.
+    //
+    // What answers is the CHAIN stake-flow lane, filtered to this netuid -- the
+    // per-subnet card has no projection of its own, it reads its row out of the
+    // network-wide one. So the fixture carries two subnets and the assertion is
+    // that the other one does not leak in.
+    const tier = forbiddenDataApi();
+    const rows = [
+      {
+        netuid: 7,
+        event_kind: "StakeAdded",
+        total_tao: 40,
+        event_count: 4,
+        last_observed: 1_750_000_000_000,
       },
-    };
-    const res = await callTool("get_subnet_stake_flow", { netuid: 7 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      "/api/v1/subnets/7/stake-flow?window=30d&direction=all",
+      {
+        netuid: 8,
+        event_kind: "StakeAdded",
+        total_tao: 900,
+        event_count: 90,
+        last_observed: 1_750_000_000_000,
+      },
+    ];
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-stake-flow.json"
+        ? { schema_version: 1, windows: { "7d": { rows }, "30d": { rows } } }
+        : null,
     );
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7 },
+      { env: { ...tier, ...(archive as unknown as Row) } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d", "the tool's own default window");
+    assert.equal(out.total_staked_tao, 40, "netuid 8's 900 must not leak in");
   });
 
   test("get_subnet_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24001,32 +23923,52 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
     assert.equal(res.body.result.structuredContent.marker, undefined);
   });
 
-  test("get_subnet_volume: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("get_subnet_volume reads its row out of the chain alpha-volume projection", async () => {
+    // Same shape as its stake-flow sibling: no per-subnet lane, one row filtered
+    // out of the network-wide 24h projection. The economics artifact still rides
+    // alongside for vol_mcap_ratio's denominator.
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-alpha-volume.json"
+        ? {
+            schema_version: 1,
+            windows: {
+              "24h": {
+                rows: [
+                  {
+                    netuid: 7,
+                    event_kind: "StakeAdded",
+                    alpha_volume: 100,
+                    tao_volume: 100,
+                    event_count: 5,
+                  },
+                  {
+                    netuid: 8,
+                    event_kind: "StakeAdded",
+                    alpha_volume: 9000,
+                    tao_volume: 9000,
+                    event_count: 900,
+                  },
+                ],
+                observed_at: 1_750_000_000_000,
+              },
+            },
+          }
+        : null,
+    );
     const deps = makeDeps({
       "/metagraph/economics.json": { subnets: [{ netuid: 7 }] },
     });
     const res = await callTool(
       "get_subnet_volume",
       { netuid: 7 },
-      { env, deps },
+      { env: { ...tier, ...(archive as unknown as Row) }, deps },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/subnets/7/volume");
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.buy_volume_tao, 100, "netuid 8's 9000 must not leak in");
   });
 
   test("get_subnet_volume: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24079,37 +24021,48 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 // tryPostgresTier's result -- so the DATA_API mock here nests the marker
 // under `data` to exercise that unwrap.
 describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
-  test("flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
+  test("the candle series is assembled from the lakehouse trade buckets", async () => {
+    // WAS an assertion on "/api/v1/subnets/7/ohlc?interval=1d&days=30&limit=168"
+    // -- including a careful note about forwarding `limit` so the two surfaces
+    // agreed on the page. The flag forwards nothing, so none of that happened.
+    //
+    // The page bound still matters, and it is now the reader's own: the engine
+    // caps at MAX_CANDLES newest-first and the assembler re-sorts ascending, so
+    // what a caller's `days` controls is the WHERE cutoff, not a page size the
+    // tier had to be told about.
+    const tier = forbiddenDataApi();
+    const lake = lakehouse([
+      {
+        bucket_start: 1_750_000_000_000,
+        open_price: 1,
+        close_price: 2,
+        high_price: 3,
+        low_price: 0.5,
+        volume_alpha: 10,
+        volume_tao: 20,
+        event_count: 4,
+        last_observed: 1_750_050_000_000,
       },
-    };
-    const res = await callTool(
-      "get_subnet_ohlc",
-      { netuid: 7, interval: "1d", days: 30 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    // `limit` rides along even when the caller did not name one (#10318). The
-    // tool's page size is 168 where the route's default is the 2,000-candle
-    // cap, so the tier has to be told which one it is answering -- forwarding
-    // interval and days but not limit is how the two surfaces would come to
-    // disagree about the page while agreeing about the window.
-    assert.equal(
-      captured,
-      "/api/v1/subnets/7/ohlc?interval=1d&days=30&limit=168",
-    );
+    ]);
+    try {
+      const res = await callTool(
+        "get_subnet_ohlc",
+        { netuid: 7, interval: "1d", days: 30 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.netuid, 7);
+      assert.equal(out.interval, "1d");
+      assert.equal(out.candles.length, 1);
+      assert.equal(out.candles[0].open, 1);
+      assert.equal(out.candles[0].close, 2);
+      assert.match(lake.queries[0], /netuid = 7/);
+      assert.match(lake.queries[0], /ORDER BY bucket_start DESC LIMIT/);
+    } finally {
+      lake.restore();
+    }
   });
 
   test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24358,47 +24311,75 @@ describe("MCP account activity feeds — what answers now that the tier is gone"
   });
 });
 describe("MCP get_block_events — Postgres tier wiring", () => {
-  test("get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
-    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/blocks/4200000/events?limit=100&offset=0");
-  });
+  // "get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_block_events serves one block's events in read order", through the transport that answers.
 
-  test("get_block_events: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
+  test("get_block_events: a 0x hash ref costs a block lookup, and the page is sliced", async () => {
+    // WAS an assertion on `/api/v1/blocks/{hash}/events?limit=25&offset=50` --
+    // the URL tryPostgresTier built. The flag forwards nothing, and the two
+    // claims inside that URL now land in different places:
+    //
+    //   * the HASH is not a predicate on account_events at all. R2 SQL cannot
+    //     join, so the reader resolves it to a height off chain.blocks FIRST
+    //     and only then reads the events: two queries, and an unresolvable
+    //     hash must decline rather than scan every block.
+    //   * the OFFSET is emulated. R2 SQL has no OFFSET, so the reader
+    //     over-fetches and slices -- which is why offsetting past the rows
+    //     empties the page instead of paging into it.
     const hash = `0x${"ab".repeat(32)}`;
-    await callTool(
-      "get_block_events",
-      { ref: hash, limit: 25, offset: 50 },
-      { env },
+    const EVENT = {
+      block_number: 4200000,
+      event_index: 0,
+      extrinsic_index: 3,
+      event_kind: "WeightsSet",
+      hotkey: null,
+      coldkey: null,
+      netuid: 7,
+      uid: 3,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
+    };
+    const tier = forbiddenDataApi();
+    const lake = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [EVENT],
     );
-    assert.equal(captured, `/api/v1/blocks/${hash}/events?limit=25&offset=50`);
+    try {
+      const res = await callTool(
+        "get_block_events",
+        { ref: hash, limit: 25 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.block_number, 4200000, "the hash resolved to a height");
+      assert.equal(out.events.length, 1);
+      assert.match(
+        lake.queries[0],
+        /FROM chain\.blocks WHERE block_hash = '0xabab/,
+      );
+      assert.match(lake.queries[1], /block_number = 4200000/);
+    } finally {
+      lake.restore();
+    }
+
+    // The same ref with an offset past the block's only event: an emulated
+    // OFFSET slices what it fetched, so this is empty rather than a second page.
+    const deep = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [EVENT],
+    );
+    try {
+      const res = await callTool(
+        "get_block_events",
+        { ref: hash, limit: 25, offset: 50 },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.deepEqual(res.body.result.structuredContent.events, []);
+    } finally {
+      deep.restore();
+    }
   });
 
   test("get_block_events: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24443,59 +24424,90 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
 describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  test("get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({ schema_version: 1, marker: "from-postgres" });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_extrinsics",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/extrinsics?limit=100&offset=0`,
-    );
-  });
+  // "get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_account_extrinsics filters by signer from the lakehouse", through the transport that answers.
 
-  test("get_account_extrinsics: flag=postgres forwards block_start/block_end/limit/offset/cursor", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({ schema_version: 1, marker: "from-postgres" });
-        },
-      },
+  test("get_account_extrinsics: every range filter becomes a predicate, and an unusable cursor declines", async () => {
+    // WAS an assertion on the query string tryPostgresTier built. Same filters,
+    // asserted where they now take effect -- and one thing the URL form could
+    // not show: a cursor the codec cannot decode must DECLINE rather than page
+    // from the top, because a caller holding a stale token would otherwise be
+    // silently handed page one as if it were page five.
+    const ROW = {
+      block_number: 150,
+      extrinsic_index: 1,
+      extrinsic_hash: `0x${"c".repeat(64)}`,
+      signer: SS58,
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      success: true,
+      fee_tao: 0.0005,
+      tip_tao: null,
+      call_args: null,
+      observed_at: 1_750_009_000_000,
     };
-    await callTool(
-      "get_account_extrinsics",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 200,
-        limit: 5,
-        offset: 10,
-        cursor: "abc",
-      },
-      { env },
-    );
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=200&limit=5&offset=10&cursor=abc`,
-    );
+    const tier = forbiddenDataApi();
+    const lake = lakehouse([ROW]);
+    try {
+      const res = await callTool(
+        "get_account_extrinsics",
+        { ss58: SS58, block_start: 100, block_end: 200, limit: 5 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      assert.deepEqual(tier.paths, []);
+      assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
+      const sql = lake.queries[0];
+      assert.match(sql, new RegExp(`signer = '${SS58}'`));
+      assert.match(sql, /block_number >= 100/);
+      assert.match(sql, /block_number <= 200/);
+      assert.match(sql, /LIMIT/);
+    } finally {
+      lake.restore();
+    }
+
+    // A cursor is a 3-part tuple seek on the feed's own order key, and it
+    // REPLACES the offset -- the token already narrows past prior pages, so
+    // applying both would skip a page's worth of rows twice.
+    const paged = lakehouse([ROW]);
+    try {
+      await callTool(
+        "get_account_extrinsics",
+        {
+          ss58: SS58,
+          limit: 5,
+          offset: 10,
+          cursor: "1750009000000.4200000.3",
+        },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      const sql = paged.queries[0];
+      assert.match(
+        sql,
+        /\(observed_at, block_number, extrinsic_index\) < \(1750009000000, 4200000, 3\)/,
+      );
+    } finally {
+      paged.restore();
+    }
+
+    // A MALFORMED token decodes to null and is treated as no cursor, which
+    // serves page one. Deliberate, and asserted rather than left implicit: it is
+    // data-api's own documented cursor semantics, shared by every paged route
+    // here, so the reader that replaced the tier had to keep it or the same
+    // token would mean two different things on two surfaces.
+    const bad = lakehouse([ROW]);
+    try {
+      const res = await callTool(
+        "get_account_extrinsics",
+        { ss58: SS58, limit: 5, cursor: "abc" },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
+      assert.doesNotMatch(bad.queries[0], /observed_at, block_number/);
+    } finally {
+      bad.restore();
+    }
   });
 
   test("get_account_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24534,57 +24546,65 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
 });
 
 describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
-  test("list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "list_block_extrinsics",
-      { ref: "4200000" },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      "/api/v1/blocks/4200000/extrinsics?limit=50&offset=0",
-    );
-  });
+  // "list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "list_block_extrinsics serves one block's extrinsics", through the transport that answers.
 
-  test("list_block_extrinsics: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
+  test("list_block_extrinsics: a 0x hash ref costs a block lookup, and the page is sliced", async () => {
+    // Same two claims as its events twin, on the extrinsics table: the hash is
+    // resolved to a height off chain.blocks first, and the offset is emulated by
+    // over-fetch-and-slice because R2 SQL has no OFFSET.
     const hash = `0x${"ab".repeat(32)}`;
-    await callTool(
-      "list_block_extrinsics",
-      { ref: hash, limit: 25, offset: 60 },
-      { env },
+    const ROW = {
+      block_number: 4200000,
+      extrinsic_index: 3,
+      extrinsic_hash: `0x${"c".repeat(64)}`,
+      signer: null,
+      call_module: "Timestamp",
+      call_function: "set",
+      success: true,
+      fee_tao: null,
+      tip_tao: null,
+      call_args: null,
+      observed_at: 1_750_009_000_000,
+    };
+    const tier = forbiddenDataApi();
+    const lake = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
     );
-    assert.equal(
-      captured,
-      `/api/v1/blocks/${hash}/extrinsics?limit=25&offset=60`,
+    try {
+      const res = await callTool(
+        "list_block_extrinsics",
+        { ref: hash, limit: 25 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.block_number, 4200000, "the hash resolved to a height");
+      assert.equal(out.extrinsics.length, 1);
+      assert.equal(out.extrinsics[0].extrinsic_index, 3);
+      assert.match(
+        lake.queries[0],
+        /FROM chain\.blocks WHERE block_hash = '0xabab/,
+      );
+    } finally {
+      lake.restore();
+    }
+
+    const deep = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
     );
+    try {
+      const res = await callTool(
+        "list_block_extrinsics",
+        { ref: hash, limit: 25, offset: 60 },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+    } finally {
+      deep.restore();
+    }
   });
 
   test("list_block_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
