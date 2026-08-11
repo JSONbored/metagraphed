@@ -61,6 +61,7 @@ import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { SubnetEmissionPanel } from "@/components/metagraphed/subnet-emission-panel";
 import { SubnetRevenuePanel } from "@/components/metagraphed/subnet-revenue-panel";
+import { SubnetMoneyMapPanel } from "@/components/metagraphed/subnet-money-map-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
@@ -653,6 +654,17 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <SubnetRevenuePanel netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="money-map"
+        title="Money map"
+        subtitle="What comes in, what is emitted, who gets it, and where it goes."
+        info="GET /api/v1/subnets/{netuid}/owner-cut and /wallets — the owner cut (SubnetOwnerCut is 11796/65535 ≈ 18%, not one sixth) and what became of it, beside every declared wallet with the evidence that backs it. `unresolved` is a first-class answer: the cut is paid as stake rather than a liquid balance, so where it went is frequently not determinable from what we index."
+      >
+        <QueryErrorBoundary>
+          <SubnetMoneyMapPanel netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
