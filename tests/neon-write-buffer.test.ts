@@ -238,10 +238,10 @@ describe("neonWriteBufferLanes", () => {
   });
 
   test("enables exactly the lanes named", () => {
-    const env = { NEON_WRITE_BUFFER_LANES: "chain-detail" };
-    assert.equal(neonWriteBufferEnabled(env, "chain-detail"), true);
-    assert.equal(neonWriteBufferEnabled(env, "neurons"), false);
-    assert.equal(neonWriteBufferEnabled({}, "chain-detail"), false);
+    const env = { NEON_WRITE_BUFFER_LANES: "neurons" };
+    assert.equal(neonWriteBufferEnabled(env, "neurons"), true);
+    assert.equal(neonWriteBufferEnabled(env, "nominator-positions"), false);
+    assert.equal(neonWriteBufferEnabled({}, "neurons"), false);
   });
 });
 
@@ -268,9 +268,9 @@ describe("neonWriteRunner", () => {
   test("a flagged lane with the binding present returns the BUFFERED runner", async () => {
     const n = namespace();
     const sql = neonWriteRunner(
-      { NEON_WRITE_BUFFER: n.ns, NEON_WRITE_BUFFER_LANES: "chain-detail" },
+      { NEON_WRITE_BUFFER: n.ns, NEON_WRITE_BUFFER_LANES: "neurons" },
       CTX,
-      "chain-detail",
+      "neurons",
       HD,
     );
     await sql?.unsafe("INSERT INTO t VALUES ($1)", [1]);
@@ -399,7 +399,7 @@ describe("blocks-head can never be buffered", () => {
     // write defers the visible chain tip by the whole flush interval.
     assert.equal(
       neonWriteBufferEnabled(
-        { NEON_WRITE_BUFFER_LANES: "blocks-head,chain-detail" },
+        { NEON_WRITE_BUFFER_LANES: "blocks-head,neurons" },
         "blocks-head",
       ),
       false,
@@ -407,8 +407,8 @@ describe("blocks-head can never be buffered", () => {
     // And it does not poison the lanes named beside it.
     assert.equal(
       neonWriteBufferEnabled(
-        { NEON_WRITE_BUFFER_LANES: "blocks-head,chain-detail" },
-        "chain-detail",
+        { NEON_WRITE_BUFFER_LANES: "blocks-head,neurons" },
+        "neurons",
       ),
       true,
     );
@@ -435,7 +435,22 @@ describe("blocks-head can never be buffered", () => {
     assert.deepEqual(sent, [], "nothing may be enqueued");
   });
 
-  test("the never-buffer set names the lane explicitly", () => {
-    assert.ok(NEVER_BUFFER_LANES.has("blocks-head"));
+  test("chain-detail is excluded too -- the DETAIL behind each head", () => {
+    // Buffering the head and not the detail would be worse than buffering
+    // neither: the explorer would list a block it cannot open.
+    assert.equal(
+      neonWriteBufferEnabled(
+        { NEON_WRITE_BUFFER_LANES: "chain-detail" },
+        "chain-detail",
+      ),
+      false,
+    );
+  });
+
+  test("the never-buffer set names both explorer lanes explicitly", () => {
+    assert.deepEqual([...NEVER_BUFFER_LANES].sort(), [
+      "blocks-head",
+      "chain-detail",
+    ]);
   });
 });

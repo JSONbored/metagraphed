@@ -279,7 +279,9 @@ export function neonWriteBufferLanes(
 /**
  * Lanes that must NEVER be buffered, whatever the flag says.
  *
- * `blocks-head` is the block explorer's live read path, not merely a write.
+ * Both entries are the block explorer's live READ path, not merely writes.
+ *
+ * `blocks-head` is the header register above the decode seam.
  * src/blocks-cold-tier.ts routes `block_number > seam` to
  * `blocks_head b LEFT JOIN chain_detail_blocks c`, which is exactly the window
  * "between a block being seen and being decoded" -- so deferring that write
@@ -300,7 +302,15 @@ export function neonWriteBufferLanes(
  * a different change and a much larger one -- the LEFT JOIN above cannot span
  * two stores without returning a wrong answer with a valid shape.
  */
-export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set(["blocks-head"]);
+export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
+  "blocks-head",
+  // Same reason, one layer down: this lane writes chain_detail_blocks /
+  // _extrinsics / _chain_events / _account_events, which are exactly the
+  // tables src/chain-detail-hot-tier.ts reads to serve a recent block's
+  // DETAIL. Buffering the head and not the detail would be worse than
+  // buffering neither -- the explorer would list a block it cannot open.
+  "chain-detail",
+]);
 
 /** Whether one lane's writes go through the buffer. */
 export function neonWriteBufferEnabled(
