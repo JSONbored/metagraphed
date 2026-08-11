@@ -53,6 +53,7 @@ import {
   staleLanes,
   type LaneHealthDb,
   type LaneHealthRecord,
+  type LaneVerdict,
 } from "./lane-health.ts";
 import { recordLaneVerdict } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
@@ -141,7 +142,10 @@ export function laneAlarmTitle(lane: string): string {
 }
 
 /** Which of the two faults an alarm is about. */
-export type LaneAlarmKind = "stale" | "silent";
+/** `stale` and `unknown` are VERDICTS the watchdog wrote; `silent` is this
+ * module's own finding -- the absence of any verdict at all -- so it is the one
+ * member not derived from the schema. */
+export type LaneAlarmKind = LaneFindingVerdict | "silent";
 
 export interface LaneAlarm {
   lane: string;
@@ -171,11 +175,61 @@ export interface LaneAlarm {
  * hypothetical: `subnet-snapshot` and `top-holders-staleness` each had zero `ok`
  * verdicts in the five days before this was written.
  */
-export const LANE_STALE_RUN_SQL =
-  "SELECT lane, MIN(checked_at) AS since, COUNT(*) AS ticks " +
-  "FROM lane_health h WHERE verdict = 'stale' AND checked_at > COALESCE(" +
-  "(SELECT MAX(checked_at) FROM lane_health x " +
-  "WHERE x.lane = h.lane AND x.verdict <> 'stale'), 0) GROUP BY lane";
+/** An unbroken run of one verdict per lane: when it started and how many ticks
+ * it has lasted. Named once rather than restated at each of the four places it
+ * appears -- the loaders, the plan input and the plan's own reads. */
+export type LaneVerdictRuns = Record<string, { since: number; ticks: number }>;
+
+/** The verdicts that are FINDINGS -- every one except `ok`. Derived from
+ * LaneVerdict (itself derived from the published self-health schema) rather than
+ * restated, for the reason lane-health.ts gives about its own type: a verdict
+ * added to the schema must not be able to appear in the API and be silently
+ * unalarmable here. */
+type LaneFindingVerdict = Exclude<LaneVerdict, "ok">;
+
+function laneRunSql(verdict: LaneFindingVerdict): string {
+  // `verdict` comes from a closed, schema-derived union, never from input --
+  // interpolated because a placeholder cannot stand where the correlated
+  // subquery needs the same value twice, and the alternative is two
+  // near-identical strings that drift.
+  return (
+    "SELECT lane, MIN(checked_at) AS since, COUNT(*) AS ticks " +
+    `FROM lane_health h WHERE verdict = '${verdict}' AND checked_at > COALESCE(` +
+    "(SELECT MAX(checked_at) FROM lane_health x " +
+    `WHERE x.lane = h.lane AND x.verdict <> '${verdict}'), 0) GROUP BY lane`
+  );
+}
+
+/**
+ * One entry per finding verdict, and `Record<LaneFindingVerdict, …>` is what
+ * makes that a CHECKED claim rather than a comment: add a verdict to
+ * LANE_VERDICTS in schemas-src/routes/self-health.ts and this object stops
+ * compiling until it has a run query too.
+ *
+ * That is the property worth having. A verdict the API can publish but this
+ * module cannot alarm on is exactly the hole #10695 fixed for `unknown` -- it
+ * existed for months because nothing anywhere forced the two sets to match.
+ */
+const VERDICT_RUN_SQL: Record<LaneFindingVerdict, string> = {
+  stale: laneRunSql("stale"),
+  unknown: laneRunSql("unknown"),
+};
+
+export const LANE_STALE_RUN_SQL = VERDICT_RUN_SQL.stale;
+
+/**
+ * The same run query for `unknown` (#10695).
+ *
+ * WHY `unknown` NEEDS ITS OWN ALARM. The close path below already refuses to
+ * treat it as recovery -- "a lane that went `unknown` has not recovered" -- and
+ * migrations/neon/0006 says the same thing about the column: collapsing
+ * `unknown` into `ok` "would report an unmeasured lane as a healthy one". The
+ * OPEN path had no `unknown` case at all, so a lane that went from `ok` straight
+ * to `unknown` and stayed there alarmed on neither loop: not stale, and not
+ * silent because it kept recording. The two halves disagreed about what the
+ * verdict means.
+ */
+export const LANE_UNKNOWN_RUN_SQL = VERDICT_RUN_SQL.unknown;
 
 /**
  * Each lane's observed cadence, as a mean gap.
@@ -337,7 +391,9 @@ export interface LaneAlarmPlanInput {
   /** Newest verdict per lane, from loadLatestLaneHealth. */
   latest: Record<string, LaneHealthRecord>;
   /** Current unbroken stale runs, keyed by lane. */
-  runs: Record<string, { since: number; ticks: number }>;
+  runs: LaneVerdictRuns;
+  /** Current unbroken `unknown` runs, keyed by lane (#10695). */
+  unknownRuns: LaneVerdictRuns;
   /** Observed cadence per lane, keyed by lane. Null where uncalibrated. */
   cadence: Record<string, number | null>;
   /** Lanes that already have an open alarm issue. */
@@ -361,7 +417,8 @@ export interface LaneAlarmPlan {
  * network, so every branch below is reachable from a test.
  */
 export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
-  const { latest, runs, cadence, openAlarms, nowMs, minStaleMs } = input;
+  const { latest, runs, unknownRuns, cadence, openAlarms, nowMs, minStaleMs } =
+    input;
   const qualified: LaneAlarm[] = [];
 
   const stale = staleLanes(latest);
@@ -385,10 +442,51 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     });
   }
 
+  // UNKNOWN, on the same bound as stale (#10695). A single `unknown` tick is
+  // ordinary -- one unreadable table, one cross-check that could not run -- so
+  // this alarms only on a run of them longer than `minStaleMs`, exactly as the
+  // stale loop does. What it ends is the state where a watchdog says "I could
+  // not evaluate this" every hour and nothing anywhere reads that as a fault.
+  //
+  // Reported as its own kind rather than folded into `stale`, because they are
+  // different findings and the message has to say which: `stale` means a breach
+  // was measured, `unknown` means the measurement itself did not happen.
+  for (const record of Object.values(latest)) {
+    if (record.verdict !== "unknown") continue;
+    if (nowMs - record.checked_at > LANE_ALARM_MAX_VERDICT_AGE_MS) continue;
+    // STILL RECORDING, or this is the silence loop's finding rather than ours.
+    // "an `unknown` verdict is never STALE, but can still go silent" was already
+    // the rule here, and it is the right one: a lane that stopped reporting is a
+    // dead producer, which outranks "the producer is running but cannot
+    // measure". Gating on liveness rather than de-duplicating afterwards keeps
+    // the two loops mutually exclusive by construction.
+    const unknownCadenceMs = cadence[record.lane] ?? null;
+    if (
+      unknownCadenceMs !== null &&
+      nowMs - record.checked_at >= laneSilenceThresholdMs(unknownCadenceMs)
+    ) {
+      continue;
+    }
+    const run = unknownRuns[record.lane];
+    const since = run?.since ?? record.checked_at;
+    if (nowMs - since < minStaleMs) continue;
+    qualified.push({
+      lane: record.lane,
+      kind: "unknown",
+      since,
+      ticks: run?.ticks ?? 1,
+      detail: record.detail,
+      age_ms: record.age_ms,
+      cadence_ms: cadence[record.lane] ?? null,
+    });
+  }
+
   for (const record of Object.values(latest)) {
     // A lane already alarming as STALE is not also alarming as SILENT. The
     // watchdog said so itself; that it then stopped saying so is the same
     // outage, and two issues for one fault is the noise this is trying to end.
+    // `unknown` needs no equivalent guard: the loop above takes only lanes that
+    // are still recording, and this one only lanes that have stopped.
     if (record.verdict === "stale") continue;
     // A lane whose silence carries no information (#10634). Checked here, in
     // the SILENT loop only, so the stale loop above still alarms on a verdict
@@ -510,14 +608,27 @@ function toInt(value: unknown): number {
 
 /** Current stale runs, keyed by lane. `{}` on any failure -- a reader that
  * throws is a reader that stops reading. */
+export async function loadLaneUnknownRuns(
+  db: D1Like | null | undefined,
+): Promise<LaneVerdictRuns> {
+  return loadLaneRuns(db, LANE_UNKNOWN_RUN_SQL);
+}
+
 export async function loadLaneStaleRuns(
   db: D1Like | null | undefined,
-): Promise<Record<string, { since: number; ticks: number }>> {
+): Promise<LaneVerdictRuns> {
+  return loadLaneRuns(db, LANE_STALE_RUN_SQL);
+}
+
+async function loadLaneRuns(
+  db: D1Like | null | undefined,
+  sql: string,
+): Promise<LaneVerdictRuns> {
   if (!db?.prepare) return {};
   try {
-    const result = await db.prepare(LANE_STALE_RUN_SQL).all?.();
+    const result = await db.prepare(sql).all?.();
     const rows = (result?.results ?? []) as Record<string, unknown>[];
-    const out: Record<string, { since: number; ticks: number }> = {};
+    const out: LaneVerdictRuns = {};
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
       if (!lane) continue;
@@ -670,9 +781,10 @@ export async function runLaneAlarm(
   const minStaleMs =
     Number(env?.LANE_ALARM_MIN_STALE_MS) || LANE_ALARM_MIN_STALE_MS;
 
-  const [latest, runs, cadence] = await Promise.all([
+  const [latest, runs, unknownRuns, cadence] = await Promise.all([
     loadLatestLaneHealth(db),
     loadLaneStaleRuns(db),
+    loadLaneUnknownRuns(db),
     loadLaneCadence(db, nowMs - LANE_ALARM_CADENCE_WINDOW_MS),
   ]);
 
@@ -694,6 +806,7 @@ export async function runLaneAlarm(
   const plan = laneAlarmPlan({
     latest,
     runs,
+    unknownRuns,
     cadence,
     openAlarms: openAlarms ?? {},
     nowMs,
