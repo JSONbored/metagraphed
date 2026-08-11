@@ -48,6 +48,26 @@ import type { LaneHealthDb } from "./lane-health.ts";
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const NOMINATOR_POSITIONS_NEON_LANE = "nominator-positions";
 
+/** The lane `self-stake` reports under -- its own, not this one's. */
+export const SELF_STAKE_NEON_LANE = "self-stake";
+
+/**
+ * `nominator_positions.source` values (#10845).
+ *
+ * The column exists so two producers can share the table without one's prune
+ * deleting the other's rows. ALPHA is the default 0027 backfilled onto every
+ * existing row, so nothing that predates the column changes behaviour.
+ */
+export const POSITION_SOURCE_ALPHA = "alpha";
+export const POSITION_SOURCE_SELF_STAKE = "self-stake";
+
+/** The wire columns plus the one the WRITER stamps. Derived rather than
+ * restated, so a column added to the route's shape reaches the INSERT. */
+export const POSITION_INSERT_COLUMNS_WITH_SOURCE = [
+  ...NOMINATOR_POSITION_INSERT_COLUMNS,
+  "source",
+];
+
 /** Matches nominator_positions_pkey in Neon, created 2026-08-07. An ON CONFLICT
  * naming columns with no unique index behind them is a runtime error. */
 export const NOMINATOR_POSITIONS_CONFLICT = [
@@ -91,26 +111,39 @@ export async function mirrorNominatorPositionsToNeon(
     /** This chunk's completeness tally (#10056). Written last, and only when
      * both the upsert and the prune succeeded -- see below. */
     pass?: PassTallyInput | null;
+    /**
+     * Which producer wrote these rows, and therefore which rows the prune may
+     * delete (#10845). Defaults to the Alpha scan, so every existing caller is
+     * unchanged and every existing row -- all 123,057 of them, defaulted by
+     * 0027 -- keeps matching.
+     */
+    source?: string;
+    /**
+     * The lane these rows report under. `self-stake` is a DIFFERENT lane from
+     * `nominator-positions` even though both write this table: they run on
+     * different cadences (weekly vs daily) and a shared verdict would let one
+     * lane's silence hide behind the other's success.
+     */
+    lane?: string;
   },
   deps: NominatorPositionsMirrorDeps = {},
 ): Promise<NominatorPositionsMirrorOutcome> {
-  if (!neonDualWriteEnabled(env, NOMINATOR_POSITIONS_NEON_LANE)) {
+  const lane = input.lane ?? NOMINATOR_POSITIONS_NEON_LANE;
+  const source = input.source ?? POSITION_SOURCE_ALPHA;
+  if (!neonDualWriteEnabled(env, lane)) {
     return { attempted: false };
   }
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
   // (empty lane list), so this changes nothing until a lane is named.
-  const sql =
-    deps.sql ??
-    neonWriteRunner(env, ctx, NOMINATOR_POSITIONS_NEON_LANE, hyperdrive);
+  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
   // honest per-lane one. A buffered FAILURE still does: that is the enqueue
   // being refused, which nothing else reports. Only a runner we BUILT counts,
   // since an injected deps.sql went wherever the caller pointed it.
-  const buffered =
-    !deps.sql && neonWriteBufferEnabled(env, NOMINATOR_POSITIONS_NEON_LANE);
+  const buffered = !deps.sql && neonWriteBufferEnabled(env, lane);
   const now = deps.now ?? Date.now;
 
   if (!sql) {
@@ -121,33 +154,25 @@ export async function mirrorNominatorPositionsToNeon(
       statements: 0,
       reason: "hyperdrive unbound",
     };
-    await recordNeonWriteVerdict(
-      laneDb,
-      NOMINATOR_POSITIONS_NEON_LANE,
-      failure,
-      now(),
-      buffered,
-    );
+    await recordNeonWriteVerdict(laneDb, lane, failure, now(), buffered);
     return { attempted: true };
   }
 
+  // `source` is STAMPED HERE, never taken from the wire. A producer that could
+  // name its own source could claim another lane's prune domain and delete its
+  // rows -- so the column is set from the call site's constant, and the route's
+  // schema rejects `source` as an unknown column if a producer sends one.
   const write = await writeRowsToNeon(
     sql,
     "nominator_positions",
-    NOMINATOR_POSITION_INSERT_COLUMNS,
-    input.rows,
+    POSITION_INSERT_COLUMNS_WITH_SOURCE,
+    input.rows.map((row) => ({ ...row, source })),
     NOMINATOR_POSITIONS_CONFLICT,
     // An older capture arriving after a newer one must be a no-op. This lane
     // retries, so an out-of-order arrival is a real event.
     "nominator_positions.captured_at < EXCLUDED.captured_at",
   );
-  await recordNeonWriteVerdict(
-    laneDb,
-    NOMINATOR_POSITIONS_NEON_LANE,
-    write,
-    now(),
-    buffered,
-  );
+  await recordNeonWriteVerdict(laneDb, lane, write, now(), buffered);
 
   // THE PRUNE IS SKIPPED WHEN THE UPSERT FAILED, and that ordering is load
   // bearing rather than tidy. Pruning against a batch whose rows did not land
@@ -155,15 +180,20 @@ export async function mirrorNominatorPositionsToNeon(
   // undoes a delete.
   if (!write.ok) return { attempted: true, write };
 
+  // SCOPED TO THIS PRODUCER'S ROWS (#10845). Unscoped, a validator-nominators
+  // pass would delete the self-stake rows for any coldkey it touched -- those
+  // rows are absent from the Alpha scan by construction, so they are always
+  // "older than this pass" and always deleted.
   const prune = await pruneKeysInNeon(
     sql,
     "nominator_positions",
     "coldkey",
     input.coldkeyMaxCapturedAt,
+    source,
   );
   await recordNeonWriteVerdict(
     laneDb,
-    `${NOMINATOR_POSITIONS_NEON_LANE}-prune`,
+    `${lane}-prune`,
     prune,
     now(),
     buffered,

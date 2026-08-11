@@ -273,6 +273,20 @@ export async function pruneKeysInNeon(
   table: string,
   keyColumn: string,
   cutoffs: ReadonlyMap<string, number>,
+  /**
+   * Restrict the delete to rows this producer wrote (#10845).
+   *
+   * REQUIRED once a table has two producers, and the reason is not symmetry.
+   * `nominator_positions` gained `self-stake` alongside `validator-nominators`,
+   * and self-stake's rows are absent from the Alpha scan BY CONSTRUCTION --
+   * they exist precisely because that scan misses them. So an unscoped prune
+   * over a coldkey that appears in both would delete the self-stake row every
+   * time the other lane ran.
+   *
+   * Omitted, the statement is exactly what it was before, so a single-producer
+   * table needs no change.
+   */
+  source?: string,
 ): Promise<NeonWriteResult> {
   if (!sql?.unsafe)
     return { ok: false, rows: 0, statements: 0, reason: "unbound" };
@@ -283,12 +297,15 @@ export async function pruneKeysInNeon(
   // parameter count at two regardless of size.
   const keys = [...cutoffs.keys()];
   const values = keys.map((key) => cutoffs.get(key) as number);
+  // The source clause binds as $3 rather than interpolating, so a lane name
+  // can never reach the statement text.
+  const scope = source === undefined ? "" : ` AND ${table}.source = $3`;
   try {
     await sql.unsafe(
       `DELETE FROM ${table} USING UNNEST($1::text[], $2::bigint[]) ` +
         `AS cutoff(k, at) WHERE ${table}.${keyColumn} = cutoff.k ` +
-        `AND ${table}.captured_at < cutoff.at`,
-      [keys, values],
+        `AND ${table}.captured_at < cutoff.at${scope}`,
+      source === undefined ? [keys, values] : [keys, values, source],
     );
   } catch (error) {
     return {

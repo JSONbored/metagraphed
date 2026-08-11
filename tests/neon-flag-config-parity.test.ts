@@ -39,7 +39,10 @@ import {
 } from "../src/hyperparams-identity-neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "../src/ledger-neon-write.ts";
 import { NEURONS_NEON_LANE } from "../src/neurons-neon-write.ts";
-import { NOMINATOR_POSITIONS_NEON_LANE } from "../src/nominator-positions-neon-write.ts";
+import {
+  NOMINATOR_POSITIONS_NEON_LANE,
+  SELF_STAKE_NEON_LANE,
+} from "../src/nominator-positions-neon-write.ts";
 
 /** Every config whose Worker reaches a Neon-flag gate. Hand-listed, because
  * "which Workers have gated paths" is the thing being asserted -- deriving it
@@ -128,6 +131,7 @@ describe("the Neon migration flags", () => {
       SUBNET_OWNERSHIP_NEON_LANE,
       NEURONS_NEON_LANE,
       NOMINATOR_POSITIONS_NEON_LANE,
+      SELF_STAKE_NEON_LANE,
       ...Object.keys(LEDGER_MIRROR_PLANS),
     ]);
     assert.ok(
