@@ -16785,6 +16785,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
         last_block: null,
       },
     ]);
+    lake.restore();
   });
 
   // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
@@ -16812,7 +16813,6 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       next_cursor: null,
       days: [],
     });
-    lake.restore();
   });
 
   test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
