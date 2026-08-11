@@ -247,6 +247,14 @@ export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
 // itself. Same 10-minute cadence the box timer and the Actions schedule
 // used. Must match a wrangler.jsonc cron entry.
 export const EMISSION_GATE_SAMPLE_CRON = "3,13,23,33,43,53 * * * *";
+
+/** The sampler's cadence, as milliseconds.
+ *
+ * Derived from the cron above rather than restated: it is what turns wall-clock
+ * time into a tick ordinal, which is what rotates the archive endpoint across
+ * ticks (#10742). An isolate-local counter cannot do that job -- it restarts at
+ * zero on every cold start. */
+export const EMISSION_GATE_SAMPLE_INTERVAL_MS = 10 * 60 * 1000;
 // #8749: the live emission-drift check, formerly the 30-minute Actions
 // schedule -- the same reconstruction CI pins against a fixture, held against
 // live chain state. Reads and alerts, writes nothing; a divergence throws so
