@@ -51,13 +51,38 @@
 // lets the ordering and chunking guarantees be asserted directly instead of
 // inferred from a mock.
 
-/** One buffered statement, exactly as the lane would have executed it. */
-export interface BufferedStatement {
-  /** The lane that produced it, so the flush can attribute a verdict. */
-  lane: string;
-  text: string;
-  values: unknown[];
-}
+import { z } from "zod";
+import {
+  createPgSql,
+  type HyperdriveLike,
+  type WaitUntilLike,
+} from "./pg-sql.ts";
+
+/**
+ * One buffered statement, exactly as the lane would have executed it.
+ *
+ * A ZOD SCHEMA rather than a hand-written type guard, because this shape
+ * crosses a trust boundary: the Durable Object parses it from a request body,
+ * and the flush parses it back out of durable storage written by a possibly
+ * older deploy. Both are places where "looks about right" is not good enough,
+ * and a hand-rolled check drifts from the type it is supposed to enforce the
+ * moment a field is added.
+ *
+ * `.strict()` on purpose -- an unknown key means the writer and the reader
+ * disagree about the format, which is worth failing on rather than ignoring.
+ */
+export const BufferedStatementSchema = z
+  .object({
+    /** The lane that produced it, so the flush can attribute a verdict. */
+    lane: z.string().min(1),
+    text: z.string().min(1),
+    // Deliberately NOT z.array(z.unknown()).nonempty(): a parameterless
+    // DELETE is an ordinary statement here, and rejecting it would drop it.
+    values: z.array(z.unknown()),
+  })
+  .strict();
+
+export type BufferedStatement = z.infer<typeof BufferedStatementSchema>;
 
 /**
  * Durable Object storage caps a single value at 128 KiB.
@@ -171,12 +196,8 @@ export function decodeStatement(payload: string): BufferedStatement | null {
   } catch {
     return null;
   }
-  if (!parsed || typeof parsed !== "object") return null;
-  const row = parsed as Record<string, unknown>;
-  if (typeof row.lane !== "string" || row.lane === "") return null;
-  if (typeof row.text !== "string" || row.text === "") return null;
-  if (!Array.isArray(row.values)) return null;
-  return { lane: row.lane, text: row.text, values: row.values };
+  const result = BufferedStatementSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
 
 /**
@@ -255,11 +276,48 @@ export function neonWriteBufferLanes(
   );
 }
 
+/**
+ * Lanes that must NEVER be buffered, whatever the flag says.
+ *
+ * Both entries are the block explorer's live READ path, not merely writes.
+ *
+ * `blocks-head` is the header register above the decode seam.
+ * src/blocks-cold-tier.ts routes `block_number > seam` to
+ * `blocks_head b LEFT JOIN chain_detail_blocks c`, which is exactly the window
+ * "between a block being seen and being decoded" -- so deferring that write
+ * defers the explorer's head by the whole flush interval. A block explorer
+ * showing a ten-minute-old tip is broken in the way users notice first.
+ *
+ * A SET RATHER THAN A COMMENT, because the tempting move when the compute
+ * still will not suspend is to add the one remaining high-frequency lane to
+ * the flag and see what happens. This makes that a no-op instead of a
+ * regression discovered by a user.
+ *
+ * THE HONEST CONSEQUENCE: with `blocks-head` writing every ~12s the compute
+ * cannot reach the 300s suspend timeout, so buffering the other lanes buys a
+ * lower CU while ACTIVE (fewer statements per hour, so autoscaling sits nearer
+ * the 0.25 floor) rather than a sleeping compute. Suspension and a live
+ * explorer are mutually exclusive while the head is served from Neon; making
+ * them compatible means moving the above-seam read off Neon entirely, which is
+ * a different change and a much larger one -- the LEFT JOIN above cannot span
+ * two stores without returning a wrong answer with a valid shape.
+ */
+export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set([
+  "blocks-head",
+  // Same reason, one layer down: this lane writes chain_detail_blocks /
+  // _extrinsics / _chain_events / _account_events, which are exactly the
+  // tables src/chain-detail-hot-tier.ts reads to serve a recent block's
+  // DETAIL. Buffering the head and not the detail would be worse than
+  // buffering neither -- the explorer would list a block it cannot open.
+  "chain-detail",
+]);
+
 /** Whether one lane's writes go through the buffer. */
 export function neonWriteBufferEnabled(
   env: Record<string, unknown> | null | undefined,
   lane: string,
 ): boolean {
+  if (NEVER_BUFFER_LANES.has(lane)) return false;
   return neonWriteBufferLanes(env).has(lane);
 }
 
@@ -268,6 +326,16 @@ export interface NeonWriteBufferNamespace {
   idFromName(name: string): unknown;
   get(id: unknown): { fetch(request: Request): Promise<Response> };
 }
+
+/**
+ * Statements whose result the caller needs, which therefore cannot be deferred.
+ *
+ * Word-bounded and case-insensitive so `returning` in a column or string
+ * literal does not trip it. This is deliberately a coarse check: the cost of a
+ * false positive is a lane that stays on the direct path (slower, correct), and
+ * the cost of a false negative is a wrong answer.
+ */
+const RESULT_CONSUMING = /\bRETURNING\b/i;
 
 /**
  * A `PgUnsafe` that enqueues instead of executing.
@@ -287,6 +355,18 @@ export function createBufferedPgSql(
 ): { unsafe(text: string, values?: unknown[]): Promise<unknown> } {
   return {
     async unsafe(text: string, values: unknown[] = []): Promise<unknown> {
+      // A DEFERRED WRITE CANNOT RETURN ROWS, so a statement that asks for them
+      // must fail here rather than receive `[]`. This is the one way buffering
+      // could produce a confidently wrong answer instead of a slow one:
+      // `RETURNING id` + `rows.length > 0` is how a caller learns whether its
+      // row was new, and an empty result would read as "already present" for a
+      // row that has not been written yet. Refusing makes the buffer's contract
+      // -- fire-and-forget writes only -- enforced rather than documented.
+      if (RESULT_CONSUMING.test(text)) {
+        throw new Error(
+          `neon write buffer cannot defer a statement that RETURNs rows (lane ${lane})`,
+        );
+      }
       const stub = namespace.get(namespace.idFromName("global"));
       const response = await stub.fetch(
         new Request("https://neon-write-buffer/enqueue", {
@@ -303,4 +383,35 @@ export function createBufferedPgSql(
       return [];
     },
   };
+}
+
+/**
+ * The runner a write lane should use: buffered when flagged, direct otherwise.
+ *
+ * ONE PLACE, because there were six. Every `src/*-neon-write.ts` runner built
+ * its own connection with the identical line, and adding the buffer branch to
+ * each would have made six copies of a decision that has exactly one right
+ * answer. A lane that forgets the branch keeps writing directly, which costs
+ * nothing visible and silently denies the whole change its saving -- the sort
+ * of omission that is invisible until someone measures the compute again.
+ *
+ * ORDER MATTERS. The buffer is consulted first, but only when the binding is
+ * actually present: a flag naming a lane on a Worker with no NEON_WRITE_BUFFER
+ * binding is a half-applied config, and falling through to the direct write
+ * keeps the rows landing. Refusing there would drop capture data over a missing
+ * binding, which is the wrong direction to fail.
+ */
+export function neonWriteRunner(
+  env: Record<string, unknown> | null | undefined,
+  ctx: WaitUntilLike | null | undefined,
+  lane: string,
+  hyperdrive: HyperdriveLike | undefined,
+): { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null {
+  const buffer = env?.NEON_WRITE_BUFFER as NeonWriteBufferNamespace | undefined;
+  if (buffer && neonWriteBufferEnabled(env, lane)) {
+    return createBufferedPgSql(buffer, lane);
+  }
+  return hyperdrive?.connectionString && ctx
+    ? createPgSql(hyperdrive, ctx)
+    : null;
 }

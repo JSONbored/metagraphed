@@ -39,11 +39,8 @@ import {
   type NeonWriteResult,
 } from "./neon-write.ts";
 import { VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS } from "./validator-nominator-summary.ts";
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
+import { neonWriteRunner } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
 // ---------------------------------------------------------------------------
@@ -211,9 +208,9 @@ export async function mirrorLedgerToNeon(
   if (!plan || !neonDualWriteEnabled(env, lane)) return { attempted: false };
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
-  const sql =
-    deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+  // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
+  // (empty lane list), so this changes nothing until a lane is named.
+  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 

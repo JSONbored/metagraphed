@@ -20,21 +20,13 @@
 // upsert would silently drop that and replace a known value with NULL -- the
 // same shape as #9634's last_ok, one table over.
 import { laneHealthStore } from "./lane-health-store.ts";
-import {
-  createBufferedPgSql,
-  neonWriteBufferEnabled,
-  type NeonWriteBufferNamespace,
-} from "./neon-write-buffer.ts";
+import { neonWriteRunner } from "./neon-write-buffer.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
   type NeonWriteResult,
 } from "./neon-write.ts";
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
 export const BLOCKS_HEAD_NEON_LANE = "blocks-head";
@@ -68,19 +60,9 @@ async function runner(
     return { sql: null, laneDb, now, attempted: false };
   }
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
-  // #10659: a flagged lane enqueues into the write-behind buffer instead of
-  // opening its own connection. Drop-in because PgUnsafe is one method, these
-  // statements carry no RETURNING, and the caller awaits the result bare --
-  // see src/neon-write-buffer.ts for how that was established. Defaults OFF
-  // (empty lane list), so this deploy changes nothing until a lane is named.
-  const buffer = env?.NEON_WRITE_BUFFER as NeonWriteBufferNamespace | undefined;
-  const sql =
-    deps.sql ??
-    (buffer && neonWriteBufferEnabled(env, lane)
-      ? createBufferedPgSql(buffer, lane)
-      : hyperdrive?.connectionString && ctx
-        ? createPgSql(hyperdrive, ctx)
-        : null);
+  // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
+  // (empty lane list), so this changes nothing until a lane is named.
+  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   if (!sql) {
     // Enabled but unbound is a MISCONFIGURATION, not a quiet no-op.
     await recordNeonWriteVerdict(

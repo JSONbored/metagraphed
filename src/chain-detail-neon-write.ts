@@ -19,11 +19,8 @@ import {
   writeRowsToNeon,
   type NeonWriteResult,
 } from "./neon-write.ts";
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
+import { neonWriteRunner } from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
 // ---------------------------------------------------------------------------
@@ -199,9 +196,10 @@ export async function mirrorChainDetailToNeon(
   }
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
+  // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
+  // (empty lane list), so this changes nothing until a lane is named.
   const sql =
-    deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+    deps.sql ?? neonWriteRunner(env, ctx, CHAIN_DETAIL_NEON_LANE, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 

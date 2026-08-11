@@ -160,8 +160,14 @@ describe("the write-behind buffer seam (#10659)", () => {
     assert.deepEqual(ns.sent, []);
   });
 
-  test("a FLAGGED lane enqueues instead of writing", async () => {
+  test("blocks-head NEVER buffers, even when the flag names it", async () => {
+    // It is the block explorer's live read path above the decode seam
+    // (src/blocks-cold-tier.ts routes `block_number > seam` at it), so
+    // deferring this write defers the visible chain tip by the whole flush
+    // interval. NEVER_BUFFER_LANES makes naming it in the flag a no-op rather
+    // than a regression a user finds first.
     const ns = bufferNamespace();
+    const rec = recordingSql();
     await mirrorBlocksHeadToNeon(
       {
         NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
@@ -171,6 +177,25 @@ describe("the write-behind buffer seam (#10659)", () => {
       },
       ctx,
       block,
+      { sql: rec.sql },
+    );
+    assert.deepEqual(ns.sent, [], "nothing may be enqueued");
+    assert.equal(rec.calls.length, 1, "it must still write directly");
+  });
+
+  test("a FLAGGED lane enqueues instead of writing", async () => {
+    const ns = bufferNamespace();
+    await mirrorRawCaptureStateToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
+        HYPERDRIVE: HD,
+        ...ns,
+      },
+      ctx,
+      "mainnet",
+      4321,
+      999,
       {},
     );
     assert.equal(ns.sent.length, 1);
@@ -179,11 +204,11 @@ describe("the write-behind buffer seam (#10659)", () => {
       text: string;
       values: unknown[];
     };
-    assert.equal(sent.lane, BLOCKS_HEAD_NEON_LANE);
+    assert.equal(sent.lane, RAW_CAPTURE_STATE_NEON_LANE);
     // The SAME statement the direct path would have run -- buffering must not
     // reshape the write, only defer it.
-    assert.match(sent.text, /INSERT INTO blocks_head/);
-    assert.equal(sent.values[0], 10);
+    assert.match(sent.text, /INSERT INTO raw_capture_state/);
+    assert.equal(sent.values[0], "mainnet");
   });
 
   test("a refused enqueue costs the lane a stale verdict, not silence", async () => {
@@ -191,15 +216,17 @@ describe("the write-behind buffer seam (#10659)", () => {
     // into the verdict; swallowing it would let the buffer fill while every
     // lane reported ok.
     const ns = bufferNamespace(503);
-    const out = await mirrorBlocksHeadToNeon(
+    const out = await mirrorRawCaptureStateToNeon(
       {
-        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
-        NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
+        NEON_DUAL_WRITE_LANES: RAW_CAPTURE_STATE_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: RAW_CAPTURE_STATE_NEON_LANE,
         HYPERDRIVE: HD,
         ...ns,
       },
       ctx,
-      block,
+      "mainnet",
+      4321,
+      999,
       {},
     );
     assert.equal(out.result?.ok, false);

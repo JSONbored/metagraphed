@@ -26,11 +26,8 @@ import {
   IDENTITY_FIELDS,
 } from "./account-identity.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import {
-  createPgSql,
-  type HyperdriveLike,
-  type WaitUntilLike,
-} from "./pg-sql.ts";
+import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
+import { neonWriteRunner } from "./neon-write-buffer.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -162,9 +159,9 @@ export async function mirrorFamilyToNeon(
     return { attempted: false, results: {} };
 
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
-  const sql =
-    deps.sql ??
-    (hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null);
+  // #10659: buffered when the lane is flagged, direct otherwise. Defaults OFF
+  // (empty lane list), so this changes nothing until a lane is named.
+  const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
 
