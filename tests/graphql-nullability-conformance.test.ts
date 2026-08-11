@@ -97,3 +97,94 @@ describe("graphql nullability conformance", () => {
     );
   });
 });
+
+describe("a refused query is split, not abandoned", () => {
+  /**
+   * A surface that refuses anything over `budget` characters the way the real
+   * one refuses on complexity -- a 4xx-shaped body carrying a GraphQL `errors`
+   * array -- and answers whatever fits.
+   *
+   * The probe asks for every non-null leaf at once, so the biggest and most
+   * important types are exactly the ones it cannot ask for in one query. Before
+   * the split those Query fields were SKIPPED, which is zero evidence for every
+   * leaf under them while the run still reported success.
+   */
+  function refusingOver(
+    budget: number,
+    field: string,
+    data: unknown,
+  ): { fetch: typeof fetch; asked: () => number } {
+    let asks = 0;
+    const impl = (async (_url: string, init?: { body?: string }) => {
+      const query = String(JSON.parse(String(init?.body ?? "{}")).query ?? "");
+      const target = /^\{ (\w+)/.exec(query)?.[1] === field;
+      if (target) asks += 1;
+      if (target && query.length > budget) {
+        return {
+          ok: false,
+          status: 400,
+          json: async () => ({
+            errors: [
+              { message: "Query complexity 51 exceeds the limit of 50." },
+            ],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () =>
+          target
+            ? { data: { [field]: data } }
+            : { errors: [{ message: "not the field under test" }] },
+      };
+    }) as unknown as typeof fetch;
+    return { fetch: impl, asked: () => asks };
+  }
+
+  test("the leaves are still observed, over several smaller queries", async () => {
+    const probe = refusingOver(400, "subnets", { total: 1, items: [] });
+    const report = await checkNullability(openapi, probe.fetch);
+    assert.ok(
+      probe.asked() > 1,
+      "a refusal must produce more than the one query that was refused",
+    );
+    assert.ok(
+      report.observed > 0,
+      "splitting must recover evidence, not just avoid the error",
+    );
+    assert.ok(
+      !report.skipped.some((s) => s.startsWith("subnets --")),
+      `subnets was skipped anyway: ${report.skipped.join("; ")}`,
+    );
+  });
+
+  test("a null found in a SPLIT query is still a finding", async () => {
+    // The halves each carry part of the selection, so a finding has to survive
+    // being reported from a sub-query rather than the whole one.
+    const probe = refusingOver(400, "subnets", {
+      total: null,
+      items: [{ netuid: null }],
+    });
+    const report = await checkNullability(openapi, probe.fetch);
+    for (const field of ["SubnetList.total", "Subnet.netuid"]) {
+      assert.ok(
+        report.findings.some((f) => f.field === field),
+        `expected ${field}, got ${report.findings.map((f) => f.field).join(", ")}`,
+      );
+    }
+  });
+
+  test("an INDIVISIBLE refusal is reported, not retried forever", async () => {
+    // Budget below even a single leaf: the split bottoms out and the run has to
+    // say so. A prober that silently gave up here would report a clean sweep.
+    const probe = refusingOver(0, "subnets", { total: 1 });
+    const report = await checkNullability(openapi, probe.fetch);
+    assert.ok(
+      report.skipped.some(
+        (s) => s.startsWith("subnets --") && /complexity/.test(s),
+      ),
+      `expected subnets to be reported: ${report.skipped.slice(0, 3).join("; ")}`,
+    );
+  });
+});

@@ -106,16 +106,39 @@ export function buildGeneratedSchema(
     );
   }
 
-  /** Published name -> the component that supplies its fields. */
-  const componentFor = new Map<string, string>();
+  /**
+   * Published name -> EVERY component that supplies its fields.
+   *
+   * More than one is normal here, and load-bearing. `Validator` is published
+   * over both `ValidatorDetailArtifact` and `GlobalValidatorsArtifactValidators`
+   * -- the SDL's own comment says so: the list names its timestamps differently
+   * and carries `featured`/`uid_count`/`stake_dominance` the detail does not.
+   * Keeping only the first published ONE producer's shape as if it described
+   * both, which lost the other's fields AND promised non-null for fields the
+   * other cannot answer: `Validator.schema_version` and three `ValidatorSubnet`
+   * fields came back null on every row of `validators` when
+   * `conformance:graphql-nullability` asked production.
+   */
+  // A SET, so "already contributing" is structural rather than a branch. The
+  // same component reaches `add` twice whenever a type's alias equals its
+  // published name, and a conditional `includes` guard for that is a branch
+  // nothing in the current registry exercises -- unreachable code guarding an
+  // invariant the data structure can hold on its own.
+  const componentsFor = new Map<string, Set<string>>();
+  const add = (published: string, component: string) => {
+    const existing = componentsFor.get(published);
+    if (existing) existing.add(component);
+    else componentsFor.set(published, new Set([component]));
+  };
   for (const [component] of emitted) {
-    const published = publishedName(component);
-    if (!componentFor.has(published)) componentFor.set(published, component);
+    add(publishedName(component), component);
     const alias = ALIASED_TYPE_NAMES[component];
-    if (alias && !componentFor.has(alias)) componentFor.set(alias, component);
+    if (alias) add(alias, component);
   }
+  // A projection names the ONE component it is a view of, so it replaces the
+  // union rather than joining it -- its `added`/`dropped` describe that shape.
   for (const [published, projection] of Object.entries(projections)) {
-    componentFor.set(published, projection.component);
+    componentsFor.set(published, new Set([projection.component]));
   }
 
   const enums = new Map<string, GraphQLEnumType>();
@@ -142,11 +165,16 @@ export function buildGeneratedSchema(
     if (enumType) return enumType;
     const existing = built.get(name);
     if (existing) return existing;
-    const component = componentFor.get(name);
-    if (!component) throw new Error(`nothing declares the type ${name}`);
-    const source = emitted.get(component);
-    if (!source)
-      throw new Error(`${name} names the absent component ${component}`);
+    const components = [...(componentsFor.get(name) ?? [])];
+    if (!components.length)
+      throw new Error(`nothing declares the type ${name}`);
+    const contributors = components.map((component) => {
+      const emittedSource = emitted.get(component);
+      if (!emittedSource)
+        throw new Error(`${name} names the absent component ${component}`);
+      return emittedSource;
+    });
+    const source = contributors[0];
     const projection = projections[name];
     const type = new GraphQLObjectType({
       name,
@@ -159,10 +187,31 @@ export function buildGeneratedSchema(
         const renamed = new Map<string, string>();
         if (projection?.itemsFrom) renamed.set(projection.itemsFrom, "items");
         if (projection?.totalFrom) renamed.set(projection.totalFrom, "total");
-        for (const [fieldName, field] of Object.entries(source.getFields())) {
+        // The union of the contributing components, in first-seen order.
+        const fieldNames: string[] = [];
+        for (const contributor of contributors) {
+          for (const fieldName of Object.keys(contributor.getFields())) {
+            if (!fieldNames.includes(fieldName)) fieldNames.push(fieldName);
+          }
+        }
+        for (const fieldName of fieldNames) {
           if (dropped.has(fieldName)) continue;
+          const carriers = contributors.filter(
+            (contributor) => contributor.getFields()[fieldName],
+          );
+          const field = carriers[0].getFields()[fieldName];
+          // A field only SOME of the producers carry cannot be promised: ask
+          // the other one and it answers null, which graphql-js turns into a
+          // nulled parent. So the union publishes it, nullable -- which is
+          // exactly what the hand-written SDL already did by hand for
+          // `featured`, `uid_count` and `stake_dominance`.
+          const everywhere = carriers.length === contributors.length;
+          const republished = republish(field.type);
           fields[renamed.get(fieldName) ?? fieldName] = {
-            type: republish(field.type),
+            type:
+              everywhere || !(republished instanceof GraphQLNonNull)
+                ? republished
+                : (republished.ofType as GraphQLOutputType),
             description: field.description ?? undefined,
           };
         }
@@ -177,7 +226,7 @@ export function buildGeneratedSchema(
       },
     });
     built.set(name, type);
-    sources.set(name, component);
+    sources.set(name, components.join(" + "));
     return type;
   }
 
