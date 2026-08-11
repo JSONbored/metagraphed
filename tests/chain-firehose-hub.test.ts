@@ -48,6 +48,7 @@ import {
   CHAIN_FIREHOSE_PUBLISHED_TABLES,
   formatChainFirehoseTopicNoticeFrame,
   unpublishedChainFirehoseTopics,
+  chainFirehoseCapRefusal,
 } from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
@@ -2478,4 +2479,59 @@ test("#9900: a release with no ip in the attachment emits nothing", () => {
   } finally {
     cap.restore();
   }
+});
+
+// ── which cap refused (#10744) ──────────────────────────────────────────────
+
+/** Swap console.error for the duration of one assertion, and restore it. */
+function withCapLog<T>(fn: (lines: string[]) => T): T {
+  const original = console.error;
+  const lines: string[] = [];
+  console.error = (...args: unknown[]) => {
+    lines.push(args.map(String).join(" "));
+  };
+  try {
+    return fn(lines);
+  } finally {
+    console.error = original;
+  }
+}
+
+test("every cap answers the SAME body — a distinct one would map the limits", () => {
+  // Telling a scraper which limit it hit is telling it how to spread around
+  // that limit. The response must not carry the distinction.
+  withCapLog((lines) => {
+    for (const kind of [
+      "ws-global",
+      "ws-per-ip",
+      "sse-global",
+      "sse-per-ip",
+    ] as const) {
+      const r = chainFirehoseCapRefusal(kind, 20, 20);
+      assert.equal(r.status, 503);
+    }
+    assert.equal(lines.length, 4, "but each one is logged");
+  });
+});
+
+test("the LOG names the cap, because the two mean opposite things", () => {
+  // A global cap means every subscriber is refused -- an outage. A per-IP cap
+  // means one client is contained -- the design working. Production could not
+  // tell them apart, so a headless-browser farm read the same as an outage.
+  withCapLog((lines) => {
+    chainFirehoseCapRefusal("sse-per-ip", 20, 20);
+    chainFirehoseCapRefusal("sse-global", 1000, 1000);
+    assert.match(lines[0]!, /\[chain-firehose\] cap sse-per-ip 20\/20/);
+    assert.match(lines[1]!, /\[chain-firehose\] cap sse-global 1000\/1000/);
+  });
+});
+
+test("the observed count rides along, so a near-miss is visible too", () => {
+  withCapLog((lines) => {
+    chainFirehoseCapRefusal("ws-global", 1000, 1000);
+    assert.ok(
+      lines[0]!.includes("1000/1000"),
+      "observed/limit, not just the fact of a refusal",
+    );
+  });
 });
