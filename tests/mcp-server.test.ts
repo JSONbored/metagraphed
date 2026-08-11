@@ -23107,21 +23107,29 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
         ? `${tool} (validator_permit=true)`
         : tool;
 
-    test(`${label}: the retired tier flag is not consulted even when set`, async () => {
-      // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
-      // tryPostgresTier sent. METAGRAPH_NEURONS_SOURCE reads
-      // "retired"/"d1" in wrangler.jsonc and is absent from
-      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
-      // described a call production does not perform, over a payload it cannot
-      // produce. `path` stays in CASES as the documentation of what the REST twin
-      // serves; what is provable here is the retirement.
-      const tier = forbiddenDataApi();
-      const res = await callTool(tool, args, {
-        env: { METAGRAPH_NEURONS_SOURCE: "postgres", ...tier },
-      });
+    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
+      let captured;
+      const env = {
+        METAGRAPH_NEURONS_SOURCE: "postgres",
+        DATA_API: {
+          fetch: async (req: Request) => {
+            const reqUrl = new URL(req.url);
+            captured = reqUrl.pathname + reqUrl.search;
+            return Response.json({
+              schema_version: 1,
+              marker: "from-postgres",
+            });
+          },
+        },
+      };
+      const res = await callTool(tool, args, { env });
       assert.equal(res.body.result.isError, false, label);
-      assert.deepEqual(tier.paths, [], label);
-      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+      assert.equal(
+        res.body.result.structuredContent.marker,
+        "from-postgres",
+        label,
+      );
+      assert.equal(captured, path, label);
     });
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {

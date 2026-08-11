@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { loadChainPrometheusColdTier } from "../src/chain-prometheus-loader.ts";
 import { CHAIN_PROMETHEUS_LIMIT_DEFAULT } from "../src/chain-prometheus.ts";
+import { ROLLUP_POPULATION_CAP } from "../src/chain-event-rollup-cold-tier.ts";
 
 const ROWS = [
   { netuid: 7, announcements: 9, distinct_exporters: 4 },
@@ -100,20 +101,30 @@ describe("the shared chain-prometheus loader", () => {
     assert.notEqual(data.window, "not-a-window");
   });
 
-  test("an omitted limit resolves once, so the scan cannot outrun the response", async () => {
-    // The rollup reader caps at 200 and the builder at 20; left to their own
-    // defaults an omitted limit scans ten times the rows the card can carry.
-    const engine = fakeEngine();
-    await loadChainPrometheusColdTier({} as never, {
-      window: "7d",
-      query: engine.query as never,
-    });
-    const ordered = engine.seen.find((s) => s.includes("ORDER BY"));
-    assert.ok(ordered);
-    assert.match(
-      ordered,
-      new RegExp(`LIMIT ${CHAIN_PROMETHEUS_LIMIT_DEFAULT}\\b`),
-    );
+  test("the page size never reaches the scan", async () => {
+    // WAS "an omitted limit resolves once, so the scan cannot outrun the
+    // response", asserting the builder's page default in the row SQL. That is
+    // the defect: buildChainPrometheus sums these rows for
+    // `network.announcements` and takes `intensity_distribution` over them, so a
+    // page-sized scan makes both describe the page rather than the window --
+    // measured live on the axon twin, whose network total quadrupled between
+    // ?limit=1 and ?limit=59 over one 30d window. The scan takes the population
+    // cap; the builder still pages at CHAIN_PROMETHEUS_LIMIT_DEFAULT.
+    for (const limit of [undefined, 1, CHAIN_PROMETHEUS_LIMIT_DEFAULT, 100]) {
+      const engine = fakeEngine();
+      await loadChainPrometheusColdTier({} as never, {
+        window: "7d",
+        ...(limit === undefined ? {} : { limit }),
+        query: engine.query as never,
+      });
+      const ordered = engine.seen.find((s) => s.includes("ORDER BY"));
+      assert.ok(ordered);
+      assert.match(
+        ordered,
+        new RegExp(`LIMIT ${ROLLUP_POPULATION_CAP}\\b`),
+        `limit=${String(limit)} must not reach the scan`,
+      );
+    }
   });
 
   test("a declining lakehouse is null, never a zeroed card", async () => {

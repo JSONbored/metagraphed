@@ -38,12 +38,16 @@ import type { R2SqlReader } from "./r2-sql.ts";
  * the label narrowing is worse than either alone, because the response then
  * misdescribes data that is itself correct.
  *
- * The limit mattered because it is optional and the two halves default
- * DIFFERENTLY: `loadChainEventRollup` caps at 200, `buildChainServing` at 20.
- * Left to their own defaults an omitted limit scanned ten times the rows the
- * response could carry. `parseLimitParam` genuinely returns
- * `number | undefined` even when given a defaultLimit, so this is reachable
- * from the REST call site's types rather than merely defensive.
+ * The limit mattered because it is optional and the two halves used to default
+ * DIFFERENTLY: `loadChainEventRollup` capped the scan at 200, `buildChainServing`
+ * the page at 20. `parseLimitParam` genuinely returns `number | undefined` even
+ * when given a defaultLimit, so an omitted limit was reachable from the REST
+ * call site's types rather than merely defensive.
+ *
+ * The scan no longer takes a limit at all (#10190's measurements: a page-sized
+ * scan made `network.announcements` and the distribution describe the page, not
+ * the window), so `rowLimit` now resolves ONE thing -- the builder's page. The
+ * window is still resolved here, for the original reason below.
  */
 export async function loadChainServingColdTier(
   env: Parameters<R2SqlReader>[0],
@@ -66,7 +70,6 @@ export async function loadChainServingColdTier(
   const rowLimit = limit ?? CHAIN_SERVING_LIMIT_DEFAULT;
   const rollup = await loadChainEventRollup(env, CHAIN_SERVING_ROLLUP, {
     windowDays: ANALYTICS_WINDOW_DAYS[label],
-    limit: rowLimit,
     // Passed straight through: a destructuring default applies to an explicit
     // undefined, so the rollup reader falls back to the real r2SqlQuery
     // without a conditional spread here that nothing would ever exercise.
