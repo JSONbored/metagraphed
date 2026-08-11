@@ -9,7 +9,11 @@
 // Query params from the same OpenAPI operation's `parameters` array (the
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
-import { SocialLinksSchema, GithubReleaseSchema } from "../shared.ts";
+import {
+  SocialLinksSchema,
+  GithubReleaseSchema,
+  NativeSnapshotSourceSchema,
+} from "../shared.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import {
   BittensorNetworkSchema,
@@ -118,16 +122,7 @@ export const SubnetsArtifactSchema = ArtifactBaseSchema.extend({
     .describe(
       "Capture stamp of the native (SDK) snapshot the identity overlay was merged onto.",
     ),
-  source: z
-    .object({
-      identity_storage: z.string().optional(),
-      kind: z.string().optional(),
-      method: z.string().optional(),
-      package: z.string().optional(),
-      rpc_family: z.string().optional(),
-      version: z.string().optional(),
-    })
-    .strict(),
+  source: NativeSnapshotSourceSchema,
   subnets: z.array(SubnetIndexEntrySchema),
 });
 export type SubnetsArtifact = z.infer<typeof SubnetsArtifactSchema>;

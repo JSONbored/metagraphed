@@ -28184,64 +28184,22 @@
                     "additionalProperties": false,
                     "properties": {
                       "identity_storage": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       },
                       "kind": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       },
                       "method": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       },
                       "package": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       },
                       "rpc_family": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       },
                       "version": {
-                        "anyOf": [
-                          {
-                            "type": "string"
-                          },
-                          {
-                            "type": "null"
-                          }
-                        ]
+                        "type": "string"
                       }
                     },
                     "type": "object"
@@ -43247,26 +43205,10 @@
             "additionalProperties": false,
             "properties": {
               "by_drift_status": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/CountMap"
               },
               "by_status": {
-                "additionalProperties": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "propertyNames": {
-                  "type": "string"
-                },
-                "type": "object"
+                "$ref": "#/components/schemas/CountMap"
               },
               "schema_count": {
                 "maximum": 9007199254740991,

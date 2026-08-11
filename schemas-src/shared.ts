@@ -784,3 +784,24 @@ export function subnetEntryListSchema(entry: z.ZodType) {
     })
     .strict();
 }
+
+/**
+ * How the native snapshot was read -- ONE declaration (#10790).
+ *
+ * `fetch-native-subnets.py` writes this block once and it is copied into both
+ * `subnets.json` and `coverage.json`'s `source.native`, which each declared it
+ * separately: one with `.nullable()` the producer never emits, one without.
+ * Optional rather than required, because an artifact captured before a field
+ * existed still has to parse; never nullable, because the producer writes six
+ * strings or nothing at all.
+ */
+export const NativeSnapshotSourceSchema = z
+  .object({
+    identity_storage: z.string().optional(),
+    kind: z.string().optional(),
+    method: z.string().optional(),
+    package: z.string().optional(),
+    rpc_family: z.string().optional(),
+    version: z.string().optional(),
+  })
+  .strict();

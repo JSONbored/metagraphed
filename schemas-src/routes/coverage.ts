@@ -7,7 +7,10 @@
 import { z } from "zod";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
-import { BittensorNetworkSchema } from "../shared.ts";
+import {
+  BittensorNetworkSchema,
+  NativeSnapshotSourceSchema,
+} from "../shared.ts";
 
 /** One surface kind's share of the registry: how many subnets have it, and
  * that as a whole-number percentage. Exported because
@@ -49,19 +52,7 @@ const CoverageSourceSchema = z
     // read -- which package, which RPC family, which storage item -- which is the
     // provenance a caller needs to judge the figure. The string arm is the older
     // shorthand form and is kept for wire compatibility.
-    native: z.union([
-      z.string(),
-      z
-        .object({
-          identity_storage: z.string().nullable().optional(),
-          kind: z.string().nullable().optional(),
-          method: z.string().nullable().optional(),
-          package: z.string().nullable().optional(),
-          rpc_family: z.string().nullable().optional(),
-          version: z.string().nullable().optional(),
-        })
-        .strict(),
-    ]),
+    native: z.union([z.string(), NativeSnapshotSourceSchema]),
     overlays: z.string(),
   })
   .strict();

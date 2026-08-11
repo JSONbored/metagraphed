@@ -56,7 +56,14 @@ export const SchemaDriftSurfaceSchema = z
   .strict();
 export type SchemaDriftSurface = z.infer<typeof SchemaDriftSurfaceSchema>;
 
-const SchemaDriftSummarySchema = z
+/**
+ * The captured-schema census -- ONE declaration (#10790).
+ *
+ * `SchemaIndexArtifact.summary` (routes/subnet-profiles.ts) carried the same
+ * four counters, with `by_status`/`by_drift_status` written out as the record
+ * `CountMapSchema` already names.
+ */
+export const SchemaDriftSummarySchema = z
   .object({
     surface_count: z.int().min(0),
     schema_count: z.int().min(0),

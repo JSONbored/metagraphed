@@ -7508,12 +7508,12 @@ export interface components {
             source: {
                 candidates: string;
                 native: string | {
-                    identity_storage?: string | null;
-                    kind?: string | null;
-                    method?: string | null;
-                    package?: string | null;
-                    rpc_family?: string | null;
-                    version?: string | null;
+                    identity_storage?: string;
+                    kind?: string;
+                    method?: string;
+                    package?: string;
+                    rpc_family?: string;
+                    version?: string;
                 };
                 overlays: string;
             };
@@ -10241,12 +10241,8 @@ export interface components {
             }[];
             source: string;
             summary?: {
-                by_drift_status: {
-                    [key: string]: number;
-                };
-                by_status: {
-                    [key: string]: number;
-                };
+                by_drift_status: components["schemas"]["CountMap"];
+                by_status: components["schemas"]["CountMap"];
                 schema_count: number;
                 surface_count: number;
             };

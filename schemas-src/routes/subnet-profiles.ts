@@ -29,6 +29,7 @@ import {
   SurfaceSchema,
 } from "./subnet-detail.ts";
 import { SchemaDriftStatusSchema } from "../shared.ts";
+import { SchemaDriftSummarySchema } from "../artifacts/schema-drift.ts";
 
 export const SubnetProfilesArtifactSchema = ArtifactBaseSchema.extend({
   profiles: z.array(SubnetProfileSchema),
@@ -149,14 +150,6 @@ export const SchemaIndexArtifactSchema = ArtifactBaseSchema.extend({
   // .optional() rather than required. Not in the hand-edited schema's named
   // properties, only legal today via additionalProperties:true.
   observed_at: z.string().optional(),
-  summary: z
-    .object({
-      surface_count: z.int().min(0),
-      schema_count: z.int().min(0),
-      by_status: z.record(z.string(), z.int().min(0)),
-      by_drift_status: z.record(z.string(), z.int().min(0)),
-    })
-    .strict()
-    .optional(),
+  summary: SchemaDriftSummarySchema.optional(),
 });
 export type SchemaIndexArtifact = z.infer<typeof SchemaIndexArtifactSchema>;

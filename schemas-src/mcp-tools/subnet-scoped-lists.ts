@@ -36,9 +36,7 @@ import { SubnetSurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
 // rather than hand-copied -- which is how it came to lack the collection's
 // three boolean filters in the first place.
 import { ListSurfacesInputSchema } from "./registry-catalogs-1.ts";
-import {
-  SURFACE_KIND_VALUES,
-} from "../routes/subnet-detail.ts";
+import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
 import { HEALTH_CLASSIFICATION_VALUES } from "./shared.ts";
 
