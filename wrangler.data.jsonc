@@ -119,6 +119,22 @@
   // secret (see UNKEY_ROOT_KEY above for the actual credential), just an
   // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
+    // #10659: lanes whose Neon writes are deferred through the write-behind
+    // buffer and flushed every ten minutes, so the compute does fewer, larger
+    // writes and autoscaling sits nearer the 0.25 CU floor.
+    //
+    // WHAT IS ABSENT IS THE POINT. `chain-detail` is NOT here and cannot be:
+    // it writes the chain_detail_* tables src/chain-detail-hot-tier.ts reads to
+    // serve a recent block's DETAIL, so deferring it would lag the block
+    // explorer. `blocks-head` is likewise excluded (it runs on the other
+    // Worker). Both are enforced by NEVER_BUFFER_LANES in
+    // src/neon-write-buffer.ts, so naming either here would be a no-op rather
+    // than a regression -- but they are left out so this list reads as what it
+    // is: everything OFF the explorer's live path.
+    //
+    // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
+    // so a ten-minute flush is twelve ticks inside a bound that already exists.
+    "NEON_WRITE_BUFFER_LANES": "neurons,subnet-hyperparams,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
     // Tier-source flags. These are READ by this Worker -- neuronsServedFromD1()
     // and its two siblings in workers/data-api.ts gate on `!== "postgres"` --
@@ -584,6 +600,22 @@
       "id": "8a09dc673733497f987434f59689287e",
     },
   ],
+  // #10659: the write-behind buffer, whose class is OWNED BY THE metagraphed
+  // Worker (wrangler.jsonc declares the class and its migration). `script_name`
+  // is what makes this a reference rather than a second, independent instance
+  // -- and a second instance would be the whole bug: two buffers mean two
+  // alarms drifting apart, waking the compute twice per window and halving the
+  // gap that was the point. No "migrations" entry belongs here; the owning
+  // Worker already has it.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NEON_WRITE_BUFFER",
+        "class_name": "NeonWriteBufferHub",
+        "script_name": "metagraphed",
+      },
+    ],
+  },
   // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/

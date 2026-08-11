@@ -54,6 +54,12 @@
     "not_found_handling": "404-page",
   },
   "vars": {
+    // #10659: the write-behind buffer's lane list for THIS Worker. Only
+    // `raw-capture-state` -- the other lane the firehose hub writes is
+    // `blocks-head`, which is the block explorer's live read path above the
+    // decode seam and must never be deferred (NEVER_BUFFER_LANES enforces it;
+    // this list simply does not ask).
+    "NEON_WRITE_BUFFER_LANES": "raw-capture-state",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
