@@ -14860,31 +14860,30 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
+    // #10190: the tier is retired; the #9146 deregistrations projection answers.
+    // Its hotkey index is TUPLE-encoded -- [netuid, deregistrations,
+    // first_observed, last_observed], epoch ms -- and the builder derives
+    // concentration/dominant_netuid from it, so those are measured here rather
+    // than echoed from a hand-written payload.
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_deregistrations: 4,
-            subnet_count: 2,
-            concentration: 0.55,
-            dominant_netuid: 3,
-            subnets: [
-              {
-                netuid: 3,
-                deregistrations: 3,
-                first_deregistered_at: "2026-04-01T00:00:00.000Z",
-                last_deregistered_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 7, deregistrations: 1 },
-            ],
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "90d": {
+            hotkeys: {
+              [SS58]: [
+                [
+                  3,
+                  3,
+                  Date.parse("2026-04-01T00:00:00.000Z"),
+                  Date.parse("2026-06-01T00:00:00.000Z"),
+                ],
+                [7, 1, null, null],
+              ],
+            },
           },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
+        },
+      }),
     };
     const { status, body } = await gql(
       `{ account_deregistrations(ss58: "${SS58}", window: "90d") {
@@ -14898,7 +14897,9 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
     assert.equal(r.window, "90d");
     assert.equal(r.total_deregistrations, 4);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.55);
+    // DERIVED from the rows above: (3/4)^2 + (1/4)^2 = 0.625. The retired tier
+    // carried 0.55, a number nothing computed.
+    assert.equal(r.concentration, 0.625);
     assert.equal(r.dominant_netuid, 3);
     assert.deepEqual(r.subnets, [
       {
@@ -15111,61 +15112,39 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
     });
   });
 
-  test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_removals: 5,
-            subnet_count: 2,
-            concentration: 0.72,
-            dominant_netuid: 6,
-            subnets: [
-              {
-                netuid: 6,
-                removals: 4,
-                first_removed_at: "2026-04-01T00:00:00.000Z",
-                last_removed_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 11, removals: 1 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+  test("the card is a measured zero: AxonInfoRemoved has never been emitted (#9307)", async () => {
+    // WAS a tier-payload test. The retired tier was this field's ONLY source --
+    // the resolver has no loader under it, only buildAccountAxonRemovals -- so
+    // with the tier gone (#10190) the card is unconditionally zero.
+    //
+    // That is the correct answer, not a gap: `AxonInfoRemoved` has zero
+    // occurrences in the complete decoded stream, ever, so there is nothing for a
+    // cold tier to hold. tests/graphql-tier-cascade.test.ts carries the same
+    // claim in NO_TIER_ANYWHERE, with the MCP twin named as the evidence, and
+    // fails if either side stops matching.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ account_axon_removals(ss58: "${SS58}", window: "90d") {
           address window total_removals subnet_count concentration dominant_netuid
           subnets { netuid removals first_removed_at last_removed_at }
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.account_axon_removals;
-    assert.equal(r.window, "90d");
-    assert.equal(r.total_removals, 5);
-    assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.72);
-    assert.equal(r.dominant_netuid, 6);
-    assert.deepEqual(r.subnets, [
-      {
-        netuid: 6,
-        removals: 4,
-        first_removed_at: "2026-04-01T00:00:00.000Z",
-        last_removed_at: "2026-06-01T00:00:00.000Z",
-      },
-      {
-        netuid: 11,
-        removals: 1,
-        first_removed_at: null,
-        last_removed_at: null,
-      },
-    ]);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
+    assert.deepEqual(body.data.account_axon_removals, {
+      address: SS58,
+      window: "90d",
+      total_removals: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
