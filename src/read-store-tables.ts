@@ -67,6 +67,19 @@ export const SUBNET_HYPERPARAMS_TEMPO_TABLES = ["subnet_hyperparams"] as const;
 /** loadSubnetBurnHistory */
 export const SUBNET_BURN_HISTORY_TABLES = ["subnet_burn_history"] as const;
 
+/**
+ * loadSubnetIdentityHistory + loadChainIdentityHistory.
+ *
+ * Declared late (#10773) because until 2026-08-11 the table had no writer:
+ * `syncSubnetIdentityToPostgres` was named as its sole writer in four places
+ * and never existed, so #10190 removed the tier read as unreachable and every
+ * surface fell to the frozen lakehouse export. The writer landed in #10740 /
+ * #10762 and metagraphed-infra#444; this is the read half catching up.
+ */
+export const SUBNET_IDENTITY_HISTORY_TABLES = [
+  "subnet_identity_history",
+] as const;
+
 /** loadRevenueObservations, and the probe lane's own write (#10566).
  *
  * Both tables, because the lane writes both in one pass and producerStore gates

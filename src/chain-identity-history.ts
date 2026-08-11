@@ -11,8 +11,15 @@
 // never a live D1 read). Null-safe: a non-array/empty read yields a
 // schema-stable empty feed and never throws.
 
-import { formatIdentityHistoryEntry } from "./subnet-identity-history.ts";
-import { clampToolLimit } from "../workers/request-params.ts";
+import {
+  READ_COLUMNS,
+  formatIdentityHistoryEntry,
+} from "./subnet-identity-history.ts";
+import {
+  FEED_PAGINATION,
+  clampLimit,
+  clampToolLimit,
+} from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -87,4 +94,39 @@ export function buildChainIdentityHistory(
     subnet_count: netuids.size,
     changes,
   };
+}
+
+/**
+ * The network-wide identity feed, newest first, from the LIVE store (#10773).
+ *
+ * The twin of `loadSubnetIdentityHistory` for /api/v1/chain/identity-history
+ * and its MCP + GraphQL surfaces. It did not exist because nothing could call
+ * it: `METAGRAPH_SUBNET_IDENTITY_SOURCE` was retired while
+ * `subnet_identity_history` had no writer at all, so #10190 removed the tier
+ * read as unreachable and every surface fell through to the frozen lakehouse
+ * export. The writer landed on 2026-08-11 (#10740 / #10762 and
+ * metagraphed-infra#444) and the reader was never repointed -- the lane wrote
+ * 248 rows at 13:15Z while all three surfaces still served 2026-07-31.
+ *
+ * ORDER MATCHES THE COLD TIER'S, deliberately -- `block_number DESC, netuid
+ * ASC, id DESC`, the same total order `loadChainIdentityHistoryColdTier` uses.
+ * The two legs answer the same question and a caller cannot tell which one
+ * did; feeds that disagreed on ordering would surface as rows shuffling
+ * whenever the live store went cold.
+ *
+ * `netuid` leads the column list because the network feed carries it and the
+ * per-subnet timeline does not -- the same split the cold tier makes, and the
+ * reason this selects `READ_COLUMNS` rather than restating it.
+ */
+export async function loadChainIdentityHistory(
+  d1: (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>,
+  { limit }: { limit?: string | number | null } = {},
+): Promise<ChainIdentityHistoryResult> {
+  const lim = clampLimit(limit, FEED_PAGINATION);
+  const rows = await d1(
+    `SELECT netuid, ${READ_COLUMNS} FROM subnet_identity_history` +
+      " ORDER BY block_number DESC, netuid ASC, id DESC LIMIT ?",
+    [lim],
+  );
+  return buildChainIdentityHistory(rows, { limit: lim });
 }
