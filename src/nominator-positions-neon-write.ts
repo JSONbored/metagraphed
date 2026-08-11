@@ -25,6 +25,7 @@
 // tick -- never delete a position without having written its replacement first.
 
 import { laneHealthStore } from "./lane-health-store.ts";
+import { normalizeShareFractionsInNeon } from "./neon-write.ts";
 import {
   writePassTallyToNeon,
   type PassTallyInput,
@@ -172,10 +173,41 @@ export async function mirrorNominatorPositionsToNeon(
     true,
   );
 
-  // AFTER THE PRUNE, not just after the upsert. This lane's pass is only
-  // whole once the stale rows are gone: a tally written between the two would
-  // declare a complete pass over a table that still holds superseded
-  // positions, which is the state the prune exists to end.
+  // AFTER THE PRUNE, BEFORE THE TALLY (metagraphed-infra#414). Recomputes
+  // share_fraction from the raw shares of this pass, which is what lets the
+  // producer stop buffering the whole keyspace to compute a pool-normalised
+  // value it cannot derive one row at a time.
+  //
+  // The ordering is the same argument the tally below makes: normalising while
+  // superseded rows are still present would divide by a denominator that
+  // includes them. So it runs after the prune, and the tally -- which declares
+  // the pass whole -- runs after this.
+  //
+  // NOT FATAL, and deliberately unlike the prune. A failure here leaves the
+  // fraction the producer computed in place, which is the value this lane has
+  // always served; the rows are correct, just not re-derived. Failing the pass
+  // over it would trade a served-and-correct table for no pass at all. It rides
+  // on the same lane verdict so a persistent failure is still visible.
+  //
+  // A no-op until the poller sends shares: the statement matches no rows.
+  if (prune.ok && input.pass?.capturedAt) {
+    const normalized = await normalizeShareFractionsInNeon(
+      sql,
+      Number(input.pass.capturedAt),
+    );
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${NOMINATOR_POSITIONS_NEON_LANE}-normalize`,
+      normalized,
+      now(),
+      buffered,
+      // ONCE PER PASS, same reason as the prune and the tally: this sub-lane
+      // shares the base lane's buffered runner, so the flush never names it and
+      // a suppressed success could never be cleared (#10830).
+      true,
+    );
+  }
+
   let passResult: NeonWriteResult | undefined;
   if (input.pass) {
     const tally = prune.ok

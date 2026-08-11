@@ -537,12 +537,23 @@ describe("buildAccountPositions", () => {
 });
 
 describe("NOMINATOR_POSITION_INSERT_COLUMNS", () => {
-  test("is the exact five-column shape the migration/sync endpoint expect", () => {
+  test("is the exact column shape the migration/sync endpoint expect", () => {
+    // `shares` joined in metagraphed-infra#414. It is the raw u128 the chain
+    // holds, and it exists so `share_fraction` -- which is normalised across a
+    // whole (hotkey, netuid) pool and therefore unproducible one row at a time --
+    // stops being the only thing kept. That is what lets the producer stream
+    // instead of buffering the entire 762,577-row keyspace.
+    //
+    // ORDER MATTERS, which is why this is deepEqual and not a set comparison:
+    // coerceNominatorPositionSyncRow projects onto this list positionally and
+    // buildPgUpsert numbers its placeholders from it, so a reordering binds
+    // values to the wrong columns without failing anything.
     assert.deepEqual(NOMINATOR_POSITION_INSERT_COLUMNS, [
       "coldkey",
       "hotkey",
       "netuid",
       "share_fraction",
+      "shares",
       "captured_at",
     ]);
   });

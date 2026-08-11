@@ -302,6 +302,72 @@ export async function pruneKeysInNeon(
 }
 
 /**
+ * Recompute `share_fraction` from the raw `shares` of one pass, in SQL
+ * (metagraphed-infra#414).
+ *
+ * WHAT THIS REPLACES. `share_fraction` is this coldkey's shares over ALL
+ * delegators' shares for the same (hotkey, netuid) pool, so no single row can
+ * produce it -- which is why the poller buffers the whole 762,577-row Alpha
+ * keyspace before it may write anything, and why a chunk boundary could not
+ * fall mid-pool. A window over the table answers the same question exactly,
+ * once, and the producer is then free to stream rows as it walks them.
+ *
+ * AFTER THE PRUNE, and the caller enforces that order. Normalising while
+ * superseded rows are still present divides by a denominator that includes
+ * them -- the same reasoning the pass tally already follows, and the reason
+ * this takes a `capturedAt` rather than running over everything.
+ *
+ * SKIPS ROWS WITHOUT SHARES, which is what makes this inert until the poller
+ * sends them: `WHERE shares IS NOT NULL` matches nothing today, so the
+ * statement is a no-op and the fraction the producer computed stands. It becomes
+ * load-bearing the moment a pass carries shares, with no second deploy.
+ *
+ * `numeric` throughout, cast to double only on assignment: shares are u128 and
+ * the ratio of two of them is exact in numeric. The Rust side computed this as
+ * u128 -> f64 division, so this is at least as accurate and does not round the
+ * denominator before dividing.
+ */
+export async function normalizeShareFractionsInNeon(
+  sql: PgUnsafe | null | undefined,
+  capturedAt: number,
+): Promise<NeonWriteResult> {
+  if (!sql?.unsafe)
+    return { ok: false, rows: 0, statements: 0, reason: "unbound" };
+  if (!Number.isSafeInteger(capturedAt) || capturedAt <= 0) {
+    return {
+      ok: false,
+      rows: 0,
+      statements: 0,
+      reason: `unusable captured_at: ${capturedAt}`,
+    };
+  }
+  try {
+    await sql.unsafe(
+      `UPDATE nominator_positions AS p
+          SET share_fraction = (p.shares / t.total)::double precision
+         FROM (SELECT hotkey, netuid, SUM(shares) AS total
+                 FROM nominator_positions
+                WHERE captured_at = $1 AND shares IS NOT NULL
+             GROUP BY hotkey, netuid) AS t
+        WHERE p.hotkey = t.hotkey
+          AND p.netuid = t.netuid
+          AND p.captured_at = $1
+          AND p.shares IS NOT NULL
+          AND t.total > 0`,
+      [capturedAt],
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      rows: 0,
+      statements: 0,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+  return { ok: true, rows: 1, statements: 1 };
+}
+
+/**
  * How long an UNCHANGED `ok` verdict may be re-asserted without writing again.
  *
  * TEN MINUTES, against a bound of two hours. `lane_health`'s own freshness

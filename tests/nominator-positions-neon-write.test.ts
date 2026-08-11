@@ -12,13 +12,17 @@
 //     rows that did not land deletes live positions and leaves nothing in
 //     their place, and no retry undoes a delete
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
   mirrorNominatorPositionsToNeon,
   NOMINATOR_POSITIONS_CONFLICT,
   NOMINATOR_POSITIONS_NEON_LANE,
 } from "../src/nominator-positions-neon-write.ts";
-import { pruneKeysInNeon } from "../src/neon-write.ts";
+import {
+  normalizeShareFractionsInNeon,
+  pruneKeysInNeon,
+  resetNeonWriteVerdictMemo,
+} from "../src/neon-write.ts";
 
 const NOW = 1_785_800_000_000;
 
@@ -73,6 +77,13 @@ const rows = [
 ];
 const cutoffs = new Map([["5A", 9]]);
 const on = { NEON_DUAL_WRITE_LANES: NOMINATOR_POSITIONS_NEON_LANE };
+
+// recordNeonWriteVerdict coalesces an unchanged `ok` for ten minutes, keyed per
+// lane in MODULE state. Without this reset a test's verdicts depend on which
+// tests ran before it in the same file -- the base and prune rows vanish from
+// the middle of the suite and reappear when the test is run alone, which is
+// exactly how this was found.
+beforeEach(resetNeonWriteVerdictMemo);
 
 describe("pruneKeysInNeon", () => {
   test("deletes per key against that key's own cutoff, in ONE statement", () => {
@@ -163,6 +174,78 @@ describe("mirrorNominatorPositionsToNeon", () => {
     assert.deepEqual(
       spy.rows.map((r) => r.lane),
       ["neon:nominator-positions", "neon:nominator-positions-prune"],
+    );
+  });
+
+  test("normalises AFTER the prune and BEFORE the tally (metagraphed-infra#414)", async () => {
+    // The order is the correctness claim, not tidiness. Normalising before the
+    // prune divides by a denominator that still includes superseded rows;
+    // tallying before the normalisation declares a pass whole whose fractions
+    // have not been re-derived.
+    const sql = fakeSql();
+    const spy = laneSpy();
+    const out = await mirrorNominatorPositionsToNeon(
+      on,
+      ctx,
+      {
+        rows,
+        coldkeyMaxCapturedAt: cutoffs,
+        pass: {
+          capturedAt: NOW,
+          expectedRows: rows.length,
+          receivedRows: rows.length,
+          nowMs: NOW,
+        },
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(out.prune?.ok, true);
+    const kinds = sql.calls.map((call) => call.text.split(" ")[0]);
+    assert.deepEqual(
+      kinds,
+      ["INSERT", "DELETE", "UPDATE", "INSERT"],
+      `expected upsert, prune, normalise, tally -- got ${kinds.join(", ")}`,
+    );
+    assert.deepEqual(
+      spy.rows.map((r) => r.lane),
+      [
+        "neon:nominator-positions",
+        "neon:nominator-positions-prune",
+        "neon:nominator-positions-normalize",
+        "neon:nominator-positions-pass",
+      ],
+    );
+  });
+
+  test("does NOT normalise when the prune failed", async () => {
+    // Same reason the tally is withheld: the table still holds superseded rows,
+    // so any pool total computed over it is wrong. Recomputing fractions there
+    // would overwrite correct producer-side values with ones divided by a
+    // denominator that includes rows the prune was supposed to remove.
+    const sql = fakeSql("delete");
+    const spy = laneSpy();
+    await mirrorNominatorPositionsToNeon(
+      on,
+      ctx,
+      {
+        rows,
+        coldkeyMaxCapturedAt: cutoffs,
+        pass: {
+          capturedAt: NOW,
+          expectedRows: rows.length,
+          receivedRows: rows.length,
+          nowMs: NOW,
+        },
+      },
+      { sql, laneHealthDb: spy.db, now: () => NOW },
+    );
+    assert.equal(
+      sql.calls.filter((call) => call.text.startsWith("UPDATE")).length,
+      0,
+      "a failed prune must not be followed by a normalisation",
+    );
+    assert.ok(
+      !spy.rows.some((r) => r.lane === "neon:nominator-positions-normalize"),
     );
   });
 
@@ -323,4 +406,82 @@ test("no declared pass leaves the result undefined", async () => {
     { sql, laneHealthDb: null },
   );
   assert.equal(out.pass, undefined);
+});
+
+// metagraphed-infra#414: the normalisation that lets the producer stop buffering
+// the whole 762,577-row Alpha keyspace to compute a pool-relative fraction.
+describe("normalizeShareFractionsInNeon", () => {
+  test("divides each row's shares by its own (hotkey, netuid) pool total", async () => {
+    const sql = fakeSql();
+    const result = await normalizeShareFractionsInNeon(sql, NOW);
+    assert.deepEqual(result, { ok: true, rows: 1, statements: 1 });
+    assert.equal(sql.calls.length, 1);
+    const text = sql.calls[0].text;
+    // The GROUP BY is the whole correctness claim: share_fraction is this
+    // coldkey's shares over ALL delegators' shares for the SAME pool, so a
+    // denominator grouped on anything else publishes a plausible wrong number.
+    assert.match(text, /GROUP BY hotkey, netuid/);
+    assert.match(text, /SUM\(shares\) AS total/);
+    assert.match(text, /p\.hotkey = t\.hotkey/);
+    assert.match(text, /p\.netuid = t\.netuid/);
+    // Scoped to ONE pass on both sides of the join. Without it the denominator
+    // would include superseded rows the prune has not reached yet.
+    assert.equal(sql.calls[0].values[0], NOW);
+    assert.match(text, /p\.captured_at = \$1/);
+    assert.match(text, /WHERE captured_at = \$1/);
+  });
+
+  test("skips rows with no shares, which is what makes it inert today", async () => {
+    // The producer that sends shares does not exist yet. Until it does this
+    // statement must match nothing and leave the fraction the producer computed
+    // standing -- that property is what lets this ship ahead of the poller.
+    const sql = fakeSql();
+    await normalizeShareFractionsInNeon(sql, NOW);
+    const text = sql.calls[0].text;
+    assert.match(text, /AND shares IS NOT NULL/);
+    assert.match(text, /AND p\.shares IS NOT NULL/);
+  });
+
+  test("never divides by zero", async () => {
+    // A pool whose every delegator holds zero shares has no meaningful
+    // fraction. Postgres raises on numeric division by zero, which would fail
+    // the statement for every OTHER pool in the same pass.
+    const sql = fakeSql();
+    await normalizeShareFractionsInNeon(sql, NOW);
+    assert.match(sql.calls[0].text, /t\.total > 0/);
+  });
+
+  test("an unusable captured_at is refused before it reaches SQL", async () => {
+    // `captured_at = NaN` would match no rows and report success, which reads as
+    // "normalised" for a pass that was not.
+    const sql = fakeSql();
+    for (const bad of [0, -1, Number.NaN, 1.5]) {
+      const result = await normalizeShareFractionsInNeon(sql, bad);
+      assert.equal(result.ok, false, String(bad));
+      assert.match(String(result.reason), /unusable captured_at/);
+    }
+    assert.deepEqual(sql.calls, [], "nothing may reach the database");
+  });
+
+  test("an unbound store declines rather than throwing", async () => {
+    assert.deepEqual(await normalizeShareFractionsInNeon(null, NOW), {
+      ok: false,
+      rows: 0,
+      statements: 0,
+      reason: "unbound",
+    });
+  });
+
+  test("a failed statement is a reason, not an exception", async () => {
+    // The caller treats this as non-fatal: the rows are correct, just not
+    // re-derived. It must therefore report rather than throw.
+    const sql = {
+      async unsafe() {
+        throw new Error("deadlock detected");
+      },
+    };
+    const result = await normalizeShareFractionsInNeon(sql, NOW);
+    assert.equal(result.ok, false);
+    assert.match(String(result.reason), /deadlock detected/);
+  });
 });

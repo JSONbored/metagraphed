@@ -35,8 +35,33 @@ export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "hotkey",
   "netuid",
   "share_fraction",
+  // The raw u128 the chain holds, added so `share_fraction` stops being the
+  // ONLY thing we keep (metagraphed-infra#414). A fraction is normalised across
+  // every row in a (hotkey, netuid) pool, so no single row can produce it --
+  // which is why the poller buffers the whole 762,577-row keyspace before it
+  // may write anything. Keeping the raw value moves that normalisation to one
+  // statement after the prune and lets the producer stream.
+  //
+  // Optional on the wire: the producer that sends it does not exist yet, and
+  // the normalisation skips a row without it. That is what makes this shippable
+  // ahead of the poller.
+  "shares",
   "captured_at",
 ];
+
+/** The type `shares` must be cast to in the FILTERED upsert form.
+ *
+ * Only that form needs it: a plain `INSERT INTO t (cols) VALUES (...)` takes
+ * its types from the target columns, while `FROM (VALUES ...) AS src (cols)`
+ * is a standalone relation whose untyped parameters fall back to TEXT -- the
+ * exact failure that took the hotkey_alpha mirror down twice (see
+ * buildPgUpsert's own `columnTypes` note). `shares` arrives as a decimal
+ * STRING, because a u128 does not survive JSON's double past 2^53, so it is
+ * precisely the column that would land as text.
+ */
+export const NOMINATOR_POSITION_COLUMN_TYPES = {
+  shares: "numeric",
+} as const;
 
 // A finite, non-negative TAO cell, or null when absent/blank/non-numeric.
 // Blank Postgres cells coerce via Number("") -> 0; skip those rather than
