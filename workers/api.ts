@@ -2567,6 +2567,36 @@ export async function probeOrigin(
  * Each `enqueue` reads a list and sends it. None fetches, none opens a store --
  * that work belongs to the consumer, one invocation per subject.
  */
+/**
+ * One producer's result as a lane verdict (#10777).
+ *
+ * The RULE alone, so both shapes are assertable without standing up three
+ * producers — the same split evaluateSafeMode and evaluateNeuronsStaleness use.
+ *
+ * `detail` prefers the producer's own words and falls back to the count,
+ * because `reason` is set on every failure path in enqueueAll and absent on
+ * success. Writing it as one `??` rather than a second ternary keeps "what the
+ * producer said" and "how many it sent" from being two independent decisions
+ * that could disagree about which case they are in.
+ *
+ * `age_ms` is null and not a number: nothing here is behind, something here
+ * either enqueued or did not, and a number would be read as lag by every
+ * consumer of lane_health.
+ */
+export function laneHeartbeatVerdict(result: {
+  lane: string;
+  ok: boolean;
+  enqueued: number;
+  reason?: string;
+}): { lane: string; verdict: "ok" | "stale"; age_ms: null; detail: string } {
+  return {
+    lane: result.lane,
+    verdict: result.ok ? "ok" : "stale",
+    age_ms: null,
+    detail: result.reason ?? `${result.enqueued} enqueued`,
+  };
+}
+
 export const LANE_PRODUCERS: ReadonlyArray<{
   name: string;
   enqueue: (env: Env) => Promise<EnqueueResult>;
@@ -2749,6 +2779,31 @@ async function dispatchScheduled(
     // The heartbeat is ok only if EVERY producer is. One lane silently failing
     // to enqueue while the others succeed is precisely the shape that let the
     // revenue lane sit dead for two months (#10566).
+    //
+    // A VERDICT PER LANE, because returning them was not reporting them
+    // (#10777). This computed exactly the right object and handed it to
+    // handleScheduled, whose return value workers/api.entry.ts discards -- the
+    // same #9440 shape the SafeMode watchdog had, reintroduced by the three
+    // lanes that moved onto this heartbeat and lost their own verdict writes on
+    // the way. Measured 2026-08-11: `revenue-probe` read `unknown -- no verdict
+    // for 194m (cadence ~60m)` while the heartbeat had run on schedule every
+    // hour, because "ran and could not enqueue" and "never ran" produce the
+    // same nothing.
+    //
+    // Per lane rather than one row for the heartbeat: `no_eligible_surfaces` on
+    // the revenue lane and a missing binding on the sweep lane send a reader to
+    // different places, and a single verdict would collapse them into "the
+    // heartbeat is unhappy".
+    ctx.waitUntil(
+      Promise.all(
+        results.map((r) =>
+          recordLaneVerdict(laneHealthStore(env), {
+            ...laneHeartbeatVerdict(r),
+            checked_at: Date.now(),
+          }),
+        ),
+      ),
+    );
     return {
       ok: results.every((r) => r.ok),
       lanes: results,

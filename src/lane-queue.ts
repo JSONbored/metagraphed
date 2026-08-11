@@ -101,6 +101,21 @@ export interface ConsumeHandlers<TSubject> {
   /** Do the work. Return false or throw to have the message redelivered;
    * return true when the result is durably written. */
   run(subject: TSubject): Promise<boolean>;
+  /**
+   * Called ONCE per batch when something was retried, with the first failure
+   * and the count.
+   *
+   * ONCE, not once per message: a batch is up to 100 messages and a lane whose
+   * dependency is down fails every one of them identically, so per-message
+   * reporting would turn a single outage into a hundred records -- the same
+   * storm control the head poller applies by capturing only when the message
+   * CHANGES. The count rides along, so "one probe broke" and "all of them did"
+   * stay distinguishable.
+   *
+   * Optional, and defaulted to a console.error by the loop, so opting out of
+   * reporting has to be deliberate rather than the result of forgetting.
+   */
+  onRetry?(reason: string, retried: number): void;
 }
 
 /**
@@ -117,6 +132,17 @@ export async function consumeBatch<TSubject>(
   let done = 0;
   let retried = 0;
   let dropped = 0;
+  // WHY THE RETRY HAPPENED, which this loop used to discard entirely.
+  //
+  // The catch below was a bare `catch { message.retry(); }`. A message that
+  // fails its whole budget and dead-letters therefore produced NO log line, no
+  // $exception, nothing -- and the dead-letter verdict on the other end could
+  // only say how many were lost. Measured 2026-08-11: `revenue-probe` had gone
+  // 187 minutes with no verdict against a ~60 minute cadence while messages
+  // were being enqueued on schedule and quietly dead-lettering, and error
+  // tracking held not one event for the lane. A retry is the loop working; a
+  // retry nobody can explain is how a lane dies silently.
+  let firstFailure: string | null = null;
   for (const message of messages) {
     try {
       // `parse` is inside the try as well: a parse that throws is a programming
@@ -135,10 +161,30 @@ export async function consumeBatch<TSubject>(
       } else {
         message.retry();
         retried += 1;
+        // A HANDLER THAT RETURNS FALSE IS ALSO A FAILURE. It is the quieter of
+        // the two -- no stack, no message -- and leaving it unreported would
+        // keep exactly half of this fix.
+        firstFailure ??= "run() declined without throwing";
       }
-    } catch {
+    } catch (error) {
       message.retry();
       retried += 1;
+      firstFailure ??= error instanceof Error ? error.message : String(error);
+    }
+  }
+  if (firstFailure !== null) {
+    const report =
+      handlers.onRetry ??
+      ((reason: string, count: number) =>
+        console.error(`lane-queue: ${count} message(s) retried -- ${reason}`));
+    // Reporting must never be able to make the batch worse: every message has
+    // already been acked or retried by the time this runs, so a throwing
+    // reporter would lose nothing -- but it would turn a diagnosable failure
+    // into an undiagnosable one, which is the whole thing being fixed.
+    try {
+      report(firstFailure, retried);
+    } catch {
+      // Deliberately empty: see above.
     }
   }
   return { done, retried, dropped };

@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   DEAD_LETTER_LANES,
+  DEAD_LETTER_MAX_NAMED_SUBJECTS,
   handleDeadLetterBatch,
   isDeadLetterQueue,
   summarizeDeadLetterBatch,
@@ -201,5 +202,128 @@ describe("handleDeadLetterBatch", () => {
     );
     assert.equal(detail, "0 dead-lettered message(s) on sync-batches-dlq ()");
     assert.equal(store.inserts.length, 1);
+  });
+});
+
+// ---- naming the subject (#10777) ----
+//
+// The summariser read `lane ?? subscription_id`, which covers sync-batches and
+// webhook-deliveries and nothing else. #10715/#10739 then added three queues
+// whose bodies carry none of them, and all three reported `(unidentified)` --
+// a dead-letter verdict that says something was lost and cannot say what.
+// Measured in production 2026-08-11: "2 dead-lettered message(s) on
+// revenue-probes-dlq (unidentified)", with the two surface_ids sitting unread.
+describe("the summary names the subject on every live queue", () => {
+  const CASES: [string, string, Record<string, unknown>, string][] = [
+    ["sync-batches-dlq", "lane", { lane: "neurons" }, "neurons"],
+    [
+      "webhook-deliveries-dlq",
+      "subscription_id",
+      { subscription_id: "sub_a" },
+      "sub_a",
+    ],
+    [
+      "revenue-probes-dlq",
+      "surface_id",
+      { surface_id: "sn-64-api" },
+      "sn-64-api",
+    ],
+    [
+      "origin-reachability-dlq",
+      "origin",
+      { origin: "https://example.com" },
+      "https://example.com",
+    ],
+    ["attribution-sweeps-dlq", "netuid", { netuid: 64 }, "netuid=64"],
+  ];
+
+  for (const [queue, key, body, expected] of CASES) {
+    test(`${queue} is named by its ${key}`, () => {
+      const line = summarizeDeadLetterBatch(queue, [{ body }]);
+      assert.match(
+        line,
+        new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      );
+      assert.ok(
+        !line.includes("unidentified"),
+        `${queue} still reports unidentified, which is the bug`,
+      );
+    });
+  }
+
+  test("EVERY declared dead-letter queue has a case above", () => {
+    // The gate. A queue added to DEAD_LETTER_LANES without a subject key would
+    // otherwise report `unidentified` in production and pass every test here.
+    const covered = new Set(CASES.map(([q]) => q));
+    const declared = Object.keys(DEAD_LETTER_LANES);
+    assert.deepEqual(
+      declared.filter((q) => !covered.has(q)),
+      [],
+      "a dead-letter queue with no case here is one nobody has checked can " +
+        "name its own subject",
+    );
+  });
+
+  test("netuid 0 is a subject, not a missing one", () => {
+    // Root. A falsy-number check would have dropped it, and netuid 0 is the
+    // one subnet where a silent drop is least acceptable.
+    const line = summarizeDeadLetterBatch("attribution-sweeps-dlq", [
+      { body: { netuid: 0 } },
+    ]);
+    assert.match(line, /netuid=0/);
+  });
+
+  test("a non-finite number is not a subject", () => {
+    const line = summarizeDeadLetterBatch("attribution-sweeps-dlq", [
+      { body: { netuid: Number.NaN } },
+    ]);
+    assert.match(line, /unidentified/);
+  });
+
+  test("a body naming none of the keys is honestly unidentified", () => {
+    const line = summarizeDeadLetterBatch("revenue-probes-dlq", [
+      { body: { something_else: "x" } },
+    ]);
+    assert.match(line, /\(unidentified\)/);
+  });
+
+  test("the first matching key wins, in declared order", () => {
+    const line = summarizeDeadLetterBatch("sync-batches-dlq", [
+      { body: { lane: "neurons", surface_id: "sn-1" } },
+    ]);
+    assert.match(line, /\(neurons\)/);
+  });
+
+  test("distinct subjects are capped, and the remainder is counted", () => {
+    // The string lands in a log line and lane_health.detail; a batch is up to
+    // 100 messages. Naming a hundred netuids there is the dump this function
+    // exists to avoid.
+    const messages = Array.from({ length: 40 }, (_, i) => ({
+      body: { surface_id: `sn-${String(i).padStart(3, "0")}` },
+    }));
+    const line = summarizeDeadLetterBatch("revenue-probes-dlq", messages);
+    assert.match(line, /\+28 more/);
+    assert.match(line, /^40 dead-lettered message\(s\)/);
+    assert.ok(line.length < 400, "the detail column must stay readable");
+  });
+
+  test("exactly the cap names everything, with no remainder clause", () => {
+    const messages = Array.from(
+      { length: DEAD_LETTER_MAX_NAMED_SUBJECTS },
+      (_, i) => ({ body: { surface_id: `sn-${i}` } }),
+    );
+    const line = summarizeDeadLetterBatch("revenue-probes-dlq", messages);
+    assert.ok(!line.includes("more"), "no remainder when nothing remains");
+  });
+
+  test("repeated subjects collapse rather than counting toward the cap", () => {
+    const messages = Array.from({ length: 30 }, () => ({
+      body: { surface_id: "sn-64-api" },
+    }));
+    const line = summarizeDeadLetterBatch("revenue-probes-dlq", messages);
+    assert.equal(
+      line,
+      "30 dead-lettered message(s) on revenue-probes-dlq (sn-64-api)",
+    );
   });
 });
