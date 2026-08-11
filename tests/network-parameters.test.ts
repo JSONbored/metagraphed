@@ -52,6 +52,9 @@ const BAR_QUANTILE_KEY =
   "0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650";
 const GATE_EXPONENT_KEY =
   "0x658faa385070e074c85bf6b568cf055588c70e8dd0cf4af3aeb977ba2eee1df4";
+// twox128("SubtensorModule") ++ twox128("SubnetOwnerCut").
+const OWNER_CUT_KEY =
+  "0x658faa385070e074c85bf6b568cf0555e799290d4a088ada42cf32b591c69203";
 const GOLDEN_GATE_BAR_RAW = "0xf552a5fa90c449020000000000000000";
 const GOLDEN_GATE_BAR = 0.008938107867512188;
 const GOLDEN_BAR_QUANTILE_RAW = "0x00000000000000c00000000000000000";
@@ -93,7 +96,12 @@ function goldenFetchStub() {
       json: async () => ({
         jsonrpc: "2.0",
         id: 1,
-        result: key === GATE_EXPONENT_KEY ? null : byKey[key],
+        // SubnetOwnerCut is genuinely UNSET on chain too (verified against
+        // finney 2026-08-10), so it returns a real null for the same reason.
+        result:
+          key === GATE_EXPONENT_KEY || key === OWNER_CUT_KEY
+            ? null
+            : byKey[key],
       }),
     };
   };
@@ -141,7 +149,8 @@ describe("loadNetworkParameters", () => {
         assert.ok(seenKeys.has(GATE_BAR_KEY));
         assert.ok(seenKeys.has(BAR_QUANTILE_KEY));
         assert.ok(seenKeys.has(GATE_EXPONENT_KEY));
-        assert.equal(seenKeys.size, 7);
+        assert.ok(seenKeys.has(OWNER_CUT_KEY));
+        assert.equal(seenKeys.size, 8);
       },
     );
   });
@@ -195,6 +204,81 @@ describe("loadNetworkParameters", () => {
         const data = await loadNetworkParameters(mockEnv());
         assert.equal(data.emission_gate_exponent, 4);
         assert.equal(data.emission_gate_exponent_effective, 4);
+      },
+    );
+  });
+
+  // #10484: the same trap as the exponent, on the parameter the entire owner-cut
+  // accrual is multiplied by. Absent means the runtime default 11796/65535;
+  // absent read as 0 would report that subnet owners receive NOTHING, for all
+  // 128 subnets at once, and it would look like a measurement.
+  test("serves the unset owner cut as null, with the runtime default beside it", async () => {
+    await withFetchStub(goldenFetchStub(), async () => {
+      const data = await loadNetworkParameters(mockEnv());
+      assert.equal(data.subnet_owner_cut, null);
+      assert.ok(
+        Math.abs((data.subnet_owner_cut_effective as number) - 11796 / 65535) <
+          1e-12,
+      );
+      // 18%, not one sixth. At SN64's scale that difference is ~6 TAO/day.
+      assert.notEqual(data.subnet_owner_cut_effective, 1 / 6);
+      assert.notEqual(data.subnet_owner_cut_effective, 0);
+    });
+  });
+
+  // The day governance sets it, raw and effective must BOTH report it -- the
+  // unset case must not be the only one that works. 11796 as a little-endian
+  // u16 is 0x142e -> "0x142e".
+  test("reports a set owner cut as both the raw numerator and the share", async () => {
+    await withFetchStub(
+      async (_url: unknown, init: Row) => {
+        const key = JSON.parse(init.body).params[0];
+        if (key === OWNER_CUT_KEY) {
+          return {
+            ok: true,
+            json: async () => ({ jsonrpc: "2.0", id: 1, result: "0x1027" }),
+          };
+        }
+        return goldenFetchStub()(_url, init);
+      },
+      async () => {
+        const data = await loadNetworkParameters(mockEnv());
+        // 0x1027 little-endian = 10000.
+        assert.equal(data.subnet_owner_cut, 10000);
+        assert.ok(
+          Math.abs(
+            (data.subnet_owner_cut_effective as number) - 10000 / 65535,
+          ) < 1e-12,
+        );
+      },
+    );
+  });
+
+  // A width mismatch must not decode to a plausible number. decodeLeU16 takes
+  // exactly four hex digits, so a u64-width value is rejected rather than
+  // silently truncated to its low two bytes.
+  test("a wrong-width owner cut decodes to null, not to a truncated value", async () => {
+    await withFetchStub(
+      async (_url: unknown, init: Row) => {
+        const key = JSON.parse(init.body).params[0];
+        if (key === OWNER_CUT_KEY) {
+          return {
+            ok: true,
+            json: async () => ({
+              jsonrpc: "2.0",
+              id: 1,
+              result: "0x1027000000000000",
+            }),
+          };
+        }
+        return goldenFetchStub()(_url, init);
+      },
+      async () => {
+        const data = await loadNetworkParameters(mockEnv());
+        assert.equal(data.subnet_owner_cut, null);
+        // A failed DECODE is not an unset item, so no default is substituted:
+        // reporting 18% here would claim a value we could not read.
+        assert.equal(data.subnet_owner_cut_effective, null);
       },
     );
   });
@@ -455,7 +539,7 @@ describe("loadNetworkParameters", () => {
       },
       async () => {
         await loadNetworkParameters(mockEnv());
-        assert.equal(seenSignals.length, 7);
+        assert.equal(seenSignals.length, 8);
         for (const signal of seenSignals) {
           assert.ok(signal);
           assert.equal(typeof signal.aborted, "boolean");

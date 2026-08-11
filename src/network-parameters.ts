@@ -61,6 +61,30 @@ export const EMISSION_GATE_BAR_STORAGE_KEY =
 export const EMISSION_BAR_QUANTILE_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf0555a772007dde2ed63e0f21b5f9d7f16650";
 // twox128("SubtensorModule") ++ twox128("EmissionGateExponent").
+// twox128("SubtensorModule") ++ twox128("SubnetOwnerCut"). Verified against
+// finney by deriving TaoWeight's key the same way and getting the constant
+// above byte-for-byte.
+export const SUBNET_OWNER_CUT_STORAGE_KEY =
+  "0x658faa385070e074c85bf6b568cf0555e799290d4a088ada42cf32b591c69203";
+
+/**
+ * `DefaultSubnetOwnerCut` -- 11796 over u16::MAX, i.e. 17.999...%.
+ *
+ * THE STORAGE ITEM IS UNSET ON FINNEY, and absent means "use this", NOT zero.
+ * Verified 2026-08-10: state_getStorage returns null for the key above while
+ * TaoWeight, derived identically, returns a value. A reader that coalesces the
+ * absent item to 0 reports ZERO OWNER-CUT ACCRUAL FOR ALL 128 SUBNETS -- a
+ * confidently wrong number that looks measured, which is exactly the failure
+ * DEFAULT_EMISSION_GATE_EXPONENT below exists to prevent for its own item.
+ *
+ * The cut is 18%, not one sixth. At SN64's scale the difference between 16.7%
+ * and 18% is ~6 TAO/day, which would surface as an unexplained residual in the
+ * very reconciliation this feeds (#10440).
+ */
+export const DEFAULT_SUBNET_OWNER_CUT_NUMERATOR = 11796;
+/** u16::MAX -- the denominator SubnetOwnerCut is expressed over. */
+export const SUBNET_OWNER_CUT_DENOMINATOR = 65535;
+
 export const EMISSION_GATE_EXPONENT_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf055588c70e8dd0cf4af3aeb977ba2eee1df4";
 
@@ -187,6 +211,14 @@ async function fetchStorageU64(
  * perfectly good 16-byte value is exactly how these three parameters would
  * have read as "unavailable" forever.
  */
+/** A little-endian u16 StorageValue. Exactly four hex digits -- the width
+ * check is the point: decodeLeU64 would reject a u16 and decodeLeU128 a u64,
+ * and a silently wrong width is a silently wrong number. */
+export function decodeLeU16(hex: unknown): number | null {
+  if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{4}$/.test(hex)) return null;
+  return parseInt(hex.slice(4, 6) + hex.slice(2, 4), 16);
+}
+
 export function decodeLeU128(hex: unknown): bigint | null {
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]{32}$/.test(hex)) {
     return null;
@@ -232,6 +264,49 @@ export function u96f32U128ToFloat(bits: bigint): number {
  */
 type StorageU128Result =
   { state: "value"; bits: bigint } | { state: "unset" } | { state: "failed" };
+
+/**
+ * The RAW hex of a StorageValue, tri-state.
+ *
+ * Width-agnostic on purpose: fetchStorageU64 and fetchStorageU128 each decode
+ * at a fixed width, and SubnetOwnerCut is a u16. Returning the bytes lets the
+ * caller decode at its own width without a third near-identical fetcher.
+ *
+ * `unset` and `failed` stay distinct for the same reason they do above -- for
+ * an item whose absence means "use the runtime default", collapsing them turns
+ * a successful read into a failure, or worse into a zero.
+ */
+type StorageRawResult =
+  { state: "value"; hex: string } | { state: "unset" } | { state: "failed" };
+
+async function fetchStorageRaw(
+  storageKey: string,
+  timeoutMs: number,
+  network?: ChainNetworkId,
+): Promise<StorageRawResult> {
+  try {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "state_getStorage",
+        params: [storageKey],
+      }),
+    });
+    if (!rpcResp.ok) return { state: "failed" };
+    const rpcBody = (await rpcResp.json()) as Record<string, unknown>;
+    const raw = rpcBody?.result;
+    if (raw === null) return { state: "unset" };
+    return typeof raw === "string"
+      ? { state: "value", hex: raw }
+      : { state: "failed" };
+  } catch {
+    return { state: "failed" };
+  }
+}
 
 async function fetchStorageU128(
   storageKey: string,
@@ -313,6 +388,14 @@ export const NETWORK_PARAMETERS_FIELD_SOURCES = {
     storage: "SubtensorModule.EmissionGateExponent",
   },
   emission_gate_exponent_effective: { kind: "reconstructed", storage: null },
+  subnet_owner_cut: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetOwnerCut",
+  },
+  // Reconstructed even when the item IS set and the two agree, for the same
+  // reason emission_gate_exponent_effective is: which source it came from
+  // depends on chain state the caller cannot see.
+  subnet_owner_cut_effective: { kind: "reconstructed", storage: null },
 } as const satisfies FieldSources;
 
 /**
@@ -342,6 +425,19 @@ export interface NetworkParametersSnapshot {
   emission_gate_exponent: number | null;
   /** The exponent the gate actually applies: the stored value, or the runtime default. */
   emission_gate_exponent_effective: number | null;
+  /**
+   * SubnetOwnerCut AS STORED -- the u16 numerator, null when the item is unset,
+   * which is its current state on finney. NOT the share the runtime applies;
+   * see the effective field.
+   */
+  subnet_owner_cut: number | null;
+  /**
+   * The share the runtime actually applies: the stored numerator over 65535, or
+   * the runtime default 11796/65535 when the item is unset. NEVER null and
+   * never 0 from absence -- a zero here would report that subnet owners receive
+   * nothing, for every subnet at once.
+   */
+  subnet_owner_cut_effective: number | null;
   queried_at: string;
 }
 
@@ -413,6 +509,7 @@ async function loadNetworkParametersSnapshot(
     emissionGateBarResult,
     emissionBarQuantileResult,
     emissionGateExponentResult,
+    subnetOwnerCutResult,
   ] = await Promise.all([
     // TaoWeight, StakeThreshold and TotalIssuance all declare a 0 default, so
     // they keep fetchStorageU64's implicit whenUnset. Only the cooldown does
@@ -451,6 +548,11 @@ async function loadNetworkParametersSnapshot(
     ),
     fetchStorageU128(
       EMISSION_GATE_EXPONENT_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
+    ),
+    fetchStorageRaw(
+      SUBNET_OWNER_CUT_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
       network,
     ),
@@ -504,6 +606,20 @@ async function loadNetworkParametersSnapshot(
       : emissionGateExponentResult.state === "unset"
         ? DEFAULT_EMISSION_GATE_EXPONENT
         : null;
+  // Raw and effective as SEPARATE fields, the same shape emission_gate_exponent
+  // takes: which one a caller is looking at depends on chain state they cannot
+  // see, and a single field whose meaning flips per response is not a contract.
+  const subnetOwnerCutRaw =
+    subnetOwnerCutResult.state === "value"
+      ? decodeLeU16(subnetOwnerCutResult.hex)
+      : null;
+  const subnetOwnerCutEffective =
+    subnetOwnerCutRaw != null
+      ? subnetOwnerCutRaw / SUBNET_OWNER_CUT_DENOMINATOR
+      : subnetOwnerCutResult.state === "unset"
+        ? DEFAULT_SUBNET_OWNER_CUT_NUMERATOR / SUBNET_OWNER_CUT_DENOMINATOR
+        : null;
+
   const rpcOk =
     taoWeight != null &&
     stakeThresholdTao != null &&
@@ -514,7 +630,10 @@ async function loadNetworkParametersSnapshot(
     // "unset" is a successful read, not a failure -- caching it for the full
     // TTL is correct, and treating it as a partial failure would put this
     // whole response on the 10s negative TTL indefinitely.
-    emissionGateExponentResult.state !== "failed";
+    emissionGateExponentResult.state !== "failed" &&
+    // Same reading as the exponent above: "unset" is a successful read of an
+    // item whose absence means the runtime default.
+    subnetOwnerCutResult.state !== "failed";
 
   const payload: NetworkParametersSnapshot = {
     schema_version: 1,
@@ -529,6 +648,8 @@ async function loadNetworkParametersSnapshot(
     emission_bar_quantile: emissionBarQuantile,
     emission_gate_exponent: emissionGateExponent,
     emission_gate_exponent_effective: emissionGateExponentEffective,
+    subnet_owner_cut: subnetOwnerCutRaw,
+    subnet_owner_cut_effective: subnetOwnerCutEffective,
     queried_at: queriedAt,
   };
 

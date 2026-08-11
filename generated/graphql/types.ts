@@ -2594,6 +2594,10 @@ export type NetworkParameters = {
   queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   stake_threshold_tao?: Maybe<Scalars['Float']['output']>;
+  /** SubnetOwnerCut AS STORED -- the u16 numerator over 65535, null when the storage item is unset, which is its current state on finney. NOT the share the runtime applies. */
+  subnet_owner_cut?: Maybe<Scalars['Float']['output']>;
+  /** The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence -- a zero here would claim subnet owners receive nothing, for every subnet at once. */
+  subnet_owner_cut_effective?: Maybe<Scalars['Float']['output']>;
   tao_weight?: Maybe<Scalars['Float']['output']>;
   total_issuance_tao?: Maybe<Scalars['Float']['output']>;
 };
@@ -9535,6 +9539,8 @@ export type NetworkParametersResolvers<ContextType = GqlContext, ParentType exte
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stake_threshold_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  subnet_owner_cut?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  subnet_owner_cut_effective?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_issuance_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;

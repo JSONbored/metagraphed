@@ -4510,6 +4510,10 @@ export const SDL = /* GraphQL */ `
     emission_bar_quantile: Float
     emission_gate_exponent: Float
     emission_gate_exponent_effective: Float
+    "SubnetOwnerCut AS STORED -- the u16 numerator over 65535, null when the storage item is unset, which is its current state on finney. NOT the share the runtime applies."
+    subnet_owner_cut: Float
+    "The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence -- a zero here would claim subnet owners receive nothing, for every subnet at once."
+    subnet_owner_cut_effective: Float
     queried_at: String
     "Per-field { kind, storage } map: every value labelled measured (with the storage item it came from) or reconstructed (ours). READ IT BEFORE CITING block_emission_tao, block_emission_halvings, or emission_gate_exponent_effective -- all three are reconstructed. The first two are derived from TotalIssuance rather than the stale BlockEmission item, and the third is the runtime default whenever the storage item is unset, which is its current state. ADR 0023 decision 5, generalised in #9078."
     field_sources: JSON!

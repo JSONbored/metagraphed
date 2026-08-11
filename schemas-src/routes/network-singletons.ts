@@ -50,6 +50,19 @@ export const NetworkParametersArtifactSchema = z
     emission_bar_quantile: z.number().nullable().optional(),
     emission_gate_exponent: z.number().nullable().optional(),
     emission_gate_exponent_effective: z.number().nullable().optional(),
+    // #10484: the owner's share of alpha emission, the same raw/effective pair
+    // and for the same reason -- SubnetOwnerCut is ALSO unset on chain, so the
+    // stored numerator is null and the effective share comes from the runtime
+    // default 11796/65535. A single collapsed field would read 0 for "absent",
+    // which claims subnet owners receive nothing, for every subnet at once.
+    subnet_owner_cut: z.number().nullable().optional().meta({
+      description:
+        "SubnetOwnerCut as stored: the u16 numerator over 65535, or null when the storage item is unset (its current state on finney). NOT the share the runtime applies -- read subnet_owner_cut_effective for that.",
+    }),
+    subnet_owner_cut_effective: z.number().nullable().optional().meta({
+      description:
+        "The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence.",
+    }),
     queried_at: z.string().nullable().optional(),
     // #9078. Required, not optional: it is attached outside the KV cache on
     // every read (src/network-parameters.ts), so there is no response shape
