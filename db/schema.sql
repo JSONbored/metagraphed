@@ -980,6 +980,46 @@ CREATE SEQUENCE public.subnet_lifecycle_id_seq
 ALTER SEQUENCE public.subnet_lifecycle_id_seq OWNED BY public.subnet_lifecycle.id;
 
 --
+-- Name: subnet_ownership; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subnet_ownership (
+    netuid integer NOT NULL,
+    owner_hotkey text NOT NULL,
+    owner_coldkey text NOT NULL,
+    captured_at bigint NOT NULL
+);
+
+--
+-- Name: subnet_ownership_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subnet_ownership_history (
+    id bigint NOT NULL,
+    netuid integer NOT NULL,
+    owner_hotkey text NOT NULL,
+    owner_coldkey text NOT NULL,
+    captured_at bigint NOT NULL
+);
+
+--
+-- Name: subnet_ownership_history_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.subnet_ownership_history_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: subnet_ownership_history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.subnet_ownership_history_id_seq OWNED BY public.subnet_ownership_history.id;
+
+--
 -- Name: subnet_snapshots; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1223,6 +1263,12 @@ ALTER TABLE ONLY public.subnet_identity_history ALTER COLUMN id SET DEFAULT next
 --
 
 ALTER TABLE ONLY public.subnet_lifecycle ALTER COLUMN id SET DEFAULT nextval('public.subnet_lifecycle_id_seq'::regclass);
+
+--
+-- Name: subnet_ownership_history id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subnet_ownership_history ALTER COLUMN id SET DEFAULT nextval('public.subnet_ownership_history_id_seq'::regclass);
 
 --
 -- Name: account_balances_passes account_balances_passes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1601,6 +1647,20 @@ ALTER TABLE ONLY public.subnet_identity
 
 ALTER TABLE ONLY public.subnet_lifecycle
     ADD CONSTRAINT subnet_lifecycle_pkey PRIMARY KEY (id);
+
+--
+-- Name: subnet_ownership_history subnet_ownership_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subnet_ownership_history
+    ADD CONSTRAINT subnet_ownership_history_pkey PRIMARY KEY (id);
+
+--
+-- Name: subnet_ownership subnet_ownership_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subnet_ownership
+    ADD CONSTRAINT subnet_ownership_pkey PRIMARY KEY (netuid);
 
 --
 -- Name: subnet_snapshots subnet_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2137,6 +2197,18 @@ CREATE INDEX subnet_identity_history_netuid_observed_idx ON public.subnet_identi
 --
 
 CREATE INDEX subnet_identity_history_observed_idx ON public.subnet_identity_history USING btree (observed_at DESC, id DESC);
+
+--
+-- Name: subnet_ownership_captured_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX subnet_ownership_captured_at_idx ON public.subnet_ownership USING btree (captured_at DESC);
+
+--
+-- Name: subnet_ownership_history_netuid_captured_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX subnet_ownership_history_netuid_captured_at_idx ON public.subnet_ownership_history USING btree (netuid, captured_at);
 
 --
 -- Name: ux_surface_failure_daily_key; Type: INDEX; Schema: public; Owner: -
