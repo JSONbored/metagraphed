@@ -308,6 +308,11 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // denominator would make two callers quoting "the" ratio mean different
   // things, so it waits until the series exists to make it meaningful.
   "/api/v1/subnets/{netuid}/revenue",
+  // #10488: both wallet routes take no query parameters. The window is fixed
+  // by the loader, so an accepted-but-ignored ?window= would be worse than a
+  // 400 -- the caller would believe it narrowed something.
+  "/api/v1/subnets/{netuid}/wallets",
+  "/api/v1/subnets/{netuid}/owner-cut",
   "/api/v1/chain/revenue-coverage",
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/chain/indexer-lag",

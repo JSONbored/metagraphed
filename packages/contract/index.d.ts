@@ -4231,6 +4231,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/owner-cut": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s. */
+        get: operations["subnetOwnerCut"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/ownership-history": {
         parameters: {
             query?: never;
@@ -4597,6 +4614,23 @@ export interface paths {
         };
         /** Fetch the rolling 24h buy/sell alpha volume for one subnet: unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as GET /api/v1/subnets/{netuid}/stake-flow. Also returns a buy/sell sentiment indicator derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, no query params — a canonical market-depth figure, not OHLC/price data. */
         get: operations["subnetAlphaVolume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/wallets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced. EVERY DECLARED WALLET CARRIES ITS source_urls HERE -- reporting an attribution without the evidence is an unsourced allegation, so the proof travels with the claim. `owner` is flagged chain_derived so a consumer can tell a chain read from a human attribution without knowing our schema. Activity is per denomination and never summed across TAO and alpha. An empty list means nothing has been attributed, not that nothing exists. */
+        get: operations["subnetWallets"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11597,6 +11631,57 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** @description One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut. */
+        SubnetOwnerCutArtifact: {
+            accrual: {
+                accrues: boolean;
+                alpha: number | null;
+                /** @description The share applied, echoed so a reader never has to assume 18%. Null when SubnetOwnerCut could not be resolved — the storage item is unset on chain and the runtime default is used, so a null here means even that failed. */
+                owner_cut: number | null;
+                /** @description Why the figures are null or zero. A subnet with owner_cut_enabled false accrues a REAL zero with a stated reason; an unread price or emission is null instead. */
+                reason: string | null;
+                tao: number | null;
+                usd: number | null;
+            };
+            contract_version?: string;
+            disposition: {
+                /** @description What the buckets are accounting for. Null when the accrual itself could not be measured, in which case nothing is attributed to it. */
+                accrued_alpha: number | null;
+                /** @description Five buckets, not six. On dTAO, StakeRemoved takes alpha out of the AMM pool and returns TAO, so removing stake IS the disposal — a separate `sold` bucket would be a distinction the chain cannot evidence. NULL is not 0: null means unresolved or unread, and may be the majority state. */
+                buckets: {
+                    burned: number | null;
+                    "held-as-stake": number | null;
+                    "transferred-out": number | null;
+                    unresolved: number | null;
+                    unstaked: number | null;
+                };
+                notes: string[];
+                reconciles: boolean;
+                /** @description accrued minus everything accounted for. Reported rather than balanced away: assigning the remainder so the totals tie would turn 'we cannot account for this' into a number that looks derived. A NEGATIVE residual means the parts exceed the whole and is reported, never clamped. */
+                residual_alpha: number | null;
+            };
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            generated_at: string;
+            netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
+            notes?: string | string[];
+            owner_coldkey: string | null;
+            owner_hotkey: string | null;
+            /** @constant */
+            schema_version: 1;
+            window_days: number;
+        } & {
+            [key: string]: unknown;
+        };
         /** @description Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
         SubnetOwnershipHistoryArtifact: {
             count: number;
@@ -12292,6 +12377,64 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description One subnet's declared wallets with their roles, evidence and per-window activity. `owner` is chain-derived from SubnetOwner and flagged as such; every other role is a human attribution and carries the source_urls that prove it, in the response rather than only in the registry. An empty list means nothing has been attributed for this subnet — not that nothing exists. Mirrors GET /api/v1/subnets/{netuid}/wallets. */
+        SubnetWalletsArtifact: {
+            contract_version?: string;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            generated_at: string;
+            netuid: number;
+            /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
+            wallet_count: number;
+            wallets: {
+                activity: {
+                    event_count: number;
+                    first_observed_at: string | null;
+                    last_observed_at: string | null;
+                    /** @description One leg per (denomination, netuid). Deliberately NOT summed into a single value: TAO and alpha are different tokens, and a combined figure would be a unit error dressed as a total. */
+                    legs: {
+                        /** @enum {string} */
+                        denomination: "tao" | "alpha";
+                        events: number;
+                        in: number;
+                        /** @description in - out. Negative is a real answer about a treasury: more left than arrived. */
+                        net: number;
+                        /** @description Null for TAO. Alpha legs always carry one, because alpha is a different token per subnet and two alpha figures only combine when they share a netuid. */
+                        netuid: number | null;
+                        out: number;
+                    }[];
+                    /** @description Rows that could not be placed on a leg, with the reason. Published rather than dropped: a quietly discarded movement makes a net figure look complete when it is not. */
+                    skipped: {
+                        count: number;
+                        reason: string;
+                    }[];
+                };
+                /** @description TRUE for `owner`, which is read from SubtensorModule.SubnetOwner and can never be hand-declared. FALSE for every other role, which is a human attribution backed by source_urls. A consumer must be able to tell these apart without knowing our schema. */
+                chain_derived: boolean;
+                name?: string | null;
+                /** @enum {string} */
+                role: "owner" | "treasury" | "burn" | "payment-collector" | "multisig";
+                /** @description The evidence that this address belongs to this entity. EMPTY for a chain-derived owner, which needs none. Never empty for a declared role -- the registry refuses an entry without it. */
+                source_urls: string[];
+                ss58: string;
+                /** @description For `burn` only: how unspendability was established. A burn is a CLAIM until proven, and an address with no observed outbound is not a basis. */
+                unspendable_proof_basis?: string | null;
+            }[];
+            window_days: number;
         } & {
             [key: string]: unknown;
         };
@@ -43879,6 +44022,143 @@ export interface operations {
             };
         };
     };
+    subnetOwnerCut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "accrual": {
+                     *           "accrues": false,
+                     *           "alpha": 0.5,
+                     *           "owner_cut": 0.5,
+                     *           "reason": "example",
+                     *           "tao": 0.5,
+                     *           "usd": 0.5
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "disposition": {
+                     *           "accrued_alpha": 0.5,
+                     *           "buckets": {
+                     *             "burned": 0.5,
+                     *             "held-as-stake": 0.5,
+                     *             "transferred-out": 0.5,
+                     *             "unresolved": 0.5,
+                     *             "unstaked": 0.5
+                     *           },
+                     *           "notes": [
+                     *             "Example description."
+                     *           ],
+                     *           "reconciles": false,
+                     *           "residual_alpha": 0.5
+                     *         },
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "owner_coldkey": "example",
+                     *         "owner_hotkey": "example",
+                     *         "schema_version": 1,
+                     *         "window_days": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetOwnerCutArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     subnetOwnershipHistory: {
         parameters: {
             query?: never;
@@ -46929,6 +47209,150 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetAlphaVolumeArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetWallets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "contract_version": "2026-06-29.1",
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "notes": "Example description.",
+                     *         "schema_version": 1,
+                     *         "wallet_count": 1,
+                     *         "wallets": [
+                     *           {
+                     *             "activity": {
+                     *               "event_count": 1,
+                     *               "first_observed_at": "2026-06-01T00:00:00.000Z",
+                     *               "last_observed_at": "2026-06-01T00:00:00.000Z",
+                     *               "legs": [
+                     *                 {
+                     *                   "denomination": "tao",
+                     *                   "events": 1,
+                     *                   "in": 0.5,
+                     *                   "net": 0.5,
+                     *                   "netuid": 7,
+                     *                   "out": 0.5
+                     *                 }
+                     *               ],
+                     *               "skipped": [
+                     *                 {
+                     *                   "count": 1,
+                     *                   "reason": "example"
+                     *                 }
+                     *               ]
+                     *             },
+                     *             "chain_derived": false,
+                     *             "role": "owner",
+                     *             "source_urls": [
+                     *               "example"
+                     *             ],
+                     *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5"
+                     *           }
+                     *         ],
+                     *         "window_days": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetWalletsArtifact"];
                     };
                 };
             };

@@ -7017,6 +7017,36 @@ export const subnetStakeQuoteQuery = (
     staleTime: STALE_SHORT,
   });
 
+// #10488: one subnet's declared wallets. `owner` is chain-derived and flagged
+// as such; every other role carries the source_urls that prove it, so a UI can
+// render the evidence beside the claim rather than asserting it bare.
+export function subnetWalletsQuery(netuid: number) {
+  return {
+    queryKey: k("subnet-wallets", netuid),
+    queryFn: async () => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/wallets`, {
+        signal: undefined,
+      });
+      return res;
+    },
+  };
+}
+
+// #10488: the owner-cut accrual and its disposition. `unresolved` is a
+// first-class bucket and may be the majority state -- a UI must render it
+// plainly rather than as a warning, and never as 0.
+export function subnetOwnerCutQuery(netuid: number) {
+  return {
+    queryKey: k("subnet-owner-cut", netuid),
+    queryFn: async () => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/owner-cut`, {
+        signal: undefined,
+      });
+      return res;
+    },
+  };
+}
+
 // #10447: one subnet's external revenue against the TAO the network emits to
 // it. coverage_ratio and subsidy_multiple stay NULL when revenue is not
 // observed — 127 of 129 subnets are in that state, and coercing null to 0 here

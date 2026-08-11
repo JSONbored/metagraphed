@@ -1211,6 +1211,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-wallets",
+      "path": "/metagraph/subnets/{netuid}/wallets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetWalletsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-owner-cut",
+      "path": "/metagraph/subnets/{netuid}/owner-cut.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetOwnerCutArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-revenue-coverage",
       "path": "/metagraph/chain/revenue-coverage.json",
       "retirement": null,
@@ -2381,7 +2399,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 166,
+    "mainnet_only_route_count": 168,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9670,6 +9688,38 @@
         "testnet"
       ],
       "path": "/api/v1/network/randomness",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/wallets.json",
+      "cache": "short",
+      "description": "Fetch one subnet's declared wallets: the chain-derived owner keys, plus any treasury, burn, payment-collector or multisig address the team has published and somebody has evidenced. EVERY DECLARED WALLET CARRIES ITS source_urls HERE -- reporting an attribution without the evidence is an unsourced allegation, so the proof travels with the claim. `owner` is flagged chain_derived so a consumer can tell a chain read from a human attribution without knowing our schema. Activity is per denomination and never summed across TAO and alpha. An empty list means nothing has been attributed, not that nothing exists.",
+      "id": "subnet-wallets",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/wallets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/owner-cut.json",
+      "cache": "short",
+      "description": "Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s.",
+      "id": "subnet-owner-cut",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/owner-cut",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

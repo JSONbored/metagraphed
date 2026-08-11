@@ -255,6 +255,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // COMPUTED_LIVE artifact.
   /^subnets\/(?:\d+|\{netuid\})\/revenue\.json$/,
   /^chain\/revenue-coverage\.json$/,
+  // #10488: the money map, composed live from the registry + chain the same way.
+  /^subnets\/(?:\d+|\{netuid\})\/wallets\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/owner-cut\.json$/,
   // Live current registration/burn cost for one subnet (#6321): computed
   // from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/burn\.json$/,
