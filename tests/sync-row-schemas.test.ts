@@ -24,6 +24,7 @@ import {
   nominatorCountSyncRowSchema,
   nominatorPositionSyncRowSchema,
   subnetHyperparamsSyncRowSchema,
+  subnetOwnershipSyncRowSchema,
   validateSyncRows,
 } from "../src/sync-row-schemas.ts";
 
@@ -141,6 +142,51 @@ describe("account-identity sync rows", () => {
   test("keeps this route's looser captured_at rule", () => {
     assert.equal(schema.safeParse({ ...valid, captured_at: 1 }).success, true);
     assert.ok(rejects(schema, { ...valid, captured_at: "now" }));
+  });
+});
+
+describe("subnet-ownership sync rows", () => {
+  const schema = subnetOwnershipSyncRowSchema({
+    columns: ["netuid", "owner_hotkey", "owner_coldkey", "captured_at"],
+    minCapturedAtMs: MIN_CAPTURED_AT,
+    maxNetuid: 65_535,
+    maxKeyBytes: 128,
+  });
+  const valid = {
+    netuid: 1,
+    owner_hotkey: "5Hot",
+    owner_coldkey: "5Cold",
+    captured_at: CAPTURED_AT,
+  };
+
+  test("accepts a well-formed row and rejects the shapes the table refuses", () => {
+    assert.equal(schema.safeParse(valid).success, true);
+    assert.ok(rejects(schema, { ...valid, netuid: -1 }), "negative netuid");
+    assert.ok(rejects(schema, { ...valid, netuid: 65_536 }), "netuid over cap");
+    assert.ok(rejects(schema, { ...valid, netuid: 1.5 }), "fractional netuid");
+    assert.ok(rejects(schema, { ...valid, owner_hotkey: "" }), "empty hotkey");
+    assert.ok(
+      rejects(schema, { ...valid, owner_coldkey: "x".repeat(129) }),
+      "key over cap",
+    );
+    assert.ok(rejects(schema, { ...valid, other: 1 }), "unknown column");
+  });
+
+  test("NEITHER key may be null, unlike its identity sibling", () => {
+    // The difference is the table's, not a style choice: 0024 made both key
+    // columns NOT NULL because the Rust producer binds String rather than
+    // Option<String>, and drops a zero-account owner from the snapshot
+    // entirely. subnet_identity's fields are all nullable for the opposite
+    // reason -- an owner who never called set_identity has no name.
+    assert.ok(rejects(schema, { ...valid, owner_hotkey: null }), "null hotkey");
+    assert.ok(
+      rejects(schema, { ...valid, owner_coldkey: null }),
+      "null coldkey",
+    );
+  });
+
+  test("a seconds-precision captured_at is a unit error, not a small number", () => {
+    assert.ok(rejects(schema, { ...valid, captured_at: 1_785_715_160 }));
   });
 });
 

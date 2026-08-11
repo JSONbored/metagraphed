@@ -35,7 +35,8 @@
   // neurons-sync, subnet-hyperparams-sync, account-identity-sync,
   // subnet-identity-sync, health-checks-sync, health-uptime-rollup-sync,
   // subnet-snapshot-sync, rpc-usage-sync, subnet-locks-sync (#6638),
-  // chain-detail-sync (#9208) -- see workers/data-api.ts's handle*Sync
+  // chain-detail-sync (#9208), subnet-ownership-sync (#10836) -- see
+  // workers/data-api.ts's handle*Sync
   // functions) -- each requires its own secret, set via:
   //   wrangler secret put <NAME>_SYNC_SECRET -c wrangler.data.jsonc
   //
@@ -178,7 +179,7 @@
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
-    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,subnet-identity,chain-detail,blocks-head,raw-capture-state",
+    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,subnet-identity,chain-detail,blocks-head,raw-capture-state,subnet-ownership",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above

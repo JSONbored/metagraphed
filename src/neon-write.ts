@@ -368,6 +368,65 @@ export async function normalizeShareFractionsInNeon(
 }
 
 /**
+ * Delete every row of a LATEST-ONLY card whose key is absent from this pass.
+ *
+ * This is what keeps a card table from accumulating rows for things that no
+ * longer exist -- a deregistered subnet, in the one case that uses it. It is
+ * NOT the per-key cutoff prune above: there the batch is a slice and the
+ * cutoff is per key; here the caller's key set is the WHOLE population, and
+ * deleting outside it is only correct because of that.
+ *
+ * REFUSES AN EMPTY SET, and that is the safety property rather than a
+ * convenience. `WHERE key <> ALL('{}')` is true for every row, so an empty set
+ * means "delete the entire table" -- which is exactly what a pass that
+ * resolved nothing would ask for. A pass with no rows is a broken pass; the
+ * card it could not refresh must survive it.
+ *
+ * The cast is explicit because it has to be. Bound through Hyperdrive an array
+ * parameter arrives as an array LITERAL with no type context, and `<> ALL($1)`
+ * against an INTEGER column then fails to resolve an operator -- the producer's
+ * own `<> ALL($1)` worked only because tokio-postgres typed the bind for it.
+ *
+ * `::int[]` IS WRITTEN OUT, not interpolated from a parameter, and that is
+ * deliberate. `validate:pg-json-binds` exempts an array bind by reading the
+ * statement for `::<type>[]`; a cast assembled from a variable is invisible to
+ * it, so the gate would flag this as the JSON-bind bug it is not. A key set
+ * that genuinely needed `bigint[]` should add a cast this file can still see,
+ * rather than making the type a parameter again.
+ */
+export async function pruneCardOutsideKeySet(
+  sql: PgUnsafe | null | undefined,
+  table: string,
+  keyColumn: string,
+  keys: readonly number[],
+): Promise<NeonWriteResult> {
+  if (!sql?.unsafe)
+    return { ok: false, rows: 0, statements: 0, reason: "unbound" };
+  if (keys.length === 0) {
+    return {
+      ok: true,
+      rows: 0,
+      statements: 0,
+      reason: "empty key set; nothing pruned",
+    };
+  }
+  try {
+    await sql.unsafe(
+      `DELETE FROM ${table} WHERE ${keyColumn} <> ALL($1::int[])`,
+      [keys],
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      rows: 0,
+      statements: 0,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+  return { ok: true, rows: keys.length, statements: 1 };
+}
+
+/**
  * How long an UNCHANGED `ok` verdict may be re-asserted without writing again.
  *
  * TEN MINUTES, against a bound of two hours. `lane_health`'s own freshness

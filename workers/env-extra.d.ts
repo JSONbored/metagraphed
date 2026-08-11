@@ -21,6 +21,7 @@ interface Env {
   ACCOUNT_BALANCES_SYNC_SECRET?: string;
   ACCOUNT_IDENTITY_SYNC_SECRET?: string;
   SUBNET_IDENTITY_SYNC_SECRET?: string;
+  SUBNET_OWNERSHIP_SYNC_SECRET?: string;
   ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN?: string;
   /** #8611: gates the key-level block/unblock/anomaly routes. Its OWN secret --
    * cutting off a paying customer is a higher-privilege act than recording a
@@ -172,6 +173,7 @@ interface Env {
   RPC_USAGE_SYNC_SECRET?: string;
   SUBNET_HYPERPARAMS_SYNC_SECRET?: string;
   SUBNET_IDENTITY_SYNC_SECRET?: string;
+  SUBNET_OWNERSHIP_SYNC_SECRET?: string;
   SUBNET_LOCKS_SYNC_SECRET?: string;
   SUBNET_SNAPSHOT_SYNC_SECRET?: string;
   TELEGRAM_BOT_TOKEN?: string;

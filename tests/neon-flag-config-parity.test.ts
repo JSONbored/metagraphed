@@ -34,6 +34,7 @@ import { CHAIN_DETAIL_NEON_LANE } from "../src/chain-detail-neon-write.ts";
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
   SUBNET_IDENTITY_NEON_LANE,
+  SUBNET_OWNERSHIP_NEON_LANE,
   SUBNET_HYPERPARAMS_NEON_LANE,
 } from "../src/hyperparams-identity-neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "../src/ledger-neon-write.ts";
@@ -124,6 +125,7 @@ describe("the Neon migration flags", () => {
       SUBNET_HYPERPARAMS_NEON_LANE,
       ACCOUNT_IDENTITY_NEON_LANE,
       SUBNET_IDENTITY_NEON_LANE,
+      SUBNET_OWNERSHIP_NEON_LANE,
       NEURONS_NEON_LANE,
       NOMINATOR_POSITIONS_NEON_LANE,
       ...Object.keys(LEDGER_MIRROR_PLANS),

@@ -33,6 +33,7 @@ import {
 } from "./neon-write-buffer.ts";
 import {
   neonDualWriteEnabled,
+  pruneCardOutsideKeySet,
   recordNeonWriteVerdict,
   writeRowsToNeon,
   type NeonWriteResult,
@@ -69,6 +70,23 @@ export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
 export const SUBNET_HYPERPARAMS_NEON_LANE = "subnet-hyperparams";
 export const ACCOUNT_IDENTITY_NEON_LANE = "account-identity";
 export const SUBNET_IDENTITY_NEON_LANE = "subnet-identity";
+export const SUBNET_OWNERSHIP_NEON_LANE = "subnet-ownership";
+
+/**
+ * subnet_ownership and subnet_ownership_history -- the SAME four columns.
+ *
+ * Unlike every other family here the history takes no separate shape: it does
+ * not rename the timestamp (0024 calls it `captured_at` in both tables) and it
+ * carries no hash, because the owner pair IS the revision. One constant rather
+ * than two identical ones, so a column added to the card cannot silently miss
+ * the history.
+ */
+export const SUBNET_OWNERSHIP_COLUMNS = [
+  "netuid",
+  "owner_hotkey",
+  "owner_coldkey",
+  "captured_at",
+];
 
 /**
  * The identity fields a SUBNET declares on chain (SubnetIdentitiesV3).
@@ -111,15 +129,50 @@ type Row = Record<string, unknown>;
 /**
  * One family's two tables: the latest-only card and its append-only history.
  *
- * The history has NO freshness guard, unlike the card. A history row is
- * appended only when the hash changed, so a conflict on (key, observed_at)
- * means the same revision arriving twice -- and doing nothing is right. A
- * `captured_at <` guard there would compare a column the table does not have.
+ * THE TWO GUARDS POINT IN OPPOSITE DIRECTIONS, and that is the point. The card
+ * keeps the NEWEST observation (`captured_at < EXCLUDED.captured_at`); a
+ * history row records when a revision was FIRST seen, so it keeps the OLDEST.
+ *
+ * A history whose conflict key CONTAINS its timestamp -- `(netuid,
+ * observed_at)`, `(account, observed_at)` -- needs no guard at all: a conflict
+ * there is the identical row arriving twice, and the update is a no-op. Those
+ * plans leave `guard` unset and nothing changes for them.
+ *
+ * A history keyed on CONTENT instead -- `(netuid, identity_hash)` -- does need
+ * one, and its absence was a live bug (#10836). The producer re-reads the whole
+ * set every pass, so the same revision arrives hourly at a new timestamp;
+ * `buildPgUpsert` emits `DO UPDATE SET ... observed_at = EXCLUDED.observed_at`
+ * whenever a non-key column exists, so every unchanged identity had its
+ * first-seen rewritten to last-seen on every pass. Measured on production
+ * before the fix: 125 rows across 7 landed passes, and 124 of them sat at the
+ * single newest pass -- an append-on-change table reporting a mass identity
+ * change every hour, which is what /chain/identity-history was serving.
+ *
+ * The guard is `>` rather than DO NOTHING deliberately: an EARLIER observation
+ * (a backfill) still moves the row back, because that is a better first-seen.
+ * Only a later one is refused.
  */
 interface FamilyPlan {
   lane: string;
   latest: { table: string; columns: readonly string[]; conflict: string[] };
-  history: { table: string; columns: readonly string[]; conflict: string[] };
+  history: {
+    table: string;
+    columns: readonly string[];
+    conflict: string[];
+    /** Appended to the history's `DO UPDATE`. Omit when the conflict key
+     * already contains the timestamp -- see above. */
+    guard?: string;
+  };
+  /**
+   * Delete card rows whose key this pass did not carry.
+   *
+   * ONLY VALID when the producer posts the entire population in ONE request,
+   * which is why it is opt-in per family rather than the default. Set for
+   * `subnet-ownership` (129 rows, one POST, a deregistered subnet must leave
+   * the card) and unset for the rest -- `account-identity` posts in chunks,
+   * and pruning against one chunk would delete the accounts in the others.
+   */
+  prune?: { keyColumn: string };
 }
 
 /**
@@ -159,7 +212,38 @@ export const FAMILY_MIRROR_PLANS: Readonly<Record<string, FamilyPlan>> = {
       // what identifies a revision, and 0021's unique index enforces it.
       conflict: ["netuid", "identity_hash"],
       columns: SUBNET_IDENTITY_HISTORY_COLUMNS,
+      // Keep the FIRST observation of this revision. Without this the hourly
+      // re-send rewrote observed_at every pass -- see FamilyPlan.
+      guard: "subnet_identity_history.observed_at > EXCLUDED.observed_at",
     },
+  },
+  [SUBNET_OWNERSHIP_NEON_LANE]: {
+    lane: SUBNET_OWNERSHIP_NEON_LANE,
+    latest: {
+      table: "subnet_ownership",
+      columns: SUBNET_OWNERSHIP_COLUMNS,
+      conflict: ["netuid"],
+    },
+    history: {
+      table: "subnet_ownership_history",
+      columns: SUBNET_OWNERSHIP_COLUMNS,
+      // CONTENT-KEYED, like subnet_identity_history and for the same reason:
+      // the producer re-reads every owner every 300s, so conflicting on the
+      // timestamp would append a duplicate row twelve times an hour. There is
+      // no hash to key on because the owner pair is itself the content --
+      // 0026's unique index is what enforces it.
+      //
+      // This REPLACES a diff the producer used to do in Rust: it SELECTed the
+      // whole card, compared each resolved owner, and only INSERTed on a
+      // change. That read-then-write cannot move to a Worker unchanged -- it
+      // is a race between concurrent passes -- so the constraint does it.
+      conflict: ["netuid", "owner_hotkey", "owner_coldkey"],
+      guard: "subnet_ownership_history.captured_at > EXCLUDED.captured_at",
+    },
+    // Replaces the producer's own `DELETE FROM subnet_ownership WHERE netuid
+    // <> ALL($1)`. The history is append-only and never pruned -- a subnet
+    // that deregisters loses its card, not its trail.
+    prune: { keyColumn: "netuid" },
   },
   [ACCOUNT_IDENTITY_NEON_LANE]: {
     lane: ACCOUNT_IDENTITY_NEON_LANE,
@@ -182,6 +266,14 @@ export interface FamilyMirrorInput {
   rows: Row[];
   /** Rows this pass appends, in the history table's own column shape. */
   historyRows: Row[];
+  /**
+   * The COMPLETE set of card keys this pass observed, for a plan that prunes.
+   *
+   * Distinct from `rows` on purpose: it is the caller's assertion that the set
+   * is exhaustive, which `rows` alone cannot express -- a chunked producer
+   * also has rows. Omitted, nothing is pruned.
+   */
+  pruneKeys?: readonly number[];
 }
 
 export interface FamilyMirrorDeps {
@@ -253,6 +345,18 @@ export async function mirrorFamilyToNeon(
       `${plan.latest.table}.captured_at < EXCLUDED.captured_at`,
     );
   }
+  // AFTER the card upsert and only if it landed, matching the order the Rust
+  // producer used and for its stated reason: upsert-before-prune means an
+  // active subnet is never even transiently missing from the card. Pruning
+  // against a pass whose upsert failed would delete rows whose replacements
+  // were never written.
+  if (plan.prune && input.pruneKeys && results[plan.latest.table]?.ok !== false)
+    results[`${plan.latest.table}:prune`] = await pruneCardOutsideKeySet(
+      sql,
+      plan.latest.table,
+      plan.prune.keyColumn,
+      input.pruneKeys,
+    );
   if (input.historyRows.length > 0) {
     results[plan.history.table] = await writeRowsToNeon(
       sql,
@@ -260,8 +364,9 @@ export async function mirrorFamilyToNeon(
       plan.history.columns,
       input.historyRows,
       plan.history.conflict,
-      // No guard: see FamilyPlan. A conflict here is the same revision twice.
-      undefined,
+      // Set only for content-keyed histories, which must keep the FIRST
+      // observation rather than the latest. See FamilyPlan.
+      plan.history.guard,
     );
   }
   await recordNeonWriteVerdict(
