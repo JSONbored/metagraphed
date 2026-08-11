@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "vitest";
+import { test, vi } from "vitest";
+
+// loadGlobalIncidentsLedger reads `surface_checks` through readStore, which
+// builds its own `new Client(...)`; the module is the seam (#10179).
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import {
   configureAnalytics,
   resolveGlobalIncidents,
@@ -55,64 +63,74 @@ test("the incidents feed resolves through the Postgres tier, not the empty ledge
  * the #8242 shape and passes on the #8353 fix.
  */
 test("resolveGlobalIncidentsForFeed reaches real data even though DATA_API has no /api/v1/feeds/* route", async () => {
-  const REAL_INCIDENTS = {
-    schema_version: 1,
-    summary: { incident_count: 3, affected_surface_count: 2 },
-    surfaces: [{ netuid: 8, surface_id: "sn8-api", incidents: [] }],
-  };
-  // Mirrors DATA_API's real dispatcher: matches /api/v1/incidents, 404s on
-  // anything else -- including a /api/v1/feeds/* path, which is the whole
-  // point (DATA_API genuinely has no route for the feeds surface at all).
-  const dataApiFetch = async (req: Request) => {
-    const path = new URL(req.url).pathname;
-    if (path === "/api/v1/incidents") {
-      return new Response(JSON.stringify(REAL_INCIDENTS), { status: 200 });
-    }
-    return new Response(JSON.stringify({ error: "not found" }), {
-      status: 404,
-    });
-  };
-  const env = mockEnv({
-    METAGRAPH_HEALTH_SOURCE: "postgres",
-    DATA_API: { fetch: dataApiFetch },
-  });
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered -- and the
+  // point of this test survives it intact. DATA_API genuinely has no
+  // /api/v1/feeds/* route, so a feed resolver that reached for one would get a
+  // 404 and serve the stub; it reads `surface_checks` through readStore instead,
+  // which is the same read the REST route makes.
+  pg.control.queries.length = 0;
+  pg.control.rows = [
+    {
+      netuid: 8,
+      surface_id: "sn8-api",
+      surface_key: "sn8-api",
+      started_at: 1_750_000_000_000,
+      ended_at: 1_750_000_300_000,
+      failed_samples: 3,
+    },
+  ];
+  const env = mockEnv(pgMockEnv() as unknown as Row);
 
-  const viaFeedResolver = await resolveGlobalIncidentsForFeed(env);
-  assert.deepEqual(viaFeedResolver, REAL_INCIDENTS);
-
-  // Pin the exact failure mode this replaces: forwarding the feed's OWN
-  // request (a /api/v1/feeds/incidents.json path) through the general
-  // resolver silently degrades to the empty stub, not an error -- which is
-  // precisely why #8242's fix looked complete but wasn't.
-  const { data: viaFeedsOwnRequest, isFallback } = await resolveGlobalIncidents(
-    new Request("https://d/api/v1/feeds/incidents.json"),
-    env,
-  );
-  assert.equal(isFallback, true);
-  assert.deepEqual((viaFeedsOwnRequest as Row).surfaces, []);
+  const viaFeedResolver = (await resolveGlobalIncidentsForFeed(env)) as Row;
+  // Real data, not the stub: the surface the store row describes is present.
+  assert.equal((viaFeedResolver.surfaces as Row[]).length, 1);
+  assert.equal((viaFeedResolver.surfaces as Row[])[0].netuid, 8);
+  assert.equal((viaFeedResolver.surfaces as Row[])[0].surface_id, "sn8-api");
 });
 
-test("every global-incident caller tries the tier before the stub", () => {
+test("every global-incident caller reaches the ledger, none stops at the stub", () => {
+  // WAS a source regex for `tryPostgresTier(METAGRAPH_HEALTH_SOURCE)` ahead of
+  // the ledger. That call is deleted (#10190) -- the flag reads "d1" and is
+  // absent from DATA_API_FORWARD_FLAGS, so it resolved to null on every request
+  // and the ledger was always the answer. Asserting it still appears would pin
+  // the dead read back in place.
+  //
+  // The invariant it protected is unchanged and is what is asserted now: no
+  // caller may answer from the schema-stable stub without first reading the
+  // ledger. The stub is a floor, not a source.
   const analytics = readFileSync(
     "workers/request-handlers/analytics.ts",
     "utf8",
   );
   const graphql = readFileSync("src/graphql.ts", "utf8");
 
-  // The shared resolver exists and is tier-first.
+  // The shared resolver exists and reads the ledger.
   assert.match(analytics, /export async function resolveGlobalIncidents/);
   assert.match(
     analytics,
-    /resolveGlobalIncidents[\s\S]{0,400}?tryPostgresTier[\s\S]{0,300}?loadGlobalIncidentsLedger/,
+    /resolveGlobalIncidents[\s\S]{0,600}?loadGlobalIncidentsLedger/,
   );
-  // The REST route goes through it.
+  // Both REST callers go through it rather than building their own chain.
   assert.match(
     analytics,
     /handleGlobalIncidents[\s\S]{0,900}?resolveGlobalIncidents\(/,
   );
-  // GraphQL keeps its own tier-first chain (tryPostgresTier ?? stub).
+  // The feed resolver delegates rather than building its own chain -- which is
+  // the whole point: it must not forward the feed's own /api/v1/feeds/* path.
   assert.match(
-    graphql,
-    /tryPostgresTier\([\s\S]{0,300}?METAGRAPH_HEALTH_SOURCE[\s\S]{0,200}?\?\?[\s\S]{0,120}?loadGlobalIncidentsLedger/,
+    analytics,
+    /export async function resolveGlobalIncidentsForFeed[\s\S]{0,400}?resolveGlobalIncidents\(/,
+  );
+  assert.match(
+    analytics,
+    /resolveGlobalIncidentsForFeed[\s\S]{0,400}?\/api\/v1\/incidents/,
+  );
+  // GraphQL reads the same ledger directly (it has no Request to pass).
+  assert.match(graphql, /loadGlobalIncidentsLedger\(/);
+  // And nobody reaches for the retired tier again.
+  assert.doesNotMatch(
+    analytics,
+    /tryPostgresTier\([\s\S]{0,300}?METAGRAPH_HEALTH_SOURCE/,
   );
 });
