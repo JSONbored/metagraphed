@@ -14121,33 +14121,28 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_events forwards kind/block bounds/pagination and returns tier rows", async () => {
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        schema_version: 1,
-        netuid: 7,
-        event_count: 1,
-        limit: 50,
-        offset: 0,
-        next_cursor: null,
-        events: [
-          {
-            block_number: 100,
-            event_index: 2,
-            event_kind: "StakeAdded",
-            hotkey: "5F",
-            coldkey: "5G",
-            netuid: 7,
-            uid: 3,
-            amount_tao: 1.5,
-            alpha_amount: 2.5,
-            observed_at: "2026-07-01T00:00:00.000Z",
-            extrinsic_index: 4,
-          },
-        ],
-      },
-      captured,
+    // #10190: the tier is retired; answerSubnetEvents composes over the lakehouse.
+    // The kind and block bounds become SQL PREDICATES rather than query params,
+    // which is where they actually go -- and the assertion below checks them there.
+    const lake = lakehouse(
+      [
+        {
+          block_number: 100,
+          event_index: 2,
+          event_kind: "StakeAdded",
+          hotkey: "5F",
+          coldkey: "5G",
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          alpha_amount: 2.5,
+          observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
+          extrinsic_index: 4,
+        },
+      ],
+      { once: true },
     );
+    const env = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
       `{ subnet_events(netuid: 7, kind: "StakeAdded", block_start: 10, block_end: 200, limit: 50) {
           event_count limit events { event_kind amount_tao uid hotkey block_number }
@@ -14156,12 +14151,18 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     );
     assert.equal(body.errors, undefined);
     const f = body.data.subnet_events;
+    const sql = lake.queries[0];
+    assert.match(sql, /netuid = 7/);
+    assert.match(sql, /event_kind = 'StakeAdded'/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 200/);
     assert.equal(f.event_count, 1);
     assert.equal(f.limit, 50);
     assert.equal(f.events[0].event_kind, "StakeAdded");
     assert.equal(f.events[0].amount_tao, 1.5);
     assert.equal(f.events[0].uid, 3);
     assert.equal(f.events[0].block_number, 100);
+    lake.restore();
   });
 
   test("subnet_events: a partial tier body degrades to the resolver defaults", async () => {
@@ -14323,19 +14324,23 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_prometheus forwards window and returns the tier card", async () => {
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        schema_version: 1,
-        netuid: 7,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        distinct_exporters: 5,
-        announcements: 12,
-        announcements_per_exporter: 2.4,
-      },
-      captured,
+    // #10190: the tier is retired; loadSubnetEventCardColdTier answers through the
+    // PrometheusServed rollup. That rollup issues THREE reads -- the row page, an
+    // ungrouped COUNT(*), and a GROUP BY subquery for the distinct count -- so the
+    // double routes on the SQL. `announcements_per_exporter` is DERIVED (12/5).
+    const lake = lakehouse((sql) =>
+      sql.includes("FROM (SELECT")
+        ? [{ distinct_exporters: 5 }]
+        : sql.includes("GROUP BY")
+          ? [{ netuid: 7, hotkey: "5Exporter", announcements: 12 }]
+          : [
+              {
+                announcements: 12,
+                newest_observed: Date.parse("2026-07-01T00:00:00.000Z"),
+              },
+            ],
     );
+    const env = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
       `{ subnet_prometheus(netuid: 7, window: "30d") {
           window observed_at distinct_exporters announcements announcements_per_exporter
@@ -14348,6 +14353,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     assert.equal(p.announcements, 12);
     assert.equal(p.announcements_per_exporter, 2.4);
     assert.equal(p.observed_at, "2026-07-01T00:00:00.000Z");
+    lake.restore();
   });
 
   test("subnet_prometheus: a partial tier body degrades to the resolver defaults", async () => {
