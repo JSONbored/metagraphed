@@ -44,6 +44,13 @@
 // unless it is exactly representable, and typing it `number` by hand would hide
 // that.
 import type { OriginReachability } from "../generated/db/types.ts";
+import {
+  consumeBatch,
+  enqueueAll,
+  type ConsumeResult,
+  type LaneMessage,
+  type LaneQueue,
+} from "./lane-queue.ts";
 
 /** What one origin's check concluded. */
 export type OriginVerdict =
@@ -367,104 +374,35 @@ export interface OriginMessage {
 
 export const ORIGIN_REACHABILITY_QUEUE = "origin-reachability";
 
-export interface OriginQueue {
-  sendBatch(messages: Array<{ body: OriginMessage }>): Promise<unknown>;
-}
-
-/** Cloudflare caps a sendBatch at 100. 277 origins is three batches. */
-export const ORIGIN_SEND_BATCH_MAX = 100;
-
-export interface OriginEnqueueResult {
-  ok: boolean;
-  enqueued: number;
-  reason?: string;
-}
-
-/** Enqueue every registered origin. */
 export async function enqueueOriginChecks(
-  queue: OriginQueue | null | undefined,
+  queue: LaneQueue<OriginMessage> | null | undefined,
   origins: string[],
-): Promise<OriginEnqueueResult> {
-  if (!queue?.sendBatch) {
-    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
-  }
-  if (origins.length === 0) {
-    // Not a success. A producer reporting ok while enqueuing nothing is
-    // indistinguishable from one that enqueued and found nothing to do.
-    return { ok: false, enqueued: 0, reason: "no_origins_to_check" };
-  }
-  let enqueued = 0;
-  try {
-    for (let i = 0; i < origins.length; i += ORIGIN_SEND_BATCH_MAX) {
-      const slice = origins.slice(i, i + ORIGIN_SEND_BATCH_MAX);
-      await queue.sendBatch(slice.map((origin) => ({ body: { origin } })));
-      enqueued += slice.length;
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      enqueued,
-      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
-    };
-  }
-  return { ok: true, enqueued };
+) {
+  return enqueueAll(
+    queue,
+    origins.map((origin) => ({ origin })),
+    "no_origins_to_check",
+  );
 }
 
-export interface OriginBatchMessage {
-  body: unknown;
-  ack(): void;
-  retry(): void;
-}
-
-export interface OriginBatchResult {
-  checked: number;
-  retried: number;
-  malformed: number;
-}
-
-/**
- * Consume a batch: one origin per message.
- *
- * ACK ON SUCCESS, RETRY ON FAILURE, ACK ON MALFORMED -- the third because a body
- * that is not an origin never will be, and retrying spends the whole budget to
- * reach the dead letter with a message nobody can act on.
- */
+/** Check one origin, and report whether the verdict was durably WRITTEN. */
 export async function handleOriginBatch(
-  messages: OriginBatchMessage[],
+  messages: LaneMessage[],
   db: OriginStoreDb | null | undefined,
   deps: OriginCheckDeps & {
     /** The origin's registered surfaces, resolved at DELIVERY time. */
     surfacesFor: (origin: string) => Promise<SurfaceRef[]>;
   },
-): Promise<OriginBatchResult> {
-  let checked = 0;
-  let retried = 0;
-  let malformed = 0;
-  for (const message of messages) {
-    const body = message.body as OriginMessage | null;
-    const origin = typeof body?.origin === "string" ? body.origin : "";
-    if (!origin) {
-      message.ack();
-      malformed += 1;
-      continue;
-    }
-    try {
+): Promise<ConsumeResult> {
+  return consumeBatch(messages, {
+    parse: (body) => {
+      const origin = (body as OriginMessage | null)?.origin;
+      return typeof origin === "string" && origin ? origin : null;
+    },
+    run: async (origin) => {
       const surfaces = await deps.surfacesFor(origin);
       const check = await checkOrigin(origin, surfaces, deps);
-      const written = await persistOriginCheck(db, check);
-      if (!written.ok) {
-        // The check happened; the WRITE did not. An unwritten verdict is a
-        // verdict nothing can read, so the message is re-delivered.
-        message.retry();
-        retried += 1;
-        continue;
-      }
-      message.ack();
-      checked += 1;
-    } catch {
-      message.retry();
-      retried += 1;
-    }
-  }
-  return { checked, retried, malformed };
+      return (await persistOriginCheck(db, check)).ok;
+    },
+  });
 }

@@ -133,7 +133,22 @@ export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
  * lane silently never fires -- which is indistinguishable from the state it was
  * added to fix.
  */
-export const REVENUE_PROBE_CRON = "24 * * * *";
+/** #10715: ONE producer heartbeat for every queue-backed lane.
+ *
+ * Replaces three per-lane crons -- the attribution sweep, the origin
+ * reachability check and the revenue probe -- which between them did no work:
+ * each read a list and enqueued it. Three clocks for three enqueues cost three
+ * minutes of a 60-minute grid that was already 97% full, and gave three chances
+ * for the literal-string dispatch to collide. It did once, with
+ * EMISSION_DRIFT_CHECK_CRON, caught only by a uniqueness test.
+ *
+ * A new lane joins LANE_PRODUCERS, not this grid. That is the property worth
+ * having: the next lane needs no minute at all.
+ *
+ * Hourly, matching what the three replaced. Minute 26 was one of only two still
+ * free; retiring the others returns 17, 24 and 56 to the pool.
+ */
+export const LANE_HEARTBEAT_CRON = "26 * * * *";
 
 /** #10489-#10509: the attribution sweep.
  *
@@ -142,7 +157,6 @@ export const REVENUE_PROBE_CRON = "24 * * * *";
  * up to 8 sources is ~1000 outbound requests, which is not a tick. The lane
  * takes the eight least-recently-swept each hour, so a full pass lands inside a
  * day and never bursts. */
-export const ATTRIBUTION_SWEEP_CRON = "56 * * * *";
 
 /** #10548: the origin-reachability lane.
  *
@@ -161,7 +175,6 @@ export const ATTRIBUTION_SWEEP_CRON = "56 * * * *";
  * 26 has nowhere to go. The fix is a single dispatcher cron running whichever
  * lanes are due from a declared cadence -- which decouples "how often" from
  * "which minute is free" and removes this whole failure class. */
-export const ORIGIN_REACHABILITY_CRON = "17 * * * *";
 
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2

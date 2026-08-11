@@ -18,6 +18,13 @@
 // own outage into a finding about somebody else — the same conflation
 // #10566 let stand for two months.
 import { isFinneySs58Address } from "./account-balance.ts";
+import {
+  consumeBatch,
+  enqueueAll,
+  type ConsumeResult,
+  type LaneMessage,
+  type LaneQueue,
+} from "./lane-queue.ts";
 // The ROW shapes come from the live schema (generated/db/types.ts), not from a
 // hand-written guess at them. That is where `swept_at: number | string` comes
 // from: node-postgres returns BIGINT as a string unless the value is exactly
@@ -334,120 +341,38 @@ export interface SweepMessage {
 
 export const ATTRIBUTION_SWEEP_QUEUE = "attribution-sweeps";
 
-/** The minimal producer surface, injected so the enqueue is testable without a
- * Cloudflare binding. */
-export interface SweepQueue {
-  sendBatch(messages: Array<{ body: SweepMessage }>): Promise<unknown>;
-}
-
-/** Cloudflare caps a sendBatch at 100 messages. 128 subnets is one over two
- * batches, which is exactly the kind of off-by-one that ships. */
-export const SWEEP_SEND_BATCH_MAX = 100;
-
-export interface EnqueueResult {
-  ok: boolean;
-  enqueued: number;
-  reason?: string;
-}
-
-/**
- * Enqueue every subnet due for a sweep.
- *
- * EVERY subnet, not a slice: the whole point of moving to a queue is that the
- * producer no longer has to ration work to fit one invocation.
- */
 export async function enqueueSweeps(
-  queue: SweepQueue | null | undefined,
+  queue: LaneQueue<SweepMessage> | null | undefined,
   netuids: number[],
-): Promise<EnqueueResult> {
-  if (!queue?.sendBatch) {
-    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
-  }
-  if (netuids.length === 0) {
-    // Not a success. A producer reporting ok while enqueuing nothing is
-    // indistinguishable from one that enqueued and found nothing to do.
-    return { ok: false, enqueued: 0, reason: "no_subnets_to_sweep" };
-  }
-  let enqueued = 0;
-  try {
-    for (let i = 0; i < netuids.length; i += SWEEP_SEND_BATCH_MAX) {
-      const slice = netuids.slice(i, i + SWEEP_SEND_BATCH_MAX);
-      await queue.sendBatch(slice.map((netuid) => ({ body: { netuid } })));
-      enqueued += slice.length;
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      enqueued,
-      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
-    };
-  }
-  return { ok: true, enqueued };
+) {
+  return enqueueAll(
+    queue,
+    netuids.map((netuid) => ({ netuid })),
+    "no_subnets_to_sweep",
+  );
 }
 
-/** One delivered message, as the consumer sees it. */
-export interface SweepBatchMessage {
-  body: unknown;
-  ack(): void;
-  retry(): void;
-}
-
-export interface SweepBatchResult {
-  swept: number;
-  /** Messages handed back for retry. A subnet that could not be swept is the
-   * queue's problem to re-deliver, not a finding to write. */
-  retried: number;
-  /** Messages acked without sweeping because the body was not a sweep message.
-   * Retrying those would loop them to the dead letter for no reason. */
-  malformed: number;
-}
-
-/**
- * Consume a batch: one subnet per message.
- *
- * ACK ON SUCCESS, RETRY ON FAILURE, ACK ON MALFORMED. The third is the one
- * worth stating: a message whose body is not a netuid will never become one, so
- * retrying it spends the whole retry budget to reach the dead letter with a
- * message nobody can act on. It is acked and counted instead.
- */
+/** Sweep one subnet, and report whether the result was durably WRITTEN: a sweep
+ * that happened but was not stored is a sweep that did not happen, as far as
+ * anything reading the store is concerned. */
 export async function handleSweepBatch(
-  messages: SweepBatchMessage[],
+  messages: LaneMessage[],
   db: SweepStoreDb | null | undefined,
   deps: SweepDeps & {
     /** The subnet's registry record, read at DELIVERY time so a queued message
      * cannot sweep a stale copy of its surfaces. */
     recordFor: (netuid: number) => Promise<Record<string, unknown> | null>;
   },
-): Promise<SweepBatchResult> {
-  let swept = 0;
-  let retried = 0;
-  let malformed = 0;
-  for (const message of messages) {
-    const body = message.body as SweepMessage | null;
-    const netuid = Number(body?.netuid);
-    if (!Number.isInteger(netuid) || netuid < 0) {
-      message.ack();
-      malformed += 1;
-      continue;
-    }
-    try {
+): Promise<ConsumeResult> {
+  return consumeBatch(messages, {
+    parse: (body) => {
+      const netuid = Number((body as SweepMessage | null)?.netuid);
+      return Number.isInteger(netuid) && netuid >= 0 ? netuid : null;
+    },
+    run: async (netuid) => {
       const record = await deps.recordFor(netuid);
       const result = await sweepSubnet(netuid, record, deps);
-      const written = await persistSweep(db, result);
-      if (!written.ok) {
-        // The sweep happened; the WRITE did not. Retrying re-sweeps, which is
-        // wasteful but correct -- an unwritten sweep is a sweep that did not
-        // happen as far as anything reading the store is concerned.
-        message.retry();
-        retried += 1;
-        continue;
-      }
-      message.ack();
-      swept += 1;
-    } catch {
-      message.retry();
-      retried += 1;
-    }
-  }
-  return { swept, retried, malformed };
+      return (await persistSweep(db, result)).ok;
+    },
+  });
 }

@@ -17,8 +17,13 @@ import {
   clampOffset,
   FEED_PAGINATION,
 } from "../workers/request-params.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { d1All } from "./analytics-live.ts";
+import { readStore } from "./read-store.ts";
+
+/** The one table latestBlockNumber reads. Declared so readStore can refuse when
+ * Neon does not own it, rather than reading a store that has no such table. */
+const BLOCKS_HEAD_TABLES = ["blocks_head"] as const;
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
@@ -206,29 +211,37 @@ async function latestIdentityHashes(): Promise<Map<number, unknown>> {
   return new Map<number, unknown>();
 }
 
-// D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup): D1's own
-// `blocks` table was fully dropped in an earlier migration (#4772), so a
-// `SELECT MAX(block_number) FROM blocks` against D1 always threw and this
-// function always returned null -- silently, forever, not intermittently.
-// Postgres's own `blocks` table is the live source now (already the
-// flipped/current tier for the public /api/v1/blocks route via
-// METAGRAPH_BLOCKS_SOURCE); this synthesizes an internal request the same
-// "no client request to forward" way /api/v1/internal/compare-health does,
-// since this call site is a cron-triggered internal helper, not a route.
-// There is no D1 fallback left to attempt for this specific query -- the
-// table it would have queried no longer exists in D1 at all -- so this
-// simply returns null when Postgres is unavailable or the flag is off,
-// same degrade as before, but now for a real reason instead of a guaranteed
-// D1 miss.
+/**
+ * The newest captured block, read from `blocks_head` (#10190).
+ *
+ * WAS A DEAD TIER READ. This forwarded an internal
+ * /api/v1/internal/latest-block-number request under METAGRAPH_BLOCKS_SOURCE --
+ * a flag that reads "retired" in every deployed config and is absent from
+ * DATA_API_FORWARD_FLAGS -- so it resolved to null on every call, and every
+ * identity-change record has carried `block_number: null` since the flag was
+ * retired. The tests said so out loud ("no METAGRAPH_BLOCKS_SOURCE tier
+ * configured on this env, so block_number degrades to null") without anyone
+ * noticing that production has no such tier either.
+ *
+ * `blocks_head` is the right source and needed no new plumbing: it is in
+ * NEON_SOLE_STORE_TABLES, carries one row per block with the firehose filling it
+ * (`neon:blocks-head` writes every ~30s), and is already watched by
+ * TABLE_FRESHNESS. It was WRITE-ONLY until now -- src/capture-state-neon-write.ts
+ * inserts it and nothing in src/ or workers/ read it.
+ *
+ * Still degrades to null rather than throwing: no Hyperdrive binding, an
+ * undeclared table or an unreadable query all mean "no block number to stamp",
+ * which is the state that existed before.
+ */
 async function latestBlockNumber(env: Env): Promise<number | null> {
-  const pg = await tryPostgresTier(
-    env,
-    new Request("https://api.metagraph.sh/api/v1/internal/latest-block-number"),
-    "METAGRAPH_BLOCKS_SOURCE",
+  const rows = await d1All(
+    readStore(env, BLOCKS_HEAD_TABLES) as never,
+    "SELECT MAX(block_number) AS block_number FROM blocks_head",
+    [],
   );
-  const blockNumber = pg?.block_number as number | undefined;
-  return Number.isSafeInteger(blockNumber) && (blockNumber as number) > 0
-    ? (blockNumber as number)
+  const blockNumber = Number(rows[0]?.block_number);
+  return Number.isSafeInteger(blockNumber) && blockNumber > 0
+    ? blockNumber
     : null;
 }
 

@@ -544,14 +544,12 @@ import {
   LINK_STATUS_SYNC_CRON,
   RAW_CAPTURE_CRON,
   SUBNET_BURN_CAPTURE_CRON,
-  REVENUE_PROBE_CRON,
-  ATTRIBUTION_SWEEP_CRON,
-  ORIGIN_REACHABILITY_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
   HEALTH_PRUNE_CRON,
+  LANE_HEARTBEAT_CRON,
   INCIDENTS_PATH_PATTERN,
   JSON_CONTENT_TYPE,
   MAX_ASK_BODY_BYTES,
@@ -660,6 +658,11 @@ import {
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
+import type {
+  EnqueueResult,
+  LaneMessage,
+  LaneQueue,
+} from "../src/lane-queue.ts";
 import {
   OPERATIONAL_SURFACES_ARTIFACT,
   REVENUE_PROBE_QUEUE,
@@ -668,8 +671,6 @@ import {
   fetchRevenuePayload,
   handleRevenueProbeBatch,
   sha256Hex,
-  type RevenueBatchMessage,
-  type RevenueProbeQueue,
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
 import {
@@ -682,8 +683,6 @@ import {
   SWEEP_MAX_BYTES,
   enqueueSweeps,
   handleSweepBatch,
-  type SweepBatchMessage,
-  type SweepQueue,
   type SweepStoreDb,
 } from "../src/attribution-sweep.ts";
 import {
@@ -698,8 +697,6 @@ import {
   handleOriginBatch,
   normaliseBody,
   surfacesByOrigin,
-  type OriginBatchMessage,
-  type OriginQueue,
   type OriginStoreDb,
   type SurfaceRef,
 } from "../src/origin-reachability.ts";
@@ -1747,7 +1744,7 @@ export default {
           (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
         );
         await handleSweepBatch(
-          batch.messages as unknown as SweepBatchMessage[],
+          batch.messages as unknown as LaneMessage[],
           store.db as SweepStoreDb,
           {
             fetchText: fetchSweepText,
@@ -1774,13 +1771,13 @@ export default {
           ).map((s) => [s.id, s]),
         );
         await handleRevenueProbeBatch(
-          batch.messages as unknown as RevenueBatchMessage[],
+          batch.messages as unknown as LaneMessage[],
           store.db as RevenueStoreDb,
           {
             fetchPayload: (url: string) => fetchRevenuePayload(url),
             hash: sha256Hex,
             now: Date.now,
-            surfaceFor: async (id: string) => byId.get(id) ?? null,
+            surfaceFor: (id: string) => byId.get(id) ?? null,
           },
         );
       } finally {
@@ -1795,7 +1792,7 @@ export default {
       try {
         const byOrigin = surfacesByOrigin(await registeredSurfaces(env));
         await handleOriginBatch(
-          batch.messages as unknown as OriginBatchMessage[],
+          batch.messages as unknown as LaneMessage[],
           store.db as OriginStoreDb,
           {
             probe: probeOrigin,
@@ -2266,15 +2263,13 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // is the shape #9001 removed elsewhere, and a name survives a schedule change
 // where "0 * * * *" does not.
 function cronLabel(cron: string): string {
+  if (cron === LANE_HEARTBEAT_CRON) return "lane-heartbeat";
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
   if (cron === LINK_STATUS_SYNC_CRON) return "link-status-sync";
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
-  if (cron === REVENUE_PROBE_CRON) return "revenue-probe";
-  if (cron === ORIGIN_REACHABILITY_CRON) return "origin-reachability";
-  if (cron === ATTRIBUTION_SWEEP_CRON) return "attribution-sweep";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
   if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
@@ -2544,6 +2539,65 @@ export async function probeOrigin(
   }
 }
 
+/**
+ * Every queue-backed lane's producer.
+ *
+ * THE POINT OF THE TABLE is that adding a lane is one entry here rather than a
+ * cron minute, a dispatch branch and a constant. The grid was 97% full when the
+ * third of these went in; the fourth would have taken the last slot.
+ *
+ * Each `enqueue` reads a list and sends it. None fetches, none opens a store --
+ * that work belongs to the consumer, one invocation per subject.
+ */
+export const LANE_PRODUCERS: ReadonlyArray<{
+  name: string;
+  enqueue: (env: Env) => Promise<EnqueueResult>;
+}> = [
+  {
+    name: "attribution-sweep",
+    enqueue: async (env) =>
+      enqueueSweeps(
+        (
+          env as unknown as {
+            ATTRIBUTION_SWEEPS?: LaneQueue<{ netuid: number }>;
+          }
+        ).ATTRIBUTION_SWEEPS,
+        (await sweepableSubnets(env)).map((s) => s.netuid),
+      ),
+  },
+  {
+    name: "origin-reachability",
+    enqueue: async (env) =>
+      enqueueOriginChecks(
+        (
+          env as unknown as {
+            ORIGIN_REACHABILITY?: LaneQueue<{ origin: string }>;
+          }
+        ).ORIGIN_REACHABILITY,
+        [...surfacesByOrigin(await registeredSurfaces(env)).keys()],
+      ),
+  },
+  {
+    name: "revenue-probe",
+    enqueue: async (env) => {
+      const artifact = await readArtifact(
+        env,
+        `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
+      );
+      return enqueueRevenueProbes(
+        (
+          env as unknown as {
+            REVENUE_PROBES?: LaneQueue<{ surface_id: string }>;
+          }
+        ).REVENUE_PROBES,
+        eligibleRevenueSurfaces(
+          artifact.ok ? (artifact.data as Row | undefined) : null,
+        ).map((s) => s.id),
+      );
+    },
+  },
+];
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
@@ -2674,64 +2728,26 @@ async function dispatchScheduled(
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
   }
-  if (cron === ATTRIBUTION_SWEEP_CRON) {
-    // #10489-#10509: look at what each subnet publishes, and record what was
-    // found -- including, and mostly, that nothing was.
+  if (cron === LANE_HEARTBEAT_CRON) {
+    // ONE clock for every queue-backed lane (#10715). Each producer reads a
+    // list and enqueues it -- no fetching, no store handle -- so running them
+    // together costs one artifact read each and nothing else.
     //
-    // The store exists so a wallets response can say "searched on this date,
-    // nothing published" instead of an empty list that is equally consistent
-    // with nobody having looked. An undated silence is not evidence.
-    {
-      // THE CRON IS NOW A PRODUCER, not the lane. It reads which subnets are
-      // due and enqueues one message each; the consumer below sweeps them, one
-      // invocation per subnet. The slice of eight this used to sweep inline was
-      // never a cadence -- it was the invocation budget, and a queue removes it
-      // rather than working around it (#10709).
-      // No store handle and no staleness read: the producer enqueues EVERY
-      // subnet, so there is nothing to decide about which to skip. The old lane
-      // opened a connection each tick purely to order a slice it then threw
-      // most of away.
-      const subnets = await sweepableSubnets(env);
-      return await enqueueSweeps(
-        (env as unknown as { ATTRIBUTION_SWEEPS?: SweepQueue })
-          .ATTRIBUTION_SWEEPS,
-        subnets.map((s) => s.netuid),
-      );
-    }
-  }
-  if (cron === ORIGIN_REACHABILITY_CRON) {
-    // #10548: is the HOST still there. scripts/build-artifacts.ts builds the
-    // prober's targets from surfaces with probe.enabled, so a disabled one is
-    // never checked -- forever. SN37 Aurelius had ~60 surfaces on a deleted
-    // Railway app, ~50 of them invisible, and not one incident was raised.
-    //
-    // Checking origins rather than surfaces is what makes the disabled ones
-    // covered at all, and costs one request instead of sixty.
-    {
-      // Producer only: every registered origin, no staleness read and no store
-      // handle. Nothing is skipped, so there is nothing to order.
-      return await enqueueOriginChecks(
-        (env as unknown as { ORIGIN_REACHABILITY?: OriginQueue })
-          .ORIGIN_REACHABILITY,
-        [...surfacesByOrigin(await registeredSurfaces(env)).keys()],
-      );
-    }
-  }
-  if (cron === REVENUE_PROBE_CRON) {
-    // PRODUCER ONLY since #10715. This lane is the reason the "a producer that
-    // enqueues nothing must say so" rule exists: it shipped in #10444 with no
-    // caller and no trigger, so revenue_observations was never written and every
-    // revenue route reported null for all 129 subnets for two months (#10566).
-    const artifact = await readArtifact(
-      env,
-      `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
+    // A new lane is added to LANE_PRODUCERS, not to the cron grid. The three
+    // this replaced took three of the two minutes that were still free.
+    const results = await Promise.all(
+      LANE_PRODUCERS.map(async (lane) => ({
+        lane: lane.name,
+        ...(await lane.enqueue(env)),
+      })),
     );
-    return await enqueueRevenueProbes(
-      (env as unknown as { REVENUE_PROBES?: RevenueProbeQueue }).REVENUE_PROBES,
-      eligibleRevenueSurfaces(
-        artifact.ok ? (artifact.data as Row | undefined) : null,
-      ).map((s) => s.id),
-    );
+    // The heartbeat is ok only if EVERY producer is. One lane silently failing
+    // to enqueue while the others succeed is precisely the shape that let the
+    // revenue lane sit dead for two months (#10566).
+    return {
+      ok: results.every((r) => r.ok),
+      lanes: results,
+    };
   }
   if (cron === SUBNET_BURN_CAPTURE_CRON) {
     // #9402: one state_queryStorageAt covering every subnet, then one batched D1

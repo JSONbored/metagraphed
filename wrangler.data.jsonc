@@ -139,7 +139,7 @@
     //
     // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
     // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
+    "NEON_WRITE_BUFFER_LANES": "",
     "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
     // Tier-source flags. These are READ by this Worker -- neuronsServedFromD1()
     // and its two siblings in workers/data-api.ts gate on `!== "postgres"` --

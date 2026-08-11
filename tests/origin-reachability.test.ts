@@ -18,17 +18,17 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
+import { SEND_BATCH_MAX } from "../src/lane-queue.ts";
 import worker, {
   handleScheduled,
   probeOrigin,
   registeredSurfaces,
 } from "../workers/api.ts";
-import { ORIGIN_REACHABILITY_CRON } from "../workers/config.ts";
+import { LANE_HEARTBEAT_CRON } from "../workers/config.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
   ORIGIN_SAMPLE_SIZE,
-  ORIGIN_SEND_BATCH_MAX,
   enqueueOriginChecks,
   handleOriginBatch,
   type OriginMessage,
@@ -52,6 +52,15 @@ const sample = (
   body_hash: string | null,
   url = "https://a.example/x",
 ): OriginSample => ({ url, status, body_hash });
+
+/** One lane's entry in the heartbeat's aggregate result. The heartbeat runs
+ * every producer, so a per-lane assertion has to look its own up. */
+function laneResult(result: unknown) {
+  const lanes = (result as { lanes?: Array<Record<string, unknown>> }).lanes;
+  const found = (lanes ?? []).find((l) => l.lane === "origin-reachability");
+  assert.ok(found, "origin-reachability must be in LANE_PRODUCERS");
+  return found as { ok: boolean; enqueued: number; reason?: string };
+}
 
 describe("classifying an origin", () => {
   test("a dead platform host answering one placeholder for everything", () => {
@@ -408,10 +417,10 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       "utf8",
     );
     assert.ok(
-      wrangler.includes(`"${ORIGIN_REACHABILITY_CRON}"`),
-      `${ORIGIN_REACHABILITY_CRON} is not in wrangler.jsonc triggers.crons`,
+      wrangler.includes(`"${LANE_HEARTBEAT_CRON}"`),
+      `${LANE_HEARTBEAT_CRON} is not in wrangler.jsonc triggers.crons`,
     );
-    assert.equal(ORIGIN_REACHABILITY_CRON, "17 * * * *");
+    assert.equal(LANE_HEARTBEAT_CRON, "26 * * * *");
   });
 
   test("dispatch and its label both know the cron", async () => {
@@ -419,19 +428,21 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       path.join(repoRoot, "workers/api.ts"),
       "utf8",
     );
-    assert.match(api, /if \(cron === ORIGIN_REACHABILITY_CRON\) \{/);
-    assert.match(api, /return "origin-reachability"/);
+    assert.match(api, /if \(cron === LANE_HEARTBEAT_CRON\) \{/);
+    assert.match(api, /return "lane-heartbeat"/);
   });
 
   test("handleScheduled routes the cron to the PRODUCER, and it declines cleanly", async () => {
     // The cron no longer checks -- it enqueues. The BINDING is reported before
     // the empty list, and that order is the useful one: a missing binding is a
     // config error, and saying "no origins" would send someone to the registry.
-    const result = (await handleScheduled(
-      { cron: ORIGIN_REACHABILITY_CRON } as unknown as ScheduledController,
-      {} as unknown as Parameters<typeof handleScheduled>[1],
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number; reason?: string };
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        {} as unknown as Parameters<typeof handleScheduled>[1],
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
     assert.equal(result.ok, false);
     assert.equal(result.enqueued, 0);
     assert.equal(result.reason, "no_queue_binding");
@@ -625,13 +636,13 @@ describe("the queue lane", () => {
     // 277 origins is three batches at Cloudflare's 100-message cap.
     const sent: Array<Array<{ body: unknown }>> = [];
     const many = Array.from(
-      { length: ORIGIN_SEND_BATCH_MAX + 7 },
+      { length: SEND_BATCH_MAX + 7 },
       (_, i) => `https://h${i}`,
     );
     await enqueueOriginChecks(queue(sent), many);
     assert.deepEqual(
       sent.map((b) => b.length),
-      [ORIGIN_SEND_BATCH_MAX, 7],
+      [SEND_BATCH_MAX, 7],
     );
   });
 
@@ -697,7 +708,7 @@ describe("consuming an origin batch", () => {
   test("acks a checked origin", async () => {
     const m = message({ origin: "https://x.example" });
     const out = await handleOriginBatch([m], store(), deps() as never);
-    assert.deepEqual(out, { checked: 1, retried: 0, malformed: 0 });
+    assert.deepEqual(out, { done: 1, retried: 0, dropped: 0 });
     assert.equal(m.calls.acked, 1);
   });
 
@@ -721,7 +732,7 @@ describe("consuming an origin batch", () => {
   test("RETRIES when the check succeeded but the WRITE failed", async () => {
     const m = message({ origin: "https://x.example" });
     const out = await handleOriginBatch([m], null, deps() as never);
-    assert.deepEqual(out, { checked: 0, retried: 1, malformed: 0 });
+    assert.deepEqual(out, { done: 0, retried: 1, dropped: 0 });
   });
 
   test("RETRIES when resolving the surfaces throws", async () => {
@@ -742,7 +753,7 @@ describe("consuming an origin batch", () => {
   test("ACKS a malformed message rather than looping it to the dead letter", async () => {
     const bad = [message({ origin: 42 }), message({}), message(null)];
     const out = await handleOriginBatch(bad, store(), deps() as never);
-    assert.deepEqual(out, { checked: 0, retried: 0, malformed: 3 });
+    assert.deepEqual(out, { done: 0, retried: 0, dropped: 3 });
     for (const m of bad) assert.equal(m.calls.acked, 1);
   });
 
@@ -753,8 +764,8 @@ describe("consuming an origin batch", () => {
       store(),
       deps() as never,
     );
-    assert.equal(out.checked, 1);
-    assert.equal(out.malformed, 1);
+    assert.equal(out.done, 1);
+    assert.equal(out.dropped, 1);
   });
 });
 
@@ -826,18 +837,24 @@ describe("the origin queue, through the Worker's own handler", () => {
     // Two surfaces on one host is one message, not two -- that is the whole
     // saving over a per-surface pass.
     const sent: string[] = [];
-    const result = (await handleScheduled(
-      { cron: ORIGIN_REACHABILITY_CRON } as unknown as ScheduledController,
-      env(registry, {
-        ORIGIN_REACHABILITY: {
-          async sendBatch(messages: Array<{ body: { origin: string } }>) {
-            for (const m of messages) sent.push(m.body.origin);
+    const result = laneResult(
+      await handleScheduled(
+        { cron: LANE_HEARTBEAT_CRON } as unknown as ScheduledController,
+        env(registry, {
+          ORIGIN_REACHABILITY: {
+            async sendBatch(messages: Array<{ body: { origin: string } }>) {
+              for (const m of messages) sent.push(m.body.origin);
+            },
           },
-        },
-      }) as never,
-      { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; enqueued: number };
-    assert.deepEqual(result, { ok: true, enqueued: 1 });
+        }) as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ),
+    );
+    assert.deepEqual(result, {
+      lane: "origin-reachability",
+      ok: true,
+      enqueued: 1,
+    });
     assert.deepEqual(sent, ["https://x.example"]);
   });
 
