@@ -130,11 +130,11 @@ describe("enqueueStatement", () => {
 
   test("REFUSES at the ceiling rather than growing", async () => {
     const storage = fakeStorage();
-    // Seed the ceiling directly; enqueuing 5,000 real statements would test
-    // the fake's speed, not the policy.
-    for (let i = 1; i <= MAX_BUFFERED_STATEMENTS; i += 1) {
-      storage.map.set(chunkKey(i, 0), new Uint8Array(0));
-    }
+    // Seed the COUNTER, not the keys. Fullness is O(1) now (#10755) precisely
+    // because counting keys per enqueue is what burned 2.4s of CPU and got the
+    // object reset -- so a test that seeds keys would no longer be testing the
+    // policy that exists.
+    storage.map.set("pending", MAX_BUFFERED_STATEMENTS);
     const out = await enqueueStatement(storage, stmt("l", "A"), NOW);
     assert.equal(out.accepted, false);
     assert.match(String(out.reason), /buffer full/);
@@ -380,9 +380,7 @@ describe("NeonWriteBufferHub", () => {
 
   test("a full buffer answers 503 -- backpressure, not a bug in the request", async () => {
     const h = hub();
-    for (let i = 1; i <= MAX_BUFFERED_STATEMENTS; i += 1) {
-      h.storage.map.set(chunkKey(i, 0), new Uint8Array(0));
-    }
+    h.storage.map.set("pending", MAX_BUFFERED_STATEMENTS);
     const res = await h.do.fetch(post(stmt("l", "A")));
     assert.equal(res.status, 503);
   });
@@ -673,5 +671,71 @@ describe("a truncated drain must come back (#10722)", () => {
       true,
       "a drain that left work behind MUST schedule another",
     );
+  });
+});
+
+describe("the enqueue is O(1) (#10755)", () => {
+  // THE BUG. enqueueStatement called countPending(), which lists every chunk
+  // in the buffer and sorts them -- on every enqueue. Cloudflare's logs:
+  //
+  //     POST /enqueue  outcome: exception  cpuTimeMs: 2424
+  //     -> Internal error in Durable Object storage caused object to be reset
+  //
+  // 2.4s of CPU to append one row, worsening as the backlog grew, until the
+  // platform reset the object mid-request -- before setAlarm, so nothing armed
+  // the flush, so the backlog grew further.
+
+  test("does NOT list storage -- the scan is what killed it", async () => {
+    const storage = fakeStorage();
+    let lists = 0;
+    const realList = storage.list.bind(storage);
+    storage.list = async (options) => {
+      lists += 1;
+      return realList(options);
+    };
+    for (let i = 0; i < 25; i += 1) {
+      await enqueueStatement(storage, stmt("neurons", `S${i}`), NOW);
+    }
+    assert.equal(lists, 0, "an enqueue must never scan the backlog");
+  });
+
+  test("the pending counter tracks the enqueues", async () => {
+    const storage = fakeStorage();
+    for (let i = 0; i < 5; i += 1) {
+      await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
+    }
+    assert.equal(await storage.get("pending"), 5);
+  });
+
+  test("a clean drain RECONCILES the counter to zero, never just decrements", async () => {
+    // A counter that can only be adjusted is a counter that eventually lies.
+    const storage = fakeStorage();
+    for (let i = 0; i < 3; i += 1) {
+      await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
+    }
+    // Drift it deliberately, the way a partial failure would.
+    storage.map.set("pending", 99);
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(
+      await storage.get("pending"),
+      0,
+      "reconciled, not decremented",
+    );
+  });
+
+  test("the ceiling still refuses, now from the counter", async () => {
+    const storage = fakeStorage();
+    storage.map.set("pending", MAX_BUFFERED_STATEMENTS);
+    const out = await enqueueStatement(storage, stmt("l", "A"), NOW);
+    assert.equal(out.accepted, false);
+    assert.match(String(out.reason), /buffer full/);
   });
 });
