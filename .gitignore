@@ -65,6 +65,11 @@ web_modules/
 # Optional eslint cache
 .eslintcache
 
+# Prettier's --cache index (#10608). Kept beside .eslintcache rather than under
+# node_modules/.cache so `npm ci` does not delete it and CI can restore both
+# from one cache entry.
+.prettiercache
+
 # Optional stylelint cache
 .stylelintcache
 
