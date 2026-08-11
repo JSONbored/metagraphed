@@ -169,7 +169,8 @@
     "curation:identity-divergence": "node scripts/identity-field-divergence.ts",
     "endpoint:brief": "node scripts/endpoint-ops-brief.ts",
     "validate:ui-route-coverage": "node scripts/validate-ui-route-coverage.ts",
-    "validate:untyped-db-reads": "node scripts/validate-untyped-db-reads.ts"
+    "validate:untyped-db-reads": "node scripts/validate-untyped-db-reads.ts",
+    "validate:untyped-lakehouse-reads": "node scripts/validate-untyped-lakehouse-reads.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.3",
