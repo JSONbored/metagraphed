@@ -15,6 +15,7 @@ import {
   CHUNK_BYTES,
   createBufferedPgSql,
   decodeStatement,
+  ENQUEUE_ATTEMPTS,
   DO_VALUE_LIMIT_BYTES,
   encodeStatement,
   FLUSH_INTERVAL_MS,
@@ -452,5 +453,87 @@ describe("blocks-head can never be buffered", () => {
       "blocks-head",
       "chain-detail",
     ]);
+  });
+});
+
+describe("the enqueue retries a transient stub failure (#10729)", () => {
+  function flakyNamespace(failures: number, message: string) {
+    let calls = 0;
+    const sent: unknown[] = [];
+    return {
+      get calls() {
+        return calls;
+      },
+      sent,
+      ns: {
+        idFromName: (n: string) => n,
+        get: () => ({
+          async fetch(request: Request) {
+            calls += 1;
+            if (calls <= failures) throw new Error(message);
+            sent.push(await request.json());
+            return new Response("{}", { status: 200 });
+          },
+        }),
+      },
+    };
+  }
+
+  test("a Durable Object reset is retried, not lost", async () => {
+    // A deploy resets the DO, and an enqueue in flight throws. Without the
+    // retry that costs the row AND arms no alarm -- which is what kept the
+    // buffer from ever draining on 2026-08-11.
+    const n = flakyNamespace(
+      1,
+      "Durable Object reset because its code was updated",
+    );
+    const sql = createBufferedPgSql(n.ns, "neurons");
+    assert.deepEqual(await sql.unsafe("INSERT INTO t VALUES ($1)", [1]), []);
+    assert.equal(n.calls, 2, "it retried once");
+    assert.equal(n.sent.length, 1, "and the row landed");
+  });
+
+  test("it gives up after the attempt budget and surfaces the error", async () => {
+    // NOT unbounded: a genuinely unreachable object must still fail the write
+    // so the lane records a stale verdict and the producer retries.
+    const n = flakyNamespace(
+      99,
+      "Durable Object reset because its code was updated",
+    );
+    await assert.rejects(
+      () =>
+        createBufferedPgSql(n.ns, "neurons").unsafe("INSERT INTO t VALUES (1)"),
+      /Durable Object reset/,
+    );
+    assert.equal(n.calls, ENQUEUE_ATTEMPTS);
+  });
+
+  test("a FULL buffer is not retried -- retrying makes it fuller", async () => {
+    // 503 is backpressure, a different thing from a transient. The producer's
+    // own cadence is the retry there.
+    let calls = 0;
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({
+        async fetch() {
+          calls += 1;
+          return new Response("{}", { status: 503 });
+        },
+      }),
+    };
+    await assert.rejects(
+      () =>
+        createBufferedPgSql(ns, "neurons").unsafe("INSERT INTO t VALUES (1)"),
+      /refused the statement \(503\)/,
+    );
+    assert.equal(calls, 1, "exactly one attempt");
+  });
+
+  test("a non-transient error is not retried either", async () => {
+    const n = flakyNamespace(99, "TypeError: something is genuinely broken");
+    await assert.rejects(() =>
+      createBufferedPgSql(n.ns, "neurons").unsafe("INSERT INTO t VALUES (1)"),
+    );
+    assert.equal(n.calls, 1);
   });
 });
