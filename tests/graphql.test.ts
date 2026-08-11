@@ -16195,35 +16195,38 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/transfers`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
-    assert.equal(capture.url.searchParams.get("direction"), "received");
-    assert.equal(capture.url.searchParams.get("block_start"), "10");
-    assert.equal(capture.url.searchParams.get("block_end"), "20");
+    const sql = lake.queries[0];
+    // `direction: received` narrows to the TO side -- coldkey, per data-api's own
+    // semantics -- so the predicate is one-sided rather than the (hotkey OR
+    // coldkey) disjunction an unfiltered read uses.
+    assert.match(sql, new RegExp(`coldkey = '${SS58}'`));
+    assert.doesNotMatch(sql, /OR coldkey/);
+    assert.match(sql, /event_kind = 'Transfer'/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 20/);
+    // limit + offset, since R2 SQL has no OFFSET.
+    assert.match(sql, /LIMIT 7\b/);
     lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 100000, offset: -5) { transfer_count } }`,
       env as unknown as Env,
     );
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    // No filter params were supplied, so none are forwarded.
-    assert.equal(capture.url.searchParams.get("cursor"), null);
-    assert.equal(capture.url.searchParams.get("direction"), null);
-    assert.equal(capture.url.searchParams.get("block_start"), null);
-    assert.equal(capture.url.searchParams.get("block_end"), null);
+    const sql = lake.queries[0];
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, and no filters were supplied -- so the read
+    // is the unfiltered (hotkey OR coldkey) disjunction with no extra predicate.
+    assert.match(sql, /\(hotkey = '[^']+' OR coldkey = '[^']+'\)/);
+    assert.doesNotMatch(sql, /block_number [<>]/);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
@@ -16593,19 +16596,22 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("well-formed from/to bounds are accepted and forwarded to the tier", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ days: [] }), capture),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", from: "2026-07-01", to: "2026-07-16")`),
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capture.url.searchParams.get("from"), "2026-07-01");
-    assert.equal(capture.url.searchParams.get("to"), "2026-07-16");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`observed_at >= ${Date.parse("2026-07-01")}`));
+    // Inclusive of the ?to day, so the bound is the START of the NEXT day.
+    assert.match(sql, new RegExp(`observed_at < ${Date.parse("2026-07-17")}`));
+    lake.restore();
   });
 
   // The regression the issue describes predates D1 elimination (2026-07-17):
@@ -16696,22 +16702,11 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          day_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          days: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
         `(ss58: "${SS58}", netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 5, offset: 2, cursor: "c:20260615:3")`,
@@ -16719,13 +16714,14 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/history`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("netuid"), "7");
-    assert.equal(capture.url.searchParams.get("from"), "2026-06-01");
-    assert.equal(capture.url.searchParams.get("to"), "2026-06-30");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:20260615:3");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`hotkey = '${SS58}'`));
+    assert.match(sql, /netuid = 7/);
+    // ?from/?to are UTC-day bounds, and ?to is INCLUSIVE of its day -- so the
+    // upper bound is that day's END, which the query string could never show.
+    assert.match(sql, /observed_at >= \d+/);
+    assert.match(sql, /observed_at < \d+/);
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
