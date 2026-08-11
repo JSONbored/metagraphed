@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 import { handleRequest } from "../workers/api.ts";
 import { describe, test, beforeEach, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
+// The generated row type, so these fixtures cannot drift from the schema.
+import type { SubnetSnapshots } from "../generated/db/types.ts";
 
 // The store these handlers read is Postgres now (#10086/#10179), reached
 // through `new Client(...)` inside src/pg-sql.ts. observationsReadDb builds
@@ -105,39 +107,25 @@ async function errorJson(res: Response, status = 400): Promise<Row> {
   return body;
 }
 
-// D1 fully eliminated (2026-07-17): every tier miss below falls straight
-// through to the schema-stable empty payload, never a live D1 query. These
-// helpers build a Postgres-tier hit (flag + DATA_API mock) so the handlers'
-// serve/CSV/format-negotiation logic can still be exercised with real data.
-function postgresTrajectoryEnv(points: Row[]): Env {
-  return {
-    METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          netuid: NETUID,
-          points,
-          point_count: points.length,
-          deltas: { "7d": null, "30d": null },
-        }),
-    },
-  } as unknown as Env;
-}
+// THE LIVE STORE, NOT A TIER STUB (#10190).
+//
+// These used to build a Postgres-tier hit -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE
+// set to "postgres" plus a DATA_API mock -- so the handlers' serve/CSV/
+// format-negotiation logic could be exercised with real data. That flag reads
+// "retired" in every deployed config and is absent from DATA_API_FORWARD_FLAGS,
+// so the arm they drove declined on every real request: the logic was proven
+// against a path production never takes.
+//
+// It is proven against `subnet_snapshots` instead, through the same pg mock the
+// rest of this file uses. The fixtures are DB rows now rather than formatted
+// output, and typed against the GENERATED row type -- so a column rename in
+// schemas breaks these tests instead of silently making them describe a shape
+// the loader no longer reads.
+type SnapshotFixture = Partial<SubnetSnapshots> &
+  Pick<SubnetSnapshots, "snapshot_date">;
 
-function postgresEconomicsTrendsEnv(days: Row[], window = "30d"): Env {
-  return {
-    METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window,
-          day_count: days.length,
-          days,
-        }),
-    },
-  } as unknown as Env;
+function snapshotStoreEnv(rows: SnapshotFixture[]) {
+  return storeEnv(rows as unknown as Row[]);
 }
 
 function postgresUptimeEnv(surfaces: Row[], window = "90d"): Env {
@@ -171,15 +159,15 @@ describe("handleTrajectory", () => {
   // and tests/economics-history.test.ts -- these handler tests only need to
   // prove the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is present", async () => {
-    const env = postgresTrajectoryEnv([
+    const { env, ctx } = snapshotStoreEnv([
       {
-        date: "2026-06-01",
+        snapshot_date: "2026-06-01",
         completeness_score: 35,
         surface_count: 1,
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_alpha: 90,
+        total_stake_tao: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -188,13 +176,13 @@ describe("handleTrajectory", () => {
         subnet_volume_tao: null,
       },
       {
-        date: "2026-06-02",
+        snapshot_date: "2026-06-02",
         completeness_score: 40,
         surface_count: 2,
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 64,
-        total_stake_alpha: 100,
+        total_stake_tao: 100,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -208,6 +196,7 @@ describe("handleTrajectory", () => {
       env,
       NETUID,
       url("/?format=csv"),
+      ctx,
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
@@ -227,15 +216,15 @@ describe("handleTrajectory", () => {
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = postgresTrajectoryEnv([
+    const { env, ctx } = snapshotStoreEnv([
       {
-        date: "2026-06-01",
+        snapshot_date: "2026-06-01",
         completeness_score: 35,
         surface_count: 1,
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_alpha: 90,
+        total_stake_tao: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -247,7 +236,7 @@ describe("handleTrajectory", () => {
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
-    const res = await handleTrajectory(request, env, NETUID, url("/"));
+    const res = await handleTrajectory(request, env, NETUID, url("/"), ctx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     const text = await res.text();
@@ -289,15 +278,15 @@ describe("handleTrajectory", () => {
   });
 
   test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const env = postgresTrajectoryEnv([
+    const { env, ctx } = snapshotStoreEnv([
       {
-        date: "2026-06-01",
+        snapshot_date: "2026-06-01",
         completeness_score: 35,
         surface_count: 1,
         endpoint_count: 1,
         validator_count: 8,
         miner_count: 60,
-        total_stake_alpha: 90,
+        total_stake_tao: 90,
         alpha_price_tao: 0.01,
         emission_share: 0.02,
         tao_in_pool_tao: null,
@@ -314,6 +303,7 @@ describe("handleTrajectory", () => {
       env,
       NETUID,
       url("/?format=json"),
+      ctx,
     );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type")!, /application\/json/);
@@ -321,17 +311,18 @@ describe("handleTrajectory", () => {
     assert.equal(body.data.point_count, 1);
   });
 
-  // #4832 gap-closure: METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is a NEW flag,
-  // deliberately left unset in wrangler.jsonc (no historical backfill --
-  // see handleTrajectory's own header comment) -- these tests only prove
-  // the wiring, not a live flip.
-  test("flag=postgres serves the DATA_API response", async () => {
-    const env = postgresTrajectoryEnv([]);
+  // RENAMED (#10190): was "flag=postgres serves the DATA_API response", which is
+  // no longer what it does -- the flag forwards nowhere and this drives the live
+  // store. An EMPTY store is the case worth keeping: the card must still be
+  // schema-stable rather than a 404 or an error.
+  test("an empty store still yields a schema-stable card", async () => {
+    const { env, ctx } = snapshotStoreEnv([]);
     const res = await handleTrajectory(
       req(`/api/v1/subnets/${NETUID}/trajectory`),
       env,
       NETUID,
       url(`/api/v1/subnets/${NETUID}/trajectory`),
+      ctx,
     );
     assert.equal(res.status, 200);
     const body = (await res.json()) as Row;
@@ -384,22 +375,22 @@ describe("handleEconomicsTrends", () => {
   // in tests/neuron-history.test.ts -- these handler tests only need to prove
   // the Postgres-tier response is served/CSV-formatted as-is.
   test("returns CSV response when ?format=csv is requested", async () => {
-    const env = postgresEconomicsTrendsEnv(
-      [
-        {
-          snapshot_date: "2026-06-02",
-          subnet_count: 1,
-          total_stake_alpha: "300.000000000",
-          alpha_price_tao_weighted: 0.02,
-          alpha_price_tao_median: 0.02,
-          validator_count: 8,
-          miner_count: 50,
-          mean_emission_share: 0.04,
-        },
-      ],
-      "30d",
+    const { env, ctx } = snapshotStoreEnv([
+      {
+        snapshot_date: "2026-06-02",
+        total_stake_tao: 300.0,
+        alpha_price_tao: 0.02,
+        validator_count: 8,
+        miner_count: 50,
+        emission_share: 0.04,
+      },
+    ]);
+    const res = await handleEconomicsTrends(
+      req("/"),
+      env,
+      url("/?format=csv"),
+      ctx,
     );
-    const res = await handleEconomicsTrends(req("/"), env, url("/?format=csv"));
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     assert.ok(
@@ -422,22 +413,20 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("returns CSV response when Accept: text/csv header is present", async () => {
-    const env = postgresEconomicsTrendsEnv([
+    const { env, ctx } = snapshotStoreEnv([
       {
         snapshot_date: "2026-06-02",
-        subnet_count: 1,
-        total_stake_alpha: "300.000000000",
-        alpha_price_tao_weighted: 0.02,
-        alpha_price_tao_median: 0.02,
+        total_stake_tao: 300.0,
+        alpha_price_tao: 0.02,
         validator_count: 8,
         miner_count: 50,
-        mean_emission_share: 0.04,
+        emission_share: 0.04,
       },
     ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
-    const res = await handleEconomicsTrends(request, env, url("/"));
+    const res = await handleEconomicsTrends(request, env, url("/"), ctx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("content-type"), "text/csv; charset=utf-8");
     const text = await res.text();
@@ -481,36 +470,39 @@ describe("handleEconomicsTrends", () => {
   });
 
   test("?format=json keeps the JSON envelope even when Accept asks for CSV", async () => {
-    const env = postgresEconomicsTrendsEnv([
+    const { env, ctx } = snapshotStoreEnv([
       {
         snapshot_date: "2026-06-02",
-        subnet_count: 1,
-        total_stake_alpha: "300.000000000",
-        alpha_price_tao_weighted: 0.02,
-        alpha_price_tao_median: 0.02,
+        total_stake_tao: 300.0,
+        alpha_price_tao: 0.02,
         validator_count: 8,
         miner_count: 50,
-        mean_emission_share: 0.04,
+        emission_share: 0.04,
       },
     ]);
     const request = new Request("https://api.metagraph.sh/", {
       headers: { accept: "text/csv" },
     });
-    const res = await handleEconomicsTrends(request, env, url("/?format=json"));
+    const res = await handleEconomicsTrends(
+      request,
+      env,
+      url("/?format=json"),
+      ctx,
+    );
     assert.equal(res.status, 200);
     assert.match(res.headers.get("content-type")!, /application\/json/);
     const body = (await res.json()) as Row;
     assert.equal(body.data.day_count, 1);
   });
 
-  // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
-  // and same deliberately-unflipped rationale as handleTrajectory above.
-  test("flag=postgres serves the DATA_API response", async () => {
-    const env = postgresEconomicsTrendsEnv([]);
+  // RENAMED (#10190), same reason as the trajectory one above.
+  test("an empty store still yields a schema-stable card", async () => {
+    const { env, ctx } = snapshotStoreEnv([]);
     const res = await handleEconomicsTrends(
       req("/api/v1/economics/trends"),
       env,
       url("/api/v1/economics/trends"),
+      ctx,
     );
     assert.equal(res.status, 200);
     const body = (await res.json()) as Row;
@@ -1113,7 +1105,6 @@ describe("handleCompareValidators", () => {
           schema_version: 1,
           hotkey: reqUrl.pathname.split("/").pop(),
           coldkey: "coldkey-1",
-          subnet_count: 1,
           subnets: [{ netuid: 7, uid: 3, stake_tao: 100 }],
         });
       },

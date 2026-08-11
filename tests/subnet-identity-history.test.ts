@@ -442,17 +442,29 @@ describe("recordSubnetIdentityChanges", () => {
   // netuid via tryPostgresTier against /api/v1/internal/subnet-identity-
   // latest-hashes, instead of querying D1 directly. Mock env.DATA_API.fetch
   // instead of a `db` binding.
-  function pgEnv(hashes: unknown): Env {
-    return {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          new Response(JSON.stringify({ hashes }), { status: 200 }),
-      },
-    } as unknown as Env;
+  // THE BASELINE, INJECTED (#10190/#10700). These tests used to build it by
+  // stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" -- a
+  // flag value no deployment sets, gating an arm absent from
+  // DATA_API_FORWARD_FLAGS, so the baseline they exercised never existed in
+  // production. The dead read is gone; the DIFF's contract is what these tests
+  // are actually about, so they now hand it a baseline directly.
+  const ENV = {} as unknown as Env;
+
+  /** A baseline reader over the rows the old DATA_API stub would have returned. */
+  function baselineOf(rows: unknown) {
+    return async () => {
+      const map = new Map<number, unknown>();
+      for (const row of rows as {
+        netuid?: unknown;
+        identity_hash?: unknown;
+      }[]) {
+        const netuid = Number(row?.netuid);
+        if (Number.isInteger(netuid)) map.set(netuid, row?.identity_hash);
+      }
+      return map;
+    };
   }
   test("counts a changed identity without writing anything", async () => {
-    const env = pgEnv([{ netuid: 86, identity_hash: "old-hash" }]);
     const profiles = [
       {
         netuid: 86,
@@ -463,9 +475,10 @@ describe("recordSubnetIdentityChanges", () => {
         },
       },
     ];
-    const result = await recordSubnetIdentityChanges(env, {
+    const result = await recordSubnetIdentityChanges(ENV, {
       profiles,
       now: 1_700_000_000_000,
+      latestHashes: baselineOf([{ netuid: 86, identity_hash: "old-hash" }]),
     });
     assert.equal(result.recorded, true);
     assert.equal(result.rows, 1);
@@ -490,8 +503,8 @@ describe("recordSubnetIdentityChanges", () => {
       },
     });
     const hash = await identityHash(snapshot);
-    const env = pgEnv([{ netuid: 7, identity_hash: hash }]);
-    const result = await recordSubnetIdentityChanges(env, {
+    const result = await recordSubnetIdentityChanges(ENV, {
+      latestHashes: baselineOf([{ netuid: 7, identity_hash: hash }]),
       profiles: [
         {
           netuid: 7,
@@ -521,11 +534,11 @@ describe("recordSubnetIdentityChanges", () => {
       native_identity: { subnet_name: "Subnet" },
     });
     const hash = await identityHash(snapshot);
-    const env = pgEnv([
-      { netuid: "", identity_hash: "junk" }, // blank → ignored
-      { netuid: "7", identity_hash: hash }, // string netuid → key on 7
-    ]);
-    const result = await recordSubnetIdentityChanges(env, {
+    const result = await recordSubnetIdentityChanges(ENV, {
+      latestHashes: baselineOf([
+        { netuid: "", identity_hash: "junk" }, // blank → ignored
+        { netuid: "7", identity_hash: hash }, // string netuid → key on 7
+      ]),
       profiles: [
         {
           netuid: 7,
@@ -551,18 +564,17 @@ describe("recordSubnetIdentityChanges", () => {
   // internally and degrades to null), so the only way latestIdentityHashes
   // can still throw is a malformed-but-truthy `hashes` payload that isn't
   // iterable -- e.g. an object instead of an array.
-  test("returns read_failed when the hashes payload isn't iterable", async () => {
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          new Response(JSON.stringify({ hashes: { not: "an array" } }), {
-            status: 200,
-          }),
-      },
-    } as unknown as Env;
+  // The baseline READER throwing, rather than a malformed DATA_API body: with the
+  // dead tier read gone there is no body to malform, and what this test is
+  // actually about is that a baseline this function cannot obtain is reported as
+  // `read_failed` instead of being silently treated as "nothing has changed"
+  // (which is the #10700 behaviour, and is why the distinction matters).
+  test("returns read_failed when the baseline cannot be read", async () => {
     assert.deepEqual(
-      await recordSubnetIdentityChanges(env, {
+      await recordSubnetIdentityChanges(ENV, {
+        latestHashes: async () => {
+          throw new TypeError("hashes is not iterable");
+        },
         profiles: [
           {
             netuid: 7,

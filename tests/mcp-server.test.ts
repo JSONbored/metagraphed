@@ -113,25 +113,7 @@ import { assertValid } from "./helpers/assert-valid.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
-/**
- * The default one served tool publishes for one argument (#10306).
- *
- * Read from `listToolDefinitions()` rather than written into the assertion, so
- * a test about "the tool forwards what it advertises" cannot pass while the two
- * disagree -- which is the whole shape of the bug it guards. Throws for an
- * argument with no published default: that is the test naming a parameter the
- * tool does not default, not a value of undefined.
- */
-function publishedDefaultOf(tool: string, argument: string): unknown {
-  const served = (listToolDefinitions() as Row[]).find(
-    (candidate) => candidate.name === tool,
-  );
-  const schema = served?.inputSchema?.properties?.[argument] as Row | undefined;
-  if (schema?.default === undefined) {
-    throw new Error(`${tool} publishes no default for ${argument}`);
-  }
-  return schema.default;
-}
+// `publishedDefaultOf` went with the tests that used it (#10190).
 
 // Fresh prober run time for live KV fixtures — resolveLiveHealth rejects a
 // health:current whose last_run_at is older than the 25-min freshness window.
@@ -12488,33 +12470,24 @@ describe("MCP economics + metagraph data tools", () => {
       });
     }
 
-    // #10174: MCP clamps an over-ceiling limit to the maximum this tool's own
-    // inputSchema publishes, instead of rejecting it. The tier IS reached --
-    // the caller gets an answer, capped, rather than an error.
+    // #10174: MCP CLAMPS an over-ceiling limit to the maximum this tool's own
+    // inputSchema publishes, instead of rejecting it -- the caller gets an
+    // answer, capped, rather than an error. That acceptance is the contract and
+    // is what these assert.
+    //
+    // They used to prove the clamp by reading `limit` off the URL forwarded to
+    // DATA_API under METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" (#10190). That
+    // flag forwards nowhere and the request builder is gone, so the clamped VALUE
+    // is not observable at this boundary until subnet_identity_history has a live
+    // source again (#10710) -- at which point the forwarded-limit assertion
+    // belongs on the composer, not on a tier stub.
     for (const limit of [201, 500]) {
-      test(`clamps limit=${limit} to the published 200`, async () => {
-        let seenLimit: string | null = null;
-        const env = {
-          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-          DATA_API: {
-            fetch: async (request: Request) => {
-              seenLimit = new URL(request.url).searchParams.get("limit");
-              return Response.json({
-                schema_version: 1,
-                count: 0,
-                subnet_count: 0,
-                changes: [],
-              });
-            },
-          },
-        };
-        const res = await callTool(
-          "get_chain_identity_history",
-          { limit },
-          { env },
-        );
+      test(`accepts limit=${limit} by clamping, not by rejecting`, async () => {
+        const res = await callTool("get_chain_identity_history", { limit });
         assert.equal(res.body.result.isError, false);
-        assert.equal(seenLimit, "200");
+        // Contrast with the invalid_params cases above: 0/-1/1.5/"abc" are
+        // rejected, an over-ceiling integer is not.
+        assert.equal(res.body.result.structuredContent.count, 0);
       });
     }
 
@@ -12525,76 +12498,21 @@ describe("MCP economics + metagraph data tools", () => {
     });
 
     test("accepts limit=1 and limit=200", async () => {
+      // The `fetched` assertion went with the tier (#10190): there is no
+      // DATA_API leg to observe being reached. Both ceiling edges are still
+      // accepted, which is what the boundary owes.
       for (const limit of [1, 200]) {
-        let fetched = false;
-        const env = {
-          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-          DATA_API: {
-            fetch: async () => {
-              fetched = true;
-              return Response.json({
-                schema_version: 1,
-                count: 0,
-                subnet_count: 0,
-                changes: [],
-              });
-            },
-          },
-        };
-        const res = await callTool(
-          "get_chain_identity_history",
-          { limit },
-          { env },
-        );
+        const res = await callTool("get_chain_identity_history", { limit });
         assert.equal(res.body.result.isError, false);
-        assert.equal(fetched, true);
         assert.equal(res.body.result.structuredContent.count, 0);
       }
     });
   });
 
-  test("get_chain_identity_history summarizes recent changes across subnets", async () => {
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            count: 2,
-            subnet_count: 2,
-            changes: [
-              {
-                netuid: 12,
-                block_number: 200,
-                observed_at: new Date(1_700_000_000_000).toISOString(),
-                subnet_name: "Beta",
-                symbol: "β",
-                identity_hash: "h2",
-              },
-              {
-                netuid: 7,
-                block_number: 100,
-                observed_at: new Date(1_600_000_000_000).toISOString(),
-                subnet_name: "Alpha",
-                symbol: "α",
-                identity_hash: "h1",
-              },
-            ],
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_chain_identity_history",
-      { limit: 2 },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.count, 2);
-    assert.equal(out.subnet_count, 2); // spans netuids 12 and 7
-    assert.equal(out.changes[0].netuid, 12);
-    assert.equal(out.changes[0].subnet_name, "Beta");
-    assert.equal(out.changes[1].netuid, 7);
-  });
+  // REMOVED (#10190): "summarizes recent changes across subnets". The summary it
+  // asserted was computed from rows its own DATA_API stub supplied, behind a flag
+  // that forwards nowhere -- so the tool has been summarising an empty feed in
+  // production. Restore with #10710, which is what gives it rows.
 
   // #4832 gap-closure: get_chain_identity_history mirrors REST's
   // handleChainIdentityHistory tier-selection exactly (same
@@ -12603,118 +12521,11 @@ describe("MCP economics + metagraph data tools", () => {
   // in tests/request-handlers-entities.test.ts. D1 fully eliminated
   // (2026-07-16): a Postgres miss/outage now degrades straight to the
   // schema-stable empty feed, never a live D1 read.
-  describe("get_chain_identity_history Postgres tier", () => {
-    const ALPHA_ROW = {
-      netuid: 7,
-      block_number: 100,
-      observed_at: new Date(1_600_000_000_000).toISOString(),
-      subnet_name: "Alpha",
-      symbol: "α",
-      identity_hash: "h1",
-    };
-
-    test("flag=postgres uses Postgres data", async () => {
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () =>
-            Response.json({
-              schema_version: 1,
-              count: 1,
-              subnet_count: 1,
-              changes: [{ netuid: 99, subnet_name: "pg-only" }],
-            }),
-        },
-      };
-      const res = await callTool("get_chain_identity_history", {}, { env });
-      const out = res.body.result.structuredContent;
-      assert.equal(out.changes[0].subnet_name, "pg-only");
-    });
-
-    test("flag=postgres degrades to the empty feed on failure", async () => {
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("boom");
-          },
-        },
-      };
-      const res = await callTool("get_chain_identity_history", {}, { env });
-      const out = res.body.result.structuredContent;
-      assert.equal(out.count, 0);
-      assert.deepEqual(out.changes, []);
-    });
-
-    test("flag absent yields the empty feed even when DATA_API is bound (unflipped)", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () =>
-            Response.json({
-              schema_version: 1,
-              count: 1,
-              subnet_count: 1,
-              changes: [ALPHA_ROW],
-            }),
-        },
-      };
-      const res = await callTool("get_chain_identity_history", {}, { env });
-      const out = res.body.result.structuredContent;
-      assert.equal(out.count, 0);
-      assert.deepEqual(out.changes, []);
-    });
-
-    test("flag=postgres forwards limit as a REST-equivalent query param", async () => {
-      let seenUrl: URL | undefined;
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            seenUrl = new URL(request.url);
-            return Response.json({
-              schema_version: 1,
-              count: 0,
-              subnet_count: 0,
-              changes: [],
-            });
-          },
-        },
-      };
-      await callTool("get_chain_identity_history", { limit: 25 }, { env });
-      assert.equal(seenUrl!.pathname, "/api/v1/chain/identity-history");
-      assert.equal(seenUrl!.searchParams.get("limit"), "25");
-    });
-
-    // Was "omits the limit param when not supplied", which pinned the #10306
-    // bug: the tool published a `limit` default and forwarded nothing, so the
-    // page a caller got was whatever the route re-derived rather than the one
-    // the tool advertised. The expected value is READ from the served schema
-    // rather than written here, so this cannot drift from what the tool
-    // publishes.
-    test("flag=postgres forwards the limit default the tool publishes", async () => {
-      let seenUrl: URL | undefined;
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            seenUrl = new URL(request.url);
-            return Response.json({
-              schema_version: 1,
-              count: 0,
-              subnet_count: 0,
-              changes: [],
-            });
-          },
-        },
-      };
-      await callTool("get_chain_identity_history", {}, { env });
-      assert.equal(seenUrl!.pathname, "/api/v1/chain/identity-history");
-      assert.equal(
-        seenUrl!.searchParams.get("limit"),
-        String(publishedDefaultOf("get_chain_identity_history", "limit")),
-      );
-    });
-  });
+  // DESCRIBE REMOVED (#10190): "get_chain_identity_history Postgres tier" -- three
+  // tests asserting the flag=postgres forward, the REST-equivalent query param and
+  // the published limit default. METAGRAPH_SUBNET_IDENTITY_SOURCE forwards nowhere
+  // and the request builder is gone. Restore against a live source once
+  // subnet_identity_history is a Neon lane (#10710).
 
   test("get_chain_yield returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_yield", {});
@@ -18550,142 +18361,10 @@ describe("MCP parity tools — subnet history / events (D1-backed)", () => {
   // which this block mirrors. Also mirrors list_extrinsics/get_extrinsic's own
   // "D1 -> Postgres serving cutover (#4694)" block in the block-explorer
   // describe above.
-  describe("get_subnet_identity_history D1 -> Postgres serving cutover", () => {
-    test("flag=postgres uses Postgres data, D1 never queried", async () => {
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () =>
-            Response.json({
-              schema_version: 1,
-              netuid: 86,
-              entry_count: 1,
-              limit: null,
-              offset: null,
-              next_cursor: null,
-              entries: [{ identity_hash: "pg-hash" }],
-            }),
-        },
-      };
-      const res = await callTool(
-        "get_subnet_identity_history",
-        { netuid: 86 },
-        { env },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.entries[0].identity_hash, "pg-hash");
-    });
-
-    // D1 fully eliminated (2026-07-17): a Postgres-tier failure/miss no
-    // longer falls back to D1 -- it resolves to the schema-stable empty
-    // shape (buildSubnetIdentityHistory([], netuid, {...})), same as the
-    // flag-absent case below. A D1 mock, if bound, is never queried.
-    test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("boom");
-          },
-        },
-      };
-      const res = await callTool(
-        "get_subnet_identity_history",
-        { netuid: 86 },
-        { env },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(res.body.result.isError, false);
-      assert.equal(out.entry_count, 0);
-      assert.deepEqual(out.entries, []);
-    });
-
-    test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () =>
-            Response.json({
-              schema_version: 1,
-              netuid: 86,
-              entry_count: 0,
-              entries: [],
-            }),
-        },
-      };
-      const res = await callTool(
-        "get_subnet_identity_history",
-        { netuid: 86 },
-        { env },
-      );
-      const out = res.body.result.structuredContent;
-      assert.equal(out.entry_count, 0);
-      assert.deepEqual(out.entries, []);
-    });
-
-    test("flag=postgres forwards netuid + limit/offset/cursor as a REST-equivalent request", async () => {
-      let seenUrl: URL | undefined;
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            seenUrl = new URL(request.url);
-            return Response.json({
-              schema_version: 1,
-              netuid: 86,
-              entry_count: 0,
-              entries: [],
-            });
-          },
-        },
-      };
-      await callTool(
-        "get_subnet_identity_history",
-        { netuid: 86, limit: 10, offset: 5, cursor: "abc" },
-        { env },
-      );
-      assert.equal(seenUrl!.pathname, "/api/v1/subnets/86/identity-history");
-      assert.equal(seenUrl!.searchParams.get("limit"), "10");
-      assert.equal(seenUrl!.searchParams.get("offset"), "5");
-      assert.equal(seenUrl!.searchParams.get("cursor"), "abc");
-    });
-
-    // THE tool #10306 was filed for. This test used to assert
-    // `searchParams.has("limit") === false`, which is precisely the defect:
-    // the tool advertised "1-1000, default 100", forwarded no limit, and the
-    // read came back empty -- `entry_count: 0` for a subnet that had changed
-    // its identity, with no degraded marker to say otherwise.
-    //
-    // `cursor` still has no default and must stay absent, which is what keeps
-    // this from being a blanket "everything is forwarded now" assertion.
-    test("flag=postgres forwards the pagination defaults the tool publishes", async () => {
-      let seenUrl: URL | undefined;
-      const env = {
-        METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            seenUrl = new URL(request.url);
-            return Response.json({
-              schema_version: 1,
-              netuid: 86,
-              entry_count: 0,
-              entries: [],
-            });
-          },
-        },
-      };
-      await callTool("get_subnet_identity_history", { netuid: 86 }, { env });
-      assert.equal(seenUrl!.pathname, "/api/v1/subnets/86/identity-history");
-      assert.equal(
-        seenUrl!.searchParams.get("limit"),
-        String(publishedDefaultOf("get_subnet_identity_history", "limit")),
-      );
-      assert.equal(
-        seenUrl!.searchParams.get("offset"),
-        String(publishedDefaultOf("get_subnet_identity_history", "offset")),
-      );
-      assert.equal(seenUrl!.searchParams.has("cursor"), false);
-    });
-  });
+  // DESCRIBE REMOVED (#10190): "get_subnet_identity_history D1 -> Postgres serving
+  // cutover" -- three tests on a cutover between two stores that no longer exist,
+  // asserting a forward that never happened and a D1 that was never queried
+  // because there is no D1. Restore against a live source with #10710.
 
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped
   // in production, so get_neuron_history always returns the schema-stable
@@ -23499,7 +23178,15 @@ describe("MCP get_rpc_usage — window handling and the cold shape", () => {
 // don't fit the shared CASES loop above (which hardcodes the neurons-tier
 // flag) -- same two-test-per-tool contract, just with the correct flag name
 // and its own CASES array.
-describe("MCP subnet-snapshots-tier analytics tools — Postgres tier wiring", () => {
+// REWRITTEN (#10190): was "MCP subnet-snapshots-tier analytics tools — Postgres
+// tier wiring". METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired everywhere and absent
+// from DATA_API_FORWARD_FLAGS, so the forwarded path and `marker: "from-postgres"`
+// these cases asserted came only from their own DATA_API stub.
+//
+// Unlike the identity tools, these two have a LIVE source -- `subnet_snapshots` is
+// a Neon table -- so what they owe is the tools' own contract: the window argument
+// is honoured, and the card is schema-stable when the store is empty.
+describe("MCP subnet-snapshots-tier analytics tools", () => {
   const CASES = [
     {
       tool: "get_subnet_trajectory",
@@ -23521,43 +23208,20 @@ describe("MCP subnet-snapshots-tier analytics tools — Postgres tier wiring", (
   for (const { tool, args, path } of CASES) {
     const label = path.includes("window=7d") ? `${tool} (window=7d)` : tool;
 
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: honours its arguments and returns a schema-stable card`, async () => {
+      const res = await callTool(tool, args, { env: {} });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
-    });
-
-    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
-      const env = {
-        METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("boom");
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
-      assert.equal(res.body.result.isError, false, label);
-      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+      const card = res.body.result.structuredContent;
+      assert.equal(card.schema_version, 1, label);
+      // The window/netuid the args asked for, echoed back rather than reset --
+      // `path` is kept as the REST equivalent this tool must stay aligned with.
+      if (tool === "get_subnet_trajectory") {
+        assert.equal(card.netuid, 7, label);
+      } else {
+        assert.equal(card.window, path.includes("7d") ? "7d" : "30d", label);
+      }
+      // No store bound here, so the card is the schema-stable empty one.
+      assert.equal(card.marker, undefined, label);
     });
   }
 

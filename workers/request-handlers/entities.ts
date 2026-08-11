@@ -1740,16 +1740,13 @@ export async function handleSubnetIdentityHistory(
   if (validationError) return analyticsQueryError(validationError);
   const page = resolvePage(url);
   const { limit, offset } = page;
-  const identityTier =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) as Record<string, unknown> | null) ?? null;
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // null on every request.
   // Through the composer (src/identity-history-answer.ts): same formatter and
   // data-api's exact cursor token, so a page started on one tier finishes
   // correctly on the other -- and MCP/GraphQL now reach it by the same route.
-  const data = (await answerSubnetIdentityHistory(env, netuid, identityTier, {
+  const data = (await answerSubnetIdentityHistory(env, netuid, null, {
     limit,
     offset,
     cursor: routeText(url, "cursor"),
@@ -2022,16 +2019,13 @@ export async function handleChainIdentityHistory(
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
   // live D1 read.
-  const chainIdentityTier =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) as Record<string, unknown> | null) ?? null;
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // null on every request.
   // Through the composer (src/identity-history-answer.ts): the frozen verified
   // history through the SAME formatter as the Postgres tier, for all three
   // surfaces rather than this one.
-  const data = (await answerChainIdentityHistory(env, chainIdentityTier, {
+  const data = (await answerChainIdentityHistory(env, null, {
     limit,
   })) as unknown as ReturnType<typeof buildChainIdentityHistory>;
   return envelopeResponse(

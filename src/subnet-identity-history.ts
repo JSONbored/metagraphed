@@ -181,20 +181,29 @@ function rowNetuid(value: unknown): number | null {
 // An unavailable/off tier degrades to an empty map -- every profile then
 // reads as "changed" for that one run, the same degrade recordSubnetIdentity
 // Changes already tolerates on a cold table.
-async function latestIdentityHashes(env: Env): Promise<Map<number, unknown>> {
-  const pg = await tryPostgresTier(
-    env,
-    new Request(
-      "https://api.metagraph.sh/api/v1/internal/subnet-identity-latest-hashes",
-    ),
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-  );
-  const map = new Map<number, unknown>();
-  for (const row of (pg?.hashes as Row[]) || []) {
-    const netuid = rowNetuid(row.netuid);
-    if (netuid != null) map.set(netuid, row.identity_hash);
-  }
-  return map;
+/**
+ * THERE IS NO BASELINE, and saying so is the point (#10700).
+ *
+ * This read `tryPostgresTier(..., "METAGRAPH_SUBNET_IDENTITY_SOURCE")` and
+ * derived the map from `pg?.hashes`. That flag reads "retired" in every deployed
+ * config and is absent from DATA_API_FORWARD_FLAGS, so the tier resolved to null
+ * on every call, `pg?.hashes` was always undefined, and the `|| []` absorbed it
+ * without a throw, a log or a degraded marker. The map has been empty in
+ * production ever since the flag was retired.
+ *
+ * The dead read is removed rather than kept as decoration, because it made this
+ * look like a source that might answer. It never did. The CONSEQUENCE is filed
+ * as #10700: `recordSubnetIdentityChanges` diffs against this map, so an empty
+ * one makes every subnet look changed on every tick, and the prober publishes
+ * that count. Removing the read does not change that behaviour -- it makes it
+ * visible, which is the prerequisite for fixing it.
+ *
+ * A real baseline wants a direct read of the latest hash per netuid from
+ * `subnet_identity_history` (a Neon table), the move src/health-status-live.ts
+ * already made when it stopped going through tryPostgresTier for the same reason.
+ */
+async function latestIdentityHashes(): Promise<Map<number, unknown>> {
+  return new Map<number, unknown>();
 }
 
 // D1 retirement (2026-07-16, item 10 of the D1->Postgres cleanup): D1's own
@@ -251,14 +260,29 @@ async function latestBlockNumber(env: Env): Promise<number | null> {
  */
 export async function recordSubnetIdentityChanges(
   env: Env,
-  { profiles, now = Date.now() }: { profiles?: Row[]; now?: number } = {},
+  {
+    profiles,
+    now = Date.now(),
+    // THE BASELINE, AS A SEAM (#10700). Its default returns an empty Map,
+    // because production has no source for it -- see latestIdentityHashes. It is
+    // injectable so the DIFF's contract stays specified and testable ("skips
+    // unchanged", "a read failure is read_failed") rather than being deleted
+    // along with the dead tier read that used to supply it. When #10700 lands a
+    // real read of subnet_identity_history, it lands here and every one of those
+    // tests already describes what it must do.
+    latestHashes = latestIdentityHashes,
+  }: {
+    profiles?: Row[];
+    now?: number;
+    latestHashes?: (env: Env) => Promise<Map<number, unknown>>;
+  } = {},
 ): Promise<Row> {
   if (!Array.isArray(profiles) || profiles.length === 0) {
     return { recorded: false, reason: "unavailable" };
   }
   let latestByNetuid: Map<number, unknown>;
   try {
-    latestByNetuid = await latestIdentityHashes(env);
+    latestByNetuid = await latestHashes(env);
   } catch (error) {
     // #4832 gap-closure follow-up: a swallowed read error here dark-served
     // the identity-history diff for an unknown stretch before anyone

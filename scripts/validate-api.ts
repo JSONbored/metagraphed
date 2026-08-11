@@ -21,7 +21,6 @@ import { buildAccountEvents } from "../src/account-events.ts";
 import { buildSubnetMetagraph } from "../src/metagraph-neurons.ts";
 import { buildSubnetHyperparams } from "../src/subnet-hyperparams.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
-import { buildSubnetIdentityHistory } from "../src/subnet-identity-history.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 import { taoToRao } from "../src/emission-decomposition.ts";
 import {
@@ -2879,7 +2878,6 @@ for (const [route, assertion, options = {}] of checks) {
   const OBSERVED_AT_MS = 1_750_009_000_000;
   const BLOCK_NUM = 1_000_000;
   const HASH = `0x${"a".repeat(64)}`;
-  const IDENTITY_HASH = "a".repeat(64);
 
   const blockRow = {
     block_number: BLOCK_NUM,
@@ -2964,18 +2962,8 @@ for (const [route, assertion, options = {}] of checks) {
     additional: null,
     captured_at: OBSERVED_AT_MS,
   };
-  const identityHistoryRow = {
-    block_number: BLOCK_NUM,
-    observed_at: OBSERVED_AT_MS,
-    subnet_name: "Example Subnet",
-    symbol: null,
-    description: null,
-    github_repo: null,
-    subnet_url: null,
-    discord: null,
-    logo_url: null,
-    identity_hash: IDENTITY_HASH,
-  };
+  // `identityHistoryRow` went with the METAGRAPH_SUBNET_IDENTITY_SOURCE case
+  // (#10190) -- it was the only fixture that used it.
 
   interface PostgresTierCheck {
     flag: string;
@@ -3041,18 +3029,10 @@ for (const [route, assertion, options = {}] of checks) {
       data: buildAccountIdentity(identityRow, SS58),
       assertion: (body) => assert.equal(body.data.name, "Example Operator"),
     },
-    {
-      flag: "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      route: "/api/v1/subnets/7/identity-history?limit=5",
-      upstreamPath: "/api/v1/subnets/7/identity-history?limit=5",
-      data: buildSubnetIdentityHistory([identityHistoryRow], 7, {
-        limit: 5,
-        offset: 0,
-        nextCursor: null,
-      }),
-      assertion: (body) =>
-        assert.equal(body.data.entries[0].identity_hash, IDENTITY_HASH),
-    },
+    // METAGRAPH_SUBNET_IDENTITY_SOURCE's case was REMOVED (#10190): every
+    // tryPostgresTier call under that flag is gone, so there is no forward left to
+    // prove. The route's real leg is the lakehouse cold tier, and nothing writes
+    // subnet_identity_history at all until #10710 restores it as a Neon lane.
     // METAGRAPH_RPC_USAGE_SOURCE's case was REMOVED (#10190): src/rpc-usage-answer.ts
     // no longer has a Postgres arm at all, so there is no forward left to prove.
     // The route's cascade is Analytics Engine, then the lakehouse, then the zeroed
@@ -3061,8 +3041,8 @@ for (const [route, assertion, options = {}] of checks) {
 
   assert.equal(
     postgresTierChecks.length,
-    7,
-    "postgres-tier AJV coverage must include all 7 flags that gate a DATA_API leg",
+    6,
+    "postgres-tier AJV coverage must include all 6 flags that gate a DATA_API leg",
   );
 
   for (const {

@@ -1663,7 +1663,13 @@ describe("analytics edge cache", () => {
         keyParts: "trajectory",
         path: "/api/v1/subnets/7/trajectory",
         search: "",
-        flag: "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
+        // NO TIER (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
+        // absent from DATA_API_FORWARD_FLAGS, so this route is cacheable on a
+        // LIVE STORE hit rather than a tier hit -- which is what it has actually
+        // been doing. `store: true` gives it the pg mock plus a Hyperdrive
+        // binding, since handleTrajectory marks an unbound read a fallback and a
+        // fallback is deliberately never cached.
+        store: true,
       },
       {
         keyParts: "uptime",
@@ -1677,7 +1683,9 @@ describe("analytics edge cache", () => {
       const cache = mockCaches();
       cache.install();
       const calls: unknown[] = [];
-      const env = postgresTierEnv(calls, { flag: r.flag });
+      const env = r.store
+        ? { ...postgresTierEnv(calls), ...pgMockEnv() }
+        : postgresTierEnv(calls, { flag: r.flag });
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
       // MISS: calls the Postgres tier and caches under the route's key.
@@ -1693,8 +1701,11 @@ describe("analytics edge cache", () => {
         `${r.keyParts}: cached under its expected key`,
       );
       const callsAfterMiss = calls.length;
+      const matchesAfterMiss = cache.matchCalls;
 
-      // HIT: served from cache, no additional Postgres-tier call.
+      // HIT: served from cache. For the tier routes that means no further
+      // DATA_API call; for the store route there is no tier to count, so the
+      // claim is the one that still means something -- the cache answered.
       const hit = await handleRequest(
         new Request(url),
         env as unknown as Env,
@@ -1704,7 +1715,11 @@ describe("analytics edge cache", () => {
       assert.equal(
         calls.length,
         callsAfterMiss,
-        `${r.keyParts}: a HIT issues no further Postgres-tier call`,
+        `${r.keyParts}: a HIT issues no further upstream call`,
+      );
+      assert.ok(
+        cache.matchCalls > matchesAfterMiss,
+        `${r.keyParts}: the HIT went through the cache`,
       );
     }
   });

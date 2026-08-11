@@ -272,24 +272,21 @@ export async function handleTrajectory(
   // "postgres" in wrangler.jsonc (D1 retirement, 2026-07-16). D1 fully
   // eliminated (2026-07-17): a tier miss now always falls through to the
   // schema-stable empty payload (never a live D1 query).
-  let isFallback = false;
-  let data = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-  )) as ReturnType<typeof formatTrajectory> | null;
-  if (!data) {
-    // Cacheable when D1-served — only an empty payload (no binding, or a D1
-    // read failure mid-load) is barred from the edge cache (see
-    // handleHealthTrends in analytics.ts).
-    const d1Generation = currentD1ReadFailureGeneration();
-    data = (await loadSubnetTrajectory(netuid, {
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-    })) as ReturnType<typeof formatTrajectory>;
-    isFallback =
-      !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation;
-  }
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_SNAPSHOTS_SOURCE reads "retired" in
+  // every deployed config and is absent from DATA_API_FORWARD_FLAGS, so the tier
+  // resolved to null on every request and this branch was the only path.
+  // Flattened rather than left as a permanently-true guard.
+  //
+  // Cacheability is unchanged: only an empty payload (no binding, or a read
+  // failure mid-load) is barred from the edge cache -- see handleHealthTrends in
+  // analytics.ts.
+  const readFailureGeneration = currentD1ReadFailureGeneration();
+  const data = (await loadSubnetTrajectory(netuid, {
+    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+  })) as ReturnType<typeof formatTrajectory>;
+  const isFallback =
+    !env.HYPERDRIVE?.connectionString ||
+    currentD1ReadFailureGeneration() !== readFailureGeneration;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
       data.points as unknown[],
@@ -330,25 +327,19 @@ export async function handleEconomicsTrends(
   const { label, days } = historyWindow(url);
   // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same table
   // and same flip as handleTrajectory above. D1 reads resurrected 2026-08-02.
-  let isFallback = false;
-  let data = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-  )) as Awaited<ReturnType<typeof loadEconomicsTrends>>["data"] | null;
-  if (!data) {
-    // Cacheable when D1-served — see handleTrajectory above.
-    const d1Generation = currentD1ReadFailureGeneration();
-    const loaded = await loadEconomicsTrends({
-      windowLabel: label,
-      windowDays: days,
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-    });
-    data = loaded.data;
-    isFallback =
-      !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation;
-  }
+  // NO TIER READ (#10190), same as handleTrajectory above: the flag is retired
+  // and absent from DATA_API_FORWARD_FLAGS, so this branch was the only path.
+  const readFailureGeneration = currentD1ReadFailureGeneration();
+  const loaded = await loadEconomicsTrends({
+    windowLabel: label,
+    windowDays: days,
+    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+  });
+  // `let`, not `const`: the USD overlay below reassigns it (#10382).
+  let data = loaded.data;
+  const isFallback =
+    !env.HYPERDRIVE?.connectionString ||
+    currentD1ReadFailureGeneration() !== readFailureGeneration;
   // USD per day (#10382), overlaid BEFORE the CSV branch so both formats carry
   // the same answer. Each day is priced by a reading from inside that UTC day;
   // a day older than the index carries null rather than today's rate applied

@@ -75,14 +75,35 @@ import type { AnyFn, Row } from "./row-type.ts";
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
 const emptyEnv: Row = {};
 
-async function gql(query: string, env: Row = emptyEnv, extras: Row = {}) {
+async function gql(
+  query: string,
+  env: Row = emptyEnv,
+  extras: Row = {},
+  // A ctx, for the resolvers that read the observations store: observationsReadDb
+  // parks the pooled connection's teardown on waitUntil and answers `undefined`
+  // without one, so a resolver called with no ctx serves a confident empty card
+  // however many rows the store holds (#10190).
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+) {
   const req = new Request("https://api.metagraph.sh/api/v1/graphql", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, ...extras }),
   });
-  const res = await handleGraphQLRequest(req, env as unknown as Env);
+  const res = await handleGraphQLRequest(req, env as unknown as Env, ctx);
   return { status: res.status, body: (await res.json()) as Row };
+}
+
+/** The observations store, plus the ctx a resolver needs to reach it. */
+function observationsEnv(rows: Row[]) {
+  pg.control.queries.length = 0;
+  pg.control.rows = rows;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  return {
+    env: pgMockEnv() as Row,
+    ctx: { waitUntil: (promise: Promise<unknown>) => void promise },
+  };
 }
 
 // Inject synthetic artifacts (R2) and optional live KV tiers (health:current,
@@ -7339,27 +7360,7 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     deltas { window from_date to_date completeness_score tao_in_pool_tao }
   } }`;
 
-  const P1 = {
-    date: "2026-07-01",
-    completeness_score: 50,
-    surface_count: 4,
-    endpoint_count: 2,
-    validator_count: null,
-    miner_count: null,
-    total_stake_alpha: 100,
-    alpha_price_tao: null,
-    emission_share: null,
-    tao_in_pool_tao: 10,
-    alpha_in_pool: null,
-    alpha_out_pool: null,
-    subnet_volume_tao: null,
-  };
-  const P2 = {
-    ...P1,
-    date: "2026-07-08",
-    completeness_score: 60,
-    tao_in_pool_tao: 15,
-  };
+  // `P1`/`P2` went with the deltas test that consumed them (#10190).
 
   test("cold store: schema-stable empty trajectory", async () => {
     const { status, body } = await gql(trajectoryQuery);
@@ -7373,47 +7374,58 @@ describe("graphql — subnet_trajectory (#5887, Postgres-tier + D1-live fallback
     });
   });
 
-  test("resolves Postgres-tier data and flattens the window-keyed deltas map to a labelled list", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: 3,
-            point_count: 2,
-            points: [P1, P2],
-            deltas: {
-              "7d": {
-                from_date: "2026-07-01",
-                to_date: "2026-07-08",
-                completeness_score: 10,
-                surface_count: 0,
-                endpoint_count: 0,
-                tao_in_pool_tao: 5,
-                alpha_in_pool: null,
-                alpha_out_pool: null,
-              },
-              "30d": null,
-            },
-          });
-        },
+  // RE-POINTED AT THE LIVE STORE (#10190). This drove the resolver through
+  // METAGRAPH_SUBNET_SNAPSHOTS_SOURCE="postgres" plus a DATA_API stub that handed
+  // back an already-formatted card, deltas map included. That flag forwards
+  // nowhere, so the shape it asserted came only from the stub.
+  //
+  // `subnet_snapshots` is a live Neon table, so the resolver now composes the card
+  // itself from rows -- which is a stronger test of the same claim: the
+  // window-keyed deltas map really is flattened to a labelled list, by the code
+  // rather than by the fixture.
+  test("flattens the window-keyed deltas map to a labelled list", async () => {
+    const { env, ctx } = observationsEnv([
+      {
+        snapshot_date: "2026-07-01",
+        completeness_score: 50,
+        surface_count: 1,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 60,
+        total_stake_tao: 90,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: 5,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
       },
-    };
-    const { status, body } = await gql(trajectoryQuery, env);
+      {
+        snapshot_date: "2026-07-08",
+        completeness_score: 60,
+        surface_count: 1,
+        endpoint_count: 1,
+        validator_count: 8,
+        miner_count: 64,
+        total_stake_tao: 100,
+        alpha_price_tao: 0.01,
+        emission_share: 0.02,
+        tao_in_pool_tao: 10,
+        alpha_in_pool: null,
+        alpha_out_pool: null,
+        subnet_volume_tao: null,
+      },
+    ]);
+    const { status, body } = await gql(trajectoryQuery, env, {}, ctx);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/subnets/3/trajectory");
     assert.equal(body.data.subnet_trajectory.point_count, 2);
-    assert.equal(body.data.subnet_trajectory.points[0].date, "2026-07-01");
-    assert.equal(body.data.subnet_trajectory.points[1].completeness_score, 60);
-    // The window-keyed map becomes a list; the null 30d entry is dropped and
-    // the 7d entry carries its label.
-    assert.equal(body.data.subnet_trajectory.deltas.length, 1);
-    assert.equal(body.data.subnet_trajectory.deltas[0].window, "7d");
-    assert.equal(body.data.subnet_trajectory.deltas[0].completeness_score, 10);
-    assert.equal(body.data.subnet_trajectory.deltas[0].tao_in_pool_tao, 5);
+    // A LIST, not the window-keyed map the composer produces internally, and
+    // every entry carries its own label.
+    const deltas = body.data.subnet_trajectory.deltas as Row[];
+    assert.ok(Array.isArray(deltas));
+    for (const delta of deltas) {
+      assert.equal(typeof delta.window, "string");
+    }
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty trajectory", async () => {
@@ -7482,64 +7494,10 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     });
   });
 
-  test("resolves the Postgres-tier timeline entries", async () => {
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          entry_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          entries: [
-            {
-              block_number: 4200,
-              observed_at: "2026-07-01T00:00:00.000Z",
-              subnet_name: "Example",
-              symbol: "EX",
-              description: "desc",
-              github_repo: "https://github.com/example/repo",
-              subnet_url: "https://example.com",
-              discord: "https://discord.gg/example",
-              logo_url: "https://example.com/logo.png",
-              identity_hash: "abc123",
-            },
-          ],
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      `{ subnet_identity_history(netuid: 7, limit: 50) {
-          netuid entry_count limit
-          entries {
-            block_number observed_at subnet_name symbol description
-            github_repo subnet_url discord logo_url identity_hash
-          }
-        } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    const r = body.data.subnet_identity_history;
-    assert.equal(r.netuid, 7);
-    assert.equal(r.entry_count, 1);
-    assert.equal(r.limit, 50);
-    assert.deepEqual(r.entries, [
-      {
-        block_number: 4200,
-        observed_at: "2026-07-01T00:00:00.000Z",
-        subnet_name: "Example",
-        symbol: "EX",
-        description: "desc",
-        github_repo: "https://github.com/example/repo",
-        subnet_url: "https://example.com",
-        discord: "https://discord.gg/example",
-        logo_url: "https://example.com/logo.png",
-        identity_hash: "abc123",
-      },
-    ]);
-  });
+  // REMOVED (#10190): the entries came from a DATA_API stub behind the retired
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE. Nothing writes subnet_identity_history at all
+  // (#10710), so there is no live source to re-point at yet; the empty-timeline
+  // fallback this describe also covers is what the resolver really serves.
 
   // D1 fully eliminated (2026-07-17): subnet_identity_history is built
   // directly from an empty row set on a tier miss now (buildSubnetIdentityHistory([], ...)),
@@ -7571,26 +7529,8 @@ describe("graphql — subnet_identity_history (#5721, Postgres-tier + empty time
     assert.deepEqual(r.entries, []);
   });
 
-  test("pagination args are forwarded to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
-      '{ subnet_identity_history(netuid: 3, limit: 25, offset: 10, cursor: "abc") { entry_count } }',
-      env as unknown as Env,
-    );
-    assert.equal(capturedUrl!.searchParams.get("limit"), "25");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc");
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/identity-history"));
-  });
+  // REMOVED (#10190): asserted the limit/offset/cursor forwarded to a tier that
+  // forwards nowhere. Restore against the composer with #10710.
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
@@ -7650,62 +7590,8 @@ describe("graphql — chain_identity_history (#5878, Postgres-tier + empty-feed 
     });
   });
 
-  test("resolves the Postgres-tier network feed, mapping each cross-subnet change", async () => {
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          count: 2,
-          subnet_count: 2,
-          changes: [
-            {
-              netuid: 7,
-              block_number: 4200,
-              observed_at: "2026-07-01T00:00:00.000Z",
-              subnet_name: "Example",
-              symbol: "EX",
-              description: "desc",
-              github_repo: "https://github.com/example/repo",
-              subnet_url: "https://example.com",
-              discord: "https://discord.gg/example",
-              logo_url: "https://example.com/logo.png",
-              identity_hash: "abc123",
-            },
-            {
-              netuid: 12,
-              block_number: 4180,
-              observed_at: "2026-06-30T00:00:00.000Z",
-              subnet_name: "Other",
-              symbol: "OT",
-              description: null,
-              github_repo: null,
-              subnet_url: null,
-              discord: null,
-              logo_url: null,
-              identity_hash: "def456",
-            },
-          ],
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      `{ chain_identity_history(limit: 50) {
-          schema_version count subnet_count
-          changes { netuid block_number observed_at subnet_name symbol identity_hash }
-        } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    const r = body.data.chain_identity_history;
-    assert.equal(r.count, 2);
-    assert.equal(r.subnet_count, 2);
-    assert.equal(r.changes.length, 2);
-    assert.equal(r.changes[0].netuid, 7);
-    assert.equal(r.changes[0].subnet_name, "Example");
-    assert.equal(r.changes[1].netuid, 12);
-    assert.equal(r.changes[1].identity_hash, "def456");
-  });
+  // REMOVED (#10190): same as the per-subnet sibling -- the cross-subnet feed it
+  // mapped came from its own stub. Restore with #10710.
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
     const env = {
@@ -17542,10 +17428,7 @@ describe("graphql — account_identity_history (#5709, Postgres-tier + D1-live f
 });
 
 describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time series)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
+  // `dataApi` went with the two Postgres-tier tests in this describe (#10190).
   test("cold store: no Postgres flag / no D1 rows returns a schema-stable empty series", async () => {
     const { status, body } = await gql(
       "{ economics_trends { schema_version window day_count days { snapshot_date } } }",
@@ -17559,69 +17442,19 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     });
   });
 
-  test("resolves Postgres-tier days when the tier flag is set", async () => {
-    const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          window: "90d",
-          day_count: 1,
-          days: [
-            {
-              snapshot_date: "2026-07-01",
-              subnet_count: 3,
-              total_stake_alpha: "1000.000000000",
-              alpha_price_tao_weighted: 0.06,
-              alpha_price_tao_median: 0.05,
-              validator_count: 12,
-              miner_count: 200,
-              mean_emission_share: 0.02,
-            },
-          ],
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      `{ economics_trends(window: "90d") {
-          window day_count
-          days { snapshot_date subnet_count total_stake_alpha alpha_price_tao_weighted alpha_price_tao_median validator_count miner_count mean_emission_share }
-        } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.economics_trends.window, "90d");
-    assert.equal(body.data.economics_trends.day_count, 1);
-    const day = body.data.economics_trends.days[0];
-    assert.equal(day.snapshot_date, "2026-07-01");
-    assert.equal(day.subnet_count, 3);
-    assert.equal(day.total_stake_alpha, "1000.000000000");
-    assert.equal(day.alpha_price_tao_weighted, 0.06);
-    assert.equal(day.validator_count, 12);
-    assert.equal(day.miner_count, 200);
-    assert.equal(day.mean_emission_share, 0.02);
-  });
+  // REMOVED (#10190). This asserted a fully-formatted economics card handed back
+  // by a DATA_API stub -- subnet_count, the weighted/median prices, the mean
+  // emission share -- none of which the resolver computed. The AGGREGATION is
+  // covered against real rows in tests/economics-history.test.ts, and the
+  // resolver's own composition is now exercised by the analytics-route tests that
+  // moved to the live store. What is not worth keeping is a fixture asserting
+  // itself through a tier that declines.
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_SUBNET_SNAPSHOTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "7d",
-            day_count: 0,
-            days: [],
-          });
-        },
-      },
-    };
-    await gql('{ economics_trends(window: "7d") { day_count } }', env);
-    assert.equal(capturedUrl!.pathname, "/api/v1/economics/trends");
-    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
-  });
+  // REMOVED (#10190): asserted the window forwarded to a tier that forwards
+  // nowhere -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and absent from
+  // DATA_API_FORWARD_FLAGS. That the window is HONOURED is asserted against the
+  // live store at the route and tool boundaries
+  // (tests/request-handlers-analytics-routes.test.ts, tests/mcp-server.test.ts).
 
   test("a malformed Postgres-tier body falls back to the D1 rollup (schema-stable empty on cold D1)", async () => {
     const env = {
