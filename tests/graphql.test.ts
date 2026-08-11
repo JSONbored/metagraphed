@@ -5275,7 +5275,7 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
         call_module: "AdminUtils",
         call_function: "sudo_set_weights_set_rate_limit",
         // A JSON STRING -- the lane's own column type (see above).
-        call_args: JSON.stringify([{ name: "netuid", value: 3 }]),
+        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
         success: true,
         fee_tao: 0,
         tip_tao: 0,
@@ -14628,7 +14628,9 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
       netuid: NETUID,
       window: "7d",
       observed_at: null,
-      source: null,
+      // The BUILDER stamps the prober label; the retired tier's `{}` body fell
+      // through the resolver's `??` to null instead (#10190).
+      source: "live-cron-prober",
       surfaces: [],
     });
   });
