@@ -330,7 +330,15 @@ export async function flushBuffer(
       // alarm, and a failure here is nearly always the connection rather than
       // the row -- so the rest would fail too, one wasted round trip each.
       await storage.delete(drainedKeys);
-      await storage.put({ [PENDING_KEY]: await countPending(storage) });
+      // Decrement, never scan -- same reason as the success path below.
+      await storage.put({
+        [PENDING_KEY]: Math.max(
+          0,
+          ((await storage.get<number>(PENDING_KEY)) ?? 0) -
+            drained -
+            undecodable,
+        ),
+      });
       await recordFlushVerdicts(laneDb, perLane, now());
       const reason = error instanceof Error ? error.message : String(error);
       await capture(asEnv, {
@@ -352,12 +360,28 @@ export async function flushBuffer(
   }
 
   await storage.delete(drainedKeys);
-  // RECONCILE, do not just decrement. A drain that was not truncated has
-  // emptied the buffer by definition, so writing the true value here stops any
-  // drift between the counter and the keys from accumulating -- a counter that
-  // can only be adjusted is a counter that eventually lies.
+  // O(1) ON BOTH PATHS (#10775). This reconciled with countPending() when the
+  // drain was truncated -- which is the same full storage.list() that #10755
+  // removed from the enqueue, just moved into the alarm. Measured in
+  // production: the flush at 13:23:12 drained its 500 and then did NOT come
+  // back for the remainder, because the scan on a large backlog outran the
+  // handler.
+  //
+  // A clean drain still reconciles to the TRUE value, and that is where drift
+  // gets corrected: an untruncated flush has emptied the buffer by definition,
+  // so 0 is exact and costs nothing to write. A truncated one decrements, which
+  // can drift slightly but is bounded and self-corrects on the next clean
+  // drain -- and a counter that is slightly high only makes the ceiling
+  // slightly conservative, which is the safe direction.
   await storage.put({
-    [PENDING_KEY]: truncated ? Math.max(0, await countPending(storage)) : 0,
+    [PENDING_KEY]: truncated
+      ? Math.max(
+          0,
+          ((await storage.get<number>(PENDING_KEY)) ?? 0) -
+            drained -
+            undecodable,
+        )
+      : 0,
   });
   await recordFlushVerdicts(laneDb, perLane, now());
   await recordLaneVerdict(laneDb, {
