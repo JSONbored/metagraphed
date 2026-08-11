@@ -16350,21 +16350,24 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([
-      {
-        block_number: 1200,
-        event_index: 3,
-        event_kind: "StakeAdded",
-        hotkey: SS58,
-        coldkey: OTHER,
-        netuid: 7,
-        uid: 42,
-        amount_tao: 1.5,
-        alpha_amount: 2.25,
-        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
-        extrinsic_index: 4,
-      },
-    ]);
+    const lake = lakehouse(
+      [
+        {
+          block_number: 1200,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: OTHER,
+          netuid: 7,
+          uid: 42,
+          amount_tao: 1.5,
+          alpha_amount: 2.25,
+          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+          extrinsic_index: 4,
+        },
+      ],
+      { once: true },
+    );
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
@@ -16403,7 +16406,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([]);
+    const lake = lakehouse([], { once: true });
     const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
@@ -16429,7 +16432,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
     // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
     // produces no predicate. Asserting the SQL is what the clamp actually reaches.
-    const lake = lakehouse([]);
+    const lake = lakehouse([], { once: true });
     const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
     const sql = lake.queries[0];
@@ -16468,7 +16471,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([{}]);
+    const lake = lakehouse([{}], { once: true });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
@@ -16762,13 +16765,19 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     // #10190: the tier is retired; one bare day row through the lakehouse is
     // what degrades now. `event_kinds` comes from the SECOND read, so an empty
     // kinds list here is the honest answer rather than an omitted field.
-    const lake = lakehouse((sql) => (sql.includes("event_kind") ? [] : [{}]));
+    // The rollup row must carry its `day` -- that is the reader's grouping key,
+    // and a row without one is not a day. Every OTHER field is omitted, which is
+    // the degradation under test.
+    const lake = lakehouse((sql) =>
+      sql.includes("event_kind") ? [] : [{ day: "2026-06-25" }],
+    );
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_history.days, [
       {
-        day: null,
+        // The grouping key survives; everything else degrades.
+        day: "2026-06-25",
         netuid: null,
         event_count: null,
         event_kinds: [],
@@ -16803,6 +16812,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       next_cursor: null,
       days: [],
     });
+    lake.restore();
   });
 
   test("rejects a malformed ss58 before hitting the Postgres tier", async () => {
