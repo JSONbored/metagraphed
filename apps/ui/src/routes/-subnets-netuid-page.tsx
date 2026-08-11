@@ -60,6 +60,7 @@ import { SearchInput } from "@/components/metagraphed/table-controls";
 import { ReliabilityPanel } from "@/components/metagraphed/reliability-panel";
 import { EconomicsPanel } from "@/components/metagraphed/economics-panel";
 import { SubnetEmissionPanel } from "@/components/metagraphed/subnet-emission-panel";
+import { SubnetRevenuePanel } from "@/components/metagraphed/subnet-revenue-panel";
 import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-snippet";
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
@@ -642,6 +643,17 @@ function EconomicsTabPanel({ netuid }: { netuid: number }) {
         info="Live chain economics from the Bittensor metagraph — emission share, alpha price, stake, validator/miner counts, and subnet volume."
       >
         <EconomicsPanel netuid={netuid} />
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="revenue-coverage"
+        title="Revenue vs emissions"
+        subtitle="What this subnet earns from outside Bittensor, against the TAO the network emits to it."
+        info="GET /api/v1/subnets/{netuid}/revenue — external revenue over emission received. Only chain-verified and probe-derived readings reach the ratio; a subnet with no readable public figure shows 'not observed', which is not the same as zero. 127 of 129 subnets are in that state."
+      >
+        <QueryErrorBoundary>
+          <SubnetRevenuePanel netuid={netuid} />
+        </QueryErrorBoundary>
       </SectionAnchor>
 
       <SectionAnchor
