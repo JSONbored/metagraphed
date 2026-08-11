@@ -4929,10 +4929,11 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ sudo { items { call_module } total next_cursor } }",
       env as unknown as Env,
@@ -5145,10 +5146,11 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ extrinsics { items { call_module } total next_cursor } }",
       env as unknown as Env,
@@ -5618,10 +5620,11 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   });
 
   test("blocks: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_BLOCKS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ blocks { items { block_number } total next_cursor } }",
       env as unknown as Env,
@@ -7715,10 +7718,11 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   });
 
   test("account: a malformed Postgres-tier body degrades to a schema-stable zero summary", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count event_scan_capped first_block last_block event_kinds { kind } registrations { netuid } recent_events { block_number } activity { tx_count modules_called { call_module } } } }`,
       env as unknown as Env,
@@ -7828,10 +7832,11 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_prometheus, {
@@ -7978,10 +7983,11 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_stake_flow, {
@@ -8648,10 +8654,11 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_extrinsics, {
@@ -14591,10 +14598,11 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
   });
 
   test("an empty Postgres-tier body degrades to schema-stable defaults with empty surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID})`),
       env as unknown as Env,
@@ -15512,10 +15520,11 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_weight_setters, {
@@ -17486,10 +17495,11 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(weightsQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_weights.window, "7d");
@@ -17642,10 +17652,11 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("an empty Postgres-tier body (no calls key) degrades to a schema-stable empty breakdown", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(callsQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_calls, {
@@ -17795,10 +17806,11 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("an empty Postgres-tier body (no days key) degrades to an empty series", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(activityQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_activity, {
@@ -17957,10 +17969,11 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("an empty Postgres-tier body (no daily/top_fee_payers keys) degrades to empty lists", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(feesQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_fees, {
@@ -18079,10 +18092,11 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(servingQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_serving.window, "7d");
@@ -18178,10 +18192,11 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(weightSettersQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_weight_setters.window, "7d");
@@ -18305,10 +18320,11 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(alphaVolumeQuery(), env);
     assert.equal(status, 200);
     const card = body.data.chain_alpha_volume;
@@ -18430,16 +18446,22 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(trendsQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.health_trends.schema_version, 1);
     assert.equal(body.data.health_trends.observed_at, null);
-    assert.equal(body.data.health_trends.source, null);
-    assert.deepEqual(body.data.health_trends.windows, {});
+    // The floor is the BUILDER's zeroed card now, not the resolver's `??`
+    // defaults: with the tier gone there is no `{}` body to fall through, so
+    // the reader declines and the builder runs. `source` is the prober label
+    // the card carries, and the windows are materialised rather than absent --
+    // which is what production has been serving all along (#10190).
+    assert.equal(body.data.health_trends.source, "live-cron-prober");
+    assert.ok(Object.keys(body.data.health_trends.windows).length > 0);
   });
 
   // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
@@ -18548,19 +18570,23 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(trendsQuery(NETUID), env);
     assert.equal(status, 200);
-    assert.deepEqual(body.data.subnet_health_trends, {
-      schema_version: 1,
-      netuid: NETUID,
-      observed_at: null,
-      source: null,
-      windows: {},
-    });
+    // The floor is the BUILDER's zeroed card now, not the resolver's `??`
+    // defaults: with the tier gone there is no `{}` body to fall through, so
+    // the reader declines and the builder runs. `source` is the prober label
+    // the card carries, and the windows are materialised rather than absent --
+    // which is what production has been serving all along (#10190).
+    assert.equal(body.data.subnet_health_trends.schema_version, 1);
+    assert.equal(body.data.subnet_health_trends.netuid, NETUID);
+    assert.equal(body.data.subnet_health_trends.observed_at, null);
+    assert.equal(body.data.subnet_health_trends.source, "live-cron-prober");
+    assert.ok(Object.keys(body.data.subnet_health_trends.windows).length > 0);
   });
 
   test("subnet_health_trends is weighted as a fan-out field", () => {
@@ -18880,10 +18906,11 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(uptimeQuery(), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.subnet_uptime, {
@@ -21437,10 +21464,11 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(prometheusQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -21613,10 +21641,11 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(removalsQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -21789,10 +21818,11 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(regQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -21966,10 +21996,11 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(deregQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22141,10 +22172,11 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22428,10 +22460,11 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(flowQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_flow.subnet_count, 0);
@@ -22506,10 +22539,11 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(movesQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_moves.window, "7d");
@@ -22586,10 +22620,11 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(transfersQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_transfers.subnet_count, 0);
@@ -22681,10 +22716,11 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(pairsQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_transfer_pairs.pair_count, 0);
@@ -22757,10 +22793,11 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(xfersQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_transfers.transfer_count, 0);
