@@ -4481,6 +4481,20 @@ async function handleNominatorPositionsSyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/self-stake-sync -- the second writer into
+// nominator_positions (#10845). Its own route rather than the sibling's,
+// because that one prunes per `coldkey` and self-stake's rows are absent from
+// the Alpha scan by construction; see the data-api handler's own header.
+async function handleSelfStakeSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "self_stake_sync_unavailable",
+    notBoundMessage:
+      "The self-stake sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The self-stake sync tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (#6742). Same DATA_API service binding as the other
 // internal sync routes above. This proxy was missing entirely (data-api.ts's
@@ -5398,6 +5412,9 @@ async function dispatchRequest(
   }
   if (url.pathname === "/api/v1/internal/subnet-ownership-sync") {
     return handleSubnetOwnershipSyncProxy(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/self-stake-sync") {
+    return handleSelfStakeSyncProxy(request, env);
   }
   // The write path into validator_nominator_counts (#2549) --
   // refresh-validator-nominator-counts's own low-frequency cron calls this,

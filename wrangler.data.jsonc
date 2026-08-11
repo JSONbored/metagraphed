@@ -179,7 +179,7 @@
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
-    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,subnet-identity,chain-detail,blocks-head,raw-capture-state,subnet-ownership",
+    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,subnet-identity,chain-detail,blocks-head,raw-capture-state,subnet-ownership,self-stake",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above

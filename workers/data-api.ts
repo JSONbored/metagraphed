@@ -393,6 +393,8 @@ import {
 import {
   coldkeyMaxCapturedAt,
   mirrorNominatorPositionsToNeon,
+  POSITION_SOURCE_SELF_STAKE,
+  SELF_STAKE_NEON_LANE,
 } from "../src/nominator-positions-neon-write.ts";
 import {
   LEDGER_MIRROR_PLANS,
@@ -2689,6 +2691,147 @@ async function handleNominatorPositionsSync(
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
+  });
+}
+
+// --- POST /api/v1/internal/self-stake-sync (#10845) -----------------------
+//
+// THE SAME TABLE AS nominator-positions-sync, AND NOT THE SAME ROUTE, which is
+// the whole point (metagraphed-infra#473).
+//
+// `self-stake` fills a gap `validator-nominators`' Alpha scan cannot: an owner's
+// own stake on their own hotkey frequently has NO `SubtensorModule::Alpha`
+// entry -- `{bits: 0}` on ~91% of one hotkey's registered pairs -- even when
+// the runtime-computed stake is large. Those rows belong in
+// `nominator_positions`, because a validator's own stake is often its largest
+// position and eight surfaces read that table.
+//
+// BUT IT CANNOT REUSE THE OTHER ROUTE, and reusing it would delete data. That
+// route PRUNES per `coldkey`: every row for a posted `coldkey` older than the
+// newest captured_at that same `coldkey` carries in the request. And
+// `validator-nominators` may do
+// that because `pack_coldkey_chunks` never splits a `coldkey`. `self-stake`
+// cannot: its rows are absent from the Alpha scan BY CONSTRUCTION, so they are
+// always "older than this pass" from the other lane's point of view, and any
+// owner who also nominates elsewhere would lose their self-stake row within a
+// day of it being written.
+//
+// So each producer owns a PRUNE DOMAIN -- 0027's `source` column -- and this
+// route writes `source='self-stake'` and prunes only that. `source` is stamped
+// by the writer, never accepted from the wire: a producer that could name its
+// own source could claim the other lane's domain and delete its rows.
+//
+// NO PASS TALLY, unlike its sibling. `nominator_positions_passes` records
+// completeness of a full keyspace scan; self-stake is a targeted read over
+// registered (hotkey, netuid) pairs and declaring it complete would corrupt
+// the ledger the other lane's consumers gate on.
+const SELF_STAKE_SYNC_TOKEN_HEADER = "x-self-stake-sync-token";
+// One runtime API call per (hotkey, netuid) pair makes this lane WEEKLY and
+// far smaller than the Alpha scan, but the ceilings match its sibling's so a
+// producer cannot be surprised by a different limit on the same table.
+const SELF_STAKE_SYNC_MAX_BODY_BYTES = 8_000_000;
+const SELF_STAKE_SYNC_MAX_ROWS = 25_000;
+
+async function handleSelfStakeSync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
+  if (!env.SELF_STAKE_SYNC_SECRET) {
+    return writeJson(
+      { error: "self-stake sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(SELF_STAKE_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.SELF_STAKE_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${SELF_STAKE_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SELF_STAKE_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SELF_STAKE_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of self-stake position rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > SELF_STAKE_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SELF_STAKE_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  // The SAME row schema as its sibling, deliberately: same table, same columns,
+  // same bounds. A second schema would be a second place for the shape to drift
+  // from the writer's own INSERT column list.
+  const check = validateSyncRows(
+    incoming,
+    NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
+    "self-stake position",
+  );
+  if (!check.ok) {
+    return writeJson({ error: check.error }, 400);
+  }
+
+  const rows = incoming.map(coerceNominatorPositionSyncRow);
+  const cutoffs = coldkeyMaxCapturedAt(rows);
+
+  const neon = await mirrorNominatorPositionsToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    {
+      rows,
+      coldkeyMaxCapturedAt: cutoffs,
+      source: POSITION_SOURCE_SELF_STAKE,
+      lane: SELF_STAKE_NEON_LANE,
+    },
+  );
+
+  // AUTHORITATIVE, and the prune counts as much as the write: rows landing
+  // while this lane's own superseded rows survive is a ledger that
+  // double-counts an owner's stake.
+  {
+    const failed = [neon.write, neon.prune].filter((r) => r && !r.ok);
+    if (!neon.attempted || failed.length > 0) {
+      const reason =
+        failed
+          .map((r) => r?.reason)
+          .filter(Boolean)
+          .join("; ") || "neon write not attempted while Neon owns the table";
+      console.error("data-api self-stake-sync Neon write failed:", reason);
+      await captureDataApiError(new Error(reason), "self-stake-sync-neon", env);
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
+  return writeJson({
+    ok: true,
+    self_stake_positions_written: rows.length,
+    coldkeys_pruned: cutoffs.size,
+    stores: ["neon"],
   });
 }
 
@@ -8030,6 +8173,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/nominator-positions-sync"
     ) {
       return handleNominatorPositionsSync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/self-stake-sync"
+    ) {
+      return handleSelfStakeSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
