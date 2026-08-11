@@ -838,14 +838,19 @@ export async function loadAccountSummaryColdTier(
   }
 
   const where = `(hotkey = '${addr}' OR coldkey = '${addr}')`;
-  // The newest CAP events, named once so the three reads that share it cannot
+  // The newest CAP + 1 events, named once so the reads that share it cannot
   // drift onto different windows.
+  //
+  // CAP + 1, not CAP, and that one extra row is what retired the separate cap
+  // probe -- see the read block below. The PUBLISHED window is still the newest
+  // CAP events: `c` is clamped back to CAP before it leaves this function, so
+  // the payload is unchanged.
   const scan =
     `SELECT netuid, event_kind, block_number, observed_at ` +
     `FROM chain.account_events WHERE ${where} ` +
-    `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP}`;
+    `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`;
 
-  // THREE READS, NOT FIVE (#9386).
+  // TWO READS, NOT THREE (was five before #9386).
   //
   // This route declined ~50% of requests for a high-activity coldkey, and its shape
   // was the reason: five concurrent broad scans of `chain.account_events`, with
@@ -855,18 +860,33 @@ export async function loadAccountSummaryColdTier(
   //
   // The first three all aggregated the SAME `scan` CTE at different groupings, so one
   // `GROUP BY event_kind, netuid` yields all of them exactly -- see foldSummaryGroups
-  // for the derivation and why each one is equivalent rather than approximate. The
-  // result is bounded by the CTE: at most ACCOUNT_EVENT_SUMMARY_SCAN_CAP groups.
+  // for the derivation and why each one is equivalent rather than approximate.
   //
-  // The remaining two cannot fold in. The cap probe deliberately scans CAP+1 rows
-  // WITHOUT the CTE (that is how "exactly CAP" is told from "more than CAP"), and the
-  // recent feed selects whole rows in a different order.
+  // #9386 kept a third read because the cap probe scanned CAP+1 rows WITHOUT the CTE,
+  // and that was how "exactly CAP" was told from "more than CAP". IT WAS THE QUERY
+  // THAT ABORTED. Measured 2026-08-10, once r2-sql failures finally carried
+  // `query_shape` (the attribution #9459 shipped for exactly this question): 32 of
+  // the 34 request-path r2-sql timeouts were that probe, and nothing else in this
+  // loader. It declined `account-summary` on 92% of calls -- 347 failures to 30
+  // successes -- against a 15s ceiling the other two legs clear.
+  //
+  // A bare `LIMIT` with no ORDER BY is why. The engine cannot stop early on a sorted
+  // prefix, so proving there is no CAP+1'th row means scanning the whole unpartitioned
+  // table -- and it is SLOWEST for the accounts with the fewest events, which is
+  // backwards from what the probe was protecting against.
+  //
+  // So the CTE reads CAP + 1 and the probe is gone. `sum(count)` over the groups is
+  // the rows in the CTE, which is min(total, CAP + 1) -- byte-for-byte the number the
+  // probe returned, from a query that was already being issued. `> CAP` still means
+  // "more than the published window", so buildAccountSummary's cap logic is untouched.
+  //
+  // The recent feed cannot fold in: it selects whole rows in a different order.
   const failures: string[] = [];
   const track = (leg: string) => (detail: string) => {
     failures.push(`${leg}: ${detail}`);
   };
 
-  const [groupRows, probeRows, recentRows] = await Promise.all([
+  const [groupRows, recentRows] = await Promise.all([
     query(
       env,
       `WITH scan AS (${scan}) SELECT event_kind AS kind, netuid AS netuid, ` +
@@ -874,13 +894,6 @@ export async function loadAccountSummaryColdTier(
         `min(observed_at) AS fo, max(observed_at) AS lo ` +
         `FROM scan GROUP BY event_kind, netuid`,
       { onError: track("summary-groups") },
-    ),
-    // CAP + 1 so "exactly CAP" is distinguishable from "more than CAP".
-    query(
-      env,
-      `SELECT count(*) AS c FROM (SELECT block_number FROM chain.account_events ` +
-        `WHERE ${where} LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1})`,
-      { onError: track("scan-probe") },
     ),
     query(
       env,
@@ -890,22 +903,28 @@ export async function loadAccountSummaryColdTier(
     ),
   ]);
 
-  // Any half missing is a decline: a card mixing measured aggregates with a
-  // zeroed probe would silently flip event_scan_capped and publish a first_seen
+  // Either half missing is a decline: a card mixing measured aggregates with a
+  // zeroed count would silently flip event_scan_capped and publish a first_seen
   // that is really a window floor.
-  if (!groupRows || !probeRows || !recentRows) {
+  if (!groupRows || !recentRows) {
     return { declined: failures };
-  }
-  const scanned = probeRows[0]?.c;
-  if (scanned === undefined) {
-    return { declined: [...failures, "scan-probe: no count row"] };
   }
   const folded = foldSummaryGroups(groupRows);
 
+  // The CTE read CAP + 1, so this is min(total, CAP + 1) -- the probe's number.
+  const scanned = Number(folded.agg.c ?? 0);
+
   return {
-    agg: folded.agg,
+    // Clamped back to the PUBLISHED window so the payload is unchanged: an
+    // uncapped account (total <= CAP) is already below the clamp and untouched,
+    // and a capped one reported CAP before and still does. The extra row exists
+    // to answer the capped question, not to widen what is served.
+    agg: {
+      ...folded.agg,
+      c: Math.min(scanned, ACCOUNT_EVENT_SUMMARY_SCAN_CAP),
+    },
     kinds: folded.kinds,
-    scanned: Number(scanned),
+    scanned,
     recent: recentRows,
   };
 }

@@ -8,7 +8,8 @@
 //
 // The two properties worth pinning are the ones a plausible implementation gets
 // wrong: the card must attribute events the same way the feed does, and the
-// capped-scan probe must stay a separate read from the aggregate it qualifies.
+// capped-scan boundary must survive the probe that used to answer it being
+// folded into the aggregate (it was the query that aborted -- see "two reads").
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
@@ -64,17 +65,17 @@ const RECENT = [
 ];
 
 /**
- * Answers each of the THREE reads by the shape of its SQL.
+ * Answers each of the TWO reads by the shape of its SQL.
  *
- * Three, not five: the aggregate, the distinct-subnet count and the per-kind counts
- * all grouped the same CTE, so one `GROUP BY event_kind, netuid` yields all of them.
- * The other two cannot fold in -- the cap probe deliberately scans CAP+1 rows outside
- * the CTE, and the recent feed selects whole rows in a different order.
+ * Two, not five: the aggregate, the distinct-subnet count and the per-kind counts all
+ * grouped the same CTE, so one `GROUP BY event_kind, netuid` yields all of them
+ * (#9386) -- and the cap probe that stayed behind is gone too, because the CTE now
+ * reads CAP + 1 and its own row count IS the probe's number. Only the recent feed
+ * cannot fold in: it selects whole rows in a different order.
  */
 function fakeEngine(
   overrides: {
     groups?: Row[] | null;
-    probe?: Row[] | null;
     recent?: Row[] | null;
   } = {},
 ) {
@@ -90,9 +91,7 @@ function fakeEngine(
     seen.push(sql);
     const answer = sql.includes("GROUP BY event_kind, netuid")
       ? pick(overrides.groups, GROUPS)
-      : sql.includes("count(*) AS c FROM (")
-        ? pick(overrides.probe, [{ c: 6 }])
-        : pick(overrides.recent, RECENT);
+      : pick(overrides.recent, RECENT);
     if (answer === null) {
       // Mirrors r2SqlQuery: the engine's own explanation is reported, then null.
       deps?.onError?.("r2 sql: HTTP 500 (stubbed failure)");
@@ -104,9 +103,24 @@ function fakeEngine(
     query,
     seen,
     errors,
-    probe: () => seen.find((s) => s.includes("count(*) AS c FROM ("))!,
     groups: () => seen.find((s) => s.includes("GROUP BY event_kind, netuid"))!,
   };
+}
+
+/** Grouped rows whose counts sum to `total`, for driving the cap boundary
+ * through the aggregate now that no separate probe reports it. */
+function groupsSummingTo(total: number): Row[] {
+  return [
+    {
+      kind: "AxonServed",
+      netuid: 55,
+      count: total,
+      fb: AGG.fb,
+      lb: AGG.lb,
+      fo: AGG.fo,
+      lo: AGG.lo,
+    },
+  ];
 }
 
 describe("loadAccountSummaryColdTier", () => {
@@ -159,16 +173,37 @@ describe("loadAccountSummaryColdTier", () => {
     assert.equal(buildAccountSummary(SS58, cold as never).subnet_count, 2);
   });
 
-  test("three reads, not five", async () => {
+  test("two reads, not five", async () => {
     // The shape of the #9386 failure: five concurrent broad scans of an
     // unpartitioned table under Promise.all, so the success probability was the
     // PRODUCT of five. A single count(*) on account_events reports ~3,390 R2
     // requests, so each removed scan is real cost as well as real risk.
+    //
+    // The third read went the same way for a measured reason: 32 of the 34
+    // request-path r2-sql timeouts on 2026-08-10 were the cap probe, and it
+    // declined this route on 92% of calls.
     const engine = fakeEngine();
     await loadAccountSummaryColdTier({} as never, SS58, {
       query: engine.query as never,
     });
-    assert.equal(engine.seen.length, 3, engine.seen.join("\n").slice(0, 400));
+    assert.equal(engine.seen.length, 2, engine.seen.join("\n").slice(0, 400));
+  });
+
+  test("no read scans without an ORDER BY to stop early on", async () => {
+    // Why the probe was the leg that aborted: `LIMIT n` with no ORDER BY gives
+    // the engine no sorted prefix to stop on, so proving there is no n'th row
+    // means scanning the whole unpartitioned table -- slowest for the accounts
+    // with the FEWEST events, which is backwards from what it protected.
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    for (const sql of engine.seen) {
+      assert.ok(
+        /ORDER BY/.test(sql),
+        `every read must give the engine a sorted prefix: ${sql.slice(0, 160)}`,
+      );
+    }
   });
 
   test("the fold reproduces the three reads it replaced, exactly", async () => {
@@ -221,7 +256,6 @@ describe("loadAccountSummaryColdTier", () => {
           lo: 9,
         },
       ],
-      probe: [{ c: 8 }],
     });
     const card = buildAccountSummary(
       SS58,
@@ -256,7 +290,6 @@ describe("loadAccountSummaryColdTier", () => {
         },
         { kind: "Transfer", netuid: 9, count: 1, fb: 3, lb: 4, fo: 3, lo: 4 },
       ],
-      probe: [{ c: 3 }],
     });
     const card = buildAccountSummary(
       SS58,
@@ -275,7 +308,6 @@ describe("loadAccountSummaryColdTier", () => {
         { kind: "A", netuid: 1, count: 1, fb: 50, lb: 900, fo: 50, lo: 900 },
         { kind: "B", netuid: 2, count: 1, fb: 10, lb: 100, fo: 10, lo: 100 },
       ],
-      probe: [{ c: 2 }],
     });
     const card = buildAccountSummary(
       SS58,
@@ -311,7 +343,6 @@ describe("loadAccountSummaryColdTier", () => {
         },
         { kind: "B", netuid: 2, count: 3, fb: 1, lb: 2, fo: 1, lo: 2 },
       ],
-      probe: [{ c: 3 }],
     });
     const card = buildAccountSummary(
       SS58,
@@ -361,7 +392,6 @@ describe("loadAccountSummaryColdTier", () => {
           lo: null,
         },
       ],
-      probe: [{ c: 2 }],
     });
     const card = buildAccountSummary(
       SS58,
@@ -391,54 +421,57 @@ describe("loadAccountSummaryColdTier", () => {
     }
   });
 
-  test("the cap probe is a separate read over CAP + 1", async () => {
-    // Reusing the aggregate's own count would make an account with EXACTLY CAP
-    // events look capped, which nulls first_block/first_seen_at on a card whose
-    // totals are in fact exact.
+  test("the CTE looks one row past the cap, and nothing else is read", async () => {
+    // The extra row is what retired the separate probe: the CTE's own row count
+    // is min(total, CAP + 1), which is byte-for-byte what the probe returned.
     const engine = fakeEngine();
     await loadAccountSummaryColdTier({} as never, SS58, {
       query: engine.query as never,
     });
     assert.match(
-      engine.probe(),
-      new RegExp(`LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`),
-      "the probe must look one row past the cap",
-    );
-    assert.match(
       engine.groups(),
-      new RegExp(`LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP}`),
-      "the aggregate window is the cap itself",
+      new RegExp(`LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1}`),
+      "the aggregate must look one row past the cap",
+    );
+    assert.equal(
+      engine.seen.filter((s) => s.includes("count(*) AS c FROM (")).length,
+      0,
+      "the standalone cap probe must be gone",
     );
   });
 
+  // The property #9386 added the probe to protect, now carried by the aggregate.
+  // Reusing a CAP-wide count would make an account with EXACTLY CAP events look
+  // capped, nulling first_block/first_seen_at on a card whose totals are exact.
   test("exactly CAP events is complete; CAP + 1 is capped", async () => {
-    for (const [scanned, capped] of [
+    for (const [total, capped] of [
       [ACCOUNT_EVENT_SUMMARY_SCAN_CAP, false],
       [ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1, true],
     ] as const) {
-      const engine = fakeEngine({ probe: [{ c: scanned }] });
+      const engine = fakeEngine({ groups: groupsSummingTo(total) });
       const cold = await loadAccountSummaryColdTier({} as never, SS58, {
         query: engine.query as never,
       });
       const card = buildAccountSummary(SS58, cold as never);
-      assert.equal(card.event_scan_capped, capped, `scanned=${scanned}`);
+      assert.equal(card.event_scan_capped, capped, `total=${total}`);
       // A capped window's minimum is a floor, not the account's first-ever.
       assert.equal(card.first_block === null, capped);
       assert.equal(card.first_seen_at === null, capped);
       // The newest end stays exact either way.
       assert.equal(card.last_block, AGG.lb);
+      // The PUBLISHED window is still the cap: reading CAP + 1 rows answers the
+      // capped question without widening what the card reports.
+      assert.equal(
+        card.event_count,
+        Math.min(total, ACCOUNT_EVENT_SUMMARY_SCAN_CAP),
+      );
     }
   });
 
   test("declines when any leg misses", async () => {
-    // A card mixing measured aggregates with a zeroed probe would silently flip
+    // A card mixing measured aggregates with a zeroed count would silently flip
     // event_scan_capped and publish a window floor as first_seen_at.
-    for (const miss of [
-      { groups: null },
-      { probe: null },
-      { recent: null },
-      { probe: [] },
-    ]) {
+    for (const miss of [{ groups: null }, { recent: null }]) {
       const engine = fakeEngine(miss);
       const cold = await loadAccountSummaryColdTier({} as never, SS58, {
         query: engine.query as never,
@@ -451,7 +484,7 @@ describe("loadAccountSummaryColdTier", () => {
     // An account with no events in the window genuinely has none. Declining here
     // would turn "nothing happened" into "we could not look", which is the opposite
     // of the confident-zero this route's decline exists to prevent.
-    const engine = fakeEngine({ groups: [], probe: [{ c: 0 }], recent: [] });
+    const engine = fakeEngine({ groups: [], recent: [] });
     const cold = await loadAccountSummaryColdTier({} as never, SS58, {
       query: engine.query as never,
     });
