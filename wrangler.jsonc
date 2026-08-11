@@ -74,7 +74,7 @@
     //
     // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
     // so a ten-minute flush is twelve ticks inside a bound that already exists.
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
+    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,subnet-identity,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
