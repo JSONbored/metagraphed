@@ -1,6 +1,15 @@
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import assert from "node:assert/strict";
 
+// latestBlockNumber reads `blocks_head` through src/read-store.ts, which
+// constructs its own `new Client(...)` -- there is no seam a caller can inject,
+// so the module is the mock. See tests/helpers/pg-mock.ts.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import {
   buildSubnetIdentityHistory,
   deriveNetuidGroupedAliases,
@@ -483,9 +492,8 @@ describe("recordSubnetIdentityChanges", () => {
     assert.equal(result.recorded, true);
     assert.equal(result.rows, 1);
     assert.equal(result.observed_at, 1_700_000_000_000);
-    // No METAGRAPH_BLOCKS_SOURCE tier configured on this env, so block_number
-    // degrades to null -- see the "latestBlockNumber via Postgres" tests
-    // below for the populated case.
+    // No store bound on this env, so block_number degrades to null -- see the
+    // "latestBlockNumber reads blocks_head" tests below for the populated case.
     assert.equal(result.block_number, null);
   });
 
@@ -606,68 +614,72 @@ describe("recordSubnetIdentityChanges", () => {
     assert.equal(result.rows, 1);
   });
 
-  // D1's own `blocks` table was fully dropped (#4772) -- latestBlockNumber
-  // (item 10 of the D1->Postgres cleanup) now queries Postgres via
-  // tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) against a synthesized internal
-  // request, with no D1 fallback left to attempt (the table it would have
-  // queried doesn't exist in D1 at all). Exercised indirectly through
-  // recordSubnetIdentityChanges's own `block_number` field, same style the
-  // retired D1-based tests used.
-  describe("latestBlockNumber via Postgres (item 10)", () => {
+  // D1's own `blocks` table was fully dropped (#4772), and the tier that
+  // replaced it (METAGRAPH_BLOCKS_SOURCE) is retired in every deployed config
+  // and absent from DATA_API_FORWARD_FLAGS -- so it stamped null on every real
+  // call (#10190). The source is `blocks_head` now: one row per block, written
+  // by the firehose every ~30s and already watched by TABLE_FRESHNESS.
+  //
+  // Exercised indirectly through recordSubnetIdentityChanges's own
+  // `block_number` field, same style the retired tier tests used.
+  describe("latestBlockNumber reads blocks_head", () => {
     const profiles = [{ netuid: 7, native_identity: { subnet_name: "First" } }];
 
-    test("reports the Postgres-served block_number", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () =>
-            new Response(JSON.stringify({ block_number: 8_404_076 }), {
-              status: 200,
-            }),
-        },
-        METAGRAPH_BLOCKS_SOURCE: "postgres",
-      } as unknown as Env;
-      const result = await recordSubnetIdentityChanges(env, { profiles });
+    beforeEach(() => {
+      pg.control.queries.length = 0;
+      pg.control.answers = [];
+      pg.control.rows = null;
+      pg.control.failNext = null;
+    });
+
+    test("reports the head block from blocks_head", async () => {
+      pg.control.answers = [
+        { match: "FROM blocks_head", rows: [{ block_number: 8_404_076 }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles },
+      );
       assert.equal(result.block_number, 8_404_076);
+      assert.match(pg.control.queries[0].text, /MAX\(block_number\)/);
     });
 
-    test("degrades to null block_number when the flag is off", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () =>
-            new Response(JSON.stringify({ block_number: 8_404_076 }), {
-              status: 200,
-            }),
-        },
-        // METAGRAPH_BLOCKS_SOURCE not "postgres" -- tryPostgresTier no-ops.
-      } as unknown as Env;
+    test("degrades to null when the store is unbound", async () => {
+      // No HYPERDRIVE: readStore has nothing to open, so nothing is queried.
+      const result = await recordSubnetIdentityChanges({} as unknown as Env, {
+        profiles,
+      });
+      assert.equal(result.block_number, null);
+      assert.deepEqual(pg.control.queries, []);
+    });
+
+    test("degrades to null when blocks_head is not declared Neon's", async () => {
+      // readStore is all-or-nothing: an undeclared table means no store at all,
+      // not a store that answers the other tables.
+      const env = pgMockEnv(["subnets"]) as unknown as Env;
       const result = await recordSubnetIdentityChanges(env, { profiles });
+      assert.equal(result.block_number, null);
+      assert.deepEqual(pg.control.queries, []);
+    });
+
+    test("degrades to null when the query fails", async () => {
+      pg.control.failNext = new Error("connection reset");
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles },
+      );
       assert.equal(result.block_number, null);
     });
 
-    test("degrades to null block_number when the Postgres fetch fails", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("network down");
-          },
-        },
-        METAGRAPH_BLOCKS_SOURCE: "postgres",
-      } as unknown as Env;
-      const result = await recordSubnetIdentityChanges(env, { profiles });
-      assert.equal(result.block_number, null);
-    });
-
-    test("degrades to null block_number on a non-positive/non-integer value", async () => {
-      const env = {
-        DATA_API: {
-          fetch: async () =>
-            new Response(JSON.stringify({ block_number: null }), {
-              status: 200,
-            }),
-        },
-        METAGRAPH_BLOCKS_SOURCE: "postgres",
-      } as unknown as Env;
-      const result = await recordSubnetIdentityChanges(env, { profiles });
+    test("degrades to null on a non-positive/non-integer value", async () => {
+      // MAX() over an empty table is NULL, which must not become 0.
+      pg.control.answers = [
+        { match: "FROM blocks_head", rows: [{ block_number: null }] },
+      ];
+      const result = await recordSubnetIdentityChanges(
+        pgMockEnv() as unknown as Env,
+        { profiles },
+      );
       assert.equal(result.block_number, null);
     });
   });

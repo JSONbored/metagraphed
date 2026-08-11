@@ -4363,44 +4363,90 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     return { fetch: async () => response };
   }
 
-  test("flag=postgres + DATA_API succeeds: Postgres data wins, D1 never queried", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+  /**
+   * A DATA_API that fails the test if it is ever consulted.
+   *
+   * The blocks family's flag (METAGRAPH_BLOCKS_SOURCE) is retired in every
+   * deployed config and absent from DATA_API_FORWARD_FLAGS, so its handlers no
+   * longer read the tier at all (#10190). These use it as the ASSERTION: set the
+   * flag to "postgres", bind a DATA_API that would answer, and prove nothing
+   * asks it -- which is what stops a dead tier read from being reintroduced.
+   */
+  function forbiddenDataApi() {
+    const calls: string[] = [];
+    return {
+      calls,
+      binding: {
+        fetch: async (request: Request) => {
+          calls.push(new URL(request.url).pathname);
+          return Response.json({ schema_version: 1, marker: "tier" });
+        },
+      },
+    };
+  }
+
+  /** Stub the lakehouse transport; answers each cold-tier query by SQL prefix. */
+  function lakehouse(answer: (sql: string) => unknown[]) {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: answer(sql) } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return () => {
+      globalThis.fetch = original;
+    };
+  }
+
+  const LAKEHOUSE_TOKEN = { R2_SQL_TOKEN: "cfut_test" };
+
+  test("handleBlocks: the retired blocks flag is not consulted even when set", async () => {
+    // No head-leg fixture: the lakehouse is then the only leg that can answer,
+    // so the marker below identifies the source unambiguously.
+    const { env } = dbWith({});
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({ schema_version: 1, block_count: 99, blocks: [] }),
-    );
-    const body = await json(
-      await handleBlocks(
-        req("/api/v1/blocks"),
-        env as unknown as Env,
-        url("/api/v1/blocks"),
-      ),
-    );
-    assert.equal(body.data.block_count, 99); // the Postgres fixture, not D1's
-    assert.deepEqual(captures.sql, []); // D1 was never touched
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.binding;
+    Object.assign(env, LAKEHOUSE_TOKEN);
+    const restore = lakehouse(() => [blockRow({ author: "cold-tier" })]);
+    try {
+      const body = await json(
+        await handleBlocks(
+          req("/api/v1/blocks"),
+          env as unknown as Env,
+          url("/api/v1/blocks"),
+        ),
+      );
+      assert.deepEqual(tier.calls, []); // the dead tier read is gone
+      assert.equal(body.data.blocks[0].author, "cold-tier"); // the lakehouse did
+    } finally {
+      restore();
+    }
   });
 
-  test("handleBlock: flag=postgres uses Postgres data over the D1 fixture", async () => {
-    const { env, captures } = dbWith({ blockDetail: blockRow() });
+  test("handleBlock: the retired blocks flag is not consulted even when set", async () => {
+    const { env } = dbWith({ blockDetail: blockRow() });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        ref: String(BLOCK_NUM),
-        block: { ...blockRow(), author: "postgres-author" },
-        prev_block_number: null,
-        next_block_number: null,
-      }),
-    );
-    const body = await json(
-      await handleBlock(
-        req(`/api/v1/blocks/${BLOCK_NUM}`),
-        env as unknown as Env,
-        String(BLOCK_NUM),
-      ),
-    );
-    assert.equal(body.data.block.author, "postgres-author");
-    assert.deepEqual(captures.sql, []);
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.binding;
+    Object.assign(env, LAKEHOUSE_TOKEN);
+    const restore = lakehouse(() => [{ ...blockRow(), author: "lakehouse" }]);
+    try {
+      const body = await json(
+        await handleBlock(
+          req(`/api/v1/blocks/${BLOCK_NUM}`),
+          env as unknown as Env,
+          String(BLOCK_NUM),
+        ),
+      );
+      assert.deepEqual(tier.calls, []);
+      assert.equal(body.data.block.author, "lakehouse");
+    } finally {
+      restore();
+    }
   });
 
   test("handleExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -5365,12 +5411,19 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleBlocksSummary: flag=postgres uses Postgres data, D1 never queried", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+  test("handleBlocksSummary: the retired flag is not consulted; the projection answers", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", block_count: 0 }),
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.binding;
+    // #9146: the blocks-summary projection is what serves this card now.
+    env.METAGRAPH_ARCHIVE = {
+      get: async () => ({
+        json: async () => ({
+          schema_version: 1,
+          summary: { marker: "projection", block_count: 7 },
+        }),
+      }),
     };
     const body = await json(
       await handleBlocksSummary(
@@ -5379,8 +5432,8 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
         url("/api/v1/blocks/summary"),
       ),
     );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    assert.deepEqual(tier.calls, []);
+    assert.equal(body.data.marker, "projection");
   });
 
   test("handleAccountExtrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
@@ -5442,62 +5495,77 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleRuntime: flag=postgres uses Postgres data, D1 never queried", async () => {
-    const { env, captures } = dbWith({ blocksFeed: [blockRow()] });
+  test("handleRuntime: the retired flag is not consulted; the lakehouse answers", async () => {
+    const { env } = dbWith({ blocksFeed: [blockRow()] });
     env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", transitions: [] }),
-    };
-    const body = await json(
-      await handleRuntime(
-        req("/api/v1/runtime"),
-        env as unknown as Env,
-        url("/api/v1/runtime"),
-      ),
-    );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    const tier = forbiddenDataApi();
+    env.DATA_API = tier.binding;
+    Object.assign(env, LAKEHOUSE_TOKEN);
+    // #9265: `chain.blocks` carries spec_version, so the timeline is real.
+    const restore = lakehouse(() => [
+      { spec_version: 423, block_number: 8_000_000, observed_at: 1 },
+    ]);
+    try {
+      const body = await json(
+        await handleRuntime(
+          req("/api/v1/runtime"),
+          env as unknown as Env,
+          url("/api/v1/runtime"),
+        ),
+      );
+      assert.deepEqual(tier.calls, []);
+      assert.equal(body.data.current_spec_version, 423);
+    } finally {
+      restore();
+    }
   });
 
   // #6392: /runtime was the one Explorer list page with no CSV export, because
   // the route rejected every query param -- ?format=csv 400'd before it could
   // reach the handler.
   describe("handleRuntime CSV export (#6392)", () => {
-    function pgEnv(transitions: Row[]) {
+    // The transitions arrive from the lakehouse now, not the retired tier
+    // (#10190), so the fixture is injected as ROWS and the builder derives the
+    // envelope -- which is closer to what the route actually does than handing
+    // it a pre-built envelope ever was.
+    function coldTierEnv(transitions: Row[]) {
       const { env } = dbWith({ blocksFeed: [blockRow()] });
-      env.METAGRAPH_BLOCKS_SOURCE = "postgres";
-      env.DATA_API = {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            transitions,
-            transition_count: transitions.length,
-            current_spec_version: transitions.at(-1)?.spec_version ?? null,
-            coverage_from_block: transitions[0]?.block_number ?? null,
-            coverage_from_at: transitions[0]?.observed_at ?? null,
-          }),
-      };
+      Object.assign(env, LAKEHOUSE_TOKEN);
+      restoreFetch = lakehouse((sql) =>
+        // LATEST_SQL asks for the head block; TRANSITIONS_SQL for the timeline.
+        sql.includes("ORDER BY block_number DESC")
+          ? transitions.slice(-1)
+          : transitions,
+      );
       return env;
     }
 
+    let restoreFetch: (() => void) | undefined;
+    afterEach(() => {
+      restoreFetch?.();
+      restoreFetch = undefined;
+    });
+
     const ROWS = [
+      // observed_at is epoch ms here because that is the lakehouse column's own
+      // type -- the ISO string in the CSV assertion below is the builder's
+      // formatting, which the pre-built tier envelope used to bypass.
       {
         spec_version: 423,
         block_number: 8000000,
-        observed_at: "2026-06-25T00:00:00.000Z",
+        observed_at: Date.parse("2026-06-25T00:00:00.000Z"),
       },
       {
         spec_version: 424,
         block_number: 8100000,
-        observed_at: "2026-07-01T00:00:00.000Z",
+        observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
       },
     ];
 
     test("?format=csv exports the transition timeline with the on-screen columns", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=csv"),
-        pgEnv(ROWS) as unknown as Env,
+        coldTierEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=csv"),
       );
       assert.equal(res.status, 200);
@@ -5516,7 +5584,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("the default response is still the JSON envelope", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime"),
-        pgEnv(ROWS) as unknown as Env,
+        coldTierEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime"),
       );
       assert.match(res.headers.get("content-type") || "", /application\/json/);
@@ -5529,7 +5597,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("?format=json is accepted and keeps the envelope", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=json"),
-        pgEnv(ROWS) as unknown as Env,
+        coldTierEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=json"),
       );
       assert.equal(res.status, 200);
@@ -5539,7 +5607,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("a cold store yields a header-only CSV, never an error", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=csv"),
-        pgEnv([]) as unknown as Env,
+        coldTierEnv([]) as unknown as Env,
         url("/api/v1/runtime?format=csv"),
       );
       assert.equal(res.status, 200);
@@ -5552,7 +5620,7 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     test("an unsupported format is still rejected", async () => {
       const res = await handleRuntime(
         req("/api/v1/runtime?format=bogus"),
-        pgEnv(ROWS) as unknown as Env,
+        coldTierEnv(ROWS) as unknown as Env,
         url("/api/v1/runtime?format=bogus"),
       );
       assert.equal(res.status, 400);

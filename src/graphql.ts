@@ -5958,16 +5958,9 @@ const rootValue = {
     // production, so the Postgres tier being cold is the expected steady state —
     // fall back to the same pure builder REST uses, never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          "/api/v1/blocks",
-          params,
-          chainNetworkFromChainName(network),
-        ),
-        "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ??
+      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // on every request.
       // The blocks cold tier REST and MCP both read (#9540). Every filter is
       // forwarded, so the tier does the filtering -- the empty builder below
       // ignores them, which is why reaching it silently dropped a filtered
@@ -6005,30 +5998,22 @@ const rootValue = {
     { network }: QueryBlocks_SummaryArgs,
     context: GqlContext,
   ) {
-    // #5664: same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildBlocksSummary([])
-    // fallback contract handleBlocksSummary uses. blocks' D1 write path is retired
-    // (#4909) so a cold Postgres tier is the steady state -- the empty builder
-    // shape (block_count 0, every aggregate null) satisfies the non-null
-    // BlocksSummary! contract, never a GraphQL error.
+    // #5664: same projection -> buildBlocksSummary([]) fallback contract
+    // handleBlocksSummary uses. blocks' D1 write path is retired (#4909) and the
+    // Postgres tier that briefly replaced it is retired too (#10190), so the
+    // empty builder shape (block_count 0, every aggregate null) satisfies the
+    // non-null BlocksSummary! contract, never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          "/api/v1/blocks/summary",
-          undefined,
-          chainNetworkFromChainName(network),
-        ),
-        "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ??
+      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // on every request.
       // #9146: same blocks-summary projection REST and MCP read -- on the SAME
       // chain as the tier above, because a fallback that changed network would
       // answer mainnet under a testnet label (#10394).
       ((await loadBlocksSummaryFromArtifact(
         context.env,
         chainNetworkFromChainName(network),
-      )) as Row | null) ??
-      buildBlocksSummary([]);
+      )) as Row | null) ?? buildBlocksSummary([]);
     return {
       schema_version: data.schema_version ?? 1,
       block_count: data.block_count ?? 0,
@@ -6046,17 +6031,16 @@ const rootValue = {
   },
 
   async runtime(_args: unknown, context: GqlContext) {
-    // Same tryPostgresTier(METAGRAPH_BLOCKS_SOURCE) -> buildRuntimeVersionHistory([])
-    // fallback contract GET /api/v1/runtime and the get_runtime MCP tool use; blocks'
-    // D1 write path is retired (#4909) so a cold Postgres tier is the steady state --
-    // the empty builder shape (transition_count 0, current_spec_version null) satisfies
-    // the non-null RuntimeVersionHistory! contract, never a GraphQL error.
+    // Same cold-tier -> buildRuntimeVersionHistory([]) fallback contract
+    // GET /api/v1/runtime and the get_runtime MCP tool use; blocks' D1 write
+    // path is retired (#4909) and the Postgres tier that replaced it is retired
+    // too (#10190) -- the empty builder shape (transition_count 0,
+    // current_spec_version null) satisfies the non-null RuntimeVersionHistory!
+    // contract, never a GraphQL error.
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, "/api/v1/runtime"),
-        "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ??
+      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // on every request.
       // #9265: `chain.blocks` carries the same spec_version column, so the
       // non-null contract below is now satisfied with the real timeline
       // rather than only with the empty shape.
@@ -6064,8 +6048,7 @@ const rootValue = {
         context.env as unknown as Parameters<
           typeof loadRuntimeVersionHistoryColdTier
         >[0],
-      )) as Row | null) ??
-      buildRuntimeVersionHistory([]);
+      )) as Row | null) ?? buildRuntimeVersionHistory([]);
     return {
       coverage_complete: data.coverage_complete ?? null,
       coverage_gaps: data.coverage_gaps ?? null,
@@ -6081,16 +6064,9 @@ const rootValue = {
   async block({ ref, network }: QueryBlockArgs, context: GqlContext) {
     const chain = chainNetworkFromChainName(network);
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/blocks/${encodeURIComponent(ref)}`,
-          undefined,
-          chain,
-        ),
-        "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ??
+      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+      // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+      // on every request.
       // The block cold tier REST and MCP both read (#9540), on the SAME chain
       // as the tier above (#10394).
       ((await loadBlockColdTier(context.env, ref, chain)) as Row | null) ??

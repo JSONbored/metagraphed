@@ -15,7 +15,6 @@ import {
   readJson,
   repoRoot,
 } from "./lib.ts";
-import { buildBlockFeed } from "../src/blocks.ts";
 import { buildExtrinsicFeed } from "../src/extrinsics.ts";
 import { buildAccountEvents } from "../src/account-events.ts";
 import { buildSubnetMetagraph } from "../src/metagraph-neurons.ts";
@@ -2879,16 +2878,8 @@ for (const [route, assertion, options = {}] of checks) {
   const BLOCK_NUM = 1_000_000;
   const HASH = `0x${"a".repeat(64)}`;
 
-  const blockRow = {
-    block_number: BLOCK_NUM,
-    block_hash: HASH,
-    parent_hash: `0x${"b".repeat(64)}`,
-    author: "5AuthorExample12345678901234567890123456789012",
-    extrinsic_count: 5,
-    event_count: 20,
-    spec_version: 201,
-    observed_at: OBSERVED_AT_MS,
-  };
+  // `blockRow` went with the METAGRAPH_BLOCKS_SOURCE case (#10190) -- it was
+  // the only fixture that used it.
   const extrinsicRow = {
     block_number: BLOCK_NUM,
     extrinsic_index: 2,
@@ -2974,18 +2965,13 @@ for (const [route, assertion, options = {}] of checks) {
   }
 
   const postgresTierChecks: PostgresTierCheck[] = [
-    {
-      flag: "METAGRAPH_BLOCKS_SOURCE",
-      route: "/api/v1/blocks",
-      upstreamPath: "/api/v1/blocks",
-      data: buildBlockFeed([blockRow], {
-        limit: BLOCK_PAGINATION.defaultLimit,
-        offset: 0,
-        nextCursor: null,
-      }),
-      assertion: (body) =>
-        assert.equal(body.data.blocks[0].block_number, BLOCK_NUM),
-    },
+    // METAGRAPH_BLOCKS_SOURCE's case was REMOVED (#10190): every tryPostgresTier
+    // call under that flag is gone across REST, GraphQL and MCP, so there is no
+    // forward left to prove. The blocks family's real legs are the lakehouse
+    // cold tier (list/detail/runtime) and the archived blocks-summary
+    // projection -- covered by tests/blocks-cold-tier.test.ts,
+    // tests/runtime-versions-cold-tier.test.ts and
+    // tests/blocks-summary-artifact.test.ts.
     {
       flag: "METAGRAPH_EXTRINSICS_SOURCE",
       route: "/api/v1/extrinsics",
@@ -3041,8 +3027,8 @@ for (const [route, assertion, options = {}] of checks) {
 
   assert.equal(
     postgresTierChecks.length,
-    6,
-    "postgres-tier AJV coverage must include all 6 flags that gate a DATA_API leg",
+    5,
+    "postgres-tier AJV coverage must include all 5 flags that gate a DATA_API leg",
   );
 
   for (const {
