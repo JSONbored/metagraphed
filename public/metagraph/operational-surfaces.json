@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 619,
+  "surface_count": 620,
   "surfaces": [
     {
       "auth_required": false,
@@ -6150,6 +6150,26 @@
       "surface_id": "sn-53-engy-epoch-latest",
       "surface_key": "srf-3fcac91046896130",
       "url": "https://provider.engy.ai/api/subnet/v1/epoch/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "revenue": null,
+      "schema_source": null,
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
+      "surface_id": "sn-53-engy-gateway-meta",
+      "surface_key": "srf-bee52a48fea8d3bb",
+      "url": "https://api.engy.ai/gw/meta"
     },
     {
       "auth_required": false,
