@@ -54,9 +54,6 @@ import { repoRoot } from "./lib.ts";
 /**
  * The most unreferenced exports allowed. THE CEILING ONLY FALLS.
  *
-/**
- * The most unreferenced exports allowed. THE CEILING ONLY FALLS.
- *
  * 752 after #10582 deleted the 164 precomputed response envelopes.
  *
  * Then lower again (#10586): nothing was deleted.
