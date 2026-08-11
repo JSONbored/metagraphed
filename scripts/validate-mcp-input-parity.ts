@@ -429,8 +429,12 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
   "list_endpoints.pool_eligible": "SHAPE",
   "list_extrinsics.success": "SHAPE",
   "list_provider_endpoints.pool_eligible": "SHAPE",
+  // The third of the three, declared when #10790 single-sourced the endpoint
+  // filter block: its handler has decoded a real boolean through
+  // `withBooleanWords` since #10772, and only its SCHEMA still spelled the
+  // route's `"true"`/`"false"` words. GraphQL publishes `Boolean` here too.
+  "list_subnet_endpoints.pool_eligible": "SHAPE",
   "list_rpc_endpoints.cursor": "SHAPE",
-  "list_rpc_endpoints.fields": "SHAPE",
   "list_rpc_endpoints.pool_eligible": "SHAPE",
   "list_subnet_validators.fields": "SHAPE",
 

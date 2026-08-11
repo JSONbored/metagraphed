@@ -17,6 +17,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ENDPOINT_LIST_FILTERS } from "./endpoints-catalog.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
@@ -29,7 +30,6 @@ import {
   numericCursorSchema,
   orderSchema,
   projectableRows,
-  providerSlugSchema,
   querySchema,
   sortSchema,
 } from "./shared.ts";
@@ -39,12 +39,9 @@ import { RpcEndpointsArtifactSchema } from "../routes/providers-rpc.ts";
 import { ReviewProfileCompletenessArtifactSchema } from "../routes/review-gaps-profile.ts";
 import { RpcPoolsArtifactSchema } from "../routes/providers-rpc.ts";
 import {
-  ENDPOINT_LAYER_VALUES,
-  ENDPOINT_PUBLICATION_STATE_VALUES,
   LIVE_HEALTH_OVERLAY,
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
-import { HEALTH_STATUS_VALUES } from "../shared.ts";
 import {
   CONFIDENCE_LEVEL_VALUES,
   IDENTITY_LEVEL_VALUES,
@@ -74,79 +71,10 @@ export const ListEvidenceOutputSchema = EvidenceLedgerArtifactSchema.extend({
 export type ListEvidenceOutput = z.infer<typeof ListEvidenceOutputSchema>;
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
-const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
-const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
-const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 export const ListRpcEndpointsInputSchema = z
   .object({
-    kind: kindSchema(SURFACE_KINDS).optional(),
-    layer: z
-      .enum(ENDPOINT_LAYERS)
-      .optional()
-      .describe(
-        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
-      )
-      .meta({ examples: [ENDPOINT_LAYERS[0]] }),
+    ...ENDPOINT_LIST_FILTERS,
     netuid: API_QUERY_COLLECTIONS.endpoints.filter_schemas.netuid.optional(),
-    provider: providerSlugSchema().optional(),
-    publication_state:
-      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
-        .optional()
-        .describe(
-          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-        )
-        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
-    status: kindSchema(HEALTH_STATUSES).optional(),
-    pool_eligible: z
-      .boolean()
-      .optional()
-      .describe(
-        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
-      )
-      .meta({ examples: [true] }),
-    min_latency_ms: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
-      )
-      .meta({ examples: [50] }),
-    max_latency_ms: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
-      )
-      .meta({ examples: [500] }),
-    min_score: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on endpoint score; rows below it are excluded.",
-      )
-      .meta({ examples: [50] }),
-    max_score: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on endpoint score; rows above it are excluded.",
-      )
-      .meta({ examples: [100] }),
-    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
-    order: orderSchema().optional(),
-    // Both `fields` and `cursor` are UNIONS here, unlike everywhere else, so
-    // neither can take a shared builder -- the sentence has to say which forms
-    // are accepted rather than assume one.
-    fields: z
-      .union([z.string(), z.array(z.string())])
-      .describe(
-        "Row fields to project. Accepts either a comma-separated string " +
-          "(`id,url,status`) or an array of bare names. Omit for the full row.",
-      )
-      .optional()
-      .meta({ examples: ["netuid,name,slug"] }),
-    // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
-    // because schemas-src/ imports from neither src/ nor workers/.
     limit: limitSchema(1000, 20).optional(),
     cursor: z
       .union([z.int().min(0), z.string()])

@@ -44,64 +44,83 @@ const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
+
+/**
+ * The endpoint list-query FILTERS, declared once for their three callers
+ * (#10790).
+ *
+ * `list_endpoints`, `list_provider_endpoints` and `list_subnet_endpoints` share
+ * every filter, sort and projection argument. What they do NOT share is
+ * `netuid` -- an optional FILTER on the network-wide list, the required SUBJECT
+ * on the subnet-scoped one -- or their limit ceilings. Same key set, and on
+ * that one key a genuinely different argument, so it stays declared per site
+ * where the difference is visible instead of being averaged away.
+ */
+export const ENDPOINT_LIST_FILTERS = {
+  kind: kindSchema(SURFACE_KINDS).optional(),
+  layer: z
+    .enum(ENDPOINT_LAYERS)
+    .optional()
+    .describe(
+      "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
+    )
+    .meta({ examples: [ENDPOINT_LAYERS[0]] }),
+  provider: providerSlugSchema().optional(),
+  publication_state:
+    API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
+      .optional()
+      .describe(
+        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+      )
+      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
+  status: kindSchema(HEALTH_STATUSES).optional(),
+  pool_eligible: z
+    .boolean()
+    .optional()
+    .describe(
+      "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
+    )
+    .meta({ examples: [true] }),
+  min_latency_ms: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
+    )
+    .meta({ examples: [50] }),
+  max_latency_ms: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
+    )
+    .meta({ examples: [500] }),
+  min_score: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive lower bound on endpoint score; rows below it are excluded.",
+    )
+    .meta({ examples: [50] }),
+  max_score: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive upper bound on endpoint score; rows above it are excluded.",
+    )
+    .meta({ examples: [100] }),
+  sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
+  order: orderSchema().optional(),
+  fields: fieldsSchema().optional(),
+  // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
+  // because schemas-src/ imports from neither src/ nor workers/.
+};
+
 export const ListEndpointsInputSchema = z
   .object({
-    kind: kindSchema(SURFACE_KINDS).optional(),
-    layer: z
-      .enum(ENDPOINT_LAYERS)
-      .optional()
-      .describe(
-        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
-      )
-      .meta({ examples: [ENDPOINT_LAYERS[0]] }),
+    ...ENDPOINT_LIST_FILTERS,
+    // The network-wide list: netuid NARROWS the result set.
     netuid: API_QUERY_COLLECTIONS.endpoints.filter_schemas.netuid.optional(),
-    provider: providerSlugSchema().optional(),
-    publication_state:
-      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
-        .optional()
-        .describe(
-          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-        )
-        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
-    status: kindSchema(HEALTH_STATUSES).optional(),
-    pool_eligible: z
-      .boolean()
-      .optional()
-      .describe(
-        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
-      )
-      .meta({ examples: [true] }),
-    min_latency_ms: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
-      )
-      .meta({ examples: [50] }),
-    max_latency_ms: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
-      )
-      .meta({ examples: [500] }),
-    min_score: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on endpoint score; rows below it are excluded.",
-      )
-      .meta({ examples: [50] }),
-    max_score: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on endpoint score; rows above it are excluded.",
-      )
-      .meta({ examples: [100] }),
-    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
     limit: limitSchema(1000, 20).optional(),
