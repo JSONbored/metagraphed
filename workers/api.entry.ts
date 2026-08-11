@@ -36,6 +36,7 @@ export {
   McpSessionHub,
   AlerterHub,
   SubnetStatusHub,
+  NeonWriteBufferHub,
 } from "./api.ts";
 
 // GitHub OAuth (metagraphed#7151): OAuthProvider owns top-level fetch
