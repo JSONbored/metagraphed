@@ -56,3 +56,71 @@ describe("reportError", () => {
     expect(reportLovableError).toHaveBeenCalledWith(err, {});
   });
 });
+
+// A network-partition 404 is the API working correctly, not a fault.
+//
+// 105 of 188 routes are mainnet-only, so a testnet page that touches one gets a
+// documented 404. Three of them were reaching Error Tracking from
+// testnet.metagraph.sh (/api/v1/health and /api/v1/domains from /subnets,
+// /api/v1/agent-resources from /agents). `ApiError.network` already marked
+// them; nothing read it.
+describe("reportError and expected network-partition refusals", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    reportLovableError.mockClear();
+    posthogCaptureException.mockClear();
+  });
+
+  async function partitionError(over: Record<string, unknown> = {}) {
+    const { ApiError } = await import("./metagraphed/client");
+    return new ApiError(
+      "/api/v1/agent-resources is only available on mainnet, not the testnet network.",
+      {
+        status: 404,
+        code: "not_found",
+        url: "/api/v1/agent-resources",
+        network: "testnet",
+        ...over,
+      },
+    );
+  }
+
+  it("captures neither sink for a mainnet-only refusal", async () => {
+    const { reportError } = await import("./error-reporting");
+    reportError(await partitionError(), { boundary: "panel_shell" });
+    expect(posthogCaptureException).not.toHaveBeenCalled();
+    // The Lovable channel is suppressed too: it is a reporting sink, and the
+    // condition is not worth reporting to either.
+    expect(reportLovableError).not.toHaveBeenCalled();
+  });
+
+  // The guard has to stay narrow, or it swallows real 404s. Each case below is
+  // a reason the refusal is NOT a network partition, and each must still report.
+  it("still reports an ordinary 404 that carries no network", async () => {
+    const { reportError } = await import("./error-reporting");
+    reportError(await partitionError({ network: undefined }), {});
+    expect(posthogCaptureException).toHaveBeenCalledTimes(1);
+  });
+
+  it("still reports a 404 whose network is an empty string", async () => {
+    const { reportError } = await import("./error-reporting");
+    reportError(await partitionError({ network: "" }), {});
+    expect(posthogCaptureException).toHaveBeenCalledTimes(1);
+  });
+
+  it("still reports a 500 even when it carries a network", async () => {
+    const { reportError } = await import("./error-reporting");
+    reportError(await partitionError({ status: 500 }), {});
+    expect(posthogCaptureException).toHaveBeenCalledTimes(1);
+  });
+
+  it("still reports a plain Error that merely looks like one", async () => {
+    const { reportError } = await import("./error-reporting");
+    const impostor = Object.assign(new Error("404"), {
+      status: 404,
+      network: "testnet",
+    });
+    reportError(impostor, {});
+    expect(posthogCaptureException).toHaveBeenCalledTimes(1);
+  });
+});
