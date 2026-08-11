@@ -136,7 +136,7 @@ export const GetSubnetMetagraphOutputSchema = z
     // production 2026-08-07, whole and projected.
     neurons: z.array(NeuronSchema.partial()),
   })
-  .passthrough();
+  .strict();
 export type GetSubnetMetagraphOutput = z.infer<
   typeof GetSubnetMetagraphOutputSchema
 >;

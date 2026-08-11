@@ -52,7 +52,7 @@ export const AskArtifactSchema = z
     /** The generation model, published so an answer stays attributable. */
     model: z.string(),
   })
-  .passthrough();
+  .strict();
 export type AskArtifact = z.infer<typeof AskArtifactSchema>;
 
 /**
@@ -85,7 +85,7 @@ export const SemanticSearchResultSchema = z
     categories: z.array(z.string()),
     service_kinds: z.array(z.string()),
   })
-  .passthrough();
+  .strict();
 
 export const SemanticSearchArtifactSchema = z
   .object({
@@ -95,7 +95,7 @@ export const SemanticSearchArtifactSchema = z
     /** The embedding model, so a caller can tell two runs apart. */
     model: z.string(),
   })
-  .passthrough();
+  .strict();
 export type SemanticSearchArtifact = z.infer<
   typeof SemanticSearchArtifactSchema
 >;
@@ -129,5 +129,5 @@ export const SurfaceVerifyArtifactSchema = z
     /** True when the verdict came from the short-lived probe cache. */
     from_cache: z.boolean(),
   })
-  .passthrough();
+  .strict();
 export type SurfaceVerifyArtifact = z.infer<typeof SurfaceVerifyArtifactSchema>;

@@ -35,7 +35,7 @@ export const ChainActivityArtifactSchema = z
     day_count: z.int().min(0),
     days: z.array(ChainActivityDaySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope.",
   );
@@ -63,7 +63,7 @@ export const ChainCallsArtifactSchema = z
     call_count: z.int().min(0),
     calls: z.array(ChainCallEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Extrinsic call-mix breakdown over the window. Mirrors GET /api/v1/chain/calls's data envelope.",
   );
@@ -114,7 +114,7 @@ export const ChainSignersArtifactSchema = z
     signer_count: z.int().min(0),
     signers: z.array(ChainSignerEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters.",
   );
@@ -162,7 +162,7 @@ export const ChainFeesArtifactSchema = z
     daily: z.array(ChainFeeDaySchema),
     top_fee_payers: z.array(ChainFeePayerSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope.",
   );

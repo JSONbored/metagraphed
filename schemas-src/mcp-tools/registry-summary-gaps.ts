@@ -138,7 +138,7 @@ const EnrichmentTargetItemSchema = z
       service_kinds: true,
     }).optional(),
   })
-  .passthrough();
+  .strict();
 
 export const ListEnrichmentTargetsOutputSchema = z
   .object({
@@ -165,12 +165,12 @@ export const ListEnrichmentTargetsOutputSchema = z
         // does not appear in the echo makes the echo a lie.
         q: z.string().nullable(),
       })
-      .passthrough()
+      .strict()
       .optional(),
     note: z.string().optional(),
     targets: z.array(EnrichmentTargetItemSchema),
   })
-  .passthrough();
+  .strict();
 export type ListEnrichmentTargetsOutput = z.infer<
   typeof ListEnrichmentTargetsOutputSchema
 >;
@@ -200,7 +200,7 @@ export const GetSubnetGapsOutputSchema = z
     priorities: SubnetGapsArtifactSchema.shape.priorities,
     enrichment_queue: SubnetGapsArtifactSchema.shape.enrichment_queue,
   })
-  .passthrough();
+  .strict();
 export type GetSubnetGapsOutput = z.infer<typeof GetSubnetGapsOutputSchema>;
 
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;

@@ -3,22 +3,11 @@
 // Modeled from src/chain-stake-flow.ts's buildChainStakeFlow(), cross-checked
 // against the hand-edited ChainStakeFlowArtifact component it replaces.
 import { z } from "zod";
+import { distributionStatsSchema } from "../shared.ts";
 
-const NetFlowDistributionSchema = z
-  .object({
-    count: z.int().min(0),
-    mean: z.number(),
-    min: z.number(),
-    p25: z.number(),
-    median: z.number(),
-    p75: z.number(),
-    p90: z.number(),
-    max: z.number(),
-  })
-  .strict()
-  .describe(
-    "Spread of per-subnet net_flow_tao (can be negative) across EVERY subnet with stake events (not just the returned page).",
-  );
+const NetFlowDistributionSchema = distributionStatsSchema(z.number()).describe(
+  "Spread of per-subnet net_flow_tao (can be negative) across EVERY subnet with stake events (not just the returned page).",
+);
 
 export const ChainStakeFlowArtifactSchema = z
   .object({

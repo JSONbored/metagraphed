@@ -52,7 +52,7 @@ export const ExtrinsicsFeedArtifactSchema = z
     next_cursor: z.string().nullable(),
     extrinsics: z.array(ExtrinsicSchema),
   })
-  .passthrough();
+  .strict();
 export type ExtrinsicsFeedArtifact = z.infer<
   typeof ExtrinsicsFeedArtifactSchema
 >;
@@ -64,7 +64,7 @@ export const ExtrinsicDetailArtifactSchema = z
     extrinsic: ExtrinsicSchema.nullable(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough();
+  .strict();
 export type ExtrinsicDetailArtifact = z.infer<
   typeof ExtrinsicDetailArtifactSchema
 >;

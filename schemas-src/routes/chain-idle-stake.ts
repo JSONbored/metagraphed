@@ -18,11 +18,11 @@ export const ChainIdleStakeArtifactSchema = z
           idle_neuron_count: z.int().min(0),
           idle_stake_alpha: z.number().min(0),
         })
-        .passthrough()
+        .strict()
         .describe("One subnet's idle-stake scorecard in the network ranking."),
     ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope.",
   );

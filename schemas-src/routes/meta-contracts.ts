@@ -22,7 +22,11 @@
 import { z } from "zod";
 import { CoverageArtifactSchema } from "./coverage.ts";
 import { API_ROUTE_METHODS } from "../../src/contracts.ts";
-import { ArtifactBaseSchema, CacheProfileSchema } from "../envelope.ts";
+import {
+  ArtifactBaseSchema,
+  CacheProfileSchema,
+  PublishedAtSchema,
+} from "../envelope.ts";
 
 const ArtifactRetirementSchema = z
   .object({
@@ -68,6 +72,59 @@ const ApiQueryParameterSchema = z
     schema: z.record(z.string(), z.unknown()),
   })
   .strict();
+
+/**
+ * The feed catalog, and the network dimension -- ONE declaration each (#10790).
+ *
+ * Both blocks are written into BOTH meta artifacts from the SAME builder:
+ * `feedContractEntries()` and `networkContractBlock()` in src/contracts.ts,
+ * whose own comments say the two surfaces "are generated from the same
+ * constants, so they cannot disagree". Neither component declared either field,
+ * and `.passthrough()` on the artifact envelope is why nothing noticed -- four
+ * findings, one missing vocabulary, published on the two documents an agent
+ * reads FIRST to learn what this API is.
+ *
+ * Declared here once and referenced twice, rather than written out per
+ * component: a second copy of a shared vocabulary is how the copies drift, and
+ * this file already carries three of those (`ArtifactContractEntry`,
+ * `ApiQueryParameter`, `ResponseEnvelopeContract`) precisely so they cannot.
+ */
+const FeedContractEntrySchema = z
+  .object({
+    id: z.string(),
+    kind: z
+      .string()
+      .describe(
+        "The FeedTarget kind `parseFeedPath` resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry.",
+      ),
+    method: z.literal("GET"),
+    path: z.string().regex(/^\/api\/v1\/feeds\//),
+    description: z.string(),
+    formats: z.array(z.enum(["rss", "atom", "json"])),
+    content_types: z
+      .array(z.string())
+      .describe(
+        "Parallel to `formats`: a feed is rendered live and emits RSS/Atom/JSON Feed, not a stored artifact in the success envelope, and an agent that treated one like the other would parse XML as JSON.",
+      ),
+    public: z.literal(true),
+    path_parameters: z.array(ApiQueryParameterSchema),
+    query_parameters: z.array(ApiQueryParameterSchema),
+  })
+  .strict();
+
+const NetworkContractBlockSchema = z
+  .object({
+    aliases: z.array(z.string()),
+    data_aliases: z.array(z.string()),
+    default: z.literal("mainnet"),
+    path_form: z.literal("/api/v1/{network}/..."),
+    note: z.string(),
+    mainnet_only_route_count: z.int().min(0),
+  })
+  .strict()
+  .describe(
+    "The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree.",
+  );
 
 const ApiRouteSchema = z
   .object({
@@ -126,6 +183,8 @@ const CoverageDeltaSchema = z
 export const ContractsArtifactSchema = ArtifactBaseSchema.extend({
   artifacts: z.array(ArtifactContractEntrySchema),
   base_path: z.literal("/metagraph"),
+  feeds: z.array(FeedContractEntrySchema),
+  networks: NetworkContractBlockSchema,
   name: z.string(),
   openapi_url: z.literal("/metagraph/openapi.json"),
   primary_domain: z.literal("api.metagraph.sh"),
@@ -137,6 +196,8 @@ export type ContractsArtifact = z.infer<typeof ContractsArtifactSchema>;
 export const ApiIndexArtifactSchema = ArtifactBaseSchema.extend({
   artifact_contracts: z.array(ArtifactContractEntrySchema),
   base_path: z.literal("/api/v1"),
+  feeds: z.array(FeedContractEntrySchema),
+  networks: NetworkContractBlockSchema,
   // the RAW artifact, matching what /api/v1/contracts has always advertised.
   // This pinned `/api/v1/openapi.json`, which serves the spec inside the success
   // envelope — valid for the envelope rule, and not a valid OpenAPI document, so every
@@ -160,9 +221,13 @@ export const OpenApiArtifactSchema = z
     servers: z.array(z.record(z.string(), z.unknown())).optional(),
     paths: z.record(z.string(), z.unknown()),
     components: z.record(z.string(), z.unknown()),
+    // The document's own top-level `security` (empty: every published route is
+    // public). Part of the OpenAPI document this artifact IS, and undeclared
+    // until #10790.
+    security: z.array(z.record(z.string(), z.unknown())).optional(),
     "x-metagraphed": z.record(z.string(), z.unknown()).optional(),
   })
-  .passthrough();
+  .strict();
 export type OpenApiArtifact = z.infer<typeof OpenApiArtifactSchema>;
 
 const SubnetDiffEntrySchema = z
@@ -171,7 +236,7 @@ const SubnetDiffEntrySchema = z
     name: z.string().nullable().optional(),
     slug: z.string().optional(),
   })
-  .passthrough();
+  .strict();
 
 const SubnetRenameEntrySchema = z
   .object({
@@ -179,7 +244,7 @@ const SubnetRenameEntrySchema = z
     before: z.string().nullable().optional(),
     after: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const ChangelogArtifactSchema = ArtifactBaseSchema.extend({
   artifacts: z
@@ -222,7 +287,31 @@ export type ChangelogArtifact = z.infer<typeof ChangelogArtifactSchema>;
 // storage_tier_counts/_size_bytes, artifact_budget_summary) are themselves
 // assembled by further helpers not traced field-by-field here.
 export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
-  published_at: z.string().nullable().optional(),
+  published_at: PublishedAtSchema,
+  /**
+   * Why the build refused to reuse the committed schema index, or null.
+   *
+   * DECLARED because CI GATES ON IT (#10790). `scripts/validate.ts` fails the
+   * pipeline when `dropped_captured > 0`, and the control lives there rather
+   * than in the build on purpose: a tampered index must degrade the catalog
+   * rather than deny the whole pipeline, so the build records what it lost and
+   * CI -- which a hostile file cannot reach -- refuses to pass on it (#9909).
+   *
+   * A field a security control reads, that the published contract never
+   * described, is the sharpest version of what `.passthrough()` cost: the gate
+   * and the schema disagreed about whether the field existed at all.
+   */
+  schema_index_discard: z
+    .object({
+      reason: z.string(),
+      dropped_captured: z.int().min(0),
+    })
+    .strict()
+    .nullable()
+    .optional()
+    .describe(
+      "Null on a healthy build. Non-null with dropped_captured > 0 means this build lost every captured schema in the committed index -- validate.ts fails on it.",
+    ),
   adapter_count: z.int().min(0).optional(),
   artifact_count: z.int().min(0),
   artifact_size_bytes: z.int().min(0),
@@ -243,7 +332,7 @@ export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
           size_bytes: z.int().min(0).optional(),
           storage_tier: z.string().nullable().optional(),
         })
-        .passthrough(),
+        .strict(),
     )
     .optional(),
   artifact_budget_summary: z
@@ -252,7 +341,7 @@ export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
       ok_count: z.int().min(0),
       warn_count: z.int().min(0),
     })
-    .passthrough()
+    .strict()
     .optional(),
   artifact_budgets: z.array(ArtifactSizeBudgetSchema).optional(),
   candidate_count: z.int().min(0).optional(),
@@ -267,7 +356,7 @@ export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
   surface_count: z.int().min(0),
   public_contract: z
     .object({ version: z.string(), url: z.string() })
-    .passthrough()
+    .strict()
     .optional(),
 });
 export type BuildSummaryArtifact = z.infer<typeof BuildSummaryArtifactSchema>;

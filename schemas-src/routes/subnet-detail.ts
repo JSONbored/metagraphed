@@ -19,6 +19,7 @@ import {
   HttpUrlSchema,
   SocialLinksSchema,
   SubmissionReviewStateSchema,
+  GithubReleaseSchema,
 } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
@@ -149,6 +150,27 @@ export const RateLimitSchema = z
   })
   .strict();
 
+/**
+ * How to authenticate to a surface, or null when it needs no credential.
+ *
+ * THE ONE DECLARATION (#10790). `agent-catalog.ts` carried a second copy of
+ * this same vocabulary -- both modelled from
+ * `schemas/subnet-manifest.schema.json`'s `$defs.surface.properties.auth`,
+ * which is what actually validates the registry records they both come from --
+ * and that copy was `.passthrough()`, narrower, and wrong: it omitted
+ * `body_envelope` and `token_url`, and served `body_envelope` on eight
+ * services anyway.
+ *
+ * Its own comment pointed at #9799 for the fix, and #9799 CLOSED -- having
+ * single-sourced the enum vocabularies INSIDE this object (`scheme`,
+ * `location`, both imported from `../shared.ts` by both copies) and left the
+ * object around them duplicated. `validate-schema-vocabularies.ts` is that
+ * issue's gate and it looks for string-literal lists, so a re-copied OBJECT
+ * passes it. That is the gap this one closes.
+ *
+ * The prose below came from that copy. It is the better half of it, and the
+ * reason collapsing a duplicate is not the same as deleting one.
+ */
 export const AuthSchema = z
   .object({
     body_envelope: z
@@ -157,14 +179,35 @@ export const AuthSchema = z
         payload_key: z.string().min(1),
       })
       .strict()
-      .optional(),
-    location: SurfaceAuthLocationSchema.optional(),
-    name: z.string().optional(),
+      .optional()
+      .describe(
+        "For scheme:signature with location:body -- which key of the outgoing JSON body carries the credential, and which carries the payload it signs.",
+      ),
+    location: SurfaceAuthLocationSchema.optional().describe(
+      "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
+    ),
+    name: z
+      .string()
+      .optional()
+      .describe("The single header the credential goes in."),
     // minItems:1 in the hand-edited contract -- verified against real
     // registry/subnets/*.json auth.names values (#7860's diff audit).
-    names: z.array(z.string()).min(1).optional(),
-    scheme: SurfaceAuthSchemeSchema,
-    scopes_note: z.string().optional(),
+    names: z
+      .array(z.string())
+      .min(1)
+      .optional()
+      .describe(
+        "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
+      ),
+    scheme: SurfaceAuthSchemeSchema.describe(
+      "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
+    ),
+    scopes_note: z
+      .string()
+      .optional()
+      .describe(
+        "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
+      ),
     token_url: HttpUrlSchema.optional(),
     value_format: z.string().optional(),
   })
@@ -465,18 +508,7 @@ export const SubnetDetailSchema = z
     // kind on /api/v1/feeds/subnets/{netuid}. Null means the repo was never
     // asked (no resolvable source repo, or not yet captured); [] means it
     // publishes no releases, which is the common case for subnet repos.
-    github_releases: z
-      .array(
-        z.object({
-          tag: z.string(),
-          name: z.string().nullable(),
-          published_at: z.iso.datetime(),
-          url: z.string(),
-          prerelease: z.boolean(),
-        }),
-      )
-      .nullable()
-      .optional(),
+    github_releases: z.array(GithubReleaseSchema).nullable().optional(),
     github_unreachable: z.boolean().optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     // Genuinely open shape in the source contract (additionalProperties:
@@ -490,7 +522,7 @@ export const SubnetDetailSchema = z
           url: z.string(),
           source_url: z.string().nullable().optional(),
         })
-        .passthrough(),
+        .strict(),
     ),
     logo_url: z.url().nullable().optional(),
     mechanism_count: z.int().min(0).optional(),
@@ -520,18 +552,18 @@ export const SubnetDetailSchema = z
             network: z.string().nullable().optional(),
             source_kind: z.string().nullable().optional(),
           })
-          .passthrough()
+          .strict()
           .optional(),
         identity: z
           .object({
             display_name_source: z.string().nullable().optional(),
             native_name_quality: z.string().nullable().optional(),
           })
-          .passthrough()
+          .strict()
           .optional(),
         interface_metadata: z.string().nullable().optional(),
       })
-      .passthrough(),
+      .strict(),
     registered_at_block: z.int().min(0).optional(),
     slug: z.string(),
     social: SocialLinksSchema.nullable().optional(),
@@ -679,7 +711,43 @@ export const SurfaceSchema = z
   .strict();
 export type Surface = z.infer<typeof SurfaceSchema>;
 
+/**
+ * The pair `overlayOverviewHealth()` stamps beside `health` -- ONE declaration.
+ *
+ * The overlay writes both fields or neither, onto BOTH the subnet DETAIL and
+ * the subnet OVERVIEW artifact, and only the overview declared them (#8055 saw
+ * the omission there and fixed it in one place). `.passthrough()` carried the
+ * detail's copy out to clients for as long as it has existed; flipping to
+ * `.strict()` is what finally said so, in `validate:api` rather than in a
+ * report -- the field is composed at SERVE time, so no walk of the built
+ * artifacts could ever have found it (#10790).
+ *
+ * `z.string()` rather than the endpoint-level `health_source` enum on purpose.
+ * That enum describes a value THIS repo computes per endpoint; this one is
+ * lifted from the live health snapshot, which is written by the prober and can
+ * carry a source this schema has never heard of -- `live-postgres-fallback` is
+ * already one such. A closed set drawn from the values we happen to have seen
+ * would be a contract that fails the moment the producer grows a case.
+ */
+export const LIVE_HEALTH_OVERLAY = {
+  operational_observed_at: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp.",
+    ),
+  health_source: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer.",
+    ),
+} as const;
+
 export const SubnetDetailArtifactSchema = ArtifactBaseSchema.extend({
+  ...LIVE_HEALTH_OVERLAY,
   candidate_surfaces: z.array(CandidateSurfaceSchema),
   candidates: z.array(CandidateSurfaceSchema).optional(),
   economics: SubnetEconomicsSchema.optional(),

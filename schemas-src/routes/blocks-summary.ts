@@ -52,7 +52,7 @@ export const BlocksSummaryArtifactSchema = z
     distinct_spec_versions: z.int().min(0),
     latest_spec_version: z.int().min(0).nullable(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary.",
   );

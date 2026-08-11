@@ -15,26 +15,17 @@
 // setters/weight_sets). Cross-checked against the 8 matching hand-edited
 // components they replace.
 import { z } from "zod";
+import { distributionStatsSchema } from "../shared.ts";
 import {
   DeregistrationDerivationSchema,
   EventStreamDegradedSchema,
 } from "./event-stream-honesty.ts";
 
-export const IntensityDistributionSchema = z
-  .object({
-    count: z.int().min(0),
-    mean: z.number().min(0),
-    min: z.number().min(0),
-    p25: z.number().min(0),
-    median: z.number().min(0),
-    p75: z.number().min(0),
-    p90: z.number().min(0),
-    max: z.number().min(0),
-  })
-  .strict()
-  .describe(
-    "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
-  );
+export const IntensityDistributionSchema = distributionStatsSchema(
+  z.number().min(0),
+).describe(
+  "A count and the spread of a per-subnet intensity: mean, min, max, and the 25th/50th/75th/90th percentiles. WHAT is being counted is stated by the field carrying this block, since the same summary describes registrations per hotkey, announcements per server, and transfers per sender alike.",
+);
 
 export const ChainAxonRemovalsArtifactSchema = z
   .object({

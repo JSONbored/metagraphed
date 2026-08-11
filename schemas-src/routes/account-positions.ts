@@ -97,7 +97,7 @@ export const AccountPositionsArtifactSchema = z
     positions: z.array(NominatorPositionSchema),
     degraded: AccountPositionsDegradedSchema.optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions.",
   );
@@ -143,7 +143,7 @@ export const AccountPositionHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(AccountPositionHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
   );

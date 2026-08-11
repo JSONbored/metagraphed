@@ -157,7 +157,7 @@ export const GlobalValidatorsArtifactSchema = z
     validator_count: z.int().min(0),
     validators: z.array(GlobalValidatorEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type GlobalValidatorsArtifact = z.infer<
   typeof GlobalValidatorsArtifactSchema
 >;

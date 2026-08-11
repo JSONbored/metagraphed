@@ -120,7 +120,7 @@ export const SubnetMetagraphArtifactSchema = z
     block_number: z.int().nullable().optional(),
     neurons: z.array(NeuronSchema),
   })
-  .passthrough();
+  .strict();
 export type SubnetMetagraphArtifact = z.infer<
   typeof SubnetMetagraphArtifactSchema
 >;
@@ -135,7 +135,7 @@ export const NeuronDetailArtifactSchema = z
       "The UID's live metagraph row; null when absent from the latest snapshot.",
     ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot.",
   );
@@ -154,7 +154,7 @@ export const SubnetValidatorsArtifactSchema = z
         "Each permitted validator's live metagraph row -- the same NeuronState shape the neuron field returns.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope.",
   );
@@ -172,7 +172,7 @@ const NeuronHistoryPointSchema = z
     block_number: z.int().nullable().optional(),
   })
   .extend(NeuronSchema.shape)
-  .passthrough()
+  .strict()
   .describe(
     "One day's metagraph state for a single UID (NeuronState fields plus snapshot_date/captured_at/block_number).",
   );
@@ -201,7 +201,7 @@ export const NeuronHistoryArtifactSchema = z
     days_covered: z.int().min(0),
     points: z.array(NeuronHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
   );

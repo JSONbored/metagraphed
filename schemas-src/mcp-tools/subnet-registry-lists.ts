@@ -36,6 +36,7 @@ import {
   providerSlugSchema,
   querySchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import {
   SubnetCandidatesArtifactSchema,
@@ -80,6 +81,9 @@ export type GetSubnetCandidatesInput = z.infer<
 // caller controls it.
 export const GetSubnetCandidatesOutputSchema =
   SubnetCandidatesArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpUnsortedPageFields,
     candidates: projectableRows(
       SubnetCandidatesArtifactSchema.shape.candidates,
     ),
@@ -248,6 +252,9 @@ export type GetSubnetSurfacesInput = z.infer<
 // caller controls it.
 export const GetSubnetSurfacesOutputSchema =
   SubnetSurfacesArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpUnsortedPageFields,
     surfaces: projectableRows(SubnetSurfacesArtifactSchema.shape.surfaces),
   });
 export type GetSubnetSurfacesOutput = z.infer<

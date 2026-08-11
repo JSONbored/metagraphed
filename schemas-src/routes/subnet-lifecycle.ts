@@ -44,7 +44,7 @@ export const SubnetLifecycleEntrySchema = z
      */
     predates_capture: z.boolean(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap.",
   );
@@ -60,7 +60,7 @@ export const SubnetLifecycleArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(SubnetLifecycleEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type SubnetLifecycleArtifact = z.infer<
   typeof SubnetLifecycleArtifactSchema
 >;
@@ -89,7 +89,7 @@ export const ChainSubnetLifecycleArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(SubnetLifecycleEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type ChainSubnetLifecycleArtifact = z.infer<
   typeof ChainSubnetLifecycleArtifactSchema
 >;

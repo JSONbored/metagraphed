@@ -42,7 +42,7 @@ export const AccountEventsArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent.",
   );
@@ -57,7 +57,7 @@ const AccountDaySchema = z
     first_block: z.int().nullable().optional(),
     last_block: z.int().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One day's rolled-up activity for an account on one subnet, from the account_events_daily tier. event_kinds is the distinct set of event ids seen that day.",
   );
@@ -72,7 +72,7 @@ export const AccountHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     days: z.array(AccountDaySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay.",
   );
@@ -105,7 +105,7 @@ export const AccountTransfersArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     transfers: z.array(AccountTransferEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope.",
   );

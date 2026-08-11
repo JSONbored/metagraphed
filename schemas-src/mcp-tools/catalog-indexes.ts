@@ -22,6 +22,7 @@ import {
   limitSchema,
   orderSchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { FixturesIndexArtifactSchema } from "../routes/fixtures.ts";
@@ -47,7 +48,11 @@ export const ListFixturesInputSchema = z
   .strict();
 export type ListFixturesInput = z.infer<typeof ListFixturesInputSchema>;
 
-export const ListFixturesOutputSchema = FixturesIndexArtifactSchema;
+export const ListFixturesOutputSchema = FixturesIndexArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpUnsortedPageFields,
+});
 export type ListFixturesOutput = z.infer<typeof ListFixturesOutputSchema>;
 
 export const ListSchemasInputSchema = z.object({}).strict();

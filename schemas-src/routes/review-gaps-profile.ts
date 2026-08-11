@@ -50,7 +50,7 @@ export const ReviewGapPrioritySchema = z
 
 export const ReviewGapPrioritiesArtifactSchema = ArtifactBaseSchema.extend({
   priorities: z.array(ReviewGapPrioritySchema),
-}).passthrough();
+}).strict();
 export type ReviewGapPrioritiesArtifact = z.infer<
   typeof ReviewGapPrioritiesArtifactSchema
 >;
@@ -61,7 +61,7 @@ export const SubnetGapsArtifactSchema = ArtifactBaseSchema.extend({
   name: z.string().optional(),
   priorities: z.array(ReviewGapPrioritySchema),
   enrichment_queue: z.array(ReviewEnrichmentQueueEntrySchema),
-}).passthrough();
+}).strict();
 export type SubnetGapsArtifact = z.infer<typeof SubnetGapsArtifactSchema>;
 
 export const PROFILE_SORT_FIELDS = [
@@ -132,7 +132,7 @@ export const ReviewProfileCompletenessArtifactSchema =
         critical_gap_counts: CountMapSchema,
       })
       .strict(),
-  }).passthrough();
+  }).strict();
 export type ReviewProfileCompletenessArtifact = z.infer<
   typeof ReviewProfileCompletenessArtifactSchema
 >;

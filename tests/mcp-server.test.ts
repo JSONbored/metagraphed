@@ -112,12 +112,12 @@ const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 const HEALTH_HISTORY_DATE = await latestArtifactDate("health/history");
 const HEALTH_HISTORY_BLOB = {
   date: HEALTH_HISTORY_DATE || "2026-06-06",
-  // The two COUNT MAPS the route declares, recaptured from production
-  // 2026-08-07 when HealthHistorySummarySchema replaced the bare object this
-  // tool used to publish. The old two-key stub satisfied `{"type":"object"}`
-  // and satisfies nothing now, which is the point of typing the site.
+  // EXACTLY the three fields `HealthHistorySummarySchema` declares, which is
+  // exactly what the built artifact carries -- checked against
+  // dist/metagraph-r2/.../health/history/*.json (#10790). This fixture also
+  // carried an `incident_count`, invented rather than captured: no health
+  // summary writer produces one, and `.strict()` is what finally said so.
   summary: {
-    incident_count: 0,
     surface_count: 2,
     status_counts: { ok: 2 },
     classification_counts: { live: 2 },
@@ -20838,6 +20838,73 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
         status_domain: null,
         openapi_url: "/metagraph/openapi.json",
         type_definitions_url: "/metagraph/types.d.ts",
+        // Captured alongside the rest (#10790): /api/v1/contracts has always
+        // served `feeds` and `networks`, and no schema declared either -- so
+        // this fixture, trimmed from a real row, was missing them too.
+        feeds: [
+          {
+            content_types: [
+              "application/rss+xml",
+              "application/atom+xml",
+              "application/feed+json",
+            ],
+            description:
+              'The site-wide "what changed" feed: subnets, surfaces, and coverage added, removed, renamed, or updated in the metagraphed registry, plus Bittensor runtime upgrade activity (#8702). Served as RSS 2.0, Atom 1.0, or JSON Feed 1.1 \u2014 append `.rss`/`.atom`/`.json`, or negotiate with the `Accept` header on the bare path. Use `?tag=upgrade` to narrow to runtime upgrades alone.',
+            formats: ["rss", "atom", "json"],
+            id: "feed-registry",
+            kind: "registry",
+            method: "GET",
+            path: "/api/v1/feeds/registry",
+            path_parameters: [],
+            public: true,
+            query_parameters: [
+              {
+                description:
+                  "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+                name: "tag",
+                schema: {
+                  maxLength: 100,
+                  type: "string",
+                },
+              },
+              {
+                description:
+                  "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+                name: "since",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                description:
+                  "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+                name: "until",
+                schema: {
+                  type: "string",
+                },
+              },
+              {
+                description: "Maximum items to return (1-50). Defaults to 50.",
+                name: "limit",
+                schema: {
+                  default: 50,
+                  maximum: 50,
+                  minimum: 1,
+                  type: "integer",
+                  "x-serving-bound": true,
+                },
+              },
+            ],
+          },
+        ],
+        networks: {
+          aliases: ["finney", "local", "mainnet", "test", "testnet"],
+          data_aliases: ["finney", "mainnet", "test", "testnet"],
+          default: "mainnet",
+          mainnet_only_route_count: 168,
+          note: "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data \u2014 it returns a setup pointer for a self-run node.",
+          path_form: "/api/v1/{network}/...",
+        },
         artifacts: [
           {
             content_type: "application/json",

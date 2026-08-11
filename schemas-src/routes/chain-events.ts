@@ -21,7 +21,15 @@
 import { z } from "zod";
 import { EpochMillisSchema } from "../shared.ts";
 
-const ChainEventSchema = z
+/**
+ * ONE decoded chain-event row (#10790).
+ *
+ * Declared here and in `block-chain-events.ts`, and each copy's comment said
+ * the hand-edited `ChainEvent` component was "fully orphaned as of this batch"
+ * -- both believed they were the last one. A third, looser copy sat in the MCP
+ * tool that serves these same rows.
+ */
+export const ChainEventSchema = z
   .object({
     block_number: z.int().nullable(),
     event_index: z.int().nullable(),
@@ -55,7 +63,7 @@ export const ChainEventsFeedArtifactSchema = z
       .optional(),
     events: z.array(ChainEventSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents.",
   );
@@ -80,7 +88,7 @@ export const ChainEventsStatsArtifactSchema = z
     groups: z.int().min(0),
     activity: z.array(ChainEventEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity).",
   );

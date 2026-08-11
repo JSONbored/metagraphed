@@ -81,7 +81,7 @@ export const PipelineHistoryArtifactSchema = z
       "Present ONLY on a decline. An empty series is a measurement.",
     ),
   })
-  .passthrough();
+  .strict();
 export type PipelineHistoryArtifact = z.infer<
   typeof PipelineHistoryArtifactSchema
 >;

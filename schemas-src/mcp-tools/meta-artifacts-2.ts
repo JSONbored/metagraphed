@@ -28,6 +28,7 @@ import {
   querySchema,
   sortSchema,
   projectableRows,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { BuildSummaryArtifactSchema } from "../routes/meta-contracts.ts";
 
@@ -144,6 +145,9 @@ export type GetCoverageDepthInput = z.infer<typeof GetCoverageDepthInputSchema>;
 // there is still a compile error here; only requiredness changes, because the
 // caller controls it.
 export const GetCoverageDepthOutputSchema = CoverageDepthArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpUnsortedPageFields,
   rows: projectableRows(CoverageDepthArtifactSchema.shape.rows),
   ranked_queue: projectableRows(CoverageDepthArtifactSchema.shape.ranked_queue),
 });

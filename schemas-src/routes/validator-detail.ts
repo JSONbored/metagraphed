@@ -131,7 +131,7 @@ export const ValidatorDetailArtifactSchema = z
         "Per-subnet membership rows for this validator. The global leaderboard entry caps this at the top 10 by stake; the single-validator lookup carries every subnet.",
       ),
   })
-  .passthrough();
+  .strict();
 export type ValidatorDetailArtifact = z.infer<
   typeof ValidatorDetailArtifactSchema
 >;

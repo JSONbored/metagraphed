@@ -30,6 +30,19 @@ import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
 
 export const CandidatesArtifactSchema = ArtifactBaseSchema.extend({
   candidates: z.array(CandidateSurfaceSchema),
+  // The review-queue variant publishes this alongside the list; the intake
+  // artifact does not compute it. Optional rather than split into a second
+  // component, because one field is not a second vocabulary -- but it has to
+  // be DECLARED: `/metagraph/review-queue.json` served it under a schema that
+  // said it published "the candidates artifact unchanged", and `.passthrough()`
+  // is why the extra key never contradicted the claim (#10790).
+  count: z
+    .int()
+    .min(0)
+    .optional()
+    .describe(
+      "How many candidates the list carries, where the producer counts them.",
+    ),
 });
 export type CandidatesArtifact = z.infer<typeof CandidatesArtifactSchema>;
 

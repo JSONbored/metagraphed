@@ -94,5 +94,5 @@ export const AccountsListArtifactSchema = z
     account_count: z.int().min(0),
     accounts: z.array(AccountsListEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type AccountsListArtifact = z.infer<typeof AccountsListArtifactSchema>;

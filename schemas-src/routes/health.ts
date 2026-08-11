@@ -46,7 +46,7 @@ export const HealthSummaryArtifactSchema = z
         surface_count: z.int().min(0).optional(),
         status_counts: z.record(z.string(), z.int().min(0)).optional(),
       })
-      .passthrough(),
+      .strict(),
     health_source: z.string().optional(),
     operational_observed_at: z.string().nullable().optional(),
     schema_version: z.int(),
@@ -57,5 +57,5 @@ export const HealthSummaryArtifactSchema = z
   // Live-computed, not a static artifact -- ArtifactBaseSchema (which
   // requires generated_at as a plain string) doesn't apply; this shape
   // allows generated_at: null for the cold-store case.
-  .passthrough();
+  .strict();
 export type HealthSummaryArtifact = z.infer<typeof HealthSummaryArtifactSchema>;

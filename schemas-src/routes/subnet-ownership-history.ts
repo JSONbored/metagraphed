@@ -64,7 +64,7 @@ export const SubnetOwnershipHistoryArtifactSchema = z
         "The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history.",
   );

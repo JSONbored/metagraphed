@@ -76,7 +76,7 @@ export const EconomicsTrendsArtifactSchema = z
       .strict()
       .optional(),
   })
-  .passthrough();
+  .strict();
 export type EconomicsTrendsArtifact = z.infer<
   typeof EconomicsTrendsArtifactSchema
 >;

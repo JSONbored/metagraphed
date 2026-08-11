@@ -49,7 +49,7 @@ export const SubnetSurfaceHistoryArtifactSchema = z
     latest_change_at: z.iso.datetime().nullable(),
     changes: z.array(SurfaceHistoryChangeSchema),
   })
-  .passthrough();
+  .strict();
 export type SubnetSurfaceHistoryArtifact = z.infer<
   typeof SubnetSurfaceHistoryArtifactSchema
 >;

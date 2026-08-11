@@ -146,6 +146,40 @@ export function inputJsonSchema(schema: z.ZodType) {
  * self-contained. Shrinking that means the schemas carrying less, not being
  * encoded more cleverly (#9685, #9981).
  */
+/**
+ * The `degraded` block DISPATCH can stamp on any tool result (#10790).
+ *
+ * `markMcpTierDegraded` fires in `dispatchTool` for every tool, after the
+ * handler has returned, whenever the Postgres tier fell back during the call --
+ * so `degraded: {reason}` can appear on a result whose own schema never
+ * mentioned it. `.passthrough()` let that through unnoticed; under `.strict()`
+ * three tools failed their own published outputSchema the first time the tier
+ * was cold, and the only reason it was three is that three is what the
+ * conformance run happened to exercise.
+ *
+ * Declared at the SEAM rather than on the tools, because that is where the
+ * fact lives: the stamp is a property of dispatch, not of any handler, and a
+ * list of "tools that can degrade" would be wrong the first time a handler
+ * started reading a tier. A tool that declares a RICHER `degraded` keeps it --
+ * `completeDegradedBlock` fills those extra required-nullable keys, and
+ * overwriting the richer shape with this one would undo #9910.
+ */
+const MCP_DEGRADED_BLOCK = z
+  .object({
+    reason: z
+      .string()
+      .describe(
+        "Why this answer is untrustworthy. `tier_unavailable` is the generic dispatch stamp; a handler that knows more says so in its own words. NEVER read a zero beside this as a measurement.",
+      ),
+  })
+  .strict()
+  .optional();
+
 export function outputJsonSchema(schema: z.ZodType) {
-  return z.toJSONSchema(schema, { target: "draft-2020-12" });
+  const object = schema instanceof z.ZodObject ? schema : null;
+  const published =
+    object && !("degraded" in object.shape)
+      ? object.extend({ degraded: MCP_DEGRADED_BLOCK })
+      : schema;
+  return z.toJSONSchema(published, { target: "draft-2020-12" });
 }

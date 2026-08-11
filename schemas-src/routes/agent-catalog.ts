@@ -29,11 +29,14 @@
 //   callable_service_count} despite additionalProperties:true -- tightened
 //   to .strict() here.
 import { z } from "zod";
-import { ArtifactBaseSchema } from "../envelope.ts";
+import {
+  ArtifactBaseSchema,
+  ContentHashSchema,
+  PublishedAtSchema,
+} from "../envelope.ts";
 import { IntegrationReadinessSchema } from "./subnet-profile.ts";
 import { AgentReadinessBlockerSchema } from "./coverage.ts";
-import { SurfaceAuthLocationSchema } from "../shared.ts";
-import { SurfaceAuthSchemeSchema } from "../shared.ts";
+import { AuthSchema } from "./subnet-detail.ts";
 
 export const AgentReadinessStatusSchema = z
   .object({
@@ -72,7 +75,7 @@ const AgentServiceHealthSchema = z
     observed_by: z.string().optional(),
     monitoring_status: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 const AgentServiceEligibilitySchema = z
   .object({
@@ -80,7 +83,7 @@ const AgentServiceEligibilitySchema = z
     reasons: z.array(z.string()).optional(),
     live_status: z.string().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const AgentCatalogSubnetEntrySchema = z
   .object({
@@ -102,7 +105,7 @@ export const AgentCatalogSubnetEntrySchema = z
     health: z.string().optional(),
     previously_known_as: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .strict();
 
 const AgentCatalogBlockedSubnetEntrySchema = z
   .object({
@@ -118,9 +121,13 @@ const AgentCatalogBlockedSubnetEntrySchema = z
     callable_count: z.int().min(0).optional(),
     agent_readiness: AgentReadinessStatusSchema,
   })
-  .passthrough();
+  .strict();
 
 export const AgentCatalogArtifactSchema = ArtifactBaseSchema.extend({
+  // The build stamps both on this artifact and this schema declared neither
+  // (#10790) -- the omission the undeclared-field report found.
+  content_hash: ContentHashSchema,
+  published_at: PublishedAtSchema,
   total_subnet_count: z.int().min(0).optional(),
   subnet_count: z.int().min(0),
   blocked_subnet_count: z.int().min(0).optional(),
@@ -136,19 +143,36 @@ export const AgentCatalogArtifactSchema = ArtifactBaseSchema.extend({
       by_severity: z.record(z.string(), z.int().min(0)).optional(),
       by_status: z.record(z.string(), z.int().min(0)).optional(),
     })
-    .passthrough()
+    .strict()
     .optional(),
   subnets: z.array(AgentCatalogSubnetEntrySchema),
   blocked_subnets: z.array(AgentCatalogBlockedSubnetEntrySchema).optional(),
 });
 export type AgentCatalogArtifact = z.infer<typeof AgentCatalogArtifactSchema>;
 
-const AgentServiceSchemaSourceSchema = z
+/**
+ * The captured-schema pointer -- ONE declaration (#10790).
+ *
+ * `serviceSchemaSource()` writes it, and both the agent catalog and the
+ * operational-surfaces artifact carry the result. The second copy promised
+ * non-null `url`/`artifact`/`status`/`observed_at`/`hash` where the producer
+ * writes `|| null` on all five, and its `match` enum named two of the three
+ * values `resolveAgentServiceSchema` returns -- so a surface matched by
+ * `surface-id` would have failed that artifact's own contract.
+ */
+export const AgentServiceSchemaSourceSchema = z
   .object({
     surface_id: z.string(),
-    match: z.enum(["surface-id", "schema-url", "same-origin-openapi"]),
+    match: z
+      .enum(["surface-id", "schema-url", "same-origin-openapi"])
+      .describe(
+        "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
+      ),
     url: z.string().nullable(),
-    artifact: z.string().nullable(),
+    artifact: z
+      .string()
+      .nullable()
+      .describe("Artifact path of the captured schema, under /metagraph/."),
     status: z.string().nullable(),
     observed_at: z.string().nullable(),
     hash: z.string().nullable(),
@@ -198,55 +222,18 @@ export const AgentCatalogServiceSchema = z
     authority: z.string().nullable().optional(),
     auth_required: z.boolean().optional(),
     auth_schemes: z.array(z.string()).optional(),
-    // How to authenticate to this service, or null when it needs no
-    // credential. Was `z.record(z.string(), z.unknown())` -- a map with no
-    // declared value at all, on the one field an agent needs in order to
-    // CALL the service (#9800).
-    //
-    // The two vocabularies below are copied from
-    // schemas/subnet-manifest.schema.json's `$defs.surface.properties.auth`,
-    // which is what actually validates the registry records these come from
-    // -- NOT from the values production happens to serve. A sample of 121
-    // live rows showed four schemes; the authoring schema allows seven, and
-    // `basic` (absent from that sample, present on SN113) is exactly the hole
-    // that makes a sampled enum a bad contract. Single-sourcing the two
-    // declarations is #9799.
-    auth: z
-      .object({
-        scheme: SurfaceAuthSchemeSchema.describe(
-          "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
-        ),
-        location: SurfaceAuthLocationSchema.optional().describe(
-          "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
-        ),
-        name: z
-          .string()
-          .optional()
-          .describe("The single header the credential goes in."),
-        names: z
-          .array(z.string())
-          .optional()
-          .describe(
-            "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
-          ),
-        value_format: z.string().optional(),
-        scopes_note: z
-          .string()
-          .optional()
-          .describe(
-            "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
-          ),
-      })
-      .passthrough()
-      .nullable()
-      .optional(),
+    // ONE VOCABULARY (#10790): the same `AuthSchema` /api/v1/subnets/{netuid}
+    // publishes. This was a second, narrower copy of it -- `.passthrough()`,
+    // missing `body_envelope` and `token_url` -- which served `body_envelope`
+    // on eight services while declaring nothing about it.
+    auth: AuthSchema,
     snippets: z
       .object({
         curl: z.string().optional(),
         python: z.string().optional(),
         typescript: z.string().optional(),
       })
-      .passthrough()
+      .strict()
       .nullable()
       .optional(),
     schema_url: z.string().nullable().optional(),
@@ -258,7 +245,7 @@ export const AgentCatalogServiceSchema = z
     fixture: SurfaceFixtureReferenceSchema.optional(),
     fixture_status: AgentServiceFixtureStatusSchema.optional(),
   })
-  .passthrough();
+  .strict();
 
 const AgentCatalogExampleSchema = z
   .object({
@@ -268,7 +255,7 @@ const AgentCatalogExampleSchema = z
     provider: z.string().optional(),
     authority: z.string().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const AgentCatalogSubnetArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0),
@@ -291,8 +278,8 @@ export type AgentCatalogSubnetArtifact = z.infer<
 >;
 
 export const AgentResourcesArtifactSchema = ArtifactBaseSchema.extend({
-  published_at: z.string().nullable().optional(),
-  content_hash: z.string().optional(),
+  content_hash: ContentHashSchema,
+  published_at: PublishedAtSchema,
   summary: z
     .object({
       subnet_count: z.int().min(0),
@@ -306,7 +293,7 @@ export const AgentResourcesArtifactSchema = ArtifactBaseSchema.extend({
       url: z.url(),
       description: z.string().optional(),
     })
-    .passthrough(),
+    .strict(),
   mcp: z
     .object({
       endpoint: z.url(),
@@ -316,10 +303,10 @@ export const AgentResourcesArtifactSchema = ArtifactBaseSchema.extend({
       tools: z.array(
         z
           .object({ name: z.string(), title: z.string().nullable().optional() })
-          .passthrough(),
+          .strict(),
       ),
     })
-    .passthrough(),
+    .strict(),
   resources: z.array(
     z
       .object({
@@ -327,8 +314,18 @@ export const AgentResourcesArtifactSchema = ArtifactBaseSchema.extend({
         title: z.string(),
         kind: z.string().optional(),
         url: z.url(),
+        // The command that installs this resource, where one exists (the MCP
+        // server and the agent skill). Served since the catalog gained them
+        // and declared nowhere (#10790) -- on the artifact whose entire job is
+        // telling an agent how to reach us.
+        install: z
+          .string()
+          .optional()
+          .describe(
+            "Copy-pasteable install command, for the resources that have one.",
+          ),
       })
-      .passthrough(),
+      .strict(),
   ),
 });
 export type AgentResourcesArtifact = z.infer<

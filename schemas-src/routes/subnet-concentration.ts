@@ -57,7 +57,7 @@ export const SubnetConcentrationArtifactSchema = z
       .optional()
       .describe("Stake concentration across permitted validators only."),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
   );
@@ -76,7 +76,7 @@ const SubnetConcentrationHistoryPointSchema = z
     emission_nakamoto_coefficient: z.int().nullable().optional(),
     emission_top_10pct_share: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const SubnetConcentrationHistoryArtifactSchema = z
   .object({
@@ -90,7 +90,7 @@ export const SubnetConcentrationHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(SubnetConcentrationHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history.",
   );

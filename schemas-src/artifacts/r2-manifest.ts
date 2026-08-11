@@ -51,7 +51,7 @@ const R2ManifestHistoryPolicySchema = z
     content_addressed_history: z.boolean(),
     manifest_run_prefix: z.string(),
   })
-  .passthrough();
+  .strict();
 
 export const R2ManifestArtifactSchema = ArtifactBaseSchema.extend({
   artifact_count: z

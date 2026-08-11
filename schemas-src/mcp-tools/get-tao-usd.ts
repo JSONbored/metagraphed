@@ -2,6 +2,7 @@
 // /api/v1/network/tao-usd.
 import { z } from "zod";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { TaoUsdArtifactSchema, TaoUsdPointSchema } from "../routes/tao-usd.ts";
 
 const RouteQuery_network_tao_usd =
   ROUTE_QUERY_SCHEMAS["/api/v1/network/tao-usd"];
@@ -29,42 +30,15 @@ export const GetTaoUsdInputSchema = z
   .strict();
 export type GetTaoUsdInput = z.infer<typeof GetTaoUsdInputSchema>;
 
-export const GetTaoUsdOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    window: z.string().nullable(),
-    point_count: z.int(),
-    priced_point_count: z.int(),
-    latest: z
-      .object({
-        usd_per_tao: z.number().nullable(),
-        price_basis: z.string().nullable(),
-        eth_usd: z.number().nullable(),
-        block_number: z.int().nullable(),
-        observed_at: z.string().nullable(),
-        pool_count: z.int().nullable(),
-        pools: z.array(z.unknown()),
-      })
-      .passthrough()
-      .nullable(),
-    oldest_observed_at: z.string().nullable(),
-    change_usd: z.number().nullable(),
-    change_pct: z.number().nullable(),
-    // Optional because `include_points: false` OMITS the key rather than
-    // sending an empty array (#9720): an empty array is indistinguishable from
-    // a window that priced nothing, and the counts above already say how many
-    // points exist.
-    points: z
-      .array(
-        z
-          .object({
-            observed_at: z.string(),
-            block_number: z.int().nullable(),
-            usd_per_tao: z.number().nullable(),
-          })
-          .passthrough(),
-      )
-      .optional(),
-  })
-  .passthrough();
+export const GetTaoUsdOutputSchema = TaoUsdArtifactSchema.extend({
+  // DERIVED FROM THE ROUTE (#10790), with the two deltas this surface really
+  // has spelled out rather than buried in a re-typed copy. The copy had drifted
+  // to `z.string()` where the route says `z.iso.datetime()`, `z.int()` where it
+  // says `z.int().min(0)`, and an inline `latest` beside the route's own
+  // `TaoUsdLatestSchema` -- four ways to describe one payload.
+  // `include_points: false` OMITS the key rather than sending an empty array
+  // (#9720): an empty array is indistinguishable from a window that priced
+  // nothing, and the counts already say how many points exist.
+  points: z.array(TaoUsdPointSchema).optional(),
+});
 export type GetTaoUsdOutput = z.infer<typeof GetTaoUsdOutputSchema>;

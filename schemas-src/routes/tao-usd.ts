@@ -95,5 +95,5 @@ export const TaoUsdArtifactSchema = z
     change_pct: z.number().nullable(),
     points: z.array(TaoUsdPointSchema),
   })
-  .passthrough();
+  .strict();
 export type TaoUsdArtifact = z.infer<typeof TaoUsdArtifactSchema>;

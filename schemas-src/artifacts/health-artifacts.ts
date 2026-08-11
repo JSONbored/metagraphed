@@ -34,7 +34,7 @@ const HealthLatestSummarySchema = z
     status_counts: CountMapSchema,
     classification_counts: CountMapSchema,
   })
-  .passthrough();
+  .strict();
 
 export const HealthLatestArtifactSchema = ArtifactBaseSchema.extend({
   observed_at: z

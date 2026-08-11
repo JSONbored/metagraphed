@@ -233,7 +233,7 @@ const SubnetHealthSurfaceSchema = z
     error_class: z.string().optional(),
     redirect_target: z.string().optional(),
   })
-  .passthrough();
+  .strict();
 export const ListSubnetHealthOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
@@ -247,7 +247,7 @@ export const ListSubnetHealthOutputSchema = z
     sort: z.string().nullable().optional(),
     order: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type ListSubnetHealthOutput = z.infer<
   typeof ListSubnetHealthOutputSchema
 >;

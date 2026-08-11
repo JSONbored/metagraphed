@@ -21,7 +21,7 @@ export const AccountBalanceArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance.",
   );

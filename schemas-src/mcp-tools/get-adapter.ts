@@ -47,5 +47,5 @@ export const GetAdapterOutputSchema = z
     snapshot: AdapterSnapshotSchema.nullable().optional(),
     extensions: OpenObjectSchema.nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type GetAdapterOutput = z.infer<typeof GetAdapterOutputSchema>;

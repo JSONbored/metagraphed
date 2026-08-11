@@ -1417,9 +1417,11 @@
               "by_status": {}
             },
             "callable_service_count": 1,
+            "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
+            "published_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "subnet_count": 1,
             "subnets": [
@@ -1663,7 +1665,47 @@
             ],
             "base_path": "/api/v1",
             "contract_version": "2026-06-29.1",
+            "feeds": [
+              {
+                "content_types": [
+                  "example"
+                ],
+                "description": "Example description.",
+                "formats": [
+                  "rss"
+                ],
+                "id": "example",
+                "kind": "example",
+                "method": "GET",
+                "path": "/api/v1/feeds/registry",
+                "path_parameters": [
+                  {
+                    "name": "Example Subnet",
+                    "schema": {}
+                  }
+                ],
+                "public": true,
+                "query_parameters": [
+                  {
+                    "name": "Example Subnet",
+                    "schema": {}
+                  }
+                ]
+              }
+            ],
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "networks": {
+              "aliases": [
+                "example"
+              ],
+              "data_aliases": [
+                "example"
+              ],
+              "default": "mainnet",
+              "mainnet_only_route_count": 1,
+              "note": "example",
+              "path_form": "/api/v1/{network}/..."
+            },
             "notes": "Example description.",
             "openapi_url": "/metagraph/openapi.json",
             "primary_domain": "api.metagraph.sh",
@@ -2136,6 +2178,10 @@
               "version": "2026-06-29.1"
             },
             "published_at": "2026-06-01T00:00:00.000Z",
+            "schema_index_discard": {
+              "dropped_captured": 1,
+              "reason": "example"
+            },
             "schema_version": 1,
             "storage_tier_counts": {
               "example": 1
@@ -2249,6 +2295,7 @@
               }
             ],
             "contract_version": "2026-06-29.1",
+            "count": 1,
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
             "schema_version": 1
@@ -4469,8 +4516,48 @@
             ],
             "base_path": "/metagraph",
             "contract_version": "2026-06-29.1",
+            "feeds": [
+              {
+                "content_types": [
+                  "example"
+                ],
+                "description": "Example description.",
+                "formats": [
+                  "rss"
+                ],
+                "id": "example",
+                "kind": "example",
+                "method": "GET",
+                "path": "/api/v1/feeds/registry",
+                "path_parameters": [
+                  {
+                    "name": "Example Subnet",
+                    "schema": {}
+                  }
+                ],
+                "public": true,
+                "query_parameters": [
+                  {
+                    "name": "Example Subnet",
+                    "schema": {}
+                  }
+                ]
+              }
+            ],
             "generated_at": "2026-06-01T00:00:00.000Z",
             "name": "Example Subnet",
+            "networks": {
+              "aliases": [
+                "example"
+              ],
+              "data_aliases": [
+                "example"
+              ],
+              "default": "mainnet",
+              "mainnet_only_route_count": 1,
+              "note": "example",
+              "path_form": "/api/v1/{network}/..."
+            },
             "notes": "Example description.",
             "openapi_url": "/metagraph/openapi.json",
             "primary_domain": "api.metagraph.sh",
@@ -5038,7 +5125,14 @@
               "total_stake_alpha": "327838334.635978200",
               "total_validators": 1,
               "with_economics_count": 1
-            }
+            },
+            "tao_usd": {
+              "block_number": 5000000,
+              "observed_at": "2026-06-01T00:00:00.000Z",
+              "price_basis": "example",
+              "usd_per_tao": 0.5
+            },
+            "tao_usd_unavailable": "no_index_reading"
           },
           "meta": {
             "artifact_path": "example",
@@ -6793,6 +6887,9 @@
             "paths": {
               "example": null
             },
+            "security": [
+              {}
+            ],
             "servers": [
               {}
             ],
@@ -6988,7 +7085,9 @@
               }
             ],
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "health_source": "probe-derived",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "provider": {
               "authority": "example",
               "id": "example",
@@ -7822,6 +7921,7 @@
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
             "schema_version": 1,
+            "source": "live-cron-prober",
             "summary": {
               "archive_supported_count": 1,
               "by_kind": {},
@@ -7885,6 +7985,7 @@
             },
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "pools": [
               {
                 "eligible_count": 1,
@@ -8047,6 +8148,28 @@
                 "block_span": 5000000
               }
             ],
+            "current": {
+              "latest_release": {
+                "name": "Example Subnet",
+                "prerelease": false,
+                "published_at": "2026-06-01T00:00:00.000Z",
+                "spec_version": 1,
+                "tag": "example",
+                "url": "https://api.metagraph.sh/example"
+              },
+              "mainnet": {
+                "network": "example",
+                "observed_at": "2026-06-01T00:00:00.000Z",
+                "spec_version": 1
+              },
+              "pending_upgrade": "none",
+              "testnet": {
+                "network": "example",
+                "observed_at": "2026-06-01T00:00:00.000Z",
+                "spec_version": 1
+              },
+              "versions_behind": 1
+            },
             "current_spec_version": 1,
             "schema_version": 1,
             "transition_count": 1,
@@ -8921,6 +9044,7 @@
       "SubnetDeregistrationRankingArtifactResponse": {
         "value": {
           "data": {
+            "block": 5000000,
             "chain_state": {
               "block": 5000000,
               "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
@@ -9174,7 +9298,9 @@
               ]
             },
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "health_source": "probe-derived",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
             "subnet": {
               "block": 5000000,
@@ -10856,7 +10982,9 @@
               ]
             },
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "health_source": "probe-derived",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "profile": {
               "candidate_count": 1,
               "categories": [
@@ -11540,8 +11668,10 @@
       "SubnetsArtifactResponse": {
         "value": {
           "data": {
+            "captured_at": "2026-06-01T00:00:00.000Z",
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
+            "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
             "network": "finney",
             "notes": "Example description.",
             "schema_version": 1,
@@ -13237,7 +13367,7 @@
         "type": "object"
       },
       "AccountBalanceArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live free+reserved balance in TAO for one Finney ss58 account, read directly from chain via RPC (KV-cached). balance_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/balance.",
         "properties": {
           "balance_tao": {
@@ -13318,7 +13448,7 @@
         "type": "object"
       },
       "AccountChildrenArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children.",
         "properties": {
           "account": {
@@ -13446,7 +13576,7 @@
         "type": "object"
       },
       "AccountCounterpartiesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "counterparties": {
             "items": {
@@ -13856,12 +13986,12 @@
         "type": "object"
       },
       "AccountEntitiesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
         "properties": {
           "labels": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "A community-contributed entity label for an address (exchange/foundation/operator/other).",
               "properties": {
                 "category": {
@@ -13947,7 +14077,7 @@
           },
           "ownership_ties": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One tie between this `coldkey` and a subnet. `owns` is CURRENT ownership read from the economics tier's `owner_coldkey` (measured from SubtensorModule.SubnetOwner) and carries a NULL `block_number`, because it is a state rather than an event -- these come first, by netuid. `gained_ownership`/`lost_ownership` are SubnetOwnerChanged transfers, newest first, and there is exactly ONE such event in all of chain history: ownership is established at registration and only ever moved by conviction contest, which is why reading the transfer stream alone reported no ties for coldkeys that plainly own a subnet (#9313).",
               "properties": {
                 "block_number": {
@@ -14200,7 +14330,7 @@
         "type": "object"
       },
       "AccountEventsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's first-party chain-event feed (matched by the hotkey OR coldkey union, newest first), keyset-paginated. event_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/events' data envelope. Each item is an AccountEvent.",
         "properties": {
           "event_count": {
@@ -14268,7 +14398,7 @@
         "type": "object"
       },
       "AccountExtrinsicsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip).",
         "properties": {
           "extrinsic_count": {
@@ -14467,7 +14597,7 @@
         "type": "object"
       },
       "AccountHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay.",
         "properties": {
           "day_count": {
@@ -14477,7 +14607,7 @@
           },
           "days": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One day's rolled-up activity for an account on one subnet, from the account_events_daily tier. event_kinds is the distinct set of event ids seen that day.",
               "properties": {
                 "day": {
@@ -14709,7 +14839,7 @@
         "type": "object"
       },
       "AccountIdentityHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "account": {
             "type": "string"
@@ -14874,7 +15004,7 @@
         "type": "object"
       },
       "AccountParentsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents.",
         "properties": {
           "account": {
@@ -15002,7 +15132,7 @@
         "type": "object"
       },
       "AccountPortfolioArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
         "properties": {
           "captured_at": {
@@ -15200,7 +15330,7 @@
         "type": "object"
       },
       "AccountPositionHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
         "properties": {
           "netuid": {
@@ -15370,7 +15500,7 @@
         "type": "object"
       },
       "AccountPositionsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions.",
         "properties": {
           "captured_at": {
@@ -15736,7 +15866,7 @@
         "type": "object"
       },
       "AccountRootClaimArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
         "properties": {
           "claim_type": {
@@ -16011,7 +16141,7 @@
         "type": "object"
       },
       "AccountsListArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "account_count": {
             "maximum": 9007199254740991,
@@ -16529,7 +16659,7 @@
         "type": "object"
       },
       "AccountSubnetsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup.",
         "properties": {
           "schema_version": {
@@ -16605,7 +16735,7 @@
         "type": "object"
       },
       "AccountSummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "activity": {
             "additionalProperties": false,
@@ -16744,7 +16874,8 @@
           },
           "labels": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
+              "description": "A community-contributed entity label for an address (exchange/foundation/operator/other).",
               "properties": {
                 "category": {
                   "anyOf": [
@@ -16912,7 +17043,7 @@
         "type": "object"
       },
       "AccountTransfersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope.",
         "properties": {
           "limit": {
@@ -17185,7 +17316,7 @@
         "type": "object"
       },
       "AdapterArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope.",
         "properties": {
           "contract_version": {
@@ -17235,7 +17366,7 @@
           "snapshot": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "adapter_kind": {
                     "anyOf": [
@@ -17389,7 +17520,7 @@
         "type": "object"
       },
       "AgentCatalogArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "blocked_subnet_count": {
             "maximum": 9007199254740991,
@@ -17398,7 +17529,7 @@
           },
           "blocked_subnets": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "agent_readiness": {
                   "$ref": "#/components/schemas/AgentReadinessStatus"
@@ -17468,7 +17599,7 @@
             "type": "array"
           },
           "blocker_summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "by_code": {
                 "additionalProperties": {
@@ -17522,6 +17653,10 @@
             "minimum": 0,
             "type": "integer"
           },
+          "content_hash": {
+            "description": "Deterministic fingerprint of this artifact's content, so a consumer can tell a rebuild that changed nothing from one that changed something -- `generated_at` is an epoch stamp on local/CI builds and cannot (#349).",
+            "type": "string"
+          },
           "contract_version": {
             "type": "string"
           },
@@ -17542,6 +17677,17 @@
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds."
+          },
           "schema_version": {
             "const": 1,
             "type": "number"
@@ -17553,7 +17699,7 @@
           },
           "subnets": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "agent_readiness": {
                   "$ref": "#/components/schemas/AgentReadinessStatus"
@@ -17677,7 +17823,7 @@
         "type": "object"
       },
       "AgentCatalogSubnetArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "agent_readiness": {
             "$ref": "#/components/schemas/AgentReadinessStatus"
@@ -17708,7 +17854,7 @@
           },
           "examples": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "authority": {
                   "type": "string"
@@ -17784,64 +17930,10 @@
           },
           "services": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "auth": {
-                  "anyOf": [
-                    {
-                      "additionalProperties": {},
-                      "properties": {
-                        "location": {
-                          "description": "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
-                          "enum": [
-                            "header",
-                            "query",
-                            "cookie",
-                            "body"
-                          ],
-                          "type": "string"
-                        },
-                        "name": {
-                          "description": "The single header the credential goes in.",
-                          "type": "string"
-                        },
-                        "names": {
-                          "description": "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        },
-                        "scheme": {
-                          "description": "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
-                          "enum": [
-                            "none",
-                            "bearer",
-                            "api-key",
-                            "basic",
-                            "oauth2",
-                            "signature",
-                            "custom"
-                          ],
-                          "type": "string"
-                        },
-                        "scopes_note": {
-                          "description": "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
-                          "type": "string"
-                        },
-                        "value_format": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "scheme"
-                      ],
-                      "type": "object"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
+                  "$ref": "#/components/schemas/SurfaceAuth"
                 },
                 "auth_required": {
                   "type": "boolean"
@@ -17879,7 +17971,7 @@
                   ]
                 },
                 "eligibility": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "callable": {
                       "type": "boolean"
@@ -18028,7 +18120,7 @@
                   "type": "object"
                 },
                 "health": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "classification": {
                       "anyOf": [
@@ -18130,7 +18222,8 @@
                             {
                               "type": "null"
                             }
-                          ]
+                          ],
+                          "description": "Artifact path of the captured schema, under /metagraph/."
                         },
                         "hash": {
                           "anyOf": [
@@ -18143,6 +18236,7 @@
                           ]
                         },
                         "match": {
+                          "description": "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
                           "enum": [
                             "surface-id",
                             "schema-url",
@@ -18223,7 +18317,7 @@
                 "snippets": {
                   "anyOf": [
                     {
-                      "additionalProperties": {},
+                      "additionalProperties": false,
                       "properties": {
                         "curl": {
                           "type": "string"
@@ -18359,16 +18453,17 @@
         "type": "object"
       },
       "AgentResourcesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "content_hash": {
+            "description": "Deterministic fingerprint of this artifact's content, so a consumer can tell a rebuild that changed nothing from one that changed something -- `generated_at` is an epoch stamp on local/CI builds and cannot (#349).",
             "type": "string"
           },
           "contract_version": {
             "type": "string"
           },
           "copyable_agent": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "description": {
                 "type": "string"
@@ -18390,7 +18485,7 @@
             "type": "string"
           },
           "mcp": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "endpoint": {
                 "format": "uri",
@@ -18405,7 +18500,7 @@
               },
               "tools": {
                 "items": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "name": {
                       "type": "string"
@@ -18461,13 +18556,18 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds."
           },
           "resources": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "id": {
+                  "type": "string"
+                },
+                "install": {
+                  "description": "Copy-pasteable install command, for the resources that have one.",
                   "type": "string"
                 },
                 "kind": {
@@ -18525,7 +18625,7 @@
         "type": "object"
       },
       "AlertTriggerArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "account": {
             "anyOf": [
@@ -18644,7 +18744,7 @@
         "type": "object"
       },
       "ApiIndexArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "artifact_contracts": {
             "items": {
@@ -18741,8 +18841,164 @@
           "contract_version": {
             "type": "string"
           },
+          "feeds": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "content_types": {
+                  "description": "Parallel to `formats`: a feed is rendered live and emits RSS/Atom/JSON Feed, not a stored artifact in the success envelope, and an agent that treated one like the other would parse XML as JSON.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "formats": {
+                  "items": {
+                    "enum": [
+                      "rss",
+                      "atom",
+                      "json"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "The FeedTarget kind `parseFeedPath` resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry.",
+                  "type": "string"
+                },
+                "method": {
+                  "const": "GET",
+                  "type": "string"
+                },
+                "path": {
+                  "pattern": "^\\/api\\/v1\\/feeds\\/",
+                  "type": "string"
+                },
+                "path_parameters": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "additionalProperties": {},
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "schema"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "public": {
+                  "const": true,
+                  "type": "boolean"
+                },
+                "query_parameters": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "additionalProperties": {},
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "schema"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "method",
+                "path",
+                "description",
+                "formats",
+                "content_types",
+                "public",
+                "path_parameters",
+                "query_parameters"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "generated_at": {
             "type": "string"
+          },
+          "networks": {
+            "additionalProperties": false,
+            "description": "The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree.",
+            "properties": {
+              "aliases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "data_aliases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "default": {
+                "const": "mainnet",
+                "type": "string"
+              },
+              "mainnet_only_route_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "note": {
+                "type": "string"
+              },
+              "path_form": {
+                "const": "/api/v1/{network}/...",
+                "type": "string"
+              }
+            },
+            "required": [
+              "aliases",
+              "data_aliases",
+              "default",
+              "path_form",
+              "note",
+              "mainnet_only_route_count"
+            ],
+            "type": "object"
           },
           "notes": {
             "anyOf": [
@@ -18918,6 +19174,8 @@
           "schema_version",
           "artifact_contracts",
           "base_path",
+          "feeds",
+          "networks",
           "openapi_url",
           "primary_domain",
           "response_envelope",
@@ -18927,7 +19185,7 @@
         "type": "object"
       },
       "ArtifactBase": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -18961,7 +19219,7 @@
         "type": "object"
       },
       "AskArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "answer": {
             "type": "string"
@@ -19085,7 +19343,7 @@
         "type": "string"
       },
       "BlockChainEventsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block_number": {
             "maximum": 9007199254740991,
@@ -19100,7 +19358,6 @@
           "events": {
             "items": {
               "additionalProperties": false,
-              "description": "One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload).",
               "properties": {
                 "args": {
                   "anyOf": [
@@ -19208,8 +19465,7 @@
                     {
                       "type": "null"
                     }
-                  ],
-                  "description": "Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525)."
+                  ]
                 }
               },
               "required": [
@@ -19230,7 +19486,7 @@
         "type": "object"
       },
       "BlockDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block": {
             "anyOf": [
@@ -19395,7 +19651,7 @@
         "type": "object"
       },
       "BlockEventsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref.",
         "properties": {
           "block_number": {
@@ -19473,7 +19729,7 @@
         "type": "object"
       },
       "BlockExtrinsicsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One block's extrinsics list (#6977). Rows are the opaque JSON extrinsic shape the extrinsics feed uses; block_number is null for an unknown ref.",
         "properties": {
           "block_number": {
@@ -19704,7 +19960,7 @@
         "type": "object"
       },
       "BlocksFeedArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block_count": {
             "maximum": 9007199254740991,
@@ -19869,7 +20125,7 @@
         "type": "object"
       },
       "BlocksSummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary.",
         "properties": {
           "author_concentration": {
@@ -20062,7 +20318,7 @@
         "type": "object"
       },
       "BuildSummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "adapter_count": {
             "maximum": 9007199254740991,
@@ -20070,7 +20326,7 @@
             "type": "integer"
           },
           "artifact_budget_summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "fail_count": {
                 "maximum": 9007199254740991,
@@ -20149,7 +20405,7 @@
           },
           "artifacts": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "path": {
                   "type": "string"
@@ -20241,7 +20497,7 @@
             "type": "integer"
           },
           "public_contract": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "url": {
                 "type": "string"
@@ -20264,7 +20520,34 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds."
+          },
+          "schema_index_discard": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "dropped_captured": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "dropped_captured"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null on a healthy build. Non-null with dropped_captured > 0 means this build lost every captured schema in the committed index -- validate.ts fails on it."
           },
           "schema_version": {
             "const": 1,
@@ -20495,7 +20778,7 @@
         "type": "string"
       },
       "CandidatesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidates": {
             "items": {
@@ -20505,6 +20788,12 @@
           },
           "contract_version": {
             "type": "string"
+          },
+          "count": {
+            "description": "How many candidates the list carries, where the producer counts them.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
           "generated_at": {
             "type": "string"
@@ -20673,7 +20962,7 @@
         "type": "object"
       },
       "ChainActivityArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope.",
         "properties": {
           "day_count": {
@@ -20930,7 +21219,7 @@
           },
           "tao_usd": {
             "additionalProperties": false,
-            "description": "The reading every _usd field was converted at -- the network rollup and each per-subnet row alike, so one reading priced them all.",
+            "description": "The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them.",
             "properties": {
               "block_number": {
                 "anyOf": [
@@ -21168,7 +21457,7 @@
         "type": "object"
       },
       "ChainBurnArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "cheapest_burn_tao": {
             "anyOf": [
@@ -21318,7 +21607,7 @@
         "type": "object"
       },
       "ChainCallsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Extrinsic call-mix breakdown over the window. Mirrors GET /api/v1/chain/calls's data envelope.",
         "properties": {
           "call_count": {
@@ -21410,7 +21699,7 @@
         "type": "object"
       },
       "ChainConcentrationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration.",
         "properties": {
           "captured_at": {
@@ -21528,7 +21817,7 @@
         "type": "object"
       },
       "ChainConcentrationHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "builder_versions": {
             "description": "Every distinct builder version in the series. More than one means it changes DEFINITION partway along.",
@@ -21757,7 +22046,7 @@
         "type": "object"
       },
       "ChainConcentrationScorecard": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "entropy": {
             "anyOf": [
@@ -21843,7 +22132,7 @@
         "type": "object"
       },
       "ChainConcentrationSubnetsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "captured_at": {
             "anyOf": [
@@ -22473,7 +22762,7 @@
         "type": "object"
       },
       "ChainEventsFeedArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents.",
         "properties": {
           "count": {
@@ -22636,7 +22925,7 @@
         "type": "object"
       },
       "ChainEventsStatsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity).",
         "properties": {
           "activity": {
@@ -22698,7 +22987,7 @@
         "type": "object"
       },
       "ChainFeesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope.",
         "properties": {
           "daily": {
@@ -23103,7 +23392,7 @@
         "type": "object"
       },
       "ChainHoldersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "captured_at": {
             "anyOf": [
@@ -23370,11 +23659,11 @@
         "type": "object"
       },
       "ChainIdentityHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "changes": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One cross-subnet identity change in the network-wide feed (carries its netuid).",
               "properties": {
                 "block_number": {
@@ -23530,7 +23819,7 @@
         "type": "object"
       },
       "ChainIdleStakeArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope.",
         "properties": {
           "captured_at": {
@@ -23555,7 +23844,7 @@
           },
           "subnets": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One subnet's idle-stake scorecard in the network ranking.",
               "properties": {
                 "idle_neuron_count": {
@@ -23602,7 +23891,7 @@
         "type": "object"
       },
       "ChainPerformanceArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance.",
         "properties": {
           "active_count": {
@@ -23991,7 +24280,7 @@
         "type": "object"
       },
       "ChainRevenueCoverageArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network. Mirrors GET /api/v1/chain/revenue-coverage.",
         "properties": {
           "contract_version": {
@@ -24479,7 +24768,7 @@
         "type": "object"
       },
       "ChainSignersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Network-wide weight-setter leaderboard over a lookback window, summed live from the account_events WeightsSet stream. The setter-level drill-in behind ChainWeights. Mirrors GET /api/v1/chain/weights/setters.",
         "properties": {
           "observed_at": {
@@ -25153,11 +25442,11 @@
         "type": "object"
       },
       "ChainSubnetLifecycleArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "entries": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap.",
               "properties": {
                 "block_number": {
@@ -26081,7 +26370,7 @@
         "type": "object"
       },
       "ChainYieldArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield.",
         "properties": {
           "captured_at": {
@@ -26097,7 +26386,7 @@
           "distribution": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "description": "Distribution of the per-neuron emission/stake return rate across the network.",
                 "properties": {
                   "count": {
@@ -26223,7 +26512,7 @@
         "type": "object"
       },
       "ChangelogArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "artifacts": {
             "additionalProperties": false,
@@ -26374,7 +26663,7 @@
             "properties": {
               "added": {
                 "items": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "name": {
                       "anyOf": [
@@ -26404,7 +26693,7 @@
               },
               "removed": {
                 "items": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "name": {
                       "anyOf": [
@@ -26434,7 +26723,7 @@
               },
               "renamed": {
                 "items": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "after": {
                       "anyOf": [
@@ -26597,7 +26886,7 @@
         "type": "string"
       },
       "CompareArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "dimensions": {
             "items": {
@@ -26837,7 +27126,7 @@
         "type": "object"
       },
       "CompareValidatorsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators.",
         "properties": {
           "netuid": {
@@ -27283,7 +27572,7 @@
       "ConcentrationMetrics": {
         "anyOf": [
           {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "entropy": {
                 "anyOf": [
@@ -27412,7 +27701,7 @@
         "description": "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column)."
       },
       "ContractsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "artifacts": {
             "items": {
@@ -27509,11 +27798,167 @@
           "contract_version": {
             "type": "string"
           },
+          "feeds": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "content_types": {
+                  "description": "Parallel to `formats`: a feed is rendered live and emits RSS/Atom/JSON Feed, not a stored artifact in the success envelope, and an agent that treated one like the other would parse XML as JSON.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "formats": {
+                  "items": {
+                    "enum": [
+                      "rss",
+                      "atom",
+                      "json"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "The FeedTarget kind `parseFeedPath` resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry.",
+                  "type": "string"
+                },
+                "method": {
+                  "const": "GET",
+                  "type": "string"
+                },
+                "path": {
+                  "pattern": "^\\/api\\/v1\\/feeds\\/",
+                  "type": "string"
+                },
+                "path_parameters": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "additionalProperties": {},
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "schema"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "public": {
+                  "const": true,
+                  "type": "boolean"
+                },
+                "query_parameters": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "additionalProperties": {},
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "schema"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "method",
+                "path",
+                "description",
+                "formats",
+                "content_types",
+                "public",
+                "path_parameters",
+                "query_parameters"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
           "generated_at": {
             "type": "string"
           },
           "name": {
             "type": "string"
+          },
+          "networks": {
+            "additionalProperties": false,
+            "description": "The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree.",
+            "properties": {
+              "aliases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "data_aliases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "default": {
+                "const": "mainnet",
+                "type": "string"
+              },
+              "mainnet_only_route_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "note": {
+                "type": "string"
+              },
+              "path_form": {
+                "const": "/api/v1/{network}/...",
+                "type": "string"
+              }
+            },
+            "required": [
+              "aliases",
+              "data_aliases",
+              "default",
+              "path_form",
+              "note",
+              "mainnet_only_route_count"
+            ],
+            "type": "object"
           },
           "notes": {
             "anyOf": [
@@ -27554,6 +27999,8 @@
           "schema_version",
           "artifacts",
           "base_path",
+          "feeds",
+          "networks",
           "name",
           "openapi_url",
           "primary_domain",
@@ -27574,7 +28021,7 @@
         "type": "object"
       },
       "CoverageArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "application_subnet_count": {
             "maximum": 9007199254740991,
@@ -27702,7 +28149,7 @@
                     "type": "string"
                   },
                   {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "properties": {
                       "identity_storage": {
                         "anyOf": [
@@ -27820,7 +28267,7 @@
         "type": "object"
       },
       "CoverageCompleteness": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "average_score": {
             "maximum": 100,
@@ -27829,7 +28276,7 @@
           },
           "dimension_coverage": {
             "additionalProperties": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "pct": {
                   "maximum": 100,
@@ -27892,7 +28339,7 @@
         "type": "object"
       },
       "CoverageDepthArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -27997,7 +28444,7 @@
             "type": "number"
           },
           "scoring": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "methodology": {
                 "type": "string"
@@ -28173,7 +28620,7 @@
             ]
           },
           "dimensions": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "callable_service_count": {
                 "maximum": 9007199254740991,
@@ -28397,12 +28844,12 @@
         "type": "string"
       },
       "CrowdloanDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "crowdloan": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "cap_tao": {
                     "type": "number"
@@ -28570,7 +29017,7 @@
         "type": "object"
       },
       "CrowdloansArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "crowdloan_count": {
             "anyOf": [
@@ -28586,7 +29033,7 @@
           },
           "crowdloans": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "cap_tao": {
                   "type": "number"
@@ -28758,7 +29205,7 @@
         "type": "object"
       },
       "CurationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation).",
         "properties": {
           "contract_version": {
@@ -28986,7 +29433,7 @@
         "type": "object"
       },
       "DisabledProxyContract": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "The contract the RPC proxy honours while disabled: which methods stay allowed, which patterns stay denied, and whether rate limiting and WAF are prerequisites for enabling it.",
         "properties": {
           "allowed_methods": {
@@ -29248,7 +29695,7 @@
         "type": "integer"
       },
       "EconomicsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "captured_at": {
             "anyOf": [
@@ -29404,6 +29851,64 @@
               "with_economics_count"
             ],
             "type": "object"
+          },
+          "tao_usd": {
+            "additionalProperties": false,
+            "description": "The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them.",
+            "properties": {
+              "block_number": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "observed_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price_basis": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "usd_per_tao": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "usd_per_tao",
+              "block_number",
+              "observed_at",
+              "price_basis"
+            ],
+            "type": "object"
+          },
+          "tao_usd_unavailable": {
+            "description": "Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.",
+            "enum": [
+              "no_index_reading",
+              "index_unpriced",
+              "index_stale",
+              "no_alpha_price"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -29417,7 +29922,7 @@
         "type": "object"
       },
       "EconomicsTrendsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "day_count": {
             "maximum": 9007199254740991,
@@ -29831,7 +30336,7 @@
         "type": "object"
       },
       "EmissionGateChangesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "change_count": {
             "maximum": 9007199254740991,
@@ -30000,7 +30505,7 @@
         "type": "object"
       },
       "EmissionPipelineArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served.",
         "properties": {
           "aggregate": {
@@ -30476,7 +30981,7 @@
         "type": "object"
       },
       "EndpointEligibilityPolicy": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Which probed endpoints this pool may draw from: the layers it accepts, the health verdict it requires, and whether an endpoint must be auth-free and public-safe to qualify.",
         "properties": {
           "eligible_layers": {
@@ -30651,7 +31156,7 @@
         "type": "object"
       },
       "EndpointIncidentsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -30797,7 +31302,7 @@
         "type": "object"
       },
       "EndpointPoolsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here.",
         "properties": {
           "contract_version": {
@@ -31224,7 +31729,7 @@
         "type": "object"
       },
       "EndpointsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -31385,7 +31890,7 @@
         "type": "object"
       },
       "EntitiesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "The curated address-label registry (#6737/#10483): one entry per ss58 that has cleared docs/nametag-evidence-bar.md, each carrying the source_urls that prove the attribution. Mirrors the built /metagraph/entities.json.",
         "properties": {
           "contract_version": {
@@ -31394,7 +31899,7 @@
           "entities": {
             "description": "Every non-rejected label in registry/entities/, sorted by ss58. An EMPTY array is a real answer, not a cold store: the registry holds only what has cleared the evidence bar, and a curated layer with nothing in it yet is the honest state.",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One curated address label. There is deliberately no `owner` category: subnet ownership is chain-derived from SubnetOwner and must never be hand-declared.",
               "properties": {
                 "category": {
@@ -31427,7 +31932,7 @@
                   "type": "string"
                 },
                 "review": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "description": "Human-governance axis only, the same shape and meaning as a subnet surface's own `review` block. `rejected` entries are filtered out at build time and never appear here.",
                   "properties": {
                     "review_notes": {
@@ -31474,7 +31979,7 @@
                   "type": "string"
                 },
                 "unspendable_proof": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "description": "Why this address cannot spend what it receives. Required for `category: burn`, because a burn is a CLAIM until proven -- \"the team says they burn here\" is an operator attestation, not a burn.",
                   "properties": {
                     "basis": {
@@ -31649,7 +32154,7 @@
         "type": "object"
       },
       "EvidenceLedgerArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "claims": {
             "items": {
@@ -31723,7 +32228,7 @@
         "type": "object"
       },
       "EvmAddressMappingArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}.",
         "properties": {
           "field_sources": {
@@ -31804,7 +32309,7 @@
         "type": "object"
       },
       "ExtrinsicDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "events": {
             "items": {
@@ -32000,7 +32505,7 @@
         "type": "object"
       },
       "ExtrinsicsFeedArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "extrinsic_count": {
             "maximum": 9007199254740991,
@@ -32268,7 +32773,7 @@
         "type": "object"
       },
       "FailureReasonsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "days_covered": {
             "anyOf": [
@@ -32461,7 +32966,7 @@
         "type": "object"
       },
       "FixtureArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "captured_at": {
             "anyOf": [
@@ -32504,7 +33009,7 @@
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
           "request": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "method": {
                 "const": "GET",
@@ -32522,7 +33027,7 @@
             "type": "object"
           },
           "response": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "body": {
                 "anyOf": [
@@ -32610,7 +33115,7 @@
         "type": "object"
       },
       "FixturesIndexArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidate_count": {
             "maximum": 9007199254740991,
@@ -32622,7 +33127,7 @@
           },
           "coverage": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "artifact_path": {
                   "anyOf": [
@@ -32712,7 +33217,7 @@
           },
           "fixtures": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "captured_at": {
                   "anyOf": [
@@ -32796,7 +33301,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds."
           },
           "schema_version": {
             "const": 1,
@@ -32823,7 +33329,7 @@
         "type": "object"
       },
       "FreshnessArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -33150,7 +33656,7 @@
         "type": "object"
       },
       "GapsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps).",
         "properties": {
           "contract_version": {
@@ -33252,7 +33758,7 @@
         "$ref": "#/components/schemas/ArtifactBase"
       },
       "GlobalIncidentsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Global endpoint-incident ledger (#5660). Mirrors GET /api/v1/incidents' data envelope.",
         "properties": {
           "min_incident_samples": {
@@ -33279,7 +33785,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "description": "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape.",
             "properties": {
               "affected_surface_count": {
@@ -33301,7 +33807,7 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One endpoint incident in the global ledger. Mirrors the REST EndpointIncident shape (enum-valued fields carried as their string values).",
               "properties": {
                 "downtime_ms": {
@@ -33316,7 +33822,7 @@
                 },
                 "incidents": {
                   "items": {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "description": "One reconstructed outage window.\n\n\\`started_at\\` and \\`ended_at\\` are epoch MILLISECONDS, which is why they are\nFloat and not Int: GraphQL's Int is 32-bit and every real value overflows it\n(1786228205841 against a ceiling of 2147483647). Every incident window on\n\\`incidents\\`, \\`global_incidents\\` and \\`subnet_health_incidents\\` therefore\nerrored, and because both fields are non-null the error propagated up and\nnulled the surrounding list -- on every request, since the surface shipped.\nNothing had executed these fields (#10215). \\`duration_ms\\` is a span rather\nthan an instant and stays an Int.",
                     "properties": {
                       "duration_ms": {
@@ -33399,7 +33905,7 @@
         "type": "object"
       },
       "GlobalValidatorsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block_number": {
             "anyOf": [
@@ -33869,7 +34375,7 @@
         "type": "object"
       },
       "HealthBadgeArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "color": {
             "type": "string"
@@ -33948,7 +34454,7 @@
         "type": "object"
       },
       "HealthHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -34125,7 +34631,7 @@
         "type": "object"
       },
       "HealthIncidentsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope.",
         "properties": {
           "min_incident_samples": {
@@ -34159,7 +34665,7 @@
           "surfaces": {
             "description": "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows).",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "downtime_ms": {
                   "maximum": 9007199254740991,
@@ -34173,7 +34679,7 @@
                 },
                 "incidents": {
                   "items": {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "properties": {
                       "duration_ms": {
                         "maximum": 9007199254740991,
@@ -34266,7 +34772,7 @@
         "type": "object"
       },
       "HealthLatestArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -34328,7 +34834,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "description": "Network-wide health rollup for this observation. `status_counts` and `classification_counts` are keyed by verdict, so a new verdict adds a key rather than changing the contract -- typed records, not opacity.",
             "properties": {
               "classification_counts": {
@@ -34367,7 +34873,7 @@
         "type": "object"
       },
       "HealthPercentilesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope.",
         "properties": {
           "netuid": {
@@ -34396,10 +34902,10 @@
           "surfaces": {
             "description": "Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces).",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "latency_ms": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "avg": {
                       "anyOf": [
@@ -34522,7 +35028,7 @@
         "type": "object"
       },
       "HealthProbeSummary": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "classification_counts": {
             "$ref": "#/components/schemas/CountMap"
@@ -34553,7 +35059,7 @@
         "type": "string"
       },
       "HealthSubnetArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -34789,7 +35295,7 @@
         "type": "object"
       },
       "HealthSummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -34805,7 +35311,7 @@
             ]
           },
           "global": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "status_counts": {
                 "additionalProperties": {
@@ -34962,7 +35468,7 @@
           },
           "method_results": {
             "additionalProperties": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "code": {},
                 "error": {
@@ -34979,7 +35485,7 @@
                   "type": "boolean"
                 },
                 "raw_header": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "number": {}
                   },
@@ -35138,7 +35644,7 @@
         "type": "object"
       },
       "HealthTrendsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's uptime + latency trend windows. Mirrors GET /api/v1/subnets/{netuid}/health/trends's data envelope.",
         "properties": {
           "netuid": {
@@ -35166,7 +35672,7 @@
           },
           "windows": {
             "additionalProperties": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "latency_sample_count": {
                   "maximum": 9007199254740991,
@@ -35180,7 +35686,7 @@
                 },
                 "surfaces": {
                   "items": {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "properties": {
                       "avg_latency_ms": {
                         "anyOf": [
@@ -35195,7 +35701,7 @@
                         ]
                       },
                       "latency_ms": {
-                        "additionalProperties": {},
+                        "additionalProperties": false,
                         "properties": {
                           "p50": {
                             "anyOf": [
@@ -35312,7 +35818,7 @@
         "type": "object"
       },
       "IndexerLagArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block_count": {
             "anyOf": [
@@ -35660,7 +36166,7 @@
         "type": "object"
       },
       "LineageArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "broken_link_count": {
             "maximum": 9007199254740991,
@@ -35744,7 +36250,7 @@
           },
           "links": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "mainnet_name": {
                   "anyOf": [
@@ -35836,7 +36342,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds."
           },
           "schema_version": {
             "const": 1,
@@ -36016,7 +36523,7 @@
         "type": "object"
       },
       "NetworkParametersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope.",
         "properties": {
           "block_emission_halvings": {
@@ -36209,7 +36716,7 @@
         "type": "object"
       },
       "NeuronDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot.",
         "properties": {
           "block_number": {
@@ -36446,7 +36953,7 @@
         "type": "object"
       },
       "NeuronHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
         "properties": {
           "days_covered": {
@@ -36486,7 +36993,7 @@
           },
           "points": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One day's metagraph state for a single UID (NeuronState fields plus snapshot_date/captured_at/block_number).",
               "properties": {
                 "active": {
@@ -36732,7 +37239,7 @@
         "type": "object"
       },
       "OpenApiArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "components": {
             "additionalProperties": {},
@@ -36758,6 +37265,16 @@
               "type": "string"
             },
             "type": "object"
+          },
+          "security": {
+            "items": {
+              "additionalProperties": {},
+              "propertyNames": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
           },
           "servers": {
             "items": {
@@ -36786,7 +37303,7 @@
         "type": "object"
       },
       "OperationalSurfacesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -36826,7 +37343,7 @@
           },
           "surfaces": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "auth_required": {
                   "type": "boolean"
@@ -36843,7 +37360,7 @@
                   "type": "integer"
                 },
                 "probe": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "expect": {
                       "type": "string"
@@ -36881,12 +37398,29 @@
                 "revenue": {
                   "anyOf": [
                     {
-                      "additionalProperties": {},
+                      "additionalProperties": false,
                       "properties": {
+                        "circularity": {
+                          "description": "Whether the money originates outside Bittensor. Absent means unknown, never external.",
+                          "enum": [
+                            "external",
+                            "alpha-denominated",
+                            "team-funded",
+                            "unknown"
+                          ],
+                          "type": "string"
+                        },
                         "currency": {
+                          "description": "Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and its values reconcile as USD.",
+                          "enum": [
+                            "USD",
+                            "TAO",
+                            "ALPHA"
+                          ],
                           "type": "string"
                         },
                         "excludes": {
+                          "description": "Fields present in the payload that are NOT external revenue and must be subtracted -- subnet-funded or unrecognised components.",
                           "items": {
                             "type": "string"
                           },
@@ -36896,24 +37430,62 @@
                           "additionalProperties": {
                             "type": "string"
                           },
+                          "description": "Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}.",
                           "propertyNames": {
                             "type": "string"
                           },
                           "type": "object"
                         },
                         "grain": {
+                          "enum": [
+                            "daily",
+                            "weekly",
+                            "monthly",
+                            "cumulative"
+                          ],
                           "type": "string"
                         },
                         "provenance": {
+                          "description": "Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.",
+                          "enum": [
+                            "chain-verified",
+                            "probe-derived",
+                            "operator-attested",
+                            "third-party-reported",
+                            "proxy-only",
+                            "none"
+                          ],
                           "type": "string"
                         },
                         "role": {
+                          "description": "What this surface actually measures. A 'stats' endpoint is guilty until proven revenue: miner payout is emission -- the denominator -- and counting it as revenue puts the denominator in the numerator.",
+                          "enum": [
+                            "external-revenue",
+                            "usage-proxy",
+                            "miner-payout",
+                            "not-revenue"
+                          ],
+                          "type": "string"
+                        },
+                        "searched_at": {
+                          "description": "When absence was established. Required for provenance 'none': an undated absence is not evidence.",
                           "type": "string"
                         },
                         "shape": {
+                          "description": "How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.",
+                          "enum": [
+                            "flat-array",
+                            "keyed-map",
+                            "scalar"
+                          ],
+                          "type": "string"
+                        },
+                        "source_url": {
+                          "format": "uri",
                           "type": "string"
                         },
                         "supersedes": {
+                          "description": "Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice.",
                           "items": {
                             "type": "string"
                           },
@@ -36921,8 +37493,8 @@
                         }
                       },
                       "required": [
-                        "role",
-                        "provenance"
+                        "provenance",
+                        "role"
                       ],
                       "type": "object"
                     },
@@ -36935,44 +37507,80 @@
                 "schema_source": {
                   "anyOf": [
                     {
-                      "additionalProperties": {},
+                      "additionalProperties": false,
                       "properties": {
                         "artifact": {
-                          "description": "Artifact path of the captured schema, under /metagraph/.",
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Artifact path of the captured schema, under /metagraph/."
                         },
                         "hash": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "match": {
-                          "description": "How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
+                          "description": "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
                           "enum": [
-                            "same-origin-openapi",
-                            "schema-url"
+                            "surface-id",
+                            "schema-url",
+                            "same-origin-openapi"
                           ],
                           "type": "string"
                         },
                         "observed_at": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "status": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "surface_id": {
                           "type": "string"
                         },
                         "url": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
-                        "artifact",
-                        "hash",
-                        "match",
-                        "observed_at",
-                        "status",
                         "surface_id",
-                        "url"
+                        "match",
+                        "url",
+                        "artifact",
+                        "status",
+                        "observed_at",
+                        "hash"
                       ],
                       "type": "object"
                     },
@@ -37192,7 +37800,7 @@
         "type": "string"
       },
       "PipelineHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "degraded": {
             "$ref": "#/components/schemas/UnavailableDegraded",
@@ -37547,26 +38155,7 @@
             "type": "number"
           },
           "social": {
-            "additionalProperties": false,
-            "properties": {
-              "reddit": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "telegram": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "x": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "youtube": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/SocialLinks"
           },
           "subnet_count": {
             "maximum": 9007199254740991,
@@ -37599,7 +38188,7 @@
         "type": "object"
       },
       "ProviderArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -37640,7 +38229,7 @@
         "type": "object"
       },
       "ProviderEndpointsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -37653,6 +38242,17 @@
           },
           "generated_at": {
             "type": "string"
+          },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
           },
           "notes": {
             "anyOf": [
@@ -37668,8 +38268,19 @@
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
+          },
           "provider": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "authority": {
                 "type": "string"
@@ -37714,7 +38325,7 @@
         "type": "string"
       },
       "ProvidersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -37755,7 +38366,7 @@
         "type": "object"
       },
       "R2ManifestArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "artifact_count": {
             "description": "Entries in THIS manifest's `artifacts`. On a compact manifest that is the git/dual subset, not the whole archive -- read `full_artifact_count` for that.",
@@ -37804,7 +38415,7 @@
             "type": "string"
           },
           "history_policy": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "canonical_latest_in_repo": {
                 "type": "boolean"
@@ -37939,7 +38550,7 @@
         "type": "object"
       },
       "RandomnessArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope.",
         "properties": {
           "field_sources": {
@@ -38042,7 +38653,7 @@
         "type": "object"
       },
       "RegistryLeaderboardsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards.",
         "properties": {
           "board": {
@@ -38059,7 +38670,7 @@
           "boards": {
             "additionalProperties": {
               "items": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "alpha_price_change_1d": {
                     "anyOf": [
@@ -38388,13 +38999,13 @@
         "type": "object"
       },
       "RegistrySummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
           },
           "counts": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "candidates": {
                 "maximum": 9007199254740991,
@@ -38459,10 +39070,10 @@
             "$ref": "#/components/schemas/CountMap"
           },
           "recent_changes": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "artifacts": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "added": {
                     "maximum": 9007199254740991,
@@ -38493,7 +39104,7 @@
                 ]
               },
               "subnets": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "added": {
                     "maximum": 9007199254740991,
@@ -38527,7 +39138,7 @@
           },
           "top_subnets": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "completeness_score": {
                   "type": "number"
@@ -38764,7 +39375,7 @@
         "type": "object"
       },
       "ReviewAdapterCandidatesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidates": {
             "items": {
@@ -38860,7 +39471,7 @@
         "type": "object"
       },
       "ReviewCurationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "adapter_candidates": {
             "items": {
@@ -39006,7 +39617,7 @@
         "type": "object"
       },
       "ReviewDecisionsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -39047,7 +39658,7 @@
         "type": "object"
       },
       "ReviewEnrichmentEvidenceArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -39300,7 +39911,7 @@
         "type": "object"
       },
       "ReviewEnrichmentQueueArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -39678,7 +40289,7 @@
         "type": "object"
       },
       "ReviewEnrichmentTargetsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -40182,7 +40793,7 @@
         "type": "object"
       },
       "ReviewGapPrioritiesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -40288,7 +40899,7 @@
         "type": "object"
       },
       "ReviewProfileCompletenessArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -40591,7 +41202,7 @@
         "type": "string"
       },
       "RpcEndpointsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -40848,8 +41459,12 @@
             "const": 1,
             "type": "number"
           },
+          "source": {
+            "description": "Which producer answered: `artifact-build` for the committed catalog, the prober's label once the live overlay applies.",
+            "type": "string"
+          },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "archive_supported_count": {
                 "maximum": 9007199254740991,
@@ -41109,7 +41724,7 @@
         "type": "object"
       },
       "RpcPoolsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay.",
         "properties": {
           "contract_version": {
@@ -41137,6 +41752,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "pools": {
             "items": {
@@ -41228,7 +41854,7 @@
         "type": "object"
       },
       "RpcUsageArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope.",
         "properties": {
           "bucket_granularity": {
@@ -41245,7 +41871,7 @@
           "buckets": {
             "description": "Bounded time buckets over the window for heatmaps, oldest-first.",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One bounded time bucket of RPC reverse-proxy traffic (bucket_granularity wide).",
               "properties": {
                 "avg_latency_ms": {
@@ -41286,7 +41912,7 @@
             "type": "array"
           },
           "coverage": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "description": "What the answer is actually about, as opposed to what window was asked for.",
             "properties": {
               "end": {
@@ -41303,7 +41929,7 @@
               "latency_percentiles": {
                 "anyOf": [
                   {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "description": "An epoch-ms span.",
                     "properties": {
                       "end": {
@@ -41342,7 +41968,7 @@
               "segments": {
                 "description": "One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers.",
                 "items": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "description": "One store's contribution to an rpc_usage answer.",
                   "properties": {
                     "end": {
@@ -41404,7 +42030,7 @@
           "endpoints": {
             "description": "Per-endpoint request distribution, ranked by request volume (top 50).",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One endpoint's share of RPC reverse-proxy traffic in the window.",
               "properties": {
                 "avg_latency_ms": {
@@ -41478,7 +42104,7 @@
           "networks": {
             "description": "Per-network request breakdown, ordered by request volume.",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One network's share of RPC reverse-proxy traffic in the window.",
               "properties": {
                 "error_rate": {
@@ -41545,7 +42171,7 @@
             ]
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "description": "Window-total rollup for RPC reverse-proxy traffic.",
             "properties": {
               "cache_hit_rate": {
@@ -41597,7 +42223,7 @@
                 "type": "integer"
               },
               "latency_ms": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "description": "Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store.",
                 "properties": {
                   "avg": {
@@ -41680,7 +42306,7 @@
         "type": "object"
       },
       "RuntimeVersionsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime.",
         "properties": {
           "coverage_complete": {
@@ -41748,6 +42374,179 @@
               "type": "object"
             },
             "type": "array"
+          },
+          "current": {
+            "additionalProperties": false,
+            "properties": {
+              "latest_release": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "prerelease": {
+                        "type": "boolean"
+                      },
+                      "published_at": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "spec_version": {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "tag": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "GitHub's own html_url -- never constructed."
+                      }
+                    },
+                    "required": [
+                      "tag",
+                      "spec_version",
+                      "published_at",
+                      "url",
+                      "name",
+                      "prerelease"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "mainnet": {
+                "additionalProperties": false,
+                "properties": {
+                  "network": {
+                    "type": "string"
+                  },
+                  "observed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment."
+                  },
+                  "spec_version": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "network",
+                  "spec_version",
+                  "observed_at"
+                ],
+                "type": "object"
+              },
+              "pending_upgrade": {
+                "description": "`unknown` when a reading is missing -- deliberately NOT `none`, which is the opposite answer. No deploy date is predicted: the foundation publishes no schedule.",
+                "enum": [
+                  "none",
+                  "testnet_soaking",
+                  "released_undeployed",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              "testnet": {
+                "additionalProperties": false,
+                "properties": {
+                  "network": {
+                    "type": "string"
+                  },
+                  "observed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment."
+                  },
+                  "spec_version": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "network",
+                  "spec_version",
+                  "observed_at"
+                ],
+                "type": "object"
+              },
+              "versions_behind": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "How far mainnet trails the furthest-along reading, counted in spec versions rather than time. Null when mainnet itself could not be read."
+              }
+            },
+            "required": [
+              "mainnet",
+              "testnet",
+              "latest_release",
+              "pending_upgrade",
+              "versions_behind"
+            ],
+            "type": "object"
           },
           "current_spec_version": {
             "anyOf": [
@@ -41820,7 +42619,7 @@
         "type": "object"
       },
       "SchemaDriftArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -41882,7 +42681,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "description": "Rollups from the snapshot run. Absent on the build-time placeholder.",
             "properties": {
               "by_drift_status": {
@@ -42023,7 +42822,7 @@
         "type": "object"
       },
       "SchemaIndexArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -42133,12 +42932,12 @@
                   ]
                 },
                 "snapshot": {
-                  "additionalProperties": {},
+                  "additionalProperties": false,
                   "properties": {
                     "auth_detail": {
                       "anyOf": [
                         {
-                          "additionalProperties": {},
+                          "additionalProperties": false,
                           "properties": {
                             "location": {
                               "anyOf": [
@@ -42468,7 +43267,7 @@
       "ScoreDistribution": {
         "anyOf": [
           {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "count": {
                 "maximum": 9007199254740991,
@@ -42550,7 +43349,7 @@
         "description": "Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network)."
       },
       "SearchArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -42657,7 +43456,7 @@
         "type": "object"
       },
       "SearchIndexArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index).",
         "properties": {
           "contract_version": {
@@ -42757,7 +43556,7 @@
         "type": "object"
       },
       "SearchResolveArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "match_count": {
             "maximum": 9007199254740991,
@@ -42791,7 +43590,7 @@
         "type": "object"
       },
       "SelfHealthArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health.",
         "properties": {
           "components": {
@@ -42854,7 +43653,7 @@
         "type": "object"
       },
       "SelfHealthComponent": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios.",
         "properties": {
           "checked_at": {
@@ -42948,7 +43747,7 @@
         "type": "object"
       },
       "SelfHealthDay": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled.",
         "properties": {
           "checks": {
@@ -42980,7 +43779,7 @@
         "type": "object"
       },
       "SelfHealthLane": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One ingest lane's staleness verdict.\n\nThree of these five were declared non-null against a Zod schema that says\notherwise, and production proved it: \\`self_health\\` returned\n\\`Cannot return null for non-nullable field SelfHealthLane.detail\\` and nulled\nthe whole \\`lanes\\` list. \\`age_ms\\` and \\`checked_at\\` are null for the same\nreason -- the watchdog could not measure the lane, which is the \"we did not\nmeasure\" this type exists to distinguish from \"the lane is fine\" (#10215).\n\n\\`age_ms\\` is a Float because it is a duration in MILLISECONDS: a lane stale\nfor more than 24.8 days exceeds GraphQL's 32-bit Int, and the answer to\n\"how far behind is this lane\" must not stop being representable exactly when\nit starts to matter.",
         "properties": {
           "age_ms": {
@@ -43036,7 +43835,7 @@
         "type": "object"
       },
       "SemanticSearchArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "count": {
             "maximum": 9007199254740991,
@@ -43051,7 +43850,7 @@
           },
           "results": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "categories": {
                   "items": {
@@ -43176,7 +43975,7 @@
         "type": "object"
       },
       "SourceHealthArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -43334,7 +44133,7 @@
         "type": "object"
       },
       "SourceSnapshotsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -43774,7 +44573,7 @@
         "type": "object"
       },
       "SubnetBurnArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn.",
         "properties": {
           "burn_tao": {
@@ -43859,7 +44658,7 @@
         "type": "object"
       },
       "SubnetBurnHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "change_pct": {
             "anyOf": [
@@ -43956,7 +44755,7 @@
         "type": "object"
       },
       "SubnetCandidatesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidates": {
             "items": {
@@ -44009,7 +44808,7 @@
         "type": "object"
       },
       "SubnetConcentrationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
         "properties": {
           "captured_at": {
@@ -44121,7 +44920,7 @@
         "type": "object"
       },
       "SubnetConcentrationHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history.",
         "properties": {
           "netuid": {
@@ -44136,7 +44935,7 @@
           },
           "points": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "emission_gini": {
                   "anyOf": [
@@ -44244,7 +45043,7 @@
         "type": "object"
       },
       "SubnetConvictionArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction.",
         "properties": {
           "count": {
@@ -44377,8 +45176,13 @@
         "type": "object"
       },
       "SubnetDeregistrationRankingArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
+          "block": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "chain_state": {
             "$ref": "#/components/schemas/ChainState"
           },
@@ -44619,6 +45423,7 @@
         "required": [
           "schema_version",
           "chain_state",
+          "block",
           "network_immunity_period",
           "ranked",
           "immune",
@@ -44987,7 +45792,7 @@
           },
           "links": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "label": {
                   "type": "string"
@@ -45103,10 +45908,10 @@
             "type": "integer"
           },
           "provenance": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "existence": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "authority": {
                     "anyOf": [
@@ -45162,7 +45967,7 @@
                 "type": "object"
               },
               "identity": {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "display_name_source": {
                     "anyOf": [
@@ -45370,7 +46175,7 @@
         "type": "object"
       },
       "SubnetDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidate_surfaces": {
             "items": {
@@ -45402,6 +46207,17 @@
           "generated_at": {
             "type": "string"
           },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
+          },
           "notes": {
             "anyOf": [
               {
@@ -45415,6 +46231,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "schema_version": {
             "const": 1,
@@ -45864,7 +46691,7 @@
         "type": "object"
       },
       "SubnetEndpointsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -45934,7 +46761,7 @@
         "type": "object"
       },
       "SubnetEventsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope.",
         "properties": {
           "event_count": {
@@ -45988,7 +46815,7 @@
         "type": "object"
       },
       "SubnetEventSummaryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope.",
         "properties": {
           "categories": {
@@ -46285,7 +47112,7 @@
         "type": "object"
       },
       "SubnetEvidenceArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "claims": {
             "items": {
@@ -46338,7 +47165,7 @@
         "type": "object"
       },
       "SubnetGapsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -46672,7 +47499,7 @@
         "type": "object"
       },
       "SubnetHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope.",
         "properties": {
           "days_covered": {
@@ -46845,7 +47672,7 @@
         "type": "object"
       },
       "SubnetHoldersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "captured_at": {
             "anyOf": [
@@ -47013,7 +47840,7 @@
         "type": "object"
       },
       "SubnetHyperparametersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations.",
         "properties": {
           "block_number": {
@@ -47393,7 +48220,7 @@
         "type": "object"
       },
       "SubnetHyperparamsHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "entries": {
             "items": {
@@ -47815,7 +48642,7 @@
         "type": "object"
       },
       "SubnetIdentityHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history.",
         "properties": {
           "entries": {
@@ -47999,7 +48826,7 @@
         "type": "object"
       },
       "SubnetIdleStakeArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet idle-stake scorecard (#7172). Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/idle-stake.",
         "properties": {
           "captured_at": {
@@ -48477,7 +49304,7 @@
         "type": "object"
       },
       "SubnetLeaseArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease.",
         "properties": {
           "field_sources": {
@@ -48524,7 +49351,7 @@
           "lease": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "accumulated_dividends_alpha": {
                     "anyOf": [
@@ -48632,7 +49459,7 @@
         "type": "object"
       },
       "SubnetLeaseHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history.",
         "properties": {
           "count": {
@@ -48717,11 +49544,11 @@
         "type": "object"
       },
       "SubnetLifecycleArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "entries": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One observed subnet transition. block_number is null when the event predates capture or the detecting pass could not attribute one; that is a fact, not a gap.",
               "properties": {
                 "block_number": {
@@ -48825,7 +49652,7 @@
         "type": "object"
       },
       "SubnetMetagraphArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "block_number": {
             "anyOf": [
@@ -49560,13 +50387,13 @@
         "type": "object"
       },
       "SubnetOverviewArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
           },
           "counts": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "candidates": {
                 "maximum": 9007199254740991,
@@ -49621,7 +50448,7 @@
           "health": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "avg_latency_ms": {
                     "anyOf": [
@@ -49705,7 +50532,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
           },
           "name": {
             "type": "string"
@@ -49737,7 +50565,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "profile": {
             "anyOf": [
@@ -49771,7 +50600,7 @@
         "type": "object"
       },
       "SubnetOwnerCutArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut.",
         "properties": {
           "accrual": {
@@ -50061,7 +50890,7 @@
         "type": "object"
       },
       "SubnetOwnershipHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history.",
         "properties": {
           "count": {
@@ -50192,7 +51021,7 @@
         "type": "object"
       },
       "SubnetPerformanceArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance.",
         "properties": {
           "active_count": {
@@ -50298,7 +51127,7 @@
         "type": "object"
       },
       "SubnetPerformanceHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history.",
         "properties": {
           "netuid": {
@@ -50313,7 +51142,7 @@
           },
           "points": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day.",
               "properties": {
                 "active_count": {
@@ -50787,11 +51616,11 @@
           "lineage": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "also_on": {
                     "items": {
-                      "additionalProperties": {},
+                      "additionalProperties": false,
                       "properties": {
                         "matched_by": {
                           "enum": [
@@ -51260,7 +52089,7 @@
         "type": "object"
       },
       "SubnetProfileArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidate_surfaces": {
             "items": {
@@ -51283,6 +52112,17 @@
           "generated_at": {
             "type": "string"
           },
+          "health_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer."
+          },
           "notes": {
             "anyOf": [
               {
@@ -51296,6 +52136,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "profile": {
             "$ref": "#/components/schemas/SubnetProfile"
@@ -51403,7 +52254,7 @@
         "type": "object"
       },
       "SubnetProfilesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -51600,7 +52451,7 @@
         "type": "object"
       },
       "SubnetRecycledArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled.",
         "properties": {
           "field_sources": {
@@ -51757,7 +52608,7 @@
         "type": "object"
       },
       "SubnetRevenueArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's external revenue against the TAO the network emits to it. coverage_ratio and subsidy_multiple are NULL whenever revenue is not observed, which is the normal case — 127 of 129 subnets publish no readable figure, and rendering them as 0% covered would be a false claim about each of them. Mirrors GET /api/v1/subnets/{netuid}/revenue.",
         "properties": {
           "contract_version": {
@@ -52134,13 +52985,35 @@
         "type": "object"
       },
       "SubnetsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the chain snapshot behind this index was captured. Distinct from `generated_at`, which marks the build that shaped it."
+          },
           "contract_version": {
             "type": "string"
           },
           "generated_at": {
             "type": "string"
+          },
+          "native_snapshot_captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Capture stamp of the native (SDK) snapshot the identity overlay was merged onto."
           },
           "network": {
             "$ref": "#/components/schemas/BittensorNetwork"
@@ -52164,7 +53037,7 @@
             "type": "number"
           },
           "source": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "identity_storage": {
                 "type": "string"
@@ -52580,7 +53453,7 @@
         "type": "string"
       },
       "SubnetSurfaceHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "change_count": {
             "maximum": 9007199254740991,
@@ -52646,7 +53519,7 @@
         "type": "object"
       },
       "SubnetSurfacesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -52699,7 +53572,7 @@
         "type": "object"
       },
       "SubnetTrajectoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names.",
         "properties": {
           "deltas": {
@@ -52731,7 +53604,7 @@
           },
           "points": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One daily-snapshot point on a subnet's trajectory (chronological). Economics fields are null on rows captured before those columns existed / when economics was unavailable that day.",
               "properties": {
                 "alpha_in_pool": {
@@ -52891,7 +53764,7 @@
         "type": "object"
       },
       "SubnetTrajectoryDelta": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "alpha_in_pool": {
             "anyOf": [
@@ -52973,7 +53846,7 @@
         "type": "object"
       },
       "SubnetTurnoverArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard.",
         "properties": {
           "changes": {
@@ -53615,7 +54488,7 @@
         "type": "object"
       },
       "SubnetValidatorsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope.",
         "properties": {
           "block_number": {
@@ -53854,7 +54727,7 @@
         "type": "object"
       },
       "SubnetVerificationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidate_count": {
             "maximum": 9007199254740991,
@@ -53910,7 +54783,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "by_classification": {
                 "$ref": "#/components/schemas/CountMap"
@@ -53943,7 +54816,7 @@
         "type": "object"
       },
       "SubnetWalletsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's declared wallets with their roles, evidence and per-window activity. `owner` is chain-derived from SubnetOwner and flagged as such; every other role is a human attribution and carries the source_urls that prove it, in the response rather than only in the registry. An empty list means nothing has been attributed for this subnet — not that nothing exists. Mirrors GET /api/v1/subnets/{netuid}/wallets.",
         "properties": {
           "attribution_search": {
@@ -54775,7 +55648,7 @@
         "type": "object"
       },
       "SubnetYieldHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "Per-day emission-yield distribution trend for one subnet (newest first) over a 7d/30d/90d window: the subnet-wide return plus the mean/median/p25/p75/p90 of the per-UID emission-per-stake yields. The return-rate twin of /concentration/history and the time-series companion to the /yield snapshot — the per-UID yield distribution (median/percentiles) is not reconstructable from the stake+emission totals in /history. Computed live from the neuron_daily D1 rollup.",
         "properties": {
           "netuid": {
@@ -54790,7 +55663,7 @@
           },
           "points": {
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "properties": {
                 "mean_yield": {
                   "anyOf": [
@@ -54932,7 +55805,7 @@
         "type": "object"
       },
       "SudoKeyArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope.",
         "properties": {
           "field_sources": {
@@ -55384,7 +56257,7 @@
         "type": "object"
       },
       "SurfaceAliasesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "aliases": {
             "items": {
@@ -55532,6 +56405,7 @@
             "properties": {
               "body_envelope": {
                 "additionalProperties": false,
+                "description": "For scheme:signature with location:body -- which key of the outgoing JSON body carries the credential, and which carries the payload it signs.",
                 "properties": {
                   "credential_key": {
                     "minLength": 1,
@@ -55549,6 +56423,7 @@
                 "type": "object"
               },
               "location": {
+                "description": "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
                 "enum": [
                   "header",
                   "query",
@@ -55558,9 +56433,11 @@
                 "type": "string"
               },
               "name": {
+                "description": "The single header the credential goes in.",
                 "type": "string"
               },
               "names": {
+                "description": "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
                 "items": {
                   "type": "string"
                 },
@@ -55568,6 +56445,7 @@
                 "type": "array"
               },
               "scheme": {
+                "description": "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
                 "enum": [
                   "none",
                   "bearer",
@@ -55580,6 +56458,7 @@
                 "type": "string"
               },
               "scopes_note": {
+                "description": "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
                 "type": "string"
               },
               "token_url": {
@@ -55778,7 +56657,7 @@
         "type": "object"
       },
       "SurfacesArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "contract_version": {
             "type": "string"
@@ -55819,7 +56698,7 @@
         "type": "object"
       },
       "SurfaceVerifyArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "auth_required": {
             "type": "boolean"
@@ -55927,7 +56806,7 @@
         "type": "object"
       },
       "TaoUsdArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "age_ms": {
             "anyOf": [
@@ -56175,7 +57054,7 @@
         "type": "object"
       },
       "TopHoldersArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "account_count": {
             "maximum": 9007199254740991,
@@ -56341,7 +57220,7 @@
         "type": "object"
       },
       "UptimeArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One subnet's long-term daily uptime history (#5885). Mirrors GET /api/v1/subnets/{netuid}/uptime's data envelope.",
         "properties": {
           "netuid": {
@@ -56362,7 +57241,7 @@
           "reliability": {
             "anyOf": [
               {
-                "additionalProperties": {},
+                "additionalProperties": false,
                 "properties": {
                   "avg_latency_ms": {
                     "anyOf": [
@@ -56469,7 +57348,7 @@
           "surfaces": {
             "description": "Per-surface day series with window-wide uptime ratios and per-surface reliability scores.",
             "items": {
-              "additionalProperties": {},
+              "additionalProperties": false,
               "description": "One operational surface's uptime history over the requested window.",
               "properties": {
                 "day_count": {
@@ -56479,7 +57358,7 @@
                 },
                 "days": {
                   "items": {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "description": "One daily uptime point for a surface.",
                     "properties": {
                       "avg_latency_ms": {
@@ -56498,7 +57377,7 @@
                         "type": "string"
                       },
                       "latency_ms": {
-                        "additionalProperties": {},
+                        "additionalProperties": false,
                         "description": "Percentile latency summary for one uptime day.",
                         "properties": {
                           "p50": {
@@ -56577,7 +57456,7 @@
                 "reliability": {
                   "anyOf": [
                     {
-                      "additionalProperties": {},
+                      "additionalProperties": false,
                       "properties": {
                         "avg_latency_ms": {
                           "anyOf": [
@@ -56725,7 +57604,7 @@
         "type": "object"
       },
       "ValidatorDetailArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "alpha_stake_tao": {
             "description": "The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly.",
@@ -57506,7 +58385,7 @@
         "type": "object"
       },
       "ValidatorHistoryArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history.",
         "properties": {
           "hotkey": {
@@ -57790,7 +58669,7 @@
         "type": "object"
       },
       "ValidatorNominatorsArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "description": "One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope.",
         "properties": {
           "concentration_complete": {
@@ -58100,7 +58979,7 @@
         "type": "object"
       },
       "VerificationArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "candidate_count": {
             "description": "Length of `results` AFTER buildFullVerificationArtifact() drops rows missing candidate_id/classification/status/url/verified_at -- not the number of candidates the run started with.",
@@ -58150,7 +59029,7 @@
             "type": "number"
           },
           "summary": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "by_classification": {
                 "$ref": "#/components/schemas/CountMap"
@@ -58397,7 +59276,7 @@
         "type": "object"
       },
       "WebhookSubscriptionArtifact": {
-        "additionalProperties": {},
+        "additionalProperties": false,
         "properties": {
           "active": {
             "type": "boolean"
@@ -58413,7 +59292,7 @@
             ]
           },
           "delivery": {
-            "additionalProperties": {},
+            "additionalProperties": false,
             "properties": {
               "dead_letter": {
                 "maximum": 9007199254740991,
@@ -58423,7 +59302,7 @@
               "last_failure": {
                 "anyOf": [
                   {
-                    "additionalProperties": {},
+                    "additionalProperties": false,
                     "properties": {
                       "attempts": {
                         "maximum": 9007199254740991,

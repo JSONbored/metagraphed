@@ -76,7 +76,7 @@ export const FailureReasonsArtifactSchema = z
       "Present ONLY on a decline. An empty window is a measurement, not a decline.",
     ),
   })
-  .passthrough();
+  .strict();
 export type FailureReasonsArtifact = z.infer<
   typeof FailureReasonsArtifactSchema
 >;

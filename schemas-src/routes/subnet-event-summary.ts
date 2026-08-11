@@ -95,7 +95,7 @@ export const SubnetEventSummaryArtifactSchema = z
         "The bounded newest-first recent-event list. Opaque JSON passed through verbatim.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope.",
   );

@@ -3,9 +3,11 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { netuidSchema } from "./shared.ts";
+import { McpUnsortedPageFields, netuidSchema } from "./shared.ts";
 import { ListSubnetHealthInputSchema } from "./subnet-scoped-lists.ts";
 import { HealthSubnetSummarySchema } from "../routes/health.ts";
+import { LIVE_HEALTH_OVERLAY } from "../routes/subnet-detail.ts";
+import { ReliabilityScoreSchema } from "../routes/health-surfaces.ts";
 
 /**
  * DERIVED FROM THE NETWORK-WIDE SIBLING (#9998).
@@ -34,7 +36,7 @@ const GetSubnetHealthSurfaceSchema = z
     last_checked: z.string().nullable().optional(),
     last_ok: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const GetSubnetHealthOutputSchema = z
   .object({
@@ -43,8 +45,18 @@ export const GetSubnetHealthOutputSchema = z
     // advertises no `fields`, so it is not partial. Verified against
     // production 2026-08-07.
     summary: HealthSubnetSummarySchema,
-    operational_observed_at: z.string().nullable().optional(),
+    ...LIVE_HEALTH_OVERLAY,
     surfaces: z.array(GetSubnetHealthSurfaceSchema),
+    // The route's OWN reliability shape (#10790) -- `computeReliability().subnet`,
+    // served here since the score landed and declared nowhere. Bounded score and
+    // an A-F grade enum, which a second declaration here had loosened to
+    // `z.number()`/`z.string()` before this collapse. Nullable is the honest
+    // answer for a subnet with no samples: no probe data, no score, never a zero
+    // that reads as "measured, and bad".
+    reliability: ReliabilityScoreSchema.nullable().optional(),
+    schema_version: z.int().optional(),
+    // This tool pages its `surfaces`, and said so nowhere.
+    ...McpUnsortedPageFields,
   })
-  .passthrough();
+  .strict();
 export type GetSubnetHealthOutput = z.infer<typeof GetSubnetHealthOutputSchema>;

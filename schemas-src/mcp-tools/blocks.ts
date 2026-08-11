@@ -12,11 +12,12 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { BlockDetailArtifactSchema } from "../routes/blocks.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { blockBoundSchema } from "./shared.ts";
 import { BlockEventsArtifactSchema } from "../routes/block-events.ts";
 import { BlockExtrinsicsArtifactSchema } from "../routes/block-extrinsics.ts";
-import { BlockSchema, BlocksFeedArtifactSchema } from "../routes/blocks.ts";
+import { BlocksFeedArtifactSchema } from "../routes/blocks.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -106,18 +107,10 @@ export const GetBlockInputSchema = z
   .strict();
 export type GetBlockInput = z.infer<typeof GetBlockInputSchema>;
 
-export const GetBlockOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ref: z.unknown(),
-    // Typed from the route's own BlockSchema (#9797). Not partial, unlike the
-    // neuron rows: get_block advertises no `fields` parameter, so no caller can
-    // project a field away. Verified against production 2026-08-07.
-    block: BlockSchema.nullable().optional(),
-    prev_block_number: z.int().nullable().optional(),
-    next_block_number: z.int().nullable().optional(),
-  })
-  .passthrough();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy said `ref: z.unknown()` where the
+// route says `z.string().nullable()`, and dropped the prose on the two
+// chain-walk pointers that explains when each is null.
+export const GetBlockOutputSchema = BlockDetailArtifactSchema;
 export type GetBlockOutput = z.infer<typeof GetBlockOutputSchema>;
 
 export const ListBlockExtrinsicsInputSchema = z

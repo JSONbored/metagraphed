@@ -38,7 +38,7 @@ export const BlocksFeedArtifactSchema = z
     next_cursor: z.string().nullable(),
     blocks: z.array(BlockSchema),
   })
-  .passthrough();
+  .strict();
 export type BlocksFeedArtifact = z.infer<typeof BlocksFeedArtifactSchema>;
 
 export const BlockDetailArtifactSchema = z
@@ -61,5 +61,5 @@ export const BlockDetailArtifactSchema = z
         "Nearest STORED higher block height for chain-walk nav (detail only); null at the head of the retained window or when the ref didn't resolve.",
       ),
   })
-  .passthrough();
+  .strict();
 export type BlockDetailArtifact = z.infer<typeof BlockDetailArtifactSchema>;

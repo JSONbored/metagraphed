@@ -85,5 +85,5 @@ export const TopHoldersArtifactSchema = z
     account_count: z.int().min(0),
     accounts: z.array(TopHoldersEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type TopHoldersArtifact = z.infer<typeof TopHoldersArtifactSchema>;

@@ -198,7 +198,7 @@ export const ReviewEnrichmentQueueArtifactSchema = ArtifactBaseSchema.extend({
       top_direct_submission_kinds: CountMapSchema,
     })
     .strict(),
-}).passthrough();
+}).strict();
 export type ReviewEnrichmentQueueArtifact = z.infer<
   typeof ReviewEnrichmentQueueArtifactSchema
 >;
@@ -243,7 +243,7 @@ export const ReviewEnrichmentEvidenceArtifactSchema = ArtifactBaseSchema.extend(
       })
       .strict(),
   },
-).passthrough();
+).strict();
 export type ReviewEnrichmentEvidenceArtifact = z.infer<
   typeof ReviewEnrichmentEvidenceArtifactSchema
 >;
@@ -326,7 +326,7 @@ export const ReviewEnrichmentTargetsArtifactSchema = ArtifactBaseSchema.extend({
     })
     .strict(),
   targets: z.array(ReviewEnrichmentTargetSchema),
-}).passthrough();
+}).strict();
 export type ReviewEnrichmentTargetsArtifact = z.infer<
   typeof ReviewEnrichmentTargetsArtifactSchema
 >;
@@ -378,7 +378,7 @@ export const ReviewAdapterCandidatesArtifactSchema = ArtifactBaseSchema.extend({
       sse_backed_count: z.int().min(0),
     })
     .strict(),
-}).passthrough();
+}).strict();
 export type ReviewAdapterCandidatesArtifact = z.infer<
   typeof ReviewAdapterCandidatesArtifactSchema
 >;

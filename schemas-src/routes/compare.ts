@@ -60,5 +60,5 @@ export const CompareArtifactSchema = z
     requested_netuids: z.array(z.int()).optional(),
     subnets: z.array(CompareSubnetEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type CompareArtifact = z.infer<typeof CompareArtifactSchema>;

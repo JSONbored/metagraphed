@@ -14,6 +14,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { NeuronDetailArtifactSchema } from "../routes/subnet-metagraph.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   NeuronFieldsInputSchema,
@@ -69,21 +70,14 @@ export const GetNeuronInputSchema = z
   .meta({ oneOf: [{ required: ["uid"] }, { required: ["hotkey"] }] });
 export type GetNeuronInput = z.infer<typeof GetNeuronInputSchema>;
 
-export const GetNeuronOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    captured_at: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
-    // tool advertises `fields`: a caller who projects the row must still
-    // satisfy the schema the tool publishes, which is the contract #9884
-    // restored after the derivation in #9855/#9859 broke it. Verified against
-    // production 2026-08-07, whole and projected.
-    // Null is a real answer: the uid/hotkey holds no slot on this subnet.
-    neuron: NeuronSchema.partial().nullable(),
-  })
-  .passthrough();
+// THE ROUTE'S OWN SCHEMA, with the ONE delta this surface really has (#10790):
+// `get_neuron` advertises `fields`, so a projected row must still satisfy the
+// published schema -- the contract #9884 restored after #9855/#9859 broke it.
+// Everything else, including `netuid`'s bound and the prose on `neuron`, now
+// comes from the route instead of being restated beside it.
+export const GetNeuronOutputSchema = NeuronDetailArtifactSchema.extend({
+  neuron: NeuronSchema.partial().nullable(),
+});
 export type GetNeuronOutput = z.infer<typeof GetNeuronOutputSchema>;
 
 export const GetNeuronHistoryInputSchema = z

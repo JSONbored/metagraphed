@@ -36,6 +36,7 @@ import {
 } from "../src/read-store-tables.ts";
 import * as listQuery from "../workers/list-query.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { UPGRADE_RADAR_CACHE_KEY } from "../src/upgrade-radar.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
 import * as subnetEndpointsMcp from "../src/subnet-endpoints-mcp.ts";
@@ -559,6 +560,48 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.equal(body.data.subnets.total, 2);
     assert.equal(body.data.subnets.items[0].netuid, 1);
     assert.equal(body.data.subnets.items[1].name, "Beta");
+  });
+
+  test("subnets lifts the artifact's two capture stamps onto the page", async () => {
+    // The list view drops the build envelope -- `generated_at` says nothing
+    // about the rows -- but a CAPTURE stamp is the only answer to "how old is
+    // this snapshot", and dropping it left a GraphQL caller no way to ask
+    // (#10790). `ProfileList.captured_at` is the precedent.
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        captured_at: "2026-08-01T00:00:00.000Z",
+        native_snapshot_captured_at: "2026-07-31T00:00:00.000Z",
+        subnets: [{ netuid: 1, name: "Alpha", slug: "alpha" }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ subnets { captured_at native_snapshot_captured_at total } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.subnets.captured_at, "2026-08-01T00:00:00.000Z");
+    assert.equal(
+      body.data.subnets.native_snapshot_captured_at,
+      "2026-07-31T00:00:00.000Z",
+    );
+    assert.equal(body.data.subnets.total, 1);
+  });
+
+  test("an artifact carrying no capture stamp reads null, not absent", async () => {
+    // `?? null` on the lift, deliberately: the SDL declares these nullable, and
+    // a key the artifact has not stamped must read as "not stamped" rather than
+    // as the field missing from the response.
+    const env = fixtureEnv({
+      "/metagraph/subnets.json": {
+        subnets: [{ netuid: 1, name: "Alpha" }],
+      },
+    });
+    const { body } = await gql(
+      "{ subnets { captured_at native_snapshot_captured_at } }",
+      env as unknown as Env,
+    );
+    assert.equal(body.data.subnets.captured_at, null);
+    assert.equal(body.data.subnets.native_snapshot_captured_at, null);
   });
 
   test("subnets pagination: limit and next_cursor", async () => {
@@ -9069,6 +9112,55 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
     } finally {
       lake.restore();
     }
+  });
+
+  test("`current` resolves the upgrade radar when it is SELECTED", async () => {
+    // Parity with /api/v1/runtime, which has composed the radar beside the
+    // timeline since #8702 while this field served the timeline alone (#10790).
+    const radar = {
+      mainnet: { network: "mainnet", spec_version: 300, observed_at: null },
+      testnet: { network: "testnet", spec_version: 301, observed_at: null },
+      latest_release: null,
+      pending_upgrade: "testnet_soaking",
+      versions_behind: 1,
+    };
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          return key === UPGRADE_RADAR_CACHE_KEY ? radar : null;
+        },
+      },
+    };
+    const { status, body } = await gql(
+      `{ runtime { current {
+          pending_upgrade versions_behind
+          mainnet { network spec_version } testnet { spec_version }
+        } } }`,
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.runtime.current.pending_upgrade, "testnet_soaking");
+    assert.equal(body.data.runtime.current.versions_behind, 1);
+    assert.equal(body.data.runtime.current.mainnet.spec_version, 300);
+    assert.equal(body.data.runtime.current.testnet.spec_version, 301);
+  });
+
+  test("and costs NOTHING when it is not selected", async () => {
+    // A thunk, not an await: graphql-js calls a function-valued property only
+    // when the field is in the query, and the radar is not free on a cold KV --
+    // it reads a spec version off each chain. Awaiting it made every
+    // `runtime { transition_count }` pay for a radar nobody asked for.
+    let radarReads = 0;
+    const env = {
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          if (key === UPGRADE_RADAR_CACHE_KEY) radarReads += 1;
+          return null;
+        },
+      },
+    };
+    await gql("{ runtime { transition_count } }", env as unknown as Env);
+    assert.equal(radarReads, 0, "the radar was never reached");
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {

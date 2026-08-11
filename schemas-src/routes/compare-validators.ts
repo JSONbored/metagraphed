@@ -42,7 +42,7 @@ export const CompareValidatorsArtifactSchema = z
     validator_count: z.int().min(0),
     validators: z.array(CompareValidatorEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators.",
   );

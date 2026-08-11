@@ -10,6 +10,7 @@
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
 import { QUERY_ENUMS } from "./query-enums.ts";
+import { ALPHA_USD_UNAVAILABLE } from "../src/alpha-usd.ts";
 
 /**
  * An epoch-MILLISECOND instant, published as an integer (#10386).
@@ -604,7 +605,7 @@ export const ConcentrationMetricsSchema = z
     entropy: z.number().nullable().optional(),
     entropy_normalized: z.number().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .nullable()
   .describe(
     "One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column).",
@@ -636,9 +637,96 @@ export const ScoreDistributionSchema = z
     p75: z.number().nullable().optional(),
     p90: z.number().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .nullable()
   .describe(
     "Distribution summary of a 0\u20131 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network).",
   );
 export type ScoreDistribution = z.infer<typeof ScoreDistributionSchema>;
+
+/**
+ * The blob-level USD overlay, declared ONCE for its three carriers (#10790).
+ *
+ * `withAlphaUsd`/`withAlphaUsdEconomics` stamp exactly one of these two at
+ * serve time -- the reading every `_usd` field was converted at, or the named
+ * reason there are none. Two schemas wrote the pair out by hand and the third,
+ * `EconomicsArtifact`, declared neither while the overlay has always been
+ * applied to it: /api/v1/economics served `tao_usd_unavailable` undescribed,
+ * which `.passthrough()` allowed and `.strict()` finally caught.
+ *
+ * `tao_usd_unavailable` is a NAMED reason rather than mere absence, because
+ * "no USD fields" and "no USD fields BECAUSE the index has too few pools" are
+ * different answers and only the second tells a caller whether to retry.
+ */
+export const ALPHA_USD_OVERLAY = {
+  tao_usd: z
+    .object({
+      usd_per_tao: z.number(),
+      block_number: z.int().nullable(),
+      observed_at: z.string().nullable(),
+      price_basis: z.string().nullable(),
+    })
+    .strict()
+    .optional()
+    .describe(
+      "The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them.",
+    ),
+  tao_usd_unavailable: z
+    .enum(ALPHA_USD_UNAVAILABLE)
+    .optional()
+    .describe(
+      "Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.",
+    ),
+} as const;
+
+/**
+ * One captured GitHub release, declared once for its three carriers (#10790).
+ *
+ * `subnet-detail.ts`, `subnet-profile.ts` and `subnets.ts` each carried a
+ * byte-identical copy inside their own `github_releases` array -- the same
+ * shape written out three times, which is three places a field can be added to
+ * two of. Identical at the point of collapse, so nothing published moves.
+ */
+export const GithubReleaseSchema = z
+  .object({
+    tag: z.string(),
+    name: z.string().nullable(),
+    published_at: z.iso.datetime(),
+    url: z.string(),
+    prerelease: z.boolean(),
+  })
+  .strict();
+
+/**
+ * A count and the spread of a measure -- ONE declaration, four domains (#10790).
+ *
+ * The eight-key summary (count/mean/min/p25/median/p75/p90/max) was written out
+ * four times: a 0-100 stability score with INTEGER percentiles, a net flow that
+ * can be negative, a non-negative intensity, and an unbounded generic. The key
+ * set is one vocabulary; the bounds are not, and collapsing them to a single
+ * schema would erase exactly the constraints that say what each measure IS.
+ *
+ * So the SHAPE is declared once and the MEASURE is the parameter. A site that
+ * knows its values are bounded says so, and none of them can drift on what a
+ * distribution summary contains.
+ *
+ * `percentile` defaults to `measure` and is separate only because the stability
+ * score's percentiles are whole numbers where its mean and median are not.
+ */
+export function distributionStatsSchema(
+  measure: z.ZodType,
+  percentile: z.ZodType = measure,
+) {
+  return z
+    .object({
+      count: z.int().min(0),
+      mean: measure,
+      min: percentile,
+      p25: percentile,
+      median: measure,
+      p75: percentile,
+      p90: percentile,
+      max: percentile,
+    })
+    .strict();
+}

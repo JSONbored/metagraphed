@@ -13,11 +13,16 @@ import {
   limitSchema,
   orderSchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { AgentResourcesArtifactSchema } from "../routes/agent-catalog.ts";
 import { netuidSchema } from "./shared.ts";
-import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
+import {
+  AgentCatalogArtifactSchema,
+  AgentCatalogSubnetArtifactSchema,
+} from "../routes/agent-catalog.ts";
+import { LIVE_HEALTH_OVERLAY } from "../routes/subnet-detail.ts";
 
 export const GetAgentCatalogInputSchema = z
   .object({
@@ -42,27 +47,40 @@ export const GetAgentCatalogInputSchema = z
   .strict();
 export type GetAgentCatalogInput = z.infer<typeof GetAgentCatalogInputSchema>;
 
-// Two shapes: the global index (no netuid) and a single-subnet catalog
-// (with a netuid). They share few keys, so nothing is required in the
-// hand-written original; the fields below describe the global index when
-// present.
+/**
+ * ONE tool, TWO forms -- and it declared six fields of the two (#10790).
+ *
+ * `get_agent_catalog()` answers the whole catalog when called bare and ONE
+ * subnet's catalog when called with `netuid`, and the two share almost nothing:
+ * the index carries `subnets`/`blocked_subnets` and a page block, the detail
+ * carries `services`/`examples`/`readiness`. The old declaration named
+ * `subnets` and five stamps, so 23 served fields -- every field of the detail
+ * form among them -- went out undescribed on every per-subnet call.
+ *
+ * DERIVED FROM THE TWO ROUTE SCHEMAS, not retyped: the same shapes
+ * /api/v1/agent-catalog and /api/v1/agent-catalog/{netuid} publish, so a field
+ * added there cannot go missing here. `.partial()` on each because which form
+ * you get is decided by the argument -- the fields are not optional within a
+ * form, they belong to one form or the other.
+ *
+ * The cost of one flat object rather than a union: a hypothetical response
+ * mixing keys from both forms would validate. That is accepted deliberately --
+ * a union would take this tool's schema off the `outputJsonSchema` seam that
+ * declares the dispatch-stamped `degraded` block, and no producer can emit the
+ * mixed shape, because the two forms are two return statements.
+ */
 export const GetAgentCatalogOutputSchema = z
   .object({
-    subnet_count: z.int().optional(),
-    total_subnet_count: z.int().optional(),
-    callable_service_count: z.int().optional(),
-    content_hash: z.string().nullable().optional(),
-    generated_at: z.string().nullable().optional(),
-    published_at: z.string().nullable().optional(),
-    // Typed from the route's own AgentCatalogSubnetEntrySchema (#9797).
-    // Optional because it is the GLOBAL form's key -- a per-netuid call
-    // returns that subnet's own catalog instead, with no `subnets` at all.
-    // Verified against production 2026-08-07 over all 126 rows.
-    subnets: z.array(AgentCatalogSubnetEntrySchema).optional(),
-    operational_observed_at: z.string().nullable().optional(),
-    health_source: z.string().nullable().optional(),
+    ...AgentCatalogArtifactSchema.partial().shape,
+    ...AgentCatalogSubnetArtifactSchema.partial().shape,
+    // The MCP page block over the index form's `subnets`, and the live health
+    // overlay both forms carry. Optional here, unlike on the single-form list
+    // tools, because the detail form pages nothing.
+    ...McpUnsortedPageFields,
+    ...LIVE_HEALTH_OVERLAY,
   })
-  .passthrough();
+  .partial()
+  .strict();
 export type GetAgentCatalogOutput = z.infer<typeof GetAgentCatalogOutputSchema>;
 
 export const GetAgentResourcesInputSchema = z.object({}).strict();

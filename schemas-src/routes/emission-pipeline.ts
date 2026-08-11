@@ -213,7 +213,7 @@ export const EMISSION_PIPELINE_BODY = {
 
 export const EmissionPipelineArtifactSchema = z
   .object(EMISSION_PIPELINE_BODY)
-  .passthrough()
+  .strict()
   .describe(
     "The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served.",
   );

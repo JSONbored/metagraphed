@@ -31,6 +31,7 @@
 import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import { netuidSchema } from "./shared.ts";
+import { ReviewGapPrioritySchema } from "../routes/review-gaps-profile.ts";
 
 export const GetSubnetInputSchema = z
   .object({
@@ -57,7 +58,7 @@ const SubnetOverviewHealthSchema = z
     latency_sample_count: z.int().nullable().optional(),
     observed_by: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 /** How many of each thing this subnet has registered. */
 const SubnetOverviewCountsSchema = z
@@ -66,7 +67,7 @@ const SubnetOverviewCountsSchema = z
     endpoints: z.int().optional(),
     candidates: z.int().optional(),
   })
-  .passthrough();
+  .strict();
 
 /** The human-governance axis: who reviewed this record and when. */
 const SubnetOverviewCurationSchema = z
@@ -78,22 +79,11 @@ const SubnetOverviewCurationSchema = z
     source_count: z.int().nullable().optional(),
     gap_notes: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .strict();
 
 /** One ranked enrichment opportunity. Was `z.array(z.unknown())`, which says
  * strictly less than an open object: not merely "shape unknown" but "nothing is
  * known about this value at all". */
-const SubnetGapPrioritySchema = z
-  .object({
-    netuid: netuidSchema().optional(),
-    name: z.string().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    curation_level: z.string().nullable().optional(),
-    candidate_count: z.int().optional(),
-    missing_kinds: z.array(z.string()).optional(),
-  })
-  .passthrough();
-
 export const GetSubnetOutputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -106,9 +96,20 @@ export const GetSubnetOutputSchema = z
     counts: SubnetOverviewCountsSchema.optional(),
     curation: SubnetOverviewCurationSchema.nullable().optional(),
     gaps: SubnetProfileArtifactSchema.shape.gaps.nullable().optional(),
-    gap_priorities: z.array(SubnetGapPrioritySchema).optional(),
+    // The REVIEW ROUTE'S OWN ROW, not a copy of it (#10790). This was a
+    // hand-written six-field restatement of an eleven-field producer, so
+    // `priority_score`, `review_state`, `suggested_next_action`,
+    // `surface_count` and `verified_candidate_count` -- the five fields that
+    // say WHY a subnet is on the list and what to do about it -- were served
+    // undeclared on every call. One declaration, in the file that owns it.
+    gap_priorities: z.array(ReviewGapPrioritySchema).optional(),
+    // The artifact stamps the overview carries. `get_subnet` reads
+    // /metagraph/overview/{netuid}.json whole, so it carries them too.
+    schema_version: z.literal(1).optional(),
+    generated_at: z.string().nullable().optional(),
+    contract_version: z.string().nullable().optional(),
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type GetSubnetOutput = z.infer<typeof GetSubnetOutputSchema>;

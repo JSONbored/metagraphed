@@ -86,7 +86,7 @@ export const AccountPortfolioArtifactSchema = z
     ),
     positions: z.array(PortfolioPositionSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio.",
   );

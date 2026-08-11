@@ -53,7 +53,7 @@ const SearchSubnetsResultItemSchema = z
     description: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const SearchSubnetsOutputSchema = z
   .object({
@@ -65,5 +65,5 @@ export const SearchSubnetsOutputSchema = z
     next_cursor: z.int().nullable(),
     results: z.array(SearchSubnetsResultItemSchema),
   })
-  .passthrough();
+  .strict();
 export type SearchSubnetsOutput = z.infer<typeof SearchSubnetsOutputSchema>;

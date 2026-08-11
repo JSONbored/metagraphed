@@ -96,7 +96,7 @@ export const ValidatorHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(ValidatorHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history.",
   );

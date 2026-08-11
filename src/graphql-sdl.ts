@@ -278,7 +278,7 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): JSON
-    "One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible (a true/false string); threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints."
+    "One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints."
     subnet_endpoints(
       netuid: Int!
       kind: String
@@ -1100,6 +1100,10 @@ export const SDL = /* GraphQL */ `
   }
 
   type SubnetList {
+    "When the chain snapshot behind this index was captured. Distinct from the build's own stamp, which this view does not publish -- a rebuild that read no new blocks advances that and not this."
+    captured_at: String
+    "Capture stamp of the native (SDK) snapshot the identity overlay was merged onto. Null until an overlay has been merged."
+    native_snapshot_captured_at: String
     items: [Subnet!]!
     total: Int!
     next_cursor: String
@@ -2596,6 +2600,43 @@ export const SDL = /* GraphQL */ `
     type_definitions_url: String
     notes: JSON
     artifacts: [ContractsArtifactArtifacts!]
+    "The feed catalog. Nullable because the fields projection can drop it, not because the artifact may lack it."
+    feeds: [ContractsFeed!]
+    networks: ContractsNetworks
+  }
+
+  "One feed in the published catalog. A feed is RENDERED LIVE and emits RSS/Atom/JSON Feed -- it is not a stored artifact in the success envelope, and an agent that treated the two alike would parse XML as JSON."
+  type ContractsFeed {
+    id: String!
+    "The FeedTarget kind parseFeedPath resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry."
+    kind: String!
+    method: String!
+    path: String!
+    description: String!
+    formats: [String!]!
+    "Parallel to formats -- the content type each of those renders as."
+    content_types: [String!]!
+    public: Boolean!
+    path_parameters: [ContractsFeedParameter!]!
+    query_parameters: [ContractsFeedParameter!]!
+  }
+
+  "One parameter a feed accepts. ONE type for both the path and query lists: the component declares them from the same shape, and a second published type over the same vocabulary is how the two come to disagree."
+  type ContractsFeedParameter {
+    name: String!
+    description: String
+    "JSON Schema for this parameter's accepted values."
+    schema: JSON!
+  }
+
+  "The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree."
+  type ContractsNetworks {
+    aliases: [String!]!
+    data_aliases: [String!]!
+    default: String!
+    path_form: String!
+    note: String!
+    mainnet_only_route_count: Int!
   }
 
   type BuildSummary {
@@ -2603,6 +2644,8 @@ export const SDL = /* GraphQL */ `
     contract_version: String
     generated_at: String
     published_at: String
+    "Why the build refused to reuse the committed schema index. NULL ON A HEALTHY BUILD -- non-null means this build lost every captured schema in the index, and validate.ts fails the pipeline on it."
+    schema_index_discard: BuildSummarySchemaIndexDiscard
     adapter_count: Int
     artifact_count: Int!
     artifact_size_bytes: Int
@@ -4587,6 +4630,37 @@ export const SDL = /* GraphQL */ `
     coverage_from_at: String
     coverage_complete: Boolean
     coverage_gaps: [RuntimeCoverageGap!]
+    "The forward-looking half: live mainnet/testnet spec versions, the latest subtensor release, and the derived pending-upgrade state. REST has served this since #8702 and GraphQL could not select it until #10790."
+    current: UpgradeRadar
+  }
+
+  "Where the two chains are against the latest release. NO DEPLOY DATE IS PREDICTED anywhere here -- the foundation publishes no schedule, and a field implying one would be invented."
+  type UpgradeRadar {
+    mainnet: ChainSpecReading!
+    testnet: ChainSpecReading!
+    latest_release: SubtensorRelease
+    "none / testnet_soaking / released_undeployed / unknown. The unknown value means a reading was missing -- deliberately NOT none, which is the opposite answer."
+    pending_upgrade: String!
+    "How far mainnet trails the furthest-along reading, counted in spec versions rather than time. Null when mainnet itself could not be read."
+    versions_behind: Int
+  }
+
+  "One chain's live spec-version reading."
+  type ChainSpecReading {
+    network: String!
+    spec_version: Int
+    "When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment."
+    observed_at: String
+  }
+
+  type SubtensorRelease {
+    tag: String!
+    spec_version: Int!
+    published_at: String
+    "GitHub's own html_url -- never constructed."
+    url: String
+    name: String
+    prerelease: Boolean!
   }
 
   "One runtime spec-version's first-seen block in the transition timeline."
@@ -5686,6 +5760,12 @@ export const SDL = /* GraphQL */ `
     sha256: String
     size_bytes: Int
     storage_tier: String
+  }
+
+  type BuildSummarySchemaIndexDiscard {
+    reason: String!
+    "How many captured schemas the discarded index held. Greater than zero is the failure condition."
+    dropped_captured: Int!
   }
 
   type ChainConcentrationScorecard {

@@ -63,7 +63,7 @@ export const AccountRootClaimArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "Live root-claim current state for one Finney ss58 account (#7229), read directly from chain via RPC (KV-cached). claim_type/hotkeys are null on RPC failure (schema-stable, never a GraphQL error). Read-only; never submits claim_root. Mirrors GET /api/v1/accounts/{ss58}/root-claim.",
   );

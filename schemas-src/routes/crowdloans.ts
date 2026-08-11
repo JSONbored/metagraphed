@@ -32,7 +32,7 @@ const CrowdloanSchema = z
     contributors_count: z.int().min(0),
     percent_raised: z.number().nullable(),
   })
-  .passthrough();
+  .strict();
 
 export const CrowdloansArtifactSchema = z
   .object({
@@ -59,7 +59,7 @@ export const CrowdloansArtifactSchema = z
     // the outlier.
     degraded: EventStreamDegradedSchema.nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type CrowdloansArtifact = z.infer<typeof CrowdloansArtifactSchema>;
 
 export const CrowdloanDetailArtifactSchema = z
@@ -73,7 +73,7 @@ export const CrowdloanDetailArtifactSchema = z
     queried_at: z.iso.datetime().nullable().optional(),
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .strict();
 export type CrowdloanDetailArtifact = z.infer<
   typeof CrowdloanDetailArtifactSchema
 >;

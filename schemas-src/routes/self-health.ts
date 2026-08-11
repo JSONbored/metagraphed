@@ -17,7 +17,7 @@ export const SelfHealthDaySchema = z
     ok_count: z.int().min(0),
     uptime_ratio: z.number().min(0).max(1).describe("ok_count / checks, 0..1."),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled.",
   );
@@ -62,7 +62,7 @@ export const SelfHealthComponentSchema = z
         "Mean uptime across the days we actually have. Null when there are none.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios.",
   );
@@ -90,7 +90,7 @@ export const SelfHealthLaneSchema = z
     detail: z.string().nullable(),
     checked_at: z.string().nullable(),
   })
-  .passthrough()
+  .strict()
   .describe(
     'One ingest lane\'s staleness verdict.\n\nThree of these five were declared non-null against a Zod schema that says\notherwise, and production proved it: \\`self_health\\` returned\n\\`Cannot return null for non-nullable field SelfHealthLane.detail\\` and nulled\nthe whole \\`lanes\\` list. \\`age_ms\\` and \\`checked_at\\` are null for the same\nreason -- the watchdog could not measure the lane, which is the "we did not\nmeasure" this type exists to distinguish from "the lane is fine" (#10215).\n\n\\`age_ms\\` is a Float because it is a duration in MILLISECONDS: a lane stale\nfor more than 24.8 days exceeds GraphQL\'s 32-bit Int, and the answer to\n"how far behind is this lane" must not stop being representable exactly when\nit starts to matter.',
   );
@@ -116,7 +116,7 @@ export const SelfHealthArtifactSchema = z
     stale_lane_count: z.int().min(0),
     observed_at: z.string().nullable(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health.",
   );

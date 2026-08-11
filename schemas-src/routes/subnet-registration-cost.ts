@@ -18,7 +18,7 @@ export const SubnetBurnArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "Live current registration/burn cost for one subnet, read directly from chain via RPC. burn_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/burn.",
   );
@@ -34,7 +34,7 @@ export const SubnetRecycledArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "Live cumulative TAO recycled for registration on one subnet, read directly from chain via RPC. recycled_tao is null on RPC failure (schema-stable, never a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/recycled.",
   );
@@ -69,7 +69,7 @@ export const ChainBurnArtifactSchema = z
     subnets: z.array(ChainBurnEntrySchema),
     field_sources: FieldSourcesSchema,
   })
-  .passthrough();
+  .strict();
 export type ChainBurnArtifact = z.infer<typeof ChainBurnArtifactSchema>;
 
 // GET /api/v1/subnets/{netuid}/burn/history (#9402). Modeled from
@@ -98,7 +98,7 @@ export const SubnetBurnHistoryArtifactSchema = z
     change_pct: z.number().nullable(),
     points: z.array(SubnetBurnHistoryPointSchema),
   })
-  .passthrough();
+  .strict();
 export type SubnetBurnHistoryArtifact = z.infer<
   typeof SubnetBurnHistoryArtifactSchema
 >;

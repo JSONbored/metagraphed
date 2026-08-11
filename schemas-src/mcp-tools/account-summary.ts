@@ -12,48 +12,14 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import {
+  AccountSubnetsArtifactSchema,
+  AccountSummaryArtifactSchema,
+} from "../routes/account-summary.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
-import { blockBoundSchema, netuidSchema, ss58Schema } from "./shared.ts";
+import { blockBoundSchema, ss58Schema } from "./shared.ts";
 import { AccountEntitiesArtifactSchema } from "../routes/account-entities.ts";
 import { AccountEventsArtifactSchema } from "../routes/account-events-feed.ts";
-import { AccountActivitySchema } from "../routes/account-summary.ts";
-
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch).
-const AccountEventItemSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    event_index: z.int().nullable().optional(),
-    event_kind: z.string().nullable().optional(),
-    hotkey: z.string().nullable().optional(),
-    coldkey: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    uid: z.int().nullable().optional(),
-    amount_tao: z.unknown().optional(),
-    alpha_amount: z.unknown().optional(),
-    observed_at: z.string().nullable().optional(),
-    extrinsic_index: z.int().nullable().optional(),
-  })
-  .passthrough();
-
-const AccountRegistrationItemSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    uid: z.int().nullable().optional(),
-    stake_tao: z.unknown().optional(),
-    validator_permit: z.boolean().optional(),
-    active: z.boolean().optional(),
-  })
-  .passthrough();
-
-const AccountLabelItemSchema = z
-  .object({
-    name: z.string().nullable().optional(),
-    category: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    source_urls: z.array(z.string()).optional(),
-  })
-  .passthrough();
 
 const RouteQuery_accounts_ss58_events =
   ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/events"];
@@ -65,34 +31,13 @@ export const GetAccountInputSchema = z
   .strict();
 export type GetAccountInput = z.infer<typeof GetAccountInputSchema>;
 
-export const GetAccountOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    event_count: z.int(),
-    subnet_count: z.int(),
-    first_block: z.int().nullable().optional(),
-    last_block: z.int().nullable().optional(),
-    first_seen_at: z.string().nullable().optional(),
-    last_seen_at: z.string().nullable().optional(),
-    event_kinds: z.array(
-      z
-        .object({
-          kind: z.string().optional(),
-          count: z.int().optional(),
-        })
-        .passthrough(),
-    ),
-    registrations: z.array(AccountRegistrationItemSchema),
-    recent_events: z.array(AccountEventItemSchema),
-    // Typed from the route's own AccountActivitySchema (#9797) -- the
-    // per-kind event breakdown and first/last block/timestamp seen. This tool
-    // advertises no `fields`, so it is not partial. Verified against
-    // production 2026-08-07.
-    activity: AccountActivitySchema.optional(),
-    labels: z.array(AccountLabelItemSchema).optional(),
-  })
-  .passthrough();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy this replaces restated all
+// fourteen fields and drifted on seven of them: `z.int()` where the route
+// bounds at zero, an inline `event_kinds` beside the route's own
+// `AccountEventKindCount`, and three local item schemas -- label, registration,
+// event -- each a second opinion about a shape the route already owns. This
+// tool serves the route's payload unchanged, so no delta survives.
+export const GetAccountOutputSchema = AccountSummaryArtifactSchema;
 export type GetAccountOutput = z.infer<typeof GetAccountOutputSchema>;
 
 export const GetAccountEntitiesInputSchema = z
@@ -137,14 +82,7 @@ export type GetAccountSubnetsInput = z.infer<
   typeof GetAccountSubnetsInputSchema
 >;
 
-export const GetAccountSubnetsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    subnet_count: z.int(),
-    subnets: z.array(AccountRegistrationItemSchema),
-  })
-  .passthrough();
+export const GetAccountSubnetsOutputSchema = AccountSubnetsArtifactSchema;
 export type GetAccountSubnetsOutput = z.infer<
   typeof GetAccountSubnetsOutputSchema
 >;

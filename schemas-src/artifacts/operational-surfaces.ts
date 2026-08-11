@@ -19,6 +19,8 @@
 // needs to call the surface at all.
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
+import { SurfaceRevenueSchema } from "../routes/subnet-detail.ts";
+import { AgentServiceSchemaSourceSchema } from "../routes/agent-catalog.ts";
 
 // The probe contract the prober executes. `expect` and `method` are declared
 // as plain strings rather than enums on purpose: they come from each
@@ -36,46 +38,12 @@ const OperationalProbeSchema = z
         "null when the surface declares no timeout, so the prober applies its own default -- not zero (12 of 619 rows today).",
       ),
   })
-  .passthrough();
-
-// The captured-schema pointer, shared with the agent-catalog build via
-// serviceSchemaSource(resolveAgentServiceSchema(surface)) rather than
-// recomputed, so both consumers agree on which schema a surface owns.
-const OperationalSchemaSourceSchema = z
-  .object({
-    artifact: z
-      .string()
-      .describe("Artifact path of the captured schema, under /metagraph/."),
-    hash: z.string(),
-    match: z
-      .enum(["same-origin-openapi", "schema-url"])
-      .describe(
-        "How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
-      ),
-    observed_at: z.string(),
-    status: z.string(),
-    surface_id: z.string(),
-    url: z.string(),
-  })
-  .passthrough();
+  .strict();
 
 // The declaration the revenue lane reads (#10566), projected verbatim from the
 // subnet manifest's own `revenue` block. Passthrough rather than a restatement
 // of every field: schemas/subnet-manifest.schema.json OWNS this shape, and a
 // second strict copy here would be one more thing to drift.
-const OperationalRevenueSchema = z
-  .object({
-    role: z.string(),
-    provenance: z.string(),
-    currency: z.string().optional(),
-    grain: z.string().optional(),
-    shape: z.string().optional(),
-    fields: z.record(z.string(), z.string()).optional(),
-    excludes: z.array(z.string()).optional(),
-    supersedes: z.array(z.string()).optional(),
-  })
-  .passthrough();
-
 const OperationalSurfaceSchema = z
   .object({
     surface_id: z.string(),
@@ -94,14 +62,14 @@ const OperationalSurfaceSchema = z
     auth_required: z.boolean(),
     public_safe: z.boolean(),
     probe: OperationalProbeSchema,
-    schema_source: OperationalSchemaSourceSchema.nullable().describe(
+    schema_source: AgentServiceSchemaSourceSchema.nullable().describe(
       "The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface).",
     ),
-    revenue: OperationalRevenueSchema.nullable().describe(
+    revenue: SurfaceRevenueSchema.nullable().describe(
       "What this surface measures about money, or null when it declares nothing (#10566). Carried here because this artifact is already the list of probe-enabled, public-safe surfaces a lane may fetch — the revenue probe needs exactly that set plus the declaration, and enumerating 129 per-subnet artifacts on every tick to rebuild it would be the same list at 129x the cost.",
     ),
   })
-  .passthrough();
+  .strict();
 
 export const OperationalSurfacesArtifactSchema = ArtifactBaseSchema.extend({
   surface_count: z.int().min(0),

@@ -69,7 +69,9 @@ export type ReviewDecisionsArtifact = z.infer<
   typeof ReviewDecisionsArtifactSchema
 >;
 
-// The review queue publishes the candidates artifact unchanged. z.lazy()
+// The review queue publishes the candidates artifact plus a `count` (declared
+// on that component since #10790 -- it served undeclared, and this comment used
+// to say "unchanged"). z.lazy()
 // rather than a second reference to CandidatesArtifactSchema: registering one
 // Zod node twice would overwrite the first id, and this emits exactly the
 // `{"$ref": "#/components/schemas/CandidatesArtifact"}` alias the

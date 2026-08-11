@@ -20,7 +20,7 @@ export const CoverageDimensionSchema = z
       .min(0)
       .describe("Subnets carrying at least one surface of this kind."),
   })
-  .passthrough();
+  .strict();
 
 export const CoverageCompletenessSchema = z
   .object({
@@ -39,7 +39,7 @@ export const CoverageCompletenessSchema = z
       .optional(),
     methodology: z.string().optional(),
   })
-  .passthrough()
+  .strict()
   .optional();
 
 const CoverageSourceSchema = z
@@ -60,7 +60,7 @@ const CoverageSourceSchema = z
           rpc_family: z.string().nullable().optional(),
           version: z.string().nullable().optional(),
         })
-        .passthrough(),
+        .strict(),
     ]),
     overlays: z.string(),
   })
@@ -95,7 +95,7 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   source: CoverageSourceSchema,
   subnets_without_official_surface: z.int().min(0),
   surface_count: z.int().min(0),
-}).passthrough();
+}).strict();
 export type CoverageArtifact = z.infer<typeof CoverageArtifactSchema>;
 
 // Shared with schemas-src/mcp-tools/registry-summary-gaps.ts's
@@ -163,7 +163,7 @@ export const CoverageDepthDimensionsSchema = z
     source_repo_present: z.boolean(),
     docs_url_present: z.boolean(),
   })
-  .passthrough();
+  .strict();
 
 export const CoverageDepthRowSchema = z
   .object({
@@ -224,8 +224,8 @@ export const CoverageDepthArtifactSchema = ArtifactBaseSchema.extend({
       methodology: z.string(),
       weights: z.record(z.string(), z.int().min(0).max(100)),
     })
-    .passthrough(),
+    .strict(),
   rows: z.array(CoverageDepthRowSchema),
   ranked_queue: z.array(CoverageDepthQueueEntrySchema),
-}).passthrough();
+}).strict();
 export type CoverageDepthArtifact = z.infer<typeof CoverageDepthArtifactSchema>;

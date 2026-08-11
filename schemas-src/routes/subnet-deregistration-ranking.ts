@@ -36,6 +36,12 @@ export const DEREGISTRATION_RANKING_BODY = {
   // EmissionPipelineArtifact takes for the same reason.
   schema_version: z.int(),
   chain_state: ChainStateSchema,
+  // The block the ordering was COMPUTED at, spread out of `result.ranking` and
+  // undeclared until #10790. It is not redundant with `chain_state.block`:
+  // this ordering is only valid at one height -- immunity lapses by block, so
+  // a reader comparing a cached body against a later head needs to know which
+  // height produced it.
+  block: z.int().min(0),
   /** Blocks of protection after registration, at this block. */
   network_immunity_period: z.int().min(0),
   // Ordered: index 0 is the subnet the chain would deregister next. Immune
@@ -54,7 +60,7 @@ export const DEREGISTRATION_RANKING_BODY = {
 
 export const SubnetDeregistrationRankingArtifactSchema = z
   .object(DEREGISTRATION_RANKING_BODY)
-  .passthrough();
+  .strict();
 export type SubnetDeregistrationRankingArtifact = z.infer<
   typeof SubnetDeregistrationRankingArtifactSchema
 >;

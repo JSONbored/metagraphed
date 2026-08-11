@@ -22,6 +22,7 @@ import {
   offsetSchema,
   orderSchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { HealthSummaryArtifactSchema } from "../routes/health.ts";
 
@@ -71,7 +72,11 @@ export const GetNetworkHealthInputSchema = z
   .strict();
 export type GetNetworkHealthInput = z.infer<typeof GetNetworkHealthInputSchema>;
 
-export const GetNetworkHealthOutputSchema = HealthSummaryArtifactSchema;
+export const GetNetworkHealthOutputSchema = HealthSummaryArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpUnsortedPageFields,
+});
 export type GetNetworkHealthOutput = z.infer<
   typeof GetNetworkHealthOutputSchema
 >;

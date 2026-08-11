@@ -16,6 +16,7 @@ import {
   CurationLevelSchema,
   SubnetStatusSchema,
   SubnetTypeSchema,
+  GithubReleaseSchema,
 } from "../shared.ts";
 import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import {
@@ -181,18 +182,7 @@ export const SubnetProfileSchema = z
     // kind on /api/v1/feeds/subnets/{netuid}. Null means the repo was never
     // asked (no resolvable source repo, or not yet captured); [] means it
     // publishes no releases, which is the common case for subnet repos.
-    github_releases: z
-      .array(
-        z.object({
-          tag: z.string(),
-          name: z.string().nullable(),
-          published_at: z.iso.datetime(),
-          url: z.string(),
-          prerelease: z.boolean(),
-        }),
-      )
-      .nullable()
-      .optional(),
+    github_releases: z.array(GithubReleaseSchema).nullable().optional(),
     github_unreachable: z.boolean().optional(),
     project_name: z.string(),
     team: z.string().nullable(),
@@ -211,11 +201,11 @@ export const SubnetProfileSchema = z
                 name: z.string().nullable().optional(),
                 matched_by: z.enum(["github_repo", "chain_name"]).optional(),
               })
-              .passthrough(),
+              .strict(),
           )
           .optional(),
       })
-      .passthrough()
+      .strict()
       .nullable()
       .optional(),
     primary_links: SubnetProfilePrimaryLinksSchema,

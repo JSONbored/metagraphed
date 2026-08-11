@@ -34,5 +34,5 @@ export const AlertTriggerArtifactSchema = z
     last_matched_at: z.string().nullable().optional(),
     match_count: z.int().optional(),
   })
-  .passthrough();
+  .strict();
 export type AlertTriggerArtifact = z.infer<typeof AlertTriggerArtifactSchema>;

@@ -3,10 +3,10 @@
 // types-epic E batch 11, #8074's meta-artifacts-1.ts). Modeled from the
 // hand-edited LineageArtifact component it replaces.
 import { z } from "zod";
-import { ArtifactBaseSchema } from "../envelope.ts";
+import { ArtifactBaseSchema, PublishedAtSchema } from "../envelope.ts";
 
 export const LineageArtifactSchema = ArtifactBaseSchema.extend({
-  published_at: z.string().nullable().optional(),
+  published_at: PublishedAtSchema,
   source_network: z.string(),
   target_network: z.string(),
   link_count: z.int().min(0),
@@ -41,7 +41,7 @@ export const LineageArtifactSchema = ArtifactBaseSchema.extend({
         testnet_name: z.string().nullable().optional(),
         matched_by: z.enum(["github_repo", "chain_name"]),
       })
-      .passthrough(),
+      .strict(),
   ),
-}).passthrough();
+}).strict();
 export type LineageArtifact = z.infer<typeof LineageArtifactSchema>;

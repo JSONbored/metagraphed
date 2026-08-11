@@ -51,7 +51,7 @@ export const GetDomainSummaryOutputSchema = z
     // both forms.
     domains: z.array(DomainSummaryArtifactSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type GetDomainSummaryOutput = z.infer<
   typeof GetDomainSummaryOutputSchema
 >;

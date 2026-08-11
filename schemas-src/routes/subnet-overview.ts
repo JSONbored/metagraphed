@@ -16,7 +16,11 @@
 // (.passthrough()) so this is a pure completeness gain, not a tightening.
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
-import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
+import {
+  CurationMetadataSchema,
+  GapsSchema,
+  LIVE_HEALTH_OVERLAY,
+} from "./subnet-detail.ts";
 import { SubnetProfileSchema } from "./subnet-profile.ts";
 
 const SubnetOverviewHealthSchema = z
@@ -33,7 +37,7 @@ const SubnetOverviewHealthSchema = z
     avg_latency_ms: z.number().nullable().optional(),
     observed_by: z.string().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0),
@@ -42,8 +46,7 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
   status: z.string().optional(),
   profile: SubnetProfileSchema.nullable(),
   health: SubnetOverviewHealthSchema.nullable(),
-  operational_observed_at: z.string().nullable().optional(),
-  health_source: z.string().nullable().optional(),
+  ...LIVE_HEALTH_OVERLAY,
   curation: CurationMetadataSchema.nullable().optional(),
   gaps: GapsSchema.nullable().optional(),
   counts: z
@@ -52,7 +55,7 @@ export const SubnetOverviewArtifactSchema = ArtifactBaseSchema.extend({
       endpoints: z.int().min(0),
       candidates: z.int().min(0),
     })
-    .passthrough(),
+    .strict(),
   gap_priorities: z.array(z.unknown()).optional(),
 });
 export type SubnetOverviewArtifact = z.infer<

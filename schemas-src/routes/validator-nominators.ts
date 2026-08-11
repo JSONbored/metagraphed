@@ -77,7 +77,7 @@ export const ValidatorNominatorsArtifactSchema = z
     nominator_gini: z.number().min(0).max(1).nullable(),
     nominators: z.array(ValidatorNominatorEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope.",
   );
@@ -144,9 +144,9 @@ export const ValidatorNominatorPositionsSchema = z
     // the hotkey_alpha pool ledger has no complete pass, because a partial
     // ledger underprices a nominator rather than dropping them -- a wrong
     // number that looks right.
-    degraded: z.object({ reason: z.string() }).passthrough().optional(),
+    degraded: z.object({ reason: z.string() }).strict().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One validator's standing delegator positions (#9617). Mirrors GET /api/v1/validators/{hotkey}/nominators?basis=positions.",
   );

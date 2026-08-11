@@ -55,7 +55,7 @@ export const ChainConcentrationArtifactSchema = z
       "Stake concentration across permitted validators network-wide only; null when no permitted validator carries stake.",
     ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration.",
   );

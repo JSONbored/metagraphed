@@ -24,17 +24,26 @@
 import { z } from "zod";
 import { EntityCategorySchema } from "../shared.ts";
 
-const EntityLabelSchema = z
+/**
+ * ONE entity-label vocabulary (#10790).
+ *
+ * This and `account-summary.ts` each declared it, and both comments said "keep
+ * both in sync" -- which is what a vocabulary with no owner sounds like. The
+ * two were still identical field-for-field, so this collapse changes nothing
+ * published; it removes the second place a future field could fail to land.
+ */
+export const EntityLabelSchema = z
   .object({
     name: z.string().nullable().optional(),
     // #8372: widened to match schemas/entity.schema.json's category enum
-    // and account-summary.ts's own copy -- keep all three in sync.
+    // (bridge/pool/infra/project added; exchange/foundation/operator/other
+    // retained so an existing entry stays valid).
     category: EntityCategorySchema.nullable().optional(),
     notes: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "A community-contributed entity label for an address (exchange/foundation/operator/other).",
   );
@@ -53,7 +62,7 @@ export const AccountEntitiesArtifactSchema = z
           block_number: z.int().nullable().optional(),
           observed_at: z.string().nullable().optional(),
         })
-        .passthrough()
+        .strict()
         .describe(
           "One tie between this `coldkey` and a subnet. `owns` is CURRENT ownership read from the economics tier's `owner_coldkey` (measured from SubtensorModule.SubnetOwner) and carries a NULL `block_number`, because it is a state rather than an event -- these come first, by netuid. `gained_ownership`/`lost_ownership` are SubnetOwnerChanged transfers, newest first, and there is exactly ONE such event in all of chain history: ownership is established at registration and only ever moved by conviction contest, which is why reading the transfer stream alone reported no ties for coldkeys that plainly own a subnet (#9313).",
         ),
@@ -65,7 +74,7 @@ export const AccountEntitiesArtifactSchema = z
         'When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp.',
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities.",
   );

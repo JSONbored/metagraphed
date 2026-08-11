@@ -18,7 +18,7 @@ export const ChainConcentrationScorecardSchema = z
     entropy: z.number().nullable(),
     entropy_normalized: z.number().nullable(),
   })
-  .passthrough();
+  .strict();
 
 export const ChainConcentrationHistoryPointSchema = z
   .object({
@@ -89,7 +89,7 @@ export const ChainConcentrationHistoryArtifactSchema = z
       "Present ONLY on a decline. An empty window is a measurement.",
     ),
   })
-  .passthrough();
+  .strict();
 export type ChainConcentrationHistoryArtifact = z.infer<
   typeof ChainConcentrationHistoryArtifactSchema
 >;

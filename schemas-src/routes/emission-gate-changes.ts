@@ -72,7 +72,7 @@ export const EmissionGateChangesArtifactSchema = z
       ]),
     ),
   })
-  .passthrough();
+  .strict();
 export type EmissionGateChangesArtifact = z.infer<
   typeof EmissionGateChangesArtifactSchema
 >;

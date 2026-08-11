@@ -81,7 +81,7 @@ export const SubnetHyperparametersArtifactSchema = z
      */
     subnet_status: z.enum(["live", "deregistered"]).nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations.",
   );
@@ -111,7 +111,7 @@ export const SubnetHyperparamsHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(SubnetHyperparamsHistoryEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type SubnetHyperparamsHistoryArtifact = z.infer<
   typeof SubnetHyperparamsHistoryArtifactSchema
 >;

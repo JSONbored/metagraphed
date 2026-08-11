@@ -573,6 +573,8 @@ jobs:
           run_step npm run validate:operations
           run_step npm run validate:type-duplicates
           run_step npm run validate:nullable-overpromises
+          run_step npm run validate:no-passthrough
+          run_step npm run validate:schema-shape-duplicates
           run_step npm run validate:mcp-input-parity
           run_step npm run validate:tool-route-divergence
           run_step npm run validate:query-vocabulary

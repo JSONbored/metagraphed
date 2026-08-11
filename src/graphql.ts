@@ -421,6 +421,7 @@ import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { loadSubnetEventSummaryColdTier } from "./subnet-event-summary-cold-tier.ts";
 import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.ts";
 import { buildChainYield } from "./chain-yield.ts";
@@ -2397,6 +2398,24 @@ interface ListPageOptions {
   filterFn?: (row: Row) => boolean;
   /** A whole-list transform (multi-filter + sort) applied before pagination. */
   transform?: (rows: Row[]) => Row[];
+  /**
+   * Artifact-level keys lifted onto the page beside the rows (#10790).
+   *
+   * A list view drops the build envelope -- `generated_at`, `schema_version`,
+   * `contract_version` say nothing about the rows -- but a CAPTURE stamp is
+   * not envelope: it is the only answer to "how old is this snapshot", and a
+   * projection that drops it leaves a GraphQL caller no way to ask. `subnets`
+   * is the case; `ProfileList.captured_at` is the precedent.
+   *
+   * Read from the same memoized `loadArtifact` the rows come from, so this is
+   * one read, not two.
+   *
+   * REQUIRED, with `[]` for a view that lifts nothing. There is one caller
+   * today and it lifts two fields, so an optional parameter left a fallback
+   * arm nothing could reach -- and "what does this view republish from the
+   * artifact" is a question a list view should have to answer out loud.
+   */
+  envelope: readonly string[];
 }
 
 // `subnets`, the rest use `items`).
@@ -2413,6 +2432,7 @@ async function listPage(
     resultKey = "items",
     filterFn,
     transform,
+    envelope,
   }: ListPageOptions,
 ) {
   let all = await loadRows(context, path, key, netuid);
@@ -2426,7 +2446,20 @@ async function listPage(
     all = transform(all);
   }
   const { page, total, nextCursor } = paginate(all, limit, cursor, keyFn);
+  // `?? null`, never omitted: the SDL declares these nullable, and a key the
+  // artifact has not stamped must read as "not stamped" rather than as the
+  // field being absent from the response.
+  //
+  // UNCONDITIONAL, and it costs nothing to be: `loadArtifact` is memoized per
+  // request and `loadRows` above has already read this path, so an empty
+  // envelope spreads `{}` without a second read. Guarding it with
+  // `envelope?.length` bought no reads and left an arm no caller could reach.
+  const artifact = await loadArtifact(context, path);
+  const lifted = Object.fromEntries(
+    envelope.map((field) => [field, artifact?.[field] ?? null]),
+  );
   return {
+    ...lifted,
     [resultKey]: map ? page.map(map) : page,
     total,
     next_cursor: nextCursor,
@@ -2652,6 +2685,11 @@ const rootValue = {
         netuid,
         keyFn: (s: Row) => s.netuid,
         map: subnetNode,
+        // The two capture stamps the index carries, published rather than
+        // dropped with the build envelope (#10790): they date the CHAIN
+        // snapshot the rows were read from, and the identity overlay merged
+        // onto it, which `generated_at` does not.
+        envelope: ["captured_at", "native_snapshot_captured_at"],
         // list_subnets' own pipeline: categorical inclusion + negation, then the
         // numeric range bounds, then the optional sort -- applied to the full
         // matching set before pagination via the shared helpers.
@@ -6248,6 +6286,17 @@ const rootValue = {
       // warning about them gone (#9803).
       coverage_complete: data.coverage_complete,
       coverage_gaps: data.coverage_gaps,
+      // PARITY, not a new capability (#10790): /api/v1/runtime has composed
+      // the radar beside the timeline since #8702 and this field served the
+      // timeline alone, so a GraphQL caller could read where the chain HAS
+      // been and not where it is going.
+      //
+      // A THUNK, so it costs nothing unless it is SELECTED. graphql-js's
+      // default resolver calls a function-valued property only when the field
+      // is in the query, and this one is not free on a cold KV: it reads a
+      // spec version off each chain. Awaiting it here instead made every
+      // `runtime { transition_count }` pay for a radar nobody asked for.
+      current: () => loadUpgradeRadar(context.env),
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
       transition_count: data.transition_count ?? 0,

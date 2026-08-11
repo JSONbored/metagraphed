@@ -4,6 +4,10 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
+import {
+  AskArtifactSchema,
+  SemanticSearchArtifactSchema,
+} from "../routes/ai-native.ts";
 import { SEMANTIC_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { limitSchema, netuidSchema, querySchema } from "./shared.ts";
@@ -43,13 +47,50 @@ export type FindSubnetOpportunitiesInput = z.infer<
   typeof FindSubnetOpportunitiesInputSchema
 >;
 
+/**
+ * One ranked row: the identity every board carries, plus the metrics ITS board
+ * projects (#10790).
+ *
+ * Each of the six boards in `ECONOMIC_LEADERBOARDS` (src/health-serving.ts)
+ * defines a `project()` that decorates the row with the numbers its ranking is
+ * about -- and this schema declared only the three identity fields, so fifteen
+ * projected metrics went out undescribed on every call. They are OPTIONAL, not
+ * because they may be missing from their own board, but because which board
+ * you asked for decides which arrive: `validator_headroom` is always present
+ * on `validator-headroom` and never anywhere else.
+ *
+ * Nullable throughout: `finiteOrNull` is what the projections run every value
+ * through, and a subnet whose reading was non-finite is reported as null rather
+ * than dropped from the board -- absence of a measurement, never a zero.
+ */
 const EconomicBoardEntrySchema = z
   .object({
     netuid: netuidSchema().optional(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
+    // open-slots, cheapest-registration
+    open_slots: z.number().nullable().optional(),
+    max_uids: z.number().nullable().optional(),
+    registration_cost_tao: z.number().nullable().optional(),
+    registration_allowed: z.boolean().nullable().optional(),
+    // highest-emission. `total_stake_alpha` is the economics row's
+    // `total_stake_tao` under the board's own name -- a rename in the
+    // projection, not two readings.
+    tao_in_emission_tao: z.number().nullable().optional(),
+    emission_share: z.number().nullable().optional(),
+    emission_enabled: z.boolean().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
+    validator_count: z.number().nullable().optional(),
+    miner_count: z.number().nullable().optional(),
+    // validator-headroom
+    validator_headroom: z.number().nullable().optional(),
+    max_validators: z.number().nullable().optional(),
+    // biggest-alpha-gain-1d / -7d
+    alpha_price_change_1d: z.number().nullable().optional(),
+    alpha_price_change_7d: z.number().nullable().optional(),
+    alpha_price_tao: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const FindSubnetOpportunitiesOutputSchema = z
   .object({
@@ -66,7 +107,7 @@ export const FindSubnetOpportunitiesOutputSchema = z
     // already get.
     boards: z.record(z.string(), z.array(EconomicBoardEntrySchema)),
   })
-  .passthrough();
+  .strict();
 export type FindSubnetOpportunitiesOutput = z.infer<
   typeof FindSubnetOpportunitiesOutputSchema
 >;
@@ -97,26 +138,10 @@ export const SemanticSearchInputSchema = z
   .strict();
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
 
-const SemanticSearchResultItemSchema = z
-  .object({
-    score: z.unknown().optional(),
-    type: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    title: z.string().nullable().optional(),
-    subtitle: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const SemanticSearchOutputSchema = z
-  .object({
-    query: z.string(),
-    count: z.int(),
-    model: z.string().nullable().optional(),
-    results: z.array(SemanticSearchResultItemSchema),
-  })
-  .passthrough();
+// THE ROUTE'S OWN SCHEMA (#10790). `model` was `.nullable().optional()` here
+// against the route's required `z.string()` -- and the route's prose says why
+// it is published at all: so a caller can tell two runs apart.
+export const SemanticSearchOutputSchema = SemanticSearchArtifactSchema;
 export type SemanticSearchOutput = z.infer<typeof SemanticSearchOutputSchema>;
 
 export const AskInputSchema = z
@@ -134,26 +159,12 @@ export const AskInputSchema = z
   .strict();
 export type AskInput = z.infer<typeof AskInputSchema>;
 
-const AskCitationItemSchema = z
-  .object({
-    ref: z.unknown().optional(),
-    score: z.number().optional(),
-    title: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const AskOutputSchema = z
-  .object({
-    question: z.string(),
-    answer: z.string(),
-    model: z.string().nullable().optional(),
-    context_count: z.int().nullable().optional(),
-    citations: z.array(AskCitationItemSchema).optional(),
-  })
-  .passthrough();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy typed `ref: z.unknown()` where the
+// route says `z.int().min(1)` -- the bracketed marker used inline in `answer`,
+// which is the whole mechanism a client resolves a citation by -- and made
+// `citations`/`context_count`/`model` optional where the producer always sends
+// them.
+export const AskOutputSchema = AskArtifactSchema;
 export type AskOutput = z.infer<typeof AskOutputSchema>;
 
 export const FindSubnetForTaskInputSchema = z
@@ -204,7 +215,7 @@ export const FindSubnetForTaskOutputSchema = z
       }),
     ),
   })
-  .passthrough();
+  .strict();
 export type FindSubnetForTaskOutput = z.infer<
   typeof FindSubnetForTaskOutputSchema
 >;

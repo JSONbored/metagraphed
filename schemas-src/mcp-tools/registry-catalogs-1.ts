@@ -27,6 +27,7 @@ import {
   projectableRows,
   providerSlugSchema,
   sortSchema,
+  McpListPageFields,
 } from "./shared.ts";
 import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
 import { SurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
@@ -68,6 +69,9 @@ export const ListProvidersInputSchema = z
 export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
 
 export const ListProvidersOutputSchema = ProvidersArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
   providers: projectableRows(ProvidersArtifactSchema.shape.providers),
 });
 export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
@@ -130,6 +134,9 @@ export const ListSurfacesInputSchema = z
 export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;
 
 export const ListSurfacesOutputSchema = SurfacesArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
   surfaces: projectableRows(SurfacesArtifactSchema.shape.surfaces),
 });
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
@@ -159,6 +166,9 @@ export const ListCandidatesInputSchema = z
 export type ListCandidatesInput = z.infer<typeof ListCandidatesInputSchema>;
 
 export const ListCandidatesOutputSchema = CandidatesArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
   candidates: projectableRows(CandidatesArtifactSchema.shape.candidates),
 });
 export type ListCandidatesOutput = z.infer<typeof ListCandidatesOutputSchema>;

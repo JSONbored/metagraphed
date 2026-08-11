@@ -53,14 +53,43 @@ const HowDoICallServiceSchema = z
     callable: z.boolean(),
     auth: z
       .object({ required: z.boolean(), schemes: z.array(z.string()) })
-      .passthrough(),
+      .strict(),
     snippets: z
       .object({ curl: z.string(), python: z.string(), typescript: z.string() })
-      .passthrough(),
+      .strict(),
+    // TWO BRANCHES, and only the unavailable one was declared (#10790). When a
+    // schema or fixture EXISTS the producer adds the tool call that fetches it
+    // -- which is the entire point of `how_do_i_call` -- and when it does not,
+    // it says which check failed. Both were served undeclared.
     schema: z
-      .object({ available: z.boolean(), schema_url: z.string().nullable() })
-      .passthrough(),
-    fixture: z.object({ available: z.boolean() }).passthrough(),
+      .object({
+        available: z.boolean(),
+        schema_url: z.string().nullable(),
+        fetch_with: z
+          .string()
+          .optional()
+          .describe(
+            "The exact tool call that returns this schema. Present only when one exists.",
+          ),
+      })
+      .strict(),
+    fixture: z
+      .object({
+        available: z.boolean(),
+        fetch_with: z.string().optional(),
+        artifact_path: z.string().nullable().optional(),
+        captured_at: z.string().nullable().optional(),
+        response_status: z.int().nullable().optional(),
+        content_type: z.string().nullable().optional(),
+        status: z
+          .string()
+          .optional()
+          .describe(
+            "Why there is no fixture, as a code. Absent when there is one.",
+          ),
+        reason: z.string().optional().describe("The same, in words."),
+      })
+      .strict(),
     health: z
       .object({
         status: z.string(),
@@ -73,9 +102,9 @@ const HowDoICallServiceSchema = z
         // which is the only place that path runs. Same lesson as #9941.
         observed_by: z.string().nullable(),
       })
-      .passthrough(),
+      .strict(),
   })
-  .passthrough();
+  .strict();
 
 export const HowDoICallOutputSchema = z
   .object({
@@ -91,7 +120,7 @@ export const HowDoICallOutputSchema = z
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type HowDoICallOutput = z.infer<typeof HowDoICallOutputSchema>;
 
 export const VerifyIntegrationInputSchema = z
@@ -125,7 +154,7 @@ export const VerifyIntegrationOutputSchema = z
     probed_at: z.string().nullable().optional(),
     from_cache: z.boolean().optional(),
   })
-  .passthrough();
+  .strict();
 export type VerifyIntegrationOutput = z.infer<
   typeof VerifyIntegrationOutputSchema
 >;
@@ -205,7 +234,7 @@ export const CallSubnetSurfaceOutputSchema = z
     // registered credential). Absent for surfaces that need no credential.
     credential_source: z.enum(["argument", "stored"]).optional(),
   })
-  .passthrough();
+  .strict();
 export type CallSubnetSurfaceOutput = z.infer<
   typeof CallSubnetSurfaceOutputSchema
 >;
@@ -250,7 +279,7 @@ export const StoreSurfaceCredentialOutputSchema = z
     expires_at: z.string(),
     replaced: z.boolean(),
   })
-  .passthrough();
+  .strict();
 export type StoreSurfaceCredentialOutput = z.infer<
   typeof StoreSurfaceCredentialOutputSchema
 >;
@@ -278,11 +307,11 @@ export const ListSurfaceCredentialsOutputSchema = z
           created_at: z.string(),
           expires_at: z.string(),
         })
-        .passthrough(),
+        .strict(),
     ),
     count: z.int(),
   })
-  .passthrough();
+  .strict();
 export type ListSurfaceCredentialsOutput = z.infer<
   typeof ListSurfaceCredentialsOutputSchema
 >;
@@ -301,7 +330,7 @@ export const DeleteSurfaceCredentialOutputSchema = z
     surface_id: z.string(),
     deleted: z.boolean(),
   })
-  .passthrough();
+  .strict();
 export type DeleteSurfaceCredentialOutput = z.infer<
   typeof DeleteSurfaceCredentialOutputSchema
 >;

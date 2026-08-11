@@ -43,7 +43,7 @@ export const CurationEntrySchema = z
 export const CurationArtifactSchema = ArtifactBaseSchema.extend({
   curation: z.array(CurationEntrySchema),
 })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation).",
   );
@@ -77,7 +77,7 @@ export const GapsEntrySchema = z
 export const GapsArtifactSchema = ArtifactBaseSchema.extend({
   gaps: z.array(GapsEntrySchema),
 })
-  .passthrough()
+  .strict()
   .describe(
     "Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps).",
   );

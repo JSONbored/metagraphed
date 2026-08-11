@@ -70,7 +70,7 @@ export const AccountExtrinsicsArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     extrinsics: z.array(ExtrinsicSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip).",
   );

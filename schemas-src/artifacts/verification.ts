@@ -36,7 +36,7 @@ const VerificationSummaryBaseSchema = z
     by_kind: CountMapSchema,
     by_provider: CountMapSchema,
   })
-  .passthrough();
+  .strict();
 
 const VerificationSummarySchema = VerificationSummaryBaseSchema.extend({
   promotable_count: z

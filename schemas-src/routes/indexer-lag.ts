@@ -75,5 +75,5 @@ export const IndexerLagArtifactSchema = z
         "Present ONLY on a decline; its absence says the measurement is real.",
       ),
   })
-  .passthrough();
+  .strict();
 export type IndexerLagArtifact = z.infer<typeof IndexerLagArtifactSchema>;

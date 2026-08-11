@@ -45,7 +45,7 @@ export const GetSubnetEconomicsOutputSchema = z
     summary: EconomicsSummarySchema.nullable().optional(),
     economics: SubnetEconomicsSchema.nullable(),
   })
-  .passthrough();
+  .strict();
 export type GetSubnetEconomicsOutput = z.infer<
   typeof GetSubnetEconomicsOutputSchema
 >;
