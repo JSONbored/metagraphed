@@ -17,7 +17,7 @@ interface AccountHistorySeriesDay extends AccountDay {
 function formatDay(day: string, withYear = false): string {
   const date = new Date(`${day}T00:00:00Z`);
   if (!Number.isFinite(date.getTime())) return day;
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     ...(withYear ? { year: "numeric" } : {}),

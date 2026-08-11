@@ -66,7 +66,7 @@ function describeApiError(error: unknown): string {
 
 function formatTimestamp(ms: number | null): string {
   if (!ms) return "never";
-  return new Date(ms).toLocaleString();
+  return new Date(ms).toLocaleString("en-US");
 }
 
 /**
@@ -391,7 +391,8 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
           <div className="flex items-baseline justify-between gap-2 mg-type-caption">
             <span className="text-ink-muted">Daily quota</span>
             <span className="font-mono text-ink-strong">
-              {quota.units_spent.toLocaleString()} / {quota.daily_units.toLocaleString()} units
+              {quota.units_spent.toLocaleString("en-US")} /{" "}
+              {quota.daily_units.toLocaleString("en-US")} units
             </span>
           </div>
           <div
@@ -414,8 +415,8 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
             />
           </div>
           <p className="mg-type-caption text-ink-subtle">
-            {quota.remaining.toLocaleString()} units left · resets{" "}
-            {new Date(quota.resets_at).toLocaleTimeString(undefined, {
+            {quota.remaining.toLocaleString("en-US")} units left · resets{" "}
+            {new Date(quota.resets_at).toLocaleTimeString("en-US", {
               hour: "numeric",
               minute: "2-digit",
               // The quota resets at 00:00 UTC and the label says UTC, so the
@@ -436,7 +437,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
 
       {usage.rejected_total > 0 ? (
         <p className="mg-type-caption text-health-warn">
-          {usage.rejected_total.toLocaleString()} request
+          {usage.rejected_total.toLocaleString("en-US")} request
           {usage.rejected_total === 1 ? " was" : "s were"} rate-limited in this window. Rate-limited
           requests are not counted against your quota.
         </p>
@@ -444,7 +445,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
 
       <BarMini
         data={chronological.map((d) => ({
-          label: new Date(d.day).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          label: new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           value: d.count,
         }))}
         ariaLabel={`Daily request count, last ${usage.window_days} days`}
@@ -459,7 +460,7 @@ function UsageDashboard({ usage, token }: { usage: ApiKeyUsage | undefined; toke
                 className="flex items-center justify-between gap-2 mg-type-caption text-ink-muted"
               >
                 <span className="font-mono text-ink-strong">{r.route}</span>
-                <span>{r.count.toLocaleString()}</span>
+                <span>{r.count.toLocaleString("en-US")}</span>
               </li>
             ))}
           </ul>

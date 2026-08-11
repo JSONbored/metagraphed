@@ -94,9 +94,9 @@ export function SelfHealthVerdict() {
               colour: 3 subnet APIs being down is not our outage, and colouring
               it like one is exactly the bug this rebuild fixes. */}
           <p className="mt-1 mg-type-caption text-ink-muted">
-            Tracking {total.toLocaleString()} subnet surfaces: {ok.toLocaleString()} up ·{" "}
-            {warn.toLocaleString()} slow · {down.toLocaleString()} down
-            {unknown > 0 ? ` · ${unknown.toLocaleString()} unknown` : ""}. Those are other
+            Tracking {total.toLocaleString("en-US")} subnet surfaces: {ok.toLocaleString("en-US")}{" "}
+            up · {warn.toLocaleString("en-US")} slow · {down.toLocaleString("en-US")} down
+            {unknown > 0 ? ` · ${unknown.toLocaleString("en-US")} unknown` : ""}. Those are other
             teams&rsquo; endpoints, not ours.
           </p>
           {!selfData ? (

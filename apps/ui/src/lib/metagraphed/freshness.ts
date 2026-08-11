@@ -25,7 +25,7 @@ export function formatFreshnessAbsolute(updatedAt?: string | null): string | nul
   if (!updatedAt) return null;
   const t = new Date(updatedAt);
   if (Number.isNaN(t.getTime())) return null;
-  return t.toLocaleString();
+  return t.toLocaleString("en-US");
 }
 
 /**
