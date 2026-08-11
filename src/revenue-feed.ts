@@ -24,6 +24,10 @@ import type { FeedItem } from "./feeds.ts";
 import { subnetPageUrl } from "./contracts.ts";
 import { loadPipelineHistory } from "./emission-pipeline-history.ts";
 import { loadTaoUsdSeries } from "./tao-usd-series.ts";
+import type {
+  RevenueObservations,
+  RevenueProbeFailures,
+} from "../generated/db/types.ts";
 
 /** One row of `revenue_observations`, as the feed reads it. */
 export interface RevenueObservationRow {
@@ -341,8 +345,11 @@ export interface RevenueFeedDb {
   };
 }
 
-// Deliberately loose: rows come back from two different drivers with different
-// column typing, and a narrower type would push a cast onto every field read.
+// Deliberately loose for the SHAPING helpers below, which read rows from two
+// different drivers. The two revenue tables are typed from the live schema
+// instead -- see RevenueObservations/RevenueProbeFailures at the read sites,
+// where `observed_at: number | string` is the honest BIGINT type and the reason
+// epochMs exists at all.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
@@ -418,19 +425,21 @@ export async function loadRevenueFeedItems(
   ]);
   if (observationRows === null && failureRows === null) return [];
 
-  const observations: RevenueObservationRow[] = (observationRows ?? []).map(
-    (r) => ({
-      surface_id: String(r.surface_id ?? ""),
-      netuid: r.netuid == null ? null : Number(r.netuid),
-      period: String(r.period ?? ""),
-      grain: r.grain == null ? null : String(r.grain),
-      amount: Number(r.amount),
-      currency: r.currency == null ? null : String(r.currency),
-      provenance: r.provenance == null ? null : String(r.provenance),
-      observed_at: isoOrNull(r.observed_at),
-    }),
-  );
-  const failures: RevenueProbeFailureRow[] = (failureRows ?? []).map((r) => ({
+  const observations: RevenueObservationRow[] = (
+    (observationRows ?? []) as RevenueObservations[]
+  ).map((r) => ({
+    surface_id: String(r.surface_id ?? ""),
+    netuid: r.netuid == null ? null : Number(r.netuid),
+    period: String(r.period ?? ""),
+    grain: r.grain == null ? null : String(r.grain),
+    amount: Number(r.amount),
+    currency: r.currency == null ? null : String(r.currency),
+    provenance: r.provenance == null ? null : String(r.provenance),
+    observed_at: isoOrNull(r.observed_at),
+  }));
+  const failures: RevenueProbeFailureRow[] = (
+    (failureRows ?? []) as RevenueProbeFailures[]
+  ).map((r) => ({
     surface_id: String(r.surface_id ?? ""),
     netuid: r.netuid == null ? null : Number(r.netuid),
     reason: r.reason == null ? null : String(r.reason),

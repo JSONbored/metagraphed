@@ -39,6 +39,12 @@
 // indistinguishable from a placeholder with one observation. Under-reporting a
 // dead host is recoverable; declaring a live subnet's API gone is not.
 
+// The ROW shape comes from the live schema, not a hand-written guess:
+// `checked_at: number | string` is node-postgres returning BIGINT as a string
+// unless it is exactly representable, and typing it `number` by hand would hide
+// that.
+import type { OriginReachability } from "../generated/db/types.ts";
+
 /** What one origin's check concluded. */
 export type OriginVerdict =
   /** Answered, and answered differently for different paths. */
@@ -319,7 +325,7 @@ export async function loadDeadOrigins(
       .all?.();
     const out: OriginRecord[] = [];
     for (const raw of res?.results ?? []) {
-      const row = raw as Record<string, unknown>;
+      const row = raw as OriginReachability;
       const at = Number(row.checked_at);
       out.push({
         origin: String(row.origin ?? ""),
@@ -424,7 +430,7 @@ export async function loadOriginCheckedAt(
       .prepare(`SELECT origin, checked_at FROM origin_reachability`)
       .all?.();
     for (const raw of res?.results ?? []) {
-      const row = raw as Record<string, unknown>;
+      const row = raw as OriginReachability;
       const at = Number(row.checked_at);
       if (row.origin && Number.isFinite(at)) out.set(String(row.origin), at);
     }
