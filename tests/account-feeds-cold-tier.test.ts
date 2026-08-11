@@ -19,6 +19,7 @@ vi.mock("pg", () => pg.module);
 
 import {
   loadAccountRegistrationsColdTier,
+  loadAccountPrometheusColdTier,
   loadAccountServingColdTier,
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
@@ -948,6 +949,66 @@ describe("loadValidatorNominatorsColdTier", () => {
     failingFetch();
     assert.equal(
       await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 }),
+      null,
+    );
+  });
+});
+
+// #10322: the rung this family never had. Every surface answered
+// `buildAccountPrometheus([])` while /api/v1/chain/prometheus read the same
+// PrometheusServed stream and reported real numbers.
+describe("loadAccountPrometheusColdTier", () => {
+  const PROM_ROW = {
+    netuid: 112,
+    announcements: "1",
+    first_observed: 1_784_016_000_001,
+    last_observed: 1_785_342_888_001,
+  };
+
+  test("groups PrometheusServed by netuid and reads the announcements column", async () => {
+    const q = sqlFetch([PROM_ROW]);
+    const res = await loadAccountPrometheusColdTier(TOKEN as never, ADDR, {
+      window: "7d",
+    });
+    const sql = q[0]!;
+    // The event kind is the ONLY thing that differs from the serving sibling;
+    // getting it wrong yields a healthy-looking card of somebody else's events.
+    assert.match(sql, /event_kind = 'PrometheusServed'/);
+    assert.match(sql, /COUNT\(\*\) AS announcements/);
+    assert.equal(res!.data.total_announcements, 1);
+    assert.equal(res!.data.window, "7d");
+  });
+
+  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
+    const q = sqlFetch([PROM_ROW]);
+    await loadAccountPrometheusColdTier(TOKEN as never, ADDR, {});
+    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
+    assert.doesNotMatch(q[0]!, /coldkey/);
+  });
+
+  test("an empty window answers zeros with a null generatedAt", async () => {
+    sqlFetch([]);
+    const res = await loadAccountPrometheusColdTier(TOKEN as never, ADDR);
+    assert.equal(res!.data.total_announcements, 0);
+    assert.equal(res!.generatedAt, null);
+  });
+
+  test("declines an unusable address rather than scanning every account", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadAccountPrometheusColdTier(TOKEN as never, "not-an-ss58"),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  // DECLINES rather than degrades: a null here lets the caller fall through to
+  // the zeroed builder, which is a different answer from "zero announcements".
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      new Response("nope", { status: 500 })) as typeof fetch;
+    assert.equal(
+      await loadAccountPrometheusColdTier(TOKEN as never, ADDR),
       null,
     );
   });
