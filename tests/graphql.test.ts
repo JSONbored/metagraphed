@@ -9180,39 +9180,58 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 });
 
 describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
-  // Fresh Response per fetch so incidents + global_incidents can each consume
-  // their own Postgres-tier body when queried side by side.
-  function dataApi(payload: Row) {
-    return { fetch: async () => Response.json(payload) };
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered --
+  // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
+  // there, and given INCIDENT rows rather than a finished surfaces list: the
+  // paging/filtering under test applies to what formatGlobalIncidents
+  // aggregates, so handing it the aggregate skipped the step being tested.
+  //
+  // `downtime_ms` is (ended - started) + PROBE_CADENCE_MS -- the cadence counts
+  // because the failing sample at `ended` covers a whole probe interval.
+  const CADENCE_MS = 15 * 60 * 1000;
+  function incident(
+    netuid: number,
+    surfaceId: string,
+    { started = 1_750_000_000_000, downtimeMs = 300 } = {},
+  ) {
+    return {
+      netuid,
+      surface_id: surfaceId,
+      surface_key: surfaceId,
+      started_at: started,
+      ended_at: started + downtimeMs - CADENCE_MS,
+      failed_samples: 1,
+    };
+  }
+  function incidentStore(rows: Row[], observedAt: string | null = null) {
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [{ match: "surface_checks", rows }];
+    return {
+      ...pgMockEnv(),
+      // `observed_at` is the prober's last-run stamp from the health:meta KV --
+      // the retired tier echoed it inside its own body, so this test never
+      // exercised the KV read that actually supplies it.
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          return key === "health:meta" && observedAt
+            ? { last_run_at: observedAt }
+            : null;
+        },
+      },
+    } as Row;
   }
   const emptyHealthDb = {
     prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
   };
 
   test("serves the same ledger as incidents through the delegate, incident rows included", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi({
-        schema_version: 1,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        source: "postgres",
-        summary: {
-          incident_count: 1,
-          affected_surface_count: 1,
-        },
-        surfaces: [
-          {
-            surface_id: "inc-1",
-            netuid: 5,
-            incident_count: 1,
-            downtime_ms: 300,
-            transient_failure_count: 0,
-            transient_failed_samples: 0,
-          },
-        ],
-      }),
-    };
+    const env = incidentStore(
+      [incident(5, "inc-1", { downtimeMs: 300 })],
+      "2026-07-01T00:00:00.000Z",
+    ) as unknown as Env;
     // Two sequential queries against the same env (side by side would exceed
     // the complexity budget -- both fields carry the fan-out weight); dataApi
     // serves each resolver a fresh Response, so the envelopes must be identical.
@@ -9274,34 +9293,14 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
   // #7875: netuid filter + sort/order + limit/cursor paging, applied through the
   // same list query GET /api/v1/incidents runs over the ledger's surfaces.
   function threeSurfaceEnv() {
-    const surface = (id: string, netuid: number, downtime: number) => ({
-      id,
-      endpoint_id: `ep-${id}`,
-      state: "resolved",
-      severity: "minor",
-      status: "failed",
-      netuid,
-      provider: "alpha",
-      downtime_ms: downtime,
-      incident_count: 1,
-      surface_id: id,
-    });
-    return {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi({
-        schema_version: 1,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        source: "postgres",
-        summary: { incident_count: 3 },
-        surfaces: [
-          surface("inc-a", 5, 300),
-          surface("inc-b", 7, 200),
-          surface("inc-c", 5, 100),
-        ],
-      }),
-      METAGRAPH_HEALTH_DB: emptyHealthDb,
-    } as unknown as Env;
+    // Three incidents across two subnets, ranked inc-a > inc-b > inc-c by
+    // downtime -- so a sort on downtime_ms cannot be satisfied by surface_id
+    // order and vice versa.
+    return incidentStore([
+      incident(5, "inc-a", { downtimeMs: 300 }),
+      incident(7, "inc-b", { downtimeMs: 200 }),
+      incident(5, "inc-c", { downtimeMs: 100 }),
+    ]) as unknown as Env;
   }
 
   test("filters by netuid (#7875)", async () => {
