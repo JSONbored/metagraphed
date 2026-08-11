@@ -1142,8 +1142,10 @@ describe("metagraph-neurons builders", () => {
     assert.deepEqual(data.validators[1].subnets[0], {
       netuid: 1,
       uid: 0,
-      stake_tao: 0,
-      emission_tao: 0,
+      // `_alpha`, not `_tao` (#10514): the entry carries a PRICED
+      // total_stake_tao, so a row under the same suffix would be a unit trap.
+      stake_alpha: 0,
+      emission_alpha: 0,
       validator_trust: null,
     });
   });

@@ -1335,8 +1335,10 @@ export interface PortfolioPosition {
   uid: number | null;
   role: "validator" | "miner" | null;
   active?: boolean;
-  stake_tao: number | null;
-  emission_tao: number | null;
+  /** ALPHA on every non-root subnet (metagraphed#10514). The card's own
+   * `total_stake_tao` IS priced TAO -- summing these will not reach it. */
+  stake_alpha: number | null;
+  emission_alpha: number | null;
   rank: number | null;
   trust: number | null;
   incentive: number | null;
@@ -2728,8 +2730,10 @@ export interface ValidatorDetailSubnet {
   consensus?: number | null;
   incentive?: number | null;
   dividends?: number | null;
-  emission_tao?: number | null;
-  stake_tao?: number | null;
+  /** ALPHA on every non-root subnet (metagraphed#10514). The detail's own
+   * `total_stake_tao` IS priced TAO -- these rows will not sum to it. */
+  emission_alpha?: number | null;
+  stake_alpha?: number | null;
   registered_at_block?: number | null;
   is_immunity_period?: boolean | null;
   axon?: string | null;

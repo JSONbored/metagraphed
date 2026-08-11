@@ -5363,15 +5363,15 @@ export interface components {
             positions: {
                 active: boolean;
                 dividends: number | null;
-                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
-                emission_tao: number;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+                emission_alpha: number;
                 incentive: number | null;
                 netuid: number;
                 rank: number | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
-                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-                stake_tao: number;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
+                stake_alpha: number;
                 trust: number | null;
                 uid: number | null;
                 /** @description Emission over stake for this position; null when stake is 0. */
@@ -5540,11 +5540,11 @@ export interface components {
                 stake_dominance: number | null;
                 subnet_count: number;
                 subnets: {
-                    /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
-                    emission_tao: number;
+                    /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field (#2550). netuid 0 (root) is genuine TAO. Renamed from `emission_tao` in #10514 -- see that sibling for why this one payload could not keep the on-chain name. */
+                    emission_alpha: number;
                     netuid: number;
-                    /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
-                    stake_tao: number;
+                    /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, NEVER summable across subnets. Renamed from `stake_tao` in #10514: #8945 left the on-chain column name in place on the reasoning that the denominating `netuid` sits in the same object, which holds -- except here, where a PRICED `total_stake_tao` sits in the same object too, and two fields sharing the `_tao` suffix while carrying different units is a trap no description can undo. The total is the one that is really TAO. */
+                    stake_alpha: number;
                     uid: number;
                 }[];
                 /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
@@ -7483,14 +7483,16 @@ export interface components {
                     coldkey: string | null;
                     consensus: number | null;
                     dividends: number | null;
-                    emission_tao: number | null;
+                    /** @description This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `emission_tao` in #10514, because the entry's own `total_stake_tao` IS priced TAO and a shared `_tao` suffix across different units is a trap no description undoes. */
+                    emission_alpha: number | null;
                     hotkey: string | null;
                     incentive: number | null;
                     is_immunity_period: boolean;
                     netuid: number;
                     rank: number | null;
                     registered_at_block: number | null;
-                    stake_tao: number | null;
+                    /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+                    stake_alpha: number | null;
                     take: number | null;
                     trust: number | null;
                     uid: number;
@@ -8736,9 +8738,11 @@ export interface components {
                 stake_dominance: number | null;
                 subnet_count: number;
                 subnets: {
-                    emission_tao: number;
+                    /** @description This row's emission on the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field. Renamed from `emission_tao` in #10514. */
+                    emission_alpha: number;
                     netuid: number;
-                    stake_tao: number;
+                    /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514: the entry's own `total_stake_tao` IS priced TAO, and two fields sharing the `_tao` suffix while carrying different units is a trap no description undoes. Never summable across subnets -- the priced total already did that conversion. */
+                    stake_alpha: number;
                     uid: number;
                     validator_trust: number | null;
                 }[];
@@ -13115,14 +13119,16 @@ export interface components {
                 coldkey: string | null;
                 consensus: number | null;
                 dividends: number | null;
-                emission_tao: number | null;
+                /** @description This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `emission_tao` in #10514, because the entry's own `total_stake_tao` IS priced TAO and a shared `_tao` suffix across different units is a trap no description undoes. */
+                emission_alpha: number | null;
                 hotkey: string | null;
                 incentive: number | null;
                 is_immunity_period: boolean;
                 netuid: number;
                 rank: number | null;
                 registered_at_block: number | null;
-                stake_tao: number | null;
+                /** @description This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+                stake_alpha: number | null;
                 take: number | null;
                 trust: number | null;
                 uid: number;
@@ -19344,9 +19350,9 @@ export interface operations {
                      *             "subnet_count": 1,
                      *             "subnets": [
                      *               {
-                     *                 "emission_tao": 0.5,
+                     *                 "emission_alpha": 0.5,
                      *                 "netuid": 7,
-                     *                 "stake_tao": 0.5,
+                     *                 "stake_alpha": 0.5,
                      *                 "uid": 1
                      *               }
                      *             ],
@@ -21124,12 +21130,12 @@ export interface operations {
                      *           {
                      *             "active": false,
                      *             "dividends": 0.5,
-                     *             "emission_tao": 0.5,
+                     *             "emission_alpha": 0.5,
                      *             "incentive": 0.5,
                      *             "netuid": 7,
                      *             "rank": 0.5,
                      *             "role": "validator",
-                     *             "stake_tao": 0.5,
+                     *             "stake_alpha": 0.5,
                      *             "trust": 0.5,
                      *             "uid": 1,
                      *             "yield": 0.5
@@ -29738,14 +29744,14 @@ export interface operations {
                      *               "coldkey": "example",
                      *               "consensus": 0.5,
                      *               "dividends": 0.5,
-                     *               "emission_tao": 0.5,
+                     *               "emission_alpha": 0.5,
                      *               "hotkey": "example",
                      *               "incentive": 0.5,
                      *               "is_immunity_period": false,
                      *               "netuid": 7,
                      *               "rank": 0.5,
                      *               "registered_at_block": 5000000,
-                     *               "stake_tao": 0.5,
+                     *               "stake_alpha": 0.5,
                      *               "take": 0.5,
                      *               "trust": 0.5,
                      *               "uid": 1,
@@ -49182,9 +49188,9 @@ export interface operations {
                      *             "subnet_count": 1,
                      *             "subnets": [
                      *               {
-                     *                 "emission_tao": 0.5,
+                     *                 "emission_alpha": 0.5,
                      *                 "netuid": 7,
-                     *                 "stake_tao": 0.5,
+                     *                 "stake_alpha": 0.5,
                      *                 "uid": 1,
                      *                 "validator_trust": 0.5
                      *               }
@@ -49338,14 +49344,14 @@ export interface operations {
                      *             "coldkey": "example",
                      *             "consensus": 0.5,
                      *             "dividends": 0.5,
-                     *             "emission_tao": 0.5,
+                     *             "emission_alpha": 0.5,
                      *             "hotkey": "example",
                      *             "incentive": 0.5,
                      *             "is_immunity_period": false,
                      *             "netuid": 7,
                      *             "rank": 0.5,
                      *             "registered_at_block": 5000000,
-                     *             "stake_tao": 0.5,
+                     *             "stake_alpha": 0.5,
                      *             "take": 0.5,
                      *             "trust": 0.5,
                      *             "uid": 1,

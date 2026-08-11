@@ -5235,8 +5235,8 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
                 {
                   netuid: 1,
                   uid: 5,
-                  stake_tao: 1000,
-                  emission_tao: 5,
+                  stake_alpha: 1000,
+                  emission_alpha: 5,
                   validator_trust: 0.9,
                 },
               ],
@@ -5246,7 +5246,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
       ),
     };
     const { status, body } = await gql(
-      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_tao } } total sort captured_at block_number } }',
+      '{ validators(sort: "total_stake", limit: 5) { items { hotkey featured coldkey nominator_count realized_return_1d realized_return_1w realized_return_1m captured_at block_number subnets { netuid uid stake_alpha } } total sort captured_at block_number } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -5265,7 +5265,7 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(item.realized_return_1m, null);
     assert.equal(item.captured_at, "2026-07-14T00:00:00.000Z");
     assert.equal(item.block_number, 100);
-    assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_tao: 1000 }]);
+    assert.deepEqual(item.subnets, [{ netuid: 1, uid: 5, stake_alpha: 1000 }]);
   });
 
   // #8251: GLOBAL_VALIDATOR_LIMIT_MAX went 100 -> 2000 so the /validators UI
@@ -5465,14 +5465,14 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
           captured_at: "2026-07-14T01:00:00.000Z",
           block_number: 200,
           subnets: [
-            { netuid: 1, uid: 5, stake_tao: 500, emission_tao: 2 },
-            { netuid: 3, uid: 9, stake_tao: 1500, emission_tao: 6 },
+            { netuid: 1, uid: 5, stake_alpha: 500, emission_alpha: 2 },
+            { netuid: 3, uid: 9, stake_alpha: 1500, emission_alpha: 6 },
           ],
         }),
       ),
     };
     const { status, body } = await gql(
-      '{ validator(hotkey: "5Validator") { hotkey subnet_count captured_at block_number subnets { netuid stake_tao } } }',
+      '{ validator(hotkey: "5Validator") { hotkey subnet_count captured_at block_number subnets { netuid stake_alpha } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -5481,8 +5481,8 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(body.data.validator.captured_at, "2026-07-14T01:00:00.000Z");
     assert.equal(body.data.validator.block_number, 200);
     assert.deepEqual(body.data.validator.subnets, [
-      { netuid: 1, stake_tao: 500 },
-      { netuid: 3, stake_tao: 1500 },
+      { netuid: 1, stake_alpha: 500 },
+      { netuid: 3, stake_alpha: 1500 },
     ]);
   });
 
@@ -7090,8 +7090,8 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
                 latest_captured_at: "2026-07-15T00:00:00.000Z",
                 latest_block_number: 300,
                 subnets: [
-                  { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
-                  { netuid: 3, uid: 9, stake_tao: 500, emission_tao: 2 },
+                  { netuid: 1, uid: 5, stake_alpha: 1000, emission_alpha: 5 },
+                  { netuid: 3, uid: 9, stake_alpha: 500, emission_alpha: 2 },
                 ],
               },
             ],
@@ -7099,7 +7099,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
       },
     };
     const { status, body } = await gql(
-      '{ accounts(sort: "total_stake", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_tao emission_tao } } total sort captured_at block_number } }',
+      '{ accounts(sort: "total_stake", limit: 5) { items { hotkey coldkey subnet_count total_stake_tao stake_dominance latest_captured_at latest_block_number subnets { netuid uid stake_alpha emission_alpha } } total sort captured_at block_number } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -7114,8 +7114,8 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.equal(item.total_stake_tao, 1500);
     assert.equal(item.stake_dominance, 0.42);
     assert.deepEqual(item.subnets, [
-      { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
-      { netuid: 3, uid: 9, stake_tao: 500, emission_tao: 2 },
+      { netuid: 1, uid: 5, stake_alpha: 1000, emission_alpha: 5 },
+      { netuid: 3, uid: 9, stake_alpha: 500, emission_alpha: 2 },
     ]);
   });
 
@@ -7798,7 +7798,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
       schema_version ss58 captured_at subnet_count position_count validator_count
       miner_count total_stake_tao total_emission_tao overall_yield
       stake_concentration { holders gini hhi }
-      positions { netuid uid role active stake_tao emission_tao rank trust incentive dividends yield }
+      positions { netuid uid role active stake_alpha emission_alpha rank trust incentive dividends yield }
     } }`;
   }
 
@@ -7845,8 +7845,8 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
                 uid: 5,
                 role: "validator",
                 active: true,
-                stake_tao: 1000,
-                emission_tao: 4,
+                stake_alpha: 1000,
+                emission_alpha: 4,
                 rank: 0.8,
                 trust: 0.9,
                 incentive: 0.1,
@@ -7858,8 +7858,8 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
                 uid: 9,
                 role: "miner",
                 active: true,
-                stake_tao: 500,
-                emission_tao: 2,
+                stake_alpha: 500,
+                emission_alpha: 2,
                 rank: 0.5,
                 trust: 0.5,
                 incentive: 0.2,

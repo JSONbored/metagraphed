@@ -1195,6 +1195,16 @@ function fmtStake(v: number | null | undefined): string {
   return `${formatNumber(v)} τ`;
 }
 
+/** α for alpha, this app's established glyph (stake-amount-input.tsx).
+ *
+ * Root (netuid 0) stake really is TAO; every other subnet's is that subnet's
+ * own alpha token (metagraphed#10514). Rendering an alpha figure with a τ was
+ * the same unit claim the field name used to make. */
+function fmtPositionStake(v: number | null | undefined, netuid: number): string {
+  if (v == null) return "—";
+  return `${formatNumber(v)} ${netuid === 0 ? "τ" : "α"}`;
+}
+
 // Alpha price-at-tx (#4332/6.3, #4333/6.4) -- same precision rule as
 // subnet-price-ticker.tsx's priceStr, since this is the same alpha_price_tao
 // unit shown there.
@@ -2224,10 +2234,10 @@ function AccountPortfolioSection({ ss58 }: { ss58: string }) {
                       )}
                     </td>
                     <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
-                      {fmtStake(pos.stake_tao)}
+                      {fmtPositionStake(pos.stake_alpha, pos.netuid)}
                     </td>
                     <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink">
-                      {fmtStake(pos.emission_tao)}
+                      {fmtPositionStake(pos.emission_alpha, pos.netuid)}
                     </td>
                     <td className="px-4 py-4 text-right mg-type-data tabular-nums text-ink-muted">
                       {pos.incentive != null ? pos.incentive.toFixed(4) : "—"}
