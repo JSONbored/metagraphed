@@ -18,7 +18,7 @@ GET https://api.metagraph.sh/api/v1/chain/revenue-coverage
 
 **"No observable external revenue" is not "no revenue."** It is the honest description of 127 of 129 subnets, and about a quarter of the network visibly sells things while publishing no figure at all — pricing pages, billing endpoints, checkout flows, none of it readable on a schedule. A subnet reporting `null` here has not been measured; it has not been judged.
 
-**A subnet that publishes its revenue will usually look worse than one that hides it.** That is the perverse incentive built into any transparency metric, and it is worth stating plainly: SN64 appears in this dataset with an 8:1 ratio *because Chutes publishes a public revenue endpoint*. Subnets that publish nothing get a `null`, not a bad score. Do not read the ranking as a quality ordering.
+**A subnet that publishes its revenue will usually look worse than one that hides it.** That is the perverse incentive built into any transparency metric, and it is worth stating plainly: SN64 appears in this dataset with an 8:1 ratio _because Chutes publishes a public revenue endpoint_. Subnets that publish nothing get a `null`, not a bad score. Do not read the ranking as a quality ordering.
 
 **The ratio is not profitability.** The numerator is external revenue, not profit; the denominator is emission received, not cost. Nothing here accounts for what a team spends.
 
@@ -33,20 +33,20 @@ Both rules are enforced in code rather than by convention, and the response carr
 
 Every figure carries an evidence class. It is a **required** field on every response — there is no shape in which a caller receives a revenue number without knowing how it was obtained.
 
-| Tier | Value | Counts toward the headline? |
-|---|---|---|
-| A | `chain-verified` — payments observed in our own transfer index against an attributed address | **yes** |
-| B | `probe-derived` — a public endpoint polled on a schedule, hashed and timestamped | **yes** |
-| C | `operator-attested` — a citable URL, or an endpoint that exists but is auth-gated | no — shown beside |
-| D | `third-party-reported` — a press figure or a curated dataset, cited | no — shown beside |
-| E | `proxy-only` — usage figures, no money | no |
-| F | `none` — searched, absent, with a date | no |
+| Tier | Value                                                                                        | Counts toward the headline? |
+| ---- | -------------------------------------------------------------------------------------------- | --------------------------- |
+| A    | `chain-verified` — payments observed in our own transfer index against an attributed address | **yes**                     |
+| B    | `probe-derived` — a public endpoint polled on a schedule, hashed and timestamped             | **yes**                     |
+| C    | `operator-attested` — a citable URL, or an endpoint that exists but is auth-gated            | no — shown beside           |
+| D    | `third-party-reported` — a press figure or a curated dataset, cited                          | no — shown beside           |
+| E    | `proxy-only` — usage figures, no money                                                       | no                          |
+| F    | `none` — searched, absent, with a date                                                       | no                          |
 
 **Tier A is a spot-check, not a substitute for Tier B.** Measured on SN64 for 2026-08-08, the on-chain TAO channel carried **$1,036.50 against $9,776.06 of total revenue — 10.6%**. The rest is card and pay-as-you-go, off-chain and unverifiable by construction. Chain verification corroborates an operator's honesty on the slice it can see; the headline still rests on `probe-derived`.
 
 ## The denominator
 
-The published basis is **`tao_total`** — `SubnetTaoInEmission + SubnetExcessTao`, the TAO the network directs into a subnet. It is chosen because it is fully *measured*: both components are read from chain storage rather than reconstructed.
+The published basis is **`tao_total`** — `SubnetTaoInEmission + SubnetExcessTao`, the TAO the network directs into a subnet. It is chosen because it is fully _measured_: both components are read from chain storage rather than reconstructed.
 
 Two alternates are computed and published alongside, and **never silently substituted**:
 
@@ -76,7 +76,7 @@ The ecosystem is still widely quoting a 22–40:1 range for this subnet from a M
 
 Each of these produced a wrong answer during the survey of all 129 subnets. They are listed because a reader re-deriving these numbers will meet the same ones.
 
-**1. A miner payout is not revenue — it is the denominator.** SN4 Targon's `stats.targon.com/api/miners` exposes `payout`, which is emission flowing *out* to miners. Counting it as revenue puts the denominator in the numerator. Same class: SN46 and SN60 publish prize pools, SN74 publishes contributor rewards, SN11 publishes what it *spends*. **A "stats" endpoint is guilty until proven revenue.**
+**1. A miner payout is not revenue — it is the denominator.** SN4 Targon's `stats.targon.com/api/miners` exposes `payout`, which is emission flowing _out_ to miners. Counting it as revenue puts the denominator in the numerator. Same class: SN46 and SN60 publish prize pools, SN74 publishes contributor rewards, SN11 publishes what it _spends_. **A "stats" endpoint is guilty until proven revenue.**
 
 **2. The unit is not in the path.** `api.chutes.ai/payments/summary/tao` is named for TAO and reconciles as USD. Currency is declared per surface, never inferred from a URL.
 
