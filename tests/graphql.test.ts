@@ -4999,48 +4999,38 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: exposes the action-sentence summary field, and null for an unmatched call (#8525)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 2,
-          limit: 20,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "Timestamp",
-              call_function: "set",
-              call_args: [],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-              summary: "Set the chain timestamp.",
-            },
-            {
-              block_number: 6,
-              extrinsic_index: 1,
-              extrinsic_hash: `0x${"b".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "NoSuchModule",
-              call_function: "no_such_function",
-              call_args: [],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-              summary: null,
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "Timestamp",
+        call_function: "set",
+        call_args: JSON.stringify([]),
+        success: true,
+        fee_tao: 0.001,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+      {
+        block_number: 6,
+        extrinsic_index: 1,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "NoSuchModule",
+        call_function: "no_such_function",
+        call_args: null,
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { call_module summary } } }",
       env as unknown as Env,
@@ -5049,6 +5039,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     const [templated, unmatched] = body.data.extrinsics.items;
     assert.equal(templated.summary, "Set the chain timestamp.");
     assert.equal(unmatched.summary, null);
+    lake.restore();
   });
 
   test("extrinsics: filter args are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
@@ -5210,29 +5201,25 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 
   test("extrinsic: resolves a Postgres-tier row by composite ref", async () => {
     const ref = "5-2";
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ref,
-          extrinsic: {
-            block_number: 5,
-            extrinsic_index: 2,
-            extrinsic_hash: null,
-            signer: "5Signer",
-            call_module: "SubtensorModule",
-            call_function: "set_weights",
-            call_args: null,
-            success: true,
-            fee_tao: 0,
-            tip_tao: 0,
-            observed_at: "2026-07-14T00:00:00.000Z",
-          },
-          events: [],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 2,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        call_args: null,
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module call_function } } }`,
       env as unknown as Env,
@@ -5241,6 +5228,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     assert.equal(body.data.extrinsic.ref, ref);
     assert.equal(body.data.extrinsic.extrinsic.call_module, "SubtensorModule");
     assert.equal(body.data.extrinsic.extrinsic.call_function, "set_weights");
+    lake.restore();
   });
 
   test("extrinsics / extrinsic are weighted as fan-out fields", () => {
@@ -7646,55 +7634,82 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   });
 
   test("account: resolves Postgres-tier detail data", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            event_count: 12,
-            subnet_count: 2,
-            event_scan_capped: false,
-            first_block: 100,
-            last_block: 500,
-            first_seen_at: "2026-06-01T00:00:00.000Z",
-            last_seen_at: "2026-07-14T00:00:00.000Z",
-            event_kinds: [{ kind: "Transfer", count: 5 }],
-            registrations: [
-              {
-                netuid: 1,
-                uid: 5,
-                stake_tao: 10,
-                validator_permit: true,
-                active: true,
-              },
-            ],
-            recent_events: [
-              { block_number: 500, event_index: 0, event_kind: "Transfer" },
-            ],
-            activity: {
-              tx_count: 3,
-              last_tx_block: 490,
-              last_tx_at: "2026-07-13T00:00:00.000Z",
-              total_fee_tao: 0.01,
-              modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+    // #10190: the tier is retired; answerAccountSummary composes the card from TWO
+    // legs -- the lakehouse event scan (three reads: the grouped fold, the recent
+    // page, and the balance) and a `neurons` read through the store for the
+    // registrations. Every total below is folded out of those rows, so the numbers
+    // are the composition's rather than a payload's.
+    const lake = lakehouse((sql) =>
+      sql.includes("GROUP BY event_kind, netuid")
+        ? [
+            {
+              kind: "Transfer",
+              netuid: 1,
+              count: 5,
+              fb: 100,
+              lb: 500,
+              fo: Date.parse("2026-06-01T00:00:00.000Z"),
+              lo: Date.parse("2026-07-14T00:00:00.000Z"),
             },
-          }),
+            {
+              kind: "StakeAdded",
+              netuid: 2,
+              count: 7,
+              fb: 120,
+              lb: 480,
+              fo: Date.parse("2026-06-02T00:00:00.000Z"),
+              lo: Date.parse("2026-07-13T00:00:00.000Z"),
+            },
+          ]
+        : [
+            {
+              block_number: 500,
+              event_index: 0,
+              event_kind: "Transfer",
+              hotkey: SS58,
+              coldkey: "5Other",
+              netuid: 1,
+              uid: 5,
+              amount_tao: 1,
+              alpha_amount: 0,
+              observed_at: Date.parse("2026-07-14T00:00:00.000Z"),
+            },
+          ],
+    );
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM neurons",
+        rows: [
+          {
+            netuid: 1,
+            uid: 5,
+            stake_tao: 10,
+            validator_permit: true,
+            active: true,
+          },
+        ],
       },
-    };
+    ];
+    const env = { ...LAKEHOUSE_ENV, ...pgMockEnv() };
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } } } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.account.ss58, SS58);
+    // 5 + 7 across the two kinds.
     assert.equal(body.data.account.event_count, 12);
     assert.equal(body.data.account.subnet_count, 2);
     assert.equal(body.data.account.first_block, 100);
     assert.equal(body.data.account.last_block, 500);
+    // BOTH kinds, folded out of the grouped rows -- `event_count` is their sum.
+    // The retired tier handed over a single-entry list, so nothing folded.
     assert.deepEqual(body.data.account.event_kinds, [
       { kind: "Transfer", count: 5 },
+      { kind: "StakeAdded", count: 7 },
     ]);
     assert.deepEqual(body.data.account.registrations, [
       { netuid: 1, stake_tao: 10, validator_permit: true, active: true },
@@ -7702,12 +7717,19 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.deepEqual(body.data.account.recent_events, [
       { block_number: 500, event_kind: "Transfer" },
     ]);
+    // The signing-activity leg is EMPTY BY DESIGN, not by omission:
+    // src/account-summary-card.ts states there is no aggregate reader for it yet
+    // (the extrinsics cold tier serves the per-account FEED, not all-time totals),
+    // and inventing one from the feed's first page would publish a tx_count that
+    // is really a page size. The retired tier was the only thing that ever filled
+    // this block, so its numbers were never reproducible here (#10190).
     assert.deepEqual(body.data.account.activity, {
-      tx_count: 3,
-      last_tx_block: 490,
-      total_fee_tao: 0.01,
-      modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+      tx_count: 0,
+      last_tx_block: null,
+      total_fee_tao: null,
+      modules_called: [],
     });
+    lake.restore();
   });
 
   test("account: a malformed Postgres-tier body degrades to a schema-stable zero summary", async () => {
@@ -8584,40 +8606,35 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("resolves the Postgres-tier feed, JSON-encoding call_args to the String field", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            extrinsic_count: 1,
-            limit: 100,
-            offset: 0,
-            next_cursor: "cursor-1",
-            extrinsics: [
-              {
-                block_number: 5,
-                extrinsic_index: 0,
-                extrinsic_hash: `0x${"a".repeat(64)}`,
-                signer: SS58,
-                call_module: "SubtensorModule",
-                call_function: "register",
-                call_args: [{ name: "netuid", value: 1 }],
-                success: true,
-                fee_tao: 0.001,
-                tip_tao: 0,
-                observed_at: "2026-07-14T00:00:00.000Z",
-              },
-            ],
-          }),
-      },
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse(
+      [
+        {
+          block_number: 5,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "register",
+          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+          success: true,
+          fee_tao: 0.001,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+      { once: true },
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     const s = body.data.account_extrinsics;
     assert.equal(s.extrinsic_count, 1);
-    assert.equal(s.next_cursor, "cursor-1");
+    // DERIVED: a cursor is emitted only for a full page, and this one is short.
+    // The retired tier echoed "cursor-1" verbatim.
+    assert.equal(s.next_cursor, null);
     const item = s.extrinsics[0];
     assert.equal(item.block_number, 5);
     assert.equal(item.call_module, "SubtensorModule");
@@ -8625,6 +8642,7 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
   test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path — the retired tier is not consulted (#10190)", async () => {
