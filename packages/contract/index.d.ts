@@ -9001,6 +9001,10 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             stake_threshold_tao?: number | null;
+            /** @description SubnetOwnerCut as stored: the u16 numerator over 65535, or null when the storage item is unset (its current state on finney). NOT the share the runtime applies -- read subnet_owner_cut_effective for that. */
+            subnet_owner_cut?: number | null;
+            /** @description The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. */
+            subnet_owner_cut_effective?: number | null;
             tao_weight?: number | null;
             total_issuance_tao?: number | null;
         } & {
@@ -17571,6 +17575,8 @@ export interface operations {
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "stake_threshold_tao": 0.5,
+                     *         "subnet_owner_cut": 0.5,
+                     *         "subnet_owner_cut_effective": 0.5,
                      *         "tao_weight": 0.5,
                      *         "total_issuance_tao": 0.5
                      *       },
@@ -34665,6 +34671,8 @@ export interface operations {
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "stake_threshold_tao": 0.5,
+                     *         "subnet_owner_cut": 0.5,
+                     *         "subnet_owner_cut_effective": 0.5,
                      *         "tao_weight": 0.5,
                      *         "total_issuance_tao": 0.5
                      *       },
