@@ -58,20 +58,6 @@ function recordingArchive(body: unknown) {
 /** Enough env for the lakehouse leg to be attempted at all. */
 const LAKEHOUSE_ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
-/** A DATA_API double that records every path it is asked for. */
-function recordingDataApi(payload: Row) {
-  const paths: string[] = [];
-  return {
-    paths,
-    binding: {
-      fetch: async (request: Request) => {
-        paths.push(new URL(request.url).pathname);
-        return Response.json(payload);
-      },
-    },
-  };
-}
-
 async function query(text: string, env: Row) {
   const res = await handleGraphQLRequest(
     new Request("https://api.metagraph.sh/api/v1/graphql", {
