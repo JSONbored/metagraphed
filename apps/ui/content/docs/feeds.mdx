@@ -1,6 +1,6 @@
 ---
 title: Feeds
-description: Subscribe to registry changes, incidents, coverage gaps, and Bittensor runtime upgrades as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
+description: Subscribe to registry changes, incidents, coverage gaps, Bittensor runtime upgrades, and revenue-coverage movement as RSS 2.0, Atom 1.0, or JSON Feed — computed at request time from artifacts already served. Read-only, no API key.
 ---
 
 Six GET feeds, all content-negotiated. Point any reader, crawler, or agent at a URL below — or just hand your reader a page on this site, which now advertises the right feed itself (see [Autodiscovery](#autodiscovery)).
@@ -11,14 +11,15 @@ GET https://api.metagraph.sh/api/v1/feeds/registry
 
 ## Feeds
 
-| Path                             | Summary                                                                           | Item tags                                                                                                     |
-| -------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage. | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
-| `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.      | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
-| `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.            | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
-| `/api/v1/feeds/upgrades`         | Bittensor runtime upgrades — releases, observed chain spec-version changes, BITs. | `chain`, `upgrade`, and one of `release`/`mainnet`/`testnet`/`bit`                                            |
-| `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                    | the same tags as the feed each item came from                                                                 |
-| `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.     | the same tags as the feed each item came from                                                                 |
+| Path                             | Summary                                                                                    | Item tags                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage.          | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
+| `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.               | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
+| `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.                     | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
+| `/api/v1/feeds/upgrades`         | Bittensor runtime upgrades — releases, observed chain spec-version changes, BITs.          | `chain`, `upgrade`, and one of `release`/`mainnet`/`testnet`/`bit`                                            |
+| `/api/v1/feeds/revenue`          | Revenue-coverage movement — ratio moves, provenance changes, surfaces that stop answering. | `revenue` + one of `coverage-move`/`provenance`/`surface-new`/`surface-dark`/`surface-unreadable`             |
+| `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                             | the same tags as the feed each item came from                                                                 |
+| `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.              | the same tags as the feed each item came from                                                                 |
 
 ## Watchlist feed
 
@@ -43,6 +44,21 @@ GET https://api.metagraph.sh/api/v1/feeds/watch.json?ids=s1,s7,s74
 </Callout>
 
 Only `subnet` ids currently resolve to items — registry changes and incidents, exactly like `/api/v1/feeds/subnets/{netuid}`, merged across every watched subnet. `validator`/`account` ids are accepted and counted toward the 50-id cap (so a URL built from a mixed watchlist never silently exceeds it), but there is no change-tracking data source for either yet; the feed's own `description` field says plainly how many of the requested ids produced nothing, rather than staying silent about the gap. More than 50 ids in one URL is a `413`.
+
+## Revenue movement
+
+`/api/v1/feeds/revenue` reports movement in what subnets earn against what the network emits to them. Four item kinds: a **material coverage-ratio move** (at least 20% of the prior ratio, both endpoints priced), a **provenance change** in either direction, a **newly-readable surface**, and a **surface that stops returning a figure**.
+
+The last one is why this feed exists. An operator can withdraw a public revenue figure once an unflattering ratio is published, and a feed that silently stops is indistinguishable from a subnet that never had revenue. Those are very different facts, so a withdrawal becomes a dated event and the prior observations are retained.
+
+Every item states what was observed and never why. A surface that stopped answering may have moved, may be down, may have been withdrawn, or may be misread by us — and the item says so rather than picking one. A high subsidy multiple is not an accusation; see [Revenue coverage](/docs/revenue-coverage) for what the ratio does and does not mean.
+
+```
+GET https://api.metagraph.sh/api/v1/feeds/revenue.json
+GET https://api.metagraph.sh/api/v1/feeds/registry.json?tag=revenue
+```
+
+Both forms carry the same items: the standalone feed, and the site-wide registry feed narrowed by tag.
 
 ## Runtime upgrades
 

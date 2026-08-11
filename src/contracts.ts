@@ -147,6 +147,18 @@ export const PRIMARY_DOMAIN = "api.metagraph.sh";
  */
 export const SITE_ORIGIN = "https://metagraph.sh";
 
+/** The public page for one subnet, or the index when the netuid is unknown.
+ *
+ * Lives here, beside the origin it is built from, rather than in the feed
+ * module that wants it: `src/feeds.ts` cannot export it to `src/revenue-feed.ts`
+ * without a cycle (feeds imports the item builders, not the other way round),
+ * and a second copy of the path is a second thing that can drift from the route. */
+export function subnetPageUrl(netuid: number | null | undefined): string {
+  return netuid == null
+    ? `${SITE_ORIGIN}/subnets`
+    : `${SITE_ORIGIN}/subnets/${netuid}`;
+}
+
 /**
  * This repository's canonical URL, as published to consumers.
  *
@@ -5053,6 +5065,12 @@ export const FEED_ROUTES = [
     "upgrades",
     "/api/v1/feeds/upgrades",
     "Bittensor runtime upgrade activity (#8702): subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Reports observed states only — the foundation publishes no deploy schedule, so this feed carries what has happened and never when something will.",
+  ),
+  feedRoute(
+    "feed-revenue",
+    "revenue",
+    "/api/v1/feeds/revenue",
+    "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
   ),
   feedRoute(
     "feed-watch",

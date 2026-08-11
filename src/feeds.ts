@@ -698,6 +698,9 @@ export const FEED_PATH_SEGMENTS = [
   // #8702: runtime upgrade lifecycle -- GitHub releases, observed chain
   // transitions, and BIT documents.
   "upgrades",
+  // #10480: revenue movement -- coverage-ratio moves, provenance changes,
+  // newly-readable surfaces, and surfaces that stop answering.
+  "revenue",
 ] as const;
 
 /** Every feed kind, including the parameterized per-subnet one. */
@@ -830,6 +833,27 @@ interface FeedRequestDeps {
    * which this module deliberately knows nothing about.
    */
   loadSubnetNews?: (env: Env, netuid: number) => Promise<NewsItem[]>;
+  /**
+   * #10480: revenue movement. Injected for the same reason as the two above --
+   * the observations live in a Postgres-backed store the Worker reaches through
+   * its own binding, and this module deliberately knows nothing about it.
+   */
+  loadRevenueFeed?: (env: Env) => Promise<FeedItem[]>;
+}
+
+async function loadRevenueFeedData(
+  deps: FeedRequestDeps,
+  env: Env,
+): Promise<FeedItem[]> {
+  if (typeof deps.loadRevenueFeed !== "function") return [];
+  try {
+    const items = await deps.loadRevenueFeed(env);
+    return Array.isArray(items) ? items : [];
+  } catch {
+    // A store that cannot answer costs this feed its revenue items, nothing
+    // more. It must never 500 the registry feed it is folded into.
+    return [];
+  }
 }
 
 async function loadSubnetNewsData(
@@ -877,7 +901,7 @@ export async function handleFeedRequest(
   if (!target || typeof readArtifact !== "function") {
     return fail(
       "feed_not_found",
-      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/upgrades, /api/v1/feeds/subnets/{netuid}, /api/v1/feeds/watch (each as .rss/.atom/.json or via Accept).",
+      "Unknown feed. Available: /api/v1/feeds/registry, /api/v1/feeds/incidents, /api/v1/feeds/gaps, /api/v1/feeds/upgrades, /api/v1/feeds/revenue, /api/v1/feeds/subnets/{netuid}, /api/v1/feeds/watch (each as .rss/.atom/.json or via Accept).",
       404,
     );
   }
@@ -980,10 +1004,15 @@ export async function handleFeedRequest(
     items = [
       ...registryItems(changelog),
       ...(await loadUpgradeFeedItems(env, { siteUrl: SITE_URL })),
+      // #10480 folds the revenue items in on the same terms as the upgrade
+      // items above: a subscriber already on this feed learns that a revenue
+      // surface went dark without adding a second URL, and `?tag=revenue`
+      // narrows this feed to exactly them.
+      ...(await loadRevenueFeedData(deps, env)),
     ];
     title = "metagraphed — registry changes";
     description =
-      "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry, plus Bittensor runtime upgrade activity.";
+      "New and updated Bittensor subnets, surfaces, and coverage from the metagraphed registry, plus Bittensor runtime upgrade activity and revenue-surface movement.";
     updatedSource = (changelog as Record<string, unknown> | null)?.generated_at;
   } else if (target.kind === "incidents") {
     const incidents = await loadIncidentsData(deps, env);
@@ -1011,6 +1040,13 @@ export async function handleFeedRequest(
     description =
       "Bittensor runtime upgrade activity: subtensor releases, observed mainnet/testnet spec-version changes, and BIT documents. Observed states only: the foundation publishes no deploy schedule, so this feed reports what has happened and never when something will.";
     homeUrl = `${SITE_URL}/runtime`;
+    updatedSource = items[0]?.timestamp;
+  } else if (target.kind === "revenue") {
+    items = await loadRevenueFeedData(deps, env);
+    title = "metagraphed — revenue movement";
+    description =
+      "Movement in Bittensor subnet revenue coverage: material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and surfaces that stop returning a figure. Every item states what was observed and never why -- a feed that stops is not a subnet that stopped earning.";
+    homeUrl = `${SITE_URL}/revenue`;
     updatedSource = items[0]?.timestamp;
   } else if (target.kind === "watch") {
     const [changelog, incidents] = await Promise.all([

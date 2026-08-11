@@ -412,7 +412,11 @@ import {
 import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
-import { handleFeedRequest, resolveFeedFormat } from "../src/feeds.ts";
+import {
+  handleFeedRequest,
+  resolveFeedFormat,
+  type FeedItem,
+} from "../src/feeds.ts";
 import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
@@ -658,7 +662,14 @@ import {
   runRevenueProbeTick,
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
-import { REVENUE_OBSERVATION_TABLES } from "../src/read-store-tables.ts";
+import {
+  REVENUE_FEED_TABLES,
+  REVENUE_OBSERVATION_TABLES,
+} from "../src/read-store-tables.ts";
+import {
+  loadRevenueFeedItems,
+  type RevenueFeedDb,
+} from "../src/revenue-feed.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -2232,6 +2243,29 @@ function producerStore(
     db: pg,
     close: () => ctx?.waitUntil?.(pg.close()),
   };
+}
+
+/**
+ * #10480: the revenue feed's items, read from the observation store.
+ *
+ * Uses producerStore rather than readStore because this Worker reaches Neon
+ * through its own HYPERDRIVE binding -- the same one the probe lane writes
+ * through -- and the connection must be closed after the read. A Worker with no
+ * binding, or a table set Neon does not own, yields NO items rather than an
+ * error: the revenue items are folded into the registry feed, and a store blip
+ * must cost this feed its revenue entries, never 500 the feed it sits inside.
+ */
+export async function resolveRevenueFeedItems(
+  env: Env,
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+): Promise<FeedItem[]> {
+  const store = producerStore(env, ctx, [...REVENUE_FEED_TABLES]);
+  if (!store.db) return [];
+  try {
+    return await loadRevenueFeedItems(store.db as RevenueFeedDb, {});
+  } finally {
+    store.close();
+  }
 }
 
 export async function handleScheduled(
@@ -4901,6 +4935,7 @@ async function dispatchRequest(
           // did). See that function's own doc comment for the full mechanism.
           loadLiveIncidents: resolveGlobalIncidentsForFeed,
           loadSubnetNews: resolveSubnetNewsForFeed,
+          loadRevenueFeed: (feedEnv) => resolveRevenueFeedItems(feedEnv, ctx),
         }),
       feedCachePath,
     );

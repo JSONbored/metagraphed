@@ -499,6 +499,10 @@ describe("every published constraint is enforced (#10218)", () => {
    */
   const CHECKED_AGAINST_THE_ROWS = new Set(["fields"]);
 
+  /** Query parameters OUTSIDE the feed family that publish no constraint at
+   * all. A ceiling, not a target: it may only ever come down. */
+  const NON_FEED_UNCONSTRAINED_CEILING = 23;
+
   test("the one exempt parameter is enforced where it says it is", () => {
     // The SHAPE, which the published pattern also states...
     const malformed = parseFieldsParam(
@@ -526,6 +530,10 @@ describe("every published constraint is enforced (#10218)", () => {
     const unenforced: string[] = [];
     let checked = 0;
     let unconstrained = 0;
+    // The feed family's two instants are counted separately -- see the
+    // assertion below for why a lump sum cannot tell a new feed from a new gap.
+    let feedInstants = 0;
+    const feedPaths = new Set<string>();
 
     for (const [routePath, item] of Object.entries(openapi.paths as Row)) {
       const op = (item as Row).get;
@@ -541,6 +549,13 @@ describe("every published constraint is enforced (#10218)", () => {
         const bad = violating((parameter.schema ?? {}) as Row);
         if (bad === null) {
           unconstrained += 1;
+          if (
+            routePath.includes("/feeds/") &&
+            (parameter.name === "since" || parameter.name === "until")
+          ) {
+            feedInstants += 1;
+            feedPaths.add(routePath);
+          }
           continue;
         }
         checked += 1;
@@ -567,23 +582,38 @@ describe("every published constraint is enforced (#10218)", () => {
         `it:\n  ${unenforced.join("\n  ")}`,
     );
     // A parameter the contract makes no claim about cannot be checked against
-    // it -- `since`/`until` on the 24 feed paths are the bulk of these, where
-    // `src/feeds.ts` accepts a whole UTC day OR an offset-bearing date-time and
-    // says which was wrong. The count may only SHRINK: a new unconstrained
-    // parameter is a new thing the contract declines to say.
+    // it. The count is split in two, because a lump sum cannot tell a new FEED
+    // from a new GAP -- and those are opposite events.
     //
-    // 70 -> 71 in #10316, and the extra one is a CORRECTION rather than a
-    // regression. `/api/v1/chain-events` published `^\d+\.\d+$` for a cursor
-    // its own tier decodes as three parts, so the route rejected the
-    // `next_cursor` it had just handed out -- verified live, a 400. It now
-    // publishes the same opaque token its twelve sibling feeds do, which makes
-    // no claim at all. Saying nothing is worse than saying something true and
-    // better than saying something false.
+    // `since`/`until` on the feed paths carry no pattern DELIBERATELY (#10219):
+    // `src/feeds.ts` accepts a whole UTC day OR an offset-bearing date-time and
+    // says which was wrong, and a published regex would make the router's
+    // derived message preempt that better one on every feed path. A new feed
+    // inherits that decision rather than making a new one, so it may not count
+    // as a regression -- but it may not hide one either. Hence exact equality:
+    // every feed path publishes exactly these two unconstrained and nothing
+    // else, so a feed that grows a third unbounded parameter fails here even
+    // though the total merely went up.
+    assert.equal(
+      feedInstants,
+      feedPaths.size * 2,
+      "a feed path publishes `since` and `until` unbounded and nothing else -- " +
+        `${feedInstants} unconstrained across ${feedPaths.size} path(s) means ` +
+        "one of them grew a third",
+    );
+    // Everything else may only SHRINK. 70 -> 71 in #10316, and the extra one
+    // was a CORRECTION rather than a regression: `/api/v1/chain-events`
+    // published `^\d+\.\d+$` for a cursor its own tier decodes as three
+    // parts, so the route rejected the `next_cursor` it had just handed out --
+    // verified live, a 400. It now publishes the same opaque token its twelve
+    // sibling feeds do, which makes no claim at all. Saying nothing is worse
+    // than saying something true and better than saying something false.
+    const nonFeed = unconstrained - feedInstants;
     assert.ok(
-      unconstrained <= 71,
-      `${unconstrained} query parameters publish no constraint at all, up ` +
-        "from 70 -- declare a bound, or the contract says nothing a caller " +
-        "can rely on",
+      nonFeed <= NON_FEED_UNCONSTRAINED_CEILING,
+      `${nonFeed} non-feed query parameters publish no constraint at all, up ` +
+        `from ${NON_FEED_UNCONSTRAINED_CEILING} -- declare a bound, or the ` +
+        "contract says nothing a caller can rely on",
     );
   });
 });

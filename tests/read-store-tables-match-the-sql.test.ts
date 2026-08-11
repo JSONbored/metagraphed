@@ -33,6 +33,14 @@ const OWNER: Record<string, string[]> = {
   ],
   SUBNET_BURN_HISTORY_TABLES: ["src/subnet-burn-history.ts"],
   TAO_USD_TABLES: ["src/tao-usd-series.ts"],
+  // The feed's own SQL is the revenue pair; the denominator legs are read
+  // THROUGH the two loaders that own those tables, so all three modules are
+  // checked against this one set.
+  REVENUE_FEED_TABLES: [
+    "src/revenue-feed.ts",
+    "src/emission-pipeline-history.ts",
+    "src/tao-usd-series.ts",
+  ],
   SURFACE_HISTORY_TABLES: ["src/surface-history.ts"],
   EMISSION_CHANGES_TABLES: ["src/emission-gate-changes.ts"],
   FAILURE_REASONS_TABLES: ["src/failure-reasons.ts"],
