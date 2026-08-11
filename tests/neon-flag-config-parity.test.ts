@@ -61,7 +61,15 @@ const GATED_CONFIGS = [
  *  declared-and-empty: an empty flag reads as "no tables need this" rather than
  *  "this question no longer exists", and two prune gates had already inverted
  *  under exactly that ambiguity (#10152, #10164). */
-const FLAGS = ["NEON_DUAL_WRITE_LANES", "NEON_SOLE_STORE_TABLES"] as const;
+const FLAGS = [
+  "NEON_DUAL_WRITE_LANES",
+  "NEON_SOLE_STORE_TABLES",
+  // #10659: which lanes defer their writes through the write-behind buffer.
+  // Same agreement rule and the same reason -- a Worker whose config omits it
+  // reads "no lane buffers" and writes straight through, which looks exactly
+  // like a buffer that is working.
+  "NEON_WRITE_BUFFER_LANES",
+] as const;
 
 /** Read a flag as declared, tolerating the line break Prettier introduces
  * when a value is long enough to wrap. */

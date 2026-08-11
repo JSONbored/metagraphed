@@ -54,12 +54,27 @@
     "not_found_handling": "404-page",
   },
   "vars": {
-    // #10659: the write-behind buffer's lane list for THIS Worker. Only
-    // `raw-capture-state` -- the other lane the firehose hub writes is
-    // `blocks-head`, which is the block explorer's live read path above the
-    // decode seam and must never be deferred (NEVER_BUFFER_LANES enforces it;
-    // this list simply does not ask).
-    "NEON_WRITE_BUFFER_LANES": "raw-capture-state",
+    // #10659: lanes whose Neon writes are deferred through the write-behind
+    // buffer and flushed every ten minutes, so the compute does fewer, larger
+    // writes and autoscaling sits nearer the 0.25 CU floor.
+    //
+    // THE SAME VALUE IN EVERY GATED CONFIG, like NEON_DUAL_WRITE_LANES beside
+    // it. Each Worker simply ignores the lanes it does not run, and
+    // tests/neon-flag-config-parity.test.ts enforces the agreement -- a per-
+    // config subset would be exactly the drift that made two Neon gates fail
+    // silently (#10152, #10164), because a flag absent from the Worker actually
+    // running the code reads as "no" rather than as a mistake.
+    //
+    // WHAT IS ABSENT IS THE POINT. `blocks-head` and `chain-detail` are the
+    // block explorer's live read path -- blocks_head for headers above the
+    // decode seam, chain_detail_* for a recent block's detail -- so deferring
+    // either would lag the explorer. NEVER_BUFFER_LANES in
+    // src/neon-write-buffer.ts makes naming them a no-op regardless; they are
+    // left out so this list reads as what it is.
+    //
+    // Every lane below is held to `2 * HOUR` by src/table-freshness-watchdog.ts,
+    // so a ten-minute flush is twelve ticks inside a bound that already exists.
+    "NEON_WRITE_BUFFER_LANES": "raw-capture-state,neurons,subnet-hyperparams,account-identity,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,tao-usd-index",
     "METAGRAPH_CONTRACT_VERSION": "2026-07-03.2",
     "METAGRAPH_ENABLE_RPC_PROXY": "true",
     "METAGRAPH_R2_LATEST_PREFIX": "latest/",
