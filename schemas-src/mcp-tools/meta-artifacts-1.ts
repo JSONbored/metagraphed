@@ -19,6 +19,14 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import {
+  offsetSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   FreshnessArtifactSchema,
   SourceHealthArtifactSchema,
@@ -42,7 +50,23 @@ export type GetFreshnessInput = z.infer<typeof GetFreshnessInputSchema>;
 export const GetFreshnessOutputSchema = FreshnessArtifactSchema;
 export type GetFreshnessOutput = z.infer<typeof GetFreshnessOutputSchema>;
 
-export const GetContractsInputSchema = z.object({}).strict();
+export const GetContractsInputSchema = z
+  .object({
+    // The page (#10605). `limit` carries NO default here, deliberately: the
+    // helper that runs these queries supplies MCP_LIST_LIMIT_DEFAULT when a
+    // caller gives none, so a default stated here would be a second one. What
+    // the tool publishes is MAX_LIMIT -- the same constant listQuerySchema gives
+    // every list route, rather than a copy of its value; what an omitted
+    // limit means is the helper's answer, and there is one of each.
+    limit: limitSchema(MAX_LIMIT).optional(),
+    // An integer OFFSET, which is what these routes publish
+    // (`{minimum: 0, type: integer}`) -- not the keyset cursor. Conflating the
+    // two is the mistake query-params.ts calls out by name.
+    cursor: offsetSchema().optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.contracts.sort_fields).optional(),
+    order: orderSchema().optional(),
+  })
+  .strict();
 export type GetContractsInput = z.infer<typeof GetContractsInputSchema>;
 
 export const GetContractsOutputSchema = ContractsArtifactSchema;

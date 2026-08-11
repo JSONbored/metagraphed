@@ -2,12 +2,35 @@
 // "Mirrors" claim in its description and no covered REST route to reuse.
 // Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import {
+  offsetSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { netuidSchema } from "./shared.ts";
 import { SubnetTrajectoryArtifactSchema } from "../routes/subnet-trajectory.ts";
 
 export const GetSubnetTrajectoryInputSchema = z
   .object({
     netuid: netuidSchema(),
+    // The page (#10605). `limit` carries NO default here, deliberately: the
+    // helper that runs these queries supplies MCP_LIST_LIMIT_DEFAULT when a
+    // caller gives none, so a default stated here would be a second one. What
+    // the tool publishes is MAX_LIMIT -- the same constant listQuerySchema gives
+    // every list route, rather than a copy of its value; what an omitted
+    // limit means is the helper's answer, and there is one of each.
+    limit: limitSchema(MAX_LIMIT).optional(),
+    // An integer OFFSET, which is what these routes publish
+    // (`{minimum: 0, type: integer}`) -- not the keyset cursor. Conflating the
+    // two is the mistake query-params.ts calls out by name.
+    cursor: offsetSchema().optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["subnet-trajectory"].sort_fields,
+    ).optional(),
+    order: orderSchema().optional(),
   })
   .strict();
 export type GetSubnetTrajectoryInput = z.infer<

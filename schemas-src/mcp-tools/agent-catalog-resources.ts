@@ -6,6 +6,14 @@
 // array). Neither mirrors an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import {
+  offsetSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { AgentResourcesArtifactSchema } from "../routes/agent-catalog.ts";
 import { netuidSchema } from "./shared.ts";
 import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
@@ -13,6 +21,21 @@ import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
 export const GetAgentCatalogInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
+    // The page (#10605). `limit` carries NO default here, deliberately: the
+    // helper that runs these queries supplies MCP_LIST_LIMIT_DEFAULT when a
+    // caller gives none, so a default stated here would be a second one. What
+    // the tool publishes is MAX_LIMIT -- the same constant listQuerySchema gives
+    // every list route, rather than a copy of its value; what an omitted
+    // limit means is the helper's answer, and there is one of each.
+    limit: limitSchema(MAX_LIMIT).optional(),
+    // An integer OFFSET, which is what these routes publish
+    // (`{minimum: 0, type: integer}`) -- not the keyset cursor. Conflating the
+    // two is the mistake query-params.ts calls out by name.
+    cursor: offsetSchema().optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["agent-catalog"].sort_fields,
+    ).optional(),
+    order: orderSchema().optional(),
   })
   .strict();
 export type GetAgentCatalogInput = z.infer<typeof GetAgentCatalogInputSchema>;

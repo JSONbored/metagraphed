@@ -74,6 +74,25 @@ const RENAMED_ON_THE_MCP_SIDE =
 const REQUEST_HEADER =
   "the route takes this as a header; a tool has no headers, only arguments";
 
+/**
+ * The tool's output ORDER is its answer, so a caller-supplied sort would
+ * overwrite the thing it came for.
+ *
+ * `find_subnet_for_task` ranks by how well each subnet matches the task
+ * (`rankSubnetsForTask`, intent-ranked when the AI layer is up, keyword
+ * otherwise) and `find_subnets_by_capability` ranks by callable-service count.
+ * Both read the agent-catalog route, which publishes `sort`/`order` because it
+ * serves an unranked index -- but passing them through here would let
+ * `sort=netuid` silently replace the ranking with an arbitrary order while the
+ * tool still describes itself as ranked.
+ *
+ * This is the per-tool judgement #9981 asked for, resolved the other way: the
+ * capability is declined rather than deferred, so this entry is not debt and is
+ * not expected to shrink.
+ */
+const RANKED_OUTPUT =
+  "the tool's output order IS its answer (ranked by match/capability); a caller-supplied sort would overwrite the ranking it was called for (#10605)";
+
 /** Standing debt: the route publishes it and the tool cannot pass it. */
 const NOT_YET_EXPOSED =
   "NOT YET EXPOSED -- the route publishes this and the tool cannot pass it; delete this entry by adding it, not by keeping it";
@@ -172,22 +191,10 @@ for (const [key, reason] of Object.entries({
   // a default on a published route is a behaviour change... which is why this
   // is not a one-line sweep"), so the capability landed first and the default
   // is chosen next, tool by tool. Tracked in #10605.
-  "list_fixtures.limit": NOT_YET_EXPOSED,
-  "list_fixtures.sort": NOT_YET_EXPOSED,
-  "list_fixtures.order": NOT_YET_EXPOSED,
-  "get_contracts.limit": NOT_YET_EXPOSED,
-  "get_contracts.sort": NOT_YET_EXPOSED,
-  "get_contracts.order": NOT_YET_EXPOSED,
-  "get_agent_catalog.limit": NOT_YET_EXPOSED,
-  "get_agent_catalog.sort": NOT_YET_EXPOSED,
-  "get_agent_catalog.order": NOT_YET_EXPOSED,
-  "get_subnet_trajectory.limit": NOT_YET_EXPOSED,
-  "get_subnet_trajectory.sort": NOT_YET_EXPOSED,
-  "get_subnet_trajectory.order": NOT_YET_EXPOSED,
-  "find_subnets_by_capability.sort": NOT_YET_EXPOSED,
-  "find_subnets_by_capability.order": NOT_YET_EXPOSED,
-  "find_subnet_for_task.sort": NOT_YET_EXPOSED,
-  "find_subnet_for_task.order": NOT_YET_EXPOSED,
+  "find_subnets_by_capability.sort": RANKED_OUTPUT,
+  "find_subnets_by_capability.order": RANKED_OUTPUT,
+  "find_subnet_for_task.sort": RANKED_OUTPUT,
+  "find_subnet_for_task.order": RANKED_OUTPUT,
   "list_subnets.q": NOT_YET_EXPOSED,
   "get_subnet_economics.q": NOT_YET_EXPOSED,
   "get_subnet_evidence.q": NOT_YET_EXPOSED,

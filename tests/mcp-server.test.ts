@@ -19380,6 +19380,90 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.returned, 0);
   });
 
+  // #10605: the four document-shaped tools whose routes published a page while
+  // the tools could not pass one. What is worth pinning is not that the
+  // argument exists -- the parity validator asserts that -- but that it reaches
+  // the SAME engine the route uses, so the two surfaces cannot answer
+  // differently.
+  test("list_fixtures pages, sorts and reports the page it applied", async () => {
+    const deps = makeDeps({
+      "/metagraph/fixtures.json": {
+        generated_at: "2026-01-01T00:00:00Z",
+        fixtures: [
+          { surface_id: "c", netuid: 3, captured_at: "2026-01-03T00:00:00Z" },
+          { surface_id: "a", netuid: 1, captured_at: "2026-01-01T00:00:00Z" },
+          { surface_id: "b", netuid: 2, captured_at: "2026-01-02T00:00:00Z" },
+        ],
+      },
+    });
+    const res = await callTool(
+      "list_fixtures",
+      { limit: 2, sort: "surface_id", order: "asc" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(
+      out.fixtures.map((f: Row) => f.surface_id),
+      ["a", "b"],
+    );
+    // total spans the unfiltered set, so the rest stays reachable by paging
+    // rather than being silently gone. Flattened onto the envelope, matching
+    // every other tool that goes through this helper.
+    assert.equal(out.total, 3);
+    assert.equal(out.returned, 2);
+    assert.equal(out.limit, 2);
+  });
+
+  test("list_fixtures rejects a sort key its route does not publish", async () => {
+    // The enum comes from API_QUERY_COLLECTIONS.fixtures.sort_fields, so a key
+    // the route cannot sort by is refused here rather than ignored downstream.
+    const deps = makeDeps({
+      "/metagraph/fixtures.json": { fixtures: [] },
+    });
+    const res = await callTool("list_fixtures", { sort: "nope" }, { deps });
+    assert.equal(res.body.result.isError, true);
+    assert.match(res.body.result.content[0].text, /invalid_params/);
+  });
+
+  test("list_fixtures with no limit takes the shared MCP page default", async () => {
+    // The tool declares the CEILING and no default; applyMcpQueryFilters owns
+    // what an omitted limit means. Two defaults for one question is the thing
+    // this split exists to avoid.
+    const deps = makeDeps({
+      "/metagraph/fixtures.json": {
+        fixtures: Array.from({ length: 30 }, (_, i) => ({
+          surface_id: `s${i}`,
+          netuid: i,
+        })),
+      },
+    });
+    const res = await callTool("list_fixtures", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.fixtures.length, 20);
+    assert.equal(out.limit, 20);
+    assert.equal(out.total, 30);
+  });
+
+  test("get_contracts pages its artifacts rows", async () => {
+    const deps = makeDeps({
+      "/metagraph/contracts.json": {
+        artifacts: [
+          { id: "b", path: "/b.json" },
+          { id: "a", path: "/a.json" },
+        ],
+      },
+    });
+    const res = await callTool(
+      "get_contracts",
+      { limit: 1, sort: "id", order: "asc" },
+      { deps },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.artifacts.length, 1);
+    assert.equal(out.artifacts[0].id, "a");
+    assert.equal(out.total, 2);
+  });
+
   test("list_endpoints returns the endpoints catalog artifact", async () => {
     const deps = makeDeps({
       "/metagraph/endpoints.json": {
