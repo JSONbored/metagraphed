@@ -102,4 +102,31 @@ describe("wrangler.data.jsonc crons and their handlers", () => {
       );
     }
   });
+  test("an undeclared cron is declined by the dispatcher itself", async () => {
+    // THE BEHAVIOUR, not just the bookkeeping. Exercised through the real
+    // `scheduled` export so the guard is what is being tested rather than a
+    // reimplementation of it.
+    const { default: worker } = await import("../workers/data-api.ts");
+    const result = (await worker.scheduled(
+      { cron: "7 7 7 7 7", scheduledTime: Date.now() } as never,
+      {} as never,
+      { waitUntil: () => {} } as never,
+    )) as Record<string, unknown>;
+    assert.equal(result.ok, false);
+    assert.equal(result.skipped, true);
+    assert.equal(result.reason, "unknown cron");
+  });
+
+  test("an empty cron is declined too", async () => {
+    // `controller?.cron` is optional in the type, and an empty string is not a
+    // member of the lane map -- both paths reach the same decline.
+    const { default: worker } = await import("../workers/data-api.ts");
+    const result = (await worker.scheduled(
+      { scheduledTime: Date.now() } as never,
+      {} as never,
+      { waitUntil: () => {} } as never,
+    )) as Record<string, unknown>;
+    assert.equal(result.skipped, true);
+    assert.equal(result.reason, "unknown cron");
+  });
 });
