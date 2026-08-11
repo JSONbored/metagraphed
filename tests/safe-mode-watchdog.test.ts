@@ -142,18 +142,50 @@ describe("SafeMode alerting rule (#8696)", () => {
   test("the cron is wired: the schedule reaches the watchdog", async () => {
     // A cron entry with no dispatch branch falls through to the health prober
     // and checks nothing -- silently.
-    const { default: worker } = await import("../workers/api.ts");
-    const { SAFE_MODE_WATCHDOG_CRON } = await import("../workers/config.ts");
-    const result = (await worker.scheduled(
-      { cron: SAFE_MODE_WATCHDOG_CRON, scheduledTime: Date.now() } as never,
-      { SAFE_MODE_RPC_URL: "http://127.0.0.1:1/unreachable" } as never,
-      { waitUntil: () => {} } as never,
-    )) as Record<string, unknown>;
+    //
+    // The dispatch calls `runSafeModeWatchdog(env)` with NO deps, so the only
+    // seam reachable from `scheduled` is the global `fetch` the watchdog falls
+    // back to. This used to point SAFE_MODE_RPC_URL at 127.0.0.1:1 and rely on
+    // a real connect refusing quickly, which made a wiring assertion depend on
+    // the runner's network stack: on a loaded runner the refusal can arrive as
+    // a timeout instead, and the test then reports the wiring as broken (the
+    // #10831 flake). The failure is now produced in-process, so no socket is
+    // opened and there is no timing to lose. The sentinel rides the catch's
+    // `detail` back out, which is what proves the fetch that failed was the
+    // watchdog's own and not some other read on the fallthrough path.
+    //
+    // Belt and braces on the URL: with the global stubbed, env could be `{}`
+    // and the watchdog's default RPC URL would never be dialled -- but that
+    // default is a REAL endpoint, so a future edit that drops the stub would
+    // start calling production from a unit test. A reserved `.invalid` host
+    // (RFC 2606) cannot resolve, so neither layer alone can reach the network.
+    const sentinel = "safe-mode cron wiring probe: no network in this test";
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (() =>
+      Promise.reject(new Error(sentinel))) as typeof fetch;
+    let result: Record<string, unknown>;
+    try {
+      const { default: worker } = await import("../workers/api.ts");
+      const { SAFE_MODE_WATCHDOG_CRON } = await import("../workers/config.ts");
+      result = (await worker.scheduled(
+        { cron: SAFE_MODE_WATCHDOG_CRON, scheduledTime: Date.now() } as never,
+        { SAFE_MODE_RPC_URL: "http://safe-mode-wiring.invalid/" } as never,
+        { waitUntil: () => {} } as never,
+      )) as Record<string, unknown>;
+    } finally {
+      globalThis.fetch = realFetch;
+    }
     assert.equal(
       result.reason,
       "unreachable",
       "the SafeMode cron did not reach runSafeModeWatchdog -- an unmatched " +
         "cron falls through to the health prober and checks nothing",
+    );
+    assert.equal(
+      result.detail,
+      sentinel,
+      "the tick failed on something other than the watchdog's own RPC read, " +
+        "so this proves nothing about where the cron landed",
     );
   });
 
