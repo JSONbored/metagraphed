@@ -462,6 +462,72 @@
     "nullable": false
   },
   {
+    "table": "attribution_candidates",
+    "column": "first_seen",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "attribution_candidates",
+    "column": "last_seen",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "attribution_candidates",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "attribution_candidates",
+    "column": "source_url",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "attribution_candidates",
+    "column": "ss58",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "candidates",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "sources_checked",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "sources_read",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "swept_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "attribution_sweeps",
+    "column": "verdict",
+    "udt": "text",
+    "nullable": false
+  },
+  {
     "table": "blocks_head",
     "column": "author",
     "udt": "text",

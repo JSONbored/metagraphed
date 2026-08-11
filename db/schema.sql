@@ -212,6 +212,36 @@ CREATE TABLE public.api_usage_rollup (
 );
 
 --
+-- Name: attribution_candidates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.attribution_candidates (
+    netuid integer NOT NULL,
+    ss58 text NOT NULL,
+    source_url text NOT NULL,
+    first_seen bigint NOT NULL,
+    last_seen bigint NOT NULL,
+    CONSTRAINT attribution_candidates_first_seen_is_millis CHECK ((first_seen >= '1000000000000'::bigint)),
+    CONSTRAINT attribution_candidates_last_seen_is_millis CHECK ((last_seen >= '1000000000000'::bigint))
+);
+
+--
+-- Name: attribution_sweeps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.attribution_sweeps (
+    netuid integer NOT NULL,
+    swept_at bigint NOT NULL,
+    sources_checked integer NOT NULL,
+    sources_read integer NOT NULL,
+    candidates integer NOT NULL,
+    verdict text NOT NULL,
+    CONSTRAINT attribution_sweeps_counts_are_sane CHECK (((sources_checked >= 0) AND (sources_read >= 0) AND (sources_read <= sources_checked) AND (candidates >= 0))),
+    CONSTRAINT attribution_sweeps_swept_at_is_millis CHECK ((swept_at >= '1000000000000'::bigint)),
+    CONSTRAINT attribution_sweeps_verdict_is_known CHECK ((verdict = ANY (ARRAY['none-published'::text, 'candidates-found'::text, 'unreachable'::text, 'no-sources'::text])))
+);
+
+--
 -- Name: blocks_head; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1199,6 +1229,20 @@ ALTER TABLE ONLY public.api_usage_rollup
     ADD CONSTRAINT api_usage_rollup_pkey PRIMARY KEY (day, route_family, cost_shape);
 
 --
+-- Name: attribution_candidates attribution_candidates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attribution_candidates
+    ADD CONSTRAINT attribution_candidates_pkey PRIMARY KEY (netuid, ss58, source_url);
+
+--
+-- Name: attribution_sweeps attribution_sweeps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attribution_sweeps
+    ADD CONSTRAINT attribution_sweeps_pkey PRIMARY KEY (netuid);
+
+--
 -- Name: blocks_head blocks_head_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1554,6 +1598,12 @@ ALTER TABLE ONLY public.watch_push_subscriptions
 
 ALTER TABLE ONLY public.watch_push_subscriptions
     ADD CONSTRAINT watch_push_subscriptions_pkey PRIMARY KEY (id);
+
+--
+-- Name: attribution_candidates_by_netuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX attribution_candidates_by_netuid ON public.attribution_candidates USING btree (netuid, last_seen DESC);
 
 --
 -- Name: emission_flow_watch_item_observed_idx; Type: INDEX; Schema: public; Owner: -

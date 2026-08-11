@@ -126,6 +126,25 @@ export interface ApiUsageRollup {
   route_family: string;
 }
 
+/** `public.attribution_candidates` */
+export interface AttributionCandidates {
+  first_seen: number | string;
+  last_seen: number | string;
+  netuid: number;
+  source_url: string;
+  ss58: string;
+}
+
+/** `public.attribution_sweeps` */
+export interface AttributionSweeps {
+  candidates: number;
+  netuid: number;
+  sources_checked: number;
+  sources_read: number;
+  swept_at: number | string;
+  verdict: string;
+}
+
 /** `public.blocks_head` */
 export interface BlocksHead {
   author: string | null;
@@ -739,6 +758,8 @@ export interface DatabaseTables {
   ApiKeys: ApiKeys;
   ApiQuotaDaily: ApiQuotaDaily;
   ApiUsageRollup: ApiUsageRollup;
+  AttributionCandidates: AttributionCandidates;
+  AttributionSweeps: AttributionSweeps;
   BlocksHead: BlocksHead;
   ChainAlertDeliveries: ChainAlertDeliveries;
   ChainAlertTriggers: ChainAlertTriggers;
