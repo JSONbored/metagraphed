@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { archiveEnv } from "./helpers/cold-tier-env.ts";
+import { archiveEnv, forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { describe, test } from "vitest";
 import {
   buildChainActivity,
@@ -350,34 +350,28 @@ test("buildChainCalls drops empty call_module and call_function buckets", () => 
 // exercise the real grouped/shared response; the junk-param 400 is unrelated
 // to data-sourcing and is exercised on the same env.
 test("GET /api/v1/chain/calls groups by call_module with honest share via the Postgres tier + 400 on junk param", async () => {
+  // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // asked. The #9146 call-mix projection answers, and `share` is DERIVED from
+  // its own ungrouped total -- the retired tier handed the share over ready-made,
+  // so the division under test never ran.
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "30d",
-          group_by: "module",
-          total_extrinsics: 120,
-          call_count: 2,
-          observed_at: "2026-06-26T00:00:00.000Z",
-          calls: [
-            {
-              call_module: "SubtensorModule",
-              call_function: null,
-              count: 60,
-              share: 0.5,
-            },
-            {
-              call_module: "Balances",
-              call_function: null,
-              count: 30,
-              share: 0.25,
-            },
-          ],
-        }),
-    },
+    ...archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          newest_observed: "2026-06-26T00:00:00.000Z",
+          total: 120,
+          groups: {
+            module: [
+              { call_module: "SubtensorModule", count: 60 },
+              { call_module: "Balances", count: 30 },
+            ],
+          },
+        },
+      },
+    }),
   };
   const res = await handleRequest(
     new Request(
@@ -404,51 +398,54 @@ test("GET /api/v1/chain/calls groups by call_module with honest share via the Po
 // own dedicated coverage, not re-tested here) -- the handler's own contract is
 // just to forward call_module + group_by on the request it hands to
 // tryPostgresTier, and to pass the Postgres-tier body through untouched.
-test("GET /api/v1/chain/calls forwards call_module scoping to the Postgres tier for module-function groups", async () => {
-  let requestedUrl: URL | undefined;
+test("GET /api/v1/chain/calls declines a call_module scope rather than answering unscoped (#10190)", async () => {
+  // The retired tier took `call_module` as a query param and filtered upstream.
+  // The #9146 projection carries only the unscoped mix, so its reader DECLINES a
+  // scoped call outright -- serving the unfiltered numbers under a scoped label
+  // would be a wrong answer, not a degraded one. The route then falls to its
+  // schema-stable floor, which is what a caller must be able to tell apart.
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async (request: Request) => {
-        requestedUrl = new URL(request.url);
-        return Response.json({
-          schema_version: 1,
-          window: "7d",
-          group_by: "module_function",
-          total_extrinsics: 80,
-          call_count: 1,
-          observed_at: "2026-06-26T00:00:00.000Z",
-          calls: [
-            {
-              call_module: "SubtensorModule",
-              call_function: "add_stake",
-              count: 50,
-              share: 0.625,
-            },
-          ],
-        });
+    ...archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: "2026-06-26T00:00:00.000Z",
+          total: 80,
+          groups: {
+            module_function: [
+              {
+                call_module: "SubtensorModule",
+                call_function: "add_stake",
+                count: 50,
+              },
+            ],
+          },
+        },
       },
-    },
+    }),
   };
-  const res = await handleRequest(
+  const scoped = await handleRequest(
     new Request(
-      "https://api.metagraph.sh/api/v1/chain/calls?call_module=SubtensorModule&group_by=module_function&limit=1",
+      "https://api.metagraph.sh/api/v1/chain/calls?call_module=SubtensorModule&group_by=module_function&window=7d",
     ),
     env as unknown as Env,
     {},
   );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.group_by, "module_function");
-  assert.equal(body.data.total_extrinsics, 80);
-  assert.equal(body.data.calls[0].call_function, "add_stake");
-  assert.equal(body.data.calls[0].share, 0.625);
-  assert.equal(
-    requestedUrl!.searchParams.get("call_module"),
-    "SubtensorModule",
+  assert.equal(scoped.status, 200);
+  const scopedBody = await scoped.json();
+  assert.deepEqual(scopedBody.data.calls, []);
+
+  // Unscoped, the same projection answers with its rows.
+  const unscoped = await handleRequest(
+    new Request(
+      "https://api.metagraph.sh/api/v1/chain/calls?group_by=module_function&window=7d",
+    ),
+    env as unknown as Env,
+    {},
   );
-  assert.equal(requestedUrl!.searchParams.get("group_by"), "module_function");
+  const unscopedBody = await unscoped.json();
+  assert.equal(unscopedBody.data.calls[0].call_function, "add_stake");
 });
 
 test("GET /api/v1/chain/calls rejects an inert group_by and an out-of-range limit", async () => {
@@ -914,68 +911,48 @@ test("GET /api/v1/chain/transfers rejects an unsupported format value with 400",
 // fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
-test("GET /api/v1/chain/transfers: flag=postgres serves the DATA_API response, D1 never queried", async () => {
-  let d1Called = false;
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: "2026-01-01T00:00:00.000Z",
-          total_volume_tao: 999,
-          transfer_count: 1,
-          unique_senders: 1,
-          unique_receivers: 1,
-          top_sender_share: null,
-          top_senders: [],
-          top_receivers: [],
-        }),
-    },
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        d1Called = true;
-        throw new Error(
-          "D1 must not be queried when Postgres serves the request",
-        );
-      },
-    },
-  };
+test("GET /api/v1/chain/transfers: the retired tier flag is not consulted (#10190)", async () => {
+  // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier. Bind a
+  // DATA_API that WOULD answer and prove nothing asks it.
+  const tier = forbiddenDataApi();
   const res = await handleRequest(
     new Request("https://api.metagraph.sh/api/v1/chain/transfers?window=7d"),
-    env as unknown as Env,
+    {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      ...tier,
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.total_volume_tao, 999);
-  assert.equal(d1Called, false);
+  assert.deepEqual(tier.paths, []);
 });
 
 // D1 is permanently skipped (#4909/#6013), so the only path that can ever
 // populate top_senders/top_receivers with real rows is a Postgres-tier hit --
 // this exercises the CSV row-mapping for both arrays.
 test("GET /api/v1/chain/transfers: CSV export maps Postgres-tier senders/receivers", async () => {
+  // #10190: the tier is retired; the #9146 transfers projection carries the
+  // same senders/receivers, and the CSV is mapped from what it returns.
   const env = {
     ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: "2026-01-01T00:00:00.000Z",
-          total_volume_tao: 140,
-          transfer_count: 9,
-          unique_senders: 1,
-          unique_receivers: 1,
-          top_sender_share: 0.5714,
-          top_senders: [TRANSFERS_SENDER_ROW],
-          top_receivers: [TRANSFERS_RECEIVER_ROW],
-        }),
-    },
+    ...archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          totals: {
+            total_volume_tao: 140,
+            transfer_count: 9,
+            unique_senders: 1,
+            unique_receivers: 1,
+            newest_observed: "2026-01-01T00:00:00.000Z",
+          },
+          senders: [TRANSFERS_SENDER_ROW],
+          receivers: [TRANSFERS_RECEIVER_ROW],
+        },
+      },
+    }),
   };
   const res = await handleRequest(
     new Request(
@@ -1247,46 +1224,21 @@ test("GET /api/v1/chain/transfer-pairs validates sort, limit, and query keys", a
 // fallback contract is unit-tested in workers/postgres-tier.ts's own tests,
 // so these two just prove the wiring: a Postgres hit is served as-is with D1
 // never queried, and a Postgres failure falls back to D1.
-test("GET /api/v1/chain/transfer-pairs: flag=postgres serves the DATA_API response, D1 never queried", async () => {
-  let d1Called = false;
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          sort: "volume",
-          observed_at: "2026-01-01T00:00:00.000Z",
-          total_volume_tao: 999,
-          transfer_count: 1,
-          unique_pairs: 1,
-          pair_count: 1,
-          top_pair_share: null,
-          pairs: [],
-        }),
-    },
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        d1Called = true;
-        throw new Error(
-          "D1 must not be queried when Postgres serves the request",
-        );
-      },
-    },
-  };
+test("GET /api/v1/chain/transfer-pairs: the retired tier flag is not consulted (#10190)", async () => {
+  const tier = forbiddenDataApi();
   const res = await handleRequest(
     new Request(
       "https://api.metagraph.sh/api/v1/chain/transfer-pairs?window=7d",
     ),
-    env as unknown as Env,
+    {
+      ...createLocalArtifactEnv(),
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      ...tier,
+    } as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.data.total_volume_tao, 999);
-  assert.equal(d1Called, false);
+  assert.deepEqual(tier.paths, []);
 });
 
 test("GET /api/v1/chain/transfer-pairs: flag=postgres falls back to D1 when DATA_API fails", async () => {
