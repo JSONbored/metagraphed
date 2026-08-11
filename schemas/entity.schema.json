@@ -109,6 +109,10 @@
         "submitted_at": {
           "type": "string"
         },
+        "reviewed_at": {
+          "type": "string",
+          "description": "When a maintainer last acted on this entry. Distinct from submitted_at: a submission and a review are different claims, and without a separate date the two are indistinguishable in a snapshot."
+        },
         "review_notes": {
           "type": "string"
         }
@@ -118,17 +122,27 @@
   "allOf": [
     {
       "if": {
-        "properties": { "category": { "const": "burn" } },
+        "properties": {
+          "category": {
+            "const": "burn"
+          }
+        },
         "required": ["category"]
       },
-      "then": { "required": ["unspendable_proof"] }
+      "then": {
+        "required": ["unspendable_proof"]
+      }
     },
     {
       "if": {
         "required": ["unspendable_proof"]
       },
       "then": {
-        "properties": { "category": { "const": "burn" } }
+        "properties": {
+          "category": {
+            "const": "burn"
+          }
+        }
       }
     }
   ]

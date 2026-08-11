@@ -670,6 +670,12 @@ import {
   loadRevenueFeedItems,
   type RevenueFeedDb,
 } from "../src/revenue-feed.ts";
+import {
+  walletFeedItems,
+  type WalletAttributionRecord,
+} from "../src/wallet-feed.ts";
+import type { WalletFlowRow } from "../src/wallet-activity.ts";
+import { ENTITY_LABELS_ARTIFACT } from "../src/entity-labels.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -2266,6 +2272,85 @@ export async function resolveRevenueFeedItems(
   } finally {
     store.close();
   }
+}
+
+/**
+ * #10512: the wallet feed's items.
+ *
+ * Reads the entity registry from the served artifact and the transfer history
+ * through DATA_API, the same seam `resolveSubnetNewsForFeed` uses -- this
+ * Worker has no direct route to the transfer tier and must not grow one.
+ *
+ * ONE FETCH PER DECLARED ADDRESS, and the registry currently declares NONE, so
+ * this makes zero upstream calls today. That is stated rather than left to be
+ * discovered: a lane whose producer never runs looks exactly like a lane that
+ * ran and found nothing (#10566), and WALLET_FEED_MAX_ADDRESSES caps the fan-out
+ * for the day the registry is populated.
+ */
+export const WALLET_FEED_MAX_ADDRESSES = 40;
+
+export async function resolveWalletFeedItems(env: Env): Promise<FeedItem[]> {
+  const artifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
+  const entities = artifact.ok
+    ? ((artifact.data as Row | undefined)?.entities as Row[] | undefined)
+    : undefined;
+  const wallets = (Array.isArray(entities) ? entities : []).filter(
+    (e) =>
+      typeof e?.ss58 === "string" && e.ss58 && typeof e?.category === "string",
+  ) as WalletAttributionRecord[];
+  if (wallets.length === 0) return [];
+
+  // Only the roles whose movement is an event: a burn's outbound is the
+  // discrepancy, a treasury's is material flow. Fetching for every attributed
+  // address would spend calls on ones whose movement this feed says nothing
+  // about.
+  const watched = wallets
+    .filter((w) => w.category === "burn" || w.category === "treasury")
+    .slice(0, WALLET_FEED_MAX_ADDRESSES);
+  const rowsByAddress = new Map<string, WalletFlowRow[]>();
+  await Promise.all(
+    watched.map(async (wallet) => {
+      const payload = await fetchDataApiJson(
+        env,
+        `/api/v1/accounts/${encodeURIComponent(wallet.ss58)}/transfers?limit=100`,
+      );
+      const transfers = (payload?.data as Row | undefined)?.transfers;
+      if (!Array.isArray(transfers)) return;
+      rowsByAddress.set(
+        wallet.ss58,
+        transfers.map((t) => ({
+          address: wallet.ss58,
+          denomination: "tao" as const,
+          netuid: null,
+          // The route says `received`/`sent` from the queried account's point
+          // of view; the aggregator's vocabulary is in/out.
+          direction: (t as Row).direction === "received" ? "in" : "out",
+          amount:
+            typeof (t as Row).amount_tao === "number"
+              ? ((t as Row).amount_tao as number)
+              : null,
+          observed_at:
+            typeof (t as Row).observed_at === "string"
+              ? ((t as Row).observed_at as string)
+              : null,
+        })),
+      );
+    }),
+  );
+
+  const taoUsd = await readArtifact(env, "/metagraph/network/tao-usd.json");
+  const usdPerTao = taoUsd.ok
+    ? (((taoUsd.data as Row | undefined)?.latest as Row | undefined)
+        ?.usd_per_tao as number | undefined)
+    : undefined;
+
+  return walletFeedItems({
+    wallets,
+    rowsByAddress,
+    prices: {
+      usd_per_tao: typeof usdPerTao === "number" ? usdPerTao : null,
+    },
+  });
 }
 
 export async function handleScheduled(
@@ -4936,6 +5021,7 @@ async function dispatchRequest(
           loadLiveIncidents: resolveGlobalIncidentsForFeed,
           loadSubnetNews: resolveSubnetNewsForFeed,
           loadRevenueFeed: (feedEnv) => resolveRevenueFeedItems(feedEnv, ctx),
+          loadWalletFeed: resolveWalletFeedItems,
         }),
       feedCachePath,
     );
