@@ -9,23 +9,24 @@
 // hand-edited DomainSummaryArtifact/DomainsArtifact components they
 // replace.
 import { z } from "zod";
+import { ConcentrationMetricsSchema } from "../shared.ts";
 
-export const ConcentrationScorecardSchema = z
-  .object({
+/**
+ * The registry's ONE concentration vocabulary, at this route's strength.
+ *
+ * Twelve measures, declared twice until #10790: `ConcentrationMetricsSchema`
+ * (shared.ts, and a registered public component) and a field-for-field copy
+ * here. Derived rather than re-listed, with the two ways this route is
+ * genuinely stronger stated instead of restated -- its producer returns one
+ * fixed shape or null, so every measure is present, and it always computes a
+ * holder count and a Nakamoto coefficient.
+ */
+export const ConcentrationScorecardSchema = ConcentrationMetricsSchema.unwrap()
+  .required()
+  .extend({
     holders: z.int(),
-    total: z.number().nullable(),
-    gini: z.number().nullable(),
-    hhi: z.number().nullable(),
-    hhi_normalized: z.number().nullable(),
     nakamoto_coefficient: z.int(),
-    top_1pct_share: z.number().nullable(),
-    top_5pct_share: z.number().nullable(),
-    top_10pct_share: z.number().nullable(),
-    top_20pct_share: z.number().nullable(),
-    entropy: z.number().nullable(),
-    entropy_normalized: z.number().nullable(),
   })
-  .strict()
   .describe(
     "Concentration metrics over a value distribution -- Gini, HHI (raw + holder-count-normalized), Nakamoto coefficient, top-percentile shares, and Shannon entropy.",
   );

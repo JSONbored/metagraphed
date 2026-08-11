@@ -696,3 +696,37 @@ export const GithubReleaseSchema = z
     prerelease: z.boolean(),
   })
   .strict();
+
+/**
+ * A count and the spread of a measure -- ONE declaration, four domains (#10790).
+ *
+ * The eight-key summary (count/mean/min/p25/median/p75/p90/max) was written out
+ * four times: a 0-100 stability score with INTEGER percentiles, a net flow that
+ * can be negative, a non-negative intensity, and an unbounded generic. The key
+ * set is one vocabulary; the bounds are not, and collapsing them to a single
+ * schema would erase exactly the constraints that say what each measure IS.
+ *
+ * So the SHAPE is declared once and the MEASURE is the parameter. A site that
+ * knows its values are bounded says so, and none of them can drift on what a
+ * distribution summary contains.
+ *
+ * `percentile` defaults to `measure` and is separate only because the stability
+ * score's percentiles are whole numbers where its mean and median are not.
+ */
+export function distributionStatsSchema(
+  measure: z.ZodType,
+  percentile: z.ZodType = measure,
+) {
+  return z
+    .object({
+      count: z.int().min(0),
+      mean: measure,
+      min: percentile,
+      p25: percentile,
+      median: measure,
+      p75: percentile,
+      p90: percentile,
+      max: percentile,
+    })
+    .strict();
+}

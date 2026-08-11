@@ -2,10 +2,7 @@
 // /api/v1/network/tao-usd.
 import { z } from "zod";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
-import {
-  TaoUsdArtifactSchema,
-  TaoUsdPointSchema,
-} from "../routes/tao-usd.ts";
+import { TaoUsdArtifactSchema, TaoUsdPointSchema } from "../routes/tao-usd.ts";
 
 const RouteQuery_network_tao_usd =
   ROUTE_QUERY_SCHEMAS["/api/v1/network/tao-usd"];

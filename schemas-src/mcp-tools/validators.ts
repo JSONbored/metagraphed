@@ -104,7 +104,9 @@ export type ListSubnetValidatorsInput = z.infer<
 // `list_subnet_validators` advertises `fields`, so its rows are projectable.
 export const ListSubnetValidatorsOutputSchema =
   SubnetValidatorsArtifactSchema.extend({
-    validators: projectableRows(SubnetValidatorsArtifactSchema.shape.validators),
+    validators: projectableRows(
+      SubnetValidatorsArtifactSchema.shape.validators,
+    ),
   });
 export type ListSubnetValidatorsOutput = z.infer<
   typeof ListSubnetValidatorsOutputSchema

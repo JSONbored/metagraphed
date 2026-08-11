@@ -3,25 +3,17 @@
 // src/chain-turnover.ts's buildChainTurnover(), cross-checked against the
 // hand-edited ChainTurnoverArtifact component it replaces.
 import { z } from "zod";
+import { distributionStatsSchema } from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const CHAIN_TURNOVER_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
 
-const StabilityDistributionSchema = z
-  .object({
-    count: z.int().min(0),
-    mean: z.number().min(0).max(100),
-    min: z.int().min(0).max(100),
-    p25: z.int().min(0).max(100),
-    median: z.number().min(0).max(100),
-    p75: z.int().min(0).max(100),
-    p90: z.int().min(0).max(100),
-    max: z.int().min(0).max(100),
-  })
-  .strict()
-  .describe(
-    "Spread of per-subnet stability score across EVERY subnet in the window (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard).",
-  );
+const StabilityDistributionSchema = distributionStatsSchema(
+  z.number().min(0).max(100),
+  z.int().min(0).max(100),
+).describe(
+  "Spread of per-subnet stability score across EVERY subnet in the window (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard).",
+);
 
 export const ChainTurnoverArtifactSchema = z
   .object({

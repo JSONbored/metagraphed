@@ -9,6 +9,7 @@
 // for the fuller rationale, first established in the pilot batch). These
 // two helpers are the Zod equivalent of that same shallow-on-purpose shape.
 import { z } from "zod";
+import { distributionStatsSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 
@@ -168,18 +169,7 @@ export const AccountEventItemSchema = z
 // prometheus/deregistrations) -- hoisted here rather than defined 10 times,
 // unlike every other nested shape in this epic which stayed tool-local
 // (those never repeated verbatim across more than 2 tools).
-export const DistributionStatsSchema = z
-  .object({
-    count: z.int(),
-    mean: z.number(),
-    min: z.number(),
-    p25: z.number(),
-    median: z.number(),
-    p75: z.number(),
-    p90: z.number(),
-    max: z.number(),
-  })
-  .strict();
+export const DistributionStatsSchema = distributionStatsSchema(z.number());
 
 // `notes: {type:["array","string","null"], items:{type:"string"}}` -- 10 of
 // types-epic E batch 10's (#8074) list_* tools declare this exact shape for
