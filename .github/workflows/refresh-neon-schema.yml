@@ -136,7 +136,7 @@ jobs:
       # migration that never applied, or one recorded as applied whose DDL
       # failed (#9867).
       - name: Every declared table exists in the live schema
-        run: node scripts/validate-declared-tables-exist.ts
+        run: npm run validate:declared-tables-exist
 
       - name: Did the schema move?
         id: diff
