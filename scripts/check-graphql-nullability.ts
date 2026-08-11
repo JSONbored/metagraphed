@@ -59,6 +59,7 @@ import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
 import { SDL } from "../src/graphql-sdl.ts";
+import { dataComponent, limitFor } from "./openapi-document.ts";
 
 const BASE = process.env.CONFORMANCE_API_BASE || "https://api.metagraph.sh";
 const SPEC_PATH =
@@ -451,50 +452,6 @@ function walk(
   }
 }
 
-/**
- * The component a route's `data` refs, read from the published spec.
- *
- * The same lookup `validate-graphql-component-parity.ts` uses to pair an SDL
- * type with the Zod behind it -- and the honest root for a REST body, because
- * the body IS that component.
- */
-export function dataComponent(
-  openapi: OpenApiParameters,
-  route: string,
-): string | null {
-  const schema = (
-    openapi as unknown as {
-      paths?: Record<
-        string,
-        {
-          get?: {
-            responses?: Record<
-              string,
-              {
-                content?: Record<
-                  string,
-                  {
-                    schema?: {
-                      allOf?: { properties?: { data?: { $ref?: string } } }[];
-                    };
-                  }
-                >;
-              }
-            >;
-          };
-        }
-      >;
-    }
-  ).paths?.[route]?.get?.responses?.["200"]?.content?.["application/json"]
-    ?.schema;
-  for (const part of schema?.allOf ?? []) {
-    const ref = part?.properties?.data?.$ref;
-    if (typeof ref === "string")
-      return ref.replace("#/components/schemas/", "");
-  }
-  return null;
-}
-
 /** Every filling of a route's path parameters, or none if one has no value. */
 export function fillRoute(route: string): string[] {
   let filled = [route];
@@ -506,41 +463,6 @@ export function fillRoute(route: string): string[] {
     );
   }
   return filled;
-}
-
-/**
- * `limit=<the route's own maximum>`, or nothing.
- *
- * Read from the published spec rather than guessed. The ceiling is per-route,
- * and REST REJECTS both an unknown parameter and an over-ceiling one -- MCP is
- * the surface that clamps -- so a blanket `?limit=100` turns 40 healthy routes
- * into "did not answer" and reports that silence as coverage.
- */
-export function limitFor(openapi: OpenApiParameters, route: string): string {
-  const parameters =
-    (
-      openapi as unknown as {
-        paths?: Record<
-          string,
-          {
-            get?: {
-              parameters?: Array<{
-                name?: string;
-                $ref?: string;
-                schema?: { maximum?: number };
-              }>;
-            };
-          }
-        >;
-      }
-    ).paths?.[route]?.get?.parameters ?? [];
-  for (const parameter of parameters) {
-    const name = parameter.name ?? parameter.$ref?.split("/").pop() ?? "";
-    if (!name.toLowerCase().includes("limit")) continue;
-    const maximum = parameter.schema?.maximum;
-    return `limit=${typeof maximum === "number" ? maximum : 100}`;
-  }
-  return "";
 }
 
 export async function checkNullability(
@@ -584,7 +506,7 @@ export async function checkNullability(
     // mistake `PROJECTED_TYPES` exists to stop the parity gate making: it
     // manufactured 84 findings, every one of them a `*List.items` or
     // `*List.total`, before the root was resolved this way.
-    const component = dataComponent(openapi, binding.route);
+    const component = dataComponent(binding.route);
     const generatedType = component ? emitted.get(component) : undefined;
     if (!generatedType) return;
     const routes = fillRoute(binding.route);

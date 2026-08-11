@@ -35,13 +35,10 @@ import {
   PROJECTED_TYPES,
   RESOLVER_BUILT_TYPES,
 } from "../schemas-src/graphql/published-names.ts";
-import {
-  extractSdl,
-  type OpenApiDocument,
-} from "./validate-graphql-component-parity.ts";
+import { extractSdl } from "./validate-graphql-component-parity.ts";
+import { dataComponent } from "./openapi-document.ts";
 
 const SDL_PATH = "src/graphql-sdl.ts";
-const OPENAPI_PATH = "public/metagraph/openapi.json";
 
 /** One Query field as the SDL declares it. */
 export interface SdlBinding {
@@ -225,9 +222,6 @@ if (!sdl) {
   console.error(`published-names: no SDL template literal in ${SDL_PATH}`);
   process.exit(1);
 }
-const openapi = JSON.parse(
-  readFileSync(OPENAPI_PATH, "utf8"),
-) as OpenApiDocument;
 const { types: generated } = emitTypes();
 
 const sdlTypes = new Map<string, ObjectTypeDefinitionNode>();
@@ -246,18 +240,6 @@ const generatedName = (type: unknown): string | null => {
     current = current.ofType as typeof current;
   }
   return current?.name ?? null;
-};
-const dataComponent = (route: string): string | null => {
-  const schema =
-    openapi.paths?.[route]?.get?.responses?.["200"]?.content?.[
-      "application/json"
-    ]?.schema;
-  for (const part of schema?.allOf ?? []) {
-    const ref = part?.properties?.data?.$ref;
-    if (typeof ref === "string")
-      return ref.replace("#/components/schemas/", "");
-  }
-  return null;
 };
 
 // ── the SDL's own Query bindings ─────────────────────────────────────────────
