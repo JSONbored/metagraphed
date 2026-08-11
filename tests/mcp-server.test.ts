@@ -16870,21 +16870,28 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("get_account_events reads both key sides from the lakehouse", async () => {
-    const queries = lakeFetch([
-      {
-        block_number: 4200000,
-        event_index: 0,
-        extrinsic_index: 3,
-        event_kind: "StakeAdded",
-        hotkey: LAKE_EXTRINSIC.signer,
-        coldkey: null,
-        netuid: 7,
-        uid: 3,
-        amount_tao: "5000",
-        alpha_amount: null,
-        observed_at: 1750009000000,
-      },
-    ]);
+    const queries = lakeFetch(
+      [
+        {
+          block_number: 4200000,
+          event_index: 0,
+          extrinsic_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: LAKE_EXTRINSIC.signer,
+          coldkey: null,
+          netuid: 7,
+          uid: 3,
+          amount_tao: "5000",
+          alpha_amount: null,
+          observed_at: 1750009000000,
+        },
+      ],
+      // The windowed reader keeps stepping until the page fills, so the stub
+      // has to model DISTINCT windows: one row in the first, nothing below it.
+      // Replaying the same row for every call would accumulate duplicates and
+      // assert on an arrangement no real lakehouse produces.
+      [],
+    );
     const res = await callTool(
       "get_account_events",
       { ss58: LAKE_EXTRINSIC.signer, limit: 5, kind: "StakeAdded" },
@@ -16892,8 +16899,14 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     );
     const data = res.body.result.structuredContent;
     assert.equal(data.events.length, 1);
-    assert.match(queries[0]!, /hotkey = '5G9hfkx.*OR coldkey = '5G9hfkx/);
-    assert.match(queries[0]!, /event_kind = 'StakeAdded'/);
+    // BY CONTENT, NOT POSITION. The reader resolves the lakehouse head before
+    // its first windowed slice, so the account read is no longer queries[0] --
+    // and an index here would keep breaking every time a preceding read is
+    // added, while asserting nothing extra.
+    const read = queries.find((q) => q.includes("account_events"));
+    assert.ok(read, `no account_events read among ${queries.length} queries`);
+    assert.match(read, /hotkey = '5G9hfkx.*OR coldkey = '5G9hfkx/);
+    assert.match(read, /event_kind = 'StakeAdded'/);
   });
 
   test("get_account_extrinsics filters by signer from the lakehouse", async () => {
