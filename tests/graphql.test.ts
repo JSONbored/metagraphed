@@ -24152,27 +24152,30 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("subnet_deregistrations forwards the per-UID events", async () => {
+    // The by-uid slice filters on a WALL-CLOCK window (Date.now() - windowDays),
+    // so a fixture dated in the past is correctly excluded. Recent, therefore.
+    const observedAt = Date.now() - 24 * 60 * 60 * 1000;
     const { body } = await gql(
       `{ subnet_deregistrations(netuid: 5) {
           events { uid hotkey replaced_by_hotkey block_number observed_at tenure_blocks }
         } }`,
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          events: [
-            {
-              uid: 3,
-              hotkey: "5Gone",
-              replaced_by_hotkey: "5New",
-              block_number: 900,
-              observed_at: "2026-07-01T00:00:00.000Z",
-              tenure_blocks: 120,
+      // #10190: the tier is retired. This reads TWO projections by key -- the
+      // window rollup for the count, and the by-uid index for these events -- so
+      // the archive double routes on the key it is asked for. The events are
+      // TUPLE-encoded: [uid, hotkey, successor, block, observed_at, tenure].
+      archiveEnv((key) =>
+        key.includes("by-uid")
+          ? {
+              schema_version: 1,
+              by_netuid: {
+                "5": [[3, "5Gone", "5New", 900, observedAt, 120]],
+              },
+            }
+          : {
+              schema_version: 1,
+              windows: { "7d": { rows: [{ netuid: 5, deregistrations: 1 }] } },
             },
-          ],
-        },
-        events,
-      ),
+      ) as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     const [event] = body.data.subnet_deregistrations.events;
