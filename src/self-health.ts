@@ -17,6 +17,15 @@
 // made the old /status verdict unreadable (metagraphed#8250).
 
 /** The components the poller writes. Order is display order. */
+import type {
+  SelfHealthChecks,
+  SelfHealthDaily,
+} from "../generated/db/types.ts";
+import type {
+  SelfHealthComponent as PublishedSelfHealthComponent,
+  SelfHealthDay as PublishedSelfHealthDay,
+  SelfHealthLane as PublishedSelfHealthLane,
+} from "../schemas-src/routes/self-health.ts";
 import type { LaneHealthRecord } from "./lane-health.ts";
 import { laneSilenceThresholdMs } from "./lane-alarm.ts";
 import { laneSilenceCadenceMs } from "./producer-cadence.ts";
@@ -30,12 +39,7 @@ export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
  * Date object here would serialize with a spurious time component and a
  * timezone the column never carried.
  */
-export interface SelfHealthDailyRow {
-  day: string;
-  component: string;
-  checks: number;
-  ok_count: number;
-}
+export type SelfHealthDailyRow = SelfHealthDaily;
 
 /** Latest raw tick per component, for current state.
  *
@@ -47,13 +51,7 @@ export interface SelfHealthDailyRow {
  * Confirmed against the existing BIGINT fixtures in
  * tests/data-api.test.ts (`block_number: "123"`).
  */
-export interface SelfHealthLatestRow {
-  component: string;
-  ok: boolean;
-  http_status: number | null;
-  latency_ms: number | null;
-  checked_at_ms: number | string;
-}
+export type SelfHealthLatestRow = SelfHealthChecks;
 
 /** BIGINT-as-string tolerant numeric coercion. NaN for anything unusable, so
  * the callers' own Number.isFinite guards stay meaningful. */
@@ -63,49 +61,29 @@ function toMs(value: number | string | null | undefined): number {
   return NaN;
 }
 
-export interface SelfHealthDay {
-  day: string;
-  checks: number;
-  ok_count: number;
-  /** ok_count / checks, 0..1. */
-  uptime_ratio: number;
-}
+/**
+ * One day of the rollup as the ROUTE publishes it -- the schema's own inferred
+ * type, not a copy of its shape (#10784).
+ */
+export type SelfHealthDay = PublishedSelfHealthDay;
 
-export interface SelfHealthComponentView {
-  component: string;
-  /** Null when the component has never been probed -- NOT false. */
-  current_ok: boolean | null;
-  http_status: number | null;
-  latency_ms: number | null;
-  checked_at: string | null;
-  /**
-   * Qualifies a false `current_ok` with why, for components whose failure
-   * mode isn't a plain HTTP-level outage. Null whenever there's nothing to
-   * add (healthy, unmeasured, or a component whose bare "down" already says
-   * everything -- see {@link selfHealthVerdict}'s doc comment).
-   */
-  note: string | null;
-  /**
-   * Trailing-90d daily ratios, oldest first. Days with no rows are ABSENT,
-   * not zero-filled: a gap means "we weren't measuring", and rendering that
-   * as 0% uptime would invent an outage that never happened. The house rule
-   * is probe-derived only, never synthesized.
-   */
-  days: SelfHealthDay[];
-  /** Mean uptime across the days we actually have. Null when there are none. */
-  uptime_90d: number | null;
-}
+/**
+ * One component's current state, as the ROUTE publishes it (#10784).
+ *
+ * The schema carries the same rationale this interface used to restate --
+ * `current_ok` is null rather than false when a component has never been
+ * probed, because "not measured" and "down" are different claims -- so the
+ * prose lives with the declaration that is published, not beside a copy of it.
+ */
+export type SelfHealthComponentView = PublishedSelfHealthComponent;
 
 export type SelfHealthVerdict = "operational" | "degraded" | "outage";
 
-/** One lane's most recent watchdog verdict (#9330/#9340). */
-export interface SelfHealthLaneView {
-  lane: string;
-  verdict: "ok" | "stale" | "unknown";
-  age_ms: number | null;
-  detail: string | null;
-  checked_at: string | null;
-}
+/**
+ * One lane's most recent watchdog verdict (#9330/#9340), as the ROUTE
+ * publishes it -- the schema's own inferred type rather than a copy (#10784).
+ */
+export type SelfHealthLaneView = PublishedSelfHealthLane;
 
 export interface SelfHealth {
   schema_version: number;
