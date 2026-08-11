@@ -51,6 +51,7 @@ test("GET /accounts/{ss58}/history?format=csv exports the per-day rows via the P
   assert.equal(lines.length, 2);
   assert.match(lines[1], /^2026-06-25,1,5,/);
   assert.match(lines[1], /8454388$/);
+  lake.restore();
 });
 
 test("GET /accounts/{ss58}/history rejects an invalid ?format with 400", async () => {

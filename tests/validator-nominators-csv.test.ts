@@ -55,6 +55,7 @@ test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominato
     lines[1],
     /^5CoLdKeyExampleAddress[0]+,1200\.5,200\.25,1000\.25,1400\.75,7,/,
   );
+  lake.restore();
 });
 
 test("GET /validators/{hotkey}/nominators rejects an invalid ?format with 400", async () => {

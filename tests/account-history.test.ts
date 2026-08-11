@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { afterEach, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
-import { buildAccountHistory } from "../src/account-events.ts";
 import type { Row } from "./row-type.ts";
 
 // SQL-capturing D1 mock variant: records each bound (sql, params) so a test can
