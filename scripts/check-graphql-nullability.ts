@@ -37,10 +37,8 @@ import {
 } from "graphql";
 import type {
   GraphQLField,
-  GraphQLNamedType,
   GraphQLObjectType,
   GraphQLOutputType,
-  GraphQLSchema,
 } from "graphql";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
@@ -52,6 +50,9 @@ const SPEC_PATH =
   process.env.CONFORMANCE_SPEC_PATH || "public/metagraph/openapi.json";
 /** How deep to follow object edges when building a probe selection. */
 const MAX_DEPTH = 3;
+/** Retries past a rate limit or a transient 5xx, and the wait between them. */
+const RETRIES = 2;
+const RETRY_DELAY_MS = 750;
 
 /** Known-good values for the arguments a Query field requires. */
 const ARGUMENTS: Readonly<Record<string, string>> = {
@@ -87,8 +88,18 @@ export interface NullabilityFinding {
 export interface NullabilityReport {
   /** Query fields the probe could build and send. */
   probed: number;
-  /** Query fields skipped, with the reason. */
+  /** Query fields skipped entirely, with the reason -- 0 evidence for each. */
   skipped: string[];
+  /**
+   * Fields that answered only after the query was split, with whatever still
+   * refused.
+   *
+   * NOT skipped: their leaves were observed, so the evidence counts. Filing
+   * them under `skipped` would have said the opposite of what happened -- the
+   * split exists precisely to turn a refusal into evidence, and a bucket that
+   * hides that makes the split look like it failed.
+   */
+  partial: string[];
   /** Non-null leaves observed at least once. */
   observed: number;
   /** Generated non-nulls production actually answered null for. */
@@ -97,19 +108,17 @@ export interface NullabilityReport {
   unobserved: string[];
 }
 
-/** The published schema's counterpart of a generated type, if it has one. */
-function publishedType(
-  published: GraphQLSchema,
-  type: GraphQLNamedType,
-): GraphQLObjectType | null {
-  const counterpart = published.getType(type.name);
-  return isObjectType(counterpart) ? counterpart : null;
-}
-
 /**
  * A selection covering every non-null leaf the generated type promises, kept to
  * what the PUBLISHED schema also exposes -- production serves that one, so a
  * field only the generator has cannot be asked for.
+ *
+ * The two types are passed as an explicit PAIR rather than looked up by name.
+ * They disagree about names exactly where this matters: `incidents` returns
+ * `IncidentList` in the generated schema and `GlobalIncidents` in the served
+ * one, and resolving the counterpart from the generated name lands on a
+ * different type or none -- the same mistake, on the writing side, that made
+ * `walk` invent 18 findings once.
  *
  * Returns null when nothing is selectable, which is not a finding: a type whose
  * every field is an object the published schema lacks simply cannot be probed
@@ -117,38 +126,140 @@ function publishedType(
  */
 function selectionFor(
   generated: GraphQLObjectType,
-  published: GraphQLSchema,
+  counterpart: GraphQLObjectType,
   depth: number,
   seen: ReadonlySet<string>,
-): { text: string; leaves: string[] } | null {
-  const counterpart = publishedType(published, generated);
-  if (!counterpart) return null;
-  const parts: string[] = [];
-  const leaves: string[] = [];
+): Selection | null {
+  const parts: SelectionPart[] = [];
   for (const [name, field] of Object.entries(generated.getFields())) {
-    if (!counterpart.getFields()[name]) continue;
+    const servedField = counterpart.getFields()[name];
+    if (!servedField) continue;
+    // SHAPE comes from the published type, non-nullness from the generated one.
+    // Production validates the query against what it serves, so asking by the
+    // generated shape is how the probe wrote `changes` bare on a field the
+    // surface publishes as `[EmissionGateChange!]!` -- the generator types it
+    // JSON -- and got the whole Query field refused. Same rule `walk` already
+    // follows for reading the answer, applied to writing the question.
+    const served = getNamedType(servedField.type);
+    const nonNull = isNonNullType(field.type)
+      ? [`${generated.name}.${name}`]
+      : [];
+    if (isScalarType(served) || isEnumType(served)) {
+      parts.push({ field: name, text: name, leaves: nonNull });
+      continue;
+    }
     const named = getNamedType(field.type);
-    if (isScalarType(named) || isEnumType(named)) {
-      parts.push(name);
-      if (isNonNullType(field.type)) leaves.push(`${generated.name}.${name}`);
+    if (!isObjectType(served) || depth >= MAX_DEPTH || seen.has(served.name)) {
       continue;
     }
-    if (!isObjectType(named) || depth >= MAX_DEPTH || seen.has(named.name)) {
-      continue;
-    }
+    // The generated counterpart supplies the non-null claims under this edge.
+    // When the generator has no object there (it types the field JSON), there
+    // are no claims to evidence, so the edge is skipped rather than asked for.
+    if (!isObjectType(named)) continue;
     const nested = selectionFor(
       named,
-      published,
+      served,
       depth + 1,
-      new Set([...seen, named.name]),
+      new Set([...seen, served.name]),
     );
     if (!nested) continue;
-    parts.push(`${name} ${nested.text}`);
-    leaves.push(...nested.leaves);
-    if (isNonNullType(field.type)) leaves.push(`${generated.name}.${name}`);
+    parts.push({
+      field: name,
+      text: `${name} ${renderSelection(nested.parts)}`,
+      leaves: [...nested.leaves, ...nonNull],
+      nested,
+    });
   }
   if (!parts.length) return null;
-  return { text: `{ ${parts.join(" ")} }`, leaves };
+  return { parts, leaves: parts.flatMap((p) => p.leaves) };
+}
+
+/** One selectable field, with the non-null leaves asking for it would evidence. */
+interface SelectionPart {
+  /** The field name, kept so a too-complex edge can be re-rendered smaller. */
+  field: string;
+  text: string;
+  leaves: string[];
+  /** Present on an object edge -- what a split of this part divides. */
+  nested?: Selection;
+}
+interface Selection {
+  parts: SelectionPart[];
+  leaves: string[];
+}
+
+function renderSelection(parts: readonly SelectionPart[]): string {
+  return `{ ${parts.map((p) => p.text).join(" ")} }`;
+}
+
+/**
+ * Halve one part, so a selection that is a SINGLE too-complex edge can still be
+ * asked for.
+ *
+ * Splitting only the top level bottoms out at `subnets { …everything… }`, which
+ * is one part and still over the limit -- and the types that trip it are the
+ * biggest ones, so those are exactly the fields whose evidence matters most.
+ * Returns null for a leaf or a one-field edge: there is nothing left to divide,
+ * and that is reported rather than retried forever.
+ */
+function splitPart(part: SelectionPart): [SelectionPart, SelectionPart] | null {
+  if (!part.nested || part.nested.parts.length < 2) return null;
+  const half = Math.ceil(part.nested.parts.length / 2);
+  const chunk = (parts: SelectionPart[]): SelectionPart => ({
+    field: part.field,
+    text: `${part.field} ${renderSelection(parts)}`,
+    leaves: parts.flatMap((p) => p.leaves),
+    nested: { parts, leaves: parts.flatMap((p) => p.leaves) },
+  });
+  return [
+    chunk(part.nested.parts.slice(0, half)),
+    chunk(part.nested.parts.slice(half)),
+  ];
+}
+
+/** A refusal to ANSWER, as opposed to an answer of null. */
+function isTooComplex(errors: readonly { message: string }[]): boolean {
+  return errors.some((e) => /complexity/i.test(e.message));
+}
+
+interface GraphQLBody {
+  data?: unknown;
+  errors?: { message: string }[];
+}
+
+/**
+ * One request, retried once past a rate limit or a transient 5xx.
+ *
+ * Splitting multiplies the request count, and a request that dies takes the
+ * evidence for every leaf under it with it -- silently, because a thinner
+ * denominator looks exactly like a healthy run. Observed leaves swung between
+ * 600 and 1,241 across otherwise identical runs before this. A failure that
+ * survives the retry is still reported, so the run says so rather than passing
+ * on less evidence than it claims.
+ */
+async function send(
+  query: string,
+  fetchImpl: typeof fetch,
+): Promise<GraphQLBody> {
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetchImpl(`${BASE}/api/v1/graphql`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    // The body is read whatever the status: this surface answers a REFUSED
+    // query (complexity, validation) with a 4xx carrying a normal GraphQL
+    // `errors` array, and that array is what tells the caller to split and
+    // retry smaller. Treating every non-200 as fatal silenced the bisection
+    // and cost 18 Query fields their evidence.
+    const body = await response.json().catch(() => null);
+    if (body && typeof body === "object") return body as GraphQLBody;
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt >= RETRIES) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  }
 }
 
 /** The arguments a Query field requires, rendered -- or null if one is unknown. */
@@ -243,6 +354,7 @@ export async function checkNullability(
     { seen: number; nulls: number; via: Set<string> }
   >();
   const skipped: string[] = [];
+  const partial: string[] = [];
   const allLeaves = new Set<string>();
   let probed = 0;
 
@@ -252,7 +364,18 @@ export async function checkNullability(
       skipped.push(`${binding.field} -- the generated root has no such field`);
       continue;
     }
-    const args = renderArguments(field);
+    const publishedField = published.getQueryType()?.getFields()[binding.field];
+    if (!publishedField) {
+      skipped.push(`${binding.field} -- the served root has no such field`);
+      continue;
+    }
+    // Arguments come from the SERVED field: production rejects a query that
+    // omits an argument IT requires, whatever the generator derived. `subnet`
+    // was skipped for exactly that -- the generator makes `netuid` optional,
+    // the surface requires `Int!`, and rendering the generated shape produced
+    // a query production would not accept. (That disagreement is itself worth
+    // a look before the cutover; it is reported by the argument gate, not here.)
+    const args = renderArguments(publishedField);
     if (args === null) {
       skipped.push(
         `${binding.field} -- a required argument has no known value`,
@@ -260,11 +383,17 @@ export async function checkNullability(
       continue;
     }
     const named = getNamedType(field.type);
-    if (!isObjectType(named)) {
+    const servedNamed = getNamedType(publishedField.type);
+    if (!isObjectType(named) || !isObjectType(servedNamed)) {
       skipped.push(`${binding.field} -- returns a leaf, nothing to walk`);
       continue;
     }
-    const selection = selectionFor(named, published, 1, new Set([named.name]));
+    const selection = selectionFor(
+      named,
+      servedNamed,
+      1,
+      new Set([servedNamed.name]),
+    );
     if (!selection) {
       skipped.push(
         `${binding.field} -- nothing selectable on the served schema`,
@@ -272,41 +401,71 @@ export async function checkNullability(
       continue;
     }
     for (const leaf of selection.leaves) allLeaves.add(leaf);
-    const query = `{ ${binding.field}${args} ${selection.text} }`;
-    let body: { data?: unknown; errors?: { message: string }[] };
-    try {
-      const response = await fetchImpl(`${BASE}/api/v1/graphql`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      body = (await response.json()) as typeof body;
-    } catch (error) {
-      skipped.push(`${binding.field} -- ${String(error)}`);
-      continue;
-    }
-    if (body.errors?.length) {
-      skipped.push(
-        `${binding.field} -- ${body.errors
-          .map((e) => e.message)
-          .join(" | ")
-          .slice(0, 120)}`,
+
+    /**
+     * Ask for these parts, splitting when the surface refuses the query as too
+     * complex.
+     *
+     * The probe asks for every non-null leaf at once, which is the exact shape
+     * the published complexity limit exists to refuse: 20 of the skips were the
+     * probe tripping over its own request, not a field it could not reach, and
+     * a skipped field is 0 evidence for every leaf under it. Bisecting rather
+     * than modelling the cost function keeps this honest if the limit or its
+     * accounting ever moves -- the surface stays the authority on what it will
+     * answer. Returns the reasons nothing could be asked, so a part that is
+     * indivisible AND too complex is reported rather than silently dropped.
+     */
+    const ask = async (parts: readonly SelectionPart[]): Promise<string[]> => {
+      if (!parts.length) return [];
+      const query = `{ ${binding.field}${args} ${renderSelection(parts)} }`;
+      let body: { data?: unknown; errors?: { message: string }[] };
+      try {
+        body = await send(query, fetchImpl);
+      } catch (error) {
+        return [String(error)];
+      }
+      if (body.errors?.length) {
+        if (isTooComplex(body.errors)) {
+          if (parts.length > 1) {
+            const half = Math.ceil(parts.length / 2);
+            return [
+              ...(await ask(parts.slice(0, half))),
+              ...(await ask(parts.slice(half))),
+            ];
+          }
+          const halves = splitPart(parts[0]);
+          if (halves) {
+            return [...(await ask([halves[0]])), ...(await ask([halves[1]]))];
+          }
+        }
+        return [
+          body.errors
+            .map((e) => e.message)
+            .join(" | ")
+            .slice(0, 120),
+        ];
+      }
+      answered = true;
+      walk(
+        (body.data as Record<string, unknown> | undefined)?.[binding.field],
+        publishedField.type,
+        field.type,
+        binding.field,
+        counts,
+        binding.field,
       );
-      continue;
+      return [];
+    };
+
+    let answered = false;
+    const reasons = await ask(selection.parts);
+    if (answered) probed += 1;
+    if (reasons.length) {
+      const line =
+        `${binding.field} -- ` +
+        `${[...new Set(reasons)].join(" | ").slice(0, 160)}`;
+      (answered ? partial : skipped).push(line);
     }
-    probed += 1;
-    const answer = (body.data as Record<string, unknown> | undefined)?.[
-      binding.field
-    ];
-    const publishedField = published.getQueryType()?.getFields()[binding.field];
-    walk(
-      answer,
-      publishedField!.type,
-      field.type,
-      binding.field,
-      counts,
-      binding.field,
-    );
   }
 
   const findings: NullabilityFinding[] = [];
@@ -323,6 +482,7 @@ export async function checkNullability(
   return {
     probed,
     skipped,
+    partial,
     observed: [...counts.values()].filter((c) => c.seen > 0).length,
     findings: findings.sort((a, b) => a.field.localeCompare(b.field)),
     unobserved: [...allLeaves].filter((leaf) => !counts.get(leaf)?.seen).sort(),
@@ -333,9 +493,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const report = await checkNullability(
     JSON.parse(readFileSync(SPEC_PATH, "utf8")) as OpenApiParameters,
   );
+  // The DENOMINATOR is printed with the numerator on purpose. How much a run
+  // observes moves with what production served -- a list that answers empty
+  // yields no rows and so no evidence for any leaf under it -- and runs minutes
+  // apart have ranged from 451 to 1,246. Printing only the numerator lets a
+  // thin run read exactly like a thorough one. The count that does hold still
+  // across every run is the one that decides the cutover: how many answered
+  // null.
   console.log(
     `graphql-nullability: probed ${report.probed} Query field(s) against ${BASE}; ` +
-      `${report.observed} generated non-null field(s) observed, ` +
+      `${report.observed} of ${report.observed + report.unobserved.length} ` +
+      `generated non-null field(s) observed, ` +
       `${report.findings.length} answered NULL.`,
   );
   if (report.unobserved.length) {
@@ -349,8 +517,23 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`  … and ${report.unobserved.length - 30} more`);
     }
   }
+  // Printed apart from `skipped`, because they are the opposite outcome: the
+  // split turned a refusal into evidence. Collapsing them would make a working
+  // bisect look like a run that gave up.
+  if (report.partial.length) {
+    console.log(
+      `\n${report.partial.length} Query field(s) answered only after the query ` +
+        `was split, with what still refused:`,
+    );
+    for (const line of report.partial.slice(0, 20)) console.log(`  - ${line}`);
+    if (report.partial.length > 20) {
+      console.log(`  … and ${report.partial.length - 20} more`);
+    }
+  }
   if (report.skipped.length) {
-    console.log(`\n${report.skipped.length} Query field(s) skipped:`);
+    console.log(
+      `\n${report.skipped.length} Query field(s) skipped -- 0 evidence for each:`,
+    );
     for (const line of report.skipped.slice(0, 20)) console.log(`  - ${line}`);
     if (report.skipped.length > 20) {
       console.log(`  … and ${report.skipped.length - 20} more`);
