@@ -793,3 +793,73 @@ describe("an orphaned alarm must not block the buffer forever (#10763)", () => {
     assert.match(String(spy.rows[0].detail), /nothing buffered/);
   });
 });
+
+describe("the flush never scans either (#10775)", () => {
+  test("a TRUNCATED drain does not list the remaining backlog", async () => {
+    // The same O(n) that #10755 removed from the enqueue, reintroduced in the
+    // alarm's reconcile. Measured in production: the flush at 13:23:12 drained
+    // its 500 and never came back for the rest, because the scan outran the
+    // handler and the re-arm never ran.
+    const storage = fakeStorage();
+    for (let i = 0; i < FLUSH_LIST_LIMIT + 30; i += 1) {
+      await enqueueStatement(storage, stmt("neurons", `S${i}`), NOW);
+    }
+    let listsAfterDrain = 0;
+    const realList = storage.list.bind(storage);
+    let draining = false;
+    storage.list = async (options) => {
+      if (draining) listsAfterDrain += 1;
+      return realList(options);
+    };
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          draining = true;
+          return [];
+        },
+      },
+    });
+    assert.equal(out.remaining, true, "it must report work left");
+    assert.equal(listsAfterDrain, 0, "and must not scan to work that out");
+  });
+
+  test("a clean drain still reconciles the counter to exactly zero", async () => {
+    // Drift correction lives here: an untruncated flush emptied the buffer by
+    // definition, so 0 is exact and free.
+    const storage = fakeStorage();
+    for (let i = 0; i < 3; i += 1) {
+      await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
+    }
+    storage.map.set("pending", 4242);
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(await storage.get("pending"), 0);
+  });
+
+  test("a truncated drain decrements by what it settled", async () => {
+    const storage = fakeStorage();
+    for (let i = 0; i < FLUSH_LIST_LIMIT + 10; i += 1) {
+      await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
+    }
+    const before = (await storage.get<number>("pending")) ?? 0;
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(await storage.get("pending"), before - out.drained);
+  });
+});
