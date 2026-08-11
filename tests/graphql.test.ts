@@ -11993,44 +11993,63 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("resolves the Postgres-tier summary", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          window: "7d",
-          observed_at: "2026-07-19T00:00:00.000Z",
-          total_events: 42,
-          kind_count: 3,
-          category_count: 2,
-          recent_event_count: 2,
-          limit: 10,
-          categories: [
-            {
-              category: "stake",
-              event_count: 30,
-              // Non-null on the component; absent while this was opaque JSON.
-              kind_count: 1,
-              amount_tao: 0,
-              alpha_amount: 0,
-            },
-          ],
-          event_kinds: [
+    // #10190: the tier is retired; loadSubnetEventSummaryColdTier answers. It
+    // issues FOUR reads -- the per-kind rollup, a distinct-hotkey and a
+    // distinct-coldkey count per kind, and the recent-event page -- so the double
+    // routes on the SQL. total_events, kind_count and the category rollup are all
+    // DERIVED from the per-kind rows.
+    const lake = lakehouse((sql) =>
+      sql.includes("GROUP BY event_kind") && sql.includes("count(*)")
+        ? [
             {
               event_kind: "StakeAdded",
               event_count: 30,
-              category: "stake",
-              hotkey_count: 1,
-              coldkey_count: 1,
+              first_block: 1,
+              last_block: 91,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
               amount_tao: 0,
               alpha_amount: 0,
             },
-          ],
-          recent_events: [{ event_kind: "StakeAdded", block_number: 91 }],
-        }),
-      ),
-    };
+            {
+              event_kind: "WeightsSet",
+              event_count: 8,
+              first_block: 1,
+              last_block: 90,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-18T00:00:00.000Z"),
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+            {
+              event_kind: "Transfer",
+              event_count: 4,
+              first_block: 1,
+              last_block: 89,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-17T00:00:00.000Z"),
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+          ]
+        : sql.includes("hotkey") && sql.includes("count(*)")
+          ? [{ event_kind: "StakeAdded", c: 1 }]
+          : [
+              {
+                block_number: 91,
+                event_index: 0,
+                event_kind: "StakeAdded",
+                hotkey: "5F",
+                coldkey: "5G",
+                netuid: 7,
+                uid: 1,
+                amount_tao: 0,
+                alpha_amount: 0,
+                observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
+              },
+            ],
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories { category event_count kind_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } event_kinds { event_kind category event_count hotkey_count coldkey_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } recent_events { block_number event_kind } } }',
       env as unknown as Env,
@@ -12038,10 +12057,13 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const s = body.data.subnet_event_summary;
+    // DERIVED: 30 + 8 + 4 across the three kinds. The retired tier carried 42,
+    // which happens to match -- but nothing summed it there.
     assert.equal(s.total_events, 42);
     assert.equal(s.kind_count, 3);
     assert.equal(s.categories[0].category, "stake");
     assert.equal(s.recent_events[0].block_number, 91);
+    lake.restore();
   });
 
   test("clamps the recent-event limit into 1..50 and forwards it — the retired tier is not consulted (#10190)", async () => {
