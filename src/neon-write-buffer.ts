@@ -276,11 +276,38 @@ export function neonWriteBufferLanes(
   );
 }
 
+/**
+ * Lanes that must NEVER be buffered, whatever the flag says.
+ *
+ * `blocks-head` is the block explorer's live read path, not merely a write.
+ * src/blocks-cold-tier.ts routes `block_number > seam` to
+ * `blocks_head b LEFT JOIN chain_detail_blocks c`, which is exactly the window
+ * "between a block being seen and being decoded" -- so deferring that write
+ * defers the explorer's head by the whole flush interval. A block explorer
+ * showing a ten-minute-old tip is broken in the way users notice first.
+ *
+ * A SET RATHER THAN A COMMENT, because the tempting move when the compute
+ * still will not suspend is to add the one remaining high-frequency lane to
+ * the flag and see what happens. This makes that a no-op instead of a
+ * regression discovered by a user.
+ *
+ * THE HONEST CONSEQUENCE: with `blocks-head` writing every ~12s the compute
+ * cannot reach the 300s suspend timeout, so buffering the other lanes buys a
+ * lower CU while ACTIVE (fewer statements per hour, so autoscaling sits nearer
+ * the 0.25 floor) rather than a sleeping compute. Suspension and a live
+ * explorer are mutually exclusive while the head is served from Neon; making
+ * them compatible means moving the above-seam read off Neon entirely, which is
+ * a different change and a much larger one -- the LEFT JOIN above cannot span
+ * two stores without returning a wrong answer with a valid shape.
+ */
+export const NEVER_BUFFER_LANES: ReadonlySet<string> = new Set(["blocks-head"]);
+
 /** Whether one lane's writes go through the buffer. */
 export function neonWriteBufferEnabled(
   env: Record<string, unknown> | null | undefined,
   lane: string,
 ): boolean {
+  if (NEVER_BUFFER_LANES.has(lane)) return false;
   return neonWriteBufferLanes(env).has(lane);
 }
 

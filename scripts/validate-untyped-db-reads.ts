@@ -53,7 +53,7 @@ import { repoRoot } from "./lib.ts";
  */
 // Annotated `number` rather than left as the literal so the "none left"
 // message below stays reachable code as the ceiling falls to zero.
-export const MAX_UNTYPED_READS: number = 105;
+export const MAX_UNTYPED_READS: number = 104;
 
 /** Where a read can live. `scripts/` is excluded: it does not serve traffic. */
 const SOURCE_DIRS = ["src", "workers"];

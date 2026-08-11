@@ -21,6 +21,7 @@ import {
   groupChunkKeys,
   joinPayload,
   MAX_BUFFERED_STATEMENTS,
+  NEVER_BUFFER_LANES,
   neonWriteBufferEnabled,
   neonWriteBufferLanes,
   neonWriteRunner,
@@ -237,10 +238,10 @@ describe("neonWriteBufferLanes", () => {
   });
 
   test("enables exactly the lanes named", () => {
-    const env = { NEON_WRITE_BUFFER_LANES: "blocks-head" };
-    assert.equal(neonWriteBufferEnabled(env, "blocks-head"), true);
-    assert.equal(neonWriteBufferEnabled(env, "chain-detail"), false);
-    assert.equal(neonWriteBufferEnabled({}, "blocks-head"), false);
+    const env = { NEON_WRITE_BUFFER_LANES: "chain-detail" };
+    assert.equal(neonWriteBufferEnabled(env, "chain-detail"), true);
+    assert.equal(neonWriteBufferEnabled(env, "neurons"), false);
+    assert.equal(neonWriteBufferEnabled({}, "chain-detail"), false);
   });
 });
 
@@ -267,9 +268,9 @@ describe("neonWriteRunner", () => {
   test("a flagged lane with the binding present returns the BUFFERED runner", async () => {
     const n = namespace();
     const sql = neonWriteRunner(
-      { NEON_WRITE_BUFFER: n.ns, NEON_WRITE_BUFFER_LANES: "blocks-head" },
+      { NEON_WRITE_BUFFER: n.ns, NEON_WRITE_BUFFER_LANES: "chain-detail" },
       CTX,
-      "blocks-head",
+      "chain-detail",
       HD,
     );
     await sql?.unsafe("INSERT INTO t VALUES ($1)", [1]);
@@ -281,7 +282,7 @@ describe("neonWriteRunner", () => {
     const sql = neonWriteRunner(
       { NEON_WRITE_BUFFER: n.ns },
       CTX,
-      "blocks-head",
+      "chain-detail",
       HD,
     );
     assert.ok(sql, "a direct runner is still a runner");
@@ -292,9 +293,9 @@ describe("neonWriteRunner", () => {
     // A half-applied config. Refusing here would drop capture data over a
     // missing binding, which is the wrong direction to fail.
     const sql = neonWriteRunner(
-      { NEON_WRITE_BUFFER_LANES: "blocks-head" },
+      { NEON_WRITE_BUFFER_LANES: "chain-detail" },
       CTX,
-      "blocks-head",
+      "chain-detail",
       HD,
     );
     assert.ok(sql);
@@ -387,5 +388,54 @@ describe("the buffer refuses what it cannot honour", () => {
     const sql = createBufferedPgSql(n.ns, "l");
     await sql.unsafe("INSERT INTO t (returning_at) VALUES ($1)", [1]);
     assert.equal(n.sent.length, 1);
+  });
+});
+
+describe("blocks-head can never be buffered", () => {
+  test("naming it in the flag is a NO-OP, not an opt-in", async () => {
+    // It is the block explorer's live read path, not merely a write:
+    // src/blocks-cold-tier.ts routes `block_number > seam` at it, which is the
+    // window between a block being seen and being decoded. Deferring that
+    // write defers the visible chain tip by the whole flush interval.
+    assert.equal(
+      neonWriteBufferEnabled(
+        { NEON_WRITE_BUFFER_LANES: "blocks-head,chain-detail" },
+        "blocks-head",
+      ),
+      false,
+    );
+    // And it does not poison the lanes named beside it.
+    assert.equal(
+      neonWriteBufferEnabled(
+        { NEON_WRITE_BUFFER_LANES: "blocks-head,chain-detail" },
+        "chain-detail",
+      ),
+      true,
+    );
+  });
+
+  test("the runner hands it a DIRECT connection even when flagged", async () => {
+    const sent: unknown[] = [];
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({
+        async fetch(request: Request) {
+          sent.push(await request.json());
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: ns, NEON_WRITE_BUFFER_LANES: "blocks-head" },
+      { waitUntil: () => undefined },
+      "blocks-head",
+      { connectionString: "postgresql://x" },
+    );
+    assert.ok(sql, "must still get a runner");
+    assert.deepEqual(sent, [], "nothing may be enqueued");
+  });
+
+  test("the never-buffer set names the lane explicitly", () => {
+    assert.ok(NEVER_BUFFER_LANES.has("blocks-head"));
   });
 });
