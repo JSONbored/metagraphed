@@ -288,6 +288,51 @@ export function laneSilenceThresholdMs(cadenceMs: number): number {
   );
 }
 
+/**
+ * Lanes that report a VALUE rather than a heartbeat, so their silence carries
+ * no information (#10634).
+ *
+ * The silence check infers cadence from a lane's own history. For a lane that
+ * writes on a timer that is exactly right. For a lane that writes once per
+ * process lifetime it is not a cadence at all — it is the interval between
+ * DEPLOYS — and once that number exists the lane alarms for being quiet, which
+ * for these lanes is the healthy state.
+ *
+ * Measured: `poller-build` alarmed continuously for two days ("silent: 2.0
+ * days") while the poller was 31 seconds behind head and writing normally. Five
+ * deploys inside the 7-day cadence window were enough to calibrate a "cadence",
+ * and the first quiet stretch longer than 3× it opened an alarm.
+ *
+ * ── WHAT STILL COVERS THESE LANES, so this map is not a blind spot ──────────
+ *
+ * An exemption that removes the only check on something is worse than the false
+ * alarm it silences, so each entry below has to be able to answer "then what
+ * would catch it".
+ *
+ * `poller-build`: the poller reports EVERY periodic job through its own lane
+ * (`log_job_outcome` in the indexer's poller — "ok" throttled, "stale" on a
+ * failed tick), so a dead or wedged poller trips those lanes on their real
+ * cadences. `/api/v1/chain/indexer-lag` shows the same thing independently as
+ * head age. `poller-build` uniquely reports WHICH BUILD is running, so that a
+ * container which rebooted onto a stale image is visible — a value that changes
+ * only on reboot and has nothing to say on a timer.
+ *
+ * ── SCOPE: silence only ────────────────────────────────────────────────────
+ *
+ * These lanes are still fully subject to the STALE check. If the poller reports
+ * `poller-build` as stale, that is the lane saying something is wrong, and it
+ * alarms exactly as before. Nothing here suppresses a verdict; it only stops
+ * the ABSENCE of a verdict being read as one.
+ *
+ * Keep this map small, and prefer fixing a lane's cadence over adding to it.
+ */
+export const LANE_SILENCE_EXEMPT: Record<string, string> = {
+  "poller-build":
+    "Written once at container startup to announce the running build. " +
+    "Silence means the container has not rebooted, which is healthy. Poller " +
+    "liveness is covered by every periodic job lane and by indexer-lag.",
+};
+
 export interface LaneAlarmPlanInput {
   /** Newest verdict per lane, from loadLatestLaneHealth. */
   latest: Record<string, LaneHealthRecord>;
@@ -345,6 +390,11 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
     // watchdog said so itself; that it then stopped saying so is the same
     // outage, and two issues for one fault is the noise this is trying to end.
     if (record.verdict === "stale") continue;
+    // A lane whose silence carries no information (#10634). Checked here, in
+    // the SILENT loop only, so the stale loop above still alarms on a verdict
+    // these lanes actually report. See LANE_SILENCE_EXEMPT for what covers
+    // each one instead.
+    if (record.lane in LANE_SILENCE_EXEMPT) continue;
     const cadenceMs = cadence[record.lane] ?? null;
     if (cadenceMs === null) continue;
     const quietFor = nowMs - record.checked_at;
