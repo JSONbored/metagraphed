@@ -25,11 +25,9 @@ import {
   idFilterSchema,
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
-  numericCursorSchema,
   offsetSchema,
   orderSchema,
   projectableRows,
@@ -37,6 +35,7 @@ import {
   querySchema,
   sortSchema,
   McpUnsortedPageFields,
+  McpSortableListPage,
 } from "./shared.ts";
 import {
   SubnetCandidatesArtifactSchema,
@@ -108,10 +107,7 @@ export const ListSubnetCandidatesInputSchema = z
       .describe("How confident the machine assessment is.")
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
     sort: sortSchema(API_QUERY_COLLECTIONS.candidates.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSubnetCandidatesInput = z.infer<
@@ -199,10 +195,7 @@ export const ListSubnetEvidenceInputSchema = z
     netuid: netuidSchema(),
     q: querySchema().optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSubnetEvidenceInput = z.infer<

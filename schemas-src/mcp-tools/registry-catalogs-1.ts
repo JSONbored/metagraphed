@@ -28,6 +28,7 @@ import {
   providerSlugSchema,
   sortSchema,
   McpListPageFields,
+  McpSortableListPage,
 } from "./shared.ts";
 import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
 import { SurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
@@ -60,10 +61,7 @@ export const ListProvidersInputSchema = z
       )
       .meta({ examples: [PROVIDER_AUTHORITIES[0]] }),
     sort: sortSchema(API_QUERY_COLLECTIONS.providers.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
@@ -125,10 +123,7 @@ export const ListSurfacesInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;

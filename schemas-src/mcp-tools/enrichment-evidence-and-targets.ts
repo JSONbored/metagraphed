@@ -15,14 +15,11 @@ import {
   reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
-  fieldsSchema,
   kindSchema,
-  limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import {
   REVIEW_ENRICHMENT_LANE_VALUES,
@@ -77,10 +74,7 @@ export const ListEnrichmentEvidenceInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["enrichment-evidence"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEnrichmentEvidenceInput = z.infer<
@@ -115,10 +109,7 @@ export const ListReviewGapsInputSchema = z
       .meta({ examples: [SURFACE_KINDS[0]] }),
     review_state: reviewStateSchema().optional(),
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListReviewGapsInput = z.infer<typeof ListReviewGapsInputSchema>;
@@ -212,10 +203,7 @@ export const ListReviewEnrichmentTargetsInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["enrichment-targets"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListReviewEnrichmentTargetsInput = z.infer<

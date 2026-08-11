@@ -18,20 +18,16 @@
 // now publishes.
 import { z } from "zod";
 import { ENDPOINT_LIST_FILTERS } from "./endpoints-catalog.ts";
+import { POOL_LIST_FILTERS } from "./endpoint-pools-and-provider.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
-  idFilterSchema,
   McpListArtifactStamp,
   McpListPageFields,
-  RPC_POOL_KIND_VALUES,
-  fieldsSchema,
-  kindSchema,
   limitSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import { EvidenceLedgerArtifactSchema } from "../routes/candidates-evidence.ts";
 import { SourceSnapshotsArtifactSchema } from "../routes/evidence-search.ts";
@@ -54,10 +50,7 @@ export const ListEvidenceInputSchema = z
   .object({
     q: querySchema().optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEvidenceInput = z.infer<typeof ListEvidenceInputSchema>;
@@ -103,45 +96,9 @@ export type ListRpcEndpointsOutput = z.infer<
 
 export const ListRpcPoolsInputSchema = z
   .object({
-    id: idFilterSchema().optional(),
-    // POOL kinds, not endpoint LAYERS. This read ENDPOINT_LAYER_VALUES
-    // (`bittensor-base`, `subnet-app`, …) -- a different vocabulary entirely,
-    // so all four advertised values were rejected by the route and none of the
-    // three it accepts was advertised (#10118).
-    kind: kindSchema(RPC_POOL_KIND_VALUES).optional(),
-    min_eligible_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
-      )
-      .meta({ examples: [1] }),
-    max_eligible_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
-      )
-      .meta({ examples: [10] }),
-    min_endpoint_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on endpoint count; rows below it are excluded.",
-      )
-      .meta({ examples: [1] }),
-    max_endpoint_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on endpoint count; rows above it are excluded.",
-      )
-      .meta({ examples: [10] }),
+    ...POOL_LIST_FILTERS,
     sort: sortSchema(API_QUERY_COLLECTIONS["rpc-pools"].sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListRpcPoolsInput = z.infer<typeof ListRpcPoolsInputSchema>;
@@ -164,10 +121,7 @@ export const ListSourceSnapshotsInputSchema = z
   .object({
     q: querySchema().optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.sources.sort_fields).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSourceSnapshotsInput = z.infer<
@@ -227,10 +181,7 @@ export const ListProfileCompletenessInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["profile-completeness"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListProfileCompletenessInput = z.infer<

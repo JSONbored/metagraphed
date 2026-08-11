@@ -12,7 +12,13 @@ import { z } from "zod";
 import { distributionStatsSchema } from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
-import { limitSchema, offsetSchema } from "../query-params.ts";
+import {
+  fieldsSchema,
+  limitSchema,
+  numericCursorSchema,
+  offsetSchema,
+  orderSchema,
+} from "../query-params.ts";
 import { MAX_LIMIT } from "../../workers/request-params.ts";
 import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 
@@ -381,4 +387,24 @@ export function projectableRows<Row extends z.ZodObject<z.ZodRawShape>>(
 export const McpOffsetPageInput = {
   limit: limitSchema(MAX_LIMIT, MCP_LIST_LIMIT_DEFAULT).optional(),
   cursor: offsetSchema().optional(),
+};
+
+/**
+ * The projection + keyset page every SORTABLE list tool takes -- ONE
+ * declaration (#10790).
+ *
+ * `order`, `fields`, `limit` and `cursor` are identical on every one of them;
+ * only `sort` differs, because its allowed values are the collection's own
+ * sort fields. So `sort` stays declared per site, beside the collection it
+ * belongs to, and the four that never vary come from here.
+ *
+ * The `limit` ceiling is the tools' 100, not the route's 1000: MCP caps pages
+ * for the context window, deliberately (#9981). That is a declaration, not
+ * drift, and `validate:mcp-input-parity` records it as one.
+ */
+export const McpSortableListPage = {
+  order: orderSchema().optional(),
+  fields: fieldsSchema().optional(),
+  limit: limitSchema(100, 20).optional(),
+  cursor: numericCursorSchema().optional(),
 };

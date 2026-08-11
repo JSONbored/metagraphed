@@ -26,6 +26,7 @@ import {
   projectableRows,
   providerSlugSchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import { EndpointPoolsArtifactSchema } from "../routes/endpoints-pools.ts";
 import { EndpointIncidentsArtifactSchema } from "../routes/endpoints-pools.ts";
@@ -38,48 +39,59 @@ import {
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
 import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "../routes/endpoints-pools.ts";
 
+/**
+ * The pool list-query FILTERS, declared once for both callers (#10790).
+ *
+ * `list_endpoint_pools` and `list_rpc_pools` share every filter -- and shared
+ * the same BUG before #10118: both advertised endpoint LAYERS where the route
+ * takes pool KINDS, so all four published values were rejected and none of the
+ * three that work was advertised. Two copies, one wrong vocabulary, fixed
+ * twice. What they do not share is their sort field list, which is per
+ * collection and stays declared per site.
+ */
+export const POOL_LIST_FILTERS = {
+  id: idFilterSchema().optional(),
+  // POOL kinds, not endpoint LAYERS -- the same confusion list_rpc_pools
+  // carried (#10118). Verified against production: all four layer values
+  // are rejected here and none of the three that work was advertised.
+  kind: kindSchema(RPC_POOL_KIND_VALUES).optional(),
+  min_eligible_count: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
+    )
+    .meta({ examples: [1] }),
+  max_eligible_count: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
+    )
+    .meta({ examples: [10] }),
+  min_endpoint_count: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive lower bound on endpoint count; rows below it are excluded.",
+    )
+    .meta({ examples: [1] }),
+  max_endpoint_count: z
+    .number()
+    .optional()
+    .describe(
+      "Inclusive upper bound on endpoint count; rows above it are excluded.",
+    )
+    .meta({ examples: [10] }),
+};
+
 export const ListEndpointPoolsInputSchema = z
   .object({
-    id: idFilterSchema().optional(),
-    // POOL kinds, not endpoint LAYERS -- the same confusion list_rpc_pools
-    // carried (#10118). Verified against production: all four layer values
-    // are rejected here and none of the three that work was advertised.
-    kind: kindSchema(RPC_POOL_KIND_VALUES).optional(),
-    min_eligible_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
-      )
-      .meta({ examples: [1] }),
-    max_eligible_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
-      )
-      .meta({ examples: [10] }),
-    min_endpoint_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive lower bound on endpoint count; rows below it are excluded.",
-      )
-      .meta({ examples: [1] }),
-    max_endpoint_count: z
-      .number()
-      .optional()
-      .describe(
-        "Inclusive upper bound on endpoint count; rows above it are excluded.",
-      )
-      .meta({ examples: [10] }),
+    ...POOL_LIST_FILTERS,
     sort: sortSchema(
       API_QUERY_COLLECTIONS["endpoint-pools"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEndpointPoolsInput = z.infer<
@@ -123,10 +135,7 @@ export const ListEndpointIncidentsInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["endpoint-incidents"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListEndpointIncidentsInput = z.infer<

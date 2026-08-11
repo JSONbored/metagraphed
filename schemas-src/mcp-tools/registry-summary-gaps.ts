@@ -12,15 +12,13 @@ import {
   reviewStateSchema,
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  fieldsSchema,
   kindSchema,
   limitSchema,
   netuidSchema,
-  numericCursorSchema,
-  orderSchema,
   projectableRows,
   querySchema,
   sortSchema,
+  McpSortableListPage,
 } from "./shared.ts";
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
@@ -223,10 +221,7 @@ export const ListSubnetGapsInputSchema = z
     sort: sortSchema(
       API_QUERY_COLLECTIONS["review-gap-priorities"].sort_fields,
     ).optional(),
-    order: orderSchema().optional(),
-    fields: fieldsSchema().optional(),
-    limit: limitSchema(100, 20).optional(),
-    cursor: numericCursorSchema().optional(),
+    ...McpSortableListPage,
   })
   .strict();
 export type ListSubnetGapsInput = z.infer<typeof ListSubnetGapsInputSchema>;
