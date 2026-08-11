@@ -24,9 +24,8 @@ const RouteQuery_extrinsics = ROUTE_QUERY_SCHEMAS["/api/v1/extrinsics"];
 
 export const EXTRINSICS_LIMIT_MAX = 100;
 
-import { AccountEventItemSchema } from "./shared.ts";
 import {
-  ExtrinsicSchema,
+  ExtrinsicDetailArtifactSchema,
   ExtrinsicsFeedArtifactSchema,
 } from "../routes/extrinsics.ts";
 
@@ -114,15 +113,10 @@ export const GetExtrinsicInputSchema = z
   .strict();
 export type GetExtrinsicInput = z.infer<typeof GetExtrinsicInputSchema>;
 
-export const GetExtrinsicOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ref: z.unknown(),
-    // Typed from the route's own ExtrinsicSchema (#9797). Not partial --
-    // get_extrinsic advertises no `fields`. Verified against production
-    // 2026-08-07 against both a hash ref and a block-number ref.
-    extrinsic: ExtrinsicSchema.nullable().optional(),
-    events: z.array(AccountEventItemSchema).optional(),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy had `ref: z.unknown()` where the
+// route says `z.string().nullable()`, and typed `events` from the loose MCP
+// item shape rather than the route's `AccountEventSchema` -- which omits
+// `price_at_tx`, so an agent reading this tool's contract could not learn the
+// field existed.
+export const GetExtrinsicOutputSchema = ExtrinsicDetailArtifactSchema;
 export type GetExtrinsicOutput = z.infer<typeof GetExtrinsicOutputSchema>;

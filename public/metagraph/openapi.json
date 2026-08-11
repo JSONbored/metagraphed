@@ -16874,6 +16874,7 @@
           "labels": {
             "items": {
               "additionalProperties": false,
+              "description": "A community-contributed entity label for an address (exchange/foundation/operator/other).",
               "properties": {
                 "category": {
                   "anyOf": [
@@ -38117,26 +38118,7 @@
             "type": "number"
           },
           "social": {
-            "additionalProperties": false,
-            "properties": {
-              "reddit": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "telegram": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "x": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              },
-              "youtube": {
-                "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
-                "type": "string"
-              }
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/SocialLinks"
           },
           "subnet_count": {
             "maximum": 9007199254740991,

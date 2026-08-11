@@ -9292,12 +9292,7 @@ export interface components {
             public_notes?: string;
             /** @constant */
             schema_version: 1;
-            social?: {
-                reddit?: string;
-                telegram?: string;
-                x?: string;
-                youtube?: string;
-            };
+            social?: components["schemas"]["SocialLinks"];
             subnet_count?: number;
             surface_count?: number;
             team_url?: string;

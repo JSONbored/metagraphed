@@ -1,6 +1,7 @@
 // get_emission_pipeline_history (#9625): one subnet's pipeline decomposition
 // over time, mirroring GET /api/v1/subnets/{netuid}/emission-pipeline/history.
 import { z } from "zod";
+import { PipelineHistoryArtifactSchema } from "../routes/emission-pipeline-history.ts";
 import { netuidSchema } from "./shared.ts";
 import {
   DEFAULT_PIPELINE_HISTORY_WINDOW,
@@ -27,45 +28,13 @@ export type GetPipelineHistoryInput = z.infer<
   typeof GetPipelineHistoryInputSchema
 >;
 
-export const GetPipelineHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable(),
-    point_count: z.int().nullable(),
-    distinct_observations: z.int().nullable(),
-    oldest_day: z.string().nullable(),
-    newest_day: z.string().nullable(),
-    first_captured_day: z.string(),
-    points: z.array(
-      z
-        .object({
-          day: z.string(),
-          pipeline_block: z.int(),
-          pipeline_block_hash: z.string().nullable(),
-          repeats_previous_observation: z.boolean(),
-          captured_at: z.string().nullable(),
-          emission_share: z.number().nullable(),
-          alpha_price_tao: z.number().nullable(),
-          tao_in_pool_tao: z.number().nullable(),
-          tao_in_emission_tao: z.number().nullable(),
-          excess_tao: z.number().nullable(),
-          alpha_in_emission: z.number().nullable(),
-          alpha_out_emission: z.number().nullable(),
-          miner_burned_fraction: z.number().nullable(),
-          emission_enabled: z.boolean().nullable(),
-          first_emission_block: z.int().nullable(),
-        })
-        .strict(),
-    ),
-    // Present ONLY on a decline. An empty series is a MEASUREMENT -- a subnet
-    // registered after the capture began returns one legitimately.
-    degraded: z
-      .object({ reason: z.enum(["unavailable"]) })
-      .strict()
-      .optional(),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA, not a restatement of it (#10790). The copy this
+// replaces had drifted in three places -- `z.string()` where the route says
+// `z.iso.datetime()`, `z.int()` twice where it says `z.int().min(0)` -- and
+// re-typed the whole 15-field point shape inline beside the route's
+// `PipelineHistoryPointSchema`. No delta survives, because this tool serves
+// the route's payload unchanged.
+export const GetPipelineHistoryOutputSchema = PipelineHistoryArtifactSchema;
 export type GetPipelineHistoryOutput = z.infer<
   typeof GetPipelineHistoryOutputSchema
 >;
