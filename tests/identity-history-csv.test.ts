@@ -87,41 +87,13 @@ describe("handleSubnetIdentityHistory CSV export", () => {
     assert.equal(lines.length, 1);
   });
 
-  test("exports the paginated timeline via the Postgres tier", async () => {
-    const env = postgresEnv("METAGRAPH_SUBNET_IDENTITY_SOURCE", {
-      schema_version: 1,
-      netuid: NETUID,
-      entry_count: 1,
-      limit: 50,
-      offset: 0,
-      next_cursor: null,
-      entries: [
-        {
-          block_number: 100,
-          observed_at: "2026-06-21T00:00:00.000Z",
-          subnet_name: "MIAO",
-          symbol: "α",
-          description: "old",
-          github_repo: null,
-          subnet_url: null,
-          discord: null,
-          logo_url: null,
-          identity_hash: "abc",
-        },
-      ],
-    });
-    const res = await handleSubnetIdentityHistory(
-      req(`/api/v1/subnets/${NETUID}/identity-history`),
-      env as unknown as Env,
-      NETUID,
-      url(`/api/v1/subnets/${NETUID}/identity-history?limit=50&format=csv`),
-    );
-    assert.equal(res.status, 200);
-    const lines = (await res.text()).trim().split("\r\n");
-    assert.equal(lines[0], SUBNET_CSV_HEADER);
-    assert.equal(lines[1], "100,2026-06-21T00:00:00.000Z,MIAO,α,old,,,,,abc");
-    assert.equal(lines.length, 2);
-  });
+  // REMOVED (#10190): "exports the paginated timeline via the Postgres tier". The
+  // rows it exported came from a DATA_API stub behind the retired
+  // METAGRAPH_SUBNET_IDENTITY_SOURCE, so this proved CSV formatting over data the
+  // route cannot obtain. Unlike the top-holders CSV export -- which had a live
+  // flow projection to move to -- there is no live source for the identity
+  // timeline until #10710. Restore it there; the CSV formatter itself is
+  // exercised by every other export test in this repo.
 
   test("keeps the JSON envelope when no CSV is requested", async () => {
     const env = postgresEnv("METAGRAPH_SUBNET_IDENTITY_SOURCE", {

@@ -2764,21 +2764,18 @@ const rootValue = {
     { netuid, ...page }: QuerySubnet_TrajectoryArgs & Row,
     context: GqlContext,
   ) {
-    // Same tryPostgresTier(METAGRAPH_SUBNET_SNAPSHOTS_SOURCE) -> loadSubnetTrajectory
-    // fallback contract handleTrajectory uses; a subnet with no daily snapshots is
-    // a schema-stable empty trajectory, never a GraphQL error.
-    const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, `/api/v1/subnets/${netuid}/trajectory`),
-        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) as Row | null) ??
-      (await loadSubnetTrajectory(netuid, {
-        db: observationsReadDb(
-          context.env as unknown as Record<string, unknown>,
-          context.ctx,
-        ),
-      }));
+    // Same contract handleTrajectory uses: a subnet with no daily snapshots is a
+    // schema-stable empty trajectory, never a GraphQL error.
+    //
+    // NO TIER READ (#10190). METAGRAPH_SUBNET_SNAPSHOTS_SOURCE reads "retired" in
+    // every deployed config and is absent from DATA_API_FORWARD_FLAGS, so that
+    // arm resolved to null on every request.
+    const data = await loadSubnetTrajectory(netuid, {
+      db: observationsReadDb(
+        context.env as unknown as Record<string, unknown>,
+        context.ctx,
+      ),
+    });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -3024,25 +3021,19 @@ const rootValue = {
     // retired (2026-07-16), so a Postgres miss/outage degrades straight to
     // the schema-stable empty timeline (entry_count 0), never a GraphQL
     // error and never a live D1 read.
-    const tierResult =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/subnets/${netuid}/identity-history`,
-          params,
-        ),
-        "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) as Row | null) ?? null;
+    // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+    // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+    // null on every request. The composer's lakehouse leg
+    // is what answers, and it is now asked with no tier result rather than one
+    // that never arrives.
     // Through the composer (src/identity-history-answer.ts) -- the lakehouse leg
     // it owns is why this resolver no longer answers entry_count 0 while REST
     // serves the timeline.
-    const data = await answerSubnetIdentityHistory(
-      context.env,
-      netuid,
-      tierResult,
-      { limit: safeLimit, offset: safeOffset, cursor: null },
-    );
+    const data = await answerSubnetIdentityHistory(context.env, netuid, null, {
+      limit: safeLimit,
+      offset: safeOffset,
+      cursor: null,
+    });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -3074,13 +3065,10 @@ const rootValue = {
     // D1 retirement: subnet_identity_history's D1 write path is retired
     // (2026-07-16), so a Postgres miss/outage degrades to a schema-stable
     // empty feed (count 0), never a GraphQL error.
-    const tierResult =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, "/api/v1/chain/identity-history", params),
-        "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) as Row | null) ?? null;
-    const data = await answerChainIdentityHistory(context.env, tierResult, {
+    // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+    // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+    // null on every request.
+    const data = await answerChainIdentityHistory(context.env, null, {
       limit: safeLimit,
     });
     return {
@@ -7871,22 +7859,19 @@ const rootValue = {
     params.set("window", label);
     // #4832 gap-closure: reuses METAGRAPH_SUBNET_SNAPSHOTS_SOURCE, same tier
     // and fallback contract REST's handleEconomicsTrends uses.
-    const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, "/api/v1/economics/trends", params),
-        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      )) as Row | null) ??
-      (
-        await loadEconomicsTrends({
-          windowLabel: label,
-          windowDays: days,
-          db: observationsReadDb(
-            context.env as unknown as Record<string, unknown>,
-            context.ctx,
-          ),
-        })
-      ).data;
+    // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
+    // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on every
+    // request.
+    const data = (
+      await loadEconomicsTrends({
+        windowLabel: label,
+        windowDays: days,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
+      })
+    ).data;
     // Normalized the same way blocks/validators/accounts are (schema-stable,
     // never a GraphQL error), so a malformed/partial Postgres-tier body still
     // satisfies the non-null EconomicsTrends! contract.

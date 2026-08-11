@@ -390,7 +390,6 @@ import {
   derivePreviouslyKnownAs,
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.ts";
-import { tryPostgresTier } from "./postgres-tier.ts";
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
   type ColdTierAnswer,
@@ -8027,54 +8026,28 @@ async function lookupSubnetNetuid(
   return Number.isInteger(netuid) ? netuid : null;
 }
 
-// loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids (src/subnet-identity-
-// history.mjs) are Postgres-fetch helpers embedded in 3 overlay call sites
-// below rather than standalone routes, so there is no single client request
-// for tryPostgresTier to forward unchanged -- these two wrappers synthesize
-// their own internal /api/v1/internal/subnet-identity-aliases request
-// instead, mirroring composeCompareData's health-dimension wiring (#4832
-// gap-closure). Reuses METAGRAPH_SUBNET_IDENTITY_SOURCE, already flipped to
-// postgres for /identity-history. D1 fully eliminated (2026-07-16): a tier
-// miss/outage now returns an empty alias list rather than falling back to
-// D1's frozen copy, same degrade every other route reusing this flag already
-// tolerates.
-async function loadPreviouslyKnownAsTiered(
-  env: Env,
+// THE ALIAS OVERLAY HAS NO SOURCE (#10190), and these two wrappers now say so.
+//
+// They synthesised an internal /api/v1/internal/subnet-identity-aliases request
+// and forwarded it under METAGRAPH_SUBNET_IDENTITY_SOURCE. That flag reads
+// "retired" in every deployed config and is absent from DATA_API_FORWARD_FLAGS,
+// so the request was built, the tier declined, and `?? []` supplied the answer --
+// every time. The URL construction goes with the read: building a request nobody
+// sends is the part that made this look like a live tier.
+//
+// The alias list is therefore empty, which is exactly what it has published since
+// the flag was retired. The derive helpers stay because they own the shape, and
+// because a real source (a direct read of subnet_identity_history's earlier
+// names) drops straight into them.
+function loadPreviouslyKnownAsTiered(
   netuid: number,
   currentName: string | null,
 ) {
-  const pgUrl = new URL(
-    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
-  );
-  pgUrl.searchParams.set("netuids", String(netuid));
-  const pgData = await tryPostgresTier(
-    env,
-    new Request(pgUrl),
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-  );
-  return derivePreviouslyKnownAs(
-    (pgData?.rows as Row[] | undefined) ?? [],
-    currentName,
-  );
+  return derivePreviouslyKnownAs([], currentName);
 }
 
-async function loadPreviouslyKnownAsForNetuidsTiered(env: Env, entries: Row[]) {
-  const netuids = entries
-    .map((entry) => entry?.netuid)
-    .filter((netuid) => Number.isInteger(netuid));
-  const pgUrl = new URL(
-    "https://data-api.internal/api/v1/internal/subnet-identity-aliases",
-  );
-  pgUrl.searchParams.set("netuids", netuids.join(","));
-  const pgData = await tryPostgresTier(
-    env,
-    new Request(pgUrl),
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-  );
-  return deriveNetuidGroupedAliases(
-    (pgData?.rows as Row[] | undefined) ?? [],
-    entries,
-  );
+function loadPreviouslyKnownAsForNetuidsTiered(entries: Row[]) {
+  return deriveNetuidGroupedAliases([], entries);
 }
 
 async function handleApiRequest(
@@ -8261,8 +8234,7 @@ async function handleApiRequest(
       baseData.subnet && typeof baseData.subnet === "object"
         ? baseData.subnet
         : baseData;
-    const aliasNames = await loadPreviouslyKnownAsTiered(
-      env,
+    const aliasNames = loadPreviouslyKnownAsTiered(
       Number(matched.params.netuid),
       aliasTarget.native_name ?? aliasTarget.name,
     );
@@ -8283,8 +8255,7 @@ async function handleApiRequest(
     baseData &&
     typeof baseData === "object"
   ) {
-    const aliasNames = await loadPreviouslyKnownAsTiered(
-      env,
+    const aliasNames = loadPreviouslyKnownAsTiered(
       Number(matched.params.netuid),
       baseData.name,
     );
@@ -8295,10 +8266,7 @@ async function handleApiRequest(
     matched.id === "agent-catalog" &&
     baseData?.subnets?.length
   ) {
-    const aliasMap = await loadPreviouslyKnownAsForNetuidsTiered(
-      env,
-      baseData.subnets,
-    );
+    const aliasMap = loadPreviouslyKnownAsForNetuidsTiered(baseData.subnets);
     baseData = {
       ...baseData,
       subnets: baseData.subnets.map((entry: Row) =>

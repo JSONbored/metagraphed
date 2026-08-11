@@ -334,22 +334,7 @@ function accountDayRow(overrides = {}) {
   };
 }
 
-function identityHistoryRow(overrides = {}) {
-  return {
-    id: 10,
-    block_number: 100,
-    observed_at: OBSERVED_AT,
-    subnet_name: "MIAO",
-    symbol: "α",
-    description: "old",
-    github_repo: null,
-    subnet_url: null,
-    discord: null,
-    logo_url: null,
-    identity_hash: "abc",
-    ...overrides,
-  };
-}
+// `identityHistoryRow` went with the tests that used it (#10190).
 
 function hyperparamsRow(overrides = {}) {
   return {
@@ -1397,34 +1382,11 @@ describe("handleSubnetIdentityHistory", () => {
     assert.deepEqual(body.data.entries, []);
   });
 
-  test("happy path returns identity timeline rows", async () => {
-    const env = {
-      METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            entry_count: 1,
-            limit: 20,
-            offset: null,
-            next_cursor: null,
-            entries: [{ subnet_name: "MIAO", identity_hash: "abc" }],
-          }),
-      },
-    };
-    const body = await json(
-      await handleSubnetIdentityHistory(
-        req(`/api/v1/subnets/${NETUID}/identity-history`),
-        env as unknown as Env,
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/identity-history?limit=20`),
-      ),
-    );
-    assert.equal(body.data.entry_count, 1);
-    assert.equal(body.data.entries[0].subnet_name, "MIAO");
-    assert.equal(body.data.limit, 20);
-  });
+  // REMOVED (#10190): "happy path returns identity timeline rows". The rows came
+  // from a DATA_API stub behind the retired METAGRAPH_SUBNET_IDENTITY_SOURCE, so
+  // the "happy path" it described is one production never takes -- nothing writes
+  // subnet_identity_history at all (#10710). The cold/empty shape this route really
+  // serves is asserted by its siblings; restore a populated timeline with #10710.
 });
 
 describe("handleSubnetHyperparams", () => {
@@ -4774,34 +4736,9 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // dedicated flag (METAGRAPH_SUBNET_IDENTITY_SOURCE). Written from the main
   // Worker's own hourly cron (writeSubnetSnapshot), not an external GitHub
   // Actions workflow -- but served the same way as every other tier here.
-  test("handleSubnetIdentityHistory: flag=postgres uses Postgres data, D1 never queried", async () => {
-    const { env, captures } = dbWith({
-      subnetIdentityHistory: [identityHistoryRow()],
-    });
-    env.METAGRAPH_SUBNET_IDENTITY_SOURCE = "postgres";
-    env.DATA_API = dataApi(
-      Response.json({
-        schema_version: 1,
-        netuid: NETUID,
-        entry_count: 1,
-        limit: null,
-        offset: null,
-        next_cursor: null,
-        entries: [{ identity_hash: "pg-hash" }],
-      }),
-    );
-    const path = `/api/v1/subnets/${NETUID}/identity-history`;
-    const body = await json(
-      await handleSubnetIdentityHistory(
-        req(path),
-        env as unknown as Env,
-        NETUID,
-        url(path),
-      ),
-    );
-    assert.equal(body.data.entries[0].identity_hash, "pg-hash");
-    assert.deepEqual(captures.sql, []);
-  });
+  // REMOVED (#10190): "handleSubnetIdentityHistory: flag=postgres uses Postgres
+  // data, D1 never queried". Both halves are moot -- METAGRAPH_SUBNET_IDENTITY_SOURCE
+  // forwards nowhere, and there is no D1 left to leave unqueried.
 
   test("handleSubnetIdentityHistory: flag=postgres falls back to schema-stable empty on failure (D1 retired)", async () => {
     const env: Row = {};

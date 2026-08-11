@@ -2992,40 +2992,13 @@ function mcpExtrinsicDetailRequest(ref: string) {
   return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
 
-// Synthetic GET /api/v1/subnets/{netuid}/identity-history{...} request,
-// forwarded UNCHANGED to DATA_API via tryPostgresTier -- mirrors REST's
-// handleSubnetIdentityHistory, which parses the identical limit/offset/cursor
-// query-string shape (workers/data-api.ts's subnetIdentityHistory route),
-// same METAGRAPH_SUBNET_IDENTITY_SOURCE flag, so get_subnet_identity_history
-// and GET /api/v1/subnets/{netuid}/identity-history never diverge on which
-// tier answered.
-function mcpSubnetIdentityHistoryRequest(
-  netuid: number,
-  { limit, offset, cursor }: Row,
-) {
-  const params = new URLSearchParams();
-  if (limit != null) params.set("limit", String(limit));
-  if (offset != null) params.set("offset", String(offset));
-  if (cursor) params.set("cursor", cursor);
-  const qs = params.toString();
-  return new Request(
-    `https://d/api/v1/subnets/${encodeURIComponent(netuid)}/identity-history${qs ? `?${qs}` : ""}`,
-  );
-}
-
-// Synthetic GET /api/v1/chain/identity-history{...} request, same contract as
-// mcpSubnetIdentityHistoryRequest above but for the network-wide feed --
-// mirrors REST's handleChainIdentityHistory (also gated on
-// METAGRAPH_SUBNET_IDENTITY_SOURCE, the one flag covering both the per-subnet
-// and network-wide subnet_identity_history reads).
-function mcpChainIdentityHistoryRequest({ limit }: Row) {
-  const params = new URLSearchParams();
-  if (limit != null) params.set("limit", String(limit));
-  const qs = params.toString();
-  return new Request(
-    `https://d/api/v1/chain/identity-history${qs ? `?${qs}` : ""}`,
-  );
-}
+// TWO REQUEST BUILDERS REMOVED HERE (#10190). They synthesised the
+// identity-history GETs forwarded to DATA_API under
+// METAGRAPH_SUBNET_IDENTITY_SOURCE -- a flag that reads "retired" in every
+// deployed config and is absent from DATA_API_FORWARD_FLAGS, so the requests they
+// built were constructed and then never sent. Both tools now go straight to the
+// composer (src/identity-history-answer.ts), which is what has been answering all
+// along.
 
 // Synthetic GET /api/v1/accounts/{ss58}/identity request, forwarded UNCHANGED
 // to DATA_API via tryPostgresTier -- mirrors REST's handleAccountIdentity,
@@ -3533,16 +3506,13 @@ async function loadSubnetIdentityHistoryTool(
   netuid: number,
   { limit, offset, cursor }: Row,
 ) {
-  const tierResult =
-    (await tryPostgresTier(
-      ctx.env,
-      mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }),
-      "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) ?? null;
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+  // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // null on every request.
   // Through the composer (src/identity-history-answer.ts): it owns the tier
   // order and the empty floor, so this tool cannot report entry_count 0 while
   // REST serves the frozen verified timeline for the same netuid.
-  return answerSubnetIdentityHistory(ctx.env, netuid, tierResult, {
+  return answerSubnetIdentityHistory(ctx.env, netuid, null, {
     limit: Number(limit),
     offset: offset == null ? null : Number(offset),
     cursor: cursor ?? null,
@@ -6007,16 +5977,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/trajectory`),
-          "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-        )) ??
-        (await loadSubnetTrajectory(netuid, {
-          db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
-        }))
-      );
+      // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
+      // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+      // every call.
+      return await loadSubnetTrajectory(netuid, {
+        db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
+      });
     },
   },
   {
@@ -6048,12 +6014,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         throw toolError("invalid_params", message);
       }
       const { label, days } = parsed!;
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest("/api/v1/economics/trends", { window: label }),
-        "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
-      );
-      if (postgres) return postgres;
+      // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
+      // absent from DATA_API_FORWARD_FLAGS, so the early return this replaces
+      // could never be taken.
       const { data } = await loadEconomicsTrends({
         windowLabel: label,
         windowDays: days,
@@ -6446,13 +6409,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // makes "never diverge" true: #9153 added it to entities.ts only, and with
       // the flag retired the tier above always declines, so this tool answered
       // count 0 while REST served the network-wide SubnetIdentitiesV3 feed.
-      const tierResult =
-        (await tryPostgresTier(
-          ctx.env,
-          mcpChainIdentityHistoryRequest({ limit: args?.limit }),
-          "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-        )) ?? null;
-      return answerChainIdentityHistory(ctx.env, tierResult, {
+      // NO TIER READ (#10190). METAGRAPH_SUBNET_IDENTITY_SOURCE reads "retired" in every deployed
+      // config and is absent from DATA_API_FORWARD_FLAGS, so this resolved to
+      // null on every request.
+      return answerChainIdentityHistory(ctx.env, null, {
         limit: args?.limit,
       });
     },

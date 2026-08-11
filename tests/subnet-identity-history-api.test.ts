@@ -12,34 +12,14 @@ function req(path: string) {
 // path is fully retired -- handleSubnetIdentityHistory now goes
 // tryPostgresTier -> buildSubnetIdentityHistory([], ...) on any miss/outage,
 // never a live D1 read.
-test("GET /subnets/{netuid}/identity-history returns the identity timeline (#1647)", async () => {
-  const env = {
-    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          netuid: 86,
-          entry_count: 1,
-          limit: null,
-          offset: null,
-          next_cursor: null,
-          entries: [{ subnet_name: "MIAO", identity_hash: "hash-1" }],
-        }),
-    },
-  };
-  const res = await handleRequest(
-    req("/api/v1/subnets/86/identity-history"),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.equal(body.ok, true);
-  assert.equal(body.data.netuid, 86);
-  assert.equal(body.data.entry_count, 1);
-  assert.equal(body.data.entries[0].subnet_name, "MIAO");
-});
+// REMOVED (#10190): "returns the identity timeline (#1647)". It served the
+// timeline by stubbing DATA_API behind METAGRAPH_SUBNET_IDENTITY_SOURCE
+// ="postgres" -- retired everywhere and absent from DATA_API_FORWARD_FLAGS, so
+// that arm declined on every real request and the MIAO row it asserted existed
+// only in this test. The route's real leg is the lakehouse cold tier through
+// src/identity-history-answer.ts; the schema-stable cold shape is pinned by the
+// test below, and a populated timeline becomes assertable again when
+// subnet_identity_history is restored as a Neon lane (#10706's sibling work).
 
 test("GET /subnets/{netuid}/identity-history rejects an unsupported query param", async () => {
   const res = await handleRequest(
@@ -63,25 +43,24 @@ test("GET /subnets/{netuid}/identity-history is schema-stable when cold (no Post
   assert.deepEqual(body.data.entries, []);
 });
 
-// D1 fully eliminated (2026-07-16): loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids
-// (the D1-querying loaders workers/api.ts's overlay wrappers used to fall back
-// to) are gone -- these overlays only ever populate previously_known_as when
-// the Postgres tier flag is on now (see the "flag=postgres" tests below);
-// without it, the overlay is simply absent (schema-stable), never sourced
-// from a live D1 read.
-function postgresAliasesEnv(rows: Row[]) {
-  return {
-    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-    DATA_API: { fetch: async () => Response.json({ rows }) },
-  };
-}
+// previously_known_as HAS NO SOURCE (#10706), and these tests now say so.
+//
+// They populated the overlay by stubbing DATA_API behind
+// METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres". That flag is retired everywhere
+// and absent from DATA_API_FORWARD_FLAGS, so the alias read declined on every
+// real request -- the field has been empty in production since the flag was
+// retired, on all three routes that publish it. Nothing writes
+// subnet_identity_history at all: D1 was its primary writer and the Postgres
+// mirror went through this same flag.
+//
+// So these assert the honest current behaviour. The SHAPING logic they used to
+// demonstrate is covered directly, with 17 assertions over
+// derivePreviouslyKnownAs / deriveNetuidGroupedAliases / overlayPreviouslyKnownAs
+// in tests/subnet-identity-history.test.ts. When the Neon lane lands, these are
+// the tests to restore to a populated overlay.
 
-test("GET /subnets/{netuid} overlays previously_known_as on the subnet detail", async () => {
-  const env = createLocalArtifactEnv({
-    ...postgresAliasesEnv([
-      { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
-    ]),
-  });
+test("GET /subnets/{netuid} publishes no previously_known_as overlay on the subnet detail (#10706)", async () => {
+  const env = createLocalArtifactEnv({});
   const res = await handleRequest(
     req("/api/v1/subnets/7"),
     env as unknown as Env,
@@ -89,14 +68,12 @@ test("GET /subnets/{netuid} overlays previously_known_as on the subnet detail", 
   );
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.deepEqual(body.data.subnet?.previously_known_as, ["Old Allways"]);
+  // No source, so no overlay (#10706).
+  assert.equal(body.data.subnet?.previously_known_as, undefined);
 });
 
-test("GET /subnets/{netuid} overlays previously_known_as on flat subnet detail", async () => {
+test("GET /subnets/{netuid} publishes no previously_known_as overlay on flat subnet detail (#10706)", async () => {
   const env = createLocalArtifactEnv({
-    ...postgresAliasesEnv([
-      { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
-    ]),
     METAGRAPH_ARCHIVE: {
       async get(key: string) {
         if (!String(key).includes("subnets/7.json")) return null;
@@ -130,16 +107,13 @@ test("GET /subnets/{netuid} overlays previously_known_as on flat subnet detail",
   );
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
+  // No source, so no overlay (#10706).
+  assert.equal(body.data.previously_known_as, undefined);
   assert.equal(body.data.subnet, undefined);
 });
 
-test("GET /agent-catalog overlays previously_known_as on index entries", async () => {
-  const env = createLocalArtifactEnv({
-    ...postgresAliasesEnv([
-      { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
-    ]),
-  });
+test("GET /agent-catalog publishes no previously_known_as overlay on index entries (#10706)", async () => {
+  const env = createLocalArtifactEnv({});
   const res = await handleRequest(
     req("/api/v1/agent-catalog"),
     env as unknown as Env,
@@ -151,15 +125,12 @@ test("GET /agent-catalog overlays previously_known_as on index entries", async (
     (entry) => entry.netuid === 7,
   );
   assert.ok(subnet);
-  assert.deepEqual(subnet.previously_known_as, ["Old Allways"]);
+  // No source, so no overlay (#10706).
+  assert.equal(subnet.previously_known_as, undefined);
 });
 
-test("GET /agent-catalog/{netuid} overlays previously_known_as on the detail entry", async () => {
-  const env = createLocalArtifactEnv({
-    ...postgresAliasesEnv([
-      { netuid: 7, subnet_name: "Old Allways", observed_at: 2 },
-    ]),
-  });
+test("GET /agent-catalog/{netuid} publishes no previously_known_as overlay on the detail entry (#10706)", async () => {
+  const env = createLocalArtifactEnv({});
   const res = await handleRequest(
     req("/api/v1/agent-catalog/7"),
     env as unknown as Env,
@@ -167,109 +138,17 @@ test("GET /agent-catalog/{netuid} overlays previously_known_as on the detail ent
   );
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
-});
-
-// #4832 gap-closure: loadPreviouslyKnownAs/loadPreviouslyKnownAsForNetuids are
-// D1-fetch helpers embedded in these overlay call sites (no standalone route),
-// so tryPostgresTier can't forward the caller's own request -- api.ts
-// synthesizes an internal request instead. These tests prove that wiring,
-// reusing METAGRAPH_SUBNET_IDENTITY_SOURCE (already flipped in production).
-// Only the alias query itself must be skipped when Postgres serves it -- the
-// same request also runs the unrelated live-health overlay (surface_status),
-// which stays D1-backed here since only METAGRAPH_SUBNET_IDENTITY_SOURCE is
-// flipped in these tests.
-function identityAliasesMustNotBeQueried() {
-  let called = false;
-  return {
-    get called() {
-      return called;
-    },
-    db: {
-      prepare(sql: string) {
-        if (/subnet_identity_history/.test(sql)) {
-          called = true;
-          throw new Error(
-            "D1 must not be queried when Postgres serves the request",
-          );
-        }
-        return {
-          bind: () => ({
-            async all() {
-              return { results: [] };
-            },
-          }),
-        };
-      },
-    },
-  };
-}
-
-test("GET /agent-catalog/{netuid}: flag=postgres serves the DATA_API response, D1 never queried", async () => {
-  const tracker = identityAliasesMustNotBeQueried();
-  const env = createLocalArtifactEnv({
-    METAGRAPH_HEALTH_DB: tracker.db,
-    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          rows: [{ netuid: 7, subnet_name: "Old Allways", observed_at: 2 }],
-        }),
-    },
-  });
-  const res = await handleRequest(
-    req("/api/v1/agent-catalog/7"),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  assert.deepEqual(body.data.previously_known_as, ["Old Allways"]);
-  assert.equal(tracker.called, false);
-});
-
-test("GET /agent-catalog/{netuid}: flag=postgres degrades to no overlay when DATA_API fails", async () => {
-  const env = createLocalArtifactEnv({
-    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () => {
-        throw new Error("boom");
-      },
-    },
-  });
-  const res = await handleRequest(
-    req("/api/v1/agent-catalog/7"),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
+  // No source, so no overlay (#10706).
   assert.equal(body.data.previously_known_as, undefined);
 });
 
-test("GET /agent-catalog: flag=postgres serves the bulk DATA_API response, D1 never queried", async () => {
-  const tracker = identityAliasesMustNotBeQueried();
-  const env = createLocalArtifactEnv({
-    METAGRAPH_HEALTH_DB: tracker.db,
-    METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          rows: [{ netuid: 7, subnet_name: "Old Allways", observed_at: 2 }],
-        }),
-    },
-  });
-  const res = await handleRequest(
-    req("/api/v1/agent-catalog"),
-    env as unknown as Env,
-    {},
-  );
-  assert.equal(res.status, 200);
-  const body = await res.json();
-  const subnet = (body.data.subnets as Row[]).find(
-    (entry) => entry.netuid === 7,
-  );
-  assert.ok(subnet);
-  assert.deepEqual(subnet.previously_known_as, ["Old Allways"]);
-  assert.equal(tracker.called, false);
-});
+// The D1 alias-query tracker went with the three tests that used it (#10190):
+// there is no D1 to assert was left unqueried.
+
+// THREE TESTS REMOVED HERE (#10190/#10706). All three drove the alias overlay
+// through METAGRAPH_SUBNET_IDENTITY_SOURCE="postgres" plus a DATA_API stub: two
+// asserting it "serves the DATA_API response, D1 never queried", one asserting it
+// degrades when that stub fails. The flag forwards nowhere, there is no D1 left to
+// leave unqueried, and the degrade case is now simply the only case -- asserted by
+// the four overlay tests above. Restore them against a real source when
+// subnet_identity_history becomes a Neon lane.
