@@ -212,6 +212,7 @@ import {
   recordUsageEvent,
   parseUserAgentClient,
 } from "./usage-telemetry.ts";
+import { maskRouteParams } from "./route-label.ts";
 import {
   newSpanId,
   newTraceId,
@@ -8532,7 +8533,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       if (!upstream.ok) {
         throw toolError(
-          upstream.status === 404 ? "not_found" : "alert_trigger_error",
+          // CLASSIFIED BY STATUS (#10810). Every non-404 used to collapse into
+          // `alert_trigger_error`, which classifyMcpErrorType buckets as
+          // `internal` -- "our bug". A 401/403 from a wrong or missing owner
+          // token is the CALLER'S, and it made this the only server-fault-classed
+          // MCP error in a 7-day window: a floor that could never reach zero, on
+          // the one signal that answers "is anything broken server-side".
+          //
+          // The codes are the vocabulary's existing ones, so they bucket without
+          // a new mapping: auth_required/forbidden -> permission,
+          // not_found -> missing_context, provider_error -> api_5xx. Only a
+          // genuinely unclassifiable status keeps the catch-all.
+          alertTriggerErrorCode(upstream.status),
           typeof (body as Row | null)?.error === "string"
             ? ((body as Row).error as string)
             : "The alert triggers tier returned an error.",
@@ -17364,6 +17376,57 @@ export function mcpRefusalReason(response: Response): string | null {
 }
 
 /**
+ * The path a refusal arrived on, bounded (#10810).
+ *
+ * `workers/api.ts` routes BOTH `/mcp` and `/mcp/*` here, so the tail is
+ * whatever the caller sent -- and this rides on an event that is never sampled.
+ * `maskRouteParams` alone is not enough: it recognises digits, hex hashes,
+ * UUIDs and SS58 by shape, which covers an id a client of ours would send and
+ * not `/mcp/sess-abc123` or a scanner walking `/mcp/aaa`, `/mcp/bbb`.
+ *
+ * So masking runs first -- keeping this label consistent with every other route
+ * label in the codebase, `:uuid` and all -- and anything it did not recognise
+ * under `/mcp/` collapses to `:seg`. The property can then only ever be `/mcp`
+ * or `/mcp/` plus a fixed vocabulary of placeholders, whatever a caller sends.
+ *
+ * The same bounding decision `$mcp_tool_name` already takes for an
+ * unregistered tool, for the same reason: an unknown value is worth one bucket,
+ * not one bucket per attacker.
+ */
+export function mcpRefusalPath(pathname: string): string {
+  const masked = maskRouteParams(pathname).split("/");
+  // 0 is the empty string before the leading slash and 1 is the mount point
+  // itself; both are ours. Everything after is the caller's.
+  const tail = masked.slice(2).filter((segment) => segment !== "");
+  if (tail.length === 0) return masked.slice(0, 2).join("/");
+  // ONE bucket at ANY depth for anything masking did not recognise. Mapping
+  // each segment independently would still leave the DEPTH caller-controlled --
+  // `/mcp/a/b/c` and `/mcp/a/b` are different labels -- so a scanner walking
+  // deeper paths shards the property anyway, just more slowly.
+  return tail.every((segment) => segment.startsWith(":"))
+    ? [...masked.slice(0, 2), ...tail].join("/")
+    : `${masked.slice(0, 2).join("/")}/:seg`;
+}
+
+/**
+ * The alert-triggers tier's HTTP status, as an MCP error code (#10810).
+ *
+ * Kept a function rather than inlined so the mapping is testable on its own:
+ * the statuses that matter here are produced by another Worker, and driving
+ * each one through a full tool call to assert its bucket would mean standing up
+ * four DATA_API doubles to check four constants.
+ */
+export function alertTriggerErrorCode(status: number): string {
+  if (status === 404) return "not_found";
+  if (status === 401) return "auth_required";
+  if (status === 403) return "forbidden";
+  // Somebody else's 5xx, from the caller's side -- the same reading
+  // provider_error already carries for an adapter's upstream.
+  if (status >= 500) return "provider_error";
+  return "alert_trigger_error";
+}
+
+/**
  * Record a refusal that never reached a handler, without ever touching the
  * response.
  *
@@ -17468,6 +17531,14 @@ export function scheduleMcpRefusalEvent(
           ),
           clientNameSource: "user_agent",
           sessionId: request.headers.get("mcp-session-id"),
+          // WHAT was refused (#10810). The usage_event above has carried the
+          // method all along; the $mcp_tool_call family -- the one MCP
+          // Analytics actually reads -- had neither, which left the largest
+          // refusal class (36 `method_not_allowed` in two days) with no way to
+          // tell a client using an unimplemented verb from a scanner. Masked,
+          // so a session id in the path cannot shard the property.
+          requestMethod: request.method,
+          requestPath: mcpRefusalPath(new URL(request.url).pathname),
           serverName: MCP_SERVER_INFO.name,
           serverVersion: MCP_SERVER_VERSION,
         },

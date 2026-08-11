@@ -21251,13 +21251,17 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
       { env },
     );
     assert.equal(res.body.result.isError, true);
-    assert.equal(
-      res.body.result.structuredContent.error.code,
-      "alert_trigger_error",
-    );
+    // The MESSAGE fallback is this test's claim -- an upstream `error` field
+    // that is not a string must not reach the caller as "[object Object]".
     assert.equal(
       res.body.result.structuredContent.error.message,
       "The alert triggers tier returned an error.",
+    );
+    // The CODE now follows the status (#10810): a 500 is somebody else's 5xx,
+    // which classifies as api_5xx rather than as our own `internal`.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "provider_error",
     );
   });
 

@@ -24,6 +24,8 @@ import {
   handleMcpRequest,
   listToolDefinitions,
   mcpRefusalReason,
+  alertTriggerErrorCode,
+  mcpRefusalPath,
   scheduleMcpRefusalEvent,
 } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
@@ -162,6 +164,69 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
     });
   }
 
+  test("a refusal names the method and the masked path it arrived on", async () => {
+    // #10810. A refusal has no tool by construction -- the gate runs in front of
+    // the dispatcher -- so `$mcp_tool_name` is null and the error code was all
+    // there was. That could not triage the largest refusal class on the surface:
+    // 36 `method_not_allowed` in two days, with no way to separate a client
+    // using a verb the transport does not implement from a scanner.
+    const events: Row[] = [];
+    scheduleMcpRefusalEvent(
+      new Request("https://api.metagraph.sh/mcp/sess-abc123", {
+        method: "DELETE",
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      {
+        recordUsageEvent: () => true,
+        recordMcpToolCallEvent: (_e: unknown, event: Row) => {
+          events.push(event);
+          return true;
+        },
+        executionCtx: { waitUntil: () => {} },
+      },
+      new Response("no", { status: 405 }),
+    );
+    assert.equal(events.length, 1);
+    assert.equal(events[0].requestMethod, "DELETE");
+    assert.equal(events[0].toolName, undefined, "a refusal names no tool");
+    // MASKED. An unmasked path would shard one recurring refusal across every
+    // session id that produced it -- the same cardinality argument every other
+    // route label in this codebase already makes.
+    assert.equal(
+      events[0].requestPath,
+      "/mcp/:seg",
+      `expected the session segment masked, got ${String(events[0].requestPath)}`,
+    );
+  });
+
+  test("the refusal path is bounded whatever the caller sends", () => {
+    // /mcp AND /mcp/* both route to the MCP handler, so the tail is caller
+    // input on an event that is never sampled. maskRouteParams recognises ids
+    // by SHAPE, which covers a UUID and not a scanner walking /mcp/aaa,
+    // /mcp/bbb -- so anything it does not recognise gets one bucket, not one
+    // bucket per probe.
+    assert.equal(mcpRefusalPath("/mcp"), "/mcp");
+    // A trailing slash is the SAME endpoint, so it must not be a second label.
+    assert.equal(mcpRefusalPath("/mcp/"), "/mcp");
+    assert.equal(
+      mcpRefusalPath("/mcp/019fc81a-5c37-7012-970b-7871a621c410"),
+      "/mcp/:uuid",
+      "a recognised id keeps its own placeholder",
+    );
+    assert.equal(mcpRefusalPath("/mcp/4200000"), "/mcp/:n");
+    // The whole point: unbounded caller input cannot shard the property -- and
+    // DEPTH is caller input too, so a deeper probe must not buy a new label.
+    const probes = [
+      "aaa",
+      "bbb",
+      "sess-1",
+      "../etc/passwd",
+      "%00",
+      "a/b/c/d/e/f",
+    ].map((tail) => mcpRefusalPath(`/mcp/${tail}`));
+    assert.deepEqual(new Set(probes), new Set(["/mcp/:seg"]));
+  });
+
   test("a 2xx is not a refusal and records nothing", async () => {
     const events: Row[] = [];
     assert.equal(mcpRefusalReason(new Response("ok", { status: 200 })), null);
@@ -197,6 +262,36 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
         Date.now() + 99 * 3_600_000,
       ),
     );
+  });
+});
+
+describe("the alert-triggers tier's status, classified (#10810)", () => {
+  test("a caller's bad token is a permission failure, not a server fault", () => {
+    // Every non-404 used to collapse into `alert_trigger_error`, which
+    // classifyMcpErrorType buckets as `internal` -- "our bug". It was the ONLY
+    // server-fault-classed MCP error in a 7-day production window, which put a
+    // floor under the one signal that answers "is anything broken server-side"
+    // and made that floor unreachable.
+    for (const [status, code, type] of [
+      [401, "auth_required", "permission"],
+      [403, "forbidden", "permission"],
+      [404, "not_found", "missing_context"],
+      // Somebody else's 5xx, from the caller's side -- the reading
+      // provider_error already carries for an adapter's upstream.
+      [500, "provider_error", "api_5xx"],
+      [503, "provider_error", "api_5xx"],
+    ] as [number, string, string][]) {
+      assert.equal(alertTriggerErrorCode(status), code, `HTTP ${status}`);
+      assert.equal(classifyMcpErrorType(code), type, code);
+    }
+  });
+
+  test("an unclassifiable status keeps the catch-all, and it still reads as internal", () => {
+    // The point is not that nothing is `internal` any more -- a status we
+    // cannot attribute genuinely is ours until proven otherwise. The point is
+    // that the ones we CAN attribute no longer arrive there.
+    assert.equal(alertTriggerErrorCode(418), "alert_trigger_error");
+    assert.equal(classifyMcpErrorType("alert_trigger_error"), "internal");
   });
 });
 
