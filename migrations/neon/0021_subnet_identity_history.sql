@@ -16,7 +16,7 @@
 --
 -- WHAT THIS COSTS WHEN IT IS WRONG, from the lane that will fill it: the
 -- hand-refreshed capture the registry fell back to was measured 54 days stale,
--- with 82 of 129 subnets disagreeing with the live chain and 28 renamed
+-- with 82 of the 129 registered netuids disagreeing with the live chain and 28 renamed
 -- outright. Subnet 53 served as "EfficientFrontier" for eight weeks while the
 -- chain said "engy".
 --

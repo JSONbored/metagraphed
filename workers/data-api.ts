@@ -1921,8 +1921,8 @@ async function handleAccountIdentitySync(
 // active set in one buffered request. It has been POSTing here and getting a
 // 404 since it shipped. The alternative producer -- deriving changes from the
 // hourly profiles artifact -- was rejected because that artifact descends from
-// a capture measured 54 days stale, with 82 of 129 subnets disagreeing with
-// the chain and 28 renamed.
+// a capture measured 54 days stale, with 82 of the 129 registered netuids
+// disagreeing with the chain and 28 renamed.
 //
 // APPEND-ON-CHANGE, and the history conflicts on (netuid, identity_hash)
 // rather than (netuid, observed_at) like its siblings. The producer re-reads

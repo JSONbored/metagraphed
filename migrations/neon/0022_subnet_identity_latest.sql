@@ -4,8 +4,8 @@
 -- overwritten in place -- and it is the half the REGISTRY needs. History
 -- answers "what was this subnet called before"; the card answers "what is it
 -- called now", which is the question that was being answered from a
--- hand-refreshed file measured 54 days stale, with 82 of 129 subnets
--- disagreeing with the live chain and 28 renamed outright.
+-- hand-refreshed file measured 54 days stale, with 82 of the 129 registered
+-- netuids disagreeing with the live chain and 28 renamed outright.
 --
 -- WHY BOTH, rather than deriving the card from the history's newest row.
 -- Every other identity/hyperparams family here is a card plus a history, and
