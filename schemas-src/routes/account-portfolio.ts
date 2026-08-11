@@ -78,7 +78,10 @@ export const AccountPortfolioArtifactSchema = z
       .describe(
         "Priced emission per priced stake -- both sides in TAO (#9051), so the ratio is dimensionally coherent. Null with no priceable stake.",
       ),
-    stake_concentration: ConcentrationMetricsSchema.describe(
+    // NULLABLE, as its own description says -- "null with no positions". A
+    // wallet with nothing staked has no concentration to report, and the
+    // zeroed-card fallback returns exactly that (#10772).
+    stake_concentration: ConcentrationMetricsSchema.nullable().describe(
       "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions.",
     ),
     positions: z.array(PortfolioPositionSchema),

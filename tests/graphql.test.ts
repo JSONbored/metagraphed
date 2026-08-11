@@ -581,7 +581,17 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     assert.equal(body.data.subnets.total, 3);
   });
 
-  test("subnets limit:0 falls back to the default page (not clamped up to 1)", async () => {
+  // limit:0 CLAMPS to the published minimum, and that is the settled rule
+  // rather than a new one (#10772). #10174 decided clamp-vs-reject one sentence
+  // per surface -- REST rejects (verified live: "limit must be an integer
+  // between 1 and 1000"), MCP clamps, and GRAPHQL CLAMPS, which is what
+  // `resolveRouteArgs` does at both ends of the range. This field kept a third
+  // answer, "0 means the default page", from before `subnets` had a route to
+  // parse against; it made 0 the one value in the range that meant something
+  // else. Declaring it a divergence would have been the exemption that hides
+  // what it names, so the fringe input moves to the rule instead: 0 -> 1, the
+  // same way 99999 -> 1000.
+  test("subnets limit:0 clamps up to the published minimum", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
@@ -597,7 +607,10 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
         env as unknown as Env,
       );
       assert.equal(status, 200);
-      assert.equal(body.data.subnets.items.length, 3, `limit:${limit}`);
+      // One row, not the three a default page would give: the clamp answers,
+      // and `total` still reports the whole collection so the caller can see
+      // what they are paging through.
+      assert.equal(body.data.subnets.items.length, 1, `limit:${limit}`);
       assert.equal(body.data.subnets.total, 3);
     }
   });
@@ -817,7 +830,13 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
       env as unknown as Env,
     );
     assert.equal(bad.body.data, null);
-    assert.match(bad.body.errors[0].message, /not a supported sort/);
+    // The ROUTE's sentence, not the resolver's (#10772). `subnets` now binds to
+    // /api/v1/subnets, so the dispatch parse answers first and answers with the
+    // published vocabulary -- it names the fourteen sorts that ARE supported
+    // where "not a supported sort" only said the one sent was not. Same code,
+    // same rejection, one vocabulary across REST and GraphQL.
+    assert.match(bad.body.errors[0].message, /^sort must be one of: /);
+    assert.match(bad.body.errors[0].message, /netuid/);
     assert.equal(bad.body.errors[0].extensions.code, "BAD_USER_INPUT");
     const badOrder = await gql(
       '{ subnets(sort: "netuid", order: "sideways") { total } }',

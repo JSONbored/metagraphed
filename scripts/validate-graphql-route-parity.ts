@@ -18,7 +18,12 @@
 // This runs entirely offline against the committed `openapi.json`; it needs no
 // production traffic and covers every field rather than a sample.
 import { readFileSync } from "node:fs";
-import { DECLARED_ARGUMENTS } from "../schemas-src/graphql/argument-divergences.ts";
+import {
+  DECLARED_ARGUMENTS,
+  DECLARED_MISSING_NETWORK,
+  DECLARED_UNPUBLISHED_ARGUMENTS,
+  isDeclaredArgumentType,
+} from "../schemas-src/graphql/argument-divergences.ts";
 
 type Json = Record<string, unknown>;
 
@@ -440,7 +445,15 @@ for (const field of queryType.fields) {
     const parameter = published.get(arg.name);
     if (!parameter) {
       if (arg.name === "network" && hasNetworkTwin(route)) continue;
-      if (key in DECLARED_ARGUMENTS) {
+      // `DECLARED_ARGUMENT_TYPES` carries the same fact for an argument whose
+      // TYPE is declared -- `extrinsic.ref` and `block_chain_events.block_number`
+      // are the route's path parameter under the name GraphQL publishes, and
+      // the generator emits them from that entry. One list, read by the gate
+      // that would otherwise contradict it (#10772).
+      if (
+        key in DECLARED_ARGUMENTS ||
+        isDeclaredArgumentType(field.name, arg.name)
+      ) {
         suppressedArguments.add(key);
         continue;
       }
@@ -461,7 +474,15 @@ for (const field of queryType.fields) {
     if (jsonTypes.length === 0 || !SCALARS.has(bare)) continue;
     const allowed = SCALAR_JSON_TYPES[bare] ?? [];
     if (jsonTypes.some((t) => allowed.includes(t))) continue;
-    if (key in DECLARED_ARGUMENTS) {
+    // A published type that diverges from the route's is exactly what
+    // `DECLARED_ARGUMENT_TYPES` records, and the generator EMITS the spelling
+    // from it -- so a gate reporting it as drift contradicts the artifact it
+    // helped produce. `subnets.cursor`/`providers.cursor` are the opaque
+    // keyset against the route's integer offset (#10772).
+    if (
+      key in DECLARED_ARGUMENTS ||
+      isDeclaredArgumentType(field.name, arg.name)
+    ) {
       suppressedArguments.add(key);
       continue;
     }
@@ -481,7 +502,15 @@ for (const field of queryType.fields) {
   // GraphQL, and the gate reported zero divergences (#10394).
   if (hasNetworkTwin(route) && !declaredArguments.has("network")) {
     const key = `${field.name}.network`;
-    if (key in DECLARED_MISSING_ARGUMENTS) {
+    // `DECLARED_MISSING_NETWORK` is where this exact judgement already lives,
+    // and it is read by the generator and by
+    // `validate:graphql-query-arguments`. This gate kept its own empty list and
+    // so re-asked a question the registry had already answered -- one concept,
+    // two lists, which is the shape #10772 exists to remove.
+    if (
+      key in DECLARED_MISSING_ARGUMENTS ||
+      DECLARED_MISSING_NETWORK.includes(field.name)
+    ) {
       suppressedArguments.add(key);
     } else {
       argumentFindings.push({
@@ -497,7 +526,15 @@ for (const field of queryType.fields) {
     if (name === "format") continue;
     if (name === "fields" && returnsProjectableType(field.type)) continue;
     const key = `${field.name}.${name}`;
-    if (key in DECLARED_MISSING_ARGUMENTS) {
+    // Same registry, third reader (#10772). `DECLARED_UNPUBLISHED_ARGUMENTS`
+    // is the slot this direction never had -- a route capability GraphQL does
+    // not publish, with the reason -- and the generator already reads it to
+    // decide what to OMIT. A gate that re-asks the question it answers is the
+    // second list this epic exists to delete.
+    if (
+      key in DECLARED_MISSING_ARGUMENTS ||
+      key in DECLARED_UNPUBLISHED_ARGUMENTS
+    ) {
       suppressedArguments.add(key);
       continue;
     }

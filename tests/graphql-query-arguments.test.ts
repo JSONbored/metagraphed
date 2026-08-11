@@ -82,7 +82,14 @@ describe("checkQueryArguments", () => {
     const report = checkQueryArguments(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.exact, 189);
+    // 201, up from 189, and the twelve are the point (#10772): the six
+    // `route: null` bindings now name the route they always had, and the
+    // Subscription root and the two nested filtered lists are inside the check
+    // for the first time. The companion assertion is `skipped`, below -- a
+    // count of what reproduces exactly means nothing without the count of what
+    // was never compared.
+    assert.equal(report.exact, 201);
+    assert.equal(report.skipped, 0);
   });
 
   test("it FAILS when an argument's type stops matching the route", () => {

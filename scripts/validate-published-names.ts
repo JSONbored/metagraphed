@@ -270,12 +270,41 @@ const sdlSubscriptionBindings = (
   description: field.description?.value ?? "",
 }));
 
+/**
+ * The fields whose RESPONSE is deliberately not their route's component.
+ *
+ * `route` names the request; `reshapes` is the response-side fact that used to
+ * be smuggled through `route: null` (#10772).
+ */
+const RESHAPING_FIELDS = new Set(
+  QUERY_BINDINGS.filter((binding) => binding.reshapes).map(
+    (binding) => binding.field,
+  ),
+);
+
 // ── the pairing, computed the way the parity gate computes it ────────────────
 const { computed, paired, reachable } = traverse(
   sdlTypes,
   generated,
   sdlBindings.flatMap((binding) => {
-    if (!binding.route) return [];
+    // A seed asserts "this published type IS that route's component", and a
+    // binding that declares `reshapes` says exactly the opposite (#10772):
+    // `opportunity_boards` re-keys the leaderboards record into six named
+    // board fields, so pairing it with RegistryLeaderboardsArtifact asks the
+    // walk to prove two different types are the same one. The declaration
+    // existed and NOTHING read it -- `reshapes` appeared nowhere in this file
+    // -- which is the one-reader trap the epic names. The faithful mirror of
+    // the same route (`registry_leaderboards`) still seeds it, so nothing
+    // stops being checked.
+    if (!binding.route || RESHAPING_FIELDS.has(binding.field)) return [];
+    // A type with a PROJECTED_TYPES entry already states this pairing, and
+    // states it more precisely: `ExtrinsicDetail` drops two of its component's
+    // fields, `BlockChainEvents` adds two and drops one. Seeding it as a full
+    // mirror as well asks the walk to prove a stricter claim than the registry
+    // makes, and the projection then reads as stale -- one relationship
+    // declared twice, which is what naming the routes exposed (#10772).
+    if (binding.returnsName && binding.returnsName in PROJECTED_TYPES)
+      return [];
     const component = dataComponent(binding.route);
     return component
       ? ([[binding.returnsName, component]] as [string, string][])

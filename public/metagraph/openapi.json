@@ -15140,7 +15140,14 @@
             "type": "string"
           },
           "stake_concentration": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions."
           },
           "subnet_count": {
@@ -24362,9 +24369,16 @@
                   "type": "string"
                 },
                 "total_fee_tao": {
-                  "description": "Total fees paid across the window's extrinsics; null when the tier has no fee data.",
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Total fees paid across the window's extrinsics; null when the tier has no fee data."
                 },
                 "total_tip_tao": {
                   "minimum": 0,
@@ -43454,11 +43468,18 @@
             "description": "Total TAO volume over alpha market cap; null when market cap is unknown."
           },
           "window": {
-            "description": "The rolling window label this card covers (24h).",
-            "enum": [
-              "24h"
+            "anyOf": [
+              {
+                "enum": [
+                  "24h"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "type": "string"
+            "description": "The rolling window label this card covers (24h); null on a zeroed cold-store card."
           }
         },
         "required": [
@@ -49994,8 +50015,15 @@
             "description": "Dividends concentration across permitted validators only."
           },
           "incentive": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
-            "description": "Incentive concentration across all neurons with positive incentive."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incentive concentration across all neurons with positive incentive; null when none carry any."
           },
           "netuid": {
             "maximum": 9007199254740991,

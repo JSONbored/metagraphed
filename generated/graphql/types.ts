@@ -3325,7 +3325,7 @@ export type Query = {
   agent_resources?: Maybe<Scalars['JSON']['output']>;
   /** One block by numeric height or 0x block hash; block is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/{ref}. */
   block?: Maybe<BlockDetail>;
-  /** Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{block_number}/chain-events. */
+  /** Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{ref}/chain-events. */
   block_chain_events: BlockChainEvents;
   /** The decoded, account-attributed chain events in one block by ref, in read order (event_index ASC), paginated with limit (1-1000, default 100)/offset. Returns block_number:null + events:[] for an unknown ref or cold store, never a GraphQL error. Mirrors GET /api/v1/blocks/{ref}/events. */
   block_events: BlockEvents;
@@ -3437,7 +3437,7 @@ export type Query = {
   evm_address?: Maybe<EvmAddressMapping>;
   /** The get_evm_address_mapping-aligned name for evm_address, so the MCP tool name and this Query field line up. Structurally identical to evm_address -- same live RPC read, same validation, same schema-stable null on an unresolved mapping -- not a second lookup. Mirrors GET /api/v1/evm/address/{h160}. */
   evm_address_mapping?: Maybe<EvmAddressMapping>;
-  /** One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}. */
+  /** One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{hash}. */
   extrinsic?: Maybe<ExtrinsicDetail>;
   /** Recent-extrinsic feed (newest first), optionally filtered. Optionally narrow by call_hash, block (exact height), block_start/block_end (inclusive height range), or from/to (observed_at epoch-ms range — String args because epoch-ms exceeds GraphQL Int's 32-bit range, matching account_history) — the same filters GET /api/v1/extrinsics and the list_extrinsics MCP tool accept. Mirrors GET /api/v1/extrinsics. */
   extrinsics: ExtrinsicList;
@@ -3455,7 +3455,7 @@ export type Query = {
   global_incidents: GlobalIncidents;
   /** Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes. */
   governance_config_changes: ExtrinsicList;
-  /** Global operational health rollup with per-subnet summaries. */
+  /** Global operational health rollup with per-subnet summaries. Mirrors GET /api/v1/health. */
   health?: Maybe<GlobalHealth>;
   /** A compact daily operational health snapshot for one UTC date (YYYY-MM-DD): per-surface status/latency plus summary incident counts from the archived health/history tier. Filter by netuid/kind/provider/status/classification, sort with sort/order, and page with limit (1-1000)/cursor. An invalid date/filter/sort/limit/cursor or a missing snapshot is a GraphQL error, not a silently substituted default. Distinct from the live health rollup and health_trends. Mirrors GET /api/v1/health/history/{date}. */
   health_history: HealthHistory;
@@ -3475,15 +3475,15 @@ export type Query = {
   neuron: Neuron;
   /** One neuron's per-day metagraph history in a subnet by UID from the neuron_daily rollup (window: 7d/30d/90d/1y/all, default 30d), newest first: stake, rank, trust, consensus, incentive, dividends, emission, validator permit, axon, and take per snapshot_date. A UID with no matching rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history. */
   neuron_history: NeuronHistory;
-  /** Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). */
+  /** Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). Each board is a FIELD here, so the route's board selector is the selection set's job. Mirrors GET /api/v1/registry/leaderboards. */
   opportunity_boards: OpportunityBoards;
   /** Public-safe subnet profile index -- completeness scores, surface/interface counts, curation level, review state, and confidence for every registered subnet. Filter by netuid/subnet_type/curation_level/review_state/confidence/profile_level, search name/slug/project/team/categories with q, sort with sort/order, and page with limit (1-1000)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/profiles. */
   profiles: ProfileList;
-  /** One provider with its subnets. */
+  /** One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}. */
   provider?: Maybe<Provider>;
   /** One provider's endpoint rows with full REST filter parity: filter by netuid/kind/layer/publication_state/status/pool_eligible, latency and score ranges, sort + order, and page with limit/cursor. Composed live from the baked /metagraph/providers/{slug}/endpoints.json artifact. An unsupported filter/sort or an unknown provider is a GraphQL error (matching REST/MCP), not a silently substituted default. Opaque JSON passed through verbatim, matching the list_provider_endpoints MCP/REST shape. Mirrors GET /api/v1/providers/{slug}/endpoints. */
   provider_endpoints?: Maybe<Scalars['JSON']['output']>;
-  /** Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). */
+  /** Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). Mirrors GET /api/v1/providers. */
   providers: ProviderList;
   /** The get_randomness_status-aligned name for the same live drand beacon snapshot (#7649): identical loader, KV cache, and independently-null RPC-failure behavior as network_randomness — a thin alias so MCP tool names and GraphQL fields line up. Returns the typed NetworkRandomness envelope rather than the issue's literal JSON suggestion, matching network_randomness. Mirrors GET /api/v1/network/randomness. */
   randomness_status?: Maybe<NetworkRandomness>;
@@ -3511,7 +3511,7 @@ export type Query = {
   rpc_usage: RpcUsage;
   /** Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime. */
   runtime: RuntimeVersionHistory;
-  /** Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}. */
+  /** Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. */
   saved_query?: Maybe<Scalars['JSON']['output']>;
   /** The registry's captured API-schema index: which subnet surfaces publish a machine-readable OpenAPI/Swagger schema, each schema's hash, and its drift status (new/unchanged/changed). Null when the schema index has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the list_schemas MCP/REST shape. Mirrors GET /api/v1/schemas. */
   schemas?: Maybe<Scalars['JSON']['output']>;
@@ -3525,7 +3525,7 @@ export type Query = {
   source_health?: Maybe<Scalars['JSON']['output']>;
   /** Per-source input-hash ledger -- each registry data source's captured input hash and record count at ingest time, for detecting hash drift or seeing per-source contribution volume. Filter with q (keyword search across id/kind/path), sort with sort/order, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/source-snapshots. */
   source_snapshots: SourceSnapshotList;
-  /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. */
+  /** One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}. */
   subnet?: Maybe<Subnet>;
   /** Per-subnet axon-removal activity over a 7d/30d window (distinct removers, AxonInfoRemoved count, and removals per remover); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/axon-removals. */
   subnet_axon_removals: SubnetAxonRemovals;
@@ -3639,7 +3639,7 @@ export type Query = {
   subnet_yield: SubnetYield;
   /** Per-subnet per-day emission-per-stake yield trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's subnet-wide yield plus the mean/median/p25/p75/p90 distribution across UIDs, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/yield/history. */
   subnet_yield_history: SubnetYieldHistory;
-  /** Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order. */
+  /** Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order. Mirrors GET /api/v1/subnets. */
   subnets: SubnetList;
   /** Recent Sudo-pallet extrinsic feed (newest first): the chain's superuser governance calls, the same shape as the extrinsics feed with call_module fixed to Sudo (so no signer/call_module args). Optionally narrow by block (exact height), block_start/block_end (inclusive height range), or from/to (observed_at epoch-ms range — String args because epoch-ms exceeds GraphQL Int's 32-bit range, matching account_history) — the same block/time filters GET /api/v1/sudo and the get_sudo MCP tool accept. Mirrors GET /api/v1/sudo. */
   sudo: ExtrinsicList;
@@ -5025,6 +5025,7 @@ export type QuerySubnetsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   max_block?: InputMaybe<Scalars['Int']['input']>;
   max_candidate_count?: InputMaybe<Scalars['Int']['input']>;
+  max_integration_readiness?: InputMaybe<Scalars['Int']['input']>;
   max_mechanism_count?: InputMaybe<Scalars['Int']['input']>;
   max_netuid?: InputMaybe<Scalars['Int']['input']>;
   max_participant_count?: InputMaybe<Scalars['Int']['input']>;
@@ -5034,6 +5035,7 @@ export type QuerySubnetsArgs = {
   max_tempo?: InputMaybe<Scalars['Int']['input']>;
   min_block?: InputMaybe<Scalars['Int']['input']>;
   min_candidate_count?: InputMaybe<Scalars['Int']['input']>;
+  min_integration_readiness?: InputMaybe<Scalars['Int']['input']>;
   min_mechanism_count?: InputMaybe<Scalars['Int']['input']>;
   min_netuid?: InputMaybe<Scalars['Int']['input']>;
   min_participant_count?: InputMaybe<Scalars['Int']['input']>;

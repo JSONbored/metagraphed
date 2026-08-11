@@ -5380,7 +5380,7 @@ export interface components {
             schema_version: number;
             ss58: string;
             /** @description How concentrated the wallet's stake is across its subnets (Gini/HHI/etc); null with no positions. */
-            stake_concentration: components["schemas"]["ConcentrationMetrics"];
+            stake_concentration: components["schemas"]["ConcentrationMetrics"] | null;
             subnet_count: number;
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
             total_emission_tao: number;
@@ -7047,7 +7047,7 @@ export interface components {
                 last_tx_block: number | null;
                 signer: string;
                 /** @description Total fees paid across the window's extrinsics; null when the tier has no fee data. */
-                total_fee_tao: number;
+                total_fee_tao: number | null;
                 total_tip_tao: number;
                 tx_count: number;
             }[];
@@ -10783,11 +10783,8 @@ export interface components {
             usd_pricing_basis?: "window_close_rate";
             /** @description Total TAO volume over alpha market cap; null when market cap is unknown. */
             vol_mcap_ratio: number | null;
-            /**
-             * @description The rolling window label this card covers (24h).
-             * @enum {string}
-             */
-            window: "24h";
+            /** @description The rolling window label this card covers (24h); null on a zeroed cold-store card. */
+            window: "24h" | null;
         };
         SubnetAxonRemovalsArtifact: {
             degraded?: components["schemas"]["DegradedInfo"];
@@ -11894,8 +11891,8 @@ export interface components {
             consensus: components["schemas"]["ScoreDistribution"];
             /** @description Dividends concentration across permitted validators only. */
             dividends: components["schemas"]["ConcentrationMetrics"];
-            /** @description Incentive concentration across all neurons with positive incentive. */
-            incentive: components["schemas"]["ConcentrationMetrics"];
+            /** @description Incentive concentration across all neurons with positive incentive; null when none carry any. */
+            incentive: components["schemas"]["ConcentrationMetrics"] | null;
             netuid: number;
             neuron_count: number;
             schema_version: number;

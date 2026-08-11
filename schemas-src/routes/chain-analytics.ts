@@ -73,9 +73,14 @@ const ChainSignerEntrySchema = z
   .object({
     signer: z.string(),
     tx_count: z.int().min(0),
+    // NULLABLE, which is what the description beside it has always said:
+    // "null when the tier has no fee data". The type said otherwise, and
+    // nothing reconciled the two until the GraphQL type was generated from
+    // this schema and the fee-tier fallback answered null (#10772).
     total_fee_tao: z
       .number()
       .min(0)
+      .nullable()
       .describe(
         "Total fees paid across the window's extrinsics; null when the tier has no fee data.",
       ),

@@ -406,10 +406,15 @@ describe("scalar identity", () => {
 // or more pagination fields the component lacks means this is a view" -- true
 // of the paging and false of the 158 fields behind it.
 describe("paginated views", () => {
-  test("all 25 are declared, and their drops are the whole set", () => {
+  test("all 27 are declared, and their drops are the whole set", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
-    assert.equal(report.projections.length, 25);
+    // 27, up from 25: `SubnetList <- SubnetsArtifact` and
+    // `ProviderList <- ProvidersArtifact` are inside this check for the first
+    // time (#10772). Their Query fields carried `route: null`, and the walk
+    // reaches a type only through a `Mirrors GET` annotation -- so the two
+    // busiest list views in the schema were the ones no gate could see.
+    assert.equal(report.projections.length, 27);
     // Every projection's drops, not just the paginated ones -- `dropped` is
     // the whole set on all 38, which is what makes an undeclared drop a
     // failure rather than a silence.

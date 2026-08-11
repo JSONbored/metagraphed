@@ -18,7 +18,16 @@ import { readFileSync } from "node:fs";
 import { parse, print } from "graphql";
 import type { ObjectTypeDefinitionNode } from "graphql";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
-import { DECLARED_ARGUMENT_TYPES } from "../schemas-src/graphql/argument-divergences.ts";
+import {
+  DECLARED_ARGUMENT_TYPES,
+  DECLARED_MISSING_NETWORK,
+} from "../schemas-src/graphql/argument-divergences.ts";
+import {
+  FIELD_ARGUMENT_ROUTES,
+  SUBSCRIPTION_BINDINGS,
+} from "../schemas-src/graphql/published-names.ts";
+
+export { DECLARED_MISSING_NETWORK };
 import {
   deriveQueryArguments,
   type OpenApiParameters,
@@ -44,7 +53,6 @@ const OPENAPI_PATH = "public/metagraph/openapi.json";
  * mainnet under a testnet label. A new entry here is a field that mirrors a
  * route with a `/{network}/` twin and cannot reach it.
  */
-export const DECLARED_MISSING_NETWORK: readonly string[] = [];
 
 export interface ArgumentReport {
   /** Fields whose argument list the routes reproduce exactly. */
@@ -74,15 +82,24 @@ export function checkQueryArguments(
   }
 
   /** The SDL's own argument list for a Query field. */
+  // EVERY type, not just Query: a root field is keyed by its own name and a
+  // nested one by `Type.field`, which is how `FIELD_ARGUMENT_ROUTES` names it.
+  // Reading only Query's fields left the Subscription root and the two nested
+  // filtered lists with nothing to compare against, so their declarations read
+  // as stale and their arguments as absent (#10772).
   const declaredArguments = new Map<string, QueryArgument[]>();
-  for (const field of types.get("Query")?.fields ?? []) {
-    declaredArguments.set(
-      field.name.value,
-      (field.arguments ?? []).map((argument) => ({
+  for (const [typeName, type] of types) {
+    for (const field of type.fields ?? []) {
+      const args = (field.arguments ?? []).map((argument) => ({
         name: argument.name.value,
         type: print(argument.type),
-      })),
-    );
+      }));
+      const key =
+        typeName === "Query" || typeName === "Subscription"
+          ? field.name.value
+          : `${typeName}.${field.name.value}`;
+      declaredArguments.set(key, args);
+    }
   }
 
   /** A return type with no `JSON` member can be projected by a selection set. */
@@ -100,21 +117,44 @@ export function checkQueryArguments(
   let exact = 0;
   let skipped = 0;
 
-  for (const binding of QUERY_BINDINGS) {
+  // BOTH roots plus the nested fields that take arguments. Walking
+  // QUERY_BINDINGS alone left the Subscription root and `Subnet.surfaces` /
+  // `Subnet.endpoints` outside every argument check there is -- which is how
+  // the generated schema came to publish them bare (#10772).
+  const surface = [
+    ...QUERY_BINDINGS,
+    ...SUBSCRIPTION_BINDINGS,
+    ...Object.entries(FIELD_ARGUMENT_ROUTES).map(([field, route]) => ({
+      field,
+      route,
+      returns: "",
+      description: "",
+    })),
+  ];
+  for (const binding of surface) {
     const declared = declaredArguments.get(binding.field);
-    if (!declared || !binding.route || !openapi.paths?.[binding.route]) {
+    // A field with no route still publishes what it DECLARES, so it is only
+    // skipped when the SDL has nothing to compare against.
+    if (!declared) {
       skipped += 1;
       continue;
     }
-    const twin = binding.route.replace("/api/v1/", "/api/v1/{network}/");
+    const twin = binding.route?.replace("/api/v1/", "/api/v1/{network}/");
     const derived = deriveQueryArguments(
       binding.field,
       binding.route,
       openapi,
       {
-        hasNetworkTwin: Boolean(openapi.paths?.[twin]),
-        returnsProjectable: returnsProjectable(binding.returns),
+        hasNetworkTwin: Boolean(twin && openapi.paths?.[twin]),
+        returnsProjectable: binding.returns
+          ? returnsProjectable(binding.returns)
+          : true,
+        // A key with a dot is a NESTED field; its parent supplies the path.
+        nested: binding.field.includes("."),
       },
+      // Empty, so a live `DECLARED_MISSING_NETWORK` entry still shows up as a
+      // difference here and cannot read as stale.
+      [],
     );
     for (const argument of derived) {
       if (DECLARED_ARGUMENT_TYPES[`${binding.field}.${argument.name}`]) {
