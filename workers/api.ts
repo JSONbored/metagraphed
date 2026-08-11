@@ -664,6 +664,7 @@ import {
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
+  HEALTH_PROBER_CRON,
   HEALTH_PRUNE_CRON,
   LANE_HEARTBEAT_CRON,
   INCIDENTS_PATH_PATTERN,
@@ -2812,6 +2813,67 @@ function recordCronOutcome(
   }
 }
 
+/**
+ * Every cron expression this Worker handles.
+ *
+ * READ BY THE TEST, NOT BY THE DISPATCHER, and that is deliberate. An earlier
+ * cut had `dispatchScheduled` decline against this set before its branches,
+ * which made the set load-bearing at runtime -- and made the guard at the
+ * bottom unreachable, because nothing could get past the first check without
+ * also matching a branch. An unreachable guard is a branch no test can cover
+ * and no reader can trust.
+ *
+ * So the set answers the question a test should ask (does wrangler.jsonc agree
+ * with what this file handles, in BOTH directions) and the dispatcher answers
+ * the question a request should ask (is there a branch for this cron). The two
+ * are tied together by tests/api-crons-have-handlers.test.ts, which asserts
+ * every entry here has an `if (cron === ...)` branch in this file.
+ *
+ * `HEALTH_PROBER_CRON` is a member like the other 36. Until #10815 it was the
+ * absence of one: the prober ran as the unconditional fall-through, so an
+ * unrecognised cron did not go quiet the way it did on data-api (#10814), it
+ * ran a REAL PRODUCER on the wrong cadence.
+ */
+export const API_HANDLED_CRONS: readonly string[] = [
+  HEALTH_PROBER_CRON,
+  WEBHOOK_DISPATCH_CRON,
+  HEALTH_PRUNE_CRON,
+  EMBEDDING_SYNC_CRON,
+  LANE_HEARTBEAT_CRON,
+  SUBNET_BURN_CAPTURE_CRON,
+  RAW_CAPTURE_CRON,
+  GITHUB_SIGNALS_SYNC_CRON,
+  LINK_STATUS_SYNC_CRON,
+  OPERATIONAL_SURFACES_SYNC_CRON,
+  SURFACE_VERIFICATION_SYNC_CRON,
+  SCHEMA_SNAPSHOTS_SYNC_CRON,
+  ABUSE_SCAN_CRON,
+  UPGRADE_RADAR_CRON,
+  SAFE_MODE_WATCHDOG_CRON,
+  LAKEHOUSE_SEAM_CRON,
+  PROJECTION_LANES_CRON,
+  FRESHNESS_WATCHDOG_CRON,
+  EMISSION_GATE_SAMPLE_CRON,
+  LANE_ALARM_CRON,
+  NEURONS_STALENESS_WATCHDOG_CRON,
+  PROJECTION_STALENESS_WATCHDOG_CRON,
+  NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+  VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
+  REGISTRY_SYNC_CRON,
+  REGISTRY_RESYNC_CRON,
+  DAILY_SERIES_COVERAGE_CRON,
+  CHAIN_DETAIL_PRUNE_CRON,
+  CHAIN_CONCENTRATION_ROLLUP_CRON,
+  CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
+  SUBNET_DEREGISTRATION_DAILY_CRON,
+  TOP_HOLDERS_FLOW_CRON,
+  TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
+  HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
+  ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
+  LIVE_ECONOMICS_REFRESH_CRON,
+  EMISSION_DRIFT_CHECK_CRON,
+];
+
 async function dispatchScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
@@ -3390,25 +3452,41 @@ async function dispatchScheduled(
     }
     return { ok: true, ...summary };
   }
-  // #204: self-healing bootstrap for the firehose head poller, piggybacked on
-  // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
-  // best-effort -- the probe sweep must never fail because the hub was cold.
-  if (env.CHAIN_FIREHOSE_HUB) {
-    try {
-      const hub = env.CHAIN_FIREHOSE_HUB.get(
-        env.CHAIN_FIREHOSE_HUB.idFromName("global"),
-      );
-      await hub.fetch("https://firehose.internal/poll-start", {
-        method: "POST",
-      });
-    } catch (error) {
-      console.error(
-        "[head-poller-bootstrap]",
-        String((error as Error)?.message),
-      );
+  // A BRANCH, where this used to be the fall-through. Everything inside belongs
+  // to HEALTH_PROBER_CRON and nothing else may reach it: the firehose bootstrap
+  // is "piggybacked on the 15-minute probe tick" by design, and runHealthProber
+  // writes surface_checks, surface_status, surface_uptime_daily,
+  // subnet_snapshots and lane_health. An unrecognised expression reaching
+  // either of those was the bug (#10815).
+  if (cron === HEALTH_PROBER_CRON) {
+    // #204: self-healing bootstrap for the firehose head poller, piggybacked on
+    // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
+    // best-effort -- the probe sweep must never fail because the hub was cold.
+    if (env.CHAIN_FIREHOSE_HUB) {
+      try {
+        const hub = env.CHAIN_FIREHOSE_HUB.get(
+          env.CHAIN_FIREHOSE_HUB.idFromName("global"),
+        );
+        await hub.fetch("https://firehose.internal/poll-start", {
+          method: "POST",
+        });
+      } catch (error) {
+        console.error(
+          "[head-poller-bootstrap]",
+          String((error as Error)?.message),
+        );
+      }
     }
+    return runHealthProber(env, ctx);
   }
-  return runHealthProber(env, ctx);
+
+  // The only way out that is not a named lane. Reached by an expression no
+  // branch above matched -- whether it is undeclared (a typo, or a schedule
+  // whose handler was deleted) or declared in API_HANDLED_CRONS with no branch
+  // written for it. Both are the same fault from a caller's side: a schedule
+  // that fires and does nothing, which is strictly better than the health
+  // prober running on someone else's cadence.
+  return { ok: false, skipped: true, reason: "unknown cron" };
 }
 
 // Postgres-backed all-events tier proxy (ADR 0013). The dedicated data Worker

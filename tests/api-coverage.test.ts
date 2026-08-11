@@ -3102,10 +3102,27 @@ describe("handleScheduled", () => {
     assert.ok(result === undefined || typeof result === "object");
   });
 
-  test("any other cron runs the health prober", async () => {
-    // No bindings → runHealthProber should not throw with an empty env.
-    const result = await handleScheduled(
+  test("an undeclared cron is DECLINED, and does not run the health prober", async () => {
+    // INVERTED BY #10815, and the old name said the bug out loud: "any other
+    // cron runs the health prober". It did -- dispatchScheduled ran the prober
+    // as its unconditional fall-through, so a typo'd or retired expression
+    // wrote surface_checks, surface_status, surface_uptime_daily,
+    // subnet_snapshots and lane_health on whatever cadence it happened to have.
+    const result = (await handleScheduled(
       { cron: "*/2 * * * *" } as unknown as ScheduledController,
+      {} as unknown as Env,
+      { waitUntil() {} } as unknown as ExecutionContext,
+    )) as Record<string, unknown>;
+    assert.equal(result.skipped, true);
+    assert.equal(result.reason, "unknown cron");
+  });
+
+  test("the health prober's own cron still reaches it", async () => {
+    // The other half: declining unknowns must not decline the real one.
+    const result = await handleScheduled(
+      {
+        cron: workerConfig.HEALTH_PROBER_CRON,
+      } as unknown as ScheduledController,
       {} as unknown as Env,
       { waitUntil() {} } as unknown as ExecutionContext,
     );

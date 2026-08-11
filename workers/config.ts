@@ -496,6 +496,22 @@ export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
 // rather than the api Worker because that is where the Hyperdrive binding is,
 // and a cross-Worker hop for a write the same Worker could do is the shape
 // #4832 spent a PR removing.
+/**
+ * The 15-minute surface-health probe on the api Worker.
+ *
+ * DECLARED LATE, and that is the point (#10815). This expression was the only
+ * one of the api Worker's 37 with no constant and no branch: `dispatchScheduled`
+ * ran `runHealthProber` as its unconditional FALL-THROUGH, so any cron string
+ * that matched nothing above -- a typo, or a schedule whose handler had been
+ * deleted -- silently ran a real producer that writes surface_checks,
+ * surface_status, surface_uptime_daily, subnet_snapshots and lane_health, on
+ * whatever cadence the stray expression happened to have.
+ *
+ * That is strictly worse than the no-op the same shape caused on data-api
+ * (#10814): a wrong lane at a wrong cadence, rather than nothing.
+ */
+export const HEALTH_PROBER_CRON = "*/15 * * * *";
+
 export const TAO_USD_INDEX_CRON = "* * * * *";
 
 /**

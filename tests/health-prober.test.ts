@@ -636,6 +636,13 @@ describe("runHealthProber", () => {
 // to clean up after are retired too. See pruneHealthHistory edge paths
 // below for its now-simple contract.
 
+// #10815: these used "*/2 * * * *" -- an expression declared NOWHERE -- and
+// passed because dispatchScheduled ran the prober as its unconditional
+// fall-through. That is the bug, so the tests now name the prober's real cron.
+// An undeclared cron is asserted to be DECLINED in
+// tests/api-crons-have-handlers.test.ts.
+const { HEALTH_PROBER_CRON } = await import("../workers/config.ts");
+
 describe("handleScheduled dispatch", () => {
   test("hourly cron prunes; other crons probe", async () => {
     const pruneResult = (await handleScheduled(
@@ -660,9 +667,9 @@ describe("handleScheduled dispatch", () => {
     )) as Row;
     assert.equal(pruneResult.pruned, true);
 
-    // The 2-minute cron path runs the prober; with an empty env it no-ops.
+    // The prober's own cron runs the prober; with an empty env it no-ops.
     const probeResult = (await handleScheduled(
-      { cron: "*/2 * * * *" } as unknown as ScheduledController,
+      { cron: HEALTH_PROBER_CRON } as unknown as ScheduledController,
       {} as unknown as Env,
     )) as Row;
     assert.equal(probeResult.ok, false);
@@ -707,7 +714,7 @@ describe("handleScheduled dispatch", () => {
       const { waited, ctx } = waitingCtx();
       try {
         await handleScheduled(
-          { cron: "*/2 * * * *" } as unknown as ScheduledController,
+          { cron: HEALTH_PROBER_CRON } as unknown as ScheduledController,
           { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
           ctx,
         );
@@ -717,7 +724,7 @@ describe("handleScheduled dispatch", () => {
         );
         assert.equal(usage.length, 1);
         const props = (usage[0].body as Row).properties as Row;
-        // A name survives a schedule change where "*/2 * * * *" would not.
+        // A name survives a schedule change where the literal would not.
         assert.equal(props.route, "cron:health-prober");
         assert.equal(typeof props.duration_ms, "number");
       } finally {
@@ -805,7 +812,7 @@ describe("handleScheduled dispatch", () => {
       }) as unknown as typeof fetch;
       try {
         const result = (await handleScheduled(
-          { cron: "*/2 * * * *" } as unknown as ScheduledController,
+          { cron: HEALTH_PROBER_CRON } as unknown as ScheduledController,
           { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
         )) as Row;
         assert.equal(result.ok, false);
