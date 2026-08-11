@@ -250,3 +250,12 @@ test("a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently no-ops
   assert.equal(res.status, 502);
   assert.equal(await count("subnet_identity"), 0);
 });
+
+test("an over-long identity string is rejected", async () => {
+  // These are owner-supplied strings from the chain and they land in TEXT
+  // columns the serving routes render. Bounded here rather than trusted,
+  // because nothing upstream of the chain constrains what an owner writes.
+  const res = await call(req([row({ description: "d".repeat(4_097) })]));
+  assert.equal(res.status, 400);
+  assert.equal(await count("subnet_identity"), 0);
+});
