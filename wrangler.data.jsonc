@@ -464,21 +464,26 @@
   // No committed default either: unset, the tick is a recorded no-op rather
   // than a silent fallback to somebody's public node. See
   // workers/env-extra.d.ts for why that is a choice and not an oversight.
-  // "* * * * *" = TAO_USD_INDEX_CRON; "*/3 * * * *" = NEON_BACKFILL_CRON, the
-  // D1 -> Neon reconciler (workers/config.ts documents both cadences). The
-  // second is a SUBSET of the first by the clock and still a separate entry:
+  // EVERY EXPRESSION HERE RESOLVES TO A BRANCH in this Worker's `scheduled`,
+  // and tests/data-api-crons-have-handlers.test.ts asserts it. Three did not
+  // until #10814: "*/3 * * * *" (NEON_BACKFILL_CRON), "26 * * * *" (the
+  // mirror-lag watchdog) and "38 * * * *" (D1<->Neon row-count parity). All
+  // three producers were deleted with D1 -- `src/neon-backfill.ts`,
+  // `src/neon-mirror-lag.ts`, `src/neon-parity.ts` are gone and their lanes are
+  // in RETIRED_LANES -- so the expressions fell through to
+  // `{ skipped: true, reason: "unknown cron" }` roughly 23 times an hour.
+  //
+  // Nothing caught that because every cron gate in tests/ ran one direction:
+  // constant -> declared here. A constant that no longer exists cannot fail
+  // that test, which is precisely the shape of a check that passes hardest
+  // when there is nothing to check.
+  //
   // Cloudflare delivers one event per matching expression with its own
   // `controller.cron`, so the handler dispatches on the string rather than on
-  // what minute it happens to be.
+  // what minute it happens to be -- which is why a subset expression like
+  // "*/3 * * * *" was a separate entry rather than folded into "* * * * *".
   "triggers": {
-    "crons": [
-      "* * * * *",
-      "*/3 * * * *",
-      "26 * * * *",
-      "38 * * * *",
-      "52 * * * *",
-      "46 * * * *",
-    ],
+    "crons": ["* * * * *", "52 * * * *", "46 * * * *"],
   },
 
   // HYPERDRIVE is gone with the box (2026-08-03): the Postgres it fronted was
