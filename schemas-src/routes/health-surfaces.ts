@@ -500,7 +500,7 @@ export type HealthTrendsArtifact = z.infer<typeof HealthTrendsArtifactSchema>;
 // referrers, both within UptimeArtifact itself -- modeled locally, not
 // registered (same intra-component-reuse treatment as this repo's existing
 // ChainTransferParty precedent).
-const ReliabilityScoreSchema = z
+export const ReliabilityScoreSchema = z
   .object({
     score: z.int().min(0).max(100),
     grade: z.enum(["A", "B", "C", "D", "F"]),

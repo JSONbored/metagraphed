@@ -14,7 +14,7 @@ import { z } from "zod";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { blockBoundSchema, ss58Schema } from "./shared.ts";
 import { AccountTransfersArtifactSchema } from "../routes/account-events-feed.ts";
-import { CounterpartyRelationshipSchema } from "../routes/account-counterparties.ts";
+import { AccountCounterpartiesArtifactSchema } from "../routes/account-counterparties.ts";
 
 const RouteQuery_accounts_ss58_transfers =
   ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/transfers"];
@@ -67,36 +67,12 @@ export type GetAccountCounterpartiesInput = z.infer<
   typeof GetAccountCounterpartiesInputSchema
 >;
 
-// objectItems(...) properties, none required at the item level.
-const CounterpartyItemSchema = z
-  .object({
-    address: z.string().nullable().optional(),
-    sent_tao: z.unknown().optional(),
-    received_tao: z.unknown().optional(),
-    net_tao: z.unknown().optional(),
-    transfer_count: z.int().nullable().optional(),
-    last_block: z.int().nullable().optional(),
-  })
-  .strict();
-
-export const GetAccountCounterpartiesOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    counterparty_count: z.int(),
-    transfers_scanned: z.int().nullable().optional(),
-    scan_capped: z.boolean().optional(),
-    total_sent_tao: z.unknown().optional(),
-    total_received_tao: z.unknown().optional(),
-    counterparties: z.array(CounterpartyItemSchema),
-    // Present only in counterparty='<ss58>' drilldown mode (the per-pair
-    // detail) -- bare open object, matching the hand-written original.
-    // Typed from the route's own CounterpartyRelationshipSchema (#9797):
-    // the fund-flow totals plus the transfer list for one drilled-into
-    // counterparty. Verified against production 2026-08-07.
-    relationship: CounterpartyRelationshipSchema.optional(),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy typed four TAO totals as
+// `z.unknown()` -- which describes nothing at all -- and made `scan_capped`
+// optional, the one field that says whether `counterparty_count` is a total or
+// a floor.
+export const GetAccountCounterpartiesOutputSchema =
+  AccountCounterpartiesArtifactSchema;
 export type GetAccountCounterpartiesOutput = z.infer<
   typeof GetAccountCounterpartiesOutputSchema
 >;
