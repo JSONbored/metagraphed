@@ -483,11 +483,7 @@
   // what minute it happens to be -- which is why a subset expression like
   // "*/3 * * * *" was a separate entry rather than folded into "* * * * *".
   "triggers": {
-    "crons": [
-      "* * * * *",
-      "52 * * * *",
-      "46 * * * *",
-    ],
+    "crons": ["* * * * *", "52 * * * *", "46 * * * *"],
   },
 
   // HYPERDRIVE is gone with the box (2026-08-03): the Postgres it fronted was

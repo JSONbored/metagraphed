@@ -32,7 +32,10 @@ const CONFIG = "wrangler.data.jsonc";
 function declaredCrons(path: string): string[] {
   const source = readFileSync(path, "utf8");
   const block = /"crons"\s*:\s*\[([^\]]*)\]/.exec(source);
-  assert.ok(block, `no "crons" array found in ${path} -- this test parses nothing`);
+  assert.ok(
+    block,
+    `no "crons" array found in ${path} -- this test parses nothing`,
+  );
   return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
 
@@ -81,11 +84,10 @@ describe("wrangler.data.jsonc crons and their handlers", () => {
     // A map built from string literals would drift silently the moment a
     // constant changed. Asserting the three constants are its keys is what ties
     // it to them.
-    assert.deepEqual(Object.keys(DATA_API_CRON_LANES).sort(), [
-      NEON_PRUNE_CRON,
-      TABLE_FRESHNESS_CRON,
-      TAO_USD_INDEX_CRON,
-    ].sort());
+    assert.deepEqual(
+      Object.keys(DATA_API_CRON_LANES).sort(),
+      [NEON_PRUNE_CRON, TABLE_FRESHNESS_CRON, TAO_USD_INDEX_CRON].sort(),
+    );
   });
 
   test("the three retired D1-era crons are gone", () => {
