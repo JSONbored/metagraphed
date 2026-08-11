@@ -11884,39 +11884,44 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   });
 
   test("resolves the Postgres-tier per-surface percentiles", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          window: "30d",
-          observed_at: "2026-07-19T00:00:00.000Z",
-          source: "live-cron-prober",
-          // The shape /api/v1/subnets/{netuid}/health/percentiles actually
-          // serves: the percentiles nest under `latency_ms`. The flat
-          // `p95_ms`/`latency_sample_count` keys here were never the
-          // producer's, and nothing could say so while `surfaces` was JSON.
-          surfaces: [
-            {
-              surface_id: "s1",
-              samples: 120,
-              latency_ms: {
-                p50: 88,
-                p95: 280,
-                p99: 640,
-                avg: 120,
-                min: 40,
-                max: 900,
-              },
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and cannot forward, so
+    // loadSubnetPercentiles reads `surface_uptime_daily` through the store. The
+    // nested `latency_ms` block is the BUILDER's shape -- the flat p95_ms /
+    // latency_sample_count keys the retired tier carried were never the
+    // producer's, and nothing could say so while `surfaces` was opaque JSON.
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        // The percentile query is a CTE over `surface_checks` that emits the
+        // order statistics itself, so these are the SELECT's own aliases -- p50 /
+        // p95 / p99 / latency_samples -- not raw samples and not the flat
+        // p95_ms keys the retired tier carried.
+        match: "FROM ranked",
+        rows: [
+          {
+            surface_id: "s1",
+            surface_key: "s1",
+            latency_samples: 120,
+            p50: 88,
+            p95: 280,
+            p99: 640,
+            avg_latency_ms: 120,
+            min_latency_ms: 40,
+            max_latency_ms: 900,
+          },
+        ],
+      },
+    ];
+    const env = pgMockEnv() as unknown as Env;
     const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces { surface_id samples latency_ms { p50 p95 p99 avg min max } } } }',
       env as unknown as Env,
+      {},
+      // observationsReadDb needs a ctx to park its teardown on; without one it
+      // answers undefined and the card is a confident empty.
+      { waitUntil: (promise: Promise<unknown>) => void promise },
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
