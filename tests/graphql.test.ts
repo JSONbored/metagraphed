@@ -22205,12 +22205,15 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("a signer row missing every optional metric resolves to nulls, not an error", async () => {
+  test("a signer row missing every optional metric resolves to the builder's zeros, not an error", async () => {
+    // #10190: the tier is retired; the #9146 signers projection answers, keyed
+    // by SORT. The subject is unchanged -- a row carrying only its signer must
+    // reach nulls through the builder, never an error.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => Response.json({ signers: [{ signer: SIGNER }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: { "7d": { sorts: { tx_count: [{ signer: SIGNER }] } } },
+      }),
     };
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);
@@ -22219,8 +22222,12 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       {
         signer: SIGNER,
         tx_count: 0,
-        total_fee_tao: null,
-        total_tip_tao: null,
+        // `toTao` coerces a NULL fee to 0 by contract -- "NULL fees never leak
+        // into the payload" (src/chain-analytics.ts). The retired tier echoed
+        // data-api's nulls straight through, so this field never went through
+        // that coercion in a test before.
+        total_fee_tao: 0,
+        total_tip_tao: 0,
         last_tx_block: null,
       },
     ]);
