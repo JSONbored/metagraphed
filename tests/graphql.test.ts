@@ -24027,7 +24027,6 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
     }) as unknown as Env;
   const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
   const events = { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" };
-  const health = { METAGRAPH_HEALTH_SOURCE: "postgres" };
   const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
 
   test("subnet_conviction forwards field_sources", async () => {
