@@ -1508,7 +1508,7 @@ import {
   withinRateLimit,
 } from "./ai-search.ts";
 import { keywordScore, queryTerms } from "./keyword-search.ts";
-import { KV_HEALTH_META } from "./kv-keys.ts";
+import { KV_ECONOMICS_CURRENT, KV_HEALTH_META } from "./kv-keys.ts";
 import {
   buildAccountsList,
   ACCOUNTS_LIST_SORTS,
@@ -1653,7 +1653,10 @@ import {
   subnetOwnershipHistoryNode,
 } from "./subnet-ownership-answer.ts";
 import { loadSudoKey } from "./sudo-key.ts";
-import { loadNetworkParameters } from "./network-parameters.ts";
+import {
+  loadNetworkParameters,
+  readCachedNetworkParametersSnapshot,
+} from "./network-parameters.ts";
 import { loadSweepRecord, type SweepStoreDb } from "./attribution-sweep.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { buildNetworksPayload } from "./network-capabilities.ts";
@@ -3751,11 +3754,41 @@ async function loadProviderDetail(
 // freshness artifact overlaid with the live 15-minute prober's last_run_at
 // (mergeFreshness) so the surface-health source reads `current` like the REST
 // route. With no live meta the committed artifact passes through unchanged.
+//
+// ALL THREE LIVE ARGUMENTS, not just the prober's. `mergeFreshness` appends two
+// lanes the built artifact structurally cannot carry -- `economics-live` and
+// `chain-parameters`, both KV-backed and moving on their own schedules -- and
+// it takes their timestamps from its THIRD parameter. Passing `(base, meta)`
+// and stopping left that parameter at its `{}` default, so both lanes parsed
+// `undefined`, and `liveFreshnessSource` reported them `missing` with a null
+// timestamp on every MCP call while REST reported them `current` from the same
+// KV. A field that is permanently wrong for two of its rows teaches people to
+// ignore the field (#10816).
+//
+// The reads are the SAME ONES the REST route makes, deliberately:
+//   - `KV_ECONOMICS_CURRENT` raw, NOT `resolveLiveEconomics` -- that helper
+//     drops a blob built under an older contract, which is right for serving
+//     economics and wrong here. Freshness reports how old the lane is; a blob
+//     being off-contract does not make it ageless, and dropping it would
+//     reintroduce exactly the `missing` this fixes.
+//   - `readCachedNetworkParametersSnapshot`, which reads the cache and never
+//     refreshes it -- see its own header: a freshness probe that triggered the
+//     work it measures could never report anything but `current`.
 async function loadFreshness(ctx: McpCtx) {
   const base = await loadArtifactData(ctx, "/metagraph/freshness.json");
   if (!ctx.readHealthKv) return base;
-  const meta = await ctx.readHealthKv(ctx.env, KV_HEALTH_META);
-  return mergeFreshness(base, meta) ?? base;
+  const [meta, economics, parameters] = await Promise.all([
+    ctx.readHealthKv(ctx.env, KV_HEALTH_META),
+    ctx.readHealthKv(ctx.env, KV_ECONOMICS_CURRENT),
+    readCachedNetworkParametersSnapshot(ctx.env),
+  ]);
+  return (
+    mergeFreshness(base, meta, {
+      economicsCapturedAt: (economics as { captured_at?: unknown } | null)
+        ?.captured_at,
+      parametersQueriedAt: parameters?.queried_at,
+    }) ?? base
+  );
 }
 
 async function loadEconomicsSubnetRows(ctx: McpCtx) {

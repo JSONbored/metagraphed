@@ -20967,6 +20967,89 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const out = res.body.result.structuredContent;
     assert.equal(out.sources[0].status, "stale");
   });
+
+  // #10816. `mergeFreshness` appends `economics-live` and `chain-parameters`
+  // from its THIRD argument, which MCP was not passing -- so both reported
+  // `missing` with a null timestamp on every call while REST reported them
+  // `current` off the same KV. These three pin the parameter, not the shape:
+  // the first two fail if either argument is dropped again, the third fails if
+  // one is invented.
+  const FRESHNESS_ARTIFACT = {
+    schema_version: 1,
+    sources: [{ id: "surface-health", status: "stale" }],
+    summary: {},
+  };
+  const parametersEnv = (queriedAt: string | null) => ({
+    METAGRAPH_CONTROL: {
+      get: (key: string) =>
+        Promise.resolve(
+          key.includes("network:parameters") && queriedAt
+            ? { queried_at: queriedAt }
+            : null,
+        ),
+    },
+  });
+
+  test("get_freshness reports economics-live from the KV blob, not missing", async () => {
+    const deps = makeDeps(
+      { "/metagraph/freshness.json": FRESHNESS_ARTIFACT },
+      { "health:meta": { last_run_at: FRESH_RUN } },
+    );
+    // Raw KV, so no contract_version: the freshness lane reports how OLD the
+    // blob is, and an off-contract blob is not an ageless one.
+    (deps as Row).readHealthKv = (_env: unknown, key: string) =>
+      Promise.resolve(
+        key === "health:meta"
+          ? { last_run_at: FRESH_RUN }
+          : key === "economics:current"
+            ? { captured_at: FRESH_RUN }
+            : null,
+      );
+    const res = await callTool("get_freshness", {}, { deps });
+    const econ = res.body.result.structuredContent.sources.find(
+      (s: Row) => s.id === "economics-live",
+    );
+    assert.equal(econ.status, "current");
+    assert.equal(econ.timestamp, FRESH_RUN);
+  });
+
+  test("get_freshness reports chain-parameters from the cached snapshot", async () => {
+    const deps = makeDeps(
+      { "/metagraph/freshness.json": FRESHNESS_ARTIFACT },
+      { "health:meta": { last_run_at: FRESH_RUN } },
+    );
+    const res = await callTool(
+      "get_freshness",
+      {},
+      { deps, env: parametersEnv(FRESH_RUN) },
+    );
+    const rpcLane = res.body.result.structuredContent.sources.find(
+      (s: Row) => s.id === "chain-parameters",
+    );
+    assert.equal(rpcLane.status, "current");
+    assert.equal(rpcLane.timestamp, FRESH_RUN);
+  });
+
+  test("get_freshness still reports both live lanes missing when their stores are cold", async () => {
+    // The honest case, and the one that must survive the fix: a cold store has
+    // no age, and inventing one would be worse than the bug being fixed.
+    const deps = makeDeps(
+      { "/metagraph/freshness.json": FRESHNESS_ARTIFACT },
+      { "health:meta": { last_run_at: FRESH_RUN } },
+    );
+    const res = await callTool(
+      "get_freshness",
+      {},
+      { deps, env: parametersEnv(null) },
+    );
+    for (const id of ["economics-live", "chain-parameters"]) {
+      const lane = res.body.result.structuredContent.sources.find(
+        (s: Row) => s.id === id,
+      );
+      assert.equal(lane.status, "missing", `${id} should report missing`);
+      assert.equal(lane.timestamp, null, `${id} should carry no timestamp`);
+    }
+  });
 });
 
 // Read-only MCP tools for webhook subscriptions + chain alert triggers, added
