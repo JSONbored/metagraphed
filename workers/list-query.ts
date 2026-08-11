@@ -47,16 +47,85 @@ export interface QueryCollectionConfig {
   sort_fields?: string[];
 }
 
-export interface ApplyQueryFiltersResult {
-  data?: unknown;
-  meta?: Record<string, unknown>;
-  error?: QueryError;
+/**
+ * The window `applyListTransform` emits, and the ONLY thing that emits it.
+ *
+ * Every member is required because the producer sets every member on every
+ * paginated result -- there is no branch that omits one. The Worker read
+ * `meta.pagination.collection` to pick the CSV data key and
+ * `meta.pagination` to build the RFC 8288 Link header off a
+ * `Record<string, unknown>`, which typed both as `unknown` and let the
+ * `as Row` cast one line up put them back (#10782).
+ */
+export interface ListPaginationMeta {
+  /** The data key the windowed rows live under. */
+  collection: string;
+  total: number;
+  returned: number;
+  limit: number;
+  cursor: number;
+  next_cursor: number | null;
+  sort: string | null;
+  order: "asc" | "desc";
+}
+
+/** Present only when `fields` narrowed the rows -- `projectionMeta` returns an
+ *  EMPTY object otherwise, which is why this member is optional and its own
+ *  `fields` is not. */
+export interface ListProjectionMeta {
+  fields: string[];
+}
+
+/** What a list transform reports about the window it produced. Spread whole
+ *  into the REST envelope's `meta`, so a member added here is published. */
+export interface ApplyQueryFiltersMeta {
+  pagination?: ListPaginationMeta;
+  projection?: ListProjectionMeta;
+}
+
+/**
+ * A transform either REJECTED the query or WINDOWED the rows -- never both,
+ * and never neither.
+ *
+ * A discriminated union rather than three optional members, because the three
+ * were not independent: every caller checks `error` first and then reads
+ * `data` and `meta` as though they are there, which they are, and the type
+ * said they might not be. Optional members made `if (transformed.error)
+ * return` prove nothing, so the reads afterwards each needed their own `?.` --
+ * a null check for a case the function cannot produce, which is how a real one
+ * stops being distinguishable (#10782).
+ */
+export type ApplyQueryFiltersResult =
+  | { error: QueryError; data?: undefined; meta?: undefined }
+  | { error?: undefined; data: unknown; meta: ApplyQueryFiltersMeta };
+
+/**
+ * One query collection's declared config, or null.
+ *
+ * THE SINGLE LOOKUP. `API_QUERY_COLLECTIONS` is a generated record whose value
+ * type TypeScript widens per entry, so every reader was writing its own
+ * `as Record<string, ...>` to index it -- three of them, one of which
+ * (`workers/api.ts`'s CSV branch) then read `.data_key` off the result with no
+ * null check at all, because the cast said the miss could not happen (#10782).
+ *
+ * A route with no collection is the routine case, not an error: the pure
+ * static artifacts declare `query_collection: null`.
+ */
+export function queryCollectionConfig(
+  queryCollection: string | null | undefined,
+): QueryCollectionConfig | null {
+  if (!queryCollection) return null;
+  return (
+    (API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>)[
+      queryCollection
+    ] ?? null
+  );
 }
 
 export function applyQueryFilters(
   data: Record<string, unknown> | null | undefined,
   url: URL,
-  queryCollection: string,
+  queryCollection: string | null | undefined,
   queryFilterNames: string[] = [],
   {
     csvResponse = false,
@@ -64,9 +133,11 @@ export function applyQueryFilters(
   }: { csvResponse?: boolean; defaultLimit?: number } = {},
 ): ApplyQueryFiltersResult {
   const params = url.searchParams;
-  const config = (
-    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
-  )[queryCollection];
+  // A route with no collection funnels into the SAME miss branch as an unknown
+  // one -- `queryCollectionConfig("")` is null -- so accepting the nullable
+  // costs no second exit, and `collection` is a string for the check below.
+  const collection = queryCollection ?? "";
+  const config = queryCollectionConfig(collection);
   if (!config) {
     return { data, meta: {} };
   }
@@ -78,7 +149,7 @@ export function applyQueryFilters(
   // already met it at the router; the MCP list tools come through here, and
   // this is their handler guard.
   const queryError =
-    validateCollectionQuery(params, queryCollection, queryFilterNames, {
+    validateCollectionQuery(params, collection, queryFilterNames, {
       csvResponse,
     }) ?? contradictoryRange(params, config.range_filters || []);
   if (queryError) return { error: queryError };
@@ -140,12 +211,15 @@ function effectiveFilterNames(
 // rebuilding the request. Null when no relation applies (unpaged, single page,
 // or empty) so the caller omits the header.
 export function listQueryParamNames(
-  queryCollection: string,
+  queryCollection: string | null | undefined,
   queryFilterNames: string[] = [],
 ): string[] {
-  const config = (
-    API_QUERY_COLLECTIONS as Record<string, QueryCollectionConfig>
-  )[queryCollection];
+  // A route with NO query collection is the routine case, not an error: the
+  // pure static artifacts declare `query_collection: null` and honour no
+  // params at all. Saying so in the signature is what lets `matchRoute`'s
+  // `string | null` reach here without a cast -- the lookup already answered
+  // `[]` for it, but only by missing (#10782).
+  const config = queryCollectionConfig(queryCollection);
   if (!config) return [];
   return listQueryParamNamesForConfig(config, queryFilterNames);
 }
@@ -185,7 +259,7 @@ function listQueryParamNamesForConfig(
 
 export function canonicalListSearch(
   url: URL,
-  queryCollection: string,
+  queryCollection: string | null | undefined,
   queryFilterNames: string[] = [],
 ): string {
   const canonicalUrl = new URL("https://edge-cache.metagraph.sh/");

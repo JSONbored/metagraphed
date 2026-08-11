@@ -241,6 +241,49 @@ beforeEach(() => {
   pg.control.db = null;
 });
 
+/**
+ * One tool's published outputSchema, asserted present.
+ *
+ * `listToolDefinitions().find(...)?.outputSchema` is
+ * `JsonSchemaLike | undefined`, and `ajv.compile` takes a schema -- so the
+ * ~54 call sites below were feeding it a possibly-undefined value, which
+ * compiled only while the definition list was reached through a cast
+ * (#10782). Asserting here names the TOOL when a schema goes missing, instead
+ * of leaving Ajv to throw about `undefined` from whichever test ran first.
+ */
+/**
+ * Walk into a published JSON Schema by key path.
+ *
+ * `schema?.properties?.points?.items?.properties` reads through four `unknown`
+ * members: JsonSchemaLike declares `properties` as
+ * `Record<string, unknown>`, which is honest -- a sub-schema is not itself
+ * typed -- and the chained `?.` only compiled while the definition list was an
+ * `any` (#10782).
+ */
+function schemaAt(
+  schema: unknown,
+  path: string[],
+): Record<string, unknown> | undefined {
+  let node: unknown = schema;
+  for (const key of path) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) {
+      return undefined;
+    }
+    node = (node as Record<string, unknown>)[key];
+  }
+  return node && typeof node === "object" && !Array.isArray(node)
+    ? (node as Record<string, unknown>)
+    : undefined;
+}
+
+function outputSchemaFor(name: string) {
+  const schema = listToolDefinitions().find(
+    (t) => t.name === name,
+  )?.outputSchema;
+  assert.ok(schema, `${name}: no published outputSchema`);
+  return schema;
+}
+
 describe("MCP tool registry", () => {
   test("every tool has a unique name, description, and object inputSchema", () => {
     const names = new Set();
@@ -301,18 +344,22 @@ describe("MCP tool registry", () => {
         assert.equal(def.annotations.destructiveHint, false, `${def.name}`);
       }
       // Every tool declares a compilable object outputSchema for its structuredContent.
+      // `assert.ok` rather than `typeof === "object"`: the first is an
+      // assertion signature, so it establishes for the two reads below what
+      // the second only checked (#10782).
+      // `assert.ok` rather than `typeof === "object"`: the first is an
+      // assertion signature, so it establishes for the reads below what the
+      // second only checked (#10782). Bound to a const because the closure
+      // handed to `doesNotThrow` does not inherit the narrowing.
+      assert.ok(def.outputSchema, `${def.name}: outputSchema`);
+      const outputSchema = def.outputSchema;
       assert.equal(
-        typeof def.outputSchema,
-        "object",
-        `${def.name}: outputSchema`,
-      );
-      assert.equal(
-        def.outputSchema.type,
+        outputSchema.type,
         "object",
         `${def.name}: outputSchema.type`,
       );
       assert.doesNotThrow(
-        () => ajv.compile(def.outputSchema),
+        () => ajv.compile(outputSchema),
         `${def.name}: outputSchema must be a valid JSON Schema`,
       );
     }
@@ -328,8 +375,12 @@ describe("MCP tool registry", () => {
       (def) => def.name === "get_subnet_concentration_history",
     );
     assert.equal(defs.length, 1);
-    const pointProperties =
-      defs[0].outputSchema?.properties?.points?.items?.properties;
+    const pointProperties = schemaAt(defs[0].outputSchema, [
+      "properties",
+      "points",
+      "items",
+      "properties",
+    ]);
     assert.ok(pointProperties?.snapshot_date);
     assert.ok(pointProperties?.stake_gini);
     assert.ok(pointProperties?.emission_top_10pct_share);
@@ -338,13 +389,27 @@ describe("MCP tool registry", () => {
   test("get_rpc_usage advertises a typed RpcUsageArtifact-shaped outputSchema", () => {
     const def = listToolDefinitions().find((t) => t.name === "get_rpc_usage");
     assert.ok(def);
-    const summary = def.outputSchema?.properties?.summary?.properties;
+    const summary = schemaAt(def.outputSchema, [
+      "properties",
+      "summary",
+      "properties",
+    ]);
     assert.ok(summary?.total_requests);
-    assert.ok(summary?.latency_ms?.properties?.p50);
-    const endpoint = def.outputSchema?.properties?.endpoints?.items?.properties;
+    assert.ok(schemaAt(summary?.latency_ms, ["properties", "p50"]));
+    const endpoint = schemaAt(def.outputSchema, [
+      "properties",
+      "endpoints",
+      "items",
+      "properties",
+    ]);
     assert.ok(endpoint?.endpoint_id);
     assert.ok(endpoint?.error_rate);
-    const bucket = def.outputSchema?.properties?.buckets?.items?.properties;
+    const bucket = schemaAt(def.outputSchema, [
+      "properties",
+      "buckets",
+      "items",
+      "properties",
+    ]);
     assert.ok(bucket?.ts);
     assert.ok(bucket?.avg_latency_ms);
   });
@@ -2109,8 +2174,15 @@ describe("MCP tools (injected deps)", () => {
         ],
       },
       "/metagraph/rpc/pools.json": {
-        pools: {
-          0: {
+        // The published artifact spells `pools` as an ARRAY -- five of them on
+        // /metagraph/rpc/pools.json -- so the fixture the bulk of these tests
+        // run against spells it that way too. It was an object keyed by pool
+        // index, a shape no artifact serves, and that disagreement is exactly
+        // what let #10782 empty `get_best_rpc_endpoint` against the real
+        // artifact with every test in this file still green. The object
+        // spelling is accepted too, and is still covered below.
+        pools: [
+          {
             endpoints: [
               {
                 id: "a",
@@ -2148,7 +2220,7 @@ describe("MCP tools (injected deps)", () => {
           },
           // Same physical endpoint 'b' also appears in a second pool — must be
           // deduped, not returned twice.
-          1: {
+          {
             endpoints: [
               {
                 id: "b",
@@ -2163,7 +2235,7 @@ describe("MCP tools (injected deps)", () => {
               },
             ],
           },
-        },
+        ],
       },
     },
     {
@@ -2624,6 +2696,9 @@ describe("MCP tools (injected deps)", () => {
     const noKvDeps = makeDeps(
       {
         "/metagraph/rpc/pools.json": {
+          // Keyed by pool index rather than the artifact's array — the other
+          // spelling `valuesOf` accepts, kept exercised here so the array
+          // fixture above is not the only shape this reads.
           pools: {
             0: { endpoints: [{ id: "a", pool_eligible: true, score: 1 }] },
           },
@@ -2672,9 +2747,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_curation payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_curation",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_curation");
     const deps = makeDeps({
       "/metagraph/curation.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -2761,9 +2834,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_gaps payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_gaps",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_gaps");
     const deps = makeDeps({
       "/metagraph/gaps.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -2852,9 +2923,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_enrichment_queue payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_enrichment_queue",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_enrichment_queue");
     const deps = makeDeps({
       "/metagraph/review/enrichment-queue.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -2977,9 +3046,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_adapter_candidates payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_adapter_candidates",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_adapter_candidates");
     const deps = makeDeps({
       "/metagraph/review/adapter-candidates.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3087,9 +3154,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_enrichment_evidence payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_enrichment_evidence",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_enrichment_evidence");
     const deps = makeDeps({
       "/metagraph/review/enrichment-evidence.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3183,9 +3248,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_review_gaps payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_review_gaps",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_review_gaps");
     const deps = makeDeps({
       "/metagraph/review/gap-priorities.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3262,9 +3325,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_review_enrichment_targets payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_review_enrichment_targets",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_review_enrichment_targets");
     const deps = makeDeps({
       "/metagraph/review/enrichment-targets.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3384,9 +3445,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_subnet_endpoints payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_subnet_endpoints",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_subnet_endpoints");
     const deps = makeDeps({
       "/metagraph/endpoints/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3516,9 +3575,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_subnet_health payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_subnet_health",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_subnet_health");
     const deps = makeDeps({
       "/metagraph/health/subnets/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3609,9 +3666,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_subnet_surfaces payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_subnet_surfaces",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_subnet_surfaces");
     const deps = makeDeps({
       "/metagraph/surfaces/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3695,9 +3750,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_endpoint_pools payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_endpoint_pools",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_endpoint_pools");
     const deps = makeDeps({
       "/metagraph/endpoint-pools.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -3921,9 +3974,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_provider_endpoints payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_provider_endpoints",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_provider_endpoints");
     const deps = makeDeps({
       "/metagraph/providers/datura/endpoints.json": {
         // A REAL captured production row. #9796 expressed this tool's
@@ -4050,9 +4101,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("list_endpoint_incidents payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_endpoint_incidents",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_endpoint_incidents");
     const deps = makeDeps({
       "/metagraph/endpoint-incidents.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -4320,9 +4369,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("get_changelog payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_changelog",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_changelog");
     // schema_version/generated_at are part of every real artifact and were
     // simply missing from this synthetic fixture. It passed while the tool
     // published a hand-written schema that did not require them; deriving from
@@ -4377,9 +4424,7 @@ describe("MCP tools (injected deps)", () => {
   });
 
   test("get_build payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_build",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_build");
     const deps = makeDeps({
       "/metagraph/build-summary.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -6651,9 +6696,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_stake_moves payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_stake_moves",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_stake_moves");
     const res = await callTool(
       "get_account_stake_moves",
       { ss58: SS58 },
@@ -6704,9 +6747,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_axon_removals payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_axon_removals",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_axon_removals");
     const res = await callTool(
       "get_account_axon_removals",
       { ss58: SS58 },
@@ -6757,9 +6798,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_prometheus payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_prometheus",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_prometheus");
     const res = await callTool(
       "get_account_prometheus",
       { ss58: SS58 },
@@ -6810,9 +6849,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_registrations payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_registrations",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_registrations");
     const res = await callTool(
       "get_account_registrations",
       { ss58: SS58 },
@@ -6863,9 +6900,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_serving payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_serving",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_serving");
     const res = await callTool(
       "get_account_serving",
       { ss58: SS58 },
@@ -6916,9 +6951,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_deregistrations payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_deregistrations",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_deregistrations");
     const res = await callTool(
       "get_account_deregistrations",
       { ss58: SS58 },
@@ -6969,9 +7002,7 @@ describe("MCP stake-flow and movers economics tools", () => {
   });
 
   test("get_account_weight_setters payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_account_weight_setters",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_account_weight_setters");
     const res = await callTool(
       "get_account_weight_setters",
       { ss58: SS58 },
@@ -7017,10 +7048,7 @@ describe("MCP stake-flow and movers economics tools", () => {
 
   test("stake-flow and movers payloads validate against outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name: string) =>
-      ajv.compile(
-        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
-      );
+    const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-30T00:00:00.000Z"));
     try {
@@ -7257,9 +7285,7 @@ describe("MCP get_subnet_stake_moves", () => {
   });
 
   test("get_subnet_stake_moves payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_stake_moves",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_stake_moves");
     const res = await callTool(
       "get_subnet_stake_moves",
       { netuid: 5 },
@@ -7297,9 +7323,7 @@ describe("MCP get_subnet_stake_transfers", () => {
   });
 
   test("get_subnet_stake_transfers payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_stake_transfers",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_stake_transfers");
     const res = await callTool(
       "get_subnet_stake_transfers",
       { netuid: 5 },
@@ -7336,9 +7360,7 @@ describe("MCP get_subnet_registrations", () => {
   });
 
   test("get_subnet_registrations payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_registrations",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_registrations");
     const res = await callTool(
       "get_subnet_registrations",
       { netuid: 5 },
@@ -7379,9 +7401,7 @@ describe("MCP get_subnet_weights", () => {
   });
 
   test("get_subnet_weights payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_weights",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_weights");
     const res = await callTool(
       "get_subnet_weights",
       { netuid: 5 },
@@ -7488,9 +7508,7 @@ describe("MCP get_subnet_serving", () => {
   });
 
   test("get_subnet_serving payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_serving",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_serving");
     const res = await callTool(
       "get_subnet_serving",
       { netuid: 7 },
@@ -7531,9 +7549,7 @@ describe("MCP get_subnet_prometheus", () => {
   });
 
   test("get_subnet_prometheus payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_prometheus",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_prometheus");
     const res = await callTool(
       "get_subnet_prometheus",
       { netuid: 7 },
@@ -7658,9 +7674,7 @@ describe("MCP get_subnet_yield_history", () => {
   });
 
   test("get_subnet_yield_history payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_subnet_yield_history",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_subnet_yield_history");
     const res = await callTool(
       "get_subnet_yield_history",
       { netuid: 7 },
@@ -7891,10 +7905,7 @@ describe("MCP get_rpc_usage", () => {
 
   test("cold and populated payloads validate against the declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validate = ajv.compile(
-      listToolDefinitions().find((t: Row) => t.name === "get_rpc_usage")!
-        .outputSchema,
-    );
+    const validate = ajv.compile(outputSchemaFor("get_rpc_usage"));
     for (const [label, env] of [
       ["cold", {}],
       ["populated", rpcUsageDb()],
@@ -11475,10 +11486,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   test("get_economics payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validate = ajv.compile(
-      listToolDefinitions().find((t: Row) => t.name === "get_economics")!
-        .outputSchema,
-    );
+    const validate = ajv.compile(outputSchemaFor("get_economics"));
     const res = await callTool(
       "get_economics",
       { sort: "netuid", order: "asc" },
@@ -11671,10 +11679,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   test("list_profiles payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validate = ajv.compile(
-      listToolDefinitions().find((t: Row) => t.name === "list_profiles")!
-        .outputSchema,
-    );
+    const validate = ajv.compile(outputSchemaFor("list_profiles"));
     const res = await callTool(
       "list_profiles",
       { sort: "netuid", order: "asc" },
@@ -11688,10 +11693,7 @@ describe("MCP economics + metagraph data tools", () => {
 
   test("get_subnet_profile payload validates against its declared outputSchema", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validate = ajv.compile(
-      listToolDefinitions().find((t: Row) => t.name === "get_subnet_profile")!
-        .outputSchema,
-    );
+    const validate = ajv.compile(outputSchemaFor("get_subnet_profile"));
     // A COMPLETE profile artifact, not a four-key stub. The stub validated only
     // because the hand-written schema this tool used to publish required almost
     // nothing; deriving from SubnetProfileArtifactSchema (#9796) requires the
@@ -12635,9 +12637,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_turnover payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_turnover",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_turnover");
     const res = await callTool(
       "get_chain_turnover",
       {},
@@ -12746,9 +12746,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_stake_flow payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_stake_flow",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_stake_flow");
     const res = await callTool(
       "get_chain_stake_flow",
       {},
@@ -12862,9 +12860,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_alpha_volume payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_alpha_volume",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_alpha_volume");
     const res = await callTool(
       "get_chain_alpha_volume",
       {},
@@ -12970,9 +12966,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_weights payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_weights",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_weights");
     const res = await callTool(
       "get_chain_weights",
       {},
@@ -13117,9 +13111,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_weight_setters payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_weight_setters",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_weight_setters");
     const res = await callTool(
       "get_chain_weight_setters",
       {},
@@ -13226,9 +13218,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_stake_moves payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_stake_moves",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_stake_moves");
     const res = await callTool(
       "get_chain_stake_moves",
       {},
@@ -13335,9 +13325,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_stake_transfers payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_stake_transfers",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_stake_transfers");
     const res = await callTool(
       "get_chain_stake_transfers",
       {},
@@ -13444,9 +13432,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_axon_removals payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_axon_removals",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_axon_removals");
     const res = await callTool(
       "get_chain_axon_removals",
       {},
@@ -13553,9 +13539,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_deregistrations payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_deregistrations",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_deregistrations");
     const res = await callTool(
       "get_chain_deregistrations",
       {},
@@ -13654,9 +13638,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_serving payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_serving",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_serving");
     const res = await callTool(
       "get_chain_serving",
       {},
@@ -13759,9 +13741,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_prometheus payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_prometheus",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_prometheus");
     const res = await callTool(
       "get_chain_prometheus",
       {},
@@ -13909,9 +13889,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_chain_transfer_pairs payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_chain_transfer_pairs",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_chain_transfer_pairs");
     const res = await callTool(
       "get_chain_transfer_pairs",
       {},
@@ -14197,9 +14175,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_network_health payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_network_health",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_network_health");
     const globalLiveKv = {
       last_run_at: FRESH_RUN,
       summary: { surface_count: 1, status_counts: { ok: 1 } },
@@ -14365,9 +14341,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_health_history payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_health_history",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_health_history");
     const deps = makeDeps({
       [`/metagraph/health/history/${HEALTH_HISTORY_BLOB.date}.json`]:
         HEALTH_HISTORY_BLOB,
@@ -15202,9 +15176,7 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_feed payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_feed",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_feed");
     const feedDeps = makeDeps({
       "/metagraph/changelog.json": {
         generated_at: "2026-06-15T00:00:00.000Z",
@@ -15883,10 +15855,7 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     // validate-mcp only exercises the cold (empty-array) path, so assert the
     // POPULATED shapes here — the only check that the item schemas match the rows.
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name: string) =>
-      ajv.compile(
-        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
-      );
+    const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     const reg = {
       netuid: 7,
       uid: 3,
@@ -16328,10 +16297,7 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
 
   test("account tail payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name: string) =>
-      ajv.compile(
-        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
-      );
+    const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     const dayRow = {
       day: "2025-06-24",
       netuid: 7,
@@ -17762,10 +17728,7 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 
   test("block-explorer payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name: string) =>
-      ajv.compile(
-        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
-      );
+    const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     const hash = "0x" + "c".repeat(64);
     // Every block-explorer tool now goes tryPostgresTier -> buildXxx(...) on
     // any miss/outage, never a live D1 read (#4772/D1 fully eliminated
@@ -18164,10 +18127,7 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
 
   test("all-events tool payloads validate against their declared outputSchemas", async () => {
     const ajv = new Ajv2020({ strict: false });
-    const validatorFor = (name: string) =>
-      ajv.compile(
-        listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
-      );
+    const validatorFor = (name: string) => ajv.compile(outputSchemaFor(name));
     const blockLake = makeExtrinsicLakehouse({
       rows: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events,
     });
@@ -18639,9 +18599,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_search_index payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_search_index",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_search_index");
     const deps = makeDeps({
       "/metagraph/search-index.json": {
         // A REAL captured production row. #9796 expressed this tool's
@@ -18705,9 +18663,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_search payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_search",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_search");
     const deps = makeDeps({
       "/metagraph/search.json": {
         documents: [{ id: "subnet-7", title: "Subnet Seven" }],
@@ -18760,9 +18716,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_providers payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_providers",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_providers");
     const deps = makeDeps({
       "/metagraph/providers.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -19045,9 +18999,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_surfaces payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_surfaces",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_surfaces");
     const deps = makeDeps({
       "/metagraph/surfaces.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -19829,9 +19781,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_evidence payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_evidence",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_evidence");
     const deps = makeDeps({
       "/metagraph/evidence-ledger.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -19987,9 +19937,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_source_snapshots payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_source_snapshots",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_source_snapshots");
     const deps = makeDeps({
       "/metagraph/source-snapshots.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -20314,9 +20262,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_rpc_pools payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_rpc_pools",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_rpc_pools");
     const deps = makeDeps({
       "/metagraph/rpc/pools.json": {
         generated_at: "2026-01-01T00:00:00Z",
@@ -20606,9 +20552,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("list_subnet_evidence payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "list_subnet_evidence",
-    )?.outputSchema;
+    const schema = outputSchemaFor("list_subnet_evidence");
     const deps = makeDeps({
       "/metagraph/evidence/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
@@ -20816,9 +20760,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("get_contracts payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_contracts",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_contracts");
     const deps = makeDeps({
       "/metagraph/contracts.json": {
         // A real captured production row, trimmed to one item. Deriving these
@@ -20903,9 +20845,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   });
 
   test("get_adapter payload validates against its declared outputSchema", async () => {
-    const schema = listToolDefinitions().find(
-      (t) => t.name === "get_adapter",
-    )?.outputSchema;
+    const schema = outputSchemaFor("get_adapter");
     const deps = makeDeps({
       "/metagraph/adapters/gittensor.json": {
         schema_version: 1,

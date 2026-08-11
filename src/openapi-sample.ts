@@ -8,7 +8,7 @@
 // responses rather than bare placeholders. Validity is enforced downstream by
 // scripts/validate-openapi-examples.ts (ajv against each operation's schema).
 
-type Schema = Record<string, unknown>;
+export type Schema = Record<string, unknown>;
 type Sample = Record<string, unknown>;
 
 // Top levels show optional fields (informative); deeper levels stay required-only

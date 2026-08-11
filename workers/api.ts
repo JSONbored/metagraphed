@@ -9,7 +9,6 @@ import {
 } from "../src/pg-statement-client.ts";
 import { neonOwnsTable } from "../src/neon-write.ts";
 import {
-  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
@@ -17,8 +16,101 @@ import {
   liveOnlyArtifactRoute,
 } from "../src/contracts.ts";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
+
+/**
+ * No stored artifact to read.
+ *
+ * The live-only routes assigned a bare `{ ok: false }` here, which typed fine
+ * while the slot was `Record<string, any>` -- and the shared failure path below
+ * reads `artifact.code`, `.message` and `.status` off it. Those branches always
+ * set `live`, so the read never happened; the invariant was real and nothing
+ * stated it. A COMPLETE sentinel makes the slot exactly `StorageReadResult`,
+ * and if that invariant ever breaks the caller gets this 404 instead of an
+ * error response built from three `undefined`s (#10782).
+ */
+const NO_STORED_ARTIFACT: StorageReadError = {
+  ok: false,
+  status: 404,
+  code: "not_found",
+  message: "No stored artifact for this route (live-only).",
+};
+
+/**
+ * The three diagnostics headers a served artifact advertises (#8301), or none.
+ *
+ * `source`, `storage_tier` and `resolution` exist only on the SUCCESS arm of a
+ * `StorageReadResult`. Reading them straight off the union compiled while the
+ * slot was a bag, and the envelope relied on `envelopeResponse` dropping the
+ * three `undefined`s it got back on a live-only response. That is still the
+ * behaviour -- a response with no artifact behind it omits all three rather
+ * than asserting a tier it did not read -- it is just stated here now, once,
+ * instead of being a property of what the header writer happens to do with
+ * `undefined` (#10782).
+ */
+function artifactDiagnosticHeaders(
+  artifact: StorageReadResult,
+): Record<string, string> {
+  if (!artifact.ok) return {};
+  return {
+    [X_METAGRAPH_ARTIFACT_SOURCE_HEADER]: artifact.source,
+    "x-metagraph-storage-tier": artifact.storage_tier,
+    ...(artifact.resolution
+      ? { [X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER]: artifact.resolution }
+      : {}),
+  };
+}
+
+/** The row under an untyped value, or null. */
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
+
+/** The rows under an untyped value, or empty. */
+function rowsOf(value: unknown): Row[] {
+  return Array.isArray(value) ? (value as Row[]) : [];
+}
+
+/**
+ * The items under an untyped value, or empty.
+ *
+ * `rowsOf` with the row claim withheld, and that is the whole difference: a
+ * `value is T` filter only narrows when `T` is assignable to the array's
+ * element type, and an INTERFACE is never assignable to `Row` -- TypeScript
+ * keeps interfaces open to declaration merging, so it will not grant them an
+ * index signature. Filtering a `Row[]` with a predicate therefore picks
+ * `filter`'s non-narrowing overload and hands back `Row[]` while looking like
+ * it worked (#10782).
+ */
+function itemsOf(value: unknown): unknown[] {
+  return Array.isArray(value) ? (value as unknown[]) : [];
+}
+
+/** An integer, or null. `Number.isInteger` is not a type predicate, so the
+ *  `typeof` is what lets the value be used as a number afterwards. */
+function intOf(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+/** A non-empty string, or null -- the exact reading `value || null` had while
+ *  the value was `any`, now stated where a caller can rely on it. */
+function stringOf(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/**
+ * A thrown value's message.
+ *
+ * `catch` binds `unknown`, and reading `.message` off it through a `Row` cast
+ * was the shape that let a thrown STRING or a rejected non-Error render as
+ * `undefined` in a log line and an error body. `String(value)` is the honest
+ * fallback: something was thrown, and this says what (#10782).
+ */
+function errorMessage(value: unknown): string {
+  return value instanceof Error ? value.message : String(value);
+}
 // Loose ctx shape (matches request-handlers/analytics.ts's own EdgeCacheCtx) --
 // call sites here sometimes pass a real Workers-runtime ExecutionContext,
 // sometimes {} (e.g. handleScheduled's default), so a full ExecutionContext
@@ -83,6 +175,7 @@ import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
+  queryCollectionConfig,
 } from "./list-query.ts";
 import { csvRequested, csvResponse } from "./csv.ts";
 import {
@@ -103,6 +196,7 @@ import {
   readHealthKv,
   readR2Object,
 } from "./storage.ts";
+import type { StorageReadError, StorageReadResult } from "./storage.ts";
 import {
   contractStaleness,
   contractVersion,
@@ -1256,7 +1350,7 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
 ]);
 
 function isStaticEdgeCacheEligible(
-  matched: Row,
+  matched: MatchedRoute,
   network: typeof DEFAULT_NETWORK,
 ) {
   return !network.isDefault || !LIVE_OVERLAY_ROUTE_IDS.has(matched.id);
@@ -1278,7 +1372,7 @@ const CACHEABLE_OVERLAY_ROUTE_IDS = new Set(["endpoints"]);
 // cache. Routes with no query collection (pure static artifacts) honour no
 // params at all, so their canonical search is the empty string. Shared by both
 // the static edge cache and the live-overlay collection cache.
-function canonicalCacheSearch(url: URL, matched: Row) {
+function canonicalCacheSearch(url: URL, matched: MatchedRoute) {
   return canonicalListSearch(
     url,
     matched.queryCollection,
@@ -2416,15 +2510,49 @@ export async function resolveRevenueFeedItems(
  */
 export const WALLET_FEED_MAX_ADDRESSES = 40;
 
+/**
+ * Is this artifact record one the wallet feed can read?
+ *
+ * A type PREDICATE, where the filter used to be a plain boolean followed by
+ * `as WalletAttributionRecord[]`. The two are not the same claim: the filter
+ * checked `ss58` and `category`, and the cast then asserted the OPTIONAL
+ * members too -- `netuid` reaches `subnetPageUrl` and is interpolated into a
+ * published URL, `source_urls` reaches `evidenceClause` and is `.join`ed. A
+ * string netuid would have published `/subnets/12abc` and a non-array
+ * `source_urls` would have thrown inside a feed item, and nothing here would
+ * have said so first.
+ *
+ * schemas/entity.schema.json already enforces all of this at contribution
+ * time. This is the read side of that boundary, and a served artifact is not
+ * the file that was validated (#10782/#10789).
+ */
+function isWalletAttributionRecord(
+  value: unknown,
+): value is WalletAttributionRecord {
+  const row = rowOf(value);
+  if (!row) return false;
+  if (typeof row.ss58 !== "string" || !row.ss58) return false;
+  if (typeof row.category !== "string") return false;
+  if (row.netuid != null && typeof row.netuid !== "number") return false;
+  if (row.name != null && typeof row.name !== "string") return false;
+  if (
+    row.source_urls !== undefined &&
+    !(
+      Array.isArray(row.source_urls) &&
+      row.source_urls.every((url) => typeof url === "string")
+    )
+  ) {
+    return false;
+  }
+  // `review` is read only through `?.`, so absent and null are both fine; a
+  // non-object present under the name is not.
+  return row.review == null || rowOf(row.review) !== null;
+}
+
 export async function resolveWalletFeedItems(env: Env): Promise<FeedItem[]> {
   const artifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
-  const entities = artifact.ok
-    ? ((artifact.data as Row | undefined)?.entities as Row[] | undefined)
-    : undefined;
-  const wallets = (Array.isArray(entities) ? entities : []).filter(
-    (e) =>
-      typeof e?.ss58 === "string" && e.ss58 && typeof e?.category === "string",
-  ) as WalletAttributionRecord[];
+  const entities = artifact.ok ? rowOf(artifact.data)?.entities : undefined;
+  const wallets = itemsOf(entities).filter(isWalletAttributionRecord);
   if (wallets.length === 0) return [];
 
   // Only the roles whose movement is an event: a burn's outbound is the
@@ -2441,25 +2569,22 @@ export async function resolveWalletFeedItems(env: Env): Promise<FeedItem[]> {
         env,
         `/api/v1/accounts/${encodeURIComponent(wallet.ss58)}/transfers?limit=100`,
       );
-      const transfers = (payload?.data as Row | undefined)?.transfers;
+      const transfers = rowOf(payload?.data)?.transfers;
+      // Still `Array.isArray` rather than `rowsOf(...).length`: an ABSENT
+      // `transfers` and an empty one are different answers here, and only the
+      // first should leave the address out of the map.
       if (!Array.isArray(transfers)) return;
       rowsByAddress.set(
         wallet.ss58,
-        transfers.map((t) => ({
+        rowsOf(transfers).map((t) => ({
           address: wallet.ss58,
           denomination: "tao" as const,
           netuid: null,
           // The route says `received`/`sent` from the queried account's point
           // of view; the aggregator's vocabulary is in/out.
-          direction: (t as Row).direction === "received" ? "in" : "out",
-          amount:
-            typeof (t as Row).amount_tao === "number"
-              ? ((t as Row).amount_tao as number)
-              : null,
-          observed_at:
-            typeof (t as Row).observed_at === "string"
-              ? ((t as Row).observed_at as string)
-              : null,
+          direction: t.direction === "received" ? "in" : "out",
+          amount: typeof t.amount_tao === "number" ? t.amount_tao : null,
+          observed_at: typeof t.observed_at === "string" ? t.observed_at : null,
         })),
       );
     }),
@@ -2467,8 +2592,7 @@ export async function resolveWalletFeedItems(env: Env): Promise<FeedItem[]> {
 
   const taoUsd = await readArtifact(env, "/metagraph/network/tao-usd.json");
   const usdPerTao = taoUsd.ok
-    ? (((taoUsd.data as Row | undefined)?.latest as Row | undefined)
-        ?.usd_per_tao as number | undefined)
+    ? rowOf(rowOf(taoUsd.data)?.latest)?.usd_per_tao
     : undefined;
 
   return walletFeedItems({
@@ -4413,10 +4537,12 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
     return "body must be a JSON object";
   }
   const body = parsed as Row;
-  if (!Number.isInteger(body.block_number) || body.block_number < 0) {
+  const blockNumber = intOf(body.block_number);
+  if (blockNumber === null || blockNumber < 0) {
     return "block_number must be a non-negative integer";
   }
-  if (!Number.isInteger(body.observed_at) || body.observed_at <= 0) {
+  const observedAt = intOf(body.observed_at);
+  if (observedAt === null || observedAt <= 0) {
     return "observed_at must be a positive epoch-ms integer";
   }
   if (
@@ -4453,12 +4579,9 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
   ) {
     return "flow_observations must be an array of {item, raw} observations";
   }
-  for (const observation of body.flow_observations as Row[]) {
-    if (
-      !observation ||
-      typeof observation !== "object" ||
-      Array.isArray(observation)
-    ) {
+  for (const entry of itemsOf(body.flow_observations)) {
+    const observation = rowOf(entry);
+    if (!observation) {
       return "flow_observations entries must be {item, raw} objects";
     }
     if (
@@ -4476,15 +4599,11 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
     }
   }
   if (
-    !validEmissionGateSyncPairs(
-      body.current_ema,
-      (second) =>
-        second === null ||
-        (typeof second === "object" &&
-          !Array.isArray(second) &&
-          Number.isInteger((second as Row).block) &&
-          (second as Row).block >= 0),
-    )
+    !validEmissionGateSyncPairs(body.current_ema, (second) => {
+      if (second === null) return true;
+      const block = intOf(rowOf(second)?.block);
+      return block !== null && block >= 0;
+    })
   ) {
     return "current_ema must be an array of [netuid, {block} | null] pairs";
   }
@@ -8217,7 +8336,9 @@ async function lookupSubnetNetuid(
 // names) drops straight into them.
 function loadPreviouslyKnownAsTiered(
   netuid: number,
-  currentName: string | null,
+  // The name comes off an artifact row, so it is whatever that row carried.
+  // `derivePreviouslyKnownAs` compares it as a string and tolerates the rest.
+  currentName: unknown,
 ) {
   return derivePreviouslyKnownAs([], currentName);
 }
@@ -8276,7 +8397,7 @@ async function handleApiRequest(
     // Cheap KV read of just the snapshot time; on a hit this + the cache match
     // is the whole request (no R2 GET / overlay / re-stringify).
     const opMeta = await readHealthMetaKv(env);
-    const lastRunAt = opMeta?.last_run_at || null;
+    const lastRunAt = stringOf(opMeta?.last_run_at);
     if (lastRunAt) {
       overlayCacheable = {
         store: overlayCacheStore,
@@ -8317,7 +8438,7 @@ async function handleApiRequest(
   // Live operational-health overlay (Phase 3): current health is live-only.
   // Static current-health artifacts are not read for mainnet health routes, so
   // stale R2 objects left behind by earlier publishes cannot affect responses.
-  let artifact: Row;
+  let artifact: StorageReadResult;
   let live: Row | null = null;
   if (!network.isDefault) {
     // Non-default networks serve only the static partitioned artifact; the live
@@ -8340,9 +8461,9 @@ async function handleApiRequest(
         { contractVersion: (e: Env) => contractVersion(e) },
       ),
     };
-    artifact = { ok: false };
+    artifact = NO_STORED_ARTIFACT;
   } else if (matched.id === "subnet-health") {
-    artifact = { ok: false };
+    artifact = NO_STORED_ARTIFACT;
     live = await liveHealthOverlay(env, matched, null);
     // Per-subnet health is live-only too: never 404 on a cold store — serve an
     // explicit `unknown` payload instead of the (now absent) static artifact.
@@ -8365,7 +8486,7 @@ async function handleApiRequest(
     live = await liveHealthOverlay(
       env,
       matched,
-      artifact.ok ? artifact.data : null,
+      artifact.ok ? rowOf(artifact.data) : null,
     );
   }
 
@@ -8375,7 +8496,22 @@ async function handleApiRequest(
     });
   }
 
-  let baseData = live ? live.data : artifact.data;
+  /**
+   * The STORED body, or null when this response has no artifact behind it.
+   *
+   * Narrowed once. `artifact.data` only exists on the success arm, and three
+   * separate places downstream re-derived that -- the base body, the
+   * contract-staleness read, and (through `.source`) the envelope's `meta`.
+   * Each of those was its own `artifact.ok ?` while the read answered `any`,
+   * so each was free to disagree with the others about what an absent
+   * artifact means (#10782).
+   */
+  const storedData: Row | null = artifact.ok ? rowOf(artifact.data) : null;
+
+  // The response body being shaped: an object or null. Every use below either
+  // spreads it or reads a field off it, which is what `Row` says and
+  // `unknown` does not.
+  let baseData: Row | null = live ? rowOf(live.data) : storedData;
   // Spot on every economics row (#9408 completion): the detail card and the
   // leaderboards already derive spot_price_tao at serve time; the full blob was
   // the one surface still without it. Both tiers pass through this point.
@@ -8406,27 +8542,27 @@ async function handleApiRequest(
       env,
       contractVersion: contractVersion(env),
     });
-    baseData = overlaySubnetEconomics(
-      baseData,
-      liveEconomics?.data,
-      Number(matched.params.netuid),
-    );
-    const aliasTarget =
-      baseData.subnet && typeof baseData.subnet === "object"
-        ? baseData.subnet
-        : baseData;
+    // `overlaySubnetEconomics` returns its input unchanged when there is
+    // nothing to overlay, so falling back to `baseData` keeps that path; what
+    // it does NOT do is return null for a row it was handed, which is why the
+    // reads below were safe and said so nowhere.
+    const overlaid =
+      rowOf(
+        overlaySubnetEconomics(
+          baseData,
+          liveEconomics?.data,
+          Number(matched.params.netuid),
+        ),
+      ) ?? baseData;
+    const nested = rowOf(overlaid.subnet);
+    const aliasTarget = nested ?? overlaid;
     const aliasNames = loadPreviouslyKnownAsTiered(
       Number(matched.params.netuid),
       aliasTarget.native_name ?? aliasTarget.name,
     );
-    if (baseData.subnet && typeof baseData.subnet === "object") {
-      baseData = {
-        ...baseData,
-        subnet: overlayPreviouslyKnownAs(baseData.subnet, aliasNames),
-      };
-    } else {
-      baseData = overlayPreviouslyKnownAs(baseData, aliasNames);
-    }
+    baseData = nested
+      ? { ...overlaid, subnet: overlayPreviouslyKnownAs(nested, aliasNames) }
+      : rowOf(overlayPreviouslyKnownAs(overlaid, aliasNames));
   }
   // Identity-history aliases are D1-backed and independent of the live health KV
   // overlay — apply them whenever the catalog artifact is served (static or live).
@@ -8440,26 +8576,47 @@ async function handleApiRequest(
       Number(matched.params.netuid),
       baseData.name,
     );
-    baseData = overlayPreviouslyKnownAs(baseData, aliasNames);
+    baseData = rowOf(overlayPreviouslyKnownAs(baseData, aliasNames));
   }
   if (
     network.isDefault &&
     matched.id === "agent-catalog" &&
-    baseData?.subnets?.length
+    baseData &&
+    rowsOf(baseData.subnets).length
   ) {
-    const aliasMap = loadPreviouslyKnownAsForNetuidsTiered(baseData.subnets);
+    const catalogSubnets = rowsOf(baseData.subnets);
+    const aliasMap = loadPreviouslyKnownAsForNetuidsTiered(catalogSubnets);
     baseData = {
       ...baseData,
-      subnets: baseData.subnets.map((entry: Row) =>
-        overlayPreviouslyKnownAs(entry, aliasMap.get(entry.netuid) || []),
-      ),
+      // `aliasMap` is keyed by INTEGER netuid -- deriveNetuidGroupedAliases
+      // filters on `Number.isInteger` -- so an entry without one has no
+      // aliases by construction, and this says that instead of indexing the
+      // map with whatever the artifact held.
+      subnets: catalogSubnets.map((entry) => {
+        const netuid = intOf(entry.netuid);
+        return overlayPreviouslyKnownAs(
+          entry,
+          (netuid === null ? undefined : aliasMap.get(netuid)) ?? [],
+        );
+      }),
     };
   }
-  const baseSource = live
-    ? live.source || baseData?.health_source || "live-cron-prober"
-    : matched.id === "economics"
-      ? "r2-fallback"
-      : artifact.source;
+  // The live tier names its own source; the two fallbacks below it are the
+  // artifact's. Read `live` first because an artifact that FAILED to read
+  // implies a live overlay (the guard above returned otherwise) -- but the
+  // reads stay null-safe rather than asserting that, so a future edit to the
+  // guard shows up as a wrong-looking source rather than a thrown request.
+  const liveSource =
+    stringOf(live?.source) ??
+    stringOf(baseData?.health_source) ??
+    "live-cron-prober";
+  const baseSource = !artifact.ok
+    ? liveSource
+    : live
+      ? liveSource
+      : matched.id === "economics"
+        ? "r2-fallback"
+        : artifact.source;
 
   // Serve-time contract drift (#1001): when serving a STORED artifact (not a
   // live overlay) that was built under an older contract than the live one, the
@@ -8468,7 +8625,7 @@ async function handleApiRequest(
   // otherwise-silent drift is observable.
   const staleContract = live
     ? null
-    : contractStaleness(env, artifact.data?.contract_version);
+    : contractStaleness(env, stringOf(storedData?.contract_version));
   if (staleContract) {
     logEvent(env, "warn", "stale_contract_served", {
       artifact_path: artifactPath,
@@ -8480,10 +8637,10 @@ async function handleApiRequest(
   const transformed = applyQueryFilters(
     baseData,
     url,
-    matched.queryCollection as string,
+    matched.queryCollection,
     matched.queryFilterNames,
     { csvResponse: matched.csvResponse === true },
-  ) as Row;
+  );
   if (transformed.error) {
     return errorResponse("invalid_query", transformed.error.message, 400, {
       artifact_path: artifactPath,
@@ -8510,13 +8667,15 @@ async function handleApiRequest(
     },
   );
   if (wantsCsv) {
-    let collectionKey = (API_QUERY_COLLECTIONS as Record<string, Row>)[
-      matched.queryCollection as string
-    ].data_key;
-    if (transformed.meta.pagination) {
-      collectionKey = transformed.meta.pagination.collection;
-    }
-    const rows = transformed.data[collectionKey];
+    // The windowed collection names itself; the route's declared config is the
+    // fallback for an unwindowed body. `?? ""` covers the route that declares
+    // no collection at all -- unreachable while only list routes answer CSV,
+    // and previously an unguarded `.data_key` on an `undefined` config.
+    const collectionKey =
+      transformed.meta.pagination?.collection ??
+      queryCollectionConfig(matched.queryCollection)?.data_key ??
+      "";
+    const rows = rowOf(transformed.data)?.[collectionKey];
     if (!Array.isArray(rows)) {
       return errorResponse(
         "invalid_artifact",
@@ -8582,7 +8741,7 @@ async function handleApiRequest(
     // how the served row was read. Keyed off the same `live.source` the
     // effectivePublishedAt branch above already trusts.
     if (matched.id === "economics") {
-      patch.field_sources = economicsFieldSources(live?.source);
+      patch.field_sources = economicsFieldSources(stringOf(live?.source));
     }
     if (effectivePublishedAt && "generated_at" in responseData) {
       patch.generated_at = effectivePublishedAt;
@@ -8661,9 +8820,7 @@ async function handleApiRequest(
       // (#8287) until #8299 repointed it. envelopeResponse drops null/undefined
       // entries, so a live-overlay response with no artifact behind it simply
       // omits them rather than asserting a tier it did not read.
-      "x-metagraph-artifact-source": artifact.source,
-      "x-metagraph-storage-tier": artifact.storage_tier,
-      [X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER]: artifact.resolution,
+      ...artifactDiagnosticHeaders(artifact),
     },
   );
   // Cache only route-declared pure static-artifact 200s. Live-overlay routes
@@ -8694,6 +8851,9 @@ function matchRawArtifact(pathname: string) {
     candidate.pattern.test(pathname),
   );
 }
+
+/** What `matchRoute` returns, named so the handlers that take it can say so. */
+export type MatchedRoute = NonNullable<ReturnType<typeof matchRoute>>;
 
 function matchRoute(pathname: string) {
   for (const candidate of ROUTES) {
@@ -8765,7 +8925,8 @@ async function handleHealthRequest(request: Request, env: Env) {
   // Operational-health freshness — the 15-minute cron prober's last run. Reported
   // for observability (a stuck prober shows a growing age); does not gate the
   // HTTP status here (Phase 4 wires alerting). Null until the first cron run.
-  const opRunAtMs = meta?.last_run_at ? Date.parse(meta.last_run_at) : NaN;
+  const opLastRunAt = stringOf(meta?.last_run_at);
+  const opRunAtMs = opLastRunAt ? Date.parse(opLastRunAt) : NaN;
   const opAgeMinutes = Number.isFinite(opRunAtMs)
     ? (Date.now() - opRunAtMs) / 60_000
     : null;
@@ -9368,12 +9529,11 @@ async function handleSemanticSearchRequest(
     });
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
-    const err = error as Row;
-    if (err?.aiInput) {
-      return errorResponse("invalid_query", err.message, 400);
+    if (rowOf(error)?.aiInput) {
+      return errorResponse("invalid_query", errorMessage(error), 400);
     }
     logEvent(env, "error", "semantic_search_failed", {
-      message: err?.message,
+      message: errorMessage(error),
     });
     await captureAiRouteError(error, "semantic_search", env);
     return errorResponse(
@@ -9457,11 +9617,10 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     );
     return dataResponse(env, data, 200, { source: "ai-live" });
   } catch (error) {
-    const err = error as Row;
-    if (err?.aiInput) {
-      return errorResponse("invalid_request", err.message, 400);
+    if (rowOf(error)?.aiInput) {
+      return errorResponse("invalid_request", errorMessage(error), 400);
     }
-    logEvent(env, "error", "ask_failed", { message: err?.message });
+    logEvent(env, "error", "ask_failed", { message: errorMessage(error) });
     await captureAiRouteError(error, "ask", env);
     return errorResponse(
       "ai_error",
@@ -9508,7 +9667,7 @@ const ENDPOINT_OVERLAY_EXCLUDED_IDS = new Set([
 
 async function liveHealthOverlay(
   env: Env,
-  matched: Row,
+  matched: MatchedRoute,
   staticData: Row | null,
 ) {
   let resolved: Row | null | undefined;

@@ -350,8 +350,7 @@ export interface RevenueFeedDb {
 // instead -- see RevenueObservations/RevenueProbeFailures at the read sites,
 // where `observed_at: number | string` is the honest BIGINT type and the reason
 // epochMs exists at all.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 /** Bounded so one pathological surface cannot make the feed read the table. The
  * feed caps at FEED_MAX_ITEMS anyway; this bounds the SCAN, not the output. */
@@ -362,18 +361,22 @@ const FEED_ROW_LIMIT = 2000;
 const DENOMINATOR_WINDOW = "30d";
 const DENOMINATOR_WINDOW_HOURS = 24 * 30;
 
-async function queryRows(
+// GENERIC over the row the SELECT returns, so the caller names the generated
+// table type once instead of casting the result. The assertion below is the
+// D1 trust boundary -- `all()` answers `unknown` and only the SQL knows the
+// shape -- and it is now in one place rather than at every call site (#10782).
+async function queryRows<T = Row>(
   db: RevenueFeedDb | null | undefined,
   sql: string,
   binds: unknown[],
-): Promise<Row[] | null> {
+): Promise<T[] | null> {
   if (!db?.prepare) return null;
   try {
     const statement = db.prepare(sql);
     const res = await (
       binds.length ? statement.bind(...binds) : statement
     ).all?.();
-    return (res?.results ?? []) as Row[];
+    return (res?.results ?? []) as T[];
   } catch {
     // Null, not []: a failed read and an empty table are different facts, and
     // an empty feed derived from a broken store would read as "nothing moved".
@@ -409,13 +412,13 @@ export async function loadRevenueFeedItems(
   const cutoff = now - windowDays * DAY_MS;
 
   const [observationRows, failureRows] = await Promise.all([
-    queryRows(
+    queryRows<RevenueObservations>(
       db,
       `SELECT surface_id, netuid, period, grain, amount, currency, provenance, observed_at` +
         ` FROM revenue_observations ORDER BY observed_at DESC LIMIT ${FEED_ROW_LIMIT}`,
       [],
     ),
-    queryRows(
+    queryRows<RevenueProbeFailures>(
       db,
       `SELECT surface_id, netuid, reason, observed_at` +
         ` FROM revenue_probe_failures WHERE observed_at >= ?` +
@@ -425,21 +428,19 @@ export async function loadRevenueFeedItems(
   ]);
   if (observationRows === null && failureRows === null) return [];
 
-  const observations: RevenueObservationRow[] = (
-    (observationRows ?? []) as RevenueObservations[]
-  ).map((r) => ({
-    surface_id: String(r.surface_id ?? ""),
-    netuid: r.netuid == null ? null : Number(r.netuid),
-    period: String(r.period ?? ""),
-    grain: r.grain == null ? null : String(r.grain),
-    amount: Number(r.amount),
-    currency: r.currency == null ? null : String(r.currency),
-    provenance: r.provenance == null ? null : String(r.provenance),
-    observed_at: isoOrNull(r.observed_at),
-  }));
-  const failures: RevenueProbeFailureRow[] = (
-    (failureRows ?? []) as RevenueProbeFailures[]
-  ).map((r) => ({
+  const observations: RevenueObservationRow[] = (observationRows ?? []).map(
+    (r) => ({
+      surface_id: String(r.surface_id ?? ""),
+      netuid: r.netuid == null ? null : Number(r.netuid),
+      period: String(r.period ?? ""),
+      grain: r.grain == null ? null : String(r.grain),
+      amount: Number(r.amount),
+      currency: r.currency == null ? null : String(r.currency),
+      provenance: r.provenance == null ? null : String(r.provenance),
+      observed_at: isoOrNull(r.observed_at),
+    }),
+  );
+  const failures: RevenueProbeFailureRow[] = (failureRows ?? []).map((r) => ({
     surface_id: String(r.surface_id ?? ""),
     netuid: r.netuid == null ? null : Number(r.netuid),
     reason: r.reason == null ? null : String(r.reason),

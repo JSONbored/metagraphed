@@ -381,7 +381,11 @@ describe("candidates-mcp (#7889)", () => {
           { id: "b", netuid: 10 },
         ],
       },
-      meta: undefined,
+      // `{}`, not `undefined`: the passthrough this test exercises
+      // returns `{ data, meta: {} }` -- an unwindowed answer, not a missing
+      // meta. The union `applyQueryFilters` declares has no arm that omits
+      // `meta` beside a `data` (#10782).
+      meta: {},
     });
     try {
       const out = await loadCandidatesList(

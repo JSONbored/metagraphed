@@ -65,9 +65,15 @@ const MCP_URL = "https://api.metagraph.sh/mcp";
 // output can never drift from its advertised outputSchema.
 const ajv = new Ajv2020({ strict: false });
 const OUTPUT_VALIDATORS = new Map(
-  listToolDefinitions()
-    .filter((def) => def.outputSchema)
-    .map((def) => [def.name, ajv.compile(def.outputSchema)]),
+  // `flatMap` with the schema read INSIDE the ternary, not `.filter` then
+  // `.map`: `Array.prototype.filter` with a plain boolean callback narrows
+  // nothing, so `def.outputSchema` was still `JsonSchemaLike | undefined` at
+  // the `ajv.compile` beside it (#10782).
+  listToolDefinitions().flatMap((def) =>
+    def.outputSchema
+      ? [[def.name, ajv.compile(def.outputSchema)] as const]
+      : [],
+  ),
 );
 
 // --- Response-shape coverage (#9795) ---------------------------------------

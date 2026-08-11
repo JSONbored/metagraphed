@@ -77,8 +77,19 @@ const CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION =
   `${CONCENTRATION_RANKING_SORTS.join(", ")} (default ${DEFAULT_CONCENTRATION_RANKING_SORT}). EACH SORT KEY HAS ITS OWN "WIDEST FIRST" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default ` +
   `${CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT}, max ${CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX}) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension.`;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+import type { Schema } from "./openapi-sample.ts";
+
+type Row = Record<string, unknown>;
+
+/** A typed empty row, so a `?? ` fallback needs no cast. */
+const EMPTY_CONTRACT_ROW: Row = {};
+
+/** The row under an untyped value, or null. */
+function rowOf(value: unknown): Row | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Row)
+    : null;
+}
 
 /**
  * The parameter names `SHARED_QUERY_PARAMETER_DESCRIPTIONS` covers.
@@ -5683,7 +5694,7 @@ type OpenApiExampleRegistry = {
  * than the code merely asserting it never will.
  */
 export function buildOpenApiExampleRegistry(
-  componentSchemas: Row,
+  componentSchemas: Record<string, Schema>,
   routes: readonly (typeof API_ROUTES)[number][] = API_ROUTES,
 ): OpenApiExampleRegistry {
   const examples: Row = {};
@@ -5911,7 +5922,7 @@ function withSharedParameterDescription<T extends object>(parameter: T): T {
 
 export function buildOpenApiArtifact(
   generatedAt: string,
-  componentSchemas: Row | null,
+  componentSchemas: Record<string, Schema> | null,
 ) {
   if (!componentSchemas) {
     throw new Error(
@@ -6053,7 +6064,9 @@ export function buildOpenApiArtifact(
     // previously had no way to even discover.
     const variantPath = networkVariantPath(entry.path);
     if (variantPath) {
-      const base = paths[openApiPath][entry.method.toLowerCase()];
+      const base =
+        rowOf(rowOf(paths[openApiPath])?.[entry.method.toLowerCase()]) ??
+        EMPTY_CONTRACT_ROW;
       paths[variantPath] = {
         ...(paths[variantPath] || {}),
         [entry.method.toLowerCase()]: {
@@ -6077,7 +6090,7 @@ export function buildOpenApiArtifact(
                an empty array is truthy -- so the fallback is unreachable. It
                stays because spreading an absent `parameters` would throw, not
                degrade, if that construction ever became conditional. */
-            ...(base.parameters || []),
+            ...(Array.isArray(base.parameters) ? base.parameters : []),
           ],
         },
       };
@@ -6261,9 +6274,11 @@ const FIXTURE_DETAIL_OPENAPI_EXAMPLE = {
 function openApiExampleForRoute(
   entry: (typeof API_ROUTES)[number],
   responseSchema: Row,
-  componentSchemas: Row,
+  componentSchemas: Record<string, Schema>,
 ) {
-  const example = sampleFromSchema(responseSchema, componentSchemas) as Row;
+  const example =
+    rowOf(sampleFromSchema(responseSchema, componentSchemas)) ??
+    EMPTY_CONTRACT_ROW;
   if (entry.id !== "fixture-detail") {
     return example;
   }
@@ -6638,10 +6653,36 @@ function parameterSchemaFor(
     : { description: inSchemaDescription, ...constraints };
 }
 
+/**
+ * What `queryCollection` accepts, DECLARED.
+ *
+ * It was `Row & { filters?; sort? }`, so the two named options were typed and
+ * every other one was `any` -- `options.rangeFilters` could have been a
+ * string and `options.search` a number, and both would have compiled straight
+ * into the published collection config (#10782).
+ */
+interface QueryCollectionOptions<
+  Filters extends Record<string, z.ZodType>,
+  Sort extends readonly [string, ...string[]],
+> {
+  filters?: Filters;
+  sort?: Sort;
+  /** Param name -> the row field a comma-separated list matches against. */
+  csvFilters?: Record<string, string>;
+  /** Param name -> the row array field(s) whose union is tested. */
+  arrayFilters?: Record<string, string[]>;
+  /** Fields accepting `min_F` / `max_F` inclusive numeric bounds. */
+  rangeFilters?: string[];
+  /** Param name -> the row field whose PRESENCE it tests. */
+  presenceFilters?: Record<string, string>;
+  /** Row fields a free-text `q` searches across. */
+  search?: string[];
+}
+
 function queryCollection<
   Filters extends Record<string, z.ZodType> = Record<string, z.ZodType>,
   Sort extends readonly [string, ...string[]] = readonly [string, ...string[]],
->(dataKey: string, options: Row & { filters?: Filters; sort?: Sort } = {}) {
+>(dataKey: string, options: QueryCollectionOptions<Filters, Sort> = {}) {
   // `filters` is authored as ZOD and stored twice (#10080): once as the emitted
   // JSON every existing reader already uses, and once as the Zod itself so
   // `listQuerySchema()` can compose with it.
@@ -6728,7 +6769,8 @@ export function listQuerySchema(
     extend = {},
   }: ListQuerySchemaOptions = {},
 ): z.ZodObject {
-  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
+  const config =
+    API_QUERY_COLLECTIONS[collection as keyof typeof API_QUERY_COLLECTIONS];
   /* v8 ignore next 3 -- same developer config invariant listQuery() guards */
   if (!config) {
     throw new Error(`Unknown API query collection: ${collection}`);
@@ -6994,7 +7036,8 @@ export function collectionQuerySchemas(
   filterNames: string[] = [],
   { csvResponse = false }: { csvResponse?: boolean } = {},
 ): RouteQuerySchemas | null {
-  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
+  const config =
+    API_QUERY_COLLECTIONS[collection as keyof typeof API_QUERY_COLLECTIONS];
   if (!config) return null;
   const key = `${collection}|${filterNames.join(",")}|${csvResponse}`;
   const cached = routeQuerySchemas.get(key);
@@ -7153,7 +7196,8 @@ interface ListQuerySchemaOptions {
 }
 
 function listQuery(collection: string, options: { exclude?: string[] } = {}) {
-  const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[collection];
+  const config =
+    API_QUERY_COLLECTIONS[collection as keyof typeof API_QUERY_COLLECTIONS];
   /* v8 ignore next 3 -- developer config invariant validated by OpenAPI/schema checks */
   if (!config) {
     throw new Error(`Unknown API query collection: ${collection}`);

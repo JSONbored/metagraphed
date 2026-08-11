@@ -63,8 +63,13 @@ import { repoRoot } from "./lib.ts";
  * that were only ever counted as unreferenced because the linkage was
  * invisible, not because nothing used them. A measurement fix, and the ceiling
  * takes it the same way it takes a deletion.
+ *
+ * 737 after #10782, which took `Row` off `any` and fixed the 214 errors that
+ * hid behind it. Nothing was deleted to earn this one either: the narrowing
+ * moved a single export across the referenced/unreferenced line, and the
+ * ceiling takes a measurement change the same way it takes a deletion.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 738;
+export const MAX_UNREFERENCED_EXPORTS: number = 737;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {

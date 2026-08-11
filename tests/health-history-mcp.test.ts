@@ -255,7 +255,18 @@ describe("health-history-mcp — loadHealthHistory", () => {
   test("falls back when list-query data omits date, summary, and surface rows", async () => {
     const spy = vi.spyOn(listQuery, "applyQueryFilters").mockReturnValue({
       data: { surfaces: null },
-      meta: { pagination: { total: 0, returned: 0, limit: 0, cursor: 0 } },
+      meta: {
+        pagination: {
+          collection: "surfaces",
+          total: 0,
+          returned: 0,
+          limit: 0,
+          cursor: 0,
+          next_cursor: null,
+          sort: null,
+          order: "asc" as const,
+        },
+      },
     });
     try {
       const out = await loadHealthHistory(

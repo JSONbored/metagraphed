@@ -393,7 +393,11 @@ describe("rpc-endpoints-mcp (#7886, #7893)", () => {
       data: {
         endpoints: [{ id: "a" }, { id: "b" }],
       },
-      meta: undefined,
+      // `{}`, not `undefined`: the passthrough this test exercises
+      // returns `{ data, meta: {} }` -- an unwindowed answer, not a missing
+      // meta. The union `applyQueryFilters` declares has no arm that omits
+      // `meta` beside a `data` (#10782).
+      meta: {},
     });
     try {
       const out = await loadRpcEndpointsList(

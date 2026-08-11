@@ -227,8 +227,8 @@ export function projectRows(
  * `fields` -- and so the echo's presence is itself the signal that the body in
  * hand is narrowed, which matters when the response is cached or passed on.
  */
-export function projectionMeta(
-  fields: string[] | null | undefined,
-): Record<string, unknown> {
+export function projectionMeta(fields: string[] | null | undefined): {
+  projection?: { fields: string[] };
+} {
   return fields ? { projection: { fields } } : {};
 }

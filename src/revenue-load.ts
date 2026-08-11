@@ -13,6 +13,7 @@
 // endpoint, and a caller sweeping the network would see 127 failures instead of
 // 127 answers.
 import {
+  type SubnetRevenueView,
   buildSubnetRevenue,
   type RevenueObservation,
   type RevenueSourceRow,
@@ -20,8 +21,7 @@ import {
 
 // Registry/artifact rows are read for shaping only, never trusted for control
 // flow. Mirrors the readJson precedent elsewhere.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
 
 export const SUBNET_REVENUE_FIELD_SOURCES = {
   "emission.tao": {
@@ -116,7 +116,12 @@ export interface LoadSubnetRevenueInput {
 }
 
 /** Compose the served body. Never throws on missing pieces. */
-export function loadSubnetRevenue(input: LoadSubnetRevenueInput): Row {
+// Returns the VIEW it builds, not a row bag. It always did; the declaration
+// said otherwise, and `Row` as `Record<string, any>` let both readings stand
+// (#10782).
+export function loadSubnetRevenue(
+  input: LoadSubnetRevenueInput,
+): SubnetRevenueView {
   const sources = revenueSourcesFor(input.surfaces);
   const view = buildSubnetRevenue({
     netuid: input.netuid,

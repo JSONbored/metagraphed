@@ -40,18 +40,21 @@ import {
 import type { Row } from "./row-type.ts";
 
 /** The published defaults one served tool advertises, argument -> value. */
-function publishedDefaults(tool: Row): [string, unknown][] {
-  const properties = (tool.inputSchema?.properties ?? {}) as Record<
-    string,
-    Row
-  >;
-  return Object.entries(properties)
-    .filter(([, schema]) => schema?.default !== undefined)
-    .map(([name, schema]) => [name, schema.default]);
+function publishedDefaults(tool: ServedTool): [string, unknown][] {
+  const properties = tool.inputSchema?.properties ?? {};
+  return Object.entries(properties).flatMap(([name, raw]) => {
+    const schema = raw as Row | null;
+    return schema?.default === undefined ? [] : [[name, schema.default]];
+  });
 }
 
+/** The served tool shape, from the function that produces it -- not `Row`.
+ *  `validateToolArguments` takes an `McpToolDefinition` since #10782, and a
+ *  bag is not one. */
+type ServedTool = ReturnType<typeof listToolDefinitions>[number];
+
 describe("a tool serves the default it publishes", () => {
-  const tools = listToolDefinitions() as Row[];
+  const tools = listToolDefinitions();
 
   test("every published default reaches the handler when omitted", () => {
     const missed: string[] = [];
@@ -93,7 +96,7 @@ describe("a tool serves the default it publishes", () => {
     for (const tool of tools) {
       if (publishedDefaults(tool).length === 0) continue;
       assert.deepEqual(
-        validateToolArguments(tool, undefined as unknown as Row),
+        validateToolArguments(tool, undefined),
         validateToolArguments(tool, {}),
         `${tool.name} answers differently for absent vs empty arguments`,
       );
@@ -167,7 +170,7 @@ describe("validateToolArguments on schemas the registry does not contain", () =>
     // is spelled this way today, which is exactly why the fallback was never
     // taken -- and a tool added without `properties` would hit it first.
     const resolved = validateToolArguments(
-      { name: "no_properties", inputSchema: { type: "object" } } as Row,
+      { name: "no_properties", inputSchema: { type: "object" } },
       { anything: 1 },
     );
     assert.deepEqual(resolved, { anything: 1 });
@@ -182,7 +185,7 @@ describe("validateToolArguments on schemas the registry does not contain", () =>
           {
             name: "closed_empty",
             inputSchema: { type: "object", additionalProperties: false },
-          } as Row,
+          },
           { nope: 1 },
         ),
       /nope/,

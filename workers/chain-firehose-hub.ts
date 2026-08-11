@@ -802,7 +802,7 @@ interface SseRetainedEvent {
   payload: ChainFirehoseIngestPayload;
 }
 
-interface GraphqlWsConnectionInfo {
+export interface GraphqlWsConnectionInfo {
   activeSubscriptions: number;
 }
 
