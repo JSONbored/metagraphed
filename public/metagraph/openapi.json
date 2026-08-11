@@ -7985,6 +7985,7 @@
             },
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
+            "operational_observed_at": "2026-06-01T00:00:00.000Z",
             "pools": [
               {
                 "eligible_count": 1,
@@ -18221,7 +18222,8 @@
                             {
                               "type": "null"
                             }
-                          ]
+                          ],
+                          "description": "Artifact path of the captured schema, under /metagraph/."
                         },
                         "hash": {
                           "anyOf": [
@@ -18234,6 +18236,7 @@
                           ]
                         },
                         "match": {
+                          "description": "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
                           "enum": [
                             "surface-id",
                             "schema-url",
@@ -37507,41 +37510,77 @@
                       "additionalProperties": false,
                       "properties": {
                         "artifact": {
-                          "description": "Artifact path of the captured schema, under /metagraph/.",
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Artifact path of the captured schema, under /metagraph/."
                         },
                         "hash": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "match": {
-                          "description": "How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
+                          "description": "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
                           "enum": [
-                            "same-origin-openapi",
-                            "schema-url"
+                            "surface-id",
+                            "schema-url",
+                            "same-origin-openapi"
                           ],
                           "type": "string"
                         },
                         "observed_at": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "status": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "surface_id": {
                           "type": "string"
                         },
                         "url": {
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
-                        "artifact",
-                        "hash",
-                        "match",
-                        "observed_at",
-                        "status",
                         "surface_id",
-                        "url"
+                        "match",
+                        "url",
+                        "artifact",
+                        "status",
+                        "observed_at",
+                        "hash"
                       ],
                       "type": "object"
                     },
@@ -41713,6 +41752,17 @@
               }
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
+          },
+          "operational_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp."
           },
           "pools": {
             "items": {

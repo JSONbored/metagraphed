@@ -311,6 +311,16 @@ export const RpcPoolsArtifactSchema = ArtifactBaseSchema.extend({
       "live-cron-prober",
     ])
     .optional(),
+  // The artifact-level stamp this schema's own `.describe()` has named since
+  // #6570 -- "plus operational_observed_at, real here and only here" -- and
+  // never declared (#10790). Documented in prose, served on every response,
+  // absent from the contract: the exact shape of this issue's defect, in the
+  // description of the schema that had it.
+  //
+  // ONLY this half of the overlay. `health_source` is per-ENDPOINT here and
+  // `EndpointResourceSchema` already declares it; adding it at the artifact
+  // level would be declaring a field to clear a report.
+  operational_observed_at: LIVE_HEALTH_OVERLAY.operational_observed_at,
   disabled_proxy_contract: DisabledProxyContractSchema.optional(),
   eligibility_policy: EndpointEligibilityPolicySchema.optional(),
   provider_scores: z.array(EndpointProviderScoreSchema).optional(),

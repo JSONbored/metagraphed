@@ -31,7 +31,15 @@ function walk(schema: z.ZodType, value: unknown) {
   const found = new Map<string, UndeclaredField>();
   const violations = new Map<string, UndeclaredField>();
   const counters = { objects: 0, declaredOpen: 0 };
-  findUndeclared(schema, value, "Artifact", "artifact.json", found, violations, counters);
+  findUndeclared(
+    schema,
+    value,
+    "Artifact",
+    "artifact.json",
+    found,
+    violations,
+    counters,
+  );
   return {
     findings: [...found.values()],
     violations: [...violations.values()],

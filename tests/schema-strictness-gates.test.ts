@@ -41,7 +41,14 @@ describe("no-passthrough", () => {
   test("finds a `.passthrough()` call, with its line", () => {
     const file = fixture(
       "open.ts",
-      ["import { z } from 'zod';", "", "export const A = z", "  .object({})", "  .passthrough();", ""].join("\n"),
+      [
+        "import { z } from 'zod';",
+        "",
+        "export const A = z",
+        "  .object({})",
+        "  .passthrough();",
+        "",
+      ].join("\n"),
     );
     const sites = findPassthroughCalls([file]);
     assert.equal(sites.length, 1);
@@ -75,11 +82,18 @@ describe("no-passthrough", () => {
 
 describe("schema-shape-duplicates", () => {
   const twoFiles = (bodyA: string, bodyB: string) => [
-    fixture("a.ts", `import { z } from 'zod';\nexport const A = z.object({\n${bodyA}\n});\n`),
-    fixture("b.ts", `import { z } from 'zod';\nexport const B = z.object({\n${bodyB}\n});\n`),
+    fixture(
+      "a.ts",
+      `import { z } from 'zod';\nexport const A = z.object({\n${bodyA}\n});\n`,
+    ),
+    fixture(
+      "b.ts",
+      `import { z } from 'zod';\nexport const B = z.object({\n${bodyB}\n});\n`,
+    ),
   ];
 
-  const FOUR = "  a: z.string(),\n  b: z.string(),\n  c: z.string(),\n  d: z.string(),";
+  const FOUR =
+    "  a: z.string(),\n  b: z.string(),\n  c: z.string(),\n  d: z.string(),";
 
   test("reports one key set declared in two files", () => {
     const duplicates = findDuplicates(findObjectShapes(twoFiles(FOUR, FOUR)));
@@ -89,12 +103,18 @@ describe("schema-shape-duplicates", () => {
 
   test("is silent below four keys -- three recur by coincidence", () => {
     const three = "  a: z.string(),\n  b: z.string(),\n  c: z.string(),";
-    assert.deepEqual(findDuplicates(findObjectShapes(twoFiles(three, three))), []);
+    assert.deepEqual(
+      findDuplicates(findObjectShapes(twoFiles(three, three))),
+      [],
+    );
   });
 
   test("is silent when the key sets differ by one", () => {
     const other = `${FOUR}\n  e: z.string(),`;
-    assert.deepEqual(findDuplicates(findObjectShapes(twoFiles(FOUR, other))), []);
+    assert.deepEqual(
+      findDuplicates(findObjectShapes(twoFiles(FOUR, other))),
+      [],
+    );
   });
 
   test("is silent for two literals in ONE file", () => {
@@ -114,13 +134,20 @@ describe("shape-duplicate-drift", () => {
     findDrift(
       findDuplicates(
         findObjectShapes([
-          fixture("a.ts", `import { z } from 'zod';\nexport const A = z.object({\n${bodyA}\n});\n`),
-          fixture("b.ts", `import { z } from 'zod';\nexport const B = z.object({\n${bodyB}\n});\n`),
+          fixture(
+            "a.ts",
+            `import { z } from 'zod';\nexport const A = z.object({\n${bodyA}\n});\n`,
+          ),
+          fixture(
+            "b.ts",
+            `import { z } from 'zod';\nexport const B = z.object({\n${bodyB}\n});\n`,
+          ),
         ]),
       ),
     );
 
-  const BASE = "  a: z.string(),\n  b: z.string(),\n  c: z.string(),\n  d: z.string(),";
+  const BASE =
+    "  a: z.string(),\n  b: z.string(),\n  c: z.string(),\n  d: z.string(),";
 
   test("calls two identical declarations identical", () => {
     const [drift] = pair(BASE, BASE);
@@ -146,7 +173,10 @@ describe("shape-duplicate-drift", () => {
   });
 
   test("requiredness counts as drift", () => {
-    const [drift] = pair(BASE, BASE.replace("b: z.string()", "b: z.string().optional()"));
+    const [drift] = pair(
+      BASE,
+      BASE.replace("b: z.string()", "b: z.string().optional()"),
+    );
     assert.deepEqual([...drift!.divergent.keys()], ["b"]);
   });
 

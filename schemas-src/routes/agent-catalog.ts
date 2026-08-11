@@ -150,12 +150,29 @@ export const AgentCatalogArtifactSchema = ArtifactBaseSchema.extend({
 });
 export type AgentCatalogArtifact = z.infer<typeof AgentCatalogArtifactSchema>;
 
-const AgentServiceSchemaSourceSchema = z
+/**
+ * The captured-schema pointer -- ONE declaration (#10790).
+ *
+ * `serviceSchemaSource()` writes it, and both the agent catalog and the
+ * operational-surfaces artifact carry the result. The second copy promised
+ * non-null `url`/`artifact`/`status`/`observed_at`/`hash` where the producer
+ * writes `|| null` on all five, and its `match` enum named two of the three
+ * values `resolveAgentServiceSchema` returns -- so a surface matched by
+ * `surface-id` would have failed that artifact's own contract.
+ */
+export const AgentServiceSchemaSourceSchema = z
   .object({
     surface_id: z.string(),
-    match: z.enum(["surface-id", "schema-url", "same-origin-openapi"]),
+    match: z
+      .enum(["surface-id", "schema-url", "same-origin-openapi"])
+      .describe(
+        "How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
+      ),
     url: z.string().nullable(),
-    artifact: z.string().nullable(),
+    artifact: z
+      .string()
+      .nullable()
+      .describe("Artifact path of the captured schema, under /metagraph/."),
     status: z.string().nullable(),
     observed_at: z.string().nullable(),
     hash: z.string().nullable(),

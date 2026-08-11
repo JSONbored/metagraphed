@@ -5848,9 +5848,13 @@ export interface components {
                 provider?: string | null;
                 schema_artifact?: string | null;
                 schema_source?: {
+                    /** @description Artifact path of the captured schema, under /metagraph/. */
                     artifact: string | null;
                     hash: string | null;
-                    /** @enum {string} */
+                    /**
+                     * @description How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.
+                     * @enum {string}
+                     */
                     match: "surface-id" | "schema-url" | "same-origin-openapi";
                     observed_at: string | null;
                     status: string | null;
@@ -9177,17 +9181,17 @@ export interface components {
                 /** @description The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface). */
                 schema_source: {
                     /** @description Artifact path of the captured schema, under /metagraph/. */
-                    artifact: string;
-                    hash: string;
+                    artifact: string | null;
+                    hash: string | null;
                     /**
-                     * @description How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.
+                     * @description How the schema was attributed to this surface: `surface-id` is a direct hit, `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.
                      * @enum {string}
                      */
-                    match: "same-origin-openapi" | "schema-url";
-                    observed_at: string;
-                    status: string;
+                    match: "surface-id" | "schema-url" | "same-origin-openapi";
+                    observed_at: string | null;
+                    status: string | null;
                     surface_id: string;
-                    url: string;
+                    url: string | null;
                 } | null;
                 subnet_name: string;
                 subnet_slug: string;
@@ -9984,6 +9988,8 @@ export interface components {
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             pools: components["schemas"]["RpcPool"][];
             provider_scores?: {
                 average_score: number;
@@ -38008,6 +38014,7 @@ export interface operations {
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "pools": [
                      *           {
                      *             "eligible_count": 1,

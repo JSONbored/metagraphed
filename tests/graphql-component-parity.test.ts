@@ -433,7 +433,13 @@ describe("paginated views", () => {
     // drops one instead (`count`, which the resolver republishes as
     // `event_count`). Net -2, and the two it stopped dropping were fields that
     // never existed on this payload.
-    assert.equal(report.droppedFields, 193);
+    //
+    // 193 -> 195 (#10790): EconomicsList.tao_usd and .tao_usd_unavailable.
+    // `withAlphaUsdEconomics` stamps the USD overlay on the REST payload at
+    // serve time and this field's own loader does not run it, so the GraphQL
+    // economics view is TAO-only -- declared as two drops rather than left as
+    // two fields the component publishes and the view silently omits.
+    assert.equal(report.droppedFields, 195);
   });
 
   test("it FAILS when a component field is neither published nor declared dropped", () => {

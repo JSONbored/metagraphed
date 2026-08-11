@@ -6282,9 +6282,14 @@ const rootValue = {
       // PARITY, not a new capability (#10790): /api/v1/runtime has composed
       // the radar beside the timeline since #8702 and this field served the
       // timeline alone, so a GraphQL caller could read where the chain HAS
-      // been and not where it is going. One KV-cached read, the same
-      // `loadUpgradeRadar` the route calls.
-      current: await loadUpgradeRadar(context.env),
+      // been and not where it is going.
+      //
+      // A THUNK, so it costs nothing unless it is SELECTED. graphql-js's
+      // default resolver calls a function-valued property only when the field
+      // is in the query, and this one is not free on a cold KV: it reads a
+      // spec version off each chain. Awaiting it here instead made every
+      // `runtime { transition_count }` pay for a radar nobody asked for.
+      current: () => loadUpgradeRadar(context.env),
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
       transition_count: data.transition_count ?? 0,

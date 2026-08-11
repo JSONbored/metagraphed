@@ -209,7 +209,24 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/metagraph/testnet/subnets/1.json",
     );
     assert.equal(detail.body.data.subnet.netuid, 1);
-    assert.equal(detail.body.data.economics, undefined);
+    // The point of this test is that the MAINNET live-economics KV must not
+    // reach a testnet card -- not that a testnet card has no economics at all.
+    // Those were the same assertion only while the testnet builder nested its
+    // economics inside `subnet`, where nothing read them (#10790); it now
+    // writes them at the artifact level the way mainnet always has, so the
+    // check has to say what it means.
+    const economics = detail.body.data.economics as Record<string, unknown>;
+    assert.ok(economics, "testnet serves its OWN economics block");
+    assert.notEqual(
+      economics.name,
+      "MAINNET economics row for netuid 1",
+      "the mainnet economics:current KV must not reach a testnet card",
+    );
+    assert.equal(
+      (detail.body.data.subnet as Record<string, unknown>).economics,
+      undefined,
+      "and it is never nested back inside `subnet`, which no consumer reads",
+    );
   });
 
   test("testnet publishes its own economics artifact (#8227)", async () => {

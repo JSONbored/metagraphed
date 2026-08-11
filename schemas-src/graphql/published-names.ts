@@ -1156,7 +1156,11 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
   PoolList: {
     component: "RpcPoolsArtifact",
     added: {
-      operational_observed_at: "String",
+      // `operational_observed_at` was listed here, as a field the RESOLVER
+      // supplies. It never was: the artifact carries it, and #10790 declared
+      // it on `RpcPoolsArtifact` -- which its own `.describe()` had named
+      // since #6570 without any schema saying so. It is a component field now,
+      // so the mirror rule covers it and this list must not claim it.
       total: "Int!",
       returned: "Int!",
       limit: "Int!",

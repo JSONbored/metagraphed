@@ -20,6 +20,7 @@
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { SurfaceRevenueSchema } from "../routes/subnet-detail.ts";
+import { AgentServiceSchemaSourceSchema } from "../routes/agent-catalog.ts";
 
 // The probe contract the prober executes. `expect` and `method` are declared
 // as plain strings rather than enums on purpose: they come from each
@@ -36,27 +37,6 @@ const OperationalProbeSchema = z
       .describe(
         "null when the surface declares no timeout, so the prober applies its own default -- not zero (12 of 619 rows today).",
       ),
-  })
-  .strict();
-
-// The captured-schema pointer, shared with the agent-catalog build via
-// serviceSchemaSource(resolveAgentServiceSchema(surface)) rather than
-// recomputed, so both consumers agree on which schema a surface owns.
-const OperationalSchemaSourceSchema = z
-  .object({
-    artifact: z
-      .string()
-      .describe("Artifact path of the captured schema, under /metagraph/."),
-    hash: z.string(),
-    match: z
-      .enum(["same-origin-openapi", "schema-url"])
-      .describe(
-        "How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
-      ),
-    observed_at: z.string(),
-    status: z.string(),
-    surface_id: z.string(),
-    url: z.string(),
   })
   .strict();
 
@@ -82,7 +62,7 @@ const OperationalSurfaceSchema = z
     auth_required: z.boolean(),
     public_safe: z.boolean(),
     probe: OperationalProbeSchema,
-    schema_source: OperationalSchemaSourceSchema.nullable().describe(
+    schema_source: AgentServiceSchemaSourceSchema.nullable().describe(
       "The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface).",
     ),
     revenue: SurfaceRevenueSchema.nullable().describe(
