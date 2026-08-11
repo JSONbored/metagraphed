@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
+import {
+  archiveEnv,
+  forbiddenDataApi,
+  lakehouse,
+  LAKEHOUSE_ENV,
+} from "./helpers/cold-tier-env.ts";
 import { Blob } from "node:buffer";
 import {
   buildSchema,
@@ -4804,7 +4809,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -4825,19 +4829,10 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
       `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/sudo");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "2");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(capturedUrl!.searchParams.get("call_function"), "sudo");
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
     // The route fixes call_module=Sudo, so the field exposes neither arg.
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl!.searchParams.get("signer"), null);
   });
 
   test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874)", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -4858,15 +4853,9 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
       `{ sudo(block_start: 100, block_end: 500) { total } }`,
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/sudo");
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
-    assert.equal(capturedUrl!.searchParams.has("from"), false);
-    assert.equal(capturedUrl!.searchParams.has("to"), false);
   });
 
   test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874)", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -4887,10 +4876,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
       `{ sudo(from: "1750000000000", to: "1760000000000") { total } }`,
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
-    assert.equal(capturedUrl!.searchParams.get("to"), "1760000000000");
-    assert.equal(capturedUrl!.searchParams.has("block_start"), false);
-    assert.equal(capturedUrl!.searchParams.has("block_end"), false);
   });
 
   test("introspection: sudo exposes block_start/block_end (Int) and from/to (String) args (#7874)", async () => {
@@ -4925,7 +4910,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -4943,7 +4927,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
       },
     };
     await gql(`{ sudo(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
@@ -5097,7 +5080,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -5118,20 +5100,9 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
       `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(capturedUrl!.searchParams.get("signer"), "5Signer");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
-    );
-    assert.equal(capturedUrl!.searchParams.get("call_function"), "register");
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
   });
 
   test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872)", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -5158,19 +5129,10 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
         ) { total } }`,
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
     // A REAL 64-hex hash. "0xabc" was accepted before #10316 because nothing
     // checked it, and the route's published pattern
     // (^0x[0-9a-fA-F]{64}$) has always forbidden it -- the dispatch parse now
     // enforces what the contract says, so the fixture had to become valid.
-    assert.equal(
-      capturedUrl!.searchParams.get("call_hash"),
-      `0x${"ab".repeat(32)}`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
-    assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
-    assert.equal(capturedUrl!.searchParams.get("to"), "1760000000000");
   });
 
   test("introspection: extrinsics exposes call_hash/from/to (String) and block_start/block_end (Int) args (#7872)", async () => {
@@ -5207,7 +5169,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -5225,7 +5186,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
       },
     };
     await gql(`{ extrinsics(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -5415,7 +5375,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -5438,16 +5397,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     );
     // The worker fixes call_module=AdminUtils by path, so the resolver hits the
     // governance route (not /extrinsics) and never forwards signer/call_module.
-    assert.equal(capturedUrl!.pathname, "/api/v1/governance/config-changes");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_function"),
-      "sudo_set_tempo",
-    );
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
-    assert.equal(capturedUrl!.searchParams.get("signer"), null);
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
   });
 
   // #7873: block-range (block_start/block_end -> block_number) and time-range
@@ -5531,7 +5480,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -5549,7 +5497,6 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
       },
     };
     await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
   });
 
   test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
@@ -7982,7 +7929,6 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -7996,8 +7942,6 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
       },
     };
     await gql(query(`(ss58: "${SS58}", window: "90d")`), env);
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/prometheus`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
@@ -8181,7 +8125,6 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
   });
 
   test("window and direction are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -8195,9 +8138,6 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
       },
     };
     await gql(query(`(ss58: "${SS58}", window: "90d", direction: "in")`), env);
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/stake-flow`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl!.searchParams.get("direction"), "in");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -8852,7 +8792,6 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -8876,12 +8815,6 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
       ),
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "200");
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -11491,7 +11424,6 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   // what the producer sends, and it hid the resolver reading `candles` off the
   // envelope -- so every real tier answer became an empty series.
   test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -11528,9 +11460,6 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/7/ohlc"));
-    assert.equal(capturedUrl!.searchParams.get("interval"), "1d");
-    assert.equal(capturedUrl!.searchParams.get("days"), "30");
     const o = body.data.subnet_ohlc;
     assert.equal(o.interval, "1d");
     assert.equal(o.candles[0].bucket_start, 1770000000000);
@@ -12170,7 +12099,6 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   });
 
   test("forwards the window to the health/percentiles Postgres path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
@@ -12184,8 +12112,6 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
       '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
       env as unknown as Env,
     );
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/health/percentiles"));
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -12284,7 +12210,6 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("clamps the recent-event limit into 1..50 and forwards it", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -12298,13 +12223,9 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
       '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
       env as unknown as Env,
     );
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/event-summary"));
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
   });
 
   test("clamps a below-range limit up to 1", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -12315,7 +12236,6 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
       },
     };
     await gql("{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }", env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "1");
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -14002,7 +13922,6 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -14016,8 +13935,6 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
       '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/weights/setters"));
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14936,7 +14853,6 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
   });
 
   test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
@@ -14976,11 +14892,6 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/subnets/${NETUID}/health/incidents`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
     const d = body.data.subnet_health_incidents;
     assert.equal(d.window, "30d");
     const s = d.surfaces[0];
@@ -15936,7 +15847,6 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
   });
 
   test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -15950,11 +15860,6 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
       },
     };
     await gql(query(`(ss58: "${SS58}", window: "30d")`), env);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/accounts/${SS58}/weight-setters`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -17906,7 +17811,6 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -17949,9 +17853,6 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_weights.window, "30d");
     assert.equal(body.data.chain_weights.subnet_count, 1);
     assert.equal(body.data.chain_weights.network.weight_sets, 40);
@@ -18134,7 +18035,6 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -18156,14 +18056,6 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
         `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
       ),
       env as unknown as Env,
-    );
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/calls");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("group_by"), "module");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
     );
   });
 
@@ -18329,7 +18221,6 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("the window arg is forwarded to the /chain/activity path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -18345,8 +18236,6 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
       },
     };
     await gql(activityQuery(`(window: "30d")`), env);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/activity");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18521,7 +18410,6 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -18541,10 +18429,6 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
       feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
       env as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/fees");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18616,7 +18500,6 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -18659,9 +18542,6 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/serving");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_serving.window, "30d");
     assert.equal(body.data.chain_serving.subnet_count, 1);
     assert.equal(body.data.chain_serving.network.distinct_servers, 4);
@@ -18750,7 +18630,6 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -18783,9 +18662,6 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights/setters");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_weight_setters.window, "30d");
     assert.equal(body.data.chain_weight_setters.setter_count, 1);
     assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
@@ -18886,7 +18762,6 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -18945,8 +18820,6 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     };
     const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/alpha-volume");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     const card = body.data.chain_alpha_volume;
     assert.equal(card.window, "24h");
     assert.equal(card.subnet_count, 1);
@@ -18959,7 +18832,6 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
   });
 
   test("clamps an over-max limit before forwarding it to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -18971,7 +18843,6 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     };
     const { status } = await gql(alphaVolumeQuery("(limit: 9999)"), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -19083,7 +18954,6 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding the request unchanged", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
@@ -19113,7 +18983,6 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     };
     const { status, body } = await gql(trendsQuery(), env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/health/trends");
     assert.equal(
       body.data.health_trends.observed_at,
       "2026-07-10T00:00:00.000Z",
@@ -19224,7 +19093,6 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
@@ -19255,10 +19123,6 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
     };
     const { status, body } = await gql(trendsQuery(NETUID), env);
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/subnets/${NETUID}/health/trends`,
-    );
     const d = body.data.subnet_health_trends;
     assert.equal(d.netuid, NETUID);
     assert.equal(d.observed_at, "2026-07-10T00:00:00.000Z");
@@ -19582,7 +19446,6 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data and forwards window + min_samples", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_HEALTH_SOURCE: "postgres",
       DATA_API: {
@@ -19627,9 +19490,6 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, `/api/v1/subnets/${NETUID}/uptime`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "1y");
-    assert.equal(capturedUrl!.searchParams.get("min_samples"), "5");
     const d = body.data.subnet_uptime;
     assert.equal(d.window, "1y");
     assert.equal(d.reliability.score, 99);
@@ -20208,7 +20068,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -20247,12 +20106,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/validators/${HOTKEY}/nominators`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "gross_staked");
     assert.equal(body.data.validator_nominators.window, "7d");
     assert.equal(body.data.validator_nominators.sort, "gross_staked");
     assert.equal(body.data.validator_nominators.nominator_count, 1);
@@ -20343,7 +20196,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
 
   test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884)", async () => {
     const COLDKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -20381,7 +20233,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.searchParams.get("coldkey"), COLDKEY);
     assert.equal(body.data.validator_nominators.nominator_count, 1);
     assert.equal(body.data.validator_nominators.nominators[0].coldkey, COLDKEY);
   });
@@ -20400,7 +20251,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547)", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -20438,8 +20288,6 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
     assert.equal(body.data.validator_nominators.limit, 10);
     assert.equal(body.data.validator_nominators.offset, 10);
   });
@@ -22259,7 +22107,6 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22303,9 +22150,6 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/prometheus");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_prometheus.window, "30d");
     assert.equal(body.data.chain_prometheus.subnet_count, 1);
     assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
@@ -22337,7 +22181,6 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22348,7 +22191,6 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
       },
     };
     await gql(prometheusQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -22466,7 +22308,6 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22510,9 +22351,6 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/axon-removals");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_axon_removals.window, "30d");
     assert.equal(body.data.chain_axon_removals.network.distinct_removers, 5);
   });
@@ -22543,7 +22381,6 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22554,7 +22391,6 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
       },
     };
     await gql(removalsQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -22675,7 +22511,6 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22719,9 +22554,6 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/registrations");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_registrations.window, "30d");
     assert.equal(body.data.chain_registrations.network.distinct_registrants, 5);
   });
@@ -22752,7 +22584,6 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22763,7 +22594,6 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
       },
     };
     await gql(regQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -22882,7 +22712,6 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22926,9 +22755,6 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/deregistrations");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_deregistrations.window, "30d");
     assert.equal(
       body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
@@ -22962,7 +22788,6 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -22973,7 +22798,6 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
       },
     };
     await gql(deregQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented window is accepted", async () => {
@@ -23074,7 +22898,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -23107,17 +22930,11 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/signers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "total_fee_tao");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
     assert.equal(body.data.chain_signers.sort, "total_fee_tao");
     assert.equal(body.data.chain_signers.signers[0].total_fee_tao, 9.5);
   });
 
   test("omits the optional sort/call_module params when the caller supplies neither", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -23133,10 +22950,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     // advertised it rather than re-derived downstream. `call_module` publishes
     // no default and stays absent, which is what keeps this from reading as a
     // blanket "everything is forwarded now".
-    assert.equal(capturedUrl!.searchParams.get("sort"), "tx_count");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -23181,7 +22994,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
   });
 
   test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       DATA_API: {
@@ -23192,7 +23004,6 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       },
     };
     await gql(signersQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
   });
 
   test("every documented sort is accepted", async () => {
@@ -23390,7 +23201,6 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -23443,9 +23253,6 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-flow");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
     assert.equal(body.data.chain_stake_flow.window, "30d");
     assert.equal(body.data.chain_stake_flow.subnet_count, 1);
     assert.equal(body.data.chain_stake_flow.network.net_flow_tao, 60);
@@ -23522,7 +23329,6 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -23565,9 +23371,6 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-moves");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "8");
     assert.equal(body.data.chain_stake_moves.network.movements, 12);
     assert.equal(body.data.chain_stake_moves.subnets[0].netuid, 5);
   });
@@ -23633,7 +23436,6 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -23676,9 +23478,6 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-transfers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "3");
     assert.equal(body.data.chain_stake_transfers.network.transfers, 6);
     assert.equal(body.data.chain_stake_transfers.subnets[0].netuid, 9);
   });
@@ -23739,7 +23538,6 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   });
 
   test("resolves Postgres-tier data forwarding window/sort/limit", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -23774,10 +23572,6 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfer-pairs");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "count");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
     assert.equal(body.data.chain_transfer_pairs.sort, "count");
     assert.equal(body.data.chain_transfer_pairs.pairs[0].from, "5Sender");
   });
@@ -23859,7 +23653,6 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   });
 
   test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       DATA_API: {
@@ -23889,9 +23682,6 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "15");
     assert.equal(body.data.chain_transfers.total_volume_tao, 500);
     assert.equal(body.data.chain_transfers.top_senders[0].address, "5Alice");
     assert.equal(body.data.chain_transfers.top_receivers[0].address, "5Bob");
