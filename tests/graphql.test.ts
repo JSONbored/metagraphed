@@ -15402,8 +15402,10 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
       {
         netuid: 4,
         announcements: 6,
-        first_served_at: "2026-04-01T00:00:00.000Z",
-        last_served_at: "2026-06-01T00:00:00.000Z",
+        // The lane selects MIN/MAX(observed_at) AS first_observed/last_observed;
+        // the builder formats those into first_served_at / last_served_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
       },
       { netuid: 9, announcements: 2 },
     ]);
@@ -16572,13 +16574,18 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // into existence by a hand-written payload.
     const lake = lakehouse([
       {
+        // The lakehouse row, per generated/lakehouse/types.ts's own column list:
+        // hotkey is the from side, coldkey the to side, and `direction` is
+        // DERIVED by the builder from which side this account is on. The retired
+        // tier handed over a finished `from`/`to`/`direction` triple, so none of
+        // that derivation ran here.
         block_number: 1200,
         event_index: 3,
-        from: SS58,
-        to: OTHER,
+        event_kind: "Transfer",
+        hotkey: SS58,
+        coldkey: OTHER,
         amount_tao: 1.5,
-        direction: "sent",
-        observed_at: "2026-07-15T00:00:00.000Z",
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
       },
     ]);
     const env = { ...LAKEHOUSE_ENV };
@@ -16595,9 +16602,12 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
       schema_version: 1,
       ss58: SS58,
       transfer_count: 1,
-      limit: 50,
+      // Derived, not echoed: `limit` is the query's own default and
+      // `next_cursor` is null for a page shorter than it. The retired tier
+      // handed both back verbatim, so neither was ever computed here.
+      limit: 100,
       offset: 0,
-      next_cursor: "b:1200:3",
+      next_cursor: null,
       transfers: [
         {
           block_number: 1200,
