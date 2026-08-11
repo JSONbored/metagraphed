@@ -35,6 +35,17 @@ export const NOMINATOR_POSITION_INSERT_COLUMNS = [
   "hotkey",
   "netuid",
   "share_fraction",
+  // The raw u128 the chain holds, added so `share_fraction` stops being the
+  // ONLY thing we keep (metagraphed-infra#414). A fraction is normalised across
+  // every row in a (hotkey, netuid) pool, so no single row can produce it --
+  // which is why the poller buffers the whole 762,577-row keyspace before it
+  // may write anything. Keeping the raw value moves that normalisation to one
+  // statement after the prune and lets the producer stream.
+  //
+  // Optional on the wire: the producer that sends it does not exist yet, and
+  // the normalisation skips a row without it. That is what makes this shippable
+  // ahead of the poller.
+  "shares",
   "captured_at",
 ];
 

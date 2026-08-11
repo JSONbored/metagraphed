@@ -318,6 +318,22 @@ export function nominatorPositionSyncRowSchema({
         .finite("must be finite")
         .min(0)
         .max(1, "must be a fraction between 0 and 1"),
+      // A STRING, not a number (metagraphed-infra#414). Shares are a u128 whose
+      // maximum is ~3.4e38; JSON represents integers exactly only to 2^53, so a
+      // numeric field here would silently round the value it exists to preserve.
+      // Validated as digits rather than parsed: nothing in this Worker needs its
+      // magnitude, Postgres does the arithmetic, and `Number()` on it would
+      // reintroduce the loss the string avoids.
+      //
+      // OPTIONAL, because the producer that sends it does not exist yet. A row
+      // without it is accepted and simply not normalised.
+      shares: z
+        .string()
+        .regex(
+          /^\d{1,39}$/,
+          "must be a non-negative integer of at most 39 digits",
+        )
+        .optional(),
       captured_at: capturedAtMs(minCapturedAtMs),
     })
     .superRefine((row, ctx) => onlyKnownColumns(columns)(row as Row, ctx));
