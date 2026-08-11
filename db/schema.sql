@@ -600,7 +600,8 @@ CREATE TABLE public.nominator_positions (
     hotkey text NOT NULL,
     netuid integer NOT NULL,
     share_fraction double precision,
-    captured_at bigint NOT NULL
+    captured_at bigint NOT NULL,
+    shares numeric
 );
 
 --
@@ -2161,6 +2162,12 @@ CREATE INDEX idx_validator_nominator_counts_passes_completed ON public.validator
 --
 
 CREATE INDEX idx_wps_address ON public.watch_push_subscriptions USING btree (address, created_at DESC);
+
+--
+-- Name: nominator_positions_hotkey_netuid_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX nominator_positions_hotkey_netuid_idx ON public.nominator_positions USING btree (hotkey, netuid);
 
 --
 -- Name: origin_reachability_by_verdict; Type: INDEX; Schema: public; Owner: -

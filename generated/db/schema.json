@@ -1494,6 +1494,12 @@
     "nullable": true
   },
   {
+    "table": "nominator_positions",
+    "column": "shares",
+    "udt": "numeric",
+    "nullable": true
+  },
+  {
     "table": "nominator_positions_passes",
     "column": "captured_at",
     "udt": "int8",
