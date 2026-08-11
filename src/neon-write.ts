@@ -433,10 +433,36 @@ export async function recordNeonWriteVerdict(
    * it matters.
    */
   buffered = false,
+  /**
+   * This lane writes ONCE PER PASS, not once per batch of rows (#10826).
+   *
+   * The suppression above assumes the flush will record an honest verdict for
+   * this lane later. That holds for a row lane, whose statements carry its
+   * name -- and it is FALSE for the `-pass` and `-prune` sub-lanes, which share
+   * the base lane's buffered runner and so never appear in the flush's own
+   * per-lane tally. Nothing can ever write them again once buffering is on.
+   *
+   * Measured on production 2026-08-11: `neon:nominator-positions-prune` and
+   * `neon:nominator-positions-pass` held a `stale` verdict from 10:23 UTC --
+   * "prune did not land; tally withheld", from one Durable Object reset during
+   * a deploy -- while `nominator_positions` itself wrote 123,057 rows at 11:30
+   * and `neon:nominator-positions` went `ok`. The failure verdict outlived its
+   * own recovery by eight hours and counting, and the lane alarm escalated over
+   * it the whole time. A verdict that cannot be cleared is not a health signal.
+   *
+   * #10690's cost argument does not reach here: these fire once per PASS --
+   * daily for the nominator lanes -- so recording them is ~4 rows a day against
+   * the ~758/hr that argument was about.
+   *
+   * The verdict says ENQUEUED rather than landed, because that is what is true
+   * at this point. If the flush then fails, it records `stale` for the base
+   * lane and for `neon:buffer-flush`, so the failure still surfaces.
+   */
+  oncePerPass = false,
 ): Promise<boolean> {
   const key = `neon:${lane}`;
   const verdict: LaneVerdict = result.ok ? "ok" : "stale";
-  if (buffered && result.ok) return true;
+  if (buffered && result.ok && !oncePerPass) return true;
   if (!shouldWriteNeonWriteVerdict(lastWrittenVerdict.get(key), verdict, nowMs))
     // TRUE, not false. `false` is this function's word for "the verdict is NOT
     // on record", and a coalesced verdict IS on record -- an identical row
@@ -449,7 +475,14 @@ export async function recordNeonWriteVerdict(
     verdict,
     age_ms: null,
     detail: result.ok
-      ? `${result.rows} row(s) in ${result.statements} statement(s)`
+      ? // "enqueued" when it is enqueued. A buffered once-per-pass verdict
+        // (see oncePerPass) is recorded before the flush runs, and saying
+        // "in N statement(s)" there would claim Neon holds rows that are
+        // still in the buffer -- the exact overclaim #10690 refused, which
+        // this keeps refusing while still clearing the lane.
+        buffered
+        ? `${result.rows} row(s) enqueued in ${result.statements} statement(s)`
+        : `${result.rows} row(s) in ${result.statements} statement(s)`
       : `${result.rows} row(s) written before failure: ${result.reason ?? "unknown"}`,
     checked_at: nowMs,
   });

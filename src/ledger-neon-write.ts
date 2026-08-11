@@ -267,6 +267,13 @@ export async function mirrorLedgerToNeon(
       },
       now(),
       buffered,
+      // ONCE PER PASS (#10826): this sub-lane shares the base lane's buffered
+      // runner, so the flush's per-lane tally never names it -- a suppressed
+      // success here can never be recorded by anything else, and a `stale`
+      // verdict then outlives its own recovery. Measured on
+      // neon:validator-nominator-counts-pass, stale from 10:15 UTC while its
+      // table wrote 112,250 rows at 11:30.
+      true,
     );
   }
   return { attempted: true, result };
