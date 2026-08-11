@@ -263,6 +263,33 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   EconomicsTrendsArtifact: "EconomicsTrends",
   EconomicsTrendsArtifactDays: "EconomicsTrendsDay",
   EmissionGateChangesArtifact: "EmissionGateChanges",
+  // #10476: the coverage ratio. Both artifacts nest the SAME SubnetRevenue
+  // shape, so the per-subnet card and the network table resolve to one type
+  // rather than two structurally identical ones.
+  SubnetRevenueArtifact: "SubnetRevenueCard",
+  SubnetRevenueArtifactRevenue: "SubnetRevenue",
+  SubnetRevenueArtifactRevenueEmission: "RevenueEmission",
+  SubnetRevenueArtifactRevenueEmissionAlternates: "RevenueEmissionAlternates",
+  SubnetRevenueArtifactRevenueEmissionAlternatesAlphaOutPriced:
+    "RevenueCoverageBasis",
+  SubnetRevenueArtifactRevenueEmissionAlternatesOwnerTake:
+    "RevenueCoverageBasis",
+  SubnetRevenueArtifactRevenueSources: "RevenueSource",
+  SubnetRevenueArtifactRevenueVerification: "RevenueVerification",
+  SubnetRevenueArtifactRevenueVerificationChecks: "RevenueVerificationCheck",
+  ChainRevenueCoverageArtifact: "ChainRevenueCoverage",
+  ChainRevenueCoverageArtifactSubnets: "SubnetRevenue",
+  ChainRevenueCoverageArtifactSubnetsEmission: "RevenueEmission",
+  ChainRevenueCoverageArtifactSubnetsEmissionAlternates:
+    "RevenueEmissionAlternates",
+  ChainRevenueCoverageArtifactSubnetsEmissionAlternatesAlphaOutPriced:
+    "RevenueCoverageBasis",
+  ChainRevenueCoverageArtifactSubnetsEmissionAlternatesOwnerTake:
+    "RevenueCoverageBasis",
+  ChainRevenueCoverageArtifactSubnetsSources: "RevenueSource",
+  ChainRevenueCoverageArtifactSubnetsVerification: "RevenueVerification",
+  ChainRevenueCoverageArtifactSubnetsVerificationChecks:
+    "RevenueVerificationCheck",
   EmissionPipelineArtifact: "EmissionPipeline",
   EmissionPipelineArtifactAggregate: "EmissionPipelineAggregate",
   EmissionPipelineArtifactSubnets: "SubnetEmissionDecomposition",
@@ -1506,6 +1533,20 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
     returns: "EconomicsTrends!",
     description:
       "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends.",
+  },
+  {
+    field: "subnet_revenue",
+    route: "/api/v1/subnets/{netuid}/revenue",
+    returns: "SubnetRevenueCard!",
+    description:
+      "One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue.",
+  },
+  {
+    field: "chain_revenue_coverage",
+    route: "/api/v1/chain/revenue-coverage",
+    returns: "ChainRevenueCoverage!",
+    description:
+      "Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network -- observed_count against subnet_count is the honest headline. Mirrors GET /api/v1/chain/revenue-coverage.",
   },
   {
     field: "emission_pipeline",

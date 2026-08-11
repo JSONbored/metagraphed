@@ -1422,6 +1422,21 @@ export type ChainRegistrationsSubnet = {
   registrations_per_registrant?: Maybe<Scalars['Float']['output']>;
 };
 
+/** Every subnet's coverage in one response. Subnets with NO observed revenue are INCLUDED with null ratios rather than dropped -- omitting them would make the covered set look like the whole network. Mirrors GET /api/v1/chain/revenue-coverage. */
+export type ChainRevenueCoverage = {
+  __typename?: 'ChainRevenueCoverage';
+  contract_version?: Maybe<Scalars['String']['output']>;
+  generated_at: Scalars['String']['output'];
+  /** Public-safe notes; a string or a string list depending on the adapter. */
+  notes?: Maybe<Scalars['JSON']['output']>;
+  /** How many subnets have a readable revenue figure. Against subnet_count this is the honest headline, stated rather than left to be inferred from nulls. */
+  observed_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  subnet_count: Scalars['Int']['output'];
+  subnets: Array<SubnetRevenue>;
+  window_days: Scalars['Int']['output'];
+};
+
 /** Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
 export type ChainServing = {
   __typename?: 'ChainServing';
@@ -2945,6 +2960,8 @@ export type Query = {
   chain_prometheus: ChainPrometheus;
   /** Network-wide neuron-registration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronRegistered events with each's distinct-hotkey count and registrations-per-registrant re-registration intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, entry-side counterpart of subnet_registrations -- where neurons are joining. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/registrations. */
   chain_registrations: ChainRegistrations;
+  /** Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network -- observed_count against subnet_count is the honest headline. Mirrors GET /api/v1/chain/revenue-coverage. */
+  chain_revenue_coverage: ChainRevenueCoverage;
   /** Network-wide axon-serving announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonServed announcements with each's distinct-server count and announcements-per-server re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide counterpart of subnet_serving. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/serving. */
   chain_serving: ChainServing;
   /** Most-active signer leaderboard over a 7d/30d window (default 7d): the accounts submitting the most extrinsics, each with its extrinsic count, total fees and tips paid in TAO, and last-seen block. Rank by tx_count (default) or total_fee_tao, optionally scoped to a single call_module pallet (limit default 50, max 100). Computed live from the extrinsics tier; a cold store yields a schema-stable empty leaderboard, never a GraphQL error. Mirrors GET /api/v1/chain/signers. */
@@ -3173,6 +3190,8 @@ export type Query = {
   subnet_recycled?: Maybe<SubnetRecycled>;
   /** Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations. */
   subnet_registrations: SubnetRegistrations;
+  /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue. */
+  subnet_revenue: SubnetRevenueCard;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
   /** Per-subnet net stake flow over a 7d/30d/90d window (default 30d): TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net capital flow, and event counts, summed live from the account_events stream. direction narrows to inflow (in) or outflow (out); all (default) reports both. A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-flow. */
@@ -4463,6 +4482,11 @@ export type QuerySubnet_RegistrationsArgs = {
 };
 
 
+export type QuerySubnet_RevenueArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_ServingArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
@@ -4697,6 +4721,65 @@ export type RegistryLeaderboards = {
   observed_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
   source?: Maybe<Scalars['String']['output']>;
+};
+
+export type RevenueCoverageBasis = {
+  __typename?: 'RevenueCoverageBasis';
+  tao: Scalars['Float']['output'];
+  usd: Scalars['Float']['output'];
+};
+
+/** The denominator, and the alternates that are published beside it rather than silently substituted. */
+export type RevenueEmission = {
+  __typename?: 'RevenueEmission';
+  alternates: RevenueEmissionAlternates;
+  /** Always tao_total -- SubnetTaoInEmission + SubnetExcessTao, fully measured. A ratio whose denominator changed without saying so is worse than no ratio, so the basis is a field. */
+  basis: Scalars['String']['output'];
+  tao: Scalars['Float']['output'];
+  usd: Scalars['Float']['output'];
+};
+
+export type RevenueEmissionAlternates = {
+  __typename?: 'RevenueEmissionAlternates';
+  /** Alpha emitted, priced at the subnet's alpha price. Null when no alpha price resolves. */
+  alpha_out_priced?: Maybe<RevenueCoverageBasis>;
+  /** The owner's 18% share of the SAME denominator -- SubnetOwnerCut is 11796/65535, not one sixth. */
+  owner_take: RevenueCoverageBasis;
+};
+
+/** One declared revenue surface, reported whether or not it reached the headline. */
+export type RevenueSource = {
+  __typename?: 'RevenueSource';
+  /** The figure for the requested window, or null when one cannot be formed. */
+  amount_usd?: Maybe<Scalars['Float']['output']>;
+  /** Whether this surface's figure reached revenue_usd. Published per source so a caller can see WHY a subnet with visible figures reports a null headline. */
+  contributes: Scalars['Boolean']['output'];
+  currency: Scalars['String']['output'];
+  /** Null when it contributed; otherwise why it did not. */
+  excluded_reason?: Maybe<Scalars['String']['output']>;
+  grain: Scalars['String']['output'];
+  observed_at?: Maybe<Scalars['String']['output']>;
+  periods_expected?: Maybe<Scalars['Int']['output']>;
+  periods_observed?: Maybe<Scalars['Int']['output']>;
+  provenance: Scalars['String']['output'];
+  response_hash?: Maybe<Scalars['String']['output']>;
+  /** Surface ids this one subsumes. A subsumed surface is reported with its own figure and NEVER summed -- SN64 publishes an all-channel daily total and a TAO-channel subset of it, and adding them inflates the headline. */
+  supersedes?: Maybe<Array<Scalars['String']['output']>>;
+  surface_id: Scalars['String']['output'];
+};
+
+/** False means the response is not defensible and must not be presented as fact. */
+export type RevenueVerification = {
+  __typename?: 'RevenueVerification';
+  checks: Array<RevenueVerificationCheck>;
+  verified: Scalars['Boolean']['output'];
+};
+
+export type RevenueVerificationCheck = {
+  __typename?: 'RevenueVerificationCheck';
+  detail: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  ok: Scalars['Boolean']['output'];
 };
 
 export type ReviewAdapterCandidateList = {
@@ -5815,6 +5898,40 @@ export type SubnetRegistrations = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+/** The coverage ratio and the evidence behind it. Every nullable field here is nullable because ABSENT REVENUE IS NULL, NEVER ZERO: a subnet that earned nothing and a subnet nobody could measure are different facts, and 127 of 129 are the second. */
+export type SubnetRevenue = {
+  __typename?: 'SubnetRevenue';
+  /** revenue / emission. NULL whenever revenue_usd is null, which is the majority case. A client must render null as 'not observed', never as 0%. */
+  coverage_ratio?: Maybe<Scalars['Float']['output']>;
+  emission: RevenueEmission;
+  netuid: Scalars['Int']['output'];
+  /** The strongest evidence class present across this subnet's declarations. Required, so a caller cannot read a figure without knowing how it was obtained. */
+  provenance: Scalars['String']['output'];
+  /** Summed external revenue over the window, from chain-verified and probe-derived surfaces ONLY. NULL means not observed -- render it as 'not observed', never as 0. */
+  revenue_usd?: Maybe<Scalars['Float']['output']>;
+  /** When absence was established. An undated absence is not evidence. */
+  searched_at?: Maybe<Scalars['String']['output']>;
+  sources: Array<RevenueSource>;
+  /** emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero -- dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable. */
+  subsidy_multiple?: Maybe<Scalars['Float']['output']>;
+  verification: RevenueVerification;
+  window_days: Scalars['Int']['output'];
+};
+
+/** One subnet's external revenue against the TAO the network emits to it (#10476). Mirrors GET /api/v1/subnets/{netuid}/revenue. */
+export type SubnetRevenueCard = {
+  __typename?: 'SubnetRevenueCard';
+  contract_version?: Maybe<Scalars['String']['output']>;
+  /** Per-field { kind, storage } map: every value is labelled measured or reconstructed. ADR 0023 decision 5. */
+  field_sources: Scalars['JSON']['output'];
+  generated_at: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  /** Public-safe notes; a string or a string list depending on the adapter. */
+  notes?: Maybe<Scalars['JSON']['output']>;
+  revenue: SubnetRevenue;
+  schema_version: Scalars['Int']['output'];
+};
+
 export type SubnetServing = {
   __typename?: 'SubnetServing';
   announcements: Scalars['Int']['output'];
@@ -6771,6 +6888,7 @@ export type ResolversTypes = ResolversObject<{
   ChainRegistrations: ResolverTypeWrapper<ChainRegistrations>;
   ChainRegistrationsNetwork: ResolverTypeWrapper<ChainRegistrationsNetwork>;
   ChainRegistrationsSubnet: ResolverTypeWrapper<ChainRegistrationsSubnet>;
+  ChainRevenueCoverage: ResolverTypeWrapper<ChainRevenueCoverage>;
   ChainServing: ResolverTypeWrapper<ChainServing>;
   ChainServingNetwork: ResolverTypeWrapper<ChainServingNetwork>;
   ChainServingSubnet: ResolverTypeWrapper<ChainServingSubnet>;
@@ -6877,6 +6995,12 @@ export type ResolversTypes = ResolversObject<{
   ProviderList: ResolverTypeWrapper<ProviderList>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   RegistryLeaderboards: ResolverTypeWrapper<RegistryLeaderboards>;
+  RevenueCoverageBasis: ResolverTypeWrapper<RevenueCoverageBasis>;
+  RevenueEmission: ResolverTypeWrapper<RevenueEmission>;
+  RevenueEmissionAlternates: ResolverTypeWrapper<RevenueEmissionAlternates>;
+  RevenueSource: ResolverTypeWrapper<RevenueSource>;
+  RevenueVerification: ResolverTypeWrapper<RevenueVerification>;
+  RevenueVerificationCheck: ResolverTypeWrapper<RevenueVerificationCheck>;
   ReviewAdapterCandidateList: ResolverTypeWrapper<ReviewAdapterCandidateList>;
   ReviewEnrichmentEvidenceList: ResolverTypeWrapper<ReviewEnrichmentEvidenceList>;
   ReviewEnrichmentQueueList: ResolverTypeWrapper<ReviewEnrichmentQueueList>;
@@ -6954,6 +7078,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetPrometheus: ResolverTypeWrapper<SubnetPrometheus>;
   SubnetRecycled: ResolverTypeWrapper<SubnetRecycled>;
   SubnetRegistrations: ResolverTypeWrapper<SubnetRegistrations>;
+  SubnetRevenue: ResolverTypeWrapper<SubnetRevenue>;
+  SubnetRevenueCard: ResolverTypeWrapper<SubnetRevenueCard>;
   SubnetServing: ResolverTypeWrapper<SubnetServing>;
   SubnetStakeFlow: ResolverTypeWrapper<SubnetStakeFlow>;
   SubnetStakeMoves: ResolverTypeWrapper<SubnetStakeMoves>;
@@ -7122,6 +7248,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainRegistrations: ChainRegistrations;
   ChainRegistrationsNetwork: ChainRegistrationsNetwork;
   ChainRegistrationsSubnet: ChainRegistrationsSubnet;
+  ChainRevenueCoverage: ChainRevenueCoverage;
   ChainServing: ChainServing;
   ChainServingNetwork: ChainServingNetwork;
   ChainServingSubnet: ChainServingSubnet;
@@ -7227,6 +7354,12 @@ export type ResolversParentTypes = ResolversObject<{
   ProviderList: ProviderList;
   Query: Record<PropertyKey, never>;
   RegistryLeaderboards: RegistryLeaderboards;
+  RevenueCoverageBasis: RevenueCoverageBasis;
+  RevenueEmission: RevenueEmission;
+  RevenueEmissionAlternates: RevenueEmissionAlternates;
+  RevenueSource: RevenueSource;
+  RevenueVerification: RevenueVerification;
+  RevenueVerificationCheck: RevenueVerificationCheck;
   ReviewAdapterCandidateList: ReviewAdapterCandidateList;
   ReviewEnrichmentEvidenceList: ReviewEnrichmentEvidenceList;
   ReviewEnrichmentQueueList: ReviewEnrichmentQueueList;
@@ -7304,6 +7437,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetPrometheus: SubnetPrometheus;
   SubnetRecycled: SubnetRecycled;
   SubnetRegistrations: SubnetRegistrations;
+  SubnetRevenue: SubnetRevenue;
+  SubnetRevenueCard: SubnetRevenueCard;
   SubnetServing: SubnetServing;
   SubnetStakeFlow: SubnetStakeFlow;
   SubnetStakeMoves: SubnetStakeMoves;
@@ -8466,6 +8601,17 @@ export type ChainRegistrationsSubnetResolvers<ContextType = GqlContext, ParentTy
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   registrations?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   registrations_per_registrant?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type ChainRevenueCoverageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainRevenueCoverage'] = ResolversParentTypes['ChainRevenueCoverage']> = ResolversObject<{
+  contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  generated_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  observed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnets?: Resolver<Array<ResolversTypes['SubnetRevenue']>, ParentType, ContextType>;
+  window_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ChainServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainServing'] = ResolversParentTypes['ChainServing']> = ResolversObject<{
@@ -9656,6 +9802,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_performance?: Resolver<ResolversTypes['ChainPerformance'], ParentType, ContextType>;
   chain_prometheus?: Resolver<ResolversTypes['ChainPrometheus'], ParentType, ContextType, Partial<QueryChain_PrometheusArgs>>;
   chain_registrations?: Resolver<ResolversTypes['ChainRegistrations'], ParentType, ContextType, Partial<QueryChain_RegistrationsArgs>>;
+  chain_revenue_coverage?: Resolver<ResolversTypes['ChainRevenueCoverage'], ParentType, ContextType>;
   chain_serving?: Resolver<ResolversTypes['ChainServing'], ParentType, ContextType, Partial<QueryChain_ServingArgs>>;
   chain_signers?: Resolver<ResolversTypes['ChainSigners'], ParentType, ContextType, Partial<QueryChain_SignersArgs>>;
   chain_stake_flow?: Resolver<ResolversTypes['ChainStakeFlow'], ParentType, ContextType, Partial<QueryChain_Stake_FlowArgs>>;
@@ -9770,6 +9917,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_prometheus?: Resolver<ResolversTypes['SubnetPrometheus'], ParentType, ContextType, RequireFields<QuerySubnet_PrometheusArgs, 'netuid'>>;
   subnet_recycled?: Resolver<Maybe<ResolversTypes['SubnetRecycled']>, ParentType, ContextType, RequireFields<QuerySubnet_RecycledArgs, 'netuid'>>;
   subnet_registrations?: Resolver<ResolversTypes['SubnetRegistrations'], ParentType, ContextType, RequireFields<QuerySubnet_RegistrationsArgs, 'netuid'>>;
+  subnet_revenue?: Resolver<ResolversTypes['SubnetRevenueCard'], ParentType, ContextType, RequireFields<QuerySubnet_RevenueArgs, 'netuid'>>;
   subnet_serving?: Resolver<ResolversTypes['SubnetServing'], ParentType, ContextType, RequireFields<QuerySubnet_ServingArgs, 'netuid'>>;
   subnet_stake_flow?: Resolver<ResolversTypes['SubnetStakeFlow'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_FlowArgs, 'netuid'>>;
   subnet_stake_moves?: Resolver<ResolversTypes['SubnetStakeMoves'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_MovesArgs, 'netuid'>>;
@@ -9806,6 +9954,49 @@ export type RegistryLeaderboardsResolvers<ContextType = GqlContext, ParentType e
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type RevenueCoverageBasisResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueCoverageBasis'] = ResolversParentTypes['RevenueCoverageBasis']> = ResolversObject<{
+  tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  usd?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type RevenueEmissionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueEmission'] = ResolversParentTypes['RevenueEmission']> = ResolversObject<{
+  alternates?: Resolver<ResolversTypes['RevenueEmissionAlternates'], ParentType, ContextType>;
+  basis?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  usd?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type RevenueEmissionAlternatesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueEmissionAlternates'] = ResolversParentTypes['RevenueEmissionAlternates']> = ResolversObject<{
+  alpha_out_priced?: Resolver<Maybe<ResolversTypes['RevenueCoverageBasis']>, ParentType, ContextType>;
+  owner_take?: Resolver<ResolversTypes['RevenueCoverageBasis'], ParentType, ContextType>;
+}>;
+
+export type RevenueSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueSource'] = ResolversParentTypes['RevenueSource']> = ResolversObject<{
+  amount_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  contributes?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  excluded_reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  grain?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  periods_expected?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  periods_observed?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  provenance?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  response_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  supersedes?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  surface_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type RevenueVerificationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueVerification'] = ResolversParentTypes['RevenueVerification']> = ResolversObject<{
+  checks?: Resolver<Array<ResolversTypes['RevenueVerificationCheck']>, ParentType, ContextType>;
+  verified?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+}>;
+
+export type RevenueVerificationCheckResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueVerificationCheck'] = ResolversParentTypes['RevenueVerificationCheck']> = ResolversObject<{
+  detail?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  ok?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
 export type ReviewAdapterCandidateListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewAdapterCandidateList'] = ResolversParentTypes['ReviewAdapterCandidateList']> = ResolversObject<{
@@ -10649,6 +10840,29 @@ export type SubnetRegistrationsResolvers<ContextType = GqlContext, ParentType ex
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type SubnetRevenueResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetRevenue'] = ResolversParentTypes['SubnetRevenue']> = ResolversObject<{
+  coverage_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission?: Resolver<ResolversTypes['RevenueEmission'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  provenance?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  revenue_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  searched_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  sources?: Resolver<Array<ResolversTypes['RevenueSource']>, ParentType, ContextType>;
+  subsidy_multiple?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  verification?: Resolver<ResolversTypes['RevenueVerification'], ParentType, ContextType>;
+  window_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetRevenueCardResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetRevenueCard'] = ResolversParentTypes['SubnetRevenueCard']> = ResolversObject<{
+  contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  generated_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  revenue?: Resolver<ResolversTypes['SubnetRevenue'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetServingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetServing'] = ResolversParentTypes['SubnetServing']> = ResolversObject<{
   announcements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   announcements_per_server?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -11368,6 +11582,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainRegistrations?: ChainRegistrationsResolvers<ContextType>;
   ChainRegistrationsNetwork?: ChainRegistrationsNetworkResolvers<ContextType>;
   ChainRegistrationsSubnet?: ChainRegistrationsSubnetResolvers<ContextType>;
+  ChainRevenueCoverage?: ChainRevenueCoverageResolvers<ContextType>;
   ChainServing?: ChainServingResolvers<ContextType>;
   ChainServingNetwork?: ChainServingNetworkResolvers<ContextType>;
   ChainServingSubnet?: ChainServingSubnetResolvers<ContextType>;
@@ -11471,6 +11686,12 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ProviderList?: ProviderListResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RegistryLeaderboards?: RegistryLeaderboardsResolvers<ContextType>;
+  RevenueCoverageBasis?: RevenueCoverageBasisResolvers<ContextType>;
+  RevenueEmission?: RevenueEmissionResolvers<ContextType>;
+  RevenueEmissionAlternates?: RevenueEmissionAlternatesResolvers<ContextType>;
+  RevenueSource?: RevenueSourceResolvers<ContextType>;
+  RevenueVerification?: RevenueVerificationResolvers<ContextType>;
+  RevenueVerificationCheck?: RevenueVerificationCheckResolvers<ContextType>;
   ReviewAdapterCandidateList?: ReviewAdapterCandidateListResolvers<ContextType>;
   ReviewEnrichmentEvidenceList?: ReviewEnrichmentEvidenceListResolvers<ContextType>;
   ReviewEnrichmentQueueList?: ReviewEnrichmentQueueListResolvers<ContextType>;
@@ -11547,6 +11768,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetPrometheus?: SubnetPrometheusResolvers<ContextType>;
   SubnetRecycled?: SubnetRecycledResolvers<ContextType>;
   SubnetRegistrations?: SubnetRegistrationsResolvers<ContextType>;
+  SubnetRevenue?: SubnetRevenueResolvers<ContextType>;
+  SubnetRevenueCard?: SubnetRevenueCardResolvers<ContextType>;
   SubnetServing?: SubnetServingResolvers<ContextType>;
   SubnetStakeFlow?: SubnetStakeFlowResolvers<ContextType>;
   SubnetStakeMoves?: SubnetStakeMovesResolvers<ContextType>;

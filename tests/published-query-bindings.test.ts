@@ -96,8 +96,8 @@ describe("compareQueryBindings", () => {
 });
 
 describe("the real registry", () => {
-  it("declares a return type and a description for all 196 fields", () => {
-    expect(QUERY_BINDINGS).toHaveLength(196);
+  it("declares a return type and a description for all 198 fields", () => {
+    expect(QUERY_BINDINGS).toHaveLength(198);
     for (const binding of QUERY_BINDINGS) {
       expect(binding.returns, binding.field).toMatch(/^\[?\w+!?\]?!?$/);
       expect(binding.description.length, binding.field).toBeGreaterThan(0);
