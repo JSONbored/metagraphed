@@ -705,13 +705,22 @@ export async function runLaneAlarm(
   for (const alarm of plan.open) {
     const body = laneAlarmIssueBody(alarm, nowMs);
     // PostHog stays a second channel rather than the only one. It is recorded
-    // for every alarm, including the ones the cap suppressed below, so a
+    // for every alarm, including the ones the GitHub cap suppressed below, so a
     // working capture path still sees the full picture.
+    //
+    // `fingerprintDetail` IS WHAT MAKES THAT TRUE. Without it every lane in a
+    // tick fingerprinted `watchdog:lane-alarm:Error`, which is also the storm
+    // guard's throttle key -- so the first alarming lane consumed the window
+    // and every other lane in the same tick was dropped as a repeat of it.
+    // Measured on production before the fix: exactly one event per tick for six
+    // consecutive hours, while this watchdog's own verdict read "4 alarming".
+    // The lane set is declared and small, so per-lane windows are bounded.
     await record(env as never, {
       error: new Error(
         `lane ${alarm.lane} is ${alarm.kind}: ${humanDuration(nowMs - alarm.since)}`,
       ),
       route: "watchdog:lane-alarm",
+      fingerprintDetail: alarm.lane,
       errorCode: alarm.kind === "stale" ? "lane_stale" : "lane_silent",
     }).catch(() => false);
     if (!github) continue;
