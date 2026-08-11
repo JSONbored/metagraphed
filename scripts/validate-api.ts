@@ -3054,44 +3054,16 @@ for (const [route, assertion, options = {}] of checks) {
       assertion: (body) =>
         assert.equal(body.data.entries[0].identity_hash, IDENTITY_HASH),
     },
-    {
-      flag: "METAGRAPH_RPC_USAGE_SOURCE",
-      route: "/api/v1/rpc/usage",
-      upstreamPath: "/api/v1/rpc/usage",
-      data: formatRpcUsage({
-        window: "7d",
-        observedAt: new Date(OBSERVED_AT_MS).toISOString(),
-        totals: {
-          total: 10,
-          ok_count: 9,
-          failover_count: 1,
-          cache_hits: 2,
-          avg_latency_ms: 25,
-        },
-        latency: { p50: 20, p95: 40 },
-        endpointRows: [
-          {
-            endpoint_id: "finney-primary",
-            provider: "example",
-            requests: 10,
-            ok_count: 9,
-            avg_latency_ms: 25,
-          },
-        ],
-        networkRows: [{ network: "finney", requests: 10, ok_count: 9 }],
-        bucketRows: [
-          { ts: OBSERVED_AT_MS, requests: 10, errors: 1, avg_latency_ms: 25 },
-        ],
-        bucketGranularity: "1h",
-      }),
-      assertion: (body) => assert.equal(body.data.summary.total_requests, 10),
-    },
+    // METAGRAPH_RPC_USAGE_SOURCE's case was REMOVED (#10190): src/rpc-usage-answer.ts
+    // no longer has a Postgres arm at all, so there is no forward left to prove.
+    // The route's cascade is Analytics Engine, then the lakehouse, then the zeroed
+    // floor -- covered by tests/rpc-usage-answer.test.ts and tests/rpc-usage.test.ts.
   ];
 
   assert.equal(
     postgresTierChecks.length,
-    8,
-    "postgres-tier AJV coverage must include all 8 flags that gate a DATA_API leg",
+    7,
+    "postgres-tier AJV coverage must include all 7 flags that gate a DATA_API leg",
   );
 
   for (const {

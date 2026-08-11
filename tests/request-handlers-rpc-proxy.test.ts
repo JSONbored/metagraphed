@@ -223,35 +223,31 @@ describe("handleRpcUsage", () => {
     assert.equal(dataApiCalled, false);
   });
 
-  test("an empty AE window falls through to the tier below", async () => {
-    const env = {
-      ...AE_ENV,
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            source: "rpc-proxy",
-            summary: { total_requests: 42 },
-            endpoints: [],
-            networks: [],
-            buckets: [],
-          }),
-      },
-    };
+  // REWRITTEN (#10190). This proved the fall-through by stubbing a DATA_API
+  // response behind `METAGRAPH_RPC_USAGE_SOURCE: "postgres"` and asserting its
+  // 42 came back. That flag reads "retired" in every deployed config and is
+  // absent from DATA_API_FORWARD_FLAGS, so the arm it exercised declined on
+  // every real request -- the 42 only ever arrived in this test.
+  //
+  // The claim worth keeping is that an empty AE window is NOT published as an
+  // answer, which is #9269's bug. The cascade ORDER belongs to the composer's
+  // own suite (tests/rpc-usage-answer.test.ts); what this handler-level test
+  // uniquely proves is the wiring.
+  test("an empty AE window is not published as an answer", async () => {
     const body = await withFetch(
       aeFetch([[{ total: null }], [], [], []]),
       async () =>
         json(
           await handleRpcUsage(
             req("/api/v1/rpc/usage"),
-            env as unknown as Env,
+            AE_ENV as unknown as Env,
             url("/api/v1/rpc/usage"),
           ),
         ),
     );
-    assert.equal(body.data.summary.total_requests, 42);
+    // No lakehouse token and no live tier here, so the zeroed floor answers --
+    // and it says so, rather than an empty AE read passing for a measurement.
+    assert.equal(body.data.summary.total_requests, 0);
   });
 
   test("no AE read token means the route behaves exactly as it does today", async () => {

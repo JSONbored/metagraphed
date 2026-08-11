@@ -45,21 +45,12 @@
 // before it can be bounded, so the two cannot be issued in parallel without
 // risking a double count.
 import { ANALYTICS_WINDOW_DAYS } from "../workers/config.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
-import {
-  epochMs,
-  formatRpcUsage,
-  type RpcUsageSegment,
-} from "./health-serving.ts";
+import { formatRpcUsage, type RpcUsageSegment } from "./health-serving.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadRpcUsageColdTier, windowCutoffMs } from "./rpc-usage-cold-tier.ts";
 import { loadRpcUsageHotTier } from "./rpc-usage-hot-tier.ts";
 
 type Row = Record<string, unknown>;
-
-/** The env flag that still gates the (retired) Postgres tier for this route.
- * Kept as a named export so the surfaces cannot drift onto a different flag. */
-export const RPC_USAGE_SOURCE_FLAG = "METAGRAPH_RPC_USAGE_SOURCE" as const;
 
 function num(value: unknown): number {
   const n = Number(value);
@@ -280,16 +271,11 @@ export interface AnswerRpcUsageOptions {
   /** `observed_at` for the zeroed floor -- the health cron's last run, the
    * only freshness reading available when no store answered. */
   observedAt?: unknown;
-  /** The request to forward to the (retired) Postgres tier, or null to skip
-   * it. Supplied per surface because each builds its own upstream request;
-   * the ORDER it is tried in belongs here, not at the call site. */
-  postgresRequest?: Request | null;
   now?: number;
   // Seams, so every arm of the cascade -- and the merge itself -- is testable
   // without Analytics Engine, a lakehouse, or a DATA_API binding.
   hotTier?: typeof loadRpcUsageHotTier;
   coldTier?: typeof loadRpcUsageColdTier;
-  postgresTier?: typeof tryPostgresTier;
   floor?: typeof loadRpcUsage;
 }
 
@@ -305,11 +291,9 @@ export async function answerRpcUsage(
   {
     window = "7d",
     observedAt = null,
-    postgresRequest = null,
     now = Date.now(),
     hotTier = loadRpcUsageHotTier,
     coldTier = loadRpcUsageColdTier,
-    postgresTier = tryPostgresTier,
     floor = loadRpcUsage,
   }: AnswerRpcUsageOptions = {},
 ): Promise<Row> {
@@ -329,29 +313,18 @@ export async function answerRpcUsage(
   if (hot && cold) return mergeRpcUsage(cold, hot);
   if (hot) return hot;
 
-  // Only reached when Analytics Engine had nothing. The Postgres tier stays
-  // ahead of the lakehouse here purely to preserve the order this route has
-  // always used; METAGRAPH_RPC_USAGE_SOURCE is "retired" in every deployed
-  // config, so it declines without a subrequest and the flag remains what it
-  // has always been -- a kill switch, not a live tier.
-  if (postgresRequest) {
-    const postgres = (await postgresTier(
-      env,
-      postgresRequest,
-      RPC_USAGE_SOURCE_FLAG,
-    )) as Row | null;
-    // Normalised on the way out rather than trusted (#9794/#9811). This arm
-    // forwards an upstream payload verbatim instead of going through
-    // formatRpcUsage, so it is the one path that can publish a stamp this
-    // composer never shaped. The whole defect being fixed here was `observed_at`
-    // meaning different things depending on which tier answered, and a tier
-    // whose representation is taken on faith is how that happens -- so the
-    // composer states the type for every arm, including the ones it forwards.
-    if (postgres) {
-      return { ...postgres, observed_at: epochMs(postgres.observed_at) };
-    }
-  }
-
+  // THE POSTGRES ARM IS GONE (#10190). It sat here "purely to preserve the
+  // order this route has always used", and its own comment already said
+  // METAGRAPH_RPC_USAGE_SOURCE "is retired in every deployed config, so it
+  // declines without a subrequest" -- so between Analytics Engine having nothing
+  // and the lakehouse answering there was a branch that could only ever decline.
+  //
+  // What went with it: the `observed_at` normalisation that arm needed. It was
+  // the one path forwarding an upstream payload verbatim rather than through
+  // formatRpcUsage, and it existed because a tier's representation must not be
+  // taken on faith (#9794/#9811). Every surviving arm is shaped by this composer,
+  // so there is no longer an unshaped stamp to normalise -- the invariant now
+  // holds by construction instead of by a guard.
   if (cold) return cold;
 
   return floor({ window: label, observedAt });

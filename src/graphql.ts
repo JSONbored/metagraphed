@@ -2746,21 +2746,19 @@ const rootValue = {
       limit: String(safeLimit),
     });
     return (
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
-        "METAGRAPH_TOP_HOLDERS_SOURCE",
-      )) as Row | null) ??
-      // The same tier the REST handler and the MCP tool read (#9469).
-      // This resolver had NEITHER, so with the Postgres source retired it
-      // answered a schema-stable EMPTY list while /api/v1/accounts/top-holders
-      // served a leaderboard -- the same shape of dead fallback ladder the
-      // issue is about, one layer down.
+      // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and
+      // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+      // every request.
+      //
+      // The live flow lane below is the tier the REST handler and the MCP tool
+      // read (#9469). This resolver had NEITHER, so it answered a schema-stable
+      // EMPTY list while /api/v1/accounts/top-holders served a leaderboard --
+      // the same shape of dead fallback ladder as the arm just removed above,
+      // one layer down.
       (await loadTopHoldersFlowTier(context.env, {
         sort: safeSort,
         limit: safeLimit,
-      })) ??
-      buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
+      })) ?? buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
     );
   },
 
@@ -7276,21 +7274,20 @@ const rootValue = {
     // sources, fetched in parallel. A cold/absent Postgres tier degrades to
     // buildAccountEntities' own zeroed card; a cold/absent R2 artifact degrades
     // to an empty labels list.
-    const [entitiesArtifact, ownershipData] = await Promise.all([
-      readArtifact(context.env, ENTITY_LABELS_ARTIFACT),
-      tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/accounts/${encodeURIComponent(ss58)}/entities`,
-        ),
-        "METAGRAPH_SUBNET_OWNERSHIP_SOURCE",
-      ),
-    ]);
+    // NO TIER READ (#10190). METAGRAPH_SUBNET_OWNERSHIP_SOURCE reads "retired"
+    // in every deployed config and is absent from DATA_API_FORWARD_FLAGS, so
+    // tryPostgresTier resolved to null on every request -- a subrequest that
+    // could not be made, awaited on the critical path. The composer's own
+    // lakehouse leg is what has been answering; it is now asked with no tier
+    // result rather than one that never arrives.
+    const entitiesArtifact = await readArtifact(
+      context.env,
+      ENTITY_LABELS_ARTIFACT,
+    );
     // Through the composer (src/account-entities-answer.ts): it owns the tier
     // order and the empty floor, so this resolver cannot drift from REST/MCP
     // the way it did while the lakehouse leg lived in entities.ts alone.
-    const data = await answerAccountEntities(context.env, ss58, ownershipData);
+    const data = await answerAccountEntities(context.env, ss58, null);
     const labels = labelsForSs58(
       entityLabelsIndex(
         entitiesArtifact.ok ? (entitiesArtifact.data as Row)?.entities : [],
@@ -9567,11 +9564,6 @@ const rootValue = {
     const data = (await answerRpcUsage(context.env, {
       window: requestedWindow,
       observedAt: await loadObservedAt(context),
-      postgresRequest: postgresTierRequest(
-        context,
-        "/api/v1/rpc/usage",
-        params,
-      ),
     })) as Row;
     const summary = data.summary ?? {};
     const latency = summary.latency_ms ?? {};

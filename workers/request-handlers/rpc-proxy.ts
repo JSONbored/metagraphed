@@ -228,10 +228,6 @@ export async function handleRpcUsage(
   const data = await answerRpcUsage(env, {
     window: label,
     observedAt: meta?.last_run_at || null,
-    // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
-    // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
-    // embedded-helper shape). The composer decides WHEN that tier is tried.
-    postgresRequest: request,
   });
   return envelopeResponse(
     request,

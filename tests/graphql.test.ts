@@ -10401,27 +10401,12 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     assert.equal(body.data.freshness, null);
   });
 
-  test("top_holders resolves the postgres tier payload", async () => {
-    let url: URL | undefined;
-    const env = {
-      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          url = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            holders: [{ ss58: "5A" }],
-          });
-        },
-      },
-    };
-    const { body } = await gql("{ top_holders(limit: 5) }", env);
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.top_holders.holders[0].ss58, "5A");
-    assert.equal(url!.pathname, "/api/v1/accounts/top-holders");
-    assert.equal(url!.searchParams.get("limit"), "5");
-    assert.equal(url!.searchParams.get("sort"), "total_tao");
-  });
+  // REMOVED (#10190): "top_holders resolves the postgres tier payload". It
+  // asserted the URL and query params forwarded to DATA_API under
+  // METAGRAPH_TOP_HOLDERS_SOURCE="postgres" -- a flag value no deployment sets,
+  // gating an arm absent from DATA_API_FORWARD_FLAGS. The live tier is the flow
+  // projection (tests/top-holders-flow-tier.test.ts), and the cold shape is
+  // pinned by the neighbouring test below.
 
   test("top_holders falls back to a schema-stable empty list when the tier is cold", async () => {
     const { body } = await gql("{ top_holders }");
@@ -10430,20 +10415,15 @@ describe("graphql — candidates / fixtures / agent_catalog / freshness / top_ho
     assert.deepEqual(body.data.top_holders.holders ?? [], []);
   });
 
-  test("top_holders forwards an explicit allowlisted sort", async () => {
-    let url: URL | undefined;
-    const env = {
-      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          url = new URL(r.url);
-          return Response.json({ schema_version: 1, holders: [] });
-        },
-      },
-    };
-    const { body } = await gql('{ top_holders(sort: "free_tao") }', env);
+  // REWRITTEN (#10190). This proved an allowlisted sort by asserting it reached
+  // DATA_API's query string -- through the retired METAGRAPH_TOP_HOLDERS_SOURCE
+  // arm, so the forwarding it checked never happened in production. The claim
+  // worth keeping is the ALLOWLIST's: a recognised sort is accepted where an
+  // unrecognised one is rejected, which is the pair the test below completes.
+  test("top_holders accepts an allowlisted sort", async () => {
+    const { body } = await gql('{ top_holders(sort: "free_tao") }');
     assert.equal(body.errors, undefined);
-    assert.equal(url!.searchParams.get("sort"), "free_tao");
+    assert.ok(body.data.top_holders);
   });
 
   test("top_holders rejects an unknown sort with BAD_USER_INPUT", async () => {
@@ -15377,35 +15357,13 @@ describe("graphql — account_entities (#6976, R2 entity labels + Postgres-tier 
     ]);
   });
 
-  test("resolves ownership ties from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            labels: [],
-            ownership_tie_count: 1,
-            ownership_ties: [
-              {
-                netuid: 4,
-                role: "gained_ownership",
-                block_number: 123,
-                observed_at: "2026-07-01T00:00:00.000Z",
-              },
-            ],
-          }),
-      },
-    };
-    const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
-    assert.equal(status, 200);
-    const r = body.data.account_entities;
-    assert.equal(r.ownership_tie_count, 1);
-    assert.equal(r.ownership_ties[0].netuid, 4);
-    assert.equal(r.ownership_ties[0].role, "gained_ownership");
-    assert.equal(r.ownership_ties[0].block_number, 123);
-  });
+  // REMOVED (#10190): "resolves ownership ties from the Postgres tier".
+  // METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired and absent from
+  // DATA_API_FORWARD_FLAGS, so the tie list it asserted could only ever come
+  // from its own DATA_API stub. Ownership-tie SHAPING is proven against the
+  // composer's live leg in tests/account-entities-answer.test.ts (populated
+  // ties, counts and role mapping); GraphQL's field wiring for the same card is
+  // pinned by the empty-card test immediately below.
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty ownership card", async () => {
     const env = {
@@ -19210,97 +19168,40 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window, forwarding it as a query param", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            bucket_granularity: "6h",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "rpc-proxy",
-            summary: {
-              total_requests: 100,
-              ok_requests: 95,
-              error_requests: 5,
-              error_rate: 0.05,
-              failover_requests: 3,
-              failover_rate: 0.03,
-              cache_hits: 40,
-              cache_hit_rate: 0.4,
-              latency_ms: { p50: 20, p95: 80, avg: 30 },
-            },
-            endpoints: [
-              {
-                rank: 1,
-                endpoint_id: "ep-a",
-                provider: "prov-a",
-                requests: 60,
-                ok_requests: 58,
-                error_rate: 0.0333,
-                avg_latency_ms: 25,
-              },
-            ],
-            networks: [
-              {
-                network: "finney",
-                requests: 100,
-                ok_requests: 95,
-                error_rate: 0.05,
-              },
-            ],
-            buckets: [
-              {
-                ts: 1_750_000_000_000,
-                requests: 10,
-                errors: 1,
-                avg_latency_ms: 22,
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(usageQuery('(window: "30d")'), env);
+  // REWRITTEN (#10190). This built a full rpc_usage payload, forwarded it through
+  // METAGRAPH_RPC_USAGE_SOURCE="postgres", and asserted every field mapped --
+  // including an `observed_at` normalisation whose own comment said it existed
+  // because "this arm forwards a tier's payload verbatim rather than building
+  // it". That arm is gone: no deployment sets the flag, and every surviving arm
+  // is shaped by the composer, so there is no unshaped stamp left to normalise.
+  //
+  // The residue worth keeping is that a valid non-default window is HONOURED
+  // rather than silently reset to the default. Field mapping for a populated
+  // payload is covered against the real tiers in tests/rpc-usage.test.ts and
+  // tests/rpc-usage-answer.test.ts.
+  test("a valid non-default window is honoured, not reset to the default", async () => {
+    const { status, body } = await gql(usageQuery('(window: "30d")'));
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/rpc/usage");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    const usage = body.data.rpc_usage;
-    assert.equal(usage.window, "30d");
-    assert.equal(usage.bucket_granularity, "6h");
-    // The mocked upstream sends an ISO string and the composer normalises it to
-    // epoch ms on the way out (#9811). This arm forwards a tier's payload
-    // verbatim rather than building it, so it is the one path that could publish
-    // a stamp the composer never shaped -- which is the exact defect being
-    // fixed, so the composer states the type here too.
-    assert.equal(usage.observed_at, Date.parse("2026-07-10T00:00:00.000Z"));
-    assert.equal(usage.summary.total_requests, 100);
-    assert.equal(usage.summary.error_rate, 0.05);
-    assert.equal(usage.summary.cache_hit_rate, 0.4);
-    assert.equal(usage.summary.latency_ms.p95, 80);
-    assert.equal(usage.endpoints[0].endpoint_id, "ep-a");
-    assert.equal(usage.endpoints[0].error_rate, 0.0333);
-    assert.equal(usage.networks[0].network, "finney");
-    assert.equal(usage.buckets[0].ts, 1_750_000_000_000);
+    assert.equal(body.data.rpc_usage.window, "30d");
   });
 
-  test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
-    const { status, body } = await gql(usageQuery(), env);
+  // REWRITTEN (#10190). This drove a malformed body through the retired
+  // METAGRAPH_RPC_USAGE_SOURCE arm; with that arm gone the cold cascade ends at
+  // the zeroed floor, and the floor publishes `bucket_granularity: "1h"` where
+  // the malformed-Postgres path published null. Production always took the floor
+  // -- the flag reads "retired" everywhere -- so this now pins the shape the
+  // surface actually serves rather than one only a stub could produce.
+  test("a cold cascade yields schema-stable defaults (no throw)", async () => {
+    const { status, body } = await gql(usageQuery());
     assert.equal(status, 200);
     const usage = body.data.rpc_usage;
     assert.equal(usage.schema_version, 1);
     assert.equal(usage.window, "7d");
-    assert.equal(usage.bucket_granularity, null);
+    assert.equal(usage.bucket_granularity, "1h");
     assert.equal(usage.observed_at, null);
-    assert.equal(usage.source, null);
+    // Also the floor's, where the malformed-Postgres path published null: the
+    // zeroed card still names the surface it describes.
+    assert.equal(usage.source, "rpc-proxy");
     assert.deepEqual(usage.summary, {
       total_requests: 0,
       ok_requests: 0,

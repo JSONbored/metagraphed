@@ -5901,35 +5901,24 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleSelfHealth: flag=postgres uses Postgres data, D1 never queried", async () => {
-    const { env, captures } = dbWith({ neurons: [neuronRow()] });
-    env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
-    };
-    const body = await json(
-      await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
-    );
-    assert.equal(body.data.marker, "pg");
-    // The lane read is EXCLUDED rather than absent, and that is the honest
-    // statement of what this test is about: #9330/#9340 makes lane_health read
-    // regardless of which tier served the card, and lane_health now lives in
-    // the same store the serving tier would have been asked, so it shows up in
-    // the same capture log. What must stay empty is the SERVING read -- the
-    // test's next-door neighbour asserts the lane read is there.
-    assert.deepEqual(servingSql(captures), []);
-  });
+  // REMOVED (#10190): "handleSelfHealth: flag=postgres uses Postgres data, D1
+  // never queried". METAGRAPH_SELF_HEALTH_SOURCE reads "retired" in every
+  // deployed config and is absent from DATA_API_FORWARD_FLAGS, so the forward it
+  // asserted never happened outside this test -- the `marker: "pg"` it checked
+  // for could only come from its own DATA_API stub. What the route actually
+  // serves from is Neon, then the lakehouse cold tier, both covered below.
 
   test("handleSelfHealth: lane verdicts ride on whichever tier answered", async () => {
     // #9330/#9340. The lanes come from lane_health, not from the tier that produced
     // the card, because the point of the change is that a lane's health stays readable
     // when the serving tier does not -- so the live-tier card above must carry them too.
     const { env } = dbWith({ neurons: [] });
-    env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", components: [] }),
-    };
+    // NO SERVING TIER STUBBED (#10190). This used to force the card through
+    // METAGRAPH_SELF_HEALTH_SOURCE="postgres" and assert its stub's marker came
+    // back; that flag is retired and forwards nowhere, so the tier is whatever
+    // the route really reaches. The CLAIM under test is unchanged and is the
+    // point of #9330/#9340: the lanes come from lane_health regardless of which
+    // tier produced the card, so they must survive a tier that answered nothing.
     // A canned answer rather than a router bucket: `answers` is consulted
     // before the row set dbWith assigns, so this one statement can differ from
     // everything else the handler asks without touching the router.
@@ -5957,7 +5946,6 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     const body = await json(
       await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );
-    assert.equal(body.data.marker, "pg");
     // Stale first: the row an operator acts on leads.
     assert.deepEqual(
       body.data.lanes.map((l: { lane: string }) => l.lane),
@@ -6090,23 +6078,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
   // parsed.error guard -- the same defense-in-depth shape as every other
   // handler in this file -- is exercised too.
 
-  test("handleTopHoldersList: flag=postgres uses Postgres data, D1 never queried", async () => {
-    const { env, captures } = dbWith({});
-    env.METAGRAPH_TOP_HOLDERS_SOURCE = "postgres";
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, marker: "pg", accounts: [] }),
-    };
-    const body = await json(
-      await handleTopHoldersList(
-        req("/api/v1/accounts/top-holders"),
-        env as unknown as Env,
-        url("/api/v1/accounts/top-holders"),
-      ),
-    );
-    assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
-  });
+  // REMOVED (#10190): "handleTopHoldersList: flag=postgres uses Postgres data,
+  // D1 never queried". Same reason as the self-health one above --
+  // METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from
+  // DATA_API_FORWARD_FLAGS. The live tier is the flow projection
+  // (src/top-holders-flow-tier.ts), covered by tests/top-holders-flow-tier.test.ts
+  // and by the CSV export test in tests/top-holders.test.ts.
 
   // #4832 Tier 2b: the 9 neuron_daily-history handlers (structural history,
   // concentration/performance/yield history, chain/subnet turnover, movers).
