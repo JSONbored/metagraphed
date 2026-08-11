@@ -134,6 +134,7 @@ describe("laneAlarmPlan", () => {
   const base = {
     latest: {},
     runs: {},
+    unknownRuns: {},
     cadence: {},
     openAlarms: {},
     nowMs: NOW,
@@ -166,6 +167,79 @@ describe("laneAlarmPlan", () => {
   // poller was 31 seconds behind head and writing normally — five deploys in the
   // cadence window were enough to calibrate a "cadence" out of DEPLOY intervals,
   // after which the healthy state (no reboot) reads as an outage.
+  // #10695: the verdict the OPEN path had no case for.
+  //
+  // The close path already refused to treat `unknown` as recovery, and
+  // migrations/neon/0006 says collapsing it into `ok` "would report an unmeasured
+  // lane as a healthy one" -- but nothing opened an alarm for it. A lane that went
+  // `ok` -> `unknown` and stayed there was invisible: not stale, and not silent
+  // because it kept recording. Measured consequence: #10676 moved
+  // `table-freshness` off a `providers` breach, which left it reporting `unknown`
+  // for the stampFrom divergence (#10656) with nothing to say so.
+  test("alarms a lane stuck on `unknown` past the stale bound", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "unknown" }) },
+      unknownRuns: { a: { since: NOW - 4 * HOUR, ticks: 4 } },
+      cadence: { a: 15 * 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].lane, "a");
+    // Its OWN kind, not folded into stale: `stale` means a breach was measured,
+    // `unknown` means the measurement did not happen.
+    assert.equal(plan.open[0].kind, "unknown");
+    assert.equal(plan.open[0].ticks, 4);
+  });
+
+  test("one `unknown` tick is ordinary, not an alarm", () => {
+    // An unreadable table or a cross-check that could not run is a normal single
+    // tick. The bound is the same one stale uses, so this cannot become noisier
+    // than the stale path it mirrors.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", verdict: "unknown" }) },
+      unknownRuns: { a: { since: NOW - 60_000, ticks: 1 } },
+      cadence: { a: 15 * 60_000 },
+    });
+    assert.deepEqual(plan.open, []);
+  });
+
+  test("a LIVE `unknown` lane alarms once, as unknown and not as silent", () => {
+    // Two issues for one fault is the noise this design avoids. The lane is
+    // still recording, so it is the unknown loop's finding; the silence loop
+    // must not also claim it.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({ lane: "a", verdict: "unknown", checked_at: NOW - 30_000 }),
+      },
+      unknownRuns: { a: { since: NOW - 6 * HOUR, ticks: 6 } },
+      cadence: { a: 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].kind, "unknown");
+  });
+
+  test("an `unknown` lane that STOPPED recording is silent, not unknown", () => {
+    // The pre-existing rule, and the right priority: a dead producer outranks
+    // "running but cannot measure". Without the liveness gate in the unknown
+    // loop this would report the weaker finding.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        a: record({
+          lane: "a",
+          verdict: "unknown",
+          checked_at: NOW - 6 * HOUR,
+        }),
+      },
+      unknownRuns: { a: { since: NOW - 6 * HOUR, ticks: 6 } },
+      cadence: { a: 60_000 },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].kind, "silent");
+  });
+
   test("never alarms an exempt lane for silence, however long it is quiet", () => {
     const plan = laneAlarmPlan({
       ...base,
