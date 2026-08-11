@@ -570,6 +570,7 @@ jobs:
           run_step npm run validate:api
           run_step npm run validate:mcp
           run_step npm run validate:mcp-route-map
+          run_step npm run validate:operations
           run_step npm run validate:mcp-input-parity
           run_step npm run validate:tool-route-divergence
           run_step npm run validate:query-vocabulary
