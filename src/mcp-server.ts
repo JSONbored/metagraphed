@@ -10521,14 +10521,25 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ),
           // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
           // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this
-          // promise resolved to null on every call and the builder below has been
-          // the answer.
-          Promise.resolve(
-            buildAccountEvents([], ss58, {
-              limit: recentEventsLimit,
-              offset: 0,
-              nextCursor: null,
-            }),
+          // promise resolved to null on every call.
+          //
+          // THE COLD RUNG, the same one `get_account_events` resolves through
+          // (#10320). Without it this card fell straight from the retired tier to
+          // `buildAccountEvents([])` and published `event_count: 0` while the
+          // standalone tool served this coldkey's rows for the same address in the
+          // same second -- the exact defect the subnet snapshot's `recent_events`
+          // had, one composer over. A card is wired and its embedded copy is not.
+          loadAccountEventsColdTier(ctx.env, ss58, {
+            limit: recentEventsLimit,
+            offset: 0,
+          }).then(
+            (data) =>
+              data ??
+              buildAccountEvents([], ss58, {
+                limit: recentEventsLimit,
+                offset: 0,
+                nextCursor: null,
+              }),
           ),
         ]);
       return {

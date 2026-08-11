@@ -55,20 +55,6 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
-import { buildChainStakeMoves } from "../src/chain-stake-moves.ts";
-import { buildChainStakeTransfers } from "../src/chain-stake-transfers.ts";
-import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
-import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
-import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
-import { buildChainServing } from "../src/chain-serving.ts";
-import { buildChainPrometheus } from "../src/chain-prometheus.ts";
-import { buildChainRegistrations } from "../src/chain-registrations.ts";
-import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
-import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
-import { buildChainWeights } from "../src/chain-weights.ts";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
-import { buildChainTransfers } from "../src/chain-transfers.ts";
-import { buildChainCalls } from "../src/chain-analytics.ts";
 import { buildStakeFlow } from "../src/stake-flow.ts";
 import { buildAccountStakeFlow } from "../src/account-stake-flow.ts";
 import { buildAccountStakeMoves } from "../src/account-stake-moves.ts";
@@ -113,7 +99,7 @@ import {
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
-import type { AnyFn, Row } from "./row-type.ts";
+import type { Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -5747,18 +5733,13 @@ describe("MCP get_subnet_snapshot", () => {
                 ],
               });
             }
-            if (url.pathname === "/api/v1/subnets/7/events") {
-              assert.equal(url.searchParams.get("limit"), "10");
-              return Response.json({
-                schema_version: 1,
-                netuid: 7,
-                event_count: 1,
-                limit: 10,
-                offset: 0,
-                next_cursor: null,
-                events: [{ kind: "Transfer" }],
-              });
-            }
+            // /subnets/7/events is deliberately NOT served here. Four of these
+            // five views still go through tryPostgresTier on a flag that
+            // FORWARDS (hyperparams and neurons are both in
+            // DATA_API_FORWARD_FLAGS); the events view's flag is retired, so a
+            // path served here would be a path production never requests. The
+            // events fixture rides on the lakehouse instead -- see
+            // subnetSnapshotEventsLake below.
             throw new Error(`unexpected DATA_API path: ${url.pathname}`);
           },
         },
@@ -5766,17 +5747,56 @@ describe("MCP get_subnet_snapshot", () => {
     };
   }
 
-  test("composes all five live Postgres-tier views under their named keys", async () => {
-    const { env } = subnetSnapshotPostgresEnv();
-    const res = await callTool("get_subnet_snapshot", { netuid: 7 }, { env });
-    assert.equal(res.body.result.isError, false);
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
-    assert.equal(out.concentration.entity_count, 2);
-    assert.equal(out.performance.incentive, 0.5);
-    assert.equal(out.top_validators.validator_count, 3);
-    assert.equal(out.recent_events.events[0].kind, "Transfer");
+  /** One account_events row for the snapshot's `recent_events` view, which reads
+   * the lakehouse (its own tier flag is retired) rather than the service
+   * binding the other four views still forward to. */
+  function subnetSnapshotEventsLake() {
+    return lakehouse([
+      {
+        block_number: 4_200_000,
+        event_index: 0,
+        extrinsic_index: 1,
+        event_kind: "Transfer",
+        hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        coldkey: null,
+        netuid: 7,
+        uid: null,
+        amount_tao: 1.5,
+        alpha_amount: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+  }
+
+  test("composes all five views, from the two transports that answer them", async () => {
+    // WAS "composes all five live Postgres-tier views under their named keys",
+    // with all five served by one DATA_API double. Only FOUR of them can be:
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so `recent_events` came from
+    // the composer's cold rung and the fifth mocked path was never requested.
+    const lake = subnetSnapshotEventsLake();
+    try {
+      const { env } = subnetSnapshotPostgresEnv();
+      const res = await callTool(
+        "get_subnet_snapshot",
+        { netuid: 7 },
+        { env: { ...env, ...LAKEHOUSE_ENV } },
+      );
+      assert.equal(res.body.result.isError, false);
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
+      assert.equal(out.concentration.entity_count, 2);
+      assert.equal(out.performance.incentive, 0.5);
+      assert.equal(out.top_validators.validator_count, 3);
+      assert.equal(
+        out.recent_events.events[0].event_kind,
+        "Transfer",
+        "the events view must come from the lakehouse, not a zeroed card",
+      );
+      assert.match(lake.queries[0], /netuid = 7/);
+    } finally {
+      lake.restore();
+    }
   });
 
   test("top_validators_limit slices the validator list and recomputes validator_count", async () => {
@@ -6011,56 +6031,65 @@ describe("MCP get_chain_fees", () => {
   // live D1 read. The COALESCE/median SQL-shape assertions this used to
   // verify against D1 now apply to Postgres's own equivalent query in
   // workers/data-api.ts's chain-fees route (its own dedicated coverage).
-  test("returns daily series and top payers from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 1,
-            daily: [
-              {
-                day: new Date().toISOString().slice(0, 10),
-                extrinsic_count: 20,
-                signed_extrinsic_count: 14,
-                total_fee_tao: 8,
-                avg_fee_tao: 0.4,
-                median_fee_tao: 0.4,
-                total_tip_tao: 2,
-                avg_tip_tao: 0.1,
-                median_tip_tao: 0.05,
-              },
-            ],
-            top_fee_payers: [
-              {
-                signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                total_fee_tao: 4,
-                total_tip_tao: 1,
-                extrinsic_count: 6,
-              },
-            ],
-          }),
+  test("derives the daily series and top payers from the projection's rows", async () => {
+    // WAS a DATA_API double returning the FINISHED card -- avg_fee_tao,
+    // median_fee_tao and all -- which the tool then handed straight back. Every
+    // derived field asserted itself. METAGRAPH_EXTRINSICS_SOURCE forwards
+    // nothing, so the card was never fetched either.
+    //
+    // The lane stores three row sets, and the medians ride SEPARATELY from the
+    // daily aggregate because a median is not summable. So: 20 extrinsics of
+    // which 14 signed, 8 TAO of fees -> avg 8/14, and the median comes from the
+    // median_rows join rather than from anything in the daily row.
+    const day = new Date().toISOString().slice(0, 10);
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: [
+            {
+              day,
+              extrinsic_count: 20,
+              signed_extrinsic_count: 14,
+              total_fee_tao: 8,
+              total_tip_tao: 2,
+            },
+          ],
+          median_rows: [{ day, median_fee_tao: 0.4, median_tip_tao: 0.05 }],
+          payer_rows: [
+            {
+              signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+              total_fee_tao: 4,
+              total_tip_tao: 1,
+              extrinsic_count: 6,
+            },
+          ],
+        },
       },
-    };
+    });
     const res = await callTool(
       "get_chain_fees",
       { window: "7d", limit: 25 },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
     assert.equal(out.daily[0].extrinsic_count, 20);
     assert.equal(out.daily[0].signed_extrinsic_count, 14);
-    assert.equal(out.daily[0].median_fee_tao, 0.4);
+    assert.equal(out.daily[0].avg_fee_tao, 0.571428571, "8 / 14, derived");
+    assert.equal(out.daily[0].median_fee_tao, 0.4, "from median_rows");
     assert.equal(out.daily[0].median_tip_tao, 0.05);
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
   test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
+    // The lane can store a boundary day the window no longer covers (its own
+    // cutoff is a timestamp, the rows are dates), so the trim has to happen on
+    // the way out or a "7d" card publishes eight days.
     const eightDays = [
       "2026-07-26",
       "2026-07-25",
@@ -6071,29 +6100,27 @@ describe("MCP get_chain_fees", () => {
       "2026-07-20",
       "2026-07-19",
     ];
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            daily: eightDays.map((day) => ({
-              day,
-              extrinsic_count: 1,
-              total_fee_tao: 1,
-              total_tip_tao: 0,
-            })),
-            top_fee_payers: [],
-          }),
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: eightDays.map((day) => ({
+            day,
+            extrinsic_count: 1,
+            signed_extrinsic_count: 1,
+            total_fee_tao: 1,
+            total_tip_tao: 0,
+          })),
+          median_rows: [],
+          payer_rows: [],
+        },
       },
-    };
+    });
     const res = await callTool(
       "get_chain_fees",
       { window: "7d", limit: 25 },
-      { env },
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.day_count, 7);
@@ -6102,32 +6129,50 @@ describe("MCP get_chain_fees", () => {
     assert.ok(!out.daily.some((x: Row) => x.day === "2026-07-19"));
   });
 
-  test("forwards call_module on the Postgres-tier request", async () => {
-    let requestedUrl;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          requestedUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: null,
-            day_count: 0,
-            daily: [],
-            top_fee_payers: [],
-          });
+  test("a call_module scope declines rather than serving the unfiltered series", async () => {
+    // WAS an assertion on the `call_module=Balances` query param the tier
+    // request carried. The lane precomputes NO pallet scope, so the reader
+    // refuses the scope before it reads the bucket -- asserted as the absence of
+    // the read, because an in-memory filter over the unfiltered series would
+    // still produce a plausible-looking card.
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: [
+            {
+              day: "2026-07-26",
+              extrinsic_count: 9,
+              signed_extrinsic_count: 9,
+              total_fee_tao: 3,
+              total_tip_tao: 0,
+            },
+          ],
+          median_rows: [],
+          payer_rows: [],
         },
       },
-    };
-    await callTool(
+    });
+    const res = await callTool(
       "get_chain_fees",
       { window: "30d", call_module: "Balances", limit: 10 },
-      { env },
+      { env: archive as unknown as Row },
     );
-    assert.equal(requestedUrl!.searchParams.get("call_module"), "Balances");
-    assert.equal(requestedUrl!.searchParams.get("window"), "30d");
-    assert.equal(requestedUrl!.searchParams.get("limit"), "10");
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.equal(out.window, "30d", "the label is still the caller's");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+
+    // The SAME projection answers the unscoped question, so the decline is the
+    // scope and not a broken fixture.
+    const open = await callTool(
+      "get_chain_fees",
+      { window: "30d", limit: 10 },
+      { env: archive as unknown as Row },
+    );
+    assert.equal(open.body.result.structuredContent.day_count, 1);
   });
 
   test("rejects an invalid window", async () => {
@@ -6162,6 +6207,10 @@ describe("MCP get_chain_registrations", () => {
   // goes tryPostgresTier -> buildChainRegistrations([], {...}) on any
   // miss/outage. This mocks the Postgres tier by running the same pure
   // builder the real Postgres route would.
+  // The #9146 chain-registrations lane, which stores the per-subnet rows and the
+  // network aggregate the builder needs -- the aggregate SEPARATELY, because one
+  // hotkey registering on three subnets is three per-subnet rows and one
+  // network-wide registrant.
   function registrationsPostgresEnv({
     network = { distinct_registrants: 7, newest_observed: 1_700_000_000_000 },
     subnets = [
@@ -6169,24 +6218,12 @@ describe("MCP get_chain_registrations", () => {
       { netuid: 2, registrations: 4, distinct_registrants: 4 },
     ],
   } = {}) {
-    return {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          const url = new URL(request.url);
-          const window = url.searchParams.get("window") || "7d";
-          const limitParam = url.searchParams.get("limit");
-          const limit = limitParam != null ? Number(limitParam) : undefined;
-          return Response.json(
-            buildChainRegistrations(subnets, {
-              window,
-              limit,
-              networkDistinct: network,
-            }),
-          );
-        },
-      },
-    };
+    const window = { rows: subnets, network };
+    return archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-registrations.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    ) as unknown as Row;
   }
 
   test("returns the per-subnet leaderboard and network rollup from the Postgres tier", async () => {
@@ -6441,26 +6478,18 @@ describe("MCP get_chain_transfers", () => {
   // running the same pure builder over the caller's own window query param,
   // so the mocked response is byte-identical to what production would
   // actually serve.
+  // The #9146 chain-transfers lane. `totals` rides separately from the sender
+  // and receiver lists for the same reason it does on every other lane here: a
+  // unique-address count does not sum across a capped page, and the top-sender
+  // SHARE needs the window's own volume as its denominator.
   function chainTransfersPostgresEnv({ totals, senders, receivers }: Row) {
+    const window = { totals, senders, receivers };
     return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            return Response.json(
-              buildChainTransfers({
-                window,
-                observedAt: null,
-                totals,
-                senders,
-                receivers,
-              }),
-            );
-          },
-        },
-      },
+      env: archiveEnv((key: string) =>
+        key === "metagraph/projections/chain-transfers.json"
+          ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+          : null,
+      ) as unknown as Row,
     };
   }
 
@@ -7720,44 +7749,49 @@ describe("MCP get_network_activity", () => {
   // retired (#4772) and the tables are dropped in production, so
   // loadNetworkActivity (the D1-querying loader) is gone -- the tool now
   // goes tryPostgresTier -> buildChainActivity({...}) on any miss/outage.
-  test("merges extrinsics + blocks tiers from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 1,
-            days: [
-              {
-                day: "2026-06-25",
-                block_count: 7200,
-                extrinsic_count: 100,
-                event_count: 15000,
-                successful_extrinsics: 99,
-                success_rate: 0.99,
-                unique_signers: 40,
-              },
-            ],
-          }),
-      },
+  test("merges the extrinsic and block row sets into one day series", async () => {
+    // WAS a DATA_API double returning the finished `days` array, success_rate
+    // included -- the merge and the rate asserted themselves, over a request
+    // METAGRAPH_EXTRINSICS_SOURCE never made.
+    //
+    // The lane stores TWO row sets, from two tables: extrinsic counts and block
+    // counts, keyed by day. The merge is the thing under test, and success_rate
+    // is derived from the extrinsic side alone (99/100).
+    const tier = forbiddenDataApi();
+    const window = {
+      newest_observed: 1_750_000_000_000,
+      extrinsic_rows: [
+        {
+          day: "2026-06-25",
+          extrinsic_count: 100,
+          successful_extrinsics: 99,
+          unique_signers: 40,
+        },
+      ],
+      block_rows: [
+        { day: "2026-06-25", block_count: 7200, event_count: 15000 },
+      ],
     };
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-activity.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    );
     const res = await callTool(
       "get_network_activity",
       { window: "7d" },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
-    assert.equal(out.days[0].success_rate, 0.99);
-    assert.equal(out.days[0].block_count, 7200);
-    assert.equal(out.days[0].unique_signers, 40);
+    assert.equal(out.days[0].block_count, 7200, "from the block rows");
+    assert.equal(out.days[0].unique_signers, 40, "from the extrinsic rows");
+    assert.equal(out.days[0].success_rate, 0.99, "99 / 100, derived");
   });
 
-  test("trims an 8-day Postgres-tier series to the requested 7d window (#8421)", async () => {
+  test("trims an 8-day series to the requested 7d window (#8421)", async () => {
     const eightDays = [
       "2026-07-26",
       "2026-07-25",
@@ -7768,31 +7802,29 @@ describe("MCP get_network_activity", () => {
       "2026-07-20",
       "2026-07-19",
     ];
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            days: eightDays.map((day) => ({
-              day,
-              block_count: 1,
-              extrinsic_count: 1,
-              event_count: 1,
-              successful_extrinsics: 1,
-              success_rate: 1,
-              unique_signers: 1,
-            })),
-          }),
-      },
+    const window = {
+      newest_observed: 1_750_000_000_000,
+      extrinsic_rows: eightDays.map((day) => ({
+        day,
+        extrinsic_count: 1,
+        successful_extrinsics: 1,
+        unique_signers: 1,
+      })),
+      block_rows: eightDays.map((day) => ({
+        day,
+        block_count: 1,
+        event_count: 1,
+      })),
     };
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-activity.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    );
     const res = await callTool(
       "get_network_activity",
       { window: "7d" },
-      { env },
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.day_count, 7);
@@ -14659,60 +14691,61 @@ describe("MCP economics + metagraph data tools", () => {
   // folds it down to surface_count/ok_count/avg_latency_ms per netuid, so
   // there's no top-level `marker` field to assert on -- same two-test
   // contract as the shared CASES loops, adapted to that shape.
-  test("compare_subnets: health dimension flag=postgres uses Postgres data at the internal REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            rows: [
-              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
-            ],
-          });
-        },
+  test("compare_subnets: the health dimension groups surface_status in the live store", async () => {
+    // WAS an assertion on "/api/v1/internal/compare-health?netuids=7" -- a
+    // request METAGRAPH_HEALTH_SOURCE cannot make: it reads "d1" and is absent
+    // from DATA_API_FORWARD_FLAGS, and DATA_API does not implement that route
+    // anyway. So compare_subnets served `health: null` for every subnet while
+    // this test read a health block straight back out of its own mock.
+    //
+    // The dimension is a GROUP BY over surface_status in the store MCP already
+    // reads for every other health surface, filtered to the asked netuids -- so
+    // the extra row below must not appear.
+    const tier = forbiddenDataApi();
+    pg.control.answers = [
+      {
+        match: /FROM surface_status/i,
+        rows: [
+          { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+          { netuid: 31, surface_count: 4, ok_count: 1, avg_latency_ms: 900 },
+        ],
       },
-    };
+    ];
     const res = await callTool(
       "compare_subnets",
       { netuids: [7], dimensions: ["health"] },
-      { deps: liveAnalyticsDeps, env },
+      { deps: liveAnalyticsDeps, env: { ...pgMockEnv(), ...tier } },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    assert.deepEqual(tier.paths, [], "the health flag forwards nothing");
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.subnets[0].health, {
       surface_count: 9,
       ok_count: 8,
       avg_latency_ms: 55,
     });
+    assert.equal(out.subnets.length, 1, "netuid 31 was not asked for");
   });
 
-  test("compare_subnets: health+economics dimensions flag=postgres still includes economicsRows", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            rows: [
-              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
-            ],
-          });
-        },
+  test("compare_subnets: health and economics compose from two different stores", async () => {
+    // The composition is the claim: health comes from the live store, economics
+    // from the economics artifact, and asking for both must not cost either.
+    const tier = forbiddenDataApi();
+    pg.control.answers = [
+      {
+        match: /FROM surface_status/i,
+        rows: [
+          { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+        ],
       },
-    };
+    ];
     const res = await callTool(
       "compare_subnets",
       { netuids: [7], dimensions: ["health", "economics"] },
-      { deps: liveAnalyticsDeps, env },
+      { deps: liveAnalyticsDeps, env: { ...pgMockEnv(), ...tier } },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    assert.deepEqual(tier.paths, []);
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.subnets[0].health, {
       surface_count: 9,
@@ -14774,43 +14807,72 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.surfaces, []);
   });
 
-  test("get_global_incidents filters by netuid over Postgres-tier surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            surfaces: [
-              { netuid: 7, surface_id: "a", incident_count: 1 },
-              { netuid: 31, surface_id: "b", incident_count: 2 },
-            ],
-          }),
+  test("get_global_incidents filters by netuid over the incident rows it derived", async () => {
+    // WAS answered by a DATA_API double returning ready-made `surfaces` with an
+    // `incident_count` each -- a shape the reader does not produce and the flag
+    // could not have fetched. The rows below are what surface_checks actually
+    // yields: one row per failure RUN, grouped by (netuid, surface_key), with
+    // started_at/ended_at/failed_samples. The surface list and its counts are
+    // derived from those.
+    const tier = forbiddenDataApi();
+    const started = Date.now() - 3_600_000;
+    pg.control.answers = [
+      {
+        match: /FROM grouped/i,
+        rows: [
+          {
+            netuid: 7,
+            surface_id: "a",
+            surface_key: "a",
+            started_at: started,
+            ended_at: started + 60_000,
+            failed_samples: 2,
+          },
+          {
+            netuid: 31,
+            surface_id: "b",
+            surface_key: "b",
+            started_at: started,
+            ended_at: started + 60_000,
+            failed_samples: 3,
+          },
+        ],
       },
-    };
-    const res = await callTool("get_global_incidents", { netuid: 7 }, { env });
+    ];
+    const res = await callTool(
+      "get_global_incidents",
+      { netuid: 7 },
+      { env: { ...pgMockEnv(), ...tier } },
+    );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the health flag forwards nothing");
     assert.equal(out.returned, 1);
     assert.equal(out.surfaces.length, 1);
     assert.equal(out.surfaces[0].netuid, 7);
   });
 
-  test("get_global_incidents pages Postgres-tier surfaces with limit/cursor", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            surfaces: [
-              { netuid: 7, surface_id: "a", incident_count: 1 },
-              { netuid: 31, surface_id: "b", incident_count: 2 },
-            ],
-          }),
+  test("get_global_incidents pages the derived surfaces with limit/cursor", async () => {
+    const started = Date.now() - 3_600_000;
+    const rows = [
+      {
+        netuid: 7,
+        surface_id: "a",
+        surface_key: "a",
+        started_at: started,
+        ended_at: started + 60_000,
+        failed_samples: 2,
       },
-    };
+      {
+        netuid: 31,
+        surface_id: "b",
+        surface_key: "b",
+        started_at: started,
+        ended_at: started + 60_000,
+        failed_samples: 3,
+      },
+    ];
+    pg.control.answers = [{ match: /FROM grouped/i, rows }];
+    const env = { ...pgMockEnv() };
     const res = await callTool(
       "get_global_incidents",
       { sort: "netuid", order: "desc", limit: 1 },
@@ -14822,6 +14884,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.surfaces[0].netuid, 31);
     assert.equal(out.next_cursor, 1);
 
+    pg.control.answers = [{ match: /FROM grouped/i, rows }];
     const nextPage = await callTool(
       "get_global_incidents",
       { sort: "netuid", order: "desc", limit: 1, cursor: out.next_cursor },
@@ -22242,25 +22305,63 @@ describe("MCP get_account_snapshot", () => {
     }
   });
 
-  test("composes all five live views under their named keys", async () => {
+  test("composes all five views, from the three transports that answer them", async () => {
+    // WAS "composes all five live views under their named keys", with four views
+    // on one DATA_API double and the balance on a stubbed RPC. `recent_events`
+    // was the fifth, and its flag is retired -- so that path was never
+    // requested and the card published `event_count: 0`. Fixed in the handler
+    // (it now reads the same cold tier `get_account_events` does, the #10320
+    // wired-card-vs-embedded-copy defect one composer over from the subnet
+    // snapshot's); this drives it.
+    //
+    // ONE fetch stub for both the RPC balance and the lakehouse events, routed
+    // by whether the body is an R2 SQL query -- they share globalThis.fetch, so
+    // a second stub would silently win.
     const orig = globalThis.fetch;
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({
-        jsonrpc: "2.0",
-        id: 1,
-        // Same SCALE AccountInfo encoding as get_account_balance's own live
-        // test above: free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO.
-        result:
-          "0x" +
-          "00000000".repeat(4) +
-          "00943577000000000000000000000000" +
-          "0065cd1d000000000000000000000000",
-      }),
-    })) as unknown as typeof globalThis.fetch;
+    const EVENT = {
+      block_number: 4_200_000,
+      event_index: 0,
+      extrinsic_index: 1,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: null,
+      netuid: 7,
+      uid: null,
+      amount_tao: 1.5,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
+    };
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      const body = String(init?.body ?? "");
+      if (body.includes("chain.account_events")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            result: { rows: [EVENT] },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          // Same SCALE AccountInfo encoding as get_account_balance's own live
+          // test above: free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO.
+          result:
+            "0x" +
+            "00000000".repeat(4) +
+            "00943577000000000000000000000000" +
+            "0065cd1d000000000000000000000000",
+        }),
+      };
+    }) as unknown as typeof globalThis.fetch;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      ...LAKEHOUSE_ENV,
       // A passing RPC_RATE_LIMITER here exercises the handler's own
       // success-path branch, distinct from the no-limiter-bound cold test
       // above and the failing-limiter test below.
@@ -22297,18 +22398,9 @@ describe("MCP get_account_snapshot", () => {
               positions: [],
             });
           }
-          if (url.pathname === `/api/v1/accounts/${SS58}/events`) {
-            assert.equal(url.searchParams.get("limit"), "10");
-            return Response.json({
-              schema_version: 1,
-              ss58: SS58,
-              event_count: 1,
-              limit: 10,
-              offset: 0,
-              next_cursor: null,
-              events: [{ kind: "Transfer" }],
-            });
-          }
+          // /accounts/:ss58/events is deliberately NOT served here: its flag is
+          // retired, so production never requests it. The events view reads the
+          // lakehouse, wired below.
           throw new Error(`unexpected DATA_API path: ${url.pathname}`);
         },
       },
@@ -22326,7 +22418,11 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.portfolio.position_count, 2);
       assert.equal(out.subnets.subnet_count, 3);
       assert.equal(out.positions.total_stake_alpha, 42);
-      assert.equal(out.recent_events.events[0].kind, "Transfer");
+      assert.equal(
+        out.recent_events.events[0].event_kind,
+        "Transfer",
+        "the events view must come from the lakehouse, not a zeroed card",
+      );
     } finally {
       globalThis.fetch = orig;
     }
