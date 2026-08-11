@@ -442,7 +442,7 @@ import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
-import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
+import { sampleEmissionGateWithFailover } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
@@ -537,6 +537,7 @@ import {
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
   EMISSION_GATE_SAMPLE_CRON,
+  EMISSION_GATE_SAMPLE_INTERVAL_MS,
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
   NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
@@ -2908,11 +2909,18 @@ async function dispatchScheduled(
         reason: "EMISSION_GATE_SYNC_SECRET not configured",
       };
     }
-    const sample = await sampleEmissionGate({
-      rpcUrl:
-        env.EMISSION_SAMPLER_RPC_URL ||
-        env.CHAIN_HEAD_RPC_URL ||
-        "https://archive.chain.opentensor.ai",
+    // An explicit override still wins and runs alone -- an operator naming one
+    // endpoint means that endpoint, not "start there and fail over elsewhere".
+    // Absent one, the sample rotates across the archive pool, a WHOLE sample per
+    // endpoint (#10742).
+    //
+    // The offset is derived from the tick rather than kept in module state: an
+    // isolate-local counter restarts at zero on every cold start, so it would
+    // pin nearly every sample to the first endpoint and spread nothing.
+    const override = env.EMISSION_SAMPLER_RPC_URL || env.CHAIN_HEAD_RPC_URL;
+    const sample = await sampleEmissionGateWithFailover({
+      urls: override ? [override] : undefined,
+      offset: Math.floor(Date.now() / EMISSION_GATE_SAMPLE_INTERVAL_MS),
     });
     const response = await handleEmissionGateSync(
       new Request(

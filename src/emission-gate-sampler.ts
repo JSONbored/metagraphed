@@ -43,6 +43,24 @@ export const SUBNET_EMISSION_ENABLED_PREFIX =
 export const SUBNET_EMA_TAO_FLOW_PREFIX =
   "0x658faa385070e074c85bf6b568cf05559f25bd6b257310b72a9310520b27a626";
 
+/**
+ * The archive endpoints a sample may run against, in preference order.
+ *
+ * BOTH SERVE ARCHIVE STATE, which is what this lane needs -- the lite and
+ * entrypoint endpoints prune, and a pruned node cannot answer a finalized-block
+ * read that is more than a few blocks old.
+ *
+ * ROTATION IS PER SAMPLE, NEVER PER CALL, and that distinction is the whole
+ * lesson of #10742. A sample is a dozen RPC calls that must agree on one block;
+ * spreading those calls across two nodes is precisely how one node ends up
+ * asked about a block the other one reported. Rotating the WHOLE sample gets
+ * the load spreading without ever splitting a sample's reads.
+ */
+export const EMISSION_SAMPLER_ARCHIVE_URLS = [
+  "https://archive.chain.opentensor.ai",
+  "https://bittensor-finney.api.onfinality.io/public",
+] as const;
+
 export interface EmissionGateSamplerOptions {
   rpcUrl: string;
   fetchImpl?: typeof fetch;
@@ -111,14 +129,25 @@ export async function sampleEmissionGate(
     return body.result as T;
   }
 
-  async function keysPaged(prefix: string): Promise<string[]> {
+  async function keysPaged(prefix: string, at: string): Promise<string[]> {
     const keys: string[] = [];
     let startKey: string | undefined;
     for (;;) {
+      // THE PREFIX IS THE FIRST PAGE'S startKey, and that is not a trick for
+      // its own sake. `at` is params[3], so params[2] has to be occupied to
+      // reach it -- and it cannot be `null`, which 400s the RPC proxy (the
+      // constraint this module's header already records, and which the old
+      // conditional spread existed to honour).
+      //
+      // The prefix is a strict prefix of every key under it, so it sorts
+      // BEFORE all of them: `state_getKeysPaged` returns keys strictly greater
+      // than startKey, which is exactly the full set. It is the one value that
+      // is both a legal key-shaped argument and guaranteed to skip nothing.
       const page = await rpc<string[]>("state_getKeysPaged", [
         prefix,
         500,
-        ...(startKey ? [startKey] : []),
+        startKey ?? prefix,
+        at,
       ]);
       if (!page?.length) break;
       keys.push(...page);
@@ -144,13 +173,14 @@ export async function sampleEmissionGate(
    */
   async function queryStorage(
     keys: string[],
+    at: string,
   ): Promise<Map<string, string | null>> {
     const values = new Map<string, string | null>();
     for (let i = 0; i < keys.length; i += STORAGE_BATCH_SIZE) {
       const chunk = keys.slice(i, i + STORAGE_BATCH_SIZE);
       const pages = await rpc<{ changes?: [string, string | null][] }[] | null>(
         "state_queryStorageAt",
-        [chunk],
+        [chunk, at],
       );
       for (const page of pages ?? []) {
         for (const [key, value] of page?.changes ?? []) {
@@ -176,16 +206,36 @@ export async function sampleEmissionGate(
     return bits === null ? null : u64f64U128ToFloat(bits);
   }
 
-  const header = await rpc<{ number: string }>("chain_getHeader", []);
+  // THE WHOLE SAMPLE IS PINNED TO ONE FINALIZED BLOCK, and both halves of that
+  // matter.
+  //
+  // ONE: a sample is a dozen RPC calls. Unpinned, each resolves "best block"
+  // independently, so `block_number` came from one call's head and the storage
+  // values from another's -- and this lane's entire job is to say WHEN a
+  // governance parameter changed. Attributing a change to a block it was not
+  // read at is a wrong answer in the one field the lane exists to produce.
+  //
+  // TWO: the public archive endpoints are a rotating pool. Two calls in one
+  // sample can land on different nodes, and a node that has not yet imported
+  // the head another node just reported answers
+  // "UnknownBlock: Header was not found in the database" -- which is exactly
+  // what production was throwing (#10742). FINALIZED rather than best head is
+  // what makes the hash safe to hand to any node in the pool: a finalized block
+  // does not reorg and every node has it.
+  const at = await rpc<string>("chain_getFinalizedHead", []);
+  const header = await rpc<{ number: string }>("chain_getHeader", [at]);
   const blockNumber = parseInt(header.number, 16);
   const observedAt = now();
 
-  const paramValues = await queryStorage([
-    EMISSION_GATE_BAR_STORAGE_KEY,
-    EMISSION_BAR_QUANTILE_STORAGE_KEY,
-    EMISSION_GATE_EXPONENT_STORAGE_KEY,
-    TOTAL_ISSUANCE_STORAGE_KEY,
-  ]);
+  const paramValues = await queryStorage(
+    [
+      EMISSION_GATE_BAR_STORAGE_KEY,
+      EMISSION_BAR_QUANTILE_STORAGE_KEY,
+      EMISSION_GATE_EXPONENT_STORAGE_KEY,
+      TOTAL_ISSUANCE_STORAGE_KEY,
+    ],
+    at,
+  );
   const bar = u64f64At(paramValues, EMISSION_GATE_BAR_STORAGE_KEY);
   const quantile = u64f64At(paramValues, EMISSION_BAR_QUANTILE_STORAGE_KEY);
   const exponent = u64f64At(paramValues, EMISSION_GATE_EXPONENT_STORAGE_KEY);
@@ -207,8 +257,8 @@ export async function sampleEmissionGate(
     block_emission_halvings: halvings,
   };
 
-  const enabledKeys = await keysPaged(SUBNET_EMISSION_ENABLED_PREFIX);
-  const enabledValues = await queryStorage(enabledKeys);
+  const enabledKeys = await keysPaged(SUBNET_EMISSION_ENABLED_PREFIX, at);
+  const enabledValues = await queryStorage(enabledKeys, at);
   const currentEnabled = new Map<number, boolean>();
   for (const key of enabledKeys) {
     const netuid = netuidFromKey(key, SUBNET_EMISSION_ENABLED_PREFIX);
@@ -222,13 +272,16 @@ export async function sampleEmissionGate(
     FlowParamItem,
     string,
   ][];
-  const flowValues = await queryStorage(flowEntries.map(([, key]) => key));
+  const flowValues = await queryStorage(
+    flowEntries.map(([, key]) => key),
+    at,
+  );
   const flowObservations: FlowParamObservation[] = flowEntries.map(
     ([item, key]) => ({ item, raw: flowValues.get(key) ?? null }),
   );
 
-  const emaKeys = await keysPaged(SUBNET_EMA_TAO_FLOW_PREFIX);
-  const emaValues = await queryStorage(emaKeys);
+  const emaKeys = await keysPaged(SUBNET_EMA_TAO_FLOW_PREFIX, at);
+  const emaValues = await queryStorage(emaKeys, at);
   const currentEma = new Map<number, { block: number } | null>();
   for (const key of emaKeys) {
     const netuid = netuidFromKey(key, SUBNET_EMA_TAO_FLOW_PREFIX);
@@ -244,4 +297,47 @@ export async function sampleEmissionGate(
     flow_observations: flowObservations,
     current_ema: [...currentEma],
   };
+}
+
+/**
+ * Sample against the archive pool, rotating the ENDPOINT and failing over.
+ *
+ * The rotation offset is the caller's, not this module's: a Worker isolate that
+ * kept its own counter would restart at zero on every cold start and hammer the
+ * first endpoint, which is the opposite of spreading load. Ticks are what
+ * actually alternate, so the tick supplies the offset.
+ *
+ * FAILOVER RE-RUNS THE WHOLE SAMPLE, never a single call. A half-sample from one
+ * node completed against another is the split this lane just stopped doing.
+ */
+export async function sampleEmissionGateWithFailover(
+  options: Omit<EmissionGateSamplerOptions, "rpcUrl"> & {
+    urls?: readonly string[];
+    /** Which endpoint to start from; any integer, including a tick counter. */
+    offset?: number;
+  } = {},
+): Promise<EmissionGateSample> {
+  const urls = options.urls?.length
+    ? options.urls
+    : EMISSION_SAMPLER_ARCHIVE_URLS;
+  const start = Number.isFinite(options.offset)
+    ? Math.abs(Math.trunc(options.offset as number))
+    : 0;
+  let lastError: unknown;
+  for (let i = 0; i < urls.length; i += 1) {
+    const rpcUrl = urls[(start + i) % urls.length]!;
+    try {
+      return await sampleEmissionGate({ ...options, rpcUrl });
+    } catch (error) {
+      // Kept, not swallowed: if every endpoint fails the caller needs the last
+      // reason, and a lane that reported a generic failure over a specific one
+      // is how #10742 hid behind a stale issue title for a week.
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(
+        `emission-gate sample failed on all ${urls.length} endpoint(s)`,
+      );
 }
