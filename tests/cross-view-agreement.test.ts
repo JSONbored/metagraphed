@@ -16,7 +16,8 @@
 // A view is allowed to DECLINE (503). What it may not do is claim a tier
 // answered and hand back nothing while its twin hands back rows.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test, vi } from "vitest";
+import { beforeEach, describe, test, vi, afterEach } from "vitest";
+import { resetModuleState } from "../src/module-state-registry.ts";
 
 // The hot tier is Postgres now (#10179), reached through `new Client(...)`
 // inside src/read-store.ts -- and every view here is entered through
@@ -36,6 +37,12 @@ import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { jsonBody } from "./row-type.ts";
+
+// r2-sql's breakers are module-global by design (an account rate limit and an
+// upstream outage are both account-wide facts). Tests here deliberately fail a
+// tier read, and the global setup resets per FILE -- too coarse when one test's
+// opened breaker would decline the next test's query.
+afterEach(() => resetModuleState());
 
 const SEAM = DEFAULT_BLOCKS_SEAM; // 8_759_336
 /** A block in the ~8.76M-block range that answered `events: []` for all of

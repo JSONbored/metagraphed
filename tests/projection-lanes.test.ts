@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, test, vi } from "vitest";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import {
   PROJECTION_LANES,
   PROJECTION_NETWORKS,
@@ -128,6 +129,13 @@ const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
   vi.useRealTimers();
+  // Several tests here deliberately fail their lakehouse query, and r2-sql's
+  // breakers are module-global by design (the account rate limit and the
+  // upstream outage are both account-wide facts, not per-caller ones). The
+  // global setup file resets per FILE, which is the right granularity for
+  // `isolate: false` but too coarse here: a test that opens a breaker would
+  // otherwise decline every later test's query in this file.
+  resetModuleState();
 });
 
 const LAKE_ENV = { R2_SQL_TOKEN: "cfut_test" };
