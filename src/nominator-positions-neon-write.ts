@@ -166,6 +166,10 @@ export async function mirrorNominatorPositionsToNeon(
     prune,
     now(),
     buffered,
+    // ONCE PER PASS (#10826): this sub-lane shares the base lane's buffered
+    // runner, so the flush's per-lane tally never names it and a suppressed
+    // success here can never be recorded by anything else.
+    true,
   );
 
   // AFTER THE PRUNE, not just after the upsert. This lane's pass is only
@@ -198,6 +202,8 @@ export async function mirrorNominatorPositionsToNeon(
       },
       now(),
       buffered,
+      // ONCE PER PASS (#10826) -- see the prune's own note.
+      true,
     );
   }
   return { attempted: true, write, prune, pass: passResult };
