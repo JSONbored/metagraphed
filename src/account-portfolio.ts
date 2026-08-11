@@ -81,8 +81,8 @@ export interface AccountPortfolioPosition {
   uid: number | null;
   role: "validator" | "miner";
   active: boolean;
-  stake_tao: number;
-  emission_tao: number;
+  stake_alpha: number;
+  emission_alpha: number;
   rank: number | null;
   trust: number | null;
   incentive: number | null;
@@ -113,9 +113,9 @@ export function buildAccountPortfolio(
   {
     // netuid -> alpha_price_tao (#9051). Root passes through at 1:1. A netuid
     // with no resolvable price keeps its position row (per-position
-    // stake_tao/emission_tao/yield are single-subnet figures, untouched) but
-    // is excluded from the cross-subnet totals. REQUIRED, never defaulted --
-    // see BuildGlobalValidatorsOptions for why.
+    // stake_alpha/emission_alpha/yield are single-subnet figures, untouched)
+    // but is excluded from the cross-subnet totals. REQUIRED, never defaulted
+    // -- see BuildGlobalValidatorsOptions for why.
     priceByNetuid,
   }: { priceByNetuid: Map<number, number | null> },
 ): AccountPortfolioResult {
@@ -158,8 +158,8 @@ export function buildAccountPortfolio(
       uid: toInt(row?.uid),
       role: isValidator ? "validator" : "miner",
       active: Number(row?.active) === 1,
-      stake_tao: round9(stake),
-      emission_tao: round9(emission),
+      stake_alpha: round9(stake),
+      emission_alpha: round9(emission),
       rank: nullableScore(row?.rank),
       trust: nullableScore(row?.trust),
       incentive: nullableScore(row?.incentive),
@@ -168,7 +168,9 @@ export function buildAccountPortfolio(
     });
   }
   // Biggest position first; tie-break by netuid for a stable order.
-  positions.sort((a, b) => b.stake_tao - a.stake_tao || a.netuid - b.netuid);
+  positions.sort(
+    (a, b) => b.stake_alpha - a.stake_alpha || a.netuid - b.netuid,
+  );
   return {
     schema_version: 1,
     ss58,

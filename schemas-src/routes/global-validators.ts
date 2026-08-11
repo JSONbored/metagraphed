@@ -45,8 +45,18 @@ const GlobalValidatorSubnetSchema = z
   .object({
     netuid: z.int().min(0),
     uid: z.int().min(0),
-    stake_tao: z.number().min(0),
-    emission_tao: z.number().min(0),
+    stake_alpha: z
+      .number()
+      .min(0)
+      .describe(
+        "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514: the entry's own `total_stake_tao` IS priced TAO, and two fields sharing the `_tao` suffix while carrying different units is a trap no description undoes. Never summable across subnets -- the priced total already did that conversion.",
+      ),
+    emission_alpha: z
+      .number()
+      .min(0)
+      .describe(
+        "This row's emission on the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field. Renamed from `emission_tao` in #10514.",
+      ),
     validator_trust: z.number().nullable(),
   })
   .strict();

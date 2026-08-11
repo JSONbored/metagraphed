@@ -29,8 +29,18 @@ export const ValidatorDetailSubnetSchema = z
     consensus: z.number().nullable(),
     incentive: z.number().nullable(),
     dividends: z.number().nullable(),
-    emission_tao: z.number().nullable(),
-    stake_tao: z.number().nullable(),
+    emission_alpha: z
+      .number()
+      .nullable()
+      .describe(
+        "This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `emission_tao` in #10514, because the entry's own `total_stake_tao` IS priced TAO and a shared `_tao` suffix across different units is a trap no description undoes.",
+      ),
+    stake_alpha: z
+      .number()
+      .nullable()
+      .describe(
+        "This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion.",
+      ),
     registered_at_block: z.int().min(0).nullable(),
     is_immunity_period: z.boolean(),
     axon: z.string().nullable(),

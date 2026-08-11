@@ -49,13 +49,45 @@ StakeRemoved trade, not the alpha received. `stake_threshold_tao`,
 `block_emission_tao` (`/network`, `/chain/emission-pipeline`) are chain-level
 TAO quantities.
 
-### Leave — and say so. This PR's change.
+### Rename — done (#10514). The suffix could not stay.
 
-Per-row fields that carry the on-chain column name verbatim **and sit next to
-the `netuid` that denominates them**. Renaming these would break every consumer
-for no gain in truth: the reader already has the netuid in the same object, and
-the on-chain name is what the chain calls it. What was missing was the
-statement, which is now in each field's description.
+Four payloads carried a **priced `total_stake_tao` in the same object as a
+row-level `stake_tao`**. #8945's reasoning for leaving the row name — the
+denominating `netuid` sits right there — holds for a row on its own, and stops
+holding the moment a same-suffix total with a _different_ unit sits beside it.
+A consumer summing the rows does not reach the total, and no field description
+fixes that: the name is what gets read.
+
+| Payload                      | Row renamed                                         |
+| ---------------------------- | --------------------------------------------------- |
+| `/accounts/{ss58}/portfolio` | `positions[].stake_tao` → `stake_alpha` (+emission) |
+| `/accounts`                  | `accounts[].subnets[].stake_tao` → `stake_alpha`    |
+| `/validators`                | `validators[].subnets[].stake_tao` → `stake_alpha`  |
+| `/validators/{hotkey}`       | `subnets[].stake_tao` → `stake_alpha`               |
+
+The **row** renames, not the total: the row is the one that is alpha. The
+`_alpha` projection for `/validators/{hotkey}` happens at that route's own call
+site rather than inside the shared `formatNeuron`, because the same formatter
+feeds `/subnets/{netuid}/metagraph`, which has no priced total and keeps the
+on-chain name under the rule below.
+
+`tests/tao-suffix-holds-one-unit.test.ts` is the gate. It walks the published
+OpenAPI and fails on any object carrying a priced `total_*_tao` alongside a
+descendant `stake_tao`/`emission_tao` — so a new route cannot reintroduce the
+pair, which is the part this document alone could not do. The four above were
+found by that scan, not by reading.
+
+### Leave — and say so (#8945).
+
+Per-row fields that carry the on-chain column name verbatim, **sit next to the
+`netuid` that denominates them, and have no priced `*_tao` total in the same
+payload to be confused with**. Renaming these would break every consumer for no
+gain in truth: the reader already has the netuid in the same object, and the
+on-chain name is what the chain calls it. What was missing was the statement,
+which is in each field's description.
+
+The third clause is #10514's addition. It is what separates this list from the
+one above it, and it is enforced rather than asserted.
 
 | Field                                                                    | Schema file                   |
 | ------------------------------------------------------------------------ | ----------------------------- |
@@ -63,7 +95,6 @@ statement, which is now in each field's description.
 | `stake_tao`, `emission_tao` (per-subnet row)                             | `routes/subnet-yield.ts`      |
 | `stake_tao`, `emission_tao` (per-neuron row)                             | `routes/subnet-metagraph.ts`  |
 | `stake_tao` (position row), `stake_tao` / `emission_tao` (history point) | `routes/account-positions.ts` |
-| `stake_tao`, `emission_tao` (membership row)                             | `routes/account-portfolio.ts` |
 
 The rule each description now states: **alpha for non-root subnets, genuine TAO
 for netuid 0, comparable within a subnet, never summable across subnets** — and

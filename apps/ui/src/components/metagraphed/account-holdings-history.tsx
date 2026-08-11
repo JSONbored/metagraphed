@@ -51,6 +51,13 @@ function taoStr(v?: number | null) {
   return `${v.toFixed(v < 10 ? 3 : 2)} τ`;
 }
 
+/** A position's own stake, in the token that position is actually denominated
+ * in: TAO on root, that subnet's alpha everywhere else (metagraphed#10514). */
+function stakeStr(v: number | null | undefined, netuid: number): string {
+  const rendered = taoStr(v);
+  return netuid === 0 || rendered === "—" ? rendered : `${rendered.slice(0, -1)}α`;
+}
+
 /** Align each position's daily points onto one shared, sorted date axis.
  * A date a position has no row for reads as 0 stake — the position didn't
  * exist (or held nothing) that day, which is exactly what a stacked band
@@ -99,7 +106,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
   const portfolioResult = useQuery(accountPortfolioQuery(ss58));
   const positions = useMemo<PortfolioPosition[]>(() => {
     const all = portfolioResult.data?.data?.positions ?? [];
-    return [...all].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0));
+    return [...all].sort((a, b) => (b.stake_alpha ?? 0) - (a.stake_alpha ?? 0));
   }, [portfolioResult.data?.data?.positions]);
 
   // Never the whole portfolio: `visibleCount` starts at one page and only
@@ -253,7 +260,7 @@ export function AccountHoldingsHistory({ ss58 }: { ss58: string }) {
                       SN{pos.netuid}
                     </Link>
                     <span className="font-display text-sm font-semibold tabular-nums text-ink-strong">
-                      {taoStr(pos.stake_tao)}
+                      {stakeStr(pos.stake_alpha, pos.netuid)}
                     </span>
                   </div>
                   <div className="mt-2">

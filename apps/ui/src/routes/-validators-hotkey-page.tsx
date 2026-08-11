@@ -79,11 +79,22 @@ export function ValidatorDetailPage() {
   );
 }
 
+/** A per-subnet row's own stake/emission, in the token it is denominated in:
+ * TAO on root, that subnet's alpha everywhere else (metagraphed#10514). The
+ * card's `total_stake_tao` is the priced TAO figure; these are not. */
+function subnetStakeStr(s: ValidatorDetailSubnet): string {
+  return `${taoCompact(s.stake_alpha)} ${s.netuid === 0 ? "τ" : "α"}`;
+}
+
+function subnetEmissionStr(s: ValidatorDetailSubnet): string {
+  return `${taoCompact(s.emission_alpha)} ${s.netuid === 0 ? "τ" : "α"}`;
+}
+
 function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] }) {
   const [q, setQ] = useState("");
   const [showAll, setShowAll] = useState(false);
   const sorted = useMemo(
-    () => [...subnets].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0)),
+    () => [...subnets].sort((a, b) => (b.stake_alpha ?? 0) - (a.stake_alpha ?? 0)),
     [subnets],
   );
   const filtered = useMemo(
@@ -140,10 +151,10 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
                   {s.uid}
                 </td>
                 <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink-strong">
-                  {taoCompact(s.stake_tao)}
+                  {subnetStakeStr(s)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
-                  {taoCompact(s.emission_tao)}
+                  {subnetEmissionStr(s)}
                 </td>
                 <td className="px-3 py-2 text-right font-mono mg-type-caption tabular-nums text-ink">
                   {scoreStr(s.dividends)}
@@ -175,13 +186,13 @@ function SubnetPerformanceTab({ subnets }: { subnets: ValidatorDetailSubnet[] })
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
                 <SubnetCellLink s={s} />
                 <span className="flex items-center gap-4 mg-type-data tabular-nums">
-                  <span className="text-ink-strong">{taoCompact(s.stake_tao)} τ</span>
+                  <span className="text-ink-strong">{subnetStakeStr(s)}</span>
                   <span className="text-ink-muted">{scoreStr(s.dividends)}</span>
                 </span>
               </summary>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-border px-3 py-2.5 mg-type-data">
                 <MobileField label="UID" value={String(s.uid)} />
-                <MobileField label="Emission" value={`${taoCompact(s.emission_tao)} τ`} />
+                <MobileField label="Emission" value={subnetEmissionStr(s)} />
                 <MobileField label="Val trust" value={scoreStr(s.validator_trust)} />
                 <MobileField label="Permit" value={s.validator_permit ? "Yes" : "—"} />
               </dl>
@@ -363,7 +374,8 @@ function ValidatorDetail({ hotkey }: { hotkey: string }) {
   // stake subnet (StakeUnstakeModal is (hotkey, netuid)-scoped, and the
   // biggest membership is the natural place a delegator starts).
   const topSubnet = useMemo(
-    () => [...detail.subnets].sort((a, b) => (b.stake_tao ?? 0) - (a.stake_tao ?? 0))[0] ?? null,
+    () =>
+      [...detail.subnets].sort((a, b) => (b.stake_alpha ?? 0) - (a.stake_alpha ?? 0))[0] ?? null,
     [detail.subnets],
   );
 
