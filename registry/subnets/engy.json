@@ -82,6 +82,24 @@
     {
       "auth_required": false,
       "authority": "official",
+      "id": "sn-53-engy-gateway-meta",
+      "kind": "subnet-api",
+      "name": "engy gateway capacity meta",
+      "notes": "First-party no-auth GET on the gateway host returning its live worker/leg count. Miners divide their declared concurrency by this number, so a change silently re-scales every miner's effective capacity -- which makes it the one gateway value a reader needs to interpret the roster's capacity figures correctly. The README publishes the gateway at wss://api.engy.ai/gw and states the 8-worker minimum this endpoint reports.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "source_urls": ["https://github.com/hanlinai/engy/blob/HEAD/README.md"],
+      "url": "https://api.engy.ai/gw/meta"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
       "id": "sn-53-engy-miners",
       "kind": "subnet-api",
       "name": "engy provider miner roster",
