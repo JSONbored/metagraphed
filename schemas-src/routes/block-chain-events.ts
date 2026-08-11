@@ -20,38 +20,13 @@
 // (unregistered), so the hand-edited `ChainEvent` component key becomes
 // fully orphaned as of this batch.
 import { z } from "zod";
-import { EpochMillisSchema } from "../shared.ts";
+import { ChainEventSchema as NetworkChainEventSchema } from "./chain-events.ts";
 
-const ChainEventSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    event_index: z.int().nullable(),
-    pallet: z.string().nullable(),
-    method: z.string().nullable(),
-    // Object for keyed events; array for positional-tuple SubtensorModule
-    // events (decodeChainEventArgs) — same duality as Extrinsic.call_args (#8825).
-    args: z
-      .union([z.record(z.string(), z.unknown()), z.array(z.unknown())])
-      .nullable()
-      .optional(),
-    phase: z.string().nullable().optional(),
-    extrinsic_index: z.int().nullable().optional(),
-    observed_at: EpochMillisSchema.nullable().optional(),
-    // #8525: deterministic human-readable action sentence for this event's
-    // pallet.method, or null when no template matches -- never a
-    // guessed/partial sentence.
-    summary: z
-      .string()
-      .nullable()
-      .optional()
-      .describe(
-        "Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525).",
-      ),
-  })
-  .strict()
-  .describe(
-    "One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload).",
-  );
+// The network-wide route's own row, with the ONE delta this route has: the
+// block is in the PATH, so a row here need not repeat it (#10790).
+const ChainEventSchema = NetworkChainEventSchema.extend({
+  block_number: z.int().nullable().optional(),
+});
 
 export const BlockChainEventsArtifactSchema = z
   .object({

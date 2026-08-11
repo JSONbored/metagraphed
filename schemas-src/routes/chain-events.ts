@@ -21,7 +21,15 @@
 import { z } from "zod";
 import { EpochMillisSchema } from "../shared.ts";
 
-const ChainEventSchema = z
+/**
+ * ONE decoded chain-event row (#10790).
+ *
+ * Declared here and in `block-chain-events.ts`, and each copy's comment said
+ * the hand-edited `ChainEvent` component was "fully orphaned as of this batch"
+ * -- both believed they were the last one. A third, looser copy sat in the MCP
+ * tool that serves these same rows.
+ */
+export const ChainEventSchema = z
   .object({
     block_number: z.int().nullable(),
     event_index: z.int().nullable(),

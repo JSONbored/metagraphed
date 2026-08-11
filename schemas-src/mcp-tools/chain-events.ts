@@ -4,6 +4,7 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { ChainEventSchema } from "../routes/chain-events.ts";
 import { CHAIN_EVENTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { keysetCursorSchema, limitSchema } from "./shared.ts";
@@ -27,28 +28,10 @@ export type GetBlockChainEventsInput = z.infer<
   typeof GetBlockChainEventsInputSchema
 >;
 
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch). observed_at here is
-// a plain nullable INTEGER (epoch ms), unlike the nullable STRING timestamp
-// convention every other item shape in this epic uses -- the hand-written
-// original's CHAIN_EVENT_ITEM literally wraps it in NULLABLE_INT, not
-// NULLABLE_STRING.
-const ChainEventItemSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    event_index: z.int().nullable().optional(),
-    pallet: z.string().nullable().optional(),
-    method: z.string().nullable().optional(),
-    args: z.unknown().optional(),
-    phase: z.unknown().optional(),
-    extrinsic_index: z.int().nullable().optional(),
-    observed_at: z.int().nullable().optional(),
-    // #8525: deterministic human-readable action sentence for this event's
-    // pallet.method, or null when no template matches -- never a
-    // guessed/partial sentence.
-    summary: z.string().nullable().optional(),
-  })
-  .strict();
+// The route's OWN row (#10790). The copy typed `args` and `phase` as
+// `z.unknown()` -- which describes nothing -- where the route states the
+// object/positional-tuple duality that `decodeChainEventArgs` produces.
+const ChainEventItemSchema = ChainEventSchema;
 
 export const GetBlockChainEventsOutputSchema = z
   .object({

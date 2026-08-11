@@ -19355,7 +19355,6 @@
           "events": {
             "items": {
               "additionalProperties": false,
-              "description": "One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload).",
               "properties": {
                 "args": {
                   "anyOf": [
@@ -19463,8 +19462,7 @@
                     {
                       "type": "null"
                     }
-                  ],
-                  "description": "Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525)."
+                  ]
                 }
               },
               "required": [

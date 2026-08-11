@@ -6093,7 +6093,6 @@ export interface components {
                 observed_at?: components["schemas"]["EpochMillis"] | null;
                 pallet: string | null;
                 phase?: string | null;
-                /** @description Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
                 summary?: string | null;
             }[];
         };
