@@ -683,6 +683,99 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
   assert.equal(identity.name, "Ventura Labs");
 });
 
+test("a non-root baseline is priced through subnet_snapshots inside the window", async () => {
+  // netuid != 0, so the CASE falls to `tao_in_pool_tao / alpha_in_pool` and the
+  // LEFT JOIN is actually load-bearing. The root-only test above never reaches
+  // it: `CASE WHEN nd.netuid = 0 THEN 1` short-circuits the price entirely.
+  insertNeuron({
+    netuid: 7,
+    uid: 0,
+    hotkey: "5Priced",
+    coldkey: "5ColdPriced",
+    stake_tao: 200,
+    validator_permit: 1,
+  });
+  insertDaily({
+    netuid: 7,
+    uid: 0,
+    hotkey: "5Priced",
+    stake_tao: 100,
+    validator_permit: 1,
+    snapshot_date: dayAgo(1),
+  });
+  await insertPrice(7, dayAgo(1), 3);
+  const res = await call(req("/api/v1/validators"));
+  assert.equal(res.status, 200);
+  const entry = ((await res.json()) as Row).validators as Row[];
+  const priced = entry.find((v) => v.hotkey === "5Priced") as Row;
+  assert.ok(priced, "the validator is served");
+  assert.notEqual(
+    priced.realized_return_1d,
+    null,
+    "the join found the snapshot inside the window, so the baseline is priced",
+  );
+  assert.equal(priced.realized_return_1d_as_of, dayAgo(1));
+});
+
+test("the newest day still wins even when it has no price row", async () => {
+  // THE TEST THAT PINS THE JOIN AS A *LEFT* JOIN. The window bound is repeated
+  // on the ON clause so the planner can prune subnet_snapshots; moving it into
+  // WHERE would prune the same rows but ALSO drop every unmatched left row,
+  // silently turning this into an inner join.
+  //
+  // The difference is observable exactly here: with two candidate days inside
+  // the tolerance and a price on only the older one, the correct answer is the
+  // NEWEST day with a null baseline. An inner join would discard that day and
+  // hand back the older one's price as though it were today's -- a wrong number
+  // where there should be an honest absence.
+  insertNeuron({
+    netuid: 7,
+    uid: 1,
+    hotkey: "5Gap",
+    coldkey: "5ColdGap",
+    stake_tao: 200,
+    validator_permit: 1,
+  });
+  insertDaily({
+    netuid: 7,
+    uid: 1,
+    hotkey: "5Gap",
+    stake_tao: 100,
+    validator_permit: 1,
+    snapshot_date: dayAgo(1),
+  });
+  insertDaily({
+    netuid: 7,
+    uid: 1,
+    hotkey: "5Gap",
+    stake_tao: 50,
+    validator_permit: 1,
+    snapshot_date: dayAgo(2),
+  });
+  // Price ONLY the older day.
+  await insertPrice(7, dayAgo(2), 3);
+  const res = await call(req("/api/v1/validators"));
+  assert.equal(res.status, 200);
+  const rows = ((await res.json()) as Row).validators as Row[];
+  const gap = rows.find((v) => v.hotkey === "5Gap") as Row;
+  assert.ok(gap, "the validator is still served");
+  // NULL IS THE DISCRIMINATOR. The newest qualifying day has no price row, so
+  // its SUM is NULL and the return is honestly absent. Under an inner join that
+  // day would be gone from `daily` entirely, rn = 1 would land on dayAgo(2),
+  // and this would be a NUMBER -- yesterday's price presented as today's
+  // baseline.
+  //
+  // `realized_return_1d_as_of` cannot be asserted alongside it: it is
+  // deliberately nulled whenever the return is null
+  // (src/metagraph-neurons.ts:743), so it reads the same either way.
+  assert.equal(
+    gap.realized_return_1d,
+    null,
+    "no price on the newest day means no baseline; an inner join would have " +
+      "silently substituted dayAgo(2)'s",
+  );
+});
+
 test("GET /api/v1/validators honors an explicit sort and clamps a bogus limit", async () => {
   insertNeuron({
     netuid: 0,
