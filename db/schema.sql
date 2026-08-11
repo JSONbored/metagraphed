@@ -603,6 +603,36 @@ CREATE TABLE public.raw_capture_state (
 );
 
 --
+-- Name: revenue_observations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.revenue_observations (
+    surface_id text NOT NULL,
+    netuid integer NOT NULL,
+    period text NOT NULL,
+    grain text NOT NULL,
+    amount double precision NOT NULL,
+    currency text NOT NULL,
+    provenance text NOT NULL,
+    response_hash text NOT NULL,
+    observed_at bigint NOT NULL,
+    CONSTRAINT revenue_observations_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint)),
+    CONSTRAINT revenue_observations_provenance_is_readable CHECK ((provenance = ANY (ARRAY['probe-derived'::text, 'chain-verified'::text])))
+);
+
+--
+-- Name: revenue_probe_failures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.revenue_probe_failures (
+    surface_id text NOT NULL,
+    netuid integer NOT NULL,
+    reason text NOT NULL,
+    observed_at bigint NOT NULL,
+    CONSTRAINT revenue_probe_failures_observed_at_is_millis CHECK ((observed_at >= '1000000000000'::bigint))
+);
+
+--
 -- Name: rpc_accounts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -667,6 +697,22 @@ CREATE TABLE public.subnet_burn_history (
     netuid integer NOT NULL,
     observed_at bigint NOT NULL,
     burn_tao double precision NOT NULL
+);
+
+--
+-- Name: subnet_deregistration_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subnet_deregistration_daily (
+    netuid integer NOT NULL,
+    snapshot_date text NOT NULL,
+    moving_price double precision,
+    registered_at_block bigint,
+    subnet_mechanism integer,
+    network_immunity_period bigint,
+    pinned_block bigint,
+    captured_at bigint NOT NULL,
+    CONSTRAINT subnet_deregistration_daily_captured_at_is_millis CHECK ((captured_at >= '1000000000000'::bigint))
 );
 
 --
@@ -1307,6 +1353,20 @@ ALTER TABLE ONLY public.raw_capture_state
     ADD CONSTRAINT raw_capture_state_pkey PRIMARY KEY (network);
 
 --
+-- Name: revenue_observations revenue_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.revenue_observations
+    ADD CONSTRAINT revenue_observations_pkey PRIMARY KEY (surface_id, period);
+
+--
+-- Name: revenue_probe_failures revenue_probe_failures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.revenue_probe_failures
+    ADD CONSTRAINT revenue_probe_failures_pkey PRIMARY KEY (surface_id, observed_at);
+
+--
 -- Name: rpc_accounts rpc_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1347,6 +1407,13 @@ ALTER TABLE ONLY public.self_health_daily
 
 ALTER TABLE ONLY public.subnet_burn_history
     ADD CONSTRAINT subnet_burn_history_pkey PRIMARY KEY (netuid, observed_at);
+
+--
+-- Name: subnet_deregistration_daily subnet_deregistration_daily_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subnet_deregistration_daily
+    ADD CONSTRAINT subnet_deregistration_daily_pkey PRIMARY KEY (netuid, snapshot_date);
 
 --
 -- Name: subnet_emission_enabled_history subnet_emission_enabled_history_netuid_observed_at_key; Type: CONSTRAINT; Schema: public; Owner: -
@@ -1603,6 +1670,12 @@ CREATE INDEX idx_chain_concentration_daily_day ON public.chain_concentration_dai
 CREATE INDEX idx_chain_detail_account_events_extrinsic ON public.chain_detail_account_events USING btree (block_number, extrinsic_index);
 
 --
+-- Name: idx_chain_detail_account_events_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chain_detail_account_events_observed ON public.chain_detail_account_events USING btree (observed_at);
+
+--
 -- Name: idx_chain_detail_blocks_hash; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1615,10 +1688,22 @@ CREATE INDEX idx_chain_detail_blocks_hash ON public.chain_detail_blocks USING bt
 CREATE INDEX idx_chain_detail_chain_events_extrinsic ON public.chain_detail_chain_events USING btree (block_number, extrinsic_index);
 
 --
+-- Name: idx_chain_detail_chain_events_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chain_detail_chain_events_observed ON public.chain_detail_chain_events USING btree (observed_at);
+
+--
 -- Name: idx_chain_detail_extrinsics_hash_lower; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_chain_detail_extrinsics_hash_lower ON public.chain_detail_extrinsics USING btree (lower(extrinsic_hash));
+
+--
+-- Name: idx_chain_detail_extrinsics_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chain_detail_extrinsics_observed ON public.chain_detail_extrinsics USING btree (observed_at);
 
 --
 -- Name: idx_github_accounts_github_user_id; Type: INDEX; Schema: public; Owner: -
@@ -1705,6 +1790,24 @@ CREATE INDEX idx_nominator_positions_hotkey ON public.nominator_positions USING 
 CREATE INDEX idx_nominator_positions_passes_completed ON public.nominator_positions_passes USING btree (completed_at DESC);
 
 --
+-- Name: idx_revenue_failures_netuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_revenue_failures_netuid ON public.revenue_probe_failures USING btree (netuid, observed_at DESC);
+
+--
+-- Name: idx_revenue_obs_netuid_period; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_revenue_obs_netuid_period ON public.revenue_observations USING btree (netuid, period DESC);
+
+--
+-- Name: idx_revenue_obs_period; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_revenue_obs_period ON public.revenue_observations USING btree (period DESC);
+
+--
 -- Name: idx_rpc_accounts_ss58; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1727,6 +1830,18 @@ CREATE INDEX idx_self_health_daily_day ON public.self_health_daily USING btree (
 --
 
 CREATE INDEX idx_subnet_burn_history_observed ON public.subnet_burn_history USING btree (observed_at);
+
+--
+-- Name: idx_subnet_dereg_daily_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subnet_dereg_daily_date ON public.subnet_deregistration_daily USING btree (snapshot_date DESC);
+
+--
+-- Name: idx_subnet_dereg_daily_netuid_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subnet_dereg_daily_netuid_date ON public.subnet_deregistration_daily USING btree (netuid, snapshot_date DESC);
 
 --
 -- Name: idx_subnet_hyperparams_history_netuid_observed; Type: INDEX; Schema: public; Owner: -

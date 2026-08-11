@@ -384,6 +384,27 @@ export interface RawCaptureState {
   updated_at: number | string;
 }
 
+/** `public.revenue_observations` */
+export interface RevenueObservations {
+  amount: number;
+  currency: string;
+  grain: string;
+  netuid: number;
+  observed_at: number | string;
+  period: string;
+  provenance: string;
+  response_hash: string;
+  surface_id: string;
+}
+
+/** `public.revenue_probe_failures` */
+export interface RevenueProbeFailures {
+  netuid: number;
+  observed_at: number | string;
+  reason: string;
+  surface_id: string;
+}
+
 /** `public.rpc_accounts` */
 export interface RpcAccounts {
   created_at: number | string;
@@ -421,6 +442,18 @@ export interface SubnetBurnHistory {
   burn_tao: number;
   netuid: number;
   observed_at: number | string;
+}
+
+/** `public.subnet_deregistration_daily` */
+export interface SubnetDeregistrationDaily {
+  captured_at: number | string;
+  moving_price: number | null;
+  netuid: number;
+  network_immunity_period: number | string | null;
+  pinned_block: number | string | null;
+  registered_at_block: number | string | null;
+  snapshot_date: string;
+  subnet_mechanism: number | null;
 }
 
 /** `public.subnet_emission_enabled_history` */
@@ -727,11 +760,14 @@ export interface DatabaseTables {
   NominatorPositionsPasses: NominatorPositionsPasses;
   Providers: Providers;
   RawCaptureState: RawCaptureState;
+  RevenueObservations: RevenueObservations;
+  RevenueProbeFailures: RevenueProbeFailures;
   RpcAccounts: RpcAccounts;
   SchemaMigrations: SchemaMigrations;
   SelfHealthChecks: SelfHealthChecks;
   SelfHealthDaily: SelfHealthDaily;
   SubnetBurnHistory: SubnetBurnHistory;
+  SubnetDeregistrationDaily: SubnetDeregistrationDaily;
   SubnetEmissionEnabledHistory: SubnetEmissionEnabledHistory;
   SubnetHyperparams: SubnetHyperparams;
   SubnetHyperparamsHistory: SubnetHyperparamsHistory;
