@@ -33,6 +33,7 @@ vi.mock("pg", () => pg.module);
 import {
   LANE_ALARM_MAX_OPENS_PER_TICK,
   LANE_ALARM_MIN_STALE_MS,
+  LANE_SILENCE_EXEMPT,
   LANE_ALARM_TITLE_PREFIX,
   LANE_CADENCE_SQL,
   LANE_STALE_RUN_SQL,
@@ -156,6 +157,83 @@ describe("laneAlarmPlan", () => {
       },
       { lane: "a", kind: "stale", ticks: 112, cadence: 15 * 60_000 },
     );
+  });
+
+  // #10634: a lane that reports a VALUE, not a heartbeat.
+  //
+  // `poller-build` is written once per container start, to announce the running
+  // build. It alarmed continuously for two days ("silent: 2.0 days") while the
+  // poller was 31 seconds behind head and writing normally — five deploys in the
+  // cadence window were enough to calibrate a "cadence" out of DEPLOY intervals,
+  // after which the healthy state (no reboot) reads as an outage.
+  test("never alarms an exempt lane for silence, however long it is quiet", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        "poller-build": record({
+          lane: "poller-build",
+          verdict: "ok",
+          checked_at: NOW - 30 * 24 * HOUR,
+        }),
+      },
+      // A calibrated cadence, which is exactly the state that produced the
+      // false alarm — the exemption has to hold even so.
+      cadence: { "poller-build": 12 * HOUR },
+    });
+    assert.deepEqual(plan.open, []);
+  });
+
+  // The exemption is SILENCE-ONLY. A verdict the lane actually reports is the
+  // lane saying something is wrong, and must still alarm — otherwise this would
+  // be suppressing a watchdog rather than fixing its cadence model.
+  test("still alarms an exempt lane that reports itself STALE", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        "poller-build": record({ lane: "poller-build", verdict: "stale" }),
+      },
+      runs: { "poller-build": { since: NOW - 28 * HOUR, ticks: 40 } },
+      cadence: { "poller-build": 12 * HOUR },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].lane, "poller-build");
+    assert.equal(plan.open[0].kind, "stale");
+  });
+
+  // Proving the exemption is narrow: without this, an `in` check against the
+  // wrong object (or a blanket skip) would pass both tests above.
+  test("a non-exempt lane with the same shape still alarms as silent", () => {
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: {
+        neurons: record({
+          lane: "neurons",
+          verdict: "ok",
+          checked_at: NOW - 30 * 24 * HOUR,
+        }),
+      },
+      cadence: { neurons: 12 * HOUR },
+    });
+    assert.equal(plan.open.length, 1);
+    assert.equal(plan.open[0].lane, "neurons");
+    assert.equal(plan.open[0].kind, "silent");
+  });
+
+  // Every exemption has to carry a reason naming what covers the lane instead,
+  // so the map cannot grow into a place things go to stop being checked.
+  test("every exempt lane declares a non-trivial reason", () => {
+    const entries = Object.entries(LANE_SILENCE_EXEMPT);
+    assert.ok(entries.length > 0);
+    // Small on purpose. If this ever needs raising, the lane probably wants its
+    // cadence fixed instead.
+    assert.ok(
+      entries.length <= 3,
+      `the exempt map should stay small, has ${entries.length}`,
+    );
+    for (const [lane, reason] of entries) {
+      assert.ok(reason.length > 40, `${lane} needs a real reason`);
+      assert.match(reason, /covered by|indexer-lag|liveness/i);
+    }
   });
 
   test("a one-tick flicker never reaches the threshold", () => {
