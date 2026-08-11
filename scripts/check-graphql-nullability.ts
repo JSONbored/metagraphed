@@ -92,6 +92,29 @@ const ARGUMENTS: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Per-FIELD overrides, for an argument name whose namespace is not global.
+ *
+ * `slug` is two different vocabularies. `provider(slug:)` takes a provider
+ * slug and `adapter(slug:)` takes a subnet slug, and the table above can only
+ * hold one value for the name -- so `adapter(slug: "apex")` resolved null and
+ * every `Adapter` field went unobserved, which the report then printed as "no
+ * evidence either way". That is the failure this whole script exists to avoid,
+ * one level up: a silence read as an answer. Verified against
+ * api.metagraph.sh -- `adapter(slug: "apex")` is null, `adapter(slug: "sn-1")`
+ * returns netuid 1.
+ *
+ * Deliberately per field rather than a list of candidates per name: trying
+ * every value against every field multiplies the request count by the size of
+ * the table, and the ambiguity is not "which of these works" but "this field
+ * reads a different namespace", which is a fact worth writing down.
+ */
+const ARGUMENTS_BY_FIELD: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  adapter: { slug: '"sn-1"' },
+};
+
+/**
  * Path-parameter values for the REST half, SEVERAL per parameter.
  *
  * One subject silently decides which types get measured: netuid 1 has 3
@@ -345,9 +368,10 @@ async function send(
 /** The arguments a Query field requires, rendered -- or null if one is unknown. */
 function renderArguments(field: GraphQLField<unknown, unknown>): string | null {
   const parts: string[] = [];
+  const overrides = ARGUMENTS_BY_FIELD[field.name] ?? {};
   for (const argument of field.args) {
     if (!isNonNullType(argument.type)) continue;
-    const value = ARGUMENTS[argument.name];
+    const value = overrides[argument.name] ?? ARGUMENTS[argument.name];
     if (value === undefined) return null;
     parts.push(`${argument.name}: ${value}`);
   }

@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildSchema, isEnumType, isObjectType, printSchema } from "graphql";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
+import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import {
   GRAPHQL_ENUMS,
   assertEnumVocabularies,
@@ -184,6 +185,45 @@ describe("the generated schema", () => {
           B: { description: "", values: [], from: [], fields: ["X.y"] },
         }),
       /X\.y is declared as both A and B/,
+    );
+  });
+
+  test("an enum site inside a LIST keeps the list", () => {
+    // The only live site is `ChainEvent.table: String!`, so the list arm of
+    // the rewrap would otherwise never run -- and an enum published over
+    // `[String!]!` is the obvious next one to declare.
+    const { schema } = buildGeneratedSchema(
+      openapi,
+      PROJECTED_TYPES,
+      RETYPED_FIELDS,
+      new Map([["Gaps.missing_kinds", "ChainFirehoseTable"]]),
+    );
+    assert.equal(
+      String(
+        (schema.getType("Gaps") as GraphQLObjectType).getFields().missing_kinds
+          .type,
+      ),
+      "[ChainFirehoseTable!]!",
+      "the enum replaces the leaf, not the list around it",
+    );
+  });
+
+  test("a projection may publish a component's promise NULLABLE", () => {
+    // `formatLeaderboards` ranks each board off the fields that board sorts
+    // by, so a row carries those and leaves the rest unset -- production
+    // answers `open_slots[].miner_count: null` on every row. The component
+    // keeps its promise (the full card fills all five on all 129 rows of
+    // /api/v1/economics); only the view relaxes it.
+    const entry = buildGeneratedSchema(openapi).schema.getType(
+      "OpportunityEntry",
+    ) as GraphQLObjectType;
+    assert.equal(String(entry.getFields().miner_count.type), "Int");
+    // And the component it projects still promises it, so this is a relaxation
+    // declared by the view rather than a hole in the contract.
+    const { types } = emitTypes();
+    assert.equal(
+      String(types.get("SubnetEconomics")!.getFields().miner_count.type),
+      "Int!",
     );
   });
 

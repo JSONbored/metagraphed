@@ -5312,8 +5312,8 @@ export interface components {
                 description?: string | null;
                 discord?: string | null;
                 github?: string | null;
-                /** @description Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. */
-                identity_hash: string;
+                /** @description Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. Null on a row with no computed hash. */
+                identity_hash: string | null;
                 image?: string | null;
                 name?: string | null;
                 observed_at: string | null;

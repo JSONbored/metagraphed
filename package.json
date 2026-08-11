@@ -111,6 +111,7 @@
     "validate:graphql-query-arguments": "node scripts/validate-graphql-query-arguments.ts",
     "report:graphql-sdl-equivalence": "node scripts/report-graphql-sdl-equivalence.ts",
     "report:graphql-schema-diff": "node scripts/report-graphql-schema-diff.ts",
+    "report:graphql-tightening-evidence": "node scripts/report-graphql-tightening-evidence.ts",
     "validate:published-names": "node scripts/validate-published-names.ts",
     "validate:graphql-tier-parity": "node scripts/validate-graphql-tier-parity.ts",
     "build:openapi-zod": "node scripts/generate-openapi-zod-components.ts",

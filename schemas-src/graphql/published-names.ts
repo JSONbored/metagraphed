@@ -2021,6 +2021,26 @@ export interface ProjectedType {
   readonly itemsFrom?: string;
   /** The component row count a paginated view's `total` renames (#10404). */
   readonly totalFrom?: string;
+  /**
+   * Component fields this view publishes NULLABLE that the component promises.
+   *
+   * A projection is a view built by a resolver, and a resolver can fill fewer
+   * fields than the component's own producer does. `OpportunityEntry` is that:
+   * the economics card promises `miner_count` and four siblings, and
+   * /api/v1/economics delivers all five on all 129 rows -- but the LEADERBOARD
+   * rows are ranked partials, and each board materializes only what its
+   * ranking needs. Production answers `open_slots[].miner_count: null` today.
+   *
+   * So this cannot be fixed in the Zod: relaxing `SubnetEconomics` would
+   * weaken a contract the full card honours, to describe a view that does not.
+   * The relaxation belongs to the VIEW, which is what this declares.
+   *
+   * The direction is deliberately one-way -- a projection may publish a
+   * component's non-null field as nullable, never the reverse. Promising more
+   * than the component does is a claim about a producer the projection has no
+   * standing to make.
+   */
+  readonly nullable?: readonly string[];
 }
 
 /**
@@ -2200,6 +2220,23 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
     added: {
       validator_headroom: "Int",
     },
+    // Measured, not guessed. `formatLeaderboards` ranks each board off the
+    // fields that board sorts by, so a row carries those and leaves the rest
+    // unset -- and the boards disagree with each other about which:
+    //
+    //   open_slots[]         max_validators, miner_count, validator_count null
+    //   validator_headroom[] max_validators, validator_count set; miner_count null
+    //
+    // against api.metagraph.sh, on every row of both. The full card fills all
+    // five on all 129 rows of /api/v1/economics, which is why the component
+    // keeps its promise and only this view relaxes it.
+    nullable: [
+      "max_uids",
+      "max_validators",
+      "miner_count",
+      "registration_allowed",
+      "validator_count",
+    ],
     dropped: [
       "alpha_fdv_tao",
       "alpha_in_emission",
