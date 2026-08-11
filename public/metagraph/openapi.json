@@ -79535,6 +79535,372 @@
         ]
       }
     },
+    "/api/v1/feeds/revenue": {
+      "get": {
+        "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",
+        "operationId": "feedRevenue",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/revenue.atom": {
+      "get": {
+        "description": "Always returns `application/atom+xml`, regardless of `Accept`.",
+        "operationId": "feedRevenueAtom",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/atom+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/revenue.json": {
+      "get": {
+        "description": "Always returns `application/feed+json`, regardless of `Accept`.",
+        "operationId": "feedRevenueJson",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/feed+json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
+    "/api/v1/feeds/revenue.rss": {
+      "get": {
+        "description": "Always returns `application/rss+xml`, regardless of `Accept`.",
+        "operationId": "feedRevenueRss",
+        "parameters": [
+          {
+            "description": "Return only items carrying this tag (e.g. `upgrade`, `incident`, `subnet`). Exact match against the item's `tags` array.",
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive lower bound on item timestamps, as an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time with an explicit offset. Malformed values are a 400, never silently ignored. Must not be later than the range's upper bound.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive upper bound, same format as `since`. A bare date covers the whole named UTC day. Must not be earlier than the range's lower bound.",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items to return (1-50). Defaults to 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/rss+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The feed document. Cached for 10 minutes and ETagged; a matching `If-None-Match` yields 304.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached feed is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "A `since`/`until`/`limit`/`ids` parameter was malformed. Feeds reject these rather than ignoring them."
+          }
+        },
+        "summary": "Movement in subnet revenue coverage (#10480): material coverage-ratio moves, provenance changes, newly-readable revenue surfaces, and revenue surfaces that STOP returning a figure. The last is the reason this feed exists -- a feed that silently stops is indistinguishable from a subnet that never had revenue, and those are very different facts. Every item states what was observed and never why. Also folded into the registry feed, where `?tag=revenue` narrows to exactly these.",
+        "tags": [
+          "feeds"
+        ]
+      }
+    },
     "/api/v1/feeds/subnets/{netuid}": {
       "get": {
         "description": "Content-negotiated: send `Accept: application/rss+xml`, `application/atom+xml`, or `application/feed+json`. JSON Feed is the default when nothing matches.",

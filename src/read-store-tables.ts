@@ -81,6 +81,18 @@ export const REVENUE_OBSERVATION_TABLES = [
 /** loadTaoUsdSeries */
 export const TAO_USD_TABLES = ["tao_usd_index"] as const;
 
+/** loadRevenueFeedItems (#10480). The observation pair plus the two tables the
+ * coverage-ratio item's denominator is built from -- a ratio priced from one of
+ * them would compare a dollar figure to a TAO figure. All four are Neon
+ * sole-store, so declaring them together costs no availability and buys the
+ * SQL-vs-declaration check. */
+export const REVENUE_FEED_TABLES = [
+  "revenue_observations",
+  "revenue_probe_failures",
+  "subnet_snapshots",
+  "tao_usd_index",
+] as const;
+
 /** loadSurfaceHistory.
  *
  * The four registry tables (surface_history, subnets, surfaces, providers) are
