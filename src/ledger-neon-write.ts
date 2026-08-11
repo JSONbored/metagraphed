@@ -40,7 +40,10 @@ import {
 } from "./neon-write.ts";
 import { VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS } from "./validator-nominator-summary.ts";
 import { type HyperdriveLike, type WaitUntilLike } from "./pg-sql.ts";
-import { neonWriteRunner } from "./neon-write-buffer.ts";
+import {
+  neonWriteBufferEnabled,
+  neonWriteRunner,
+} from "./neon-write-buffer.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
 
 // ---------------------------------------------------------------------------
@@ -212,6 +215,11 @@ export async function mirrorLedgerToNeon(
   // (empty lane list), so this changes nothing until a lane is named.
   const sql = deps.sql ?? neonWriteRunner(env, ctx, lane, hyperdrive);
   const laneDb = laneHealthStore(env, deps.laneHealthDb);
+  // #10690: a buffered SUCCESS records no verdict here -- the flush owns the
+  // honest per-lane one. A buffered FAILURE still does: that is the enqueue
+  // being refused, which nothing else reports. Only a runner we BUILT counts,
+  // since an injected deps.sql went wherever the caller pointed it.
+  const buffered = !deps.sql && neonWriteBufferEnabled(env, lane);
   const now = deps.now ?? Date.now;
 
   if (!sql) {
@@ -221,6 +229,7 @@ export async function mirrorLedgerToNeon(
       lane,
       { ok: false, rows: 0, statements: 0, reason: "hyperdrive unbound" },
       now(),
+      buffered,
     );
     return { attempted: true };
   }
@@ -235,7 +244,7 @@ export async function mirrorLedgerToNeon(
     plan.filter,
     plan.columnTypes,
   );
-  await recordNeonWriteVerdict(laneDb, lane, result, now());
+  await recordNeonWriteVerdict(laneDb, lane, result, now(), buffered);
 
   // THE TALLY GOES LAST, AND ONLY IF THE ROWS LANDED (#10056).
   //
@@ -257,6 +266,7 @@ export async function mirrorLedgerToNeon(
         ...(tally.reason ? { reason: tally.reason } : {}),
       },
       now(),
+      buffered,
     );
   }
   return { attempted: true, result };

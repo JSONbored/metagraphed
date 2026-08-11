@@ -670,3 +670,96 @@ describe("verdict coalescing, end to end", () => {
     assert.equal(s.inserts.length, 2);
   });
 });
+
+describe("a buffered lane's enqueue-time verdict", () => {
+  beforeEach(resetNeonWriteVerdictMemo);
+
+  function countingDb() {
+    const rows: Record<string, unknown>[] = [];
+    return {
+      rows,
+      db: {
+        prepare(sql: string) {
+          return {
+            bind(...values: unknown[]) {
+              return {
+                async run() {
+                  if (sql.startsWith("INSERT"))
+                    rows.push({ lane: values[0], verdict: values[1] });
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("a buffered SUCCESS records nothing -- the flush owns that verdict", async () => {
+    // ~758 rows/hour of bookkeeping saying "ok" about rows that are enqueued
+    // and not yet in Neon. The flush records the honest per-lane verdict once
+    // it has actually written them.
+    const s = countingDb();
+    const landed = await recordNeonWriteVerdict(
+      s.db,
+      "neurons",
+      { ok: true, rows: 30_000, statements: 11 },
+      NOW,
+      true,
+    );
+    assert.equal(landed, true, "the caller is not told this failed");
+    assert.deepEqual(s.rows, []);
+  });
+
+  test("a buffered FAILURE still records -- nothing else reports backpressure", async () => {
+    // ok:false here is the ENQUEUE being refused (buffer full, DO unreachable).
+    // The flush cannot report it: those rows never reached the flush. This is
+    // the one path where suppressing would go quiet exactly when it matters.
+    const s = countingDb();
+    await recordNeonWriteVerdict(
+      s.db,
+      "neurons",
+      { ok: false, rows: 0, statements: 0, reason: "buffer full" },
+      NOW,
+      true,
+    );
+    assert.deepEqual(
+      s.rows.map((r) => [r.lane, r.verdict]),
+      [["neon:neurons", "stale"]],
+    );
+  });
+
+  test("an UNBUFFERED lane is unchanged", async () => {
+    // blocks-head and chain-detail stay direct, so their verdicts must keep
+    // reporting exactly as before.
+    const s = countingDb();
+    await recordNeonWriteVerdict(
+      s.db,
+      "blocks-head",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+    );
+    assert.equal(s.rows.length, 1);
+  });
+
+  test("a buffered success does not poison the coalescing memo", async () => {
+    // It records nothing, so it must also not remember having recorded --
+    // otherwise the next DIRECT write on that lane would be coalesced away
+    // against a row that was never written.
+    const s = countingDb();
+    await recordNeonWriteVerdict(
+      s.db,
+      "neurons",
+      { ok: true, rows: 1, statements: 1 },
+      NOW,
+      true,
+    );
+    await recordNeonWriteVerdict(
+      s.db,
+      "neurons",
+      { ok: true, rows: 1, statements: 1 },
+      NOW + 1000,
+    );
+    assert.equal(s.rows.length, 1, "the direct write must still land");
+  });
+});
