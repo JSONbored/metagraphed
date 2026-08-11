@@ -11889,21 +11889,32 @@ describe("MCP economics + metagraph data tools", () => {
   describe("degraded-tier marker (#9120)", () => {
     // Tier flags on with no DATA_API bound: every tier read degrades.
     //
-    // METAGRAPH_BLOCKS_SOURCE is deliberately NOT here: it is retired, so the
-    // blocks tools read no tier and have no tier miss to mark (#10190). Listing
-    // it would assert a marker on a read that cannot happen.
+    // ONLY THE FLAGS THAT STILL FORWARD. The marker fires when a call advances
+    // tryPostgresTier's fallback generation, so a tool that reads no tier can
+    // never carry it -- and after #10190's sweep that is most of them.
+    // DATA_API_FORWARD_FLAGS is the whole surviving set: NEURONS,
+    // SUBNET_HYPERPARAMS and ACCOUNT_IDENTITY. METAGRAPH_EXTRINSICS_SOURCE and
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE were here and are gone with the reads they
+    // gated; listing a flag whose call sites are deleted asserts a marker on
+    // something that cannot happen, which is how this test came to pass over
+    // two tools that never consulted a tier at all.
     const degradedEnv = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
     };
 
     test("a tier miss is marked, whichever tool it happened in", async () => {
+      // One tool per surviving flag, so "whichever tool" still means what it
+      // says: the marker lives at the dispatch chokepoint, not in a handler.
       const unmarked: string[] = [];
       for (const [name, args] of [
         ["get_subnet_metagraph", { netuid: 7 }],
-        ["get_chain_transfers", { window: "7d" }],
-        ["get_chain_calls", { window: "7d" }],
+        ["get_subnet_hyperparams", { netuid: 7 }],
+        [
+          "get_account_identity",
+          { ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" },
+        ],
       ] as [string, Row][]) {
         const res = await callTool(name, args, { env: degradedEnv });
         const out = res.body.result.structuredContent as Row;
@@ -12682,11 +12693,7 @@ describe("MCP economics + metagraph data tools", () => {
   // buildFn ignores the unused networkDistinct arg for this tool, which
   // computes its network rollup straight off the row list).
   function chainStakeFlowEnv(rows: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeFlow,
-      null as unknown as Row,
-      rows,
-    );
+    return projectionEnv("chain-stake-flow", () => ({ rows }));
   }
 
   test("get_chain_stake_flow returns schema-stable zeros on cold D1", async () => {
@@ -12791,11 +12798,15 @@ describe("MCP economics + metagraph data tools", () => {
   // chainAccountEventsPostgresEnv helper (this builder ignores the unused
   // window/networkDistinct options — fixed 24h window, own row-derived rollup).
   function chainAlphaVolumeEnv(rows: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainAlphaVolume,
-      null as unknown as Row,
-      rows,
-    );
+    // The one lane with a single fixed window (no ?window= param), stored under
+    // "24h" so the envelope matches its siblings.
+    return {
+      env: archiveEnv((asked: string) =>
+        asked === "metagraph/projections/chain-alpha-volume.json"
+          ? { schema_version: 1, windows: { "24h": { rows } } }
+          : null,
+      ) as unknown as Row,
+    };
   }
 
   test("get_chain_alpha_volume returns schema-stable zeros on cold D1", async () => {
@@ -12905,8 +12916,24 @@ describe("MCP economics + metagraph data tools", () => {
   // on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper -- same shape as
   // get_chain_stake_moves' Postgres-tier test above.
+  // The three rollup lanes read the LAKEHOUSE, not a projection: a per-netuid
+  // GROUP BY is ~129 rows, small enough to serve at request time, so
+  // loadChainEventRollup issues three queries per call -- the grouped page, the
+  // ungrouped participant count, and the window's subnet count. Answered by
+  // shape rather than by order: they run in one Promise.all.
+  function chainEventRollupEnv(network: Row, subnets: Row[]) {
+    const lake = lakehouse((sql: string) =>
+      sql.includes("AS subnet_count")
+        ? [{ subnet_count: subnets.length }]
+        : sql.includes("ORDER BY")
+          ? subnets
+          : [network],
+    );
+    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
+  }
+
   function chainWeightsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(buildChainWeights, network, subnets);
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_weights returns schema-stable zeros on cold D1", async () => {
@@ -12985,60 +13012,64 @@ describe("MCP economics + metagraph data tools", () => {
     assertValid(validate, res.body.result.structuredContent);
   });
 
-  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
-  // retired (#4772) and the table is dropped in production, so these tools'
-  // D1-querying loaders are gone -- they now go tryPostgresTier ->
-  // buildX([], ...) on any miss/outage. This mocks the Postgres tier by
-  // running the SAME pure builder the real Postgres route
-  // (workers/data-api.ts) would, over the caller's own window/limit query
-  // params, so the mocked response is byte-identical to what production
-  // would actually serve.
-  function chainAccountEventsPostgresEnv(
-    buildFn: AnyFn,
-    networkDistinct: Row,
-    subnetRows: Row[],
-  ) {
+  // WAS chainAccountEventsPostgresEnv: a DATA_API double that ran the SAME pure
+  // builder the tool runs, behind METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres".
+  // Two things were wrong with it. That flag reads "retired" in wrangler.jsonc
+  // and is absent from DATA_API_FORWARD_FLAGS, so the binding was never asked --
+  // every one of these tests was reading the empty fallback. And had it been
+  // asked, running the builder to check the builder proves only that it is
+  // deterministic.
+  //
+  // What answers now is the #9146 projection lane: an R2 object per lane, one
+  // `windows` entry per label, holding data-api's own aggregate rows verbatim,
+  // handed to that same builder by a reader that validates the envelope and
+  // DECLINES on anything else. So the fixture is the artifact, and the assertions
+  // below are unchanged -- they were always about the builder's contract, and now
+  // they reach it through the transport production reads.
+  //
+  // BOTH LABELS, because the lane writes both: every one of these routes offers
+  // {7d, 30d} and the reader refuses to answer one window's question with
+  // another's rows, so a single-label fixture would decline for half the tests
+  // here and pass for the wrong reason.
+  function projectionEnv(key: string, window: (label: string) => Row) {
+    const objectKey = `metagraph/projections/${key}.json`;
     return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const limitParam = url.searchParams.get("limit");
-            const limit = limitParam != null ? Number(limitParam) : undefined;
-            return Response.json(
-              buildFn(subnetRows, { window, limit, networkDistinct }),
-            );
-          },
-        },
-      },
+      env: archiveEnv((asked: string) =>
+        asked === objectKey
+          ? {
+              schema_version: 1,
+              windows: { "7d": window("7d"), "30d": window("30d") },
+            }
+          : null,
+      ) as unknown as Row,
     };
   }
 
+  // The identity rollup, one level finer than chainEventRollupEnv: keyed by
+  // (netuid, uid) rather than by netuid, and its totals are TWO separate
+  // queries -- an ungrouped COUNT(*) for the share denominator, and a GROUP BY
+  // subquery for the distinct setters. Answered by shape, in one Promise.all.
+  //
+  // The denominator is why they are separate: the row page is capped, so a share
+  // computed against a summed page would grow as the page shrank.
   function chainWeightSettersPostgresEnv({
     leaderboardRows = [],
     totalsRow = null,
   }: Row = {}) {
-    return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const limitParam = url.searchParams.get("limit");
-            const limit = limitParam != null ? Number(limitParam) : undefined;
-            return Response.json(
-              buildChainWeightSetters(leaderboardRows, totalsRow, {
-                window,
-                limit,
-              }),
-            );
-          },
-        },
-      },
-    };
+    const totals = (totalsRow ?? {}) as Row;
+    const lake = lakehouse((sql: string) =>
+      sql.includes("ORDER BY")
+        ? (leaderboardRows as Row[])
+        : sql.includes("max(observed_at)")
+          ? [
+              {
+                weight_sets: totals.weight_sets,
+                newest_observed: totals.newest_observed,
+              },
+            ]
+          : [{ distinct_setters: totals.distinct_setters }],
+    );
+    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
   }
 
   test("get_chain_weight_setters ranks setters with network-wide shares", async () => {
@@ -13154,11 +13185,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeMovesEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeMoves,
+    return projectionEnv("chain-stake-moves", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_stake_moves returns schema-stable zeros on cold D1", async () => {
@@ -13257,11 +13287,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeTransfersEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeTransfers,
+    return projectionEnv("chain-stake-transfers", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_stake_transfers returns schema-stable zeros on cold D1", async () => {
@@ -13347,29 +13376,20 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainAxonRemovals reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function axonRemovalsNetwork(distinct_removers: unknown) {
-    return {
-      distinct_removers,
-      newest_observed: 1_750_000_000_000,
-    };
-  }
-
-  // A per-subnet GROUP BY netuid row (COUNT removals + distinct removers).
-  function axonRemovalsRow(
-    netuid: number,
-    removals: unknown,
-    distinct_removers: unknown,
-  ) {
-    return { netuid, removals, distinct_removers };
-  }
-
-  function chainAxonRemovalsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainAxonRemovals,
-      network,
-      subnets,
-    );
-  }
+  // NO SOURCE, NOT A MOCKING PROBLEM. The axonRemovalsNetwork/axonRemovalsRow
+  // fixtures and their chainAxonRemovalsEnv were deleted with the tier they fed:
+  // the whole axon-removals family (chain, subnet, account) has no reader on any
+  // surface now, because AxonInfoRemoved has ZERO rows in both
+  // chain.account_events and chain.chain_events -- surveyed for #9146 and
+  // recorded in src/chain-event-rollup-cold-tier.ts's header, which is why that
+  // module gives serving and registrations a rollup spec and this kind none.
+  //
+  // So the ranking, the network rollup and the intensity distribution cannot be
+  // asserted through anything production reads. buildChainAxonRemovals' own
+  // tests (tests/chain-axon-removals.test.ts) hold those contracts over the
+  // rows directly, which is the right level for them while no source exists.
+  // What the TOOL can be held to is the shape of the card it will actually
+  // serve, and that it says nothing it has not measured.
 
   test("get_chain_axon_removals returns schema-stable zeros on cold D1", async () => {
     const res = await callTool("get_chain_axon_removals", {});
@@ -13384,31 +13404,34 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.observed_at, null);
   });
 
-  test("get_chain_axon_removals ranks subnets by removals with a network rollup", async () => {
-    const res = await callTool(
-      "get_chain_axon_removals",
-      { window: "30d", limit: 10 },
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        // netuid 2: fewer removals -> ranks last despite higher intensity.
-        axonRemovalsRow(2, 10, 4),
-        // netuid 1: most AxonInfoRemoved events -> ranks first.
-        axonRemovalsRow(1, 20, 5),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "30d");
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets[0].netuid, 1);
-    assert.equal(out.subnets[0].removals, 20);
-    assert.equal(out.subnets[0].removals_per_remover, 4); // 20 / 5
-    assert.equal(out.subnets[1].netuid, 2);
-    assert.equal(out.subnets[1].removals_per_remover, 2.5); // 10 / 4
-    // Network rollup: total removals 30 over 8 distinct removers -> 3.75.
-    assert.equal(out.network.removals, 30);
-    assert.equal(out.network.distinct_removers, 8);
-    assert.equal(out.network.removals_per_remover, 3.75);
-    assert.equal(out.intensity_distribution.count, 2);
-    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  test("get_chain_axon_removals has no rung to read, at any window", async () => {
+    // The card is the same with every store bound and every flag set to the
+    // value that WOULD forward: there is no read to make. `observed_at: null` is
+    // the load-bearing assertion -- a zero card that also claims a reading time
+    // would be a measurement, and this one is an absence.
+    for (const window of ["7d", "30d"]) {
+      const tier = forbiddenDataApi();
+      const archive = archiveEnv({ schema_version: 1, windows: {} });
+      const res = await callTool(
+        "get_chain_axon_removals",
+        { window, limit: 10 },
+        {
+          env: {
+            METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+            ...LAKEHOUSE_ENV,
+            ...tier,
+            ...(archive as unknown as Row),
+          },
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false, window);
+      assert.equal(out.window, window, "the label is still the caller's");
+      assert.deepEqual(tier.paths, [], `${window} consulted the retired tier`);
+      assert.deepEqual(archive.keys, [], `${window} read a projection`);
+      assert.equal(out.subnet_count, 0, window);
+      assert.equal(out.observed_at, null, `${window} claimed a reading time`);
+    }
   });
 
   test("get_chain_axon_removals rejects an unsupported window", async () => {
@@ -13421,32 +13444,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_chain_axon_removals caps the leaderboard by limit", async () => {
-    const res = await callTool(
-      "get_chain_axon_removals",
-      { limit: 1 },
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        axonRemovalsRow(1, 20, 5),
-        axonRemovalsRow(2, 10, 4),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    // Both subnets feed the rollup/distribution, but the page is capped.
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets.length, 1);
-    assert.equal(out.intensity_distribution.count, 2);
-  });
-
   test("get_chain_axon_removals payload validates against its declared outputSchema", async () => {
+    // Both changes: #10802's outputSchemaFor helper, over the empty card.
+    //
+    // The empty card is the one production serves, so it is the one that has to
+    // satisfy the schema -- an outputSchema only the populated shape passes is a
+    // schema for a payload no caller receives.
     const schema = outputSchemaFor("get_chain_axon_removals");
-    const res = await callTool(
-      "get_chain_axon_removals",
-      {},
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        axonRemovalsRow(1, 20, 5),
-        axonRemovalsRow(2, 10, 4),
-      ]),
-    );
+    const res = await callTool("get_chain_axon_removals", {});
     const validate = new Ajv2020({ strict: false }).compile(schema);
     assertValid(validate, res.body.result.structuredContent);
   });
@@ -13471,11 +13476,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainDeregistrationsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainDeregistrations,
+    return projectionEnv("chain-deregistrations", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_deregistrations returns schema-stable zeros on cold D1", async () => {
@@ -13578,7 +13582,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainServingEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(buildChainServing, network, subnets);
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_serving returns schema-stable zeros on cold D1", async () => {
@@ -13677,11 +13681,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainPrometheusEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainPrometheus,
-      network,
-      subnets,
-    );
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_prometheus returns schema-stable zeros on cold D1", async () => {
@@ -13801,27 +13801,13 @@ describe("MCP economics + metagraph data tools", () => {
   // caller's own window/sort query params, so the mocked response is
   // byte-identical to what production would actually serve.
   function chainTransferPairsEnv(totals: Row, pairs: Row[]) {
-    return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const sort = url.searchParams.get("sort") || "volume";
-            return Response.json(
-              buildChainTransferPairs({
-                window,
-                sort,
-                observedAt: null,
-                totals,
-                pairs,
-              }),
-            );
-          },
-        },
-      },
-    };
+    // Keyed by sort as well as by window: only the precomputed orders exist, and
+    // the reader declines rather than answer one order's rows under another's
+    // name.
+    return projectionEnv("chain-transfer-pairs", () => ({
+      totals,
+      sorts: { volume: pairs, count: pairs },
+    }));
   }
 
   test("get_chain_transfer_pairs returns schema-stable zeros on cold D1", async () => {
@@ -14423,27 +14409,12 @@ describe("MCP economics + metagraph data tools", () => {
   // mocked response is byte-identical to what production would actually
   // serve.
   function chainCallsPostgresEnv({ total, rows }: Row) {
-    return {
-      env: {
-        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const groupBy = url.searchParams.get("group_by") || "module";
-            return Response.json(
-              buildChainCalls({
-                window,
-                groupBy,
-                observedAt: null,
-                total,
-                rows,
-              }),
-            );
-          },
-        },
-      },
-    };
+    // The extrinsics family's projection, keyed by group_by the way
+    // transfer-pairs is keyed by sort.
+    return projectionEnv("chain-calls", () => ({
+      total,
+      groups: { module: rows, module_function: rows },
+    }));
   }
 
   test("get_chain_calls aggregates extrinsic rows with honest shares", async () => {
@@ -14473,23 +14444,38 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /call_module/i);
   });
 
-  test("get_chain_calls scopes grouped rows and totals by call_module", async () => {
-    let requestedUrl;
-    const env = chainCallsPostgresEnv({
-      total: 80,
-      rows: [
-        {
-          call_module: "SubtensorModule",
-          call_function: "add_stake",
-          count: 50,
+  test("a call_module scope never touches the unscoped projection", async () => {
+    // WAS "scopes grouped rows and totals by call_module", asserting that
+    // `call_module=SubtensorModule` reached the tier as a query param over a
+    // payload the mocked tier built from the caller's own rows.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and forwards nothing, so that
+    // request was never made -- and the lane behind it precomputes NO pallet
+    // scope, which is the thing worth proving instead.
+    //
+    // The failure mode a filtered read invites is serving the unfiltered rows
+    // under a filtered label: 80 extrinsics network-wide reported as 80 in one
+    // pallet. loadChainCallsFromArtifact refuses the scope BEFORE it reads the
+    // bucket, so the assertion is that the bucket was never asked -- an
+    // in-memory filter over the projection would still produce a plausible
+    // number, and only the absence of the read rules it out.
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          total: 80,
+          groups: {
+            module: [{ call_module: "SubtensorModule", count: 50 }],
+            module_function: [
+              {
+                call_module: "SubtensorModule",
+                call_function: "add_stake",
+                count: 50,
+              },
+            ],
+          },
         },
-      ],
+      },
     });
-    const originalFetch = env.env.DATA_API.fetch;
-    env.env.DATA_API.fetch = async (request) => {
-      requestedUrl = new URL(request.url);
-      return originalFetch(request);
-    };
     const res = await callTool(
       "get_chain_calls",
       {
@@ -14498,18 +14484,44 @@ describe("MCP economics + metagraph data tools", () => {
         call_module: "SubtensorModule",
         limit: 3,
       },
-      env,
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.group_by, "module_function");
-    assert.equal(out.total_extrinsics, 80);
-    assert.equal(out.calls[0].share, 0.625);
-    assert.equal(
-      requestedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
-    );
-  });
+    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.equal(out.total_extrinsics, 0, "no unscoped total under a scope");
+    assert.deepEqual(out.calls, []);
+    assert.equal(out.degraded?.reason, "call_module_scope_not_precomputed");
 
+    // The SAME projection answers the unscoped question, so the decline above
+    // is the scope and not a broken fixture.
+    const unscoped = await callTool(
+      "get_chain_calls",
+      { window: "7d", group_by: "module_function", limit: 3 },
+      {
+        env: archiveEnv({
+          schema_version: 1,
+          windows: {
+            "7d": {
+              total: 80,
+              groups: {
+                module_function: [
+                  {
+                    call_module: "SubtensorModule",
+                    call_function: "add_stake",
+                    count: 50,
+                  },
+                ],
+              },
+            },
+          },
+        }) as unknown as Row,
+      },
+    );
+    const open = unscoped.body.result.structuredContent;
+    assert.equal(open.group_by, "module_function");
+    assert.equal(open.total_extrinsics, 80);
+    assert.equal(open.calls[0].share, 0.625);
+  });
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
     const res = await callTool(
       "get_registry_leaderboards",
@@ -24137,499 +24149,214 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
 // destructure `{ data, generatedAt }` from tryPostgresTier's result, so these
 // four tools unwrap `.data` before falling back -- the DATA_API mock here
 // nests the marker under `data` to exercise that unwrap.
-describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_registrations / get_account_weight_setters — Postgres tier wiring", () => {
+describe("MCP account activity feeds — what answers now that the tier is gone", () => {
+  // WAS eight near-identical trios asserting the URL tryPostgresTier sent and a
+  // `marker` field read back off the mocked tier. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+  // reads "retired" in wrangler.jsonc and is absent from
+  // DATA_API_FORWARD_FLAGS, so none of those requests was ever made and the
+  // marker could never appear -- 24 tests over one dead code path.
+  //
+  // Seven of these eight tools DO have a reader: the lakehouse `account_events`
+  // rollups in src/account-feeds-cold-tier.ts, one GROUP BY netuid per feed.
+  // Each case below drives that reader with the columns its own SQL selects, so
+  // the fixture is wrong in exactly the way production would be wrong.
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  test("get_account_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
+  /** One netuid's rollup row, under the count alias the feed's SQL uses. */
+  const rollupRow = (countField: string) => [
+    {
+      netuid: 7,
+      [countField]: 3,
+      first_observed: 1_750_000_000_000,
+      last_observed: 1_750_090_000_000,
+    },
+  ];
+
+  const CASES: Array<{
+    tool: string;
+    /** Rows for the feed's own query, keyed off the SQL it emits. */
+    rows: (sql: string) => Row[];
+    /** The total the builder derives, and what it should come to. */
+    total: string;
+    expected: number;
+    /** Feeds whose predicate needs the live store as well as the lakehouse. */
+    store?: { tables: string[]; rows: Row[] };
+  }> = [
+    {
+      tool: "get_account_stake_flow",
+      // Grouped by (netuid, event_kind) with a SUM, not a bare COUNT.
+      rows: () => [
+        {
+          netuid: 7,
+          event_kind: "StakeAdded",
+          total_tao: 12.5,
+          event_count: 2,
+          last_observed: 1_750_090_000_000,
         },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
+      ],
+      total: "total_staked_tao",
+      expected: 12.5,
+    },
+    {
+      tool: "get_account_stake_moves",
+      rows: () => rollupRow("movements"),
+      total: "total_movements",
+      expected: 3,
+    },
+    {
+      tool: "get_account_registrations",
+      rows: () => rollupRow("registrations"),
+      total: "total_registrations",
+      expected: 3,
+    },
+    {
+      tool: "get_account_weight_setters",
+      // TWO STORES, not one. The weight-sets rollup is on the lakehouse, but the
+      // predicate it runs needs this account's (netuid, uid) slots first, and
+      // those come from `neurons` in the live store -- WeightsSet carries no
+      // hotkey at all, so the slots are the only way to attribute a set. An
+      // unbound store DECLINES the whole read, which is why this case has to
+      // bind both.
+      rows: (sql: string) =>
+        sql.includes("weight_sets") ? rollupRow("weight_sets") : [],
+      total: "total_weight_sets",
+      expected: 3,
+      store: { tables: ["neurons"], rows: [{ netuid: 7, uid: 4 }] },
+    },
+    {
+      tool: "get_account_serving",
+      rows: () => rollupRow("announcements"),
+      total: "total_announcements",
+      expected: 3,
+    },
+    {
+      tool: "get_account_prometheus",
+      rows: () => rollupRow("announcements"),
+      total: "total_announcements",
+      expected: 3,
+    },
+  ];
+
+  for (const { tool, rows, total, expected, store } of CASES) {
+    test(`${tool}: the lakehouse rollup is what reaches the payload`, async () => {
+      const tier = forbiddenDataApi();
+      const lake = lakehouse(rows);
+      if (store) pg.control.rows = store.rows;
+      try {
+        const res = await callTool(
+          tool,
+          { ss58: SS58 },
+          {
+            env: {
+              ...LAKEHOUSE_ENV,
+              ...tier,
+              ...(store ? pgMockEnv(store.tables) : {}),
+            },
+          },
+        );
+        const out = res.body.result.structuredContent;
+        assert.equal(res.body.result.isError, false, tool);
+        assert.deepEqual(tier.paths, [], `${tool} consulted the retired tier`);
+        assert.equal(out.address, SS58);
+        assert.equal(out[total], expected, `${tool}: ${total}`);
+        assert.equal(out.subnet_count, 1, tool);
+        assert.equal(out.subnets[0].netuid, 7, tool);
+        assert.ok(
+          lake.queries.some((sql) => sql.includes("chain.account_events")),
+          `${tool} never queried account_events`,
+        );
+      } finally {
+        lake.restore();
+      }
+    });
+
+    test(`${tool}: an unusable address declines before any scan`, async () => {
+      // The decline is what keeps an invalid address from becoming an
+      // unfiltered scan of every account. Asserting no query ran is the only
+      // way to tell that apart from a scan that happened to match nothing.
+      const lake = lakehouse(() => rollupRow("movements"));
+      try {
+        const res = await callTool(
+          tool,
+          { ss58: "not-an-address" },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(res.body.result.isError, true, tool);
+        assert.deepEqual(lake.queries, [], `${tool} scanned anyway`);
+      } finally {
+        lake.restore();
+      }
+    });
+
+    test(`${tool}: a lakehouse miss is the schema-stable empty, never an error`, async () => {
+      const lake = lakehouse(() => {
+        throw new Error("boom");
+      });
+      try {
+        const res = await callTool(tool, { ss58: SS58 }, { env: {} });
+        const out = res.body.result.structuredContent;
+        assert.equal(res.body.result.isError, false, tool);
+        assert.equal(out.address, SS58, tool);
+        assert.equal(out[total], 0, `${tool} must publish a zero, not a throw`);
+        assert.deepEqual(out.subnets, [], tool);
+      } finally {
+        lake.restore();
+      }
+    });
+  }
+
+  test("get_account_deregistrations reads the by-hotkey projection", async () => {
+    // The one feed in this group NOT on the lakehouse: evictions are derived
+    // from metagraph diffs by the #9146 lane, keyed by hotkey, and stored as
+    // tuples rather than objects.
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv((key: string) =>
+      key.includes("by-hotkey")
+        ? {
+            schema_version: 1,
+            hotkeys: { [SS58]: [[7, 3, 1_750_000_000_000, 900, 120]] },
+          }
+        : null,
     );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/stake-flow?window=30d&direction=all`,
-    );
-  });
-
-  test("get_account_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_flow: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_moves: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/stake-moves?window=30d`);
-  });
-
-  test("get_account_stake_moves: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_moves: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_registrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/registrations?window=30d`);
-  });
-
-  test("get_account_registrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_registrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_weight_setters: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/weight-setters?window=7d`);
-  });
-
-  test("get_account_weight_setters: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_weight_setters: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_serving: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/serving?window=30d`);
-  });
-
-  test("get_account_serving: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_serving: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_axon_removals: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/axon-removals?window=30d`);
-  });
-
-  test("get_account_axon_removals: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_axon_removals: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_prometheus: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/prometheus?window=30d`);
-  });
-
-  test("get_account_prometheus: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_prometheus: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_deregistrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
     const res = await callTool(
       "get_account_deregistrations",
       { ss58: SS58 },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/deregistrations?window=30d`,
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.address, SS58);
+    assert.ok(
+      archive.keys.some((key) => key.includes("by-hotkey")),
+      "the by-hotkey projection was never read",
     );
   });
 
-  test("get_account_deregistrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
+  test("get_account_axon_removals has no rung to read", async () => {
+    // AxonInfoRemoved has zero rows in both chain.account_events and
+    // chain.chain_events (surveyed for #9146, recorded in
+    // src/chain-event-rollup-cold-tier.ts), so there is no reader to drive here
+    // and nothing to mock -- the same absence its chain-wide sibling publishes.
+    const tier = forbiddenDataApi();
+    const res = await callTool(
+      "get_account_axon_removals",
+      { ss58: SS58 },
+      {
+        env: {
+          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+          ...LAKEHOUSE_ENV,
+          ...tier,
         },
       },
-    };
-    const res = await callTool(
-      "get_account_deregistrations",
-      { ss58: SS58 },
-      { env },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_deregistrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_deregistrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
+    assert.deepEqual(tier.paths, []);
+    assert.equal(out.address, SS58);
+    assert.equal(out.total_removals ?? 0, 0);
   });
 });
-
-// get_block_events is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE, but
-// unlike the flat-data-shaped tools in the account_events-tier CASES loop
-// above, entities.ts's handleBlockEvents destructures `{ data }` from
-// tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
-// route returns `json({ data: buildBlockEvents(...) })`, not a flat
-// buildBlockEvents(...) body -- so this tool unwraps `.data` before falling
-// back, and the DATA_API mock here must nest the marker under `data`.
 describe("MCP get_block_events — Postgres tier wiring", () => {
   test("get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
     let captured;
