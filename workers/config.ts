@@ -144,6 +144,16 @@ export const REVENUE_PROBE_CRON = "24 * * * *";
  * day and never bursts. */
 export const ATTRIBUTION_SWEEP_CRON = "56 * * * *";
 
+/** #10548: the origin-reachability lane.
+ *
+ * Twice-hourly on the 9/39 offsets, which collide with nothing on this grid. A
+ * SLICE per tick: 277 distinct origins x up to 3 samples is ~800 requests, and
+ * one check per ORIGIN already replaces the ~2700 a per-surface pass would
+ * cost. Twice-hourly rather than hourly because a deleted host is not urgent to
+ * catch within the hour -- it is urgent to catch AT ALL, which is what
+ * probe.enabled:false prevented. */
+export const ORIGIN_REACHABILITY_CRON = "9,39 * * * *";
+
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
 // stores directly. Each keeps the cadence its workflow ran on, offset onto a
