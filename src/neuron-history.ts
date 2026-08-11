@@ -5,7 +5,11 @@
 // (metagraph-neurons.ts) so a historical row is byte-identical in shape to a live
 // one. Pure + injectable for tests — the Worker handlers run the D1 query and call
 // these.
-import { NEURON_COLUMNS, formatNeuron } from "./metagraph-neurons.ts";
+import {
+  NEURON_COLUMNS,
+  formatNeuron,
+  type NeuronColumnsRow,
+} from "./metagraph-neurons.ts";
 
 type Row = Record<string, unknown>;
 
@@ -16,6 +20,7 @@ type Row = Record<string, unknown>;
 // working.
 export { DEFAULT_HISTORY_WINDOW, HISTORY_WINDOW_DAYS } from "./route-limits.ts";
 import { HISTORY_WINDOW_DAYS, DEFAULT_HISTORY_WINDOW } from "./route-limits.ts";
+import type { NeuronDaily } from "../generated/db/types.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
@@ -66,6 +71,20 @@ function toNonNegativeInt(value: unknown): number | null {
 // SELECT list for reading a neuron_daily row back as a live-shaped neuron
 // (formatNeuron consumes NEURON_COLUMNS) plus the history-specific snapshot_date.
 export const NEURON_DAILY_READ_COLUMNS = `snapshot_date, ${NEURON_COLUMNS}`;
+
+/**
+ * The row `NEURON_DAILY_READ_COLUMNS` selects: the same columns
+ * `NEURON_COLUMNS` names, on the daily table, plus its `snapshot_date` key.
+ *
+ * Composed from `NeuronColumnsRow` rather than restated so the two column
+ * lists cannot drift -- and re-`Pick`ed against `NeuronDaily` because the two
+ * tables are not the same shape: neuron_daily has `snapshot_date` and
+ * `updated_at`, neurons does not.
+ */
+export type NeuronDailyReadRow = Pick<
+  NeuronDaily,
+  "snapshot_date" | (keyof NeuronColumnsRow & keyof NeuronDaily)
+>;
 
 // Per-UID time series: one point per snapshot_date (the handler queries newest
 // first, bounded by MAX_HISTORY_POINTS), each a live-shaped neuron plus its date.

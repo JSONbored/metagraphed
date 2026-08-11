@@ -875,8 +875,7 @@ export function recordApiKeyUsage(
 export const ABUSE_SCAN_ALERT_THRESHOLD = 1;
 
 export async function runAbuseScan(env: Env, ctx?: Ctx) {
-  const token = (env as unknown as { API_KEY_BLOCK_INTERNAL_TOKEN?: string })
-    .API_KEY_BLOCK_INTERNAL_TOKEN;
+  const token = env.API_KEY_BLOCK_INTERNAL_TOKEN;
   if (!env.DATA_API?.fetch || !token) {
     return { ok: false, reason: "not_provisioned" };
   }

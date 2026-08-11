@@ -886,9 +886,7 @@ export class AlerterHub implements DurableObject {
       const pending = Promise.resolve(recordUsageEvent(this.env, event)).catch(
         () => false,
       );
-      (
-        this.state as unknown as { waitUntil?: (p: Promise<unknown>) => void }
-      ).waitUntil?.(pending);
+      this.state.waitUntil(pending);
     } catch {
       // Telemetry must never surface into the alerting path.
     }

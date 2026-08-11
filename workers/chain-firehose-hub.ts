@@ -1405,9 +1405,7 @@ export class ChainFirehoseHub implements DurableObject {
           durationMs: 0,
         }),
       ).catch(() => false);
-      (
-        this.state as unknown as { waitUntil?: (p: Promise<unknown>) => void }
-      ).waitUntil?.(pending);
+      this.state.waitUntil(pending);
     } catch {
       // Telemetry must never surface into the firehose path.
     }

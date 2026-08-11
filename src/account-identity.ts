@@ -26,11 +26,30 @@ export const ACCOUNT_IDENTITY_INSERT_COLUMNS = [
   "description",
   "additional",
   "captured_at",
-];
+  // `as const` so the column list is also a TYPE: the row these columns select
+  // is `Pick<AccountIdentity, (typeof ACCOUNT_IDENTITY_INSERT_COLUMNS)[number]>`,
+  // derived from the very array that builds the SQL text rather than restated
+  // beside it. Add a column here and every reader's row type gains it.
+] as const;
 
-// The 7 identity fields, excluding the account key + captured_at timestamp —
-// same derivation account-identity-history.ts's IDENTITY_FIELDS uses.
-export const IDENTITY_FIELDS = ACCOUNT_IDENTITY_INSERT_COLUMNS.slice(1, -1);
+/** One insert column, as a literal — the array is the only place they are listed. */
+export type AccountIdentityColumn =
+  (typeof ACCOUNT_IDENTITY_INSERT_COLUMNS)[number];
+
+/**
+ * The 7 identity fields, excluding the account key + captured_at timestamp —
+ * same derivation account-identity-history.ts's IDENTITY_FIELDS uses.
+ *
+ * The cast says what `.slice(1, -1)` does and TypeScript cannot: slicing a
+ * readonly tuple keeps the WHOLE element union, so without it the type claims
+ * `account` and `captured_at` are identity fields. They are exactly the two
+ * this slice drops, and `Exclude` names them rather than restating the other
+ * seven — add an identity field to the array and it appears here for free.
+ */
+export const IDENTITY_FIELDS = ACCOUNT_IDENTITY_INSERT_COLUMNS.slice(
+  1,
+  -1,
+) as readonly Exclude<AccountIdentityColumn, "account" | "captured_at">[];
 
 function toIso(ms: unknown): string | null {
   if (ms == null) return null;
