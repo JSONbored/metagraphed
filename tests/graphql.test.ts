@@ -14024,23 +14024,34 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_stake_flow forwards window/direction and unwraps { data }", async () => {
-    const captured: Row = {};
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        data: {
-          schema_version: 1,
-          netuid: 7,
-          window: "7d",
-          total_staked_tao: 10,
-          total_unstaked_tao: 4,
-          net_flow_tao: 6,
-          stake_events: 3,
-          unstake_events: 1,
+    // #10190: the tier is retired; the #9146 subnet stake-flow projection answers.
+    // `window` selects the bucket and the builder SUMS these rows into the card --
+    // net_flow_tao is 10 staked minus 4 unstaked, derived rather than echoed. The
+    // window and direction reach the read through the data, which is where they go
+    // now; the query string they used to travel in no longer exists.
+    const env = {
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            rows: [
+              {
+                netuid: 7,
+                event_kind: "StakeAdded",
+                total_tao: 10,
+                event_count: 3,
+              },
+              {
+                netuid: 7,
+                event_kind: "StakeRemoved",
+                total_tao: 4,
+                event_count: 1,
+              },
+            ],
+          },
         },
-      },
-      captured,
-    );
+      }),
+    };
     const { body } = await gql(
       `{ subnet_stake_flow(netuid: 7, window: "7d", direction: "in") {
           window net_flow_tao stake_events unstake_events total_staked_tao
@@ -14048,11 +14059,12 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/stake-flow"));
-    assert.equal(captured.url.searchParams.get("window"), "7d");
-    assert.equal(captured.url.searchParams.get("direction"), "in");
     const f = body.data.subnet_stake_flow;
-    assert.equal(f.net_flow_tao, 6);
+    // `direction: "in"` narrows the sum to INFLOWS, so the net flow is the 10
+    // staked alone -- which is the direction reaching the read, provable from the
+    // answer. The URL assertion this replaces could only show the parameter was
+    // put on a request nothing served.
+    assert.equal(f.net_flow_tao, 10);
     assert.equal(f.stake_events, 3);
     assert.equal(f.total_staked_tao, 10);
   });
@@ -14109,7 +14121,6 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_events forwards kind/block bounds/pagination and returns tier rows", async () => {
-    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       {
@@ -14144,11 +14155,6 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/events"));
-    assert.equal(captured.url.searchParams.get("kind"), "StakeAdded");
-    assert.equal(captured.url.searchParams.get("block_start"), "10");
-    assert.equal(captured.url.searchParams.get("block_end"), "200");
-    assert.equal(captured.url.searchParams.get("limit"), "50");
     const f = body.data.subnet_events;
     assert.equal(f.event_count, 1);
     assert.equal(f.limit, 50);
@@ -14317,7 +14323,6 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_prometheus forwards window and returns the tier card", async () => {
-    const captured: Row = {};
     const env = tierEnv(
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       {
@@ -14338,8 +14343,6 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/prometheus"));
-    assert.equal(captured.url.searchParams.get("window"), "30d");
     const p = body.data.subnet_prometheus;
     assert.equal(p.distinct_exporters, 5);
     assert.equal(p.announcements, 12);
