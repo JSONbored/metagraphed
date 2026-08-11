@@ -1418,12 +1418,9 @@ export async function handleTopHoldersList(
 ) {
   const parsed = parseTopHoldersQuery(url);
   if ("error" in parsed) return analyticsQueryError(parsed.error);
+  // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent
+  // from DATA_API_FORWARD_FLAGS, so this arm resolved to null on every request.
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_TOP_HOLDERS_SOURCE",
-    )) as ReturnType<typeof buildTopHoldersList> | null) ??
     // The LIVE leg (#9469): net_flow_7d/30d/90d, recomputed daily from
     // chain.account_events. Answers only those three sorts and declines the
     // holdings ones, so it takes precedence where it can genuinely rank and
@@ -2073,12 +2070,11 @@ export async function handleSelfHealth(
   // without one, and a missing ctx means "skip the Neon tier", not "fail".
   ctx?: { waitUntil?(promise: Promise<unknown>): void },
 ) {
+  // NO TIER READ (#10190): METAGRAPH_SELF_HEALTH_SOURCE is retired and absent
+  // from DATA_API_FORWARD_FLAGS, so this arm resolved to null on every request.
+  // Neon is the first tier that can actually answer, which is what the comment
+  // below already describes.
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_SELF_HEALTH_SOURCE",
-    )) as ReturnType<typeof buildSelfHealth> | null) ??
     // Neon, where the prober writes now (#9836). Asked BEFORE the lakehouse:
     // the cold tier can only ever answer current_ok:null, and once the probe
     // lane is running there is a current reading to give.
@@ -4582,19 +4578,17 @@ export async function handleAccountEntities(
   env: Env,
   coldkey: string,
 ) {
-  const [entitiesArtifact, ownershipData] = await Promise.all([
-    readArtifact(env, ENTITY_LABELS_ARTIFACT),
-    tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_SUBNET_OWNERSHIP_SOURCE" as keyof Env,
-    ),
-  ]);
+  // NO TIER READ (#10190). METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired in every
+  // deployed config and absent from DATA_API_FORWARD_FLAGS, so this resolved to
+  // null on every request. Note the `as keyof Env` the call needed: that cast was
+  // the only thing letting a flag the helper can no longer accept be passed at
+  // all, which is exactly the blindness #10190's type narrowing removes.
+  const entitiesArtifact = await readArtifact(env, ENTITY_LABELS_ARTIFACT);
   // Through the composer (src/account-entities-answer.ts), which owns the tier
   // order and the empty floor for REST, MCP and GraphQL alike. It used to live
   // here only, which is exactly why the other two surfaces published an empty
   // ownership half. The labels join below applies identically to every tier.
-  const data = await answerAccountEntities(env, coldkey, ownershipData);
+  const data = await answerAccountEntities(env, coldkey, null);
   const artifactEntities = entitiesArtifact.ok
     ? ((entitiesArtifact.data as Record<string, unknown> | undefined)
         ?.entities as Array<Record<string, unknown>> | undefined)

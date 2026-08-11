@@ -437,36 +437,45 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     assert.equal(Array.isArray(body.data.accounts), true);
   });
 
-  test("?format=csv exports the leaderboard rows via the Postgres tier", async () => {
+  // RE-POINTED AT THE LIVE TIER (#10190). This drove the CSV export through
+  // `METAGRAPH_TOP_HOLDERS_SOURCE: "postgres"` and a DATA_API stub -- a
+  // configuration no deployment has: the flag reads "retired" everywhere and is
+  // absent from DATA_API_FORWARD_FLAGS, so the arm it exercised declined on every
+  // real request. The CSV formatter and its formula-injection guard are worth
+  // proving, so the setup moves to the flow tier that actually answers
+  // (src/top-holders-flow-tier.ts, an R2 projection) rather than the test being
+  // deleted along with its coverage.
+  test("?format=csv exports the leaderboard rows via the live flow tier", async () => {
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            sort: "total_tao",
-            limit: 20,
-            account_count: 1,
-            captured_at: new Date(1750000000000).toISOString(),
-            accounts: [
-              {
-                ss58: "5Whale1",
-                free_tao: 1000.5,
-                delegated_tao: 250.25,
-                total_tao: 1250.75,
-                net_flow_7d: -50,
-                net_flow_30d: 200,
-                net_flow_90d: 900,
-                last_updated: new Date(1750000000000).toISOString(),
-              },
-            ],
-          }),
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return {
+            json: async () => ({
+              schema_version: 1,
+              generated_at: "x",
+              row_count: 1,
+              sorts: ["net_flow_7d", "net_flow_30d", "net_flow_90d"],
+              rows: [
+                {
+                  ss58: "5Whale1",
+                  free_tao: 1000.5,
+                  delegated_tao: 250.25,
+                  total_tao: 1250.75,
+                  net_flow_7d: -50,
+                  net_flow_30d: 200,
+                  net_flow_90d: 900,
+                  last_updated: new Date(1750000000000).toISOString(),
+                },
+              ],
+            }),
+          };
+        },
       },
     };
     const res = await handleRequest(
       new Request(
-        "https://api.metagraph.sh/api/v1/accounts/top-holders?format=csv",
+        "https://api.metagraph.sh/api/v1/accounts/top-holders?format=csv&sort=net_flow_7d",
       ),
       env as unknown as Env,
       ctx,

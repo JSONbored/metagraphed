@@ -103,33 +103,12 @@ describe("handleAccountEntities", () => {
     assert.equal(body.data.labels[0].name, "Example Foundation");
   });
 
-  test("a successful DATA_API response wins over the schema-stable cold fallback", async () => {
-    const env = {
-      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            ownership_tie_count: 1,
-            ownership_ties: [
-              { netuid: 7, role: "gained_ownership", block_number: 100 },
-            ],
-          }),
-      },
-    };
-    const body = await json(
-      await handleAccountEntities(
-        req(`/api/v1/accounts/${SS58}/entities`),
-        env as unknown as Env,
-        SS58,
-      ),
-    );
-    assert.equal(body.data.ownership_tie_count, 1);
-    assert.equal(body.data.ownership_ties[0].netuid, 7);
-    // labels still joined locally regardless of which source served ties.
-    assert.deepEqual(body.data.labels, []);
-  });
+  // REMOVED (#10190): "a successful DATA_API response wins over the schema-stable
+  // cold fallback". METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired and absent from
+  // DATA_API_FORWARD_FLAGS, so there was never a response to win -- the ties came
+  // from this test's own stub. Ownership-tie shaping is proven against the
+  // composer's live leg in tests/account-entities-answer.test.ts, and the label
+  // join this also checked is covered by the test immediately above.
 });
 
 describe("handleAccount labels join", () => {

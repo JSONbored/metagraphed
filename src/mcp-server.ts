@@ -9934,19 +9934,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      const [entitiesArtifact, ownershipData] = await Promise.all([
-        ctx.readArtifact!(ctx.env, ENTITY_LABELS_ARTIFACT),
-        tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/entities`),
-          "METAGRAPH_SUBNET_OWNERSHIP_SOURCE",
-        ),
-      ]);
+      // NO TIER READ (#10190) -- METAGRAPH_SUBNET_OWNERSHIP_SOURCE is retired
+      // and absent from DATA_API_FORWARD_FLAGS, so this resolved to null every
+      // call. Same change on the REST and GraphQL sides; the composer's own
+      // lakehouse leg is what answers.
+      const entitiesArtifact = await ctx.readArtifact!(
+        ctx.env,
+        ENTITY_LABELS_ARTIFACT,
+      );
       // Through the composer, which owns the tier order and the empty floor for
       // all three surfaces (src/account-entities-answer.ts). The lakehouse leg
       // it adds is why this tool no longer answers ownership_ties: [] for a
       // coldkey that HAS won or lost a subnet.
-      const data = await answerAccountEntities(ctx.env, ss58, ownershipData);
+      const data = await answerAccountEntities(ctx.env, ss58, null);
       (data as Row).labels = labelsForSs58(
         entityLabelsIndex(
           entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
@@ -11756,16 +11756,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         TOP_HOLDERS_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/accounts/top-holders", {
-            sort,
-            limit,
-          }),
-          "METAGRAPH_TOP_HOLDERS_SOURCE",
-        )) ??
-        // Same tier order handleTopHoldersList uses: the live flow lane, which
-        // ranks all six sorts since its holdings leg started proving (#9469).
+        // NO TIER READ (#10190): METAGRAPH_TOP_HOLDERS_SOURCE is retired and
+        // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
+        // every call. Same tier order handleTopHoldersList uses: the live flow
+        // lane, which ranks all six sorts since its holdings leg started
+        // proving (#9469).
         (await loadTopHoldersFlowTier(ctx.env, { sort, limit })) ??
         buildTopHoldersList([], { sort, limit })
       );
@@ -13046,9 +13041,6 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return answerRpcUsage(ctx.env, {
         window: label,
         observedAt: await mcpObservedAt(ctx),
-        postgresRequest: mcpNeuronsTierRequest("/api/v1/rpc/usage", {
-          window: label,
-        }),
       });
     },
   },

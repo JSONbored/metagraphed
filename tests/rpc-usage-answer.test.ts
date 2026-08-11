@@ -133,8 +133,7 @@ function hotPayload(overrides: Row = {}): Row {
 function stubs({
   hot = null,
   cold = null,
-  postgres = null,
-}: { hot?: Row | null; cold?: Row | null; postgres?: Row | null } = {}) {
+}: { hot?: Row | null; cold?: Row | null } = {}) {
   const calls: string[] = [];
   const coldArgs: Row[] = [];
   return {
@@ -149,10 +148,6 @@ function stubs({
       coldArgs.push(options);
       return cold;
     }) as never,
-    postgresTier: (async () => {
-      calls.push("postgres");
-      return postgres;
-    }) as never,
     floor: (async (options: Row) => {
       calls.push("floor");
       return { floor: true, ...options } as Row;
@@ -161,7 +156,6 @@ function stubs({
 }
 
 const ENV = {} as unknown as Env;
-const PG_REQUEST = new Request("https://example.invalid/api/v1/rpc/usage");
 
 describe("summing two disjoint stores", () => {
   test("counts are additive, so the merged window reports the real magnitude", async () => {
@@ -394,44 +388,19 @@ describe("when the lakehouse is consulted at all", () => {
 describe("the cascade order, in one place instead of three", () => {
   test("the hot tier alone answers when the lakehouse declines", async () => {
     const s = stubs({ hot: hotPayload() });
-    const out = await answerRpcUsage(ENV, {
-      ...s,
-      now: NOW,
-      postgresRequest: PG_REQUEST,
-    });
+    const out = await answerRpcUsage(ENV, { ...s, now: NOW });
     assert.deepEqual(s.calls, ["hot", "cold"]);
     assert.equal((out.summary as Row).total_requests, 3_990);
   });
 
-  test("the Postgres tier is only reached when Analytics Engine had nothing", async () => {
-    const s = stubs({ hot: hotPayload(), cold: coldPayload() });
-    await answerRpcUsage(ENV, {
-      ...s,
-      now: NOW,
-      postgresRequest: PG_REQUEST,
-    });
-    assert.equal(s.calls.includes("postgres"), false);
-  });
-
-  test("the Postgres tier keeps its historical place ahead of the lakehouse", async () => {
-    const s = stubs({
-      cold: coldPayload(),
-      postgres: { summary: { total_requests: 42 } } as Row,
-    });
-    const out = await answerRpcUsage(ENV, {
-      ...s,
-      now: NOW,
-      postgresRequest: PG_REQUEST,
-    });
-    assert.deepEqual(s.calls, ["hot", "cold", "postgres"]);
-    assert.equal((out.summary as Row).total_requests, 42);
-  });
-
-  test("a surface with no upstream request skips the Postgres tier entirely", async () => {
-    const s = stubs({ cold: coldPayload() });
-    await answerRpcUsage(ENV, { ...s, now: NOW });
-    assert.equal(s.calls.includes("postgres"), false);
-  });
+  // THREE TESTS REMOVED HERE (#10190), all of the Postgres arm this composer no
+  // longer has: that it was only reached when Analytics Engine had nothing, that
+  // it kept its place ahead of the lakehouse, and that a surface with no upstream
+  // request skipped it. Each was correct about the code and, in production, about
+  // nothing -- METAGRAPH_RPC_USAGE_SOURCE reads "retired" in every deployed
+  // config and is absent from DATA_API_FORWARD_FLAGS, so the branch they pinned
+  // declined on every real request. A `postgres` stub was the only thing that
+  // ever made it answer.
 
   test("the zeroed floor is reached ONLY when every store declined", async () => {
     // The bug in #9269, stated as a test: this shape is correct when nothing
@@ -441,9 +410,8 @@ describe("the cascade order, in one place instead of three", () => {
       ...s,
       now: NOW,
       observedAt: "2026-08-03T00:00:00.000Z",
-      postgresRequest: PG_REQUEST,
     });
-    assert.deepEqual(s.calls, ["hot", "cold", "postgres", "floor"]);
+    assert.deepEqual(s.calls, ["hot", "cold", "floor"]);
     assert.equal(out.floor, true);
     assert.equal(out.observedAt, "2026-08-03T00:00:00.000Z");
   });

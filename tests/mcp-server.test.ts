@@ -7888,57 +7888,10 @@ describe("MCP get_rpc_usage", () => {
   // formatRpcUsage(...) on any miss/outage, never a live D1 read. This mocks
   // the Postgres tier directly with a REST-shaped response, mirroring
   // workers/data-api.ts's own rpc/usage route.
-  test("returns usage analytics from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            bucket_granularity: "1h",
-            observed_at: null,
-            source: "rpc-proxy",
-            summary: {
-              total_requests: 50,
-              ok_requests: 48,
-              error_requests: 2,
-              error_rate: 0.04,
-              failover_requests: 2,
-              failover_rate: 0.04,
-              cache_hits: 10,
-              cache_hit_rate: 0.2,
-              latency_ms: { p50: 70, p95: 200, avg: 80 },
-            },
-            endpoints: [
-              {
-                endpoint_id: "a",
-                provider: "p",
-                requests: 50,
-                ok_requests: 48,
-                avg_latency_ms: 80,
-              },
-            ],
-            networks: [{ network: "finney", requests: 50, ok_requests: 48 }],
-            buckets: [
-              {
-                ts: new Date(1_700_000_000_000).toISOString(),
-                requests: 5,
-                errors: 0,
-                avg_latency_ms: 75,
-              },
-            ],
-          }),
-      },
-    };
-    const res = await callTool("get_rpc_usage", { window: "7d" }, { env });
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "7d");
-    assert.equal(out.summary.total_requests, 50);
-    assert.equal(out.endpoints[0].endpoint_id, "a");
-    assert.equal(out.networks[0].network, "finney");
-    assert.equal(out.buckets.length, 1);
-  });
+  // REMOVED (#10190): "returns usage analytics from the Postgres tier". The tier
+  // is gone from src/rpc-usage-answer.ts; this asserted a payload only its own
+  // DATA_API stub could produce. Field mapping for a populated card is covered in
+  // tests/rpc-usage.test.ts and tests/rpc-usage-answer.test.ts.
 
   test("rejects an invalid window", async () => {
     const res = await callTool("get_rpc_usage", { window: "99d" }, {});
@@ -16106,25 +16059,11 @@ describe("MCP account tools (get_account + events + subnets)", () => {
     assert.equal(entities.body.result.structuredContent.labels.length, 1);
   });
 
-  test("get_account_entities: a successful DATA_API response wins over the schema-stable cold fallback", async () => {
-    const env = {
-      METAGRAPH_SUBNET_OWNERSHIP_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            ownership_tie_count: 1,
-            ownership_ties: [
-              { netuid: 7, role: "gained_ownership", block_number: 100 },
-            ],
-          }),
-      },
-    };
-    const res = await callTool("get_account_entities", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.structuredContent.ownership_tie_count, 1);
-    assert.equal(res.body.result.structuredContent.ownership_ties[0].netuid, 7);
-  });
+  // REMOVED (#10190): "get_account_entities: a successful DATA_API response wins
+  // over the schema-stable cold fallback". METAGRAPH_SUBNET_OWNERSHIP_SOURCE is
+  // retired and absent from DATA_API_FORWARD_FLAGS, so there was no response to
+  // win -- the ties came from the test's own stub. Ownership-tie shaping is proven
+  // against the composer's live leg in tests/account-entities-answer.test.ts.
 
   test("populated account payloads validate against their declared outputSchemas", async () => {
     // validate-mcp only exercises the cold (empty-array) path, so assert the
@@ -23142,38 +23081,14 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
 // #6743), distinct from the shared METAGRAPH_NEURONS_SOURCE flag the CASES
 // table below tests -- verified separately here rather than folded into
 // that table, same isolation rationale as every other flag-scoped block.
-describe("MCP get_top_holders — Postgres tier wiring", () => {
-  test("flag=postgres uses Postgres data at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({ schema_version: 1, marker: "from-postgres" });
-        },
-      },
-    };
-    const res = await callTool("get_top_holders", {}, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      "/api/v1/accounts/top-holders?sort=total_tao&limit=20",
-    );
-  });
-
-  test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_TOP_HOLDERS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool("get_top_holders", {}, { env });
+// REWRITTEN (#10190): was "MCP get_top_holders — Postgres tier wiring".
+// METAGRAPH_TOP_HOLDERS_SOURCE is retired and absent from DATA_API_FORWARD_FLAGS,
+// so the forwarded path and `marker: "from-postgres"` came only from the stub. The
+// live tier is the flow projection (tests/top-holders-flow-tier.test.ts); what this
+// tool owes on its own is a schema-stable card when nothing answers.
+describe("MCP get_top_holders — the cold shape", () => {
+  test("returns the schema-stable empty card when no tier answers", async () => {
+    const res = await callTool("get_top_holders", {}, { env: {} });
     assert.equal(res.body.result.isError, false);
     assert.equal(res.body.result.structuredContent.marker, undefined);
     assert.equal(res.body.result.structuredContent.account_count, 0);
@@ -23554,79 +23469,29 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
 // METAGRAPH_NEURONS_SOURCE, so it doesn't fit the shared CASES loop above
 // (which hardcodes the neurons-tier flag) -- same two-test-per-tool
 // contract, just with the correct flag name and its own CASES array.
-describe("MCP get_rpc_usage — Postgres tier wiring", () => {
-  const CASES = [
-    {
-      tool: "get_rpc_usage",
-      args: {},
-      path: "/api/v1/rpc/usage?window=7d",
-    },
-    {
-      tool: "get_rpc_usage",
-      args: { window: "30d" },
-      path: "/api/v1/rpc/usage?window=30d",
-    },
-  ];
+// REWRITTEN (#10190): was "MCP get_rpc_usage — Postgres tier wiring".
+// src/rpc-usage-answer.ts no longer has a Postgres arm, so the forwarded path and
+// `marker: "from-postgres"` these cases asserted came only from their own DATA_API
+// stub -- METAGRAPH_RPC_USAGE_SOURCE reads "retired" in every deployed config.
+// What survives is the tool's own contract: the window argument is honoured and
+// the card is schema-stable when no tier answers.
+describe("MCP get_rpc_usage — window handling and the cold shape", () => {
+  for (const window of [undefined, "30d"] as const) {
+    const label = window ? `get_rpc_usage (window=${window})` : "get_rpc_usage";
 
-  for (const { tool, args, path } of CASES) {
-    const label = path.includes("window=30d") ? `${tool} (window=30d)` : tool;
-
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: honours the window and returns a schema-stable card`, async () => {
+      const res = await callTool("get_rpc_usage", window ? { window } : {}, {
+        env: {},
+      });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
-    });
-
-    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
-      const env = {
-        METAGRAPH_RPC_USAGE_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("boom");
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
-      assert.equal(res.body.result.isError, false, label);
-      assert.equal(res.body.result.structuredContent.marker, undefined, label);
+      const card = res.body.result.structuredContent;
+      assert.equal(card.schema_version, 1, label);
+      assert.equal(card.window, window ?? "7d", label);
+      assert.equal(card.summary.total_requests, 0, label);
+      assert.deepEqual(card.endpoints, [], label);
+      assert.deepEqual(card.networks, [], label);
     });
   }
-
-  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
-      },
-    };
-    for (const { tool, args } of CASES) {
-      const res = await callTool(tool, args, { env });
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        undefined,
-        `${tool} should not reach DATA_API without the flag`,
-      );
-    }
-  });
 });
 
 // get_subnet_trajectory / get_economics_trends are gated on
