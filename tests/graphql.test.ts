@@ -4774,7 +4774,8 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
         signer: "5Sudo",
         call_module: "Sudo",
         call_function: "sudo",
-        call_args: [{ name: "call", value: "setWeights" }],
+        // A JSON STRING -- the lane's own column type (see above).
+        call_args: JSON.stringify([{ name: "call", value: "setWeights" }]),
         success: true,
         fee_tao: 0,
         tip_tao: 0,
@@ -4968,7 +4969,9 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
         signer: "5Signer",
         call_module: "SubtensorModule",
         call_function: "register",
-        call_args: [{ name: "netuid", value: 1 }],
+        // A JSON STRING: the lane stores call_args as text and the formatter runs
+        // parseJsonPreservingBigInts over it, so an array here throws and reads null.
+        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
         success: true,
         fee_tao: 0.001,
         tip_tao: 0,
@@ -5270,7 +5273,8 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
         signer: "5Admin",
         call_module: "AdminUtils",
         call_function: "sudo_set_weights_set_rate_limit",
-        call_args: [{ name: "netuid", value: 3 }],
+        // A JSON STRING -- the lane's own column type (see above).
+        call_args: JSON.stringify([{ name: "netuid", value: 3 }]),
         success: true,
         fee_tao: 0,
         tip_tao: 0,
@@ -16375,9 +16379,11 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
       schema_version: 1,
       ss58: SS58,
       event_count: 1,
-      limit: 50,
+      // DERIVED: `limit` is the query's own default and `next_cursor` is null for
+      // a page shorter than it. The retired tier echoed both verbatim.
+      limit: 100,
       offset: 0,
-      next_cursor: "b:1200:3",
+      next_cursor: null,
       events: [
         {
           block_number: 1200,
