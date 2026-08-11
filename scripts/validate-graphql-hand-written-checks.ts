@@ -38,8 +38,18 @@ import { readFileSync } from "node:fs";
  * MEASURED, not chosen. Lower it when you delete one -- that is the only edit
  * this constant should ever receive, and a diff that raises it has to explain
  * itself in review rather than sliding past.
+ *
+ * RAISED ONCE, 245 -> 246 (#9981), and this is the explanation the rule asks
+ * for. `pageDocumentCollection` surfaces `applyQueryFilters`' verdict for the
+ * four document-shaped collection routes, which is the third case listed above:
+ * these resolvers do not go through the REST router, so nothing has parsed the
+ * collection's sort/filter vocabulary by the time they run -- the same reason
+ * `loadEndpointsPage` and every other collection resolver throws here.
+ *
+ * It is ONE throw serving FOUR fields. Writing it per field, as the existing
+ * collection resolvers do, would have cost four.
  */
-const CEILING = 245;
+const CEILING = 246;
 
 const SOURCE = "src/graphql.ts";
 
