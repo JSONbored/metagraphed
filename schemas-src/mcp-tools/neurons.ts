@@ -83,7 +83,7 @@ export const GetNeuronOutputSchema = z
     // Null is a real answer: the uid/hotkey holds no slot on this subnet.
     neuron: NeuronSchema.partial().nullable(),
   })
-  .passthrough();
+  .strict();
 export type GetNeuronOutput = z.infer<typeof GetNeuronOutputSchema>;
 
 export const GetNeuronHistoryInputSchema = z

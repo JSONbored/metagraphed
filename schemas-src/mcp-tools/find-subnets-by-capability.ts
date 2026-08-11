@@ -32,7 +32,7 @@ const FindSubnetsByCapabilityResultItemSchema = z
     callable_count: z.int().optional(),
     integration_readiness: z.unknown().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const FindSubnetsByCapabilityOutputSchema = z
   .object({
@@ -44,7 +44,7 @@ export const FindSubnetsByCapabilityOutputSchema = z
     next_cursor: z.int().nullable(),
     results: z.array(FindSubnetsByCapabilityResultItemSchema),
   })
-  .passthrough();
+  .strict();
 export type FindSubnetsByCapabilityOutput = z.infer<
   typeof FindSubnetsByCapabilityOutputSchema
 >;

@@ -74,6 +74,18 @@ const NOT_YET_TYPED =
 const ROUTE_OPEN_SITES: Record<string, string> = {
   "AdapterArtifact.extensions{}": CALLER_DEFINED_EXTENSION,
   "ApiIndexArtifact.routes[].query_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  // The same parameter schema, reached through the FEED catalog. #10790
+  // declared `feeds`/`networks` on both meta artifacts -- they were written
+  // into both from one builder and declared by neither -- which made these
+  // sites reachable for the first time. Same document, same reason.
+  "ApiIndexArtifact.feeds[].path_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  "ApiIndexArtifact.feeds[].query_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  "ContractsArtifact.feeds[].path_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  "ContractsArtifact.feeds[].query_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  // The OpenAPI document's own `security` requirement objects: the spec owns
+  // that shape, not us. Empty on every published route -- the API is public --
+  // and declared rather than left undescribed since #10790.
+  "OpenApiArtifact.security[]": EMBEDDED_JSON_SCHEMA,
   "BlockChainEventsArtifact.events[].args": DECODED_CHAIN_PAYLOAD,
   "BlockExtrinsicsArtifact.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
   "ChainEventsFeedArtifact.events[].args": DECODED_CHAIN_PAYLOAD,
@@ -106,6 +118,11 @@ const MCP_REASONED_OPEN_SITES: Record<string, string> = {
   "call_rpc.error": CALLER_SHAPED_RESULT,
   "decode_evm_call.args": DECODED_CHAIN_PAYLOAD,
   "get_adapter.extensions": CALLER_DEFINED_EXTENSION,
+  // The feed catalog's parameter schemas, mirrored from the REST contract's
+  // own entries above -- reachable since #10790 declared `feeds` on both meta
+  // artifacts. Same embedded document, same reason.
+  "get_contracts.feeds[].path_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  "get_contracts.feeds[].query_parameters[].schema": EMBEDDED_JSON_SCHEMA,
   "get_api_schema.document": EMBEDDED_THIRD_PARTY_DOCUMENT,
   // Surfaced by typing `extrinsic` from the route's ExtrinsicSchema (#9797):
   // the same decoded-arguments blob its two feed siblings already declare.

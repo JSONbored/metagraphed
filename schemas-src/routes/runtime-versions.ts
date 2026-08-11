@@ -34,6 +34,62 @@ const RuntimeCoverageGapSchema = z
   })
   .strict();
 
+/** One chain's live spec-version reading. */
+const ChainSpecReadingSchema = z
+  .object({
+    network: z.string(),
+    spec_version: z.int().min(0).nullable(),
+    observed_at: z
+      .string()
+      .nullable()
+      .describe(
+        "When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment.",
+      ),
+  })
+  .strict();
+
+const SubtensorReleaseSchema = z
+  .object({
+    tag: z.string(),
+    spec_version: z.int().min(0),
+    published_at: z.string().nullable(),
+    url: z
+      .string()
+      .nullable()
+      .describe("GitHub's own html_url -- never constructed."),
+    name: z.string().nullable(),
+    prerelease: z.boolean(),
+  })
+  .strict();
+
+/**
+ * The forward-looking half of GET /api/v1/runtime, undeclared until #10790.
+ *
+ * `buildUpgradeRadar()` has appended this block since #8702 and the route's own
+ * contract prose describes it in detail -- it was documented, served, and
+ * absent from the schema, which is the exact shape of the gap this issue
+ * closes. Nothing rejected it because the envelope was `.passthrough()`.
+ */
+const UpgradeRadarSchema = z
+  .object({
+    mainnet: ChainSpecReadingSchema,
+    testnet: ChainSpecReadingSchema,
+    latest_release: SubtensorReleaseSchema.nullable(),
+    pending_upgrade: z
+      .enum(["none", "testnet_soaking", "released_undeployed", "unknown"])
+      .describe(
+        "`unknown` when a reading is missing -- deliberately NOT `none`, which is the opposite answer. No deploy date is predicted: the foundation publishes no schedule.",
+      ),
+    versions_behind: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "How far mainnet trails the furthest-along reading, counted in spec versions rather than time. Null when mainnet itself could not be read.",
+      ),
+  })
+  .strict();
+
 export const RuntimeVersionsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -44,8 +100,9 @@ export const RuntimeVersionsArtifactSchema = z
     coverage_from_at: z.string().nullable(),
     coverage_complete: z.boolean(),
     coverage_gaps: z.array(RuntimeCoverageGapSchema),
+    current: UpgradeRadarSchema.optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime.",
   );

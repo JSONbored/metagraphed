@@ -56,16 +56,16 @@ export const GetPipelineHistoryOutputSchema = z
           emission_enabled: z.boolean().nullable(),
           first_emission_block: z.int().nullable(),
         })
-        .passthrough(),
+        .strict(),
     ),
     // Present ONLY on a decline. An empty series is a MEASUREMENT -- a subnet
     // registered after the capture began returns one legitimately.
     degraded: z
       .object({ reason: z.enum(["unavailable"]) })
-      .passthrough()
+      .strict()
       .optional(),
   })
-  .passthrough();
+  .strict();
 export type GetPipelineHistoryOutput = z.infer<
   typeof GetPipelineHistoryOutputSchema
 >;

@@ -77,7 +77,7 @@ const CounterpartyItemSchema = z
     transfer_count: z.int().nullable().optional(),
     last_block: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const GetAccountCounterpartiesOutputSchema = z
   .object({
@@ -96,7 +96,7 @@ export const GetAccountCounterpartiesOutputSchema = z
     // counterparty. Verified against production 2026-08-07.
     relationship: CounterpartyRelationshipSchema.optional(),
   })
-  .passthrough();
+  .strict();
 export type GetAccountCounterpartiesOutput = z.infer<
   typeof GetAccountCounterpartiesOutputSchema
 >;

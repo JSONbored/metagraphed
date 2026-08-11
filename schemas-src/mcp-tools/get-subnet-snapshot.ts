@@ -60,7 +60,7 @@ export const GetSubnetSnapshotOutputSchema = z
     top_validators: SubnetValidatorsArtifactSchema,
     recent_events: SubnetEventsArtifactSchema,
   })
-  .passthrough();
+  .strict();
 export type GetSubnetSnapshotOutput = z.infer<
   typeof GetSubnetSnapshotOutputSchema
 >;

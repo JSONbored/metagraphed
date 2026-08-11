@@ -45,11 +45,17 @@ export const AdapterSnapshotSchema = z
             source_url: z.string().nullable().optional(),
             captured_at: z.string().nullable().optional(),
           })
-          .passthrough(),
+          // OPEN BY CONTRACT: the value is whatever the adapter tracks --
+          // gittensor ships repository/emission tallies, the generic OpenAPI
+          // adapter ships schema counts. 43 of the 58 undeclared fields #10790
+          // found are here, and declaring `maintainer_cut_repo_count` on a
+          // shared component to clear a report is precisely what that issue
+          // forbids. Listed in scripts/validate-schema-opacity.ts.
+          .catchall(z.unknown()),
       )
       .optional(),
   })
-  .passthrough();
+  .strict();
 
 export const AdapterArtifactSchema = ArtifactBaseSchema.extend({
   netuid: z.int().min(0),
@@ -62,7 +68,7 @@ export const AdapterArtifactSchema = ArtifactBaseSchema.extend({
   // entirely. There is no shape to declare, so the contract says so instead
   // of pretending. Listed in scripts/validate-schema-opacity.ts.
   extensions: z
-    .record(z.string(), z.object({}).passthrough())
+    .record(z.string(), z.object({}).catchall(z.unknown()))
     .describe(
       "Per-adapter extension metadata keyed by provider id; each value's shape is adapter-specific.",
     ),
@@ -70,7 +76,7 @@ export const AdapterArtifactSchema = ArtifactBaseSchema.extend({
     .optional()
     .describe("Captured adapter metrics payload; shape is adapter-specific."),
 })
-  .passthrough()
+  .strict()
   .describe(
     "One adapter-backed public metrics snapshot. snapshot and extensions are opaque JSON -- their shape is adapter-specific. Mirrors GET /api/v1/adapters/{slug}'s data envelope.",
   );

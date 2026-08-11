@@ -48,7 +48,7 @@ const ChainEventItemSchema = z
     // guessed/partial sentence.
     summary: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const GetBlockChainEventsOutputSchema = z
   .object({
@@ -57,7 +57,7 @@ export const GetBlockChainEventsOutputSchema = z
     event_count: z.int(),
     events: z.array(ChainEventItemSchema),
   })
-  .passthrough();
+  .strict();
 export type GetBlockChainEventsOutput = z.infer<
   typeof GetBlockChainEventsOutputSchema
 >;
@@ -122,7 +122,7 @@ export const GetExtrinsicChainEventsOutputSchema = z
     next_cursor: z.string().nullable().optional(),
     events: z.array(ChainEventItemSchema),
   })
-  .passthrough();
+  .strict();
 export type GetExtrinsicChainEventsOutput = z.infer<
   typeof GetExtrinsicChainEventsOutputSchema
 >;

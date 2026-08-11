@@ -14,10 +14,9 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { ALPHA_USD_OVERLAY, FieldSourcesSchema } from "../shared.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "./subnet-alpha-volume.ts";
 import { IntensityDistributionSchema } from "./chain-network-rollups.ts";
-import { ALPHA_USD_UNAVAILABLE } from "../../src/alpha-usd.ts";
 
 export const ChainAlphaVolumeArtifactSchema = z
   .object({
@@ -67,29 +66,12 @@ export const ChainAlphaVolumeArtifactSchema = z
       "Spread of per-subnet total_volume_tao across EVERY subnet with volume (not just the returned page, so the spread stays network-wide when limit truncates the leaderboard). Null when no subnet had volume.",
     ),
     subnets: z.array(SubnetAlphaVolumeArtifactSchema),
-    tao_usd: z
-      .object({
-        usd_per_tao: z.number(),
-        block_number: z.int().nullable(),
-        observed_at: z.string().nullable(),
-        price_basis: z.string().nullable(),
-      })
-      .strict()
-      .optional()
-      .describe(
-        "The reading every _usd field was converted at -- the network rollup and each per-subnet row alike, so one reading priced them all.",
-      ),
+    ...ALPHA_USD_OVERLAY,
     usd_pricing_basis: z
       .literal("window_close_rate")
       .optional()
       .describe(
         "HOW the totals were converted: at the rate observed at the window's close, not summed per trade. volume_distribution is NOT converted -- its percentiles stay TAO, and a caller wanting them in dollars multiplies by usd_per_tao above.",
-      ),
-    tao_usd_unavailable: z
-      .enum(ALPHA_USD_UNAVAILABLE)
-      .optional()
-      .describe(
-        "Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.",
       ),
     field_sources: FieldSourcesSchema.optional(),
   })

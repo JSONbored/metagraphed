@@ -63,7 +63,7 @@ const SchemaDriftSummarySchema = z
     by_status: CountMapSchema,
     by_drift_status: CountMapSchema,
   })
-  .passthrough();
+  .strict();
 
 export const SchemaDriftArtifactSchema = ArtifactBaseSchema.extend({
   openapi_surface_count: z.int().min(0),

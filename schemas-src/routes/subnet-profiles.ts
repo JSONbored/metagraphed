@@ -24,6 +24,7 @@ import {
   CandidateSurfaceSchema,
   EndpointResourceSchema,
   GapsSchema,
+  LIVE_HEALTH_OVERLAY,
   SubnetDetailSchema,
   SurfaceSchema,
 } from "./subnet-detail.ts";
@@ -49,6 +50,7 @@ export type SubnetProfilesArtifact = z.infer<
 >;
 
 export const SubnetProfileArtifactSchema = ArtifactBaseSchema.extend({
+  ...LIVE_HEALTH_OVERLAY,
   profile: SubnetProfileSchema,
   subnet: SubnetDetailSchema,
   surfaces: z.array(SurfaceSchema),
@@ -57,6 +59,57 @@ export const SubnetProfileArtifactSchema = ArtifactBaseSchema.extend({
   gaps: GapsSchema,
 });
 export type SubnetProfileArtifact = z.infer<typeof SubnetProfileArtifactSchema>;
+
+/**
+ * The captured OpenAPI snapshot's own metadata -- ONE declaration (#10790).
+ *
+ * `get_api_schema` returns exactly this object at its top level and declared
+ * eight of its twenty-three fields, so everything that makes a snapshot
+ * interpretable -- the hashes, the drift verdict, the counts, `auth_detail` --
+ * was served undescribed. Exported rather than copied: a second declaration is
+ * how the copy comes to omit the field that matters.
+ */
+export const SchemaSnapshotSchema = z
+  .object({
+    surface_id: z.string().nullable().optional(),
+    surface_url: z.string().nullable().optional(),
+    schema_url: z.string().nullable().optional(),
+    netuid: z.int().min(0).nullable().optional(),
+    subnet_name: z.string().nullable().optional(),
+    subnet_slug: z.string().nullable().optional(),
+    title: z.string().nullable().optional(),
+    version: z.string().nullable().optional(),
+    openapi_version: z.string().nullable().optional(),
+    path_count: z.int().min(0).optional(),
+    component_schema_count: z.int().min(0).optional(),
+    server_count: z.int().min(0).optional(),
+    tag_count: z.int().min(0).optional(),
+    auth_required: z.boolean().optional(),
+    // An OBJECT, not a string -- 30 of 65 rows carry one and 29 are null,
+    // so a single-row sample reads as "always null" (#9800). It describes
+    // HOW the surface authenticates: which scheme, in which header, and the
+    // shape of the value. `value_format` is a placeholder like `<api-key>`,
+    // never a credential.
+    auth_detail: z
+      .object({
+        scheme: z.string().nullable().optional(),
+        location: z.string().nullable().optional(),
+        name: z.string().nullable().optional(),
+        value_format: z.string().nullable().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    auth_schemes: z.array(z.string()).optional(),
+    hash: z.string().nullable().optional(),
+    previous_hash: z.string().nullable().optional(),
+    drift_status: z.string().nullable().optional(),
+    observed_at: z.string().nullable().optional(),
+    generated_at: z.string().nullable().optional(),
+    contract_version: z.string().nullable().optional(),
+    schema_version: z.int().optional(),
+  })
+  .strict();
 
 const SchemaIndexEntrySchema = z
   .object({
@@ -73,48 +126,7 @@ const SchemaIndexEntrySchema = z
     // This is the captured OpenAPI snapshot's own metadata: what was fetched,
     // when, from where, and whether it has drifted since. Verified field by
     // field against a live list_schemas response.
-    snapshot: z
-      .object({
-        surface_id: z.string().nullable().optional(),
-        surface_url: z.string().nullable().optional(),
-        schema_url: z.string().nullable().optional(),
-        netuid: z.int().min(0).nullable().optional(),
-        subnet_name: z.string().nullable().optional(),
-        subnet_slug: z.string().nullable().optional(),
-        title: z.string().nullable().optional(),
-        version: z.string().nullable().optional(),
-        openapi_version: z.string().nullable().optional(),
-        path_count: z.int().min(0).optional(),
-        component_schema_count: z.int().min(0).optional(),
-        server_count: z.int().min(0).optional(),
-        tag_count: z.int().min(0).optional(),
-        auth_required: z.boolean().optional(),
-        // An OBJECT, not a string -- 30 of 65 rows carry one and 29 are null,
-        // so a single-row sample reads as "always null" (#9800). It describes
-        // HOW the surface authenticates: which scheme, in which header, and the
-        // shape of the value. `value_format` is a placeholder like `<api-key>`,
-        // never a credential.
-        auth_detail: z
-          .object({
-            scheme: z.string().nullable().optional(),
-            location: z.string().nullable().optional(),
-            name: z.string().nullable().optional(),
-            value_format: z.string().nullable().optional(),
-          })
-          .passthrough()
-          .nullable()
-          .optional(),
-        auth_schemes: z.array(z.string()).optional(),
-        hash: z.string().nullable().optional(),
-        previous_hash: z.string().nullable().optional(),
-        drift_status: z.string().nullable().optional(),
-        observed_at: z.string().nullable().optional(),
-        generated_at: z.string().nullable().optional(),
-        contract_version: z.string().nullable().optional(),
-        schema_version: z.int().optional(),
-      })
-      .passthrough()
-      .optional(),
+    snapshot: SchemaSnapshotSchema.optional(),
     status: z.enum([
       "captured",
       "error",

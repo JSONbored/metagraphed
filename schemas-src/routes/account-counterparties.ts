@@ -104,7 +104,7 @@ export const AccountCounterpartiesArtifactSchema = z
       "Present only in relationship (counterparty) mode; null in list mode.",
     ),
   })
-  .passthrough();
+  .strict();
 export type AccountCounterpartiesArtifact = z.infer<
   typeof AccountCounterpartiesArtifactSchema
 >;

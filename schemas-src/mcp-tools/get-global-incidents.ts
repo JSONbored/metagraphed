@@ -21,6 +21,7 @@ import {
   orderSchema,
   sortSchema,
   windowSchema,
+  McpListPageFields,
 } from "./shared.ts";
 import { GlobalIncidentsArtifactSchema } from "../routes/health-surfaces.ts";
 
@@ -45,7 +46,12 @@ export type GetGlobalIncidentsInput = z.infer<
   typeof GetGlobalIncidentsInputSchema
 >;
 
-export const GetGlobalIncidentsOutputSchema = GlobalIncidentsArtifactSchema;
+export const GetGlobalIncidentsOutputSchema =
+  GlobalIncidentsArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpListPageFields,
+  });
 export type GetGlobalIncidentsOutput = z.infer<
   typeof GetGlobalIncidentsOutputSchema
 >;

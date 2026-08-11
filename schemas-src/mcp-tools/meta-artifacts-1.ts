@@ -26,6 +26,7 @@ import {
   limitSchema,
   orderSchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
@@ -71,7 +72,11 @@ export const GetContractsInputSchema = z
   .strict();
 export type GetContractsInput = z.infer<typeof GetContractsInputSchema>;
 
-export const GetContractsOutputSchema = ContractsArtifactSchema;
+export const GetContractsOutputSchema = ContractsArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpUnsortedPageFields,
+});
 export type GetContractsOutput = z.infer<typeof GetContractsOutputSchema>;
 
 export const GetSourceHealthInputSchema = z.object({}).strict();

@@ -11,6 +11,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { OpenObjectSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { EvmAddressMappingArtifactSchema } from "../routes/network-singletons.ts";
 
@@ -41,7 +42,9 @@ export const DecodeEvmCallOutputSchema = z
     address: z.string().nullable(),
     function: z.string().nullable(),
     signature: z.string().optional(),
-    args: z.object({}).passthrough().optional(),
+    // The decoded call arguments. GENUINELY OPEN: the key set is whatever the
+    // decoded function signature declares, so there is no shape to write down.
+    args: OpenObjectSchema.optional(),
   })
   .strict();
 export type DecodeEvmCallOutput = z.infer<typeof DecodeEvmCallOutputSchema>;

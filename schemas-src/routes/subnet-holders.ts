@@ -116,5 +116,5 @@ export const SubnetHoldersArtifactSchema = z
       "Present ONLY on a decline. Its absence is what says the ranking is real -- an empty holders list with no degraded block means the subnet genuinely has no measured holders.",
     ),
   })
-  .passthrough();
+  .strict();
 export type SubnetHoldersArtifact = z.infer<typeof SubnetHoldersArtifactSchema>;

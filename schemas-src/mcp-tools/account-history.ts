@@ -42,7 +42,7 @@ const AccountHistoryDaySchema = z
     first_block: z.int().nullable().optional(),
     last_block: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const GetAccountHistoryOutputSchema = z
   .object({
@@ -51,9 +51,15 @@ export const GetAccountHistoryOutputSchema = z
     day_count: z.int(),
     limit: z.int().nullable().optional(),
     offset: z.int().nullable().optional(),
+    next_cursor: z
+      .int()
+      .min(0)
+      .nullable()
+      .optional()
+      .describe("Null on the last page -- absence of a next page, not zero."),
     days: z.array(AccountHistoryDaySchema),
   })
-  .passthrough();
+  .strict();
 export type GetAccountHistoryOutput = z.infer<
   typeof GetAccountHistoryOutputSchema
 >;

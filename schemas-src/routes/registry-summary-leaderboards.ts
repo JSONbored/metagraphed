@@ -28,7 +28,7 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
       providers: z.int().min(0),
       candidates: z.int().min(0),
     })
-    .passthrough(),
+    .strict(),
   curation_level_counts: CountMapSchema.optional(),
   profile_level_counts: CountMapSchema.optional(),
   top_subnets: z.array(
@@ -41,7 +41,7 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
         profile_level: z.string().optional(),
         curation_level: z.string().optional(),
       })
-      .passthrough(),
+      .strict(),
   ),
   // #9800. Was a bare open object; this is the publish-time diff summary, and
   // the counts inside it are the whole point of the field.
@@ -54,7 +54,7 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
           modified: z.int().min(0).optional(),
           removed: z.int().min(0).optional(),
         })
-        .passthrough()
+        .strict()
         .optional(),
       subnets: z
         .object({
@@ -62,12 +62,12 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
           removed: z.int().min(0).optional(),
           renamed: z.int().min(0).optional(),
         })
-        .passthrough()
+        .strict()
         .optional(),
     })
-    .passthrough()
+    .strict()
     .optional(),
-}).passthrough();
+}).strict();
 export type RegistrySummaryArtifact = z.infer<
   typeof RegistrySummaryArtifactSchema
 >;
@@ -126,7 +126,7 @@ const LeaderboardEntrySchema = z
     alpha_price_change_1d: z.number().nullable().optional(),
     alpha_price_change_7d: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const RegistryLeaderboardsArtifactSchema = z
   .object({
@@ -151,7 +151,7 @@ export const RegistryLeaderboardsArtifactSchema = z
         "Every board keyed by board name, each an array of ranked subnet entries capped at limit. Opaque JSON like HealthTrends.windows: the keys are dynamic AND hyphenated (fastest-rpc, most-complete, open-slots, …) so they are not expressible as GraphQL field names, and each board carries its own metric columns (healthiest has uptime_ratio/surfaces_ok, fastest-rpc has latency_ms, fastest-growing has completeness_delta, …). Passing it through verbatim keeps the REST/MCP get_registry_leaderboards shape byte-for-byte.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards.",
   );

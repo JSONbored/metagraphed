@@ -87,7 +87,7 @@ export const GetHealthHistoryOutputSchema = z
     sort: z.string().nullable().optional(),
     order: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type GetHealthHistoryOutput = z.infer<
   typeof GetHealthHistoryOutputSchema
 >;

@@ -77,7 +77,7 @@ export const SubnetTurnoverArtifactSchema = z
         "Per-neuron churn detail behind the counts above, populated only when the field's changes toggle is set (mirroring REST's ?changes=true). Null otherwise, and on a cold store.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard.",
   );

@@ -59,7 +59,7 @@ export const BlockChainEventsArtifactSchema = z
     count: z.int().min(0),
     events: z.array(ChainEventSchema),
   })
-  .passthrough();
+  .strict();
 export type BlockChainEventsArtifact = z.infer<
   typeof BlockChainEventsArtifactSchema
 >;

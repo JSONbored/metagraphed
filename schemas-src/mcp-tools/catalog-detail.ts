@@ -14,6 +14,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { SchemaSnapshotSchema } from "../routes/subnet-profiles.ts";
 import {
   OpenArraySchema,
   OpenObjectSchema,
@@ -43,7 +44,7 @@ export const ListSubnetApisOutputSchema = z
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type ListSubnetApisOutput = z.infer<typeof ListSubnetApisOutputSchema>;
 
 export const GetApiSchemaInputSchema = z
@@ -53,17 +54,29 @@ export const GetApiSchemaInputSchema = z
   .strict();
 export type GetApiSchemaInput = z.infer<typeof GetApiSchemaInputSchema>;
 
-export const GetApiSchemaOutputSchema = z
-  .object({
-    surface_id: z.string(),
-    kind: z.string().nullable().optional(),
-    base_url: z.string().nullable().optional(),
-    auth_required: z.boolean().nullable().optional(),
-    auth_schemes: OpenArraySchema.optional(),
-    drift_status: z.string().nullable().optional(),
-    document: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+/**
+ * The captured snapshot, THEN this tool's three additions (#10790).
+ *
+ * `get_api_schema` returns the schema index's own snapshot object at the top
+ * level, and this declared eight of its twenty-three fields: the hashes and
+ * the drift verdict that say whether the schema has CHANGED, the four counts
+ * that say how big it is, the subnet it belongs to, and `auth_detail` -- the
+ * object that tells an agent how to authenticate -- all went out undescribed.
+ *
+ * Derived from `SchemaSnapshotSchema` rather than re-listed, so the tool and
+ * the index it reads cannot drift apart.
+ */
+export const GetApiSchemaOutputSchema = SchemaSnapshotSchema.extend({
+  // Required here, unlike on the index row: this tool is ADDRESSED by
+  // surface_id, so the answer always names the surface it is about.
+  surface_id: z.string(),
+  kind: z.string().nullable().optional(),
+  base_url: z.string().nullable().optional(),
+  auth_schemes: OpenArraySchema.optional(),
+  // The fetched OpenAPI document itself -- genuinely open, it is whatever the
+  // surface published.
+  document: OpenObjectSchema.nullable().optional(),
+}).strict();
 export type GetApiSchemaOutput = z.infer<typeof GetApiSchemaOutputSchema>;
 
 export const GetFixtureInputSchema = z
@@ -80,7 +93,7 @@ export const GetFixtureOutputSchema = z
   .object({
     surface_id: z.string(),
   })
-  .passthrough();
+  .strict();
 export type GetFixtureOutput = z.infer<typeof GetFixtureOutputSchema>;
 
 export const GetProviderDetailInputSchema = z

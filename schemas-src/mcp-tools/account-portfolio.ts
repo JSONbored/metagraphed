@@ -117,7 +117,7 @@ export const GetAccountSnapshotOutputSchema = z
     positions: AccountPositionsArtifactSchema,
     recent_events: AccountEventsArtifactSchema,
   })
-  .passthrough();
+  .strict();
 export type GetAccountSnapshotOutput = z.infer<
   typeof GetAccountSnapshotOutputSchema
 >;

@@ -81,7 +81,7 @@ export const AccountIdentityHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(AccountIdentityHistoryEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type AccountIdentityHistoryArtifact = z.infer<
   typeof AccountIdentityHistoryArtifactSchema
 >;

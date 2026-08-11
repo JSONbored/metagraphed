@@ -6,7 +6,7 @@
 // neither route needs a Query schema. Modeled from the hand-edited
 // FixturesIndexArtifact/FixtureArtifact components they replace.
 import { z } from "zod";
-import { ArtifactBaseSchema } from "../envelope.ts";
+import { ArtifactBaseSchema, PublishedAtSchema } from "../envelope.ts";
 import { SurfaceKindSchema } from "./subnet-detail.ts";
 
 // Bare `{type:"object", additionalProperties:true}` (hand-written
@@ -18,7 +18,7 @@ export const JsonObjectSchema = z.record(z.string(), z.unknown());
 export type JsonObject = z.infer<typeof JsonObjectSchema>;
 
 export const FixturesIndexArtifactSchema = ArtifactBaseSchema.extend({
-  published_at: z.string().nullable().optional(),
+  published_at: PublishedAtSchema,
   candidate_count: z.int().min(0).optional(),
   fixture_count: z.int().min(0),
   missing_count: z.int().min(0).optional(),
@@ -37,7 +37,7 @@ export const FixturesIndexArtifactSchema = ArtifactBaseSchema.extend({
           response_status: z.int().nullable().optional(),
           artifact_path: z.string().nullable().optional(),
         })
-        .passthrough(),
+        .strict(),
     )
     .optional(),
   fixtures: z.array(
@@ -50,9 +50,9 @@ export const FixturesIndexArtifactSchema = ArtifactBaseSchema.extend({
         captured_at: z.string().nullable().optional(),
         response_status: z.int().nullable().optional(),
       })
-      .passthrough(),
+      .strict(),
   ),
-}).passthrough();
+}).strict();
 export type FixturesIndexArtifact = z.infer<typeof FixturesIndexArtifactSchema>;
 
 export const FixtureArtifactSchema = ArtifactBaseSchema.extend({
@@ -67,7 +67,7 @@ export const FixtureArtifactSchema = ArtifactBaseSchema.extend({
       method: z.literal("GET"),
       url: z.url(),
     })
-    .passthrough(),
+    .strict(),
   response: z
     .object({
       status: z.int(),
@@ -81,6 +81,6 @@ export const FixtureArtifactSchema = ArtifactBaseSchema.extend({
         z.null(),
       ]),
     })
-    .passthrough(),
-}).passthrough();
+    .strict(),
+}).strict();
 export type FixtureArtifact = z.infer<typeof FixtureArtifactSchema>;

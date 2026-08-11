@@ -54,7 +54,7 @@ export const SubnetHistoryArtifactSchema = z
     days_covered: z.int().min(0),
     points: z.array(SubnetHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope.",
   );

@@ -915,6 +915,8 @@ export type BuildSummary = {
   provider_count?: Maybe<Scalars['Int']['output']>;
   public_contract?: Maybe<BuildPublicContract>;
   published_at?: Maybe<Scalars['String']['output']>;
+  /** Why the build refused to reuse the committed schema index. NULL ON A HEALTHY BUILD -- non-null means this build lost every captured schema in the index, and validate.ts fails the pipeline on it. */
+  schema_index_discard?: Maybe<BuildSummarySchemaIndexDiscard>;
   schema_version: Scalars['Int']['output'];
   storage_tier_counts?: Maybe<Scalars['JSON']['output']>;
   storage_tier_size_bytes?: Maybe<Scalars['JSON']['output']>;
@@ -935,6 +937,13 @@ export type BuildSummaryArtifactArtifacts = {
   sha256?: Maybe<Scalars['String']['output']>;
   size_bytes?: Maybe<Scalars['Int']['output']>;
   storage_tier?: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildSummarySchemaIndexDiscard = {
+  __typename?: 'BuildSummarySchemaIndexDiscard';
+  /** How many captured schemas the discarded index held. Greater than zero is the failure condition. */
+  dropped_captured: Scalars['Int']['output'];
+  reason: Scalars['String']['output'];
 };
 
 /** Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope. */
@@ -1567,6 +1576,15 @@ export type ChainSigners = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+/** One chain's live spec-version reading. */
+export type ChainSpecReading = {
+  __typename?: 'ChainSpecReading';
+  network: Scalars['String']['output'];
+  /** When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment. */
+  observed_at?: Maybe<Scalars['String']['output']>;
+  spec_version?: Maybe<Scalars['Int']['output']>;
+};
+
 /** Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope. */
 export type ChainStakeFlow = {
   __typename?: 'ChainStakeFlow';
@@ -2060,8 +2078,11 @@ export type Contracts = {
   artifacts?: Maybe<Array<ContractsArtifactArtifacts>>;
   base_path?: Maybe<Scalars['String']['output']>;
   contract_version?: Maybe<Scalars['String']['output']>;
+  /** The feed catalog. Nullable because the fields projection can drop it, not because the artifact may lack it. */
+  feeds?: Maybe<Array<ContractsFeed>>;
   generated_at?: Maybe<Scalars['String']['output']>;
   name?: Maybe<Scalars['String']['output']>;
+  networks?: Maybe<ContractsNetworks>;
   notes?: Maybe<Scalars['JSON']['output']>;
   openapi_url?: Maybe<Scalars['String']['output']>;
   primary_domain?: Maybe<Scalars['String']['output']>;
@@ -2089,6 +2110,43 @@ export type ContractsArtifactArtifactsRetirement = {
   code: Scalars['String']['output'];
   http_status: Scalars['Int']['output'];
   message: Scalars['String']['output'];
+};
+
+/** One feed in the published catalog. A feed is RENDERED LIVE and emits RSS/Atom/JSON Feed -- it is not a stored artifact in the success envelope, and an agent that treated the two alike would parse XML as JSON. */
+export type ContractsFeed = {
+  __typename?: 'ContractsFeed';
+  /** Parallel to formats -- the content type each of those renders as. */
+  content_types: Array<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
+  formats: Array<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  /** The FeedTarget kind parseFeedPath resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry. */
+  kind: Scalars['String']['output'];
+  method: Scalars['String']['output'];
+  path: Scalars['String']['output'];
+  path_parameters: Array<ContractsFeedParameter>;
+  public: Scalars['Boolean']['output'];
+  query_parameters: Array<ContractsFeedParameter>;
+};
+
+/** One parameter a feed accepts. ONE type for both the path and query lists: the component declares them from the same shape, and a second published type over the same vocabulary is how the two come to disagree. */
+export type ContractsFeedParameter = {
+  __typename?: 'ContractsFeedParameter';
+  description?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  /** JSON Schema for this parameter's accepted values. */
+  schema: Scalars['JSON']['output'];
+};
+
+/** The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree. */
+export type ContractsNetworks = {
+  __typename?: 'ContractsNetworks';
+  aliases: Array<Scalars['String']['output']>;
+  data_aliases: Array<Scalars['String']['output']>;
+  default: Scalars['String']['output'];
+  mainnet_only_route_count: Scalars['Int']['output'];
+  note: Scalars['String']['output'];
+  path_form: Scalars['String']['output'];
 };
 
 export type CoverageArtifact = {
@@ -5707,6 +5765,8 @@ export type RuntimeVersionHistory = {
   coverage_from_at?: Maybe<Scalars['String']['output']>;
   coverage_from_block?: Maybe<Scalars['Int']['output']>;
   coverage_gaps?: Maybe<Array<RuntimeCoverageGap>>;
+  /** The forward-looking half: live mainnet/testnet spec versions, the latest subtensor release, and the derived pending-upgrade state. REST has served this since #8702 and GraphQL could not select it until #10790. */
+  current?: Maybe<UpgradeRadar>;
   current_spec_version?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   transition_count: Scalars['Int']['output'];
@@ -6469,7 +6529,11 @@ export type SubnetLifecycleEntry = {
 
 export type SubnetList = {
   __typename?: 'SubnetList';
+  /** When the chain snapshot behind this index was captured. Distinct from the build's own stamp, which this view does not publish -- a rebuild that read no new blocks advances that and not this. */
+  captured_at?: Maybe<Scalars['String']['output']>;
   items: Array<Subnet>;
+  /** Capture stamp of the native (SDK) snapshot the identity overlay was merged onto. Null until an overlay has been merged. */
+  native_snapshot_captured_at?: Maybe<Scalars['String']['output']>;
   next_cursor?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
 };
@@ -7268,6 +7332,17 @@ export type SubscriptionChainEventsArgs = {
   tables?: InputMaybe<Array<ChainFirehoseTable>>;
 };
 
+export type SubtensorRelease = {
+  __typename?: 'SubtensorRelease';
+  name?: Maybe<Scalars['String']['output']>;
+  prerelease: Scalars['Boolean']['output'];
+  published_at?: Maybe<Scalars['String']['output']>;
+  spec_version: Scalars['Int']['output'];
+  tag: Scalars['String']['output'];
+  /** GitHub's own html_url -- never constructed. */
+  url?: Maybe<Scalars['String']['output']>;
+};
+
 /** The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope. */
 export type SudoKey = {
   __typename?: 'SudoKey';
@@ -7397,6 +7472,18 @@ export type TurnoverValidatorChange = {
 export type UnavailableDegraded = {
   __typename?: 'UnavailableDegraded';
   reason: Scalars['String']['output'];
+};
+
+/** Where the two chains are against the latest release. NO DEPLOY DATE IS PREDICTED anywhere here -- the foundation publishes no schedule, and a field implying one would be invented. */
+export type UpgradeRadar = {
+  __typename?: 'UpgradeRadar';
+  latest_release?: Maybe<SubtensorRelease>;
+  mainnet: ChainSpecReading;
+  /** none / testnet_soaking / released_undeployed / unknown. The unknown value means a reading was missing -- deliberately NOT none, which is the opposite answer. */
+  pending_upgrade: Scalars['String']['output'];
+  testnet: ChainSpecReading;
+  /** How far mainnet trails the furthest-along reading, counted in spec versions rather than time. Null when mainnet itself could not be read. */
+  versions_behind?: Maybe<Scalars['Int']['output']>;
 };
 
 /** One daily uptime point for a surface. */
@@ -7814,6 +7901,7 @@ export type ResolversTypes = ResolversObject<{
   BuildSummary: ResolverTypeWrapper<BuildSummary>;
   BuildSummaryArtifactArtifactBudgetSummary: ResolverTypeWrapper<BuildSummaryArtifactArtifactBudgetSummary>;
   BuildSummaryArtifactArtifacts: ResolverTypeWrapper<BuildSummaryArtifactArtifacts>;
+  BuildSummarySchemaIndexDiscard: ResolverTypeWrapper<BuildSummarySchemaIndexDiscard>;
   ChainActivity: ResolverTypeWrapper<ChainActivity>;
   ChainActivityDay: ResolverTypeWrapper<ChainActivityDay>;
   ChainAlphaVolume: ResolverTypeWrapper<ChainAlphaVolume>;
@@ -7862,6 +7950,7 @@ export type ResolversTypes = ResolversObject<{
   ChainServingSubnet: ResolverTypeWrapper<ChainServingSubnet>;
   ChainSigner: ResolverTypeWrapper<ChainSigner>;
   ChainSigners: ResolverTypeWrapper<ChainSigners>;
+  ChainSpecReading: ResolverTypeWrapper<ChainSpecReading>;
   ChainStakeFlow: ResolverTypeWrapper<ChainStakeFlow>;
   ChainStakeFlowDistribution: ResolverTypeWrapper<ChainStakeFlowDistribution>;
   ChainStakeFlowNetwork: ResolverTypeWrapper<ChainStakeFlowNetwork>;
@@ -7906,6 +7995,9 @@ export type ResolversTypes = ResolversObject<{
   Contracts: ResolverTypeWrapper<Contracts>;
   ContractsArtifactArtifacts: ResolverTypeWrapper<ContractsArtifactArtifacts>;
   ContractsArtifactArtifactsRetirement: ResolverTypeWrapper<ContractsArtifactArtifactsRetirement>;
+  ContractsFeed: ResolverTypeWrapper<ContractsFeed>;
+  ContractsFeedParameter: ResolverTypeWrapper<ContractsFeedParameter>;
+  ContractsNetworks: ResolverTypeWrapper<ContractsNetworks>;
   CoverageArtifact: ResolverTypeWrapper<CoverageArtifact>;
   CoverageArtifactSource: ResolverTypeWrapper<CoverageArtifactSource>;
   CoverageCompleteness: ResolverTypeWrapper<CoverageCompleteness>;
@@ -8136,6 +8228,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetYieldHistoryPoint: ResolverTypeWrapper<SubnetYieldHistoryPoint>;
   SubnetYieldNeuron: ResolverTypeWrapper<SubnetYieldNeuron>;
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  SubtensorRelease: ResolverTypeWrapper<SubtensorRelease>;
   SudoKey: ResolverTypeWrapper<SudoKey>;
   Surface: ResolverTypeWrapper<Surface>;
   SurfaceHistoryChange: ResolverTypeWrapper<SurfaceHistoryChange>;
@@ -8147,6 +8240,7 @@ export type ResolversTypes = ResolversObject<{
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
   TurnoverValidatorChange: ResolverTypeWrapper<TurnoverValidatorChange>;
   UnavailableDegraded: ResolverTypeWrapper<UnavailableDegraded>;
+  UpgradeRadar: ResolverTypeWrapper<UpgradeRadar>;
   UptimeDay: ResolverTypeWrapper<UptimeDay>;
   UptimeLatency: ResolverTypeWrapper<UptimeLatency>;
   UptimeReliability: ResolverTypeWrapper<UptimeReliability>;
@@ -8245,6 +8339,7 @@ export type ResolversParentTypes = ResolversObject<{
   BuildSummary: BuildSummary;
   BuildSummaryArtifactArtifactBudgetSummary: BuildSummaryArtifactArtifactBudgetSummary;
   BuildSummaryArtifactArtifacts: BuildSummaryArtifactArtifacts;
+  BuildSummarySchemaIndexDiscard: BuildSummarySchemaIndexDiscard;
   ChainActivity: ChainActivity;
   ChainActivityDay: ChainActivityDay;
   ChainAlphaVolume: ChainAlphaVolume;
@@ -8292,6 +8387,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainServingSubnet: ChainServingSubnet;
   ChainSigner: ChainSigner;
   ChainSigners: ChainSigners;
+  ChainSpecReading: ChainSpecReading;
   ChainStakeFlow: ChainStakeFlow;
   ChainStakeFlowDistribution: ChainStakeFlowDistribution;
   ChainStakeFlowNetwork: ChainStakeFlowNetwork;
@@ -8336,6 +8432,9 @@ export type ResolversParentTypes = ResolversObject<{
   Contracts: Contracts;
   ContractsArtifactArtifacts: ContractsArtifactArtifacts;
   ContractsArtifactArtifactsRetirement: ContractsArtifactArtifactsRetirement;
+  ContractsFeed: ContractsFeed;
+  ContractsFeedParameter: ContractsFeedParameter;
+  ContractsNetworks: ContractsNetworks;
   CoverageArtifact: CoverageArtifact;
   CoverageArtifactSource: CoverageArtifactSource;
   CoverageCompleteness: CoverageCompleteness;
@@ -8565,6 +8664,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetYieldHistoryPoint: SubnetYieldHistoryPoint;
   SubnetYieldNeuron: SubnetYieldNeuron;
   Subscription: Record<PropertyKey, never>;
+  SubtensorRelease: SubtensorRelease;
   SudoKey: SudoKey;
   Surface: Surface;
   SurfaceHistoryChange: SurfaceHistoryChange;
@@ -8576,6 +8676,7 @@ export type ResolversParentTypes = ResolversObject<{
   TurnoverUidReassignment: TurnoverUidReassignment;
   TurnoverValidatorChange: TurnoverValidatorChange;
   UnavailableDegraded: UnavailableDegraded;
+  UpgradeRadar: UpgradeRadar;
   UptimeDay: UptimeDay;
   UptimeLatency: UptimeLatency;
   UptimeReliability: UptimeReliability;
@@ -9332,6 +9433,7 @@ export type BuildSummaryResolvers<ContextType = GqlContext, ParentType extends R
   provider_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   public_contract?: Resolver<Maybe<ResolversTypes['BuildPublicContract']>, ParentType, ContextType>;
   published_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_index_discard?: Resolver<Maybe<ResolversTypes['BuildSummarySchemaIndexDiscard']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   storage_tier_counts?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   storage_tier_size_bytes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
@@ -9350,6 +9452,11 @@ export type BuildSummaryArtifactArtifactsResolvers<ContextType = GqlContext, Par
   sha256?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   size_bytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   storage_tier?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type BuildSummarySchemaIndexDiscardResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BuildSummarySchemaIndexDiscard'] = ResolversParentTypes['BuildSummarySchemaIndexDiscard']> = ResolversObject<{
+  dropped_captured?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type ChainActivityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainActivity'] = ResolversParentTypes['ChainActivity']> = ResolversObject<{
@@ -9821,6 +9928,12 @@ export type ChainSignersResolvers<ContextType = GqlContext, ParentType extends R
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type ChainSpecReadingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainSpecReading'] = ResolversParentTypes['ChainSpecReading']> = ResolversObject<{
+  network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spec_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
 export type ChainStakeFlowResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainStakeFlow'] = ResolversParentTypes['ChainStakeFlow']> = ResolversObject<{
   net_flow_distribution?: Resolver<Maybe<ResolversTypes['ChainStakeFlowDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainStakeFlowNetwork'], ParentType, ContextType>;
@@ -10225,8 +10338,10 @@ export type ContractsResolvers<ContextType = GqlContext, ParentType extends Reso
   artifacts?: Resolver<Maybe<Array<ResolversTypes['ContractsArtifactArtifacts']>>, ParentType, ContextType>;
   base_path?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  feeds?: Resolver<Maybe<Array<ResolversTypes['ContractsFeed']>>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  networks?: Resolver<Maybe<ResolversTypes['ContractsNetworks']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   openapi_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   primary_domain?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -10251,6 +10366,34 @@ export type ContractsArtifactArtifactsRetirementResolvers<ContextType = GqlConte
   code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   http_status?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ContractsFeedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ContractsFeed'] = ResolversParentTypes['ContractsFeed']> = ResolversObject<{
+  content_types?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  formats?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  path_parameters?: Resolver<Array<ResolversTypes['ContractsFeedParameter']>, ParentType, ContextType>;
+  public?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  query_parameters?: Resolver<Array<ResolversTypes['ContractsFeedParameter']>, ParentType, ContextType>;
+}>;
+
+export type ContractsFeedParameterResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ContractsFeedParameter'] = ResolversParentTypes['ContractsFeedParameter']> = ResolversObject<{
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  schema?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+}>;
+
+export type ContractsNetworksResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ContractsNetworks'] = ResolversParentTypes['ContractsNetworks']> = ResolversObject<{
+  aliases?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  data_aliases?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  default?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  mainnet_only_route_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  note?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  path_form?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type CoverageArtifactResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CoverageArtifact'] = ResolversParentTypes['CoverageArtifact']> = ResolversObject<{
@@ -11889,6 +12032,7 @@ export type RuntimeVersionHistoryResolvers<ContextType = GqlContext, ParentType 
   coverage_from_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   coverage_from_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   coverage_gaps?: Resolver<Maybe<Array<ResolversTypes['RuntimeCoverageGap']>>, ParentType, ContextType>;
+  current?: Resolver<Maybe<ResolversTypes['UpgradeRadar']>, ParentType, ContextType>;
   current_spec_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   transition_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -12466,7 +12610,9 @@ export type SubnetLifecycleEntryResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type SubnetListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetList'] = ResolversParentTypes['SubnetList']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   items?: Resolver<Array<ResolversTypes['Subnet']>, ParentType, ContextType>;
+  native_snapshot_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
@@ -13118,6 +13264,15 @@ export type SubscriptionResolvers<ContextType = GqlContext, ParentType extends R
   chainEvents?: SubscriptionResolver<ResolversTypes['ChainEvent'], "chainEvents", ParentType, ContextType, Partial<SubscriptionChainEventsArgs>>;
 }>;
 
+export type SubtensorReleaseResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubtensorRelease'] = ResolversParentTypes['SubtensorRelease']> = ResolversObject<{
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  prerelease?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  published_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spec_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tag?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SudoKeyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SudoKey'] = ResolversParentTypes['SudoKey']> = ResolversObject<{
   field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -13215,6 +13370,14 @@ export type TurnoverValidatorChangeResolvers<ContextType = GqlContext, ParentTyp
 
 export type UnavailableDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['UnavailableDegraded'] = ResolversParentTypes['UnavailableDegraded']> = ResolversObject<{
   reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type UpgradeRadarResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['UpgradeRadar'] = ResolversParentTypes['UpgradeRadar']> = ResolversObject<{
+  latest_release?: Resolver<Maybe<ResolversTypes['SubtensorRelease']>, ParentType, ContextType>;
+  mainnet?: Resolver<ResolversTypes['ChainSpecReading'], ParentType, ContextType>;
+  pending_upgrade?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  testnet?: Resolver<ResolversTypes['ChainSpecReading'], ParentType, ContextType>;
+  versions_behind?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type UptimeDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['UptimeDay'] = ResolversParentTypes['UptimeDay']> = ResolversObject<{
@@ -13501,6 +13664,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   BuildSummary?: BuildSummaryResolvers<ContextType>;
   BuildSummaryArtifactArtifactBudgetSummary?: BuildSummaryArtifactArtifactBudgetSummaryResolvers<ContextType>;
   BuildSummaryArtifactArtifacts?: BuildSummaryArtifactArtifactsResolvers<ContextType>;
+  BuildSummarySchemaIndexDiscard?: BuildSummarySchemaIndexDiscardResolvers<ContextType>;
   ChainActivity?: ChainActivityResolvers<ContextType>;
   ChainActivityDay?: ChainActivityDayResolvers<ContextType>;
   ChainAlphaVolume?: ChainAlphaVolumeResolvers<ContextType>;
@@ -13548,6 +13712,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainServingSubnet?: ChainServingSubnetResolvers<ContextType>;
   ChainSigner?: ChainSignerResolvers<ContextType>;
   ChainSigners?: ChainSignersResolvers<ContextType>;
+  ChainSpecReading?: ChainSpecReadingResolvers<ContextType>;
   ChainStakeFlow?: ChainStakeFlowResolvers<ContextType>;
   ChainStakeFlowDistribution?: ChainStakeFlowDistributionResolvers<ContextType>;
   ChainStakeFlowNetwork?: ChainStakeFlowNetworkResolvers<ContextType>;
@@ -13592,6 +13757,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Contracts?: ContractsResolvers<ContextType>;
   ContractsArtifactArtifacts?: ContractsArtifactArtifactsResolvers<ContextType>;
   ContractsArtifactArtifactsRetirement?: ContractsArtifactArtifactsRetirementResolvers<ContextType>;
+  ContractsFeed?: ContractsFeedResolvers<ContextType>;
+  ContractsFeedParameter?: ContractsFeedParameterResolvers<ContextType>;
+  ContractsNetworks?: ContractsNetworksResolvers<ContextType>;
   CoverageArtifact?: CoverageArtifactResolvers<ContextType>;
   CoverageArtifactSource?: CoverageArtifactSourceResolvers<ContextType>;
   CoverageCompleteness?: CoverageCompletenessResolvers<ContextType>;
@@ -13818,6 +13986,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetYieldHistoryPoint?: SubnetYieldHistoryPointResolvers<ContextType>;
   SubnetYieldNeuron?: SubnetYieldNeuronResolvers<ContextType>;
   Subscription?: SubscriptionResolvers<ContextType>;
+  SubtensorRelease?: SubtensorReleaseResolvers<ContextType>;
   SudoKey?: SudoKeyResolvers<ContextType>;
   Surface?: SurfaceResolvers<ContextType>;
   SurfaceHistoryChange?: SurfaceHistoryChangeResolvers<ContextType>;
@@ -13829,6 +13998,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;
   TurnoverValidatorChange?: TurnoverValidatorChangeResolvers<ContextType>;
   UnavailableDegraded?: UnavailableDegradedResolvers<ContextType>;
+  UpgradeRadar?: UpgradeRadarResolvers<ContextType>;
   UptimeDay?: UptimeDayResolvers<ContextType>;
   UptimeLatency?: UptimeLatencyResolvers<ContextType>;
   UptimeReliability?: UptimeReliabilityResolvers<ContextType>;

@@ -45,9 +45,23 @@ export const GetTaoUsdOutputSchema = z
         pool_count: z.int().nullable(),
         pools: z.array(z.unknown()),
       })
-      .passthrough()
+      .strict()
       .nullable(),
     oldest_observed_at: z.string().nullable(),
+    // The staleness verdict and the two numbers behind it, undeclared until
+    // #10790. `stale` is the whole point of the reading: a USD price nobody
+    // has refreshed in two hours is not a price, and a caller that cannot see
+    // this flag has no way to tell.
+    stale: z.boolean(),
+    stale_after_ms: z
+      .int()
+      .min(0)
+      .describe("How old a reading may get before `stale` flips."),
+    age_ms: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe("Age of `latest`. Null when there is no reading to age."),
     change_usd: z.number().nullable(),
     change_pct: z.number().nullable(),
     // Optional because `include_points: false` OMITS the key rather than
@@ -62,9 +76,9 @@ export const GetTaoUsdOutputSchema = z
             block_number: z.int().nullable(),
             usd_per_tao: z.number().nullable(),
           })
-          .passthrough(),
+          .strict(),
       )
       .optional(),
   })
-  .passthrough();
+  .strict();
 export type GetTaoUsdOutput = z.infer<typeof GetTaoUsdOutputSchema>;

@@ -292,7 +292,7 @@ const ListSubnetsRowSchema = z
     integration_readiness: z.number().nullable().optional(),
     surface_count: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const ListSubnetsOutputSchema = z
   .object({
@@ -305,5 +305,5 @@ export const ListSubnetsOutputSchema = z
     next_cursor: z.int().nullable(),
     subnets: z.array(ListSubnetsRowSchema),
   })
-  .passthrough();
+  .strict();
 export type ListSubnetsOutput = z.infer<typeof ListSubnetsOutputSchema>;

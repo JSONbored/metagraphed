@@ -31,7 +31,7 @@ const WebhookDeliveryFailureSchema = z
     last_attempt_at: z.string().nullable().optional(),
     next_attempt_at: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 const WebhookDeliveryStatusSchema = z
   .object({
@@ -43,7 +43,7 @@ const WebhookDeliveryStatusSchema = z
     dead_letter: z.int(),
     last_failure: WebhookDeliveryFailureSchema.nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const WebhookSubscriptionArtifactSchema = z
   .object({
@@ -58,7 +58,7 @@ export const WebhookSubscriptionArtifactSchema = z
     // Absent on a subscription that has never had a delivery attempted.
     delivery: WebhookDeliveryStatusSchema.optional(),
   })
-  .passthrough();
+  .strict();
 export type WebhookSubscriptionArtifact = z.infer<
   typeof WebhookSubscriptionArtifactSchema
 >;

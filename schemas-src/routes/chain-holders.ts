@@ -86,5 +86,5 @@ export const ChainHoldersArtifactSchema = z
         "Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement.",
       ),
   })
-  .passthrough();
+  .strict();
 export type ChainHoldersArtifact = z.infer<typeof ChainHoldersArtifactSchema>;

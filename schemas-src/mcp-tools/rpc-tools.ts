@@ -65,8 +65,14 @@ const BestRpcEndpointItemSchema = z
     latency_ms: z.int().nullable().optional(),
     status: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
+    // Which chain layer and which network this endpoint serves -- the two
+    // fields that decide whether the answer is usable at all, and undeclared
+    // until #10790. An agent handed a `test` endpoint for a mainnet call gets
+    // a working connection to the wrong chain.
+    layer: z.string().nullable().optional(),
+    network: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const GetBestRpcEndpointOutputSchema = z
   .object({
@@ -74,7 +80,7 @@ export const GetBestRpcEndpointOutputSchema = z
     live_health: z.unknown().optional(),
     endpoints: z.array(BestRpcEndpointItemSchema),
   })
-  .passthrough();
+  .strict();
 export type GetBestRpcEndpointOutput = z.infer<
   typeof GetBestRpcEndpointOutputSchema
 >;
@@ -122,5 +128,5 @@ export const CallRpcOutputSchema = z
     provider: z.string().nullable().optional(),
     cache: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type CallRpcOutput = z.infer<typeof CallRpcOutputSchema>;

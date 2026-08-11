@@ -85,7 +85,7 @@ const FeedItemSchema = z
     timestamp: z.string(),
     tags: z.array(z.string()),
   })
-  .passthrough();
+  .strict();
 
 export const GetFeedOutputSchema = z
   .object({
@@ -98,10 +98,10 @@ export const GetFeedOutputSchema = z
         until: z.string().nullable().optional(),
         limit: z.int().optional(),
       })
-      .passthrough()
+      .strict()
       .optional(),
     returned: z.int(),
     items: z.array(FeedItemSchema),
   })
-  .passthrough();
+  .strict();
 export type GetFeedOutput = z.infer<typeof GetFeedOutputSchema>;

@@ -128,7 +128,15 @@ export const ENDPOINT_POOL_SORT_VALUES = [
 // Bare `{type:"object"}` (hand-written, no `properties`/`additionalProperties`
 // declared -- JSON Schema's own default for an omitted additionalProperties
 // is `true`, i.e. "any object, any keys").
-export const OpenObjectSchema = z.object({}).passthrough();
+//
+// GENUINELY OPEN, and the one place in this migration where that is the answer
+// rather than the excuse (#10790). Every other `.passthrough()` in the tree
+// named a shape somebody had simply not written down; this one names the
+// absence of a shape on purpose -- `get_adapter.extensions` is whatever that
+// adapter tracks, `get_fixture`'s payload is whatever the surface returned. It
+// says so with `.catchall`, which reads as a decision and carries an entry in
+// `scripts/validate-schema-opacity.ts`.
+export const OpenObjectSchema = z.object({}).catchall(z.unknown());
 
 // Bare `{type:"array"}` or `{type:"array", items:{type:"object"}}` (no
 // items-shape constraint beyond "each item is some object", or none at all).
@@ -161,7 +169,7 @@ export const ExtrinsicItemSchema = z
     // call_module.call_function -- never a guessed/partial sentence.
     summary: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const AccountEventItemSchema = z
   .object({
@@ -177,7 +185,7 @@ export const AccountEventItemSchema = z
     observed_at: z.string().nullable().optional(),
     extrinsic_index: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 // The 8-field distribution-stats shape (count/mean/min/p25/median/p75/p90/
 // max) 10 of types-epic E batch 9's (#8072) "chain leaderboard" tools use
@@ -326,6 +334,24 @@ export const McpListPageFields = {
     .describe("Null on the last page -- absence of a next page, not zero."),
   sort: z.string().nullable(),
   order: z.string().nullable(),
+};
+
+/**
+ * The same page block MINUS `sort`/`order`, for the tools whose loader emits
+ * five of the seven (#10790).
+ *
+ * Nine tools page a collection that declares no sort, and their loaders return
+ * exactly `{total, returned, limit, cursor, next_cursor}` -- so declaring the
+ * full seven would publish two fields that never arrive. Derived from
+ * `McpListPageFields` rather than retyped, so the two cannot disagree about
+ * what `total` means.
+ */
+export const McpUnsortedPageFields = {
+  total: McpListPageFields.total,
+  returned: McpListPageFields.returned,
+  limit: McpListPageFields.limit,
+  cursor: McpListPageFields.cursor,
+  next_cursor: McpListPageFields.next_cursor,
 };
 
 /** The artifact stamp as the list handlers emit it: coalesced to null rather

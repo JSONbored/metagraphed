@@ -55,7 +55,7 @@ export const ChainEventsFeedArtifactSchema = z
       .optional(),
     events: z.array(ChainEventSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents.",
   );
@@ -80,7 +80,7 @@ export const ChainEventsStatsArtifactSchema = z
     groups: z.int().min(0),
     activity: z.array(ChainEventEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity).",
   );

@@ -65,7 +65,7 @@ export const QueryGraphqlOutputSchema = z
     data: OpenObjectSchema.nullable().optional(),
     errors: z.array(OpenObjectSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type QueryGraphqlOutput = z.infer<typeof QueryGraphqlOutputSchema>;
 
 // Symbolic in the hand-written original (src/saved-queries.ts's

@@ -5090,8 +5090,6 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Live child-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/children. */
         AccountChildrenArtifact: {
@@ -5116,8 +5114,6 @@ export interface components {
                 }[];
                 netuid: number;
             }[] | null;
-        } & {
-            [key: string]: unknown;
         };
         AccountCounterpartiesArtifact: {
             counterparties: {
@@ -5167,8 +5163,6 @@ export interface components {
             total_received_tao: number;
             total_sent_tao: number;
             transfers_scanned: number;
-        } & {
-            [key: string]: unknown;
         };
         AccountDeregistrationsArtifact: {
             address: string;
@@ -5189,31 +5183,25 @@ export interface components {
         };
         /** @description One `coldkey`'s community-contributed entity labels plus its subnet-ownership ties (#6740). Mirrors GET /api/v1/accounts/{ss58}/entities. */
         AccountEntitiesArtifact: {
-            labels: ({
+            labels: {
                 category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
                 url?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             /** @description When the CURRENT-ownership half was captured, or null when no owner snapshot could be read. Null is load-bearing: it distinguishes "we could not read who owns what" from "this address owns nothing", which are the same empty list without it. An `owns` tie is never fresher than this stamp. */
             owners_observed_at: string | null;
             ownership_tie_count: number;
-            ownership_ties: ({
+            ownership_ties: {
                 block_number?: number | null;
                 netuid: number | null;
                 observed_at?: string | null;
                 /** @enum {string} */
                 role: "owns" | "gained_ownership" | "lost_ownership";
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         AccountEvent: {
             alpha_amount?: number | null;
@@ -5241,8 +5229,6 @@ export interface components {
             offset: number | null;
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's signed-extrinsic feed (newest first), backing account_extrinsics. Matched by the extrinsic signer only. extrinsic_count is the page count, matching the REST feed convention. Each item is a full Extrinsic (block/index/hash/call/success/fee/tip). */
         AccountExtrinsicsArtifact: {
@@ -5268,29 +5254,23 @@ export interface components {
             offset: number | null;
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's durable per-day activity series (hotkey-keyed, newest day first), keyset-paginated. day_count is the page count, not a grand total. Mirrors GET /api/v1/accounts/{ss58}/history' data envelope. Each item is an AccountDay. */
         AccountHistoryArtifact: {
             day_count: number;
-            days: ({
+            days: {
                 day: string | null;
                 event_count?: number | null;
                 event_kinds?: string[];
                 first_block?: number | null;
                 last_block?: number | null;
                 netuid?: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             limit: number | null;
             next_cursor?: string | null;
             offset: number | null;
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         AccountIdentityArtifact: {
             account: string;
@@ -5324,8 +5304,6 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Live parent-hotkey delegation graph (#6723) for one Finney ss58 account, read directly from chain via RPC (KV-cached). subnets is null on RPC failure, distinct from a confirmed-empty [] (schema-stable, never a GraphQL error). Mirrors GET /api/v1/accounts/{ss58}/parents. */
         AccountParentsArtifact: {
@@ -5350,8 +5328,6 @@ export interface components {
                 }[];
                 netuid: number;
             }[] | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One wallet's cross-subnet neuron portfolio (#5702): every subnet where the hotkey is a registered neuron, plus wallet-level aggregates. Mirrors GET /api/v1/accounts/{ss58}/portfolio. */
         AccountPortfolioArtifact: {
@@ -5387,8 +5363,6 @@ export interface components {
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
             total_stake_tao: number;
             validator_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's per-subnet position history over a lookback window, one point per neuron_daily snapshot. Mirrors GET /api/v1/accounts/{ss58}/subnets/{netuid}/history. */
         AccountPositionHistoryArtifact: {
@@ -5415,8 +5389,6 @@ export interface components {
             schema_version: number;
             ss58: string;
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description This account's reconstructed nominator-side positions: what it holds delegated across every hotkey/subnet, distinct from AccountPortfolio's hotkey-scoped view. Mirrors GET /api/v1/accounts/{ss58}/positions. */
         AccountPositionsArtifact: {
@@ -5445,8 +5417,6 @@ export interface components {
             ss58: string;
             /** @description Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure. */
             total_stake_alpha: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's Prometheus telemetry-serving footprint (#5703) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/prometheus. */
         AccountPrometheusArtifact: {
@@ -5510,8 +5480,6 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             ss58: string;
-        } & {
-            [key: string]: unknown;
         };
         AccountServingArtifact: {
             address: string;
@@ -5560,8 +5528,6 @@ export interface components {
             schema_version: number;
             /** @enum {string} */
             sort: "total_stake" | "total_emission" | "subnet_count" | "uid_count" | "validator_count" | "stake_dominance" | "last_active";
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's StakeAdded/StakeRemoved staking-behavior scorecard (#5706) across subnets over a 7d/30d/90d window. Mirrors GET /api/v1/accounts/{ss58}/stake-flow. */
         AccountStakeFlowArtifact: {
@@ -5628,8 +5594,6 @@ export interface components {
                 uid: number | null;
                 validator_permit: boolean;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         AccountSummaryArtifact: {
             /** @description Signing-activity aggregate from the extrinsics tier, matched by signer only. tx_count / total_fee_tao / last_tx_* are all-time over every extrinsic this address has signed; modules_called is the pallet mix over the newest 1000 only, with modules_called_capped true when that window is incomplete. An account queried by a key that did not sign returns tx_count 0, modules_called_capped false, other fields null/empty. */
@@ -5653,15 +5617,13 @@ export interface components {
             event_scan_capped?: boolean;
             first_block?: number | null;
             first_seen_at?: string | null;
-            labels?: ({
+            labels?: {
                 category?: ("exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig") | null;
                 name?: string | null;
                 notes?: string | null;
                 source_urls?: string[];
                 url?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             last_block?: number | null;
             last_seen_at?: string | null;
             recent_events?: components["schemas"]["AccountEvent"][];
@@ -5676,8 +5638,6 @@ export interface components {
             schema_version: number;
             ss58: string;
             subnet_count?: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's native-TAO transfer feed, keyset-paginated newest-first. Mirrors GET /api/v1/accounts/{ss58}/transfers' data envelope. */
         AccountTransfersArtifact: {
@@ -5696,8 +5656,6 @@ export interface components {
                 observed_at?: string | null;
                 to: string | null;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One account's (validator's hotkey's) WeightsSet weight-setting footprint across subnets over a 7d/30d window. Mirrors GET /api/v1/accounts/{ss58}/weight-setters. */
         AccountWeightSettersArtifact: {
@@ -5733,7 +5691,7 @@ export interface components {
             schema_version: 1;
             slug: string;
             /** @description Captured adapter metrics payload; shape is adapter-specific. */
-            snapshot?: ({
+            snapshot?: {
                 adapter_kind?: string | null;
                 contract_version?: string;
                 dimensions?: {
@@ -5755,16 +5713,12 @@ export interface components {
                 slug?: string;
                 source?: string | null;
                 status?: string | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             subnet: string;
-        } & {
-            [key: string]: unknown;
         };
         AgentCatalogArtifact: {
             blocked_subnet_count?: number;
-            blocked_subnets?: ({
+            blocked_subnets?: {
                 agent_readiness: components["schemas"]["AgentReadinessStatus"];
                 callable_count?: number;
                 categories?: string[];
@@ -5776,9 +5730,7 @@ export interface components {
                 service_count?: number;
                 slug?: string;
                 subnet_type?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             blocker_summary?: {
                 by_code?: {
                     [key: string]: number;
@@ -5792,18 +5744,20 @@ export interface components {
                 by_status?: {
                     [key: string]: number;
                 };
-            } & {
-                [key: string]: unknown;
             };
             callable_service_count?: number;
+            /** @description Deterministic fingerprint of this artifact's content, so a consumer can tell a rebuild that changed nothing from one that changed something -- `generated_at` is an epoch stamp on local/CI builds and cannot (#349). */
+            content_hash?: string;
             contract_version?: string;
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
+            published_at?: string | null;
             /** @constant */
             schema_version: 1;
             subnet_count: number;
-            subnets: ({
+            subnets: {
                 agent_readiness?: components["schemas"]["AgentReadinessStatus"];
                 base_url?: string | null;
                 callable_count?: number;
@@ -5821,12 +5775,8 @@ export interface components {
                 service_kinds?: string[];
                 slug?: string;
                 subnet_type?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             total_subnet_count?: number;
-        } & {
-            [key: string]: unknown;
         };
         AgentCatalogSubnetArtifact: {
             agent_readiness?: components["schemas"]["AgentReadinessStatus"];
@@ -5834,15 +5784,13 @@ export interface components {
             completeness_score?: number | null;
             contract_version?: string;
             example_count?: number;
-            examples?: ({
+            examples?: {
                 authority?: string;
                 name?: string;
                 provider?: string;
                 surface_id: string;
                 url: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             generated_at: string;
             integration_readiness?: number;
             name?: string;
@@ -5854,28 +5802,8 @@ export interface components {
             /** @constant */
             schema_version: 1;
             service_count: number;
-            services: ({
-                auth?: ({
-                    /**
-                     * @description Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.
-                     * @enum {string}
-                     */
-                    location?: "header" | "query" | "cookie" | "body";
-                    /** @description The single header the credential goes in. */
-                    name?: string;
-                    /** @description The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it. */
-                    names?: string[];
-                    /**
-                     * @description `signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.
-                     * @enum {string}
-                     */
-                    scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
-                    /** @description How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all. */
-                    scopes_note?: string;
-                    value_format?: string;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+            services: {
+                auth?: components["schemas"]["SurfaceAuth"];
                 auth_required?: boolean;
                 auth_schemes?: string[];
                 authority?: string | null;
@@ -5886,8 +5814,6 @@ export interface components {
                     callable?: boolean;
                     live_status?: string;
                     reasons?: string[];
-                } & {
-                    [key: string]: unknown;
                 };
                 fixture?: {
                     artifact_path: string;
@@ -5917,8 +5843,6 @@ export interface components {
                     observed_by?: string;
                     stale?: boolean;
                     status?: string;
-                } & {
-                    [key: string]: unknown;
                 };
                 kind: string;
                 provider?: string | null;
@@ -5935,21 +5859,15 @@ export interface components {
                 } | null;
                 schema_status?: string | null;
                 schema_url?: string | null;
-                snippets?: ({
+                snippets?: {
                     curl?: string;
                     python?: string;
                     typescript?: string;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 surface_id: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             slug?: string;
             subnet_type?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         AgentReadinessBlocker: {
             code: string;
@@ -5970,6 +5888,7 @@ export interface components {
             status: "callable" | "base-layer" | "candidate" | "needs-evidence" | "blocked";
         };
         AgentResourcesArtifact: {
+            /** @description Deterministic fingerprint of this artifact's content, so a consumer can tell a rebuild that changed nothing from one that changed something -- `generated_at` is an epoch stamp on local/CI builds and cannot (#349). */
             content_hash?: string;
             contract_version?: string;
             copyable_agent: {
@@ -5977,8 +5896,6 @@ export interface components {
                 title?: string;
                 /** Format: uri */
                 url: string;
-            } & {
-                [key: string]: unknown;
             };
             generated_at: string;
             mcp: {
@@ -5987,36 +5904,31 @@ export interface components {
                 install: string;
                 /** Format: uri */
                 server_card?: string;
-                tools: ({
+                tools: {
                     name: string;
                     title?: string | null;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 transport?: string;
-            } & {
-                [key: string]: unknown;
             };
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
             published_at?: string | null;
-            resources: ({
+            resources: {
                 id: string;
+                /** @description Copy-pasteable install command, for the resources that have one. */
+                install?: string;
                 kind?: string;
                 title: string;
                 /** Format: uri */
                 url: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             /** @constant */
             schema_version: 1;
             summary?: {
                 callable_service_count: number;
                 subnet_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         AlertTriggerArtifact: {
             account?: string | null;
@@ -6033,8 +5945,6 @@ export interface components {
             netuid?: number | null;
             table_filter?: string | null;
             updated_at?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         ApiIndexArtifact: {
             artifact_contracts: {
@@ -6057,7 +5967,46 @@ export interface components {
             /** @constant */
             base_path: "/api/v1";
             contract_version?: string;
+            feeds: {
+                /** @description Parallel to `formats`: a feed is rendered live and emits RSS/Atom/JSON Feed, not a stored artifact in the success envelope, and an agent that treated one like the other would parse XML as JSON. */
+                content_types: string[];
+                description: string;
+                formats: ("rss" | "atom" | "json")[];
+                id: string;
+                /** @description The FeedTarget kind `parseFeedPath` resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry. */
+                kind: string;
+                /** @constant */
+                method: "GET";
+                path: string;
+                path_parameters: {
+                    description?: string;
+                    name: string;
+                    schema: {
+                        [key: string]: unknown;
+                    };
+                }[];
+                /** @constant */
+                public: true;
+                query_parameters: {
+                    description?: string;
+                    name: string;
+                    schema: {
+                        [key: string]: unknown;
+                    };
+                }[];
+            }[];
             generated_at: string;
+            /** @description The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree. */
+            networks: {
+                aliases: string[];
+                data_aliases: string[];
+                /** @constant */
+                default: "mainnet";
+                mainnet_only_route_count: number;
+                note: string;
+                /** @constant */
+                path_form: "/api/v1/{network}/...";
+            };
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
@@ -6100,8 +6049,6 @@ export interface components {
             schema_version: 1;
             /** @constant */
             type_definitions_url: "/metagraph/types.d.ts";
-        } & {
-            [key: string]: unknown;
         };
         ArtifactBase: {
             contract_version?: string;
@@ -6110,8 +6057,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         AskArtifact: {
             answer: string;
@@ -6126,8 +6071,6 @@ export interface components {
             context_count: number;
             model: string;
             question: string;
-        } & {
-            [key: string]: unknown;
         };
         AskRequest: {
             question: string;
@@ -6153,8 +6096,6 @@ export interface components {
                 /** @description Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
                 summary?: string | null;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         BlockDetailArtifact: {
             block: {
@@ -6173,8 +6114,6 @@ export interface components {
             prev_block_number: number | null;
             ref: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref. */
         BlockEventsArtifact: {
@@ -6185,8 +6124,6 @@ export interface components {
             offset: number | null;
             ref: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One block's extrinsics list (#6977). Rows are the opaque JSON extrinsic shape the extrinsics feed uses; block_number is null for an unknown ref. */
         BlockExtrinsicsArtifact: {
@@ -6212,8 +6149,6 @@ export interface components {
             offset: number | null;
             ref: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         BlocksFeedArtifact: {
             block_count: number;
@@ -6231,8 +6166,6 @@ export interface components {
             next_cursor: string | null;
             offset: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Block-production summary (#5664) over the recent-block window. Every aggregate is null on a cold retired-D1 store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/blocks/summary. */
         BlocksSummaryArtifact: {
@@ -6261,8 +6194,6 @@ export interface components {
                 total_events: number;
                 total_extrinsics: number;
             } | null;
-        } & {
-            [key: string]: unknown;
         };
         BuildSummaryArtifact: {
             adapter_count?: number;
@@ -6270,8 +6201,6 @@ export interface components {
                 fail_count: number;
                 ok_count: number;
                 warn_count: number;
-            } & {
-                [key: string]: unknown;
             };
             artifact_budgets?: {
                 fail_bytes: number;
@@ -6283,14 +6212,12 @@ export interface components {
             }[];
             artifact_count: number;
             artifact_size_bytes: number;
-            artifacts?: ({
+            artifacts?: {
                 path: string;
                 sha256?: string | null;
                 size_bytes?: number;
                 storage_tier?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             candidate_count?: number;
             contract_version?: string;
             coverage?: components["schemas"]["CoverageArtifact"];
@@ -6305,10 +6232,14 @@ export interface components {
             public_contract?: {
                 url: string;
                 version: string;
-            } & {
-                [key: string]: unknown;
             };
+            /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
             published_at?: string | null;
+            /** @description Null on a healthy build. Non-null with dropped_captured > 0 means this build lost every captured schema in the committed index -- validate.ts fails on it. */
+            schema_index_discard?: {
+                dropped_captured: number;
+                reason: string;
+            } | null;
             /** @constant */
             schema_version: 1;
             storage_tier_counts?: {
@@ -6319,8 +6250,6 @@ export interface components {
             };
             subnet_count: number;
             surface_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description All-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history. Mirrors GET /api/v1/health/trends' data envelope. */
         BulkHealthTrendsArtifact: {
@@ -6356,13 +6285,13 @@ export interface components {
         CandidatesArtifact: {
             candidates: components["schemas"]["CandidateSurface"][];
             contract_version?: string;
+            /** @description How many candidates the list carries, where the producer counts them. */
+            count?: number;
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
@@ -6410,8 +6339,6 @@ export interface components {
             observed_at?: string | null;
             schema_version: number;
             window: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide rolling 24h buy/sell alpha-volume leaderboard, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/alpha-volume's data envelope. */
         ChainAlphaVolumeArtifact: {
@@ -6452,7 +6379,7 @@ export interface components {
             schema_version: number;
             subnet_count: number;
             subnets: components["schemas"]["SubnetAlphaVolumeArtifact"][];
-            /** @description The reading every _usd field was converted at -- the network rollup and each per-subnet row alike, so one reading priced them all. */
+            /** @description The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them. */
             tao_usd?: {
                 block_number: number | null;
                 observed_at: string | null;
@@ -6518,8 +6445,6 @@ export interface components {
             schema_version: number;
             subnet_count: number | null;
             subnets: components["schemas"]["ChainBurnEntry"][];
-        } & {
-            [key: string]: unknown;
         };
         ChainBurnEntry: {
             burn_tao: number;
@@ -6539,8 +6464,6 @@ export interface components {
             schema_version: number;
             total_extrinsics: number;
             window: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration. */
         ChainConcentrationArtifact: {
@@ -6563,8 +6486,6 @@ export interface components {
             uids_per_entity: number | null;
             /** @description Stake concentration across permitted validators network-wide only; null when no permitted validator carries stake. */
             validator_stake: components["schemas"]["ConcentrationMetrics"] | null;
-        } & {
-            [key: string]: unknown;
         };
         ChainConcentrationHistoryArtifact: {
             /** @description Every distinct builder version in the series. More than one means it changes DEFINITION partway along. */
@@ -6578,8 +6499,6 @@ export interface components {
             points: components["schemas"]["ChainConcentrationHistoryPoint"][];
             schema_version: number;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         ChainConcentrationHistoryPoint: {
             /** @description Which definition of the metrics produced this point. */
@@ -6608,8 +6527,6 @@ export interface components {
             holders: number;
             nakamoto_coefficient: number | null;
             total: number;
-        } & {
-            [key: string]: unknown;
         };
         ChainConcentrationSubnetsArtifact: {
             captured_at: string | null;
@@ -6650,8 +6567,6 @@ export interface components {
                 uids_per_entity: number | null;
                 unmeasured: boolean;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         ChainDeregistrationsArtifact: {
             degraded?: components["schemas"]["DegradedInfo"] | null;
@@ -6712,8 +6627,6 @@ export interface components {
             }[];
             next_before?: number | null;
             next_cursor?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
         ChainEventsStatsArtifact: {
@@ -6724,8 +6637,6 @@ export interface components {
             }[];
             groups: number;
             window_blocks: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-UTC-day network fee/tip series plus the top fee payers over the window. Mirrors GET /api/v1/chain/fees's data envelope. */
         ChainFeesArtifact: {
@@ -6750,8 +6661,6 @@ export interface components {
                 total_tip_tao: number | null;
             }[];
             window: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One live chain event as the firehose broadcasts it. Only the fields relevant to the event's table are populated. */
         ChainFirehoseEvent: {
@@ -6810,8 +6719,6 @@ export interface components {
             /** @description Subnets measured -- NOT the length of the subnets list when limit bites. */
             subnet_count: number | null;
             subnets: components["schemas"]["ChainHoldersSubnet"][];
-        } & {
-            [key: string]: unknown;
         };
         /** @description Dimension-free network facts. There is deliberately no cross-subnet alpha total: summing different subnets' alpha has no unit. */
         ChainHoldersNetwork: {
@@ -6836,7 +6743,7 @@ export interface components {
             total_alpha: number | null;
         };
         ChainIdentityHistoryArtifact: {
-            changes: ({
+            changes: {
                 block_number?: number | null;
                 description?: string | null;
                 discord?: string | null;
@@ -6848,31 +6755,23 @@ export interface components {
                 subnet_name?: string | null;
                 subnet_url?: string | null;
                 symbol?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             count: number;
             schema_version: number;
             subnet_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide idle-stake rollup: every subnet's stake on currently-zero-dividends hotkeys, ranked by idle_stake_alpha. Mirrors GET /api/v1/chain/idle-stake's data envelope. */
         ChainIdleStakeArtifact: {
             captured_at?: string | null;
             schema_version: number;
             subnet_count: number;
-            subnets: ({
+            subnets: {
                 idle_neuron_count: number;
                 idle_stake_alpha: number;
                 netuid: number;
                 neuron_count: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             total_idle_stake_alpha: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance. */
         ChainPerformanceArtifact: {
@@ -6893,8 +6792,6 @@ export interface components {
             validator_count?: number;
             /** @description Validator-trust score spread across permitted validators network-wide only. */
             validator_trust?: components["schemas"]["ScoreDistribution"] | null;
-        } & {
-            [key: string]: unknown;
         };
         ChainPrometheusArtifact: {
             degraded?: components["schemas"]["DegradedInfo"] | null;
@@ -7013,8 +6910,6 @@ export interface components {
                 window_days: number;
             }[];
             window_days: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide axon-serving announcement leaderboard (#5873). The network-wide counterpart of subnet_serving. Mirrors GET /api/v1/chain/serving's data envelope. */
         ChainServingArtifact: {
@@ -7058,8 +6953,6 @@ export interface components {
              */
             sort: "tx_count" | "total_fee_tao";
             window: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide cross-subnet capital-flow leaderboard over a lookback window, summed live from the account_events StakeAdded/StakeRemoved stream. Mirrors GET /api/v1/chain/stake-flow's data envelope. */
         ChainStakeFlowArtifact: {
@@ -7164,16 +7057,14 @@ export interface components {
             total_issuance_tao: number;
         };
         ChainSubnetLifecycleArtifact: {
-            entries: ({
+            entries: {
                 block_number: number | null;
                 /** @enum {string} */
                 event: "registered" | "deregistered";
                 netuid: number;
                 observed_at: string;
                 predates_capture: boolean;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             entry_count: number;
             limit?: number | null;
             next_cursor?: string | null;
@@ -7181,8 +7072,6 @@ export interface components {
             schema_version: number;
             /** @description Distinct subnets appearing in this page -- context for entry_count. */
             subnet_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Network-wide directed native-TAO transfer-corridor leaderboard over a lookback window. Mirrors GET /api/v1/chain/transfer-pairs's data envelope. */
         ChainTransferPairsArtifact: {
@@ -7319,7 +7208,7 @@ export interface components {
         /** @description Network-wide emission-yield (return rate) card across every subnet's neurons. Aggregates are null on a cold store (schema-stable, never a GraphQL error). Mirrors GET /api/v1/chain/yield. */
         ChainYieldArtifact: {
             captured_at?: string | null;
-            distribution: ({
+            distribution: {
                 count: number;
                 max: number;
                 mean: number;
@@ -7329,9 +7218,7 @@ export interface components {
                 p25: number;
                 p75: number;
                 p90: number;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             miner_count?: number;
             miner_yield?: number | null;
             network_yield: number | null;
@@ -7345,8 +7232,6 @@ export interface components {
             total_stake_alpha?: number;
             validator_count?: number;
             validator_yield?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         ChangelogArtifact: {
             artifacts: {
@@ -7375,27 +7260,21 @@ export interface components {
             /** @constant */
             source: "generated-artifact-diff";
             subnets: {
-                added: ({
+                added: {
                     name?: string | null;
                     netuid: number;
                     slug?: string;
-                } & {
-                    [key: string]: unknown;
-                })[];
-                removed: ({
+                }[];
+                removed: {
                     name?: string | null;
                     netuid: number;
                     slug?: string;
-                } & {
-                    [key: string]: unknown;
-                })[];
-                renamed: ({
+                }[];
+                renamed: {
                     after?: string | null;
                     before?: string | null;
                     netuid: number;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
             };
             summary: {
                 artifact_added_count: number;
@@ -7412,8 +7291,6 @@ export interface components {
                 netuid_removed_count: number;
                 netuid_renamed_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         Classification: "live" | "redirected" | "auth-required" | "dead" | "unsafe" | "unsupported" | "rate-limited" | "transient" | "timeout" | "content-mismatch" | "wrong-chain" | "unknown";
@@ -7450,8 +7327,6 @@ export interface components {
                     surface_count?: number;
                 } | null;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         /** @description Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators. */
         CompareValidatorsArtifact: {
@@ -7507,11 +7382,9 @@ export interface components {
                 total_emission_tao: number;
                 total_stake_tao: number;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One concentration lens over a single value distribution: holder count, total, and the Gini, HHI (raw and holder-count-normalized), Nakamoto coefficient, top-percentile cumulative shares, and Shannon entropy (raw and normalized) measures. Null when the distribution is empty (a cold store or an all-zero column). */
-        ConcentrationMetrics: ({
+        ConcentrationMetrics: {
             entropy?: number | null;
             entropy_normalized?: number | null;
             gini?: number | null;
@@ -7524,9 +7397,7 @@ export interface components {
             top_20pct_share?: number | null;
             top_5pct_share?: number | null;
             total?: number | null;
-        } & {
-            [key: string]: unknown;
-        }) | null;
+        } | null;
         ContractsArtifact: {
             artifacts: {
                 content_type?: string;
@@ -7548,8 +7419,47 @@ export interface components {
             /** @constant */
             base_path: "/metagraph";
             contract_version?: string;
+            feeds: {
+                /** @description Parallel to `formats`: a feed is rendered live and emits RSS/Atom/JSON Feed, not a stored artifact in the success envelope, and an agent that treated one like the other would parse XML as JSON. */
+                content_types: string[];
+                description: string;
+                formats: ("rss" | "atom" | "json")[];
+                id: string;
+                /** @description The FeedTarget kind `parseFeedPath` resolves this path to. The derived contract test matches on this rather than the path string, so a rename cannot silently orphan an entry. */
+                kind: string;
+                /** @constant */
+                method: "GET";
+                path: string;
+                path_parameters: {
+                    description?: string;
+                    name: string;
+                    schema: {
+                        [key: string]: unknown;
+                    };
+                }[];
+                /** @constant */
+                public: true;
+                query_parameters: {
+                    description?: string;
+                    name: string;
+                    schema: {
+                        [key: string]: unknown;
+                    };
+                }[];
+            }[];
             generated_at: string;
             name: string;
+            /** @description The network dimension (#8698), carried by both machine-readable surfaces -- this contract for MCP agents and the API index for route consumers -- from one builder, so they cannot disagree. */
+            networks: {
+                aliases: string[];
+                data_aliases: string[];
+                /** @constant */
+                default: "mainnet";
+                mainnet_only_route_count: number;
+                note: string;
+                /** @constant */
+                path_form: "/api/v1/{network}/...";
+            };
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
@@ -7561,8 +7471,6 @@ export interface components {
             status_domain: null;
             /** @constant */
             type_definitions_url: "/metagraph/types.d.ts";
-        } & {
-            [key: string]: unknown;
         };
         CountMap: {
             [key: string]: number;
@@ -7596,22 +7504,18 @@ export interface components {
             schema_version: 1;
             source: {
                 candidates: string;
-                native: string | ({
+                native: string | {
                     identity_storage?: string | null;
                     kind?: string | null;
                     method?: string | null;
                     package?: string | null;
                     rpc_family?: string | null;
                     version?: string | null;
-                } & {
-                    [key: string]: unknown;
-                });
+                };
                 overlays: string;
             };
             subnets_without_official_surface: number;
             surface_count: number;
-        } & {
-            [key: string]: unknown;
         };
         CoverageCompleteness: {
             average_score?: number;
@@ -7620,8 +7524,6 @@ export interface components {
                     pct: number;
                     /** @description Subnets carrying at least one surface of this kind. */
                     present: number;
-                } & {
-                    [key: string]: unknown;
                 };
             };
             fully_complete_count?: number;
@@ -7632,8 +7534,6 @@ export interface components {
                 [key: string]: number;
             };
             scored_subnet_count?: number;
-        } & {
-            [key: string]: unknown;
         };
         CoverageDepthArtifact: {
             contract_version?: string;
@@ -7662,8 +7562,6 @@ export interface components {
                 weights: {
                     [key: string]: number;
                 };
-            } & {
-                [key: string]: unknown;
             };
             subnet_count: number;
             summary: {
@@ -7686,8 +7584,6 @@ export interface components {
                     [key: string]: number;
                 };
             };
-        } & {
-            [key: string]: unknown;
         };
         CoverageDepthRow: {
             /** @enum {string} */
@@ -7717,8 +7613,6 @@ export interface components {
                 service_kinds: string[];
                 source_repo_present: boolean;
                 surface_count: number;
-            } & {
-                [key: string]: unknown;
             };
             name: string;
             netuid: number;
@@ -7737,7 +7631,7 @@ export interface components {
         /** @enum {string} */
         CoverageLevel: "native-only" | "manifested" | "probed";
         CrowdloanDetailArtifact: {
-            crowdloan: ({
+            crowdloan: {
                 cap_tao: number;
                 contributors_count: number;
                 creator: string;
@@ -7751,9 +7645,7 @@ export interface components {
                 percent_raised: number | null;
                 raised_tao: number;
                 target_address: string | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             crowdloan_id: number;
             exists: boolean | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -7768,12 +7660,10 @@ export interface components {
             };
             queried_at?: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         CrowdloansArtifact: {
             crowdloan_count: number | null;
-            crowdloans: ({
+            crowdloans: {
                 cap_tao: number;
                 contributors_count: number;
                 creator: string;
@@ -7787,9 +7677,7 @@ export interface components {
                 percent_raised: number | null;
                 raised_tao: number;
                 target_address: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -7804,8 +7692,6 @@ export interface components {
             next_crowdloan_id: number | null;
             queried_at?: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation). */
         CurationArtifact: {
@@ -7830,8 +7716,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         CurationLevel: "native" | "candidate-discovered" | "community-seeded" | "machine-verified" | "maintainer-reviewed" | "adapter-backed";
@@ -7871,8 +7755,6 @@ export interface components {
             feature_flag?: string;
             rate_limit_required?: boolean;
             waf_required?: boolean;
-        } & {
-            [key: string]: unknown;
         };
         /** @description The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
         DomainsArtifact: {
@@ -7942,8 +7824,18 @@ export interface components {
                 total_validators: number;
                 with_economics_count: number;
             };
-        } & {
-            [key: string]: unknown;
+            /** @description The reading every _usd field was converted at. Rides at the blob level because ONE reading priced all of them. */
+            tao_usd?: {
+                block_number: number | null;
+                observed_at: string | null;
+                price_basis: string | null;
+                usd_per_tao: number;
+            };
+            /**
+             * @description Why there are no _usd fields. `index_unpriced` is ADR 0025's insufficient_pools -- a stated decline, never a price of zero.
+             * @enum {string}
+             */
+            tao_usd_unavailable?: "no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price";
         };
         EconomicsTrendsArtifact: {
             day_count: number;
@@ -7974,8 +7866,6 @@ export interface components {
             /** @description Why NO day could be priced, or null. `read_failed` means the index could not be queried, which is not a claim about the index itself. */
             usd_unavailable?: ("no_index_reading" | "index_unpriced" | "index_stale" | "no_alpha_price" | "read_failed") | null;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         EmissionFlowChange: {
             block_number: number | null;
@@ -8015,8 +7905,6 @@ export interface components {
             /** @description How many returned entries are first observations rather than changes. */
             predates_capture_count: number;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         EmissionParamChange: {
             block_number: number | null;
@@ -8105,8 +7993,6 @@ export interface components {
                 /** @description False means at least one identity did not hold on these rows: the response is not defensible and must not be used. */
                 verified: boolean;
             };
-        } & {
-            [key: string]: unknown;
         };
         EmissionSubnetChange: {
             block_number: number | null;
@@ -8128,8 +8014,6 @@ export interface components {
             requires_public_safe?: boolean;
             source?: string;
             user_reports_can_change_health?: boolean;
-        } & {
-            [key: string]: unknown;
         };
         EndpointIncident: {
             classification: components["schemas"]["Classification"];
@@ -8181,8 +8065,6 @@ export interface components {
                 by_status: components["schemas"]["CountMap"];
                 incident_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         EndpointLayer: "bittensor-base" | "data-provider" | "docs-provider" | "subnet-app";
@@ -8216,8 +8098,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             source: ("endpoint-resource-probes" | "rpc-endpoint-probes") | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
@@ -8282,8 +8162,6 @@ export interface components {
             schema_version: 1;
             source: string;
             summary: components["schemas"]["EndpointSummary"];
-        } & {
-            [key: string]: unknown;
         };
         EndpointScoreReason: {
             points: number;
@@ -8313,7 +8191,7 @@ export interface components {
         EntitiesArtifact: {
             contract_version?: string;
             /** @description Every non-rejected label in registry/entities/, sorted by ss58. An EMPTY array is a real answer, not a cold store: the registry holds only what has cleared the evidence bar, and a curated layer with nothing in it yet is the honest state. */
-            entities: ({
+            entities: {
                 /** @enum {string} */
                 category: "exchange" | "bridge" | "foundation" | "pool" | "infra" | "project" | "operator" | "other" | "payment-collector" | "treasury" | "burn" | "multisig";
                 name: string;
@@ -8329,8 +8207,6 @@ export interface components {
                     state: "community-submitted" | "maintainer-reviewed" | "rejected";
                     submitted_at?: string;
                     submitted_by?: string;
-                } & {
-                    [key: string]: unknown;
                 };
                 /** @constant */
                 schema_version: 1;
@@ -8344,21 +8220,15 @@ export interface components {
                     basis: "known-black-hole" | "provably-keyless" | "documented-recycle-call";
                     evidence_url: string;
                     note?: string;
-                } & {
-                    [key: string]: unknown;
                 };
                 /** @description The entity's own canonical homepage, for linking the rendered nametag. Distinct from source_urls: a homepage is not proof of address ownership. */
                 url?: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             generated_at: string;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         /** @description An epoch-millisecond instant. Published as Float in GraphQL: the value exceeds the 32-bit range of GraphQL's Int. */
         EpochMillis: number;
@@ -8400,8 +8270,6 @@ export interface components {
                 subnet_claim_count: number;
                 surface_claim_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @description Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}. */
         EvmAddressMappingArtifact: {
@@ -8419,8 +8287,6 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             ss58?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         ExtrinsicDetailArtifact: {
             events: components["schemas"]["AccountEvent"][];
@@ -8442,8 +8308,6 @@ export interface components {
             } | null;
             ref: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         ExtrinsicsFeedArtifact: {
             extrinsic_count: number;
@@ -8467,8 +8331,6 @@ export interface components {
             next_cursor: string | null;
             offset: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         FailureReason: {
             checks: number;
@@ -8497,8 +8359,6 @@ export interface components {
             series: components["schemas"]["FailureReasonsDay"][];
             total_checks: number | null;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         FailureReasonsDay: {
             /** @description Checks per classification on this day, as a JSON object. */
@@ -8523,28 +8383,22 @@ export interface components {
                 method: "GET";
                 /** Format: uri */
                 url: string;
-            } & {
-                [key: string]: unknown;
             };
             response: {
                 body: components["schemas"]["JsonObject"] | unknown[] | string | number | boolean | null;
                 content_type?: string | null;
                 status: number;
-            } & {
-                [key: string]: unknown;
             };
             /** @constant */
             schema_version: 1;
             subnet_name?: string | null;
             subnet_slug?: string | null;
             surface_id: string;
-        } & {
-            [key: string]: unknown;
         };
         FixturesIndexArtifact: {
             candidate_count?: number;
             contract_version?: string;
-            coverage?: ({
+            coverage?: {
                 artifact_path?: string | null;
                 captured_at?: string | null;
                 kind?: string;
@@ -8555,32 +8409,27 @@ export interface components {
                 status: "available" | "missing" | "capture-failed";
                 subnet_slug?: string | null;
                 surface_id: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             fixture_count: number;
-            fixtures: ({
+            fixtures: {
                 captured_at?: string | null;
                 kind?: string;
                 netuid: number;
                 response_status?: number | null;
                 subnet_slug?: string | null;
                 surface_id: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             generated_at: string;
             missing_count?: number;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
             published_at?: string | null;
             /** @constant */
             schema_version: 1;
             status_counts?: {
                 [key: string]: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         FreshnessArtifact: {
             contract_version?: string;
@@ -8626,8 +8475,6 @@ export interface components {
                 verification_generated_at: string | null;
                 warning_source_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         Gaps: {
             gap_notes: string[];
@@ -8655,8 +8502,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         GeneratedOpenApiMarker: {
             /** @constant */
@@ -8673,30 +8518,22 @@ export interface components {
             summary: {
                 affected_surface_count: number;
                 incident_count: number;
-            } & {
-                [key: string]: unknown;
             };
-            surfaces: ({
+            surfaces: {
                 downtime_ms: number;
                 incident_count: number;
-                incidents: ({
+                incidents: {
                     duration_ms: number;
                     ended_at: components["schemas"]["EpochMillis"];
                     failed_samples: number;
                     started_at: components["schemas"]["EpochMillis"];
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 netuid: number;
                 surface_id: string;
                 transient_failed_samples: number;
                 transient_failure_count: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         GlobalValidatorsArtifact: {
             block_number: number | null;
@@ -8763,8 +8600,6 @@ export interface components {
                 total_stake_tao: number;
                 uid_count: number;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         HealthBadgeArtifact: {
             color: string;
@@ -8784,8 +8619,6 @@ export interface components {
             status: components["schemas"]["HealthStatus"];
             surface_count: number;
             unknown_count?: number;
-        } & {
-            [key: string]: unknown;
         };
         HealthHistoryArtifact: {
             contract_version?: string;
@@ -8813,8 +8646,6 @@ export interface components {
                 surface_id: string;
                 verified_at: string | null;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's per-surface SLA + reconstructed downtime incidents over the window. Mirrors GET /api/v1/subnets/{netuid}/health/incidents's data envelope. */
         HealthIncidentsArtifact: {
@@ -8824,28 +8655,22 @@ export interface components {
             schema_version: number;
             source: string;
             /** @description Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows). */
-            surfaces: ({
+            surfaces: {
                 downtime_ms: number;
                 incident_count: number;
-                incidents: ({
+                incidents: {
                     duration_ms: number;
                     ended_at: components["schemas"]["EpochMillis"];
                     failed_samples: number;
                     started_at: components["schemas"]["EpochMillis"];
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 samples: number;
                 surface_id: string;
                 transient_failed_samples: number;
                 transient_failure_count: number;
                 uptime_ratio: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         HealthLatestArtifact: {
             contract_version?: string;
@@ -8864,12 +8689,8 @@ export interface components {
                 classification_counts: components["schemas"]["CountMap"];
                 status_counts: components["schemas"]["CountMap"];
                 surface_count: number;
-            } & {
-                [key: string]: unknown;
             };
             surfaces: components["schemas"]["HealthSurface"][];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's per-surface success-only latency percentiles (#6980). Mirrors GET /api/v1/subnets/{netuid}/health/percentiles' data envelope. */
         HealthPercentilesArtifact: {
@@ -8878,7 +8699,7 @@ export interface components {
             schema_version: number;
             source: string;
             /** @description Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces). */
-            surfaces: ({
+            surfaces: {
                 latency_ms: {
                     avg: number | null;
                     max: number | null;
@@ -8886,24 +8707,16 @@ export interface components {
                     p50: number | null;
                     p95: number | null;
                     p99: number | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 samples: number;
                 surface_id: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         HealthProbeSummary: {
             classification_counts: components["schemas"]["CountMap"];
             status_counts: components["schemas"]["CountMap"];
             surface_count: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         HealthStatus: "ok" | "degraded" | "failed" | "unknown";
@@ -8932,8 +8745,6 @@ export interface components {
                 surface_id: string;
                 url: string;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         HealthSubnetSummary: {
             avg_latency_ms?: number | null;
@@ -8958,8 +8769,6 @@ export interface components {
                     [key: string]: number;
                 };
                 surface_count?: number;
-            } & {
-                [key: string]: unknown;
             };
             health_source?: string;
             operational_observed_at?: string | null;
@@ -8967,8 +8776,6 @@ export interface components {
             scope?: string;
             source?: string;
             subnets: components["schemas"]["HealthSubnetSummary"][];
-        } & {
-            [key: string]: unknown;
         };
         HealthSurface: {
             archive_support?: boolean | null;
@@ -8989,15 +8796,11 @@ export interface components {
                     ok: boolean;
                     raw_header?: {
                         number: unknown;
-                    } & {
-                        [key: string]: unknown;
                     };
                     raw_hex_result_present?: boolean;
                     result_present: boolean;
                     result_type: string;
                     rpc_method_count?: number;
-                } & {
-                    [key: string]: unknown;
                 };
             };
             method_tested?: string;
@@ -9030,29 +8833,21 @@ export interface components {
                 [key: string]: {
                     latency_sample_count: number;
                     samples: number;
-                    surfaces: ({
+                    surfaces: {
                         avg_latency_ms: number | null;
                         latency_ms: {
                             p50: number | null;
                             p95: number | null;
                             p99: number | null;
-                        } & {
-                            [key: string]: unknown;
                         };
                         latency_sample_count: number;
                         samples: number;
                         surface_id: string;
                         uptime_ratio: number | null;
-                    } & {
-                        [key: string]: unknown;
-                    })[];
+                    }[];
                     uptime_ratio: number | null;
-                } & {
-                    [key: string]: unknown;
                 };
             };
-        } & {
-            [key: string]: unknown;
         };
         IndexerLagArtifact: {
             /** @description Blocks the distribution was computed over. Null only on a decline. */
@@ -9071,8 +8866,6 @@ export interface components {
             /** @description What was actually measured -- the table is pruned, so a distribution without its bounds would read as a lifetime one. */
             window: components["schemas"]["IndexerLagWindow"] | null;
             write_latency_ms: components["schemas"]["IndexerLagLatency"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Milliseconds from a block's own timestamp to the moment it became queryable here. Unbounded below: a negative value is block-author clock skew, served as measured. */
         IndexerLagLatency: {
@@ -9134,7 +8927,7 @@ export interface components {
             generated_at: string;
             graduated_subnet_count?: number;
             link_count: number;
-            links: ({
+            links: {
                 mainnet_name?: string | null;
                 mainnet_netuid: number;
                 mainnet_slug?: string | null;
@@ -9142,22 +8935,19 @@ export interface components {
                 matched_by: "github_repo" | "chain_name";
                 testnet_name?: string | null;
                 testnet_netuid: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             matched_by_counts?: {
                 [key: string]: number;
             };
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds. */
             published_at?: string | null;
             /** @constant */
             schema_version: 1;
             source_network: string;
             target_network: string;
             testnet_only_count?: number;
-        } & {
-            [key: string]: unknown;
         };
         NetworkCapabilitiesArtifact: {
             default_network: string;
@@ -9217,8 +9007,6 @@ export interface components {
             subnet_owner_cut_effective?: number | null;
             tao_weight?: number | null;
             total_issuance_tao?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot. */
         NeuronDetailArtifact: {
@@ -9256,8 +9044,6 @@ export interface components {
                 validator_trust?: number | null;
             } | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history. */
         NeuronHistoryArtifact: {
@@ -9266,7 +9052,7 @@ export interface components {
             newest_day: string | null;
             oldest_day: string | null;
             point_count: number;
-            points: ({
+            points: {
                 active: boolean;
                 /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
                 axon?: string | null;
@@ -9297,14 +9083,10 @@ export interface components {
                 uid: number;
                 validator_permit: boolean;
                 validator_trust?: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
             uid: number;
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         OpenApiArtifact: {
             components: {
@@ -9318,14 +9100,15 @@ export interface components {
             paths: {
                 [key: string]: unknown;
             };
+            security?: {
+                [key: string]: unknown;
+            }[];
             servers?: {
                 [key: string]: unknown;
             }[];
             "x-metagraphed"?: {
                 [key: string]: unknown;
             };
-        } & {
-            [key: string]: unknown;
         };
         OperationalSurfacesArtifact: {
             contract_version?: string;
@@ -9337,7 +9120,7 @@ export interface components {
             /** @constant */
             schema_version: 1;
             surface_count: number;
-            surfaces: ({
+            surfaces: {
                 auth_required: boolean;
                 authority: string;
                 kind: string;
@@ -9347,28 +9130,53 @@ export interface components {
                     method: string;
                     /** @description null when the surface declares no timeout, so the prober applies its own default -- not zero (12 of 619 rows today). */
                     timeout_ms: number | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 provider: string;
                 public_safe: boolean;
                 /** @description What this surface measures about money, or null when it declares nothing (#10566). Carried here because this artifact is already the list of probe-enabled, public-safe surfaces a lane may fetch — the revenue probe needs exactly that set plus the declaration, and enumerating 129 per-subnet artifacts on every tick to rebuild it would be the same list at 129x the cost. */
-                revenue: ({
-                    currency?: string;
+                revenue: {
+                    /**
+                     * @description Whether the money originates outside Bittensor. Absent means unknown, never external.
+                     * @enum {string}
+                     */
+                    circularity?: "external" | "alpha-denominated" | "team-funded" | "unknown";
+                    /**
+                     * @description Unit the amount field carries. Declared rather than inferred from the path: api.chutes.ai/payments/summary/tao is named for TAO and its values reconcile as USD.
+                     * @enum {string}
+                     */
+                    currency?: "USD" | "TAO" | "ALPHA";
+                    /** @description Fields present in the payload that are NOT external revenue and must be subtracted -- subnet-funded or unrecognised components. */
                     excludes?: string[];
+                    /** @description Map of role -> field name in the upstream payload, e.g. {date: 'date', amount: 'total_revenue'}. */
                     fields?: {
                         [key: string]: string;
                     };
-                    grain?: string;
-                    provenance: string;
-                    role: string;
-                    shape?: string;
+                    /** @enum {string} */
+                    grain?: "daily" | "weekly" | "monthly" | "cumulative";
+                    /**
+                     * @description Evidence class. Only chain-verified and probe-derived count toward a published coverage ratio; the rest are shown beside it and never summed in.
+                     * @enum {string}
+                     */
+                    provenance: "chain-verified" | "probe-derived" | "operator-attested" | "third-party-reported" | "proxy-only" | "none";
+                    /**
+                     * @description What this surface actually measures. A 'stats' endpoint is guilty until proven revenue: miner payout is emission -- the denominator -- and counting it as revenue puts the denominator in the numerator.
+                     * @enum {string}
+                     */
+                    role: "external-revenue" | "usage-proxy" | "miner-payout" | "not-revenue";
+                    /** @description When absence was established. Required for provenance 'none': an undated absence is not evidence. */
+                    searched_at?: string;
+                    /**
+                     * @description How the payload is arranged, so an extractor does not have to guess. flat-array: a list of records, fields.date/fields.amount naming keys within one. keyed-map: nested {period: {subkey: amount}}, where the period IS the key and there are no field names to point at. scalar: one object carrying a single total.
+                     * @enum {string}
+                     */
+                    shape?: "flat-array" | "keyed-map" | "scalar";
+                    /** Format: uri */
+                    source_url?: string;
+                    /** @description Surface ids this one subsumes. Declares a subset relationship so overlapping channels are not summed twice. */
                     supersedes?: string[];
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 /** @description The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface). */
-                schema_source: ({
+                schema_source: {
                     /** @description Artifact path of the captured schema, under /metagraph/. */
                     artifact: string;
                     hash: string;
@@ -9381,20 +9189,14 @@ export interface components {
                     status: string;
                     surface_id: string;
                     url: string;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 subnet_name: string;
                 subnet_slug: string;
                 surface_id: string;
                 /** @description The stable identity (`srf-<hash of netuid|kind|url>`) the prober re-keys health history onto, so a display-name or slug rename no longer orphans a surface's probe history (#1005). The hand-authored `surface_id` stays for back-compat and display. */
                 surface_key: string;
                 url: string;
-            } & {
-                [key: string]: unknown;
-            })[];
-        } & {
-            [key: string]: unknown;
+            }[];
         };
         /** @description The economic opportunity boards, ranked. The same ranking /api/v1/registry/leaderboards serves, re-keyed to GraphQL field names. */
         OpportunityBoards: {
@@ -9444,8 +9246,6 @@ export interface components {
             points: components["schemas"]["PipelineHistoryPoint"][];
             schema_version: number;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         PipelineHistoryPoint: {
             alpha_in_emission: number | null;
@@ -9512,28 +9312,26 @@ export interface components {
             provider: components["schemas"]["Provider"];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         ProviderEndpointsArtifact: {
             contract_version?: string;
             endpoints: components["schemas"]["EndpointResource"][];
             generated_at: string;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
+            health_source?: string | null;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             provider: {
                 authority?: string;
                 id?: string;
                 kind?: string;
                 name?: string;
-            } & {
-                [key: string]: unknown;
             };
             /** @constant */
             schema_version: 1;
             summary: components["schemas"]["EndpointSummary"];
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         ProviderKind: "data-provider" | "docs-provider" | "infrastructure-provider" | "registry" | "subnet-team";
@@ -9545,8 +9343,6 @@ export interface components {
             providers: components["schemas"]["Provider"][];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         R2ManifestArtifact: {
             /** @description Entries in THIS manifest's `artifacts`. On a compact manifest that is the git/dual subset, not the whole archive -- read `full_artifact_count` for that. */
@@ -9568,8 +9364,6 @@ export interface components {
                 large_history_in_r2: boolean;
                 manifest_run_prefix: string;
                 source_of_truth: string;
-            } & {
-                [key: string]: unknown;
             };
             latest_prefix: string;
             /**
@@ -9587,8 +9381,6 @@ export interface components {
             /** @description Full-manifest entry counts keyed by storage tier -- a typed record, so a new tier adds a key rather than changing the contract. */
             storage_tier_counts?: components["schemas"]["CountMap"];
             storage_tier_size_bytes?: components["schemas"]["CountMap"];
-        } & {
-            [key: string]: unknown;
         };
         R2ManifestEntry: {
             content_type: string;
@@ -9619,8 +9411,6 @@ export interface components {
             queried_at?: string | null;
             schema_version: number;
             stored_round_span?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Registry leaderboards over the operational + economic-opportunity boards. Mirrors GET /api/v1/registry/leaderboards. */
         RegistryLeaderboardsArtifact: {
@@ -9628,7 +9418,7 @@ export interface components {
             board?: string | null;
             /** @description Every board keyed by board name, each an array of ranked subnet entries capped at limit. Opaque JSON like HealthTrends.windows: the keys are dynamic AND hyphenated (fastest-rpc, most-complete, open-slots, …) so they are not expressible as GraphQL field names, and each board carries its own metric columns (healthiest has uptime_ratio/surfaces_ok, fastest-rpc has latency_ms, fastest-growing has completeness_delta, …). Passing it through verbatim keeps the REST/MCP get_registry_leaderboards shape byte-for-byte. */
             boards: {
-                [key: string]: ({
+                [key: string]: {
                     alpha_price_change_1d?: number | null;
                     alpha_price_change_7d?: number | null;
                     alpha_price_tao?: number | null;
@@ -9660,15 +9450,11 @@ export interface components {
                     uptime_ratio?: number | null;
                     validator_count?: number | null;
                     validator_headroom?: number | null;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
             };
             observed_at?: string | null;
             schema_version: number;
             source: string;
-        } & {
-            [key: string]: unknown;
         };
         RegistrySummaryArtifact: {
             contract_version?: string;
@@ -9677,8 +9463,6 @@ export interface components {
                 endpoints: number;
                 providers: number;
                 surfaces: number;
-            } & {
-                [key: string]: unknown;
             };
             coverage?: components["schemas"]["CoverageCompleteness"] | null;
             curation_level_counts?: components["schemas"]["CountMap"];
@@ -9691,35 +9475,25 @@ export interface components {
                     added?: number;
                     modified?: number;
                     removed?: number;
-                } & {
-                    [key: string]: unknown;
                 };
                 generated_at?: string | null;
                 subnets?: {
                     added?: number;
                     removed?: number;
                     renamed?: number;
-                } & {
-                    [key: string]: unknown;
                 };
-            } & {
-                [key: string]: unknown;
             };
             /** @constant */
             schema_version: 1;
             subnet_count: number;
-            top_subnets: ({
+            top_subnets: {
                 completeness_score: number;
                 curation_level?: string;
                 name?: string;
                 netuid: number;
                 profile_level?: string;
                 slug?: string;
-            } & {
-                [key: string]: unknown;
-            })[];
-        } & {
-            [key: string]: unknown;
+            }[];
         };
         ResolvedIdentifier: {
             api_path: string;
@@ -9785,8 +9559,6 @@ export interface components {
                 operational_kind_counts: components["schemas"]["CountMap"];
                 sse_backed_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         ReviewCurationArtifact: {
             adapter_candidates: components["schemas"]["ReviewAdapterCandidate"][];
@@ -9806,8 +9578,6 @@ export interface components {
                 needs_maintainer_review_count: number;
                 subnet_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         ReviewDecision: {
             /** @enum {string} */
@@ -9828,8 +9598,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         ReviewEnrichmentEvidenceArtifact: {
             contract_version?: string;
@@ -9878,8 +9646,6 @@ export interface components {
                 subnet_count: number;
                 unverified_candidate_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         ReviewEnrichmentQueueArtifact: {
             contract_version?: string;
@@ -9949,8 +9715,6 @@ export interface components {
                 subnet_count: number;
                 top_direct_submission_kinds: components["schemas"]["CountMap"];
             };
-        } & {
-            [key: string]: unknown;
         };
         ReviewEnrichmentTargetsArtifact: {
             contract_version?: string;
@@ -10040,8 +9804,6 @@ export interface components {
                 /** @enum {string} */
                 target_type: "surface-candidate" | "adapter-review" | "maintainer-review" | "monitoring-followup";
             }[];
-        } & {
-            [key: string]: unknown;
         };
         ReviewGapPrioritiesArtifact: {
             contract_version?: string;
@@ -10051,8 +9813,6 @@ export interface components {
             priorities: components["schemas"]["ReviewGapPriority"][];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         ReviewGapPriority: {
             candidate_count: number;
@@ -10121,8 +9881,6 @@ export interface components {
                 needs_operational_count: number;
                 profile_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         ReviewQueueArtifact: components["schemas"]["CandidatesArtifact"];
         /** @enum {string} */
@@ -10174,6 +9932,8 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
+            /** @description Which producer answered: `artifact-build` for the committed catalog, the prober's label once the live overlay applies. */
+            source?: string;
             summary: {
                 archive_supported_count?: number;
                 by_kind?: {
@@ -10186,11 +9946,7 @@ export interface components {
                     [key: string]: number;
                 };
                 endpoint_count: number;
-            } & {
-                [key: string]: unknown;
             };
-        } & {
-            [key: string]: unknown;
         };
         RpcPool: {
             best_endpoint_id?: string | null;
@@ -10250,52 +10006,42 @@ export interface components {
             schema_version: 1;
             /** @enum {string} */
             source?: "endpoint-resource-probes" | "rpc-endpoint-probes" | "live-cron-prober";
-        } & {
-            [key: string]: unknown;
         };
         /** @description RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope. */
         RpcUsageArtifact: {
             /** @description Time-bucket granularity for buckets: 1h for the 7d window, 6h for 30d. Null on a cold store. */
             bucket_granularity?: string | null;
             /** @description Bounded time buckets over the window for heatmaps, oldest-first. */
-            buckets: ({
+            buckets: {
                 avg_latency_ms: number | null;
                 errors: number;
                 requests: number;
                 /** @description Bucket start, as epoch milliseconds. */
                 ts: components["schemas"]["EpochMillis"];
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             /** @description What the answer is actually about, as opposed to what window was asked for. */
             coverage: {
                 /** @description Epoch ms of the newest measured event across every contributing store, or null when nothing was measured. */
                 end: components["schemas"]["EpochMillis"] | null;
                 /** @description The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function. */
-                latency_percentiles: ({
+                latency_percentiles: {
                     end: components["schemas"]["EpochMillis"] | null;
                     start: components["schemas"]["EpochMillis"] | null;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 /** @description One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers. */
-                segments: ({
+                segments: {
                     /** @description Epoch ms of this store's newest measured event in the window. */
                     end: components["schemas"]["EpochMillis"] | null;
                     /** @description Which store measured it: analytics-engine (live capture) or lakehouse (frozen history). */
                     source: string;
                     /** @description Epoch ms of this store's oldest measured event in the window. */
                     start: components["schemas"]["EpochMillis"] | null;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 /** @description Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured. */
                 start: components["schemas"]["EpochMillis"] | null;
-            } & {
-                [key: string]: unknown;
             };
             /** @description Per-endpoint request distribution, ranked by request volume (top 50). */
-            endpoints: ({
+            endpoints: {
                 avg_latency_ms?: number | null;
                 endpoint_id: string | null;
                 /** @description Null when the endpoint had no requests in the window. */
@@ -10304,19 +10050,15 @@ export interface components {
                 provider?: string | null;
                 rank?: number;
                 requests: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             /** @description Per-network request breakdown, ordered by request volume. */
-            networks: ({
+            networks: {
                 /** @description Null when the network had no requests in the window. */
                 error_rate?: number | null;
                 network: string;
                 ok_requests: number;
                 requests: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             /**
              * @description When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.
              * @example 1786099339000
@@ -10340,17 +10082,11 @@ export interface components {
                     avg?: number | null;
                     p50?: number | null;
                     p95?: number | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 ok_requests: number;
                 total_requests: number;
-            } & {
-                [key: string]: unknown;
             };
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Site-wide runtime spec-version transition timeline. Mirrors GET /api/v1/runtime. */
         RuntimeVersionsArtifact: {
@@ -10364,6 +10100,36 @@ export interface components {
                 before_spec_version: number;
                 block_span: number;
             }[];
+            current?: {
+                latest_release: {
+                    name: string | null;
+                    prerelease: boolean;
+                    published_at: string | null;
+                    spec_version: number;
+                    tag: string;
+                    /** @description GitHub's own html_url -- never constructed. */
+                    url: string | null;
+                } | null;
+                mainnet: {
+                    network: string;
+                    /** @description When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment. */
+                    observed_at: string | null;
+                    spec_version: number | null;
+                };
+                /**
+                 * @description `unknown` when a reading is missing -- deliberately NOT `none`, which is the opposite answer. No deploy date is predicted: the foundation publishes no schedule.
+                 * @enum {string}
+                 */
+                pending_upgrade: "none" | "testnet_soaking" | "released_undeployed" | "unknown";
+                testnet: {
+                    network: string;
+                    /** @description When this reading was taken. Null whenever spec_version is null -- stamping a time on a failed read would imply something was successfully read at that moment. */
+                    observed_at: string | null;
+                    spec_version: number | null;
+                };
+                /** @description How far mainnet trails the furthest-along reading, counted in spec versions rather than time. Null when mainnet itself could not be read. */
+                versions_behind: number | null;
+            };
             current_spec_version: number | null;
             schema_version: number;
             transition_count: number;
@@ -10372,8 +10138,6 @@ export interface components {
                 observed_at: string | null;
                 spec_version: number;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         SchemaDriftArtifact: {
             contract_version?: string;
@@ -10396,12 +10160,8 @@ export interface components {
                 by_status: components["schemas"]["CountMap"];
                 schema_count: number;
                 surface_count: number;
-            } & {
-                [key: string]: unknown;
             };
             surfaces: components["schemas"]["SchemaDriftSurface"][];
-        } & {
-            [key: string]: unknown;
         };
         SchemaDriftSurface: {
             /**
@@ -10443,14 +10203,12 @@ export interface components {
                 previous_hash?: string | null;
                 schema_url: string | null;
                 snapshot?: {
-                    auth_detail?: ({
+                    auth_detail?: {
                         location?: string | null;
                         name?: string | null;
                         scheme?: string | null;
                         value_format?: string | null;
-                    } & {
-                        [key: string]: unknown;
-                    }) | null;
+                    } | null;
                     auth_required?: boolean;
                     auth_schemes?: string[];
                     component_schema_count?: number;
@@ -10473,8 +10231,6 @@ export interface components {
                     tag_count?: number;
                     title?: string | null;
                     version?: string | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 /** @enum {string} */
                 status: "captured" | "error" | "not-captured" | "not-found" | "too-large" | "unsafe";
@@ -10494,11 +10250,9 @@ export interface components {
                 schema_count: number;
                 surface_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @description Distribution summary of a 0–1 per-UID score across neurons: count, mean, min, max, and the p10/p25/p50/p75/p90 nearest-rank percentiles. Null when no neuron carries a finite score (a cold store or an empty network). */
-        ScoreDistribution: ({
+        ScoreDistribution: {
             count: number;
             max: number;
             mean: number;
@@ -10508,9 +10262,7 @@ export interface components {
             p50?: number | null;
             p75?: number | null;
             p90?: number | null;
-        } & {
-            [key: string]: unknown;
-        }) | null;
+        } | null;
         SearchArtifact: {
             contract_version?: string;
             document_count: number;
@@ -10534,8 +10286,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index). */
         SearchIndexArtifact: {
@@ -10559,8 +10309,6 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         SearchResolveArtifact: {
             match_count: number;
@@ -10569,8 +10317,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             unambiguous: boolean;
-        } & {
-            [key: string]: unknown;
         };
         /** @description metagraphed's own uptime verdict (#8422). Mirrors GET /api/v1/self-health. */
         SelfHealthArtifact: {
@@ -10586,8 +10332,6 @@ export interface components {
              * @enum {string}
              */
             verdict: "operational" | "degraded" | "outage";
-        } & {
-            [key: string]: unknown;
         };
         /** @description One self-health component (api / site / publish): its latest probe state and trailing-90-day daily ratios. */
         SelfHealthComponent: {
@@ -10603,8 +10347,6 @@ export interface components {
             note: string | null;
             /** @description Mean uptime across the days we actually have. Null when there are none. */
             uptime_90d: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One UTC day's uptime ratio for a self-health component. Days with no probe rows are ABSENT, never zero-filled. */
         SelfHealthDay: {
@@ -10613,8 +10355,6 @@ export interface components {
             ok_count: number;
             /** @description ok_count / checks, 0..1. */
             uptime_ratio: number;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * @description One ingest lane's staleness verdict.
@@ -10638,14 +10378,12 @@ export interface components {
             lane: string;
             /** @enum {string} */
             verdict: "ok" | "stale" | "unknown";
-        } & {
-            [key: string]: unknown;
         };
         SemanticSearchArtifact: {
             count: number;
             model: string;
             query: string;
-            results: ({
+            results: {
                 categories: string[];
                 netuid: number | null;
                 score: number;
@@ -10655,11 +10393,7 @@ export interface components {
                 title: string | null;
                 type: string | null;
                 url?: string | null;
-            } & {
-                [key: string]: unknown;
-            })[];
-        } & {
-            [key: string]: unknown;
+            }[];
         };
         SocialLinks: {
             reddit?: string;
@@ -10700,8 +10434,6 @@ export interface components {
                 };
                 verification_result_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         SourceSnapshotsArtifact: {
             contract_version?: string;
@@ -10727,8 +10459,6 @@ export interface components {
                 source_count: number;
                 verification_result_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         SourceTier: "native-chain" | "provider-claimed" | "third-party-index" | "community-docs";
@@ -10813,8 +10543,6 @@ export interface components {
             netuid: number;
             queried_at?: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetBurnHistoryArtifact: {
             change_pct: number | null;
@@ -10825,8 +10553,6 @@ export interface components {
             points: components["schemas"]["SubnetBurnHistoryPoint"][];
             schema_version: number;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         SubnetBurnHistoryPoint: {
             burn_tao: number;
@@ -10844,8 +10570,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             slug?: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
         SubnetConcentrationArtifact: {
@@ -10867,14 +10591,12 @@ export interface components {
             uids_per_entity?: number | null;
             /** @description Stake concentration across permitted validators only. */
             validator_stake?: components["schemas"]["ConcentrationMetrics"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history. */
         SubnetConcentrationHistoryArtifact: {
             netuid: number;
             point_count: number;
-            points: ({
+            points: {
                 emission_gini?: number | null;
                 emission_nakamoto_coefficient?: number | null;
                 emission_top_10pct_share?: number | null;
@@ -10883,14 +10605,10 @@ export interface components {
                 stake_gini?: number | null;
                 stake_nakamoto_coefficient?: number | null;
                 stake_top_10pct_share?: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction. */
         SubnetConvictionArtifact: {
@@ -10917,10 +10635,9 @@ export interface components {
             queried_at_block?: number | null;
             schema_version: number;
             unlock_rate?: components["schemas"]["ChainU64"] | null;
-        } & {
-            [key: string]: unknown;
         };
         SubnetDeregistrationRankingArtifact: {
+            block: number;
             chain_state: components["schemas"]["ChainState"];
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -10959,8 +10676,6 @@ export interface components {
             }[];
             ranked_count: number;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
         SubnetDeregistrationsArtifact: {
@@ -11019,13 +10734,11 @@ export interface components {
             github_unreachable?: boolean;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
-            links: ({
+            links: {
                 label: string;
                 source_url?: string | null;
                 url: string;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             logo_url?: string | null;
             mechanism_count?: number;
             name: string;
@@ -11046,18 +10759,12 @@ export interface components {
                     method?: string | null;
                     network?: string | null;
                     source_kind?: string | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 identity?: {
                     display_name_source?: string | null;
                     native_name_quality?: string | null;
-                } & {
-                    [key: string]: unknown;
                 };
                 interface_metadata?: string | null;
-            } & {
-                [key: string]: unknown;
             };
             registered_at_block?: number;
             revenue_search?: {
@@ -11102,15 +10809,17 @@ export interface components {
             endpoints?: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             generated_at: string;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
+            health_source?: string | null;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             /** @constant */
             schema_version: 1;
             subnet: components["schemas"]["SubnetDetail"];
             surfaces: components["schemas"]["Surface"][];
             verified_surfaces?: components["schemas"]["Surface"][];
-        } & {
-            [key: string]: unknown;
         };
         SubnetEconomics: {
             alpha_fdv_tao: number | null;
@@ -11177,8 +10886,6 @@ export interface components {
             schema_version: 1;
             slug?: string;
             summary: components["schemas"]["EndpointSummary"];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope. */
         SubnetEventsArtifact: {
@@ -11189,8 +10896,6 @@ export interface components {
             next_cursor?: string | null;
             offset?: number;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope. */
         SubnetEventSummaryArtifact: {
@@ -11238,8 +10943,6 @@ export interface components {
              * @enum {string}
              */
             window: "7d" | "30d" | "90d";
-        } & {
-            [key: string]: unknown;
         };
         SubnetEvidenceArtifact: {
             claims: components["schemas"]["EvidenceClaim"][];
@@ -11252,8 +10955,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             slug?: string;
-        } & {
-            [key: string]: unknown;
         };
         SubnetGapsArtifact: {
             contract_version?: string;
@@ -11314,8 +11015,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             slug?: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope. */
         SubnetHistoryArtifact: {
@@ -11333,8 +11032,6 @@ export interface components {
             }[];
             schema_version: number;
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One `coldkey`'s holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet. */
         SubnetHolder: {
@@ -11361,8 +11058,6 @@ export interface components {
             positions_captured_at: string | null;
             schema_version: number;
             total_alpha: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Concentration of a subnet's alpha, each rank summed over the top N of the FULL holder set rather than the returned page. */
         SubnetHoldersConcentration: {
@@ -11417,8 +11112,6 @@ export interface components {
             netuid: number;
             schema_version: number;
             subnet_status?: ("live" | "deregistered") | null;
-        } & {
-            [key: string]: unknown;
         };
         SubnetHyperparamsHistoryArtifact: {
             entries: {
@@ -11467,8 +11160,6 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history. */
         SubnetIdentityHistoryArtifact: {
@@ -11490,8 +11181,6 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet idle-stake scorecard (#7172). Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/idle-stake. */
         SubnetIdleStakeArtifact: {
@@ -11501,8 +11190,6 @@ export interface components {
             netuid: number;
             neuron_count: number;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetIndexEntry: {
             block?: number;
@@ -11581,7 +11268,7 @@ export interface components {
                     storage: string | null;
                 };
             };
-            lease?: ({
+            lease?: {
                 accumulated_dividends_alpha?: number | null;
                 beneficiary: string;
                 coldkey: string;
@@ -11591,15 +11278,11 @@ export interface components {
                 hotkey: string;
                 lease_id: number;
                 netuid: number;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             leased: boolean | null;
             netuid: number;
             queried_at?: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history. */
         SubnetLeaseHistoryArtifact: {
@@ -11614,28 +11297,22 @@ export interface components {
             }[];
             netuid: number;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetLifecycleArtifact: {
-            entries: ({
+            entries: {
                 block_number: number | null;
                 /** @enum {string} */
                 event: "registered" | "deregistered";
                 netuid: number;
                 observed_at: string;
                 predates_capture: boolean;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             entry_count: number;
             limit?: number | null;
             netuid: number;
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetMetagraphArtifact: {
             block_number?: number | null;
@@ -11672,8 +11349,6 @@ export interface components {
                 validator_trust?: number | null;
             }[];
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetMoversArtifact: {
             end_date: string | null;
@@ -11774,14 +11449,12 @@ export interface components {
                 candidates: number;
                 endpoints: number;
                 surfaces: number;
-            } & {
-                [key: string]: unknown;
             };
             curation?: components["schemas"]["CurationMetadata"] | null;
             gap_priorities?: unknown[];
             gaps?: components["schemas"]["Gaps"] | null;
             generated_at: string;
-            health: ({
+            health: {
                 avg_latency_ms?: number | null;
                 degraded_count?: number;
                 failed_count?: number;
@@ -11793,22 +11466,20 @@ export interface components {
                 status?: string;
                 surface_count?: number;
                 unknown_count?: number;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
             health_source?: string | null;
             name?: string;
             netuid: number;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
             operational_observed_at?: string | null;
             profile: components["schemas"]["SubnetProfile"] | null;
             /** @constant */
             schema_version: 1;
             slug?: string;
             status?: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut. */
         SubnetOwnerCutArtifact: {
@@ -11858,8 +11529,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             window_days: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Every automatic ownership transfer one subnet has undergone, decoded from the chain_events SubnetOwnerChanged stream. Mirrors GET /api/v1/subnets/{netuid}/ownership-history. */
         SubnetOwnershipHistoryArtifact: {
@@ -11881,8 +11550,6 @@ export interface components {
                 source?: ("chain-event" | "owner-observation") | null;
             }[];
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance. */
         SubnetPerformanceArtifact: {
@@ -11902,14 +11569,12 @@ export interface components {
             validator_count?: number;
             /** @description Validator-trust score spread across permitted validators only; null when none carries a finite value. */
             validator_trust?: components["schemas"]["ScoreDistribution"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history. */
         SubnetPerformanceHistoryArtifact: {
             netuid: number;
             point_count: number;
-            points: ({
+            points: {
                 active_count?: number;
                 consensus_mean?: number | null;
                 consensus_median?: number | null;
@@ -11926,14 +11591,10 @@ export interface components {
                 validator_count?: number;
                 validator_trust_mean?: number | null;
                 validator_trust_median?: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         SubnetProfile: {
             candidate_count: number;
@@ -11987,20 +11648,16 @@ export interface components {
             injection_scrubbed?: boolean;
             integration_readiness?: number;
             interface_count?: number;
-            lineage?: ({
-                also_on?: ({
+            lineage?: {
+                also_on?: {
                     /** @enum {string} */
                     matched_by?: "github_repo" | "chain_name";
                     name?: string | null;
                     netuid?: number;
                     network?: string;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 graduated_from_testnet?: boolean;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             missing_critical_count: number;
             missing_identity: components["schemas"]["SurfaceKind"][];
             missing_operational: components["schemas"]["SurfaceKind"][];
@@ -12068,15 +11725,17 @@ export interface components {
             endpoints: components["schemas"]["EndpointResource"][];
             gaps: components["schemas"]["Gaps"];
             generated_at: string;
+            /** @description Which live tier answered for health on this response. Open-ended: the value comes from the health snapshot's own producer. */
+            health_source?: string | null;
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            /** @description When the live health snapshot behind this response was taken. Null when the snapshot carries no run stamp. */
+            operational_observed_at?: string | null;
             profile: components["schemas"]["SubnetProfile"];
             /** @constant */
             schema_version: 1;
             subnet: components["schemas"]["SubnetDetail"];
             surfaces: components["schemas"]["Surface"][];
-        } & {
-            [key: string]: unknown;
         };
         SubnetProfileIdentityEvidence: {
             candidate_identity_count: number;
@@ -12115,8 +11774,6 @@ export interface components {
                 native_identity_unpromoted_count: number;
                 profile_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @description Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
         SubnetPrometheusArtifact: {
@@ -12145,8 +11802,6 @@ export interface components {
             queried_at?: string | null;
             recycled_tao?: number | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetRegistrationsArtifact: {
             distinct_registrants: number;
@@ -12238,12 +11893,14 @@ export interface components {
             };
             /** @constant */
             schema_version: 1;
-        } & {
-            [key: string]: unknown;
         };
         SubnetsArtifact: {
+            /** @description When the chain snapshot behind this index was captured. Distinct from `generated_at`, which marks the build that shaped it. */
+            captured_at?: string | null;
             contract_version?: string;
             generated_at: string;
+            /** @description Capture stamp of the native (SDK) snapshot the identity overlay was merged onto. */
+            native_snapshot_captured_at?: string | null;
             network: components["schemas"]["BittensorNetwork"];
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
@@ -12256,12 +11913,8 @@ export interface components {
                 package?: string;
                 rpc_family?: string;
                 version?: string;
-            } & {
-                [key: string]: unknown;
             };
             subnets: components["schemas"]["SubnetIndexEntry"][];
-        } & {
-            [key: string]: unknown;
         };
         SubnetServingArtifact: {
             announcements: number;
@@ -12334,8 +11987,6 @@ export interface components {
             schema_version: number;
             /** @description Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there. */
             surface_count: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetSurfacesArtifact: {
             contract_version?: string;
@@ -12348,8 +11999,6 @@ export interface components {
             schema_version: 1;
             slug?: string;
             surfaces: components["schemas"]["Surface"][];
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
         SubnetTrajectoryArtifact: {
@@ -12359,7 +12008,7 @@ export interface components {
             };
             netuid: number;
             point_count: number;
-            points: ({
+            points: {
                 alpha_in_pool?: number | null;
                 alpha_out_pool?: number | null;
                 alpha_price_tao?: number | null;
@@ -12373,12 +12022,8 @@ export interface components {
                 tao_in_pool_tao?: number | null;
                 total_stake_alpha?: number | null;
                 validator_count?: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetTrajectoryDelta: {
             alpha_in_pool?: number | null;
@@ -12389,8 +12034,6 @@ export interface components {
             surface_count?: number | null;
             tao_in_pool_tao?: number | null;
             to_date: string;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard. */
         SubnetTurnoverArtifact: {
@@ -12431,8 +12074,6 @@ export interface components {
             validators_exited?: number;
             validators_start?: number;
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @enum {string} */
         SubnetType: "root" | "application";
@@ -12534,8 +12175,6 @@ export interface components {
                 validator_permit: boolean;
                 validator_trust?: number | null;
             }[];
-        } & {
-            [key: string]: unknown;
         };
         SubnetVerificationArtifact: {
             candidate_count: number;
@@ -12553,11 +12192,7 @@ export interface components {
                 by_classification: components["schemas"]["CountMap"];
                 by_kind: components["schemas"]["CountMap"];
                 by_provider: components["schemas"]["CountMap"];
-            } & {
-                [key: string]: unknown;
             };
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet's declared wallets with their roles, evidence and per-window activity. `owner` is chain-derived from SubnetOwner and flagged as such; every other role is a human attribution and carries the source_urls that prove it, in the response rather than only in the registry. An empty list means nothing has been attributed for this subnet — not that nothing exists. Mirrors GET /api/v1/subnets/{netuid}/wallets. */
         SubnetWalletsArtifact: {
@@ -12626,8 +12261,6 @@ export interface components {
                 unspendable_proof_basis?: string | null;
             }[];
             window_days: number;
-        } & {
-            [key: string]: unknown;
         };
         SubnetWeightsArtifact: {
             distinct_setters: number;
@@ -12697,7 +12330,7 @@ export interface components {
         SubnetYieldHistoryArtifact: {
             netuid: number;
             point_count: number;
-            points: ({
+            points: {
                 mean_yield?: number | null;
                 median_yield?: number | null;
                 neuron_count?: number;
@@ -12708,14 +12341,10 @@ export interface components {
                 subnet_yield?: number | null;
                 validator_count?: number;
                 yield_count?: number;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             schema_version: number;
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         SuccessEnvelope: {
             data: {
@@ -12742,8 +12371,6 @@ export interface components {
             hotkey?: string | null;
             queried_at?: string | null;
             schema_version: number;
-        } & {
-            [key: string]: unknown;
         };
         Surface: {
             auth?: components["schemas"]["SurfaceAuth"];
@@ -12872,20 +12499,28 @@ export interface components {
                 new_alias_count: number;
                 previous_surface_count: number;
             };
-        } & {
-            [key: string]: unknown;
         };
         SurfaceAuth: {
+            /** @description For scheme:signature with location:body -- which key of the outgoing JSON body carries the credential, and which carries the payload it signs. */
             body_envelope?: {
                 credential_key: string;
                 payload_key: string;
             };
-            /** @enum {string} */
+            /**
+             * @description Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.
+             * @enum {string}
+             */
             location?: "header" | "query" | "cookie" | "body";
+            /** @description The single header the credential goes in. */
             name?: string;
+            /** @description The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it. */
             names?: string[];
-            /** @enum {string} */
+            /**
+             * @description `signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.
+             * @enum {string}
+             */
             scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
+            /** @description How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all. */
             scopes_note?: string;
             token_url?: string;
             value_format?: string;
@@ -12933,8 +12568,6 @@ export interface components {
             /** @constant */
             schema_version: 1;
             surfaces: components["schemas"]["Surface"][];
-        } & {
-            [key: string]: unknown;
         };
         SurfaceVerifyArtifact: {
             auth_required: boolean;
@@ -12953,8 +12586,6 @@ export interface components {
             surface_id: string;
             surface_key: string;
             url: string;
-        } & {
-            [key: string]: unknown;
         };
         TaoUsdArtifact: {
             /** @description How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading. */
@@ -12974,8 +12605,6 @@ export interface components {
             /** @description The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift. */
             stale_after_ms: number;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description The newest reading with the derivation that produced it, kept together so both describe the same block. */
         TaoUsdLatest: {
@@ -13021,8 +12650,6 @@ export interface components {
             schema_version: number;
             /** @enum {string} */
             sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
-        } & {
-            [key: string]: unknown;
         };
         /** @description Present ONLY on a decline. An empty result WITHOUT this block is a measurement, not a decline. */
         UnavailableDegraded: {
@@ -13034,7 +12661,7 @@ export interface components {
             netuid: number;
             observed_at: string | null;
             /** @description Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at. */
-            reliability: ({
+            reliability: {
                 avg_latency_ms: number | null;
                 computed_at?: string | null;
                 day_count?: number;
@@ -13046,15 +12673,13 @@ export interface components {
                 surface_count?: number;
                 uptime_ratio: number | null;
                 window?: string | null;
-            } & {
-                [key: string]: unknown;
-            }) | null;
+            } | null;
             schema_version: number;
             source: string;
             /** @description Per-surface day series with window-wide uptime ratios and per-surface reliability scores. */
-            surfaces: ({
+            surfaces: {
                 day_count: number;
-                days: ({
+                days: {
                     avg_latency_ms?: number | null;
                     day: string;
                     /** @description Percentile latency summary for one uptime day. */
@@ -13062,18 +12687,14 @@ export interface components {
                         p50?: number | null;
                         p95?: number | null;
                         p99?: number | null;
-                    } & {
-                        [key: string]: unknown;
                     };
                     latency_sample_count?: number;
                     samples: number;
                     status: string;
                     uptime_ratio: number | null;
-                } & {
-                    [key: string]: unknown;
-                })[];
+                }[];
                 /** @description Window-wide reliability score (0-100) with letter grade. Surface-level scores omit window/surface_count/day_count/computed_at. */
-                reliability?: ({
+                reliability?: {
                     avg_latency_ms: number | null;
                     computed_at?: string | null;
                     day_count?: number;
@@ -13085,18 +12706,12 @@ export interface components {
                     surface_count?: number;
                     uptime_ratio: number | null;
                     window?: string | null;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 samples: number;
                 surface_id: string;
                 uptime_ratio: number | null;
-            } & {
-                [key: string]: unknown;
-            })[];
+            }[];
             window?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         ValidatorDetailArtifact: {
             /** @description The non-root leg of total_stake_tao, TAO-priced (#9051): the current market value of every alpha delegation the priced total covers. total_stake_tao = root_stake_tao + alpha_stake_tao, exactly. */
@@ -13166,8 +12781,6 @@ export interface components {
             total_emission_tao: number;
             /** @description Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest SPOT price -- tao_in_pool_tao / alpha_in_pool from that subnet's newest snapshot, root at 1:1 -- before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Marked at SPOT, not at alpha_price_tao: that field is the chain's MOVING price (#9408), and a lagging average is the wrong mark for what a position is worth -- measured -1.29% against spot on netuid 64 for 2026-08-03. Prices still come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier; the lag is the rollup's, no longer the average's. */
             total_stake_tao: number;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking. */
         ValidatorEconomicsExclusion: {
@@ -13252,8 +12865,6 @@ export interface components {
             take_last_changed_date: string | null;
             take_u16: number | null;
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description One validator's nominator leaderboard (#5692). Mirrors GET /api/v1/validators/{hotkey}/nominators' data envelope. */
         ValidatorNominatorsArtifact: {
@@ -13286,8 +12897,6 @@ export interface components {
             top5_nominator_share: number | null;
             /** @description The resolved window label; null only if the builder was handed no window. */
             window: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** @description How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports. */
         ValidatorPermitModelAgreement: {
@@ -13331,13 +12940,9 @@ export interface components {
                 by_provider: components["schemas"]["CountMap"];
                 /** @description Results that cleared the promotion bar -- a candidate this run would move into the registry. Whole-run only: the per-subnet artifact has no equivalent. */
                 promotable_count: number;
-            } & {
-                [key: string]: unknown;
             };
             verification_finished_at?: string | null;
             verification_started_at?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         VerificationResult: {
             archived?: boolean;
@@ -13381,7 +12986,7 @@ export interface components {
             created_at?: string | null;
             delivery?: {
                 dead_letter: number;
-                last_failure?: ({
+                last_failure?: {
                     attempts?: number;
                     event_id?: string;
                     last_attempt_at?: string | null;
@@ -13389,22 +12994,16 @@ export interface components {
                     reason?: string | null;
                     state?: string;
                     status_code?: number | null;
-                } & {
-                    [key: string]: unknown;
-                }) | null;
+                } | null;
                 pending: number;
                 /** @enum {string} */
                 status: "ok" | "retrying" | "dead_letter";
-            } & {
-                [key: string]: unknown;
             };
             filters?: {
                 [key: string]: unknown;
             };
             id: string;
             url: string;
-        } & {
-            [key: string]: unknown;
         };
     };
     responses: never;
@@ -13452,7 +13051,47 @@ export interface operations {
                      *         ],
                      *         "base_path": "/api/v1",
                      *         "contract_version": "2026-06-29.1",
+                     *         "feeds": [
+                     *           {
+                     *             "content_types": [
+                     *               "example"
+                     *             ],
+                     *             "description": "Example description.",
+                     *             "formats": [
+                     *               "rss"
+                     *             ],
+                     *             "id": "example",
+                     *             "kind": "example",
+                     *             "method": "GET",
+                     *             "path": "/api/v1/feeds/registry",
+                     *             "path_parameters": [
+                     *               {
+                     *                 "name": "Example Subnet",
+                     *                 "schema": {}
+                     *               }
+                     *             ],
+                     *             "public": true,
+                     *             "query_parameters": [
+                     *               {
+                     *                 "name": "Example Subnet",
+                     *                 "schema": {}
+                     *               }
+                     *             ]
+                     *           }
+                     *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "networks": {
+                     *           "aliases": [
+                     *             "example"
+                     *           ],
+                     *           "data_aliases": [
+                     *             "example"
+                     *           ],
+                     *           "default": "mainnet",
+                     *           "mainnet_only_route_count": 1,
+                     *           "note": "example",
+                     *           "path_form": "/api/v1/{network}/..."
+                     *         },
                      *         "notes": "Example description.",
                      *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
@@ -17408,7 +17047,14 @@ export interface operations {
                      *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
-                     *         }
+                     *         },
+                     *         "tao_usd": {
+                     *           "block_number": 5000000,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "tao_usd_unavailable": "no_index_reading"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -18431,8 +18077,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "finney",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -18682,7 +18330,9 @@ export interface operations {
                      *           ]
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnet": {
                      *           "block": 5000000,
@@ -22928,9 +22578,11 @@ export interface operations {
                      *           "by_status": {}
                      *         },
                      *         "callable_service_count": 1,
+                     *         "content_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
                      *         "subnets": [
@@ -24381,6 +24033,10 @@ export interface operations {
                      *           "version": "2026-06-29.1"
                      *         },
                      *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_index_discard": {
+                     *           "dropped_captured": 1,
+                     *           "reason": "example"
+                     *         },
                      *         "schema_version": 1,
                      *         "storage_tier_counts": {
                      *           "example": 1
@@ -24526,6 +24182,7 @@ export interface operations {
                      *           }
                      *         ],
                      *         "contract_version": "2026-06-29.1",
+                     *         "count": 1,
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1
@@ -26043,6 +25700,7 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "block": 5000000,
                      *         "chain_state": {
                      *           "block": 5000000,
                      *           "block_hash": "0xa3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
@@ -29923,8 +29581,48 @@ export interface operations {
                      *         ],
                      *         "base_path": "/metagraph",
                      *         "contract_version": "2026-06-29.1",
+                     *         "feeds": [
+                     *           {
+                     *             "content_types": [
+                     *               "example"
+                     *             ],
+                     *             "description": "Example description.",
+                     *             "formats": [
+                     *               "rss"
+                     *             ],
+                     *             "id": "example",
+                     *             "kind": "example",
+                     *             "method": "GET",
+                     *             "path": "/api/v1/feeds/registry",
+                     *             "path_parameters": [
+                     *               {
+                     *                 "name": "Example Subnet",
+                     *                 "schema": {}
+                     *               }
+                     *             ],
+                     *             "public": true,
+                     *             "query_parameters": [
+                     *               {
+                     *                 "name": "Example Subnet",
+                     *                 "schema": {}
+                     *               }
+                     *             ]
+                     *           }
+                     *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "name": "Example Subnet",
+                     *         "networks": {
+                     *           "aliases": [
+                     *             "example"
+                     *           ],
+                     *           "data_aliases": [
+                     *             "example"
+                     *           ],
+                     *           "default": "mainnet",
+                     *           "mainnet_only_route_count": 1,
+                     *           "note": "example",
+                     *           "path_form": "/api/v1/{network}/..."
+                     *         },
                      *         "notes": "Example description.",
                      *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
@@ -31098,7 +30796,14 @@ export interface operations {
                      *           "total_stake_alpha": "327838334.635978200",
                      *           "total_validators": 1,
                      *           "with_economics_count": 1
-                     *         }
+                     *         },
+                     *         "tao_usd": {
+                     *           "block_number": 5000000,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "tao_usd_unavailable": "no_index_reading"
                      *       },
                      *       "meta": {
                      *         "artifact_path": "example",
@@ -35901,6 +35606,9 @@ export interface operations {
                      *         "paths": {
                      *           "example": null
                      *         },
+                     *         "security": [
+                     *           {}
+                     *         ],
                      *         "servers": [
                      *           {}
                      *         ],
@@ -36607,7 +36315,9 @@ export interface operations {
                      *           }
                      *         ],
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "provider": {
                      *           "authority": "example",
                      *           "id": "example",
@@ -38154,6 +37864,7 @@ export interface operations {
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
+                     *         "source": "live-cron-prober",
                      *         "summary": {
                      *           "archive_supported_count": 1,
                      *           "by_kind": {},
@@ -38607,6 +38318,28 @@ export interface operations {
                      *             "block_span": 5000000
                      *           }
                      *         ],
+                     *         "current": {
+                     *           "latest_release": {
+                     *             "name": "Example Subnet",
+                     *             "prerelease": false,
+                     *             "published_at": "2026-06-01T00:00:00.000Z",
+                     *             "spec_version": 1,
+                     *             "tag": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           },
+                     *           "mainnet": {
+                     *             "network": "example",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "spec_version": 1
+                     *           },
+                     *           "pending_upgrade": "none",
+                     *           "testnet": {
+                     *             "network": "example",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "spec_version": 1
+                     *           },
+                     *           "versions_behind": 1
+                     *         },
                      *         "current_spec_version": 1,
                      *         "schema_version": 1,
                      *         "transition_count": 1,
@@ -39760,8 +39493,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "finney",
                      *         "notes": "Example description.",
                      *         "schema_version": 1,
@@ -40009,7 +39744,9 @@ export interface operations {
                      *           ]
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
                      *         "subnet": {
                      *           "block": 5000000,
@@ -45245,7 +44982,9 @@ export interface operations {
                      *           ]
                      *         },
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "health_source": "probe-derived",
                      *         "notes": "Example description.",
+                     *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
                      *         "profile": {
                      *           "candidate_count": 1,
                      *           "categories": [

@@ -9,7 +9,7 @@
 // Query params from the same OpenAPI operation's `parameters` array (the
 // route() call in src/contracts.ts for "subnets").
 import { z } from "zod";
-import { SocialLinksSchema } from "../shared.ts";
+import { SocialLinksSchema, GithubReleaseSchema } from "../shared.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import {
   BittensorNetworkSchema,
@@ -66,18 +66,7 @@ export const SubnetIndexEntrySchema = z
     // kind on /api/v1/feeds/subnets/{netuid}. Null means the repo was never
     // asked (no resolvable source repo, or not yet captured); [] means it
     // publishes no releases, which is the common case for subnet repos.
-    github_releases: z
-      .array(
-        z.object({
-          tag: z.string(),
-          name: z.string().nullable(),
-          published_at: z.iso.datetime(),
-          url: z.string(),
-          prerelease: z.boolean(),
-        }),
-      )
-      .nullable()
-      .optional(),
+    github_releases: z.array(GithubReleaseSchema).nullable().optional(),
     github_unreachable: z.boolean().optional(),
     integration_readiness: z.int().min(0).max(100).optional(),
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
@@ -110,6 +99,25 @@ export type SubnetIndexEntry = z.infer<typeof SubnetIndexEntrySchema>;
 
 export const SubnetsArtifactSchema = ArtifactBaseSchema.extend({
   network: BittensorNetworkSchema,
+  // The chain snapshot's OWN capture stamp, distinct from `generated_at` (this
+  // build's marker). Both `subnets.json` and `metagraph/latest.json` have
+  // carried it since the native snapshot landed, and neither schema declared it
+  // -- the same class as `SubnetUptime.observed_at` (#10761), found the same
+  // way (#10790).
+  captured_at: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "When the chain snapshot behind this index was captured. Distinct from `generated_at`, which marks the build that shaped it.",
+    ),
+  native_snapshot_captured_at: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      "Capture stamp of the native (SDK) snapshot the identity overlay was merged onto.",
+    ),
   source: z
     .object({
       identity_storage: z.string().optional(),
@@ -119,7 +127,7 @@ export const SubnetsArtifactSchema = ArtifactBaseSchema.extend({
       rpc_family: z.string().optional(),
       version: z.string().optional(),
     })
-    .passthrough(),
+    .strict(),
   subnets: z.array(SubnetIndexEntrySchema),
 });
 export type SubnetsArtifact = z.infer<typeof SubnetsArtifactSchema>;

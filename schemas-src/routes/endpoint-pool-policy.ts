@@ -18,7 +18,7 @@ export const DisabledProxyContractSchema = z
     rate_limit_required: z.boolean().optional(),
     waf_required: z.boolean().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "The contract the RPC proxy honours while disabled: which methods stay allowed, which patterns stay denied, and whether rate limiting and WAF are prerequisites for enabling it.",
   );
@@ -34,7 +34,7 @@ export const EndpointEligibilityPolicySchema = z
     user_reports_can_change_health: z.boolean().optional(),
     notes: z.string().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Which probed endpoints this pool may draw from: the layers it accepts, the health verdict it requires, and whether an endpoint must be auth-free and public-safe to qualify.",
   );

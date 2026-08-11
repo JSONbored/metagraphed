@@ -29,7 +29,7 @@ export const SubnetTrajectoryDeltaSchema = z
     alpha_in_pool: z.number().nullable().optional(),
     alpha_out_pool: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 const SubnetTrajectoryPointSchema = z
   .object({
@@ -47,7 +47,7 @@ const SubnetTrajectoryPointSchema = z
     alpha_out_pool: z.number().nullable().optional(),
     subnet_volume_tao: z.number().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One daily-snapshot point on a subnet's trajectory (chronological). Economics fields are null on rows captured before those columns existed / when economics was unavailable that day.",
   );
@@ -71,7 +71,7 @@ export const SubnetTrajectoryArtifactSchema = z
         "Latest-vs-window-ago deltas -- one entry per window (7d, 30d) that has a prior point to compare against; empty when the series is too short.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names.",
   );

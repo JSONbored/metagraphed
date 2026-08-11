@@ -43,13 +43,50 @@ export type FindSubnetOpportunitiesInput = z.infer<
   typeof FindSubnetOpportunitiesInputSchema
 >;
 
+/**
+ * One ranked row: the identity every board carries, plus the metrics ITS board
+ * projects (#10790).
+ *
+ * Each of the six boards in `ECONOMIC_LEADERBOARDS` (src/health-serving.ts)
+ * defines a `project()` that decorates the row with the numbers its ranking is
+ * about -- and this schema declared only the three identity fields, so fifteen
+ * projected metrics went out undescribed on every call. They are OPTIONAL, not
+ * because they may be missing from their own board, but because which board
+ * you asked for decides which arrive: `validator_headroom` is always present
+ * on `validator-headroom` and never anywhere else.
+ *
+ * Nullable throughout: `finiteOrNull` is what the projections run every value
+ * through, and a subnet whose reading was non-finite is reported as null rather
+ * than dropped from the board -- absence of a measurement, never a zero.
+ */
 const EconomicBoardEntrySchema = z
   .object({
     netuid: netuidSchema().optional(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
+    // open-slots, cheapest-registration
+    open_slots: z.number().nullable().optional(),
+    max_uids: z.number().nullable().optional(),
+    registration_cost_tao: z.number().nullable().optional(),
+    registration_allowed: z.boolean().nullable().optional(),
+    // highest-emission. `total_stake_alpha` is the economics row's
+    // `total_stake_tao` under the board's own name -- a rename in the
+    // projection, not two readings.
+    tao_in_emission_tao: z.number().nullable().optional(),
+    emission_share: z.number().nullable().optional(),
+    emission_enabled: z.boolean().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
+    validator_count: z.number().nullable().optional(),
+    miner_count: z.number().nullable().optional(),
+    // validator-headroom
+    validator_headroom: z.number().nullable().optional(),
+    max_validators: z.number().nullable().optional(),
+    // biggest-alpha-gain-1d / -7d
+    alpha_price_change_1d: z.number().nullable().optional(),
+    alpha_price_change_7d: z.number().nullable().optional(),
+    alpha_price_tao: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const FindSubnetOpportunitiesOutputSchema = z
   .object({
@@ -66,7 +103,7 @@ export const FindSubnetOpportunitiesOutputSchema = z
     // already get.
     boards: z.record(z.string(), z.array(EconomicBoardEntrySchema)),
   })
-  .passthrough();
+  .strict();
 export type FindSubnetOpportunitiesOutput = z.infer<
   typeof FindSubnetOpportunitiesOutputSchema
 >;
@@ -107,7 +144,7 @@ const SemanticSearchResultItemSchema = z
     subtitle: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const SemanticSearchOutputSchema = z
   .object({
@@ -116,7 +153,7 @@ export const SemanticSearchOutputSchema = z
     model: z.string().nullable().optional(),
     results: z.array(SemanticSearchResultItemSchema),
   })
-  .passthrough();
+  .strict();
 export type SemanticSearchOutput = z.infer<typeof SemanticSearchOutputSchema>;
 
 export const AskInputSchema = z
@@ -143,7 +180,7 @@ const AskCitationItemSchema = z
     slug: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const AskOutputSchema = z
   .object({
@@ -153,7 +190,7 @@ export const AskOutputSchema = z
     context_count: z.int().nullable().optional(),
     citations: z.array(AskCitationItemSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type AskOutput = z.infer<typeof AskOutputSchema>;
 
 export const FindSubnetForTaskInputSchema = z
@@ -204,7 +241,7 @@ export const FindSubnetForTaskOutputSchema = z
       }),
     ),
   })
-  .passthrough();
+  .strict();
 export type FindSubnetForTaskOutput = z.infer<
   typeof FindSubnetForTaskOutputSchema
 >;

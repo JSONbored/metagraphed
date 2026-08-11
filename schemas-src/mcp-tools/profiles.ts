@@ -88,7 +88,7 @@ export const ListProfilesOutputSchema = z
     sort: z.string().nullable().optional(),
     order: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type ListProfilesOutput = z.infer<typeof ListProfilesOutputSchema>;
 
 // DERIVED, NOT COPIED (#9796). The copy published subnet, profile,

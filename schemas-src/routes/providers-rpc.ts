@@ -32,7 +32,11 @@ import {
   DisabledProxyContractSchema,
   EndpointEligibilityPolicySchema,
 } from "./endpoint-pool-policy.ts";
-import { EpochMillisSchema, HttpUrlSchema } from "../shared.ts";
+import {
+  EpochMillisSchema,
+  HttpUrlSchema,
+  SocialLinksSchema,
+} from "../shared.ts";
 import { QUERY_ENUMS } from "../query-enums.ts";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { BittensorNetworkSchema, HealthStatusSchema } from "../shared.ts";
@@ -42,6 +46,7 @@ import {
   EndpointLayerSchema,
   EndpointResourceSchema,
   EndpointScoreReasonSchema,
+  LIVE_HEALTH_OVERLAY,
   SurfaceKindSchema,
 } from "./subnet-detail.ts";
 
@@ -60,15 +65,8 @@ export const ProviderSchema = z
     docs_url: HttpUrlSchema.optional(),
     github_url: HttpUrlSchema.optional(),
     logo_url: HttpUrlSchema.optional(),
-    social: z
-      .object({
-        x: HttpUrlSchema.optional(),
-        telegram: HttpUrlSchema.optional(),
-        reddit: HttpUrlSchema.optional(),
-        youtube: HttpUrlSchema.optional(),
-      })
-      .strict()
-      .optional(),
+    // shared.ts's own SocialLinksSchema, not a fourth copy of it (#10790).
+    social: SocialLinksSchema.optional(),
     team_url: HttpUrlSchema.optional(),
     contact_url: HttpUrlSchema.optional(),
     authority: AuthoritySchema,
@@ -122,6 +120,7 @@ export const ProvidersArtifactSchema = ArtifactBaseSchema.extend({
 export type ProvidersArtifact = z.infer<typeof ProvidersArtifactSchema>;
 
 export const ProviderEndpointsArtifactSchema = ArtifactBaseSchema.extend({
+  ...LIVE_HEALTH_OVERLAY,
   provider: z
     .object({
       id: z.string().optional(),
@@ -129,7 +128,7 @@ export const ProviderEndpointsArtifactSchema = ArtifactBaseSchema.extend({
       kind: z.string().optional(),
       authority: z.string().optional(),
     })
-    .passthrough(),
+    .strict(),
   summary: EndpointSummarySchema,
   endpoints: z.array(EndpointResourceSchema),
 });
@@ -184,6 +183,16 @@ const RpcEndpointSchema = z
   .strict();
 
 export const RpcEndpointsArtifactSchema = ArtifactBaseSchema.extend({
+  // Which tier produced this catalog. `artifact-build` is the committed
+  // build's own label; the live overlay replaces it when the 15-minute cron
+  // has run. Served on every response and declared nowhere (#10790), which is
+  // the provenance class #10786 centralised on the other side.
+  source: z
+    .string()
+    .optional()
+    .describe(
+      "Which producer answered: `artifact-build` for the committed catalog, the prober's label once the live overlay applies.",
+    ),
   summary: z
     .object({
       endpoint_count: z.int().min(0),
@@ -192,7 +201,7 @@ export const RpcEndpointsArtifactSchema = ArtifactBaseSchema.extend({
       by_provider: z.record(z.string(), z.int().min(0)).optional(),
       by_status: z.record(z.string(), z.int().min(0)).optional(),
     })
-    .passthrough(),
+    .strict(),
   endpoints: z.array(RpcEndpointSchema),
 });
 export type RpcEndpointsArtifact = z.infer<typeof RpcEndpointsArtifactSchema>;
@@ -327,7 +336,7 @@ const RpcUsageEndpointRowSchema = z
       .describe("Null when the endpoint had no requests in the window."),
     avg_latency_ms: z.int().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .describe("One endpoint's share of RPC reverse-proxy traffic in the window.");
 
 const RpcUsageNetworkRowSchema = z
@@ -341,7 +350,7 @@ const RpcUsageNetworkRowSchema = z
       .optional()
       .describe("Null when the network had no requests in the window."),
   })
-  .passthrough()
+  .strict()
   .describe("One network's share of RPC reverse-proxy traffic in the window.");
 
 const RpcUsageBucketSchema = z
@@ -351,7 +360,7 @@ const RpcUsageBucketSchema = z
     errors: z.int().min(0),
     avg_latency_ms: z.int().nullable(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One bounded time bucket of RPC reverse-proxy traffic (bucket_granularity wide).",
   );
@@ -365,7 +374,7 @@ const RpcUsageCoverageRangeSchema = z
     start: EpochMillisSchema.nullable(),
     end: EpochMillisSchema.nullable(),
   })
-  .passthrough()
+  .strict()
   .describe("An epoch-ms span.");
 
 const RpcUsageCoverageSegmentSchema = z
@@ -382,7 +391,7 @@ const RpcUsageCoverageSegmentSchema = z
       "Epoch ms of this store's newest measured event in the window.",
     ),
   })
-  .passthrough()
+  .strict()
   .describe("One store's contribution to an rpc_usage answer.");
 
 const RpcUsageCoverageSchema = z
@@ -402,7 +411,7 @@ const RpcUsageCoverageSchema = z
       "The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function.",
     ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "The measured span behind an rpc_usage answer. window is what the caller asked for; this is what the stores could answer, and they are not the same whenever a store's retention does not span the window.",
   );
@@ -478,13 +487,13 @@ export const RpcUsageArtifactSchema = z
             p95: z.int().nullable().optional(),
             avg: z.int().nullable().optional(),
           })
-          .passthrough()
+          .strict()
           .describe(
             "Window latency percentiles + average for RPC reverse-proxy traffic; each is null on a cold store.",
           )
           .optional(),
       })
-      .passthrough()
+      .strict()
       .describe("Window-total rollup for RPC reverse-proxy traffic."),
     endpoints: z
       .array(RpcUsageEndpointRowSchema)
@@ -500,7 +509,7 @@ export const RpcUsageArtifactSchema = z
         "Bounded time buckets over the window for heatmaps, oldest-first.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope.",
   );

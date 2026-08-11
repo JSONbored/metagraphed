@@ -113,7 +113,7 @@ export const ListSubnetValidatorsOutputSchema = z
     // production 2026-08-07, whole and projected.
     validators: z.array(NeuronSchema.partial()),
   })
-  .passthrough();
+  .strict();
 export type ListSubnetValidatorsOutput = z.infer<
   typeof ListSubnetValidatorsOutputSchema
 >;
@@ -194,7 +194,7 @@ export const CompareValidatorsOutputSchema = z
     // production 2026-08-07.
     validators: z.array(CompareValidatorEntrySchema),
   })
-  .passthrough();
+  .strict();
 export type CompareValidatorsOutput = z.infer<
   typeof CompareValidatorsOutputSchema
 >;
@@ -286,7 +286,7 @@ export const GetValidatorNominatorsOutputSchema = z
       ValidatorNominatorPositionsSchema.shape.positions_captured_at.optional(),
     degraded: ValidatorNominatorPositionsSchema.shape.degraded,
   })
-  .passthrough();
+  .strict();
 export type GetValidatorNominatorsOutput = z.infer<
   typeof GetValidatorNominatorsOutputSchema
 >;

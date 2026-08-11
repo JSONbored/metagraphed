@@ -61,7 +61,7 @@ export const SubnetPerformanceArtifactSchema = z
         "Validator-trust score spread across permitted validators only; null when none carries a finite value.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance.",
   );
@@ -88,7 +88,7 @@ const SubnetPerformanceHistoryPointSchema = z
     validator_trust_mean: z.number().nullable().optional(),
     validator_trust_median: z.number().nullable().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day.",
   );
@@ -105,7 +105,7 @@ export const SubnetPerformanceHistoryArtifactSchema = z
     point_count: z.int().min(0),
     points: z.array(SubnetPerformanceHistoryPointSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history.",
   );

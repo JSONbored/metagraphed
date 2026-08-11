@@ -44,7 +44,7 @@ export const SubnetIdentityHistoryArtifactSchema = z
     next_cursor: z.string().nullable().optional(),
     entries: z.array(SubnetIdentityHistoryEntrySchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Append-only on-chain subnet identity timeline (#1647 / #5721). Empty entries on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/identity-history.",
   );

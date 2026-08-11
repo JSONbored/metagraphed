@@ -22,7 +22,7 @@ const SubnetLeaseSchema = z
     cost_tao: z.number().optional(),
     accumulated_dividends_alpha: z.number().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 export const SubnetLeaseArtifactSchema = z
   .object({
@@ -35,7 +35,7 @@ export const SubnetLeaseArtifactSchema = z
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "Live subnet-lease state -- whether a subnet is currently under a lease and, if so, its terms (beneficiary, coldkey, hotkey, emissions_share_percent, end_block, cost_tao) and accumulated-but-undistributed alpha dividends. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false). Mirrors GET /api/v1/subnets/{netuid}/lease.",
   );
@@ -67,7 +67,7 @@ export const SubnetLeaseHistoryArtifactSchema = z
     count: z.int().min(0),
     lease_events: z.array(SubnetLeaseEventSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history.",
   );

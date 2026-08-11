@@ -49,7 +49,7 @@ export const ChainPerformanceArtifactSchema = z
         "Validator-trust score spread across permitted validators network-wide only.",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Network-wide reward-distribution & score-spread card (#5688) -- the network analog of SubnetPerformance, spanning every subnet's neurons in one snapshot. Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/performance.",
   );

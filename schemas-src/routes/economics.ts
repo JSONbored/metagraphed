@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import {
+  ALPHA_USD_OVERLAY,
   ChainStateSchema,
   FieldSourcesSchema,
   SubnetEconomicsSchema,
@@ -59,6 +60,10 @@ export const EconomicsArtifactSchema = ArtifactBaseSchema.extend({
   // Optional, never null: absent means this refresh pinned no block (#8744).
   chain_state: ChainStateSchema.optional(),
   subnets: z.array(SubnetEconomicsSchema),
+  // Stamped at serve time by `withAlphaUsdEconomics`, and undeclared until
+  // #10790 -- the two alpha-volume schemas each wrote the pair out by hand and
+  // this one, which the same overlay is applied to, declared neither.
+  ...ALPHA_USD_OVERLAY,
   // #9106: per-field provenance for the SUBNET ROW shape above. Attached at
   // serve time (workers/api.ts), so it is optional here -- the committed R2
   // artifact and the KV blob do not carry it.

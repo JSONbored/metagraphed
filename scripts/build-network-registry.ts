@@ -175,6 +175,19 @@ function buildNativeSubnet(nativeSubnet: Row, snapshot: Row): Row {
   };
 }
 
+/**
+ * The subnet record as the detail card publishes it.
+ *
+ * `economics` is an INPUT to `buildEconomicsArtifact`, carried on the record so
+ * that builder can read it -- not a field of `SubnetDetailSchema`, which is
+ * what `subnet` is validated against. Stripped here rather than never attached,
+ * because the economics artifact still needs it (#10790).
+ */
+function withoutEconomics(subnet: Row): Row {
+  const { economics: _economics, ...rest } = subnet;
+  return rest;
+}
+
 // Projection identical to the mainnet subnetIndex map in build-artifacts.ts.
 // chainIdentity is the raw on-chain identity for the same netuid: the contact
 // fields (issue #344) are index-only, so they are computed here rather than
@@ -309,7 +322,18 @@ export async function buildNetworkRegistry({
       {
         schema_version: SCHEMA_VERSION,
         generated_at: generatedAt,
-        subnet,
+        // AT THE ARTIFACT LEVEL, which is where `SubnetDetailArtifact`
+        // declares it -- not nested inside `subnet`, which is
+        // `SubnetDetailSchema` and has never declared it (#10790).
+        //
+        // #8227 attached chain economics to the subnet RECORD so
+        // `buildEconomicsArtifact` below could read it, and the record is
+        // published verbatim as `subnet`, so it went out nested on 545 testnet
+        // objects against a `.strict()` schema. Mainnet was clean -- 0 of 129
+        // cards -- so the two networks' detail cards disagreed about where a
+        // published field lives, and nothing walked the testnet twin to notice.
+        economics: (subnet.economics as Row | null) ?? undefined,
+        subnet: withoutEconomics(subnet),
         candidate_surfaces: [],
         candidates: [],
         endpoints: [],

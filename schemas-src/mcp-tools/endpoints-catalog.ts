@@ -26,6 +26,8 @@ import {
   projectableRows,
   providerSlugSchema,
   sortSchema,
+  McpListPageFields,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import {
   EndpointsArtifactSchema,
@@ -109,6 +111,9 @@ export const ListEndpointsInputSchema = z
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 
 export const ListEndpointsOutputSchema = EndpointsArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
   endpoints: projectableRows(EndpointsArtifactSchema.shape.endpoints),
 });
 export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
@@ -143,6 +148,9 @@ export type GetSubnetEndpointsInput = z.infer<
 // caller controls it.
 export const GetSubnetEndpointsOutputSchema =
   SubnetEndpointsArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpUnsortedPageFields,
     endpoints: projectableRows(SubnetEndpointsArtifactSchema.shape.endpoints),
   });
 export type GetSubnetEndpointsOutput = z.infer<

@@ -49,7 +49,7 @@ export const GetStakeActionPreviewOutputSchema = z
     ok: z.boolean(),
     disclaimer: z.string(),
   })
-  .passthrough();
+  .strict();
 export type GetStakeActionPreviewOutput = z.infer<
   typeof GetStakeActionPreviewOutputSchema
 >;

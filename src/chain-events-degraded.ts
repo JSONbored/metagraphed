@@ -115,8 +115,14 @@ export function degradedChainEventsPayload(url: URL): Row | null {
   }
 
   if (path === "/api/v1/chain-events/stats") {
+    // EXACTLY the healthy shape (src/chain-events-cold-tier.ts's
+    // `{window_blocks, groups, activity}`) and nothing else. This carried a
+    // fourth key, `head_block: null`, that the live path has never emitted and
+    // the schema has never declared (#10790) -- so the degraded answer was the
+    // only place it appeared, which is the worst place for a shape to diverge:
+    // a client that learned the field here would find it missing the moment
+    // the tier recovered.
     return {
-      head_block: null,
       window_blocks: statsWindowBlocks(url),
       groups: 0,
       activity: [],

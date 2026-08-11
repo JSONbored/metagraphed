@@ -117,7 +117,7 @@ export const GetBlockOutputSchema = z
     prev_block_number: z.int().nullable().optional(),
     next_block_number: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type GetBlockOutput = z.infer<typeof GetBlockOutputSchema>;
 
 export const ListBlockExtrinsicsInputSchema = z

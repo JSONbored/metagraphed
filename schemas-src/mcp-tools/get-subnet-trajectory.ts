@@ -9,6 +9,7 @@ import {
   limitSchema,
   orderSchema,
   sortSchema,
+  McpUnsortedPageFields,
 } from "./shared.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { netuidSchema } from "./shared.ts";
@@ -46,7 +47,12 @@ export type GetSubnetTrajectoryInput = z.infer<
 // an agent reading only this tool could not have known. `deltas` is a typed
 // RECORD keyed by window label, so a new window adds a key rather than
 // changing the contract. Verified against production 2026-08-07.
-export const GetSubnetTrajectoryOutputSchema = SubnetTrajectoryArtifactSchema;
+export const GetSubnetTrajectoryOutputSchema =
+  SubnetTrajectoryArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpUnsortedPageFields,
+  });
 export type GetSubnetTrajectoryOutput = z.infer<
   typeof GetSubnetTrajectoryOutputSchema
 >;

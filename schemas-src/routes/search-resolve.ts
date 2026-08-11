@@ -55,5 +55,5 @@ export const SearchResolveArtifactSchema = z
      */
     unambiguous: z.boolean(),
   })
-  .passthrough();
+  .strict();
 export type SearchResolveArtifact = z.infer<typeof SearchResolveArtifactSchema>;

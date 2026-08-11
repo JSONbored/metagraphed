@@ -124,5 +124,5 @@ export const GetExtrinsicOutputSchema = z
     extrinsic: ExtrinsicSchema.nullable().optional(),
     events: z.array(AccountEventItemSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type GetExtrinsicOutput = z.infer<typeof GetExtrinsicOutputSchema>;

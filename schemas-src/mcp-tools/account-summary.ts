@@ -34,7 +34,7 @@ const AccountEventItemSchema = z
     observed_at: z.string().nullable().optional(),
     extrinsic_index: z.int().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 
 const AccountRegistrationItemSchema = z
   .object({
@@ -44,7 +44,7 @@ const AccountRegistrationItemSchema = z
     validator_permit: z.boolean().optional(),
     active: z.boolean().optional(),
   })
-  .passthrough();
+  .strict();
 
 const AccountLabelItemSchema = z
   .object({
@@ -53,7 +53,7 @@ const AccountLabelItemSchema = z
     notes: z.string().nullable().optional(),
     source_urls: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .strict();
 
 const RouteQuery_accounts_ss58_events =
   ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/events"];
@@ -71,6 +71,10 @@ export const GetAccountOutputSchema = z
     ss58: z.string(),
     event_count: z.int(),
     subnet_count: z.int(),
+    // Whether the scan behind `event_count` hit its ceiling, undeclared until
+    // #10790. True means the count is a FLOOR, not a total -- exactly the
+    // caveat that stops a number being read as a measurement.
+    event_scan_capped: z.boolean().optional(),
     first_block: z.int().nullable().optional(),
     last_block: z.int().nullable().optional(),
     first_seen_at: z.string().nullable().optional(),
@@ -81,7 +85,7 @@ export const GetAccountOutputSchema = z
           kind: z.string().optional(),
           count: z.int().optional(),
         })
-        .passthrough(),
+        .strict(),
     ),
     registrations: z.array(AccountRegistrationItemSchema),
     recent_events: z.array(AccountEventItemSchema),
@@ -92,7 +96,7 @@ export const GetAccountOutputSchema = z
     activity: AccountActivitySchema.optional(),
     labels: z.array(AccountLabelItemSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type GetAccountOutput = z.infer<typeof GetAccountOutputSchema>;
 
 export const GetAccountEntitiesInputSchema = z
@@ -144,7 +148,7 @@ export const GetAccountSubnetsOutputSchema = z
     subnet_count: z.int(),
     subnets: z.array(AccountRegistrationItemSchema),
   })
-  .passthrough();
+  .strict();
 export type GetAccountSubnetsOutput = z.infer<
   typeof GetAccountSubnetsOutputSchema
 >;

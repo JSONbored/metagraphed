@@ -41,6 +41,7 @@ import { RpcPoolsArtifactSchema } from "../routes/providers-rpc.ts";
 import {
   ENDPOINT_LAYER_VALUES,
   ENDPOINT_PUBLICATION_STATE_VALUES,
+  LIVE_HEALTH_OVERLAY,
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
@@ -65,6 +66,9 @@ export const ListEvidenceInputSchema = z
 export type ListEvidenceInput = z.infer<typeof ListEvidenceInputSchema>;
 
 export const ListEvidenceOutputSchema = EvidenceLedgerArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
   claims: projectableRows(EvidenceLedgerArtifactSchema.shape.claims),
 });
 export type ListEvidenceOutput = z.infer<typeof ListEvidenceOutputSchema>;
@@ -158,6 +162,11 @@ export const ListRpcEndpointsInputSchema = z
 export type ListRpcEndpointsInput = z.infer<typeof ListRpcEndpointsInputSchema>;
 
 export const ListRpcEndpointsOutputSchema = RpcEndpointsArtifactSchema.extend({
+  // The page block the MCP loader adds on top of the route's artifact --
+  // undeclared until #10790, when `.strict()` first rejected it.
+  ...McpListPageFields,
+  // The same serve-time health overlay the REST route carries.
+  ...LIVE_HEALTH_OVERLAY,
   endpoints: projectableRows(RpcEndpointsArtifactSchema.shape.endpoints),
 });
 export type ListRpcEndpointsOutput = z.infer<
@@ -239,6 +248,9 @@ export type ListSourceSnapshotsInput = z.infer<
 
 export const ListSourceSnapshotsOutputSchema =
   SourceSnapshotsArtifactSchema.extend({
+    // The page block the MCP loader adds on top of the route's artifact --
+    // undeclared until #10790, when `.strict()` first rejected it.
+    ...McpListPageFields,
     sources: projectableRows(SourceSnapshotsArtifactSchema.shape.sources),
   });
 export type ListSourceSnapshotsOutput = z.infer<

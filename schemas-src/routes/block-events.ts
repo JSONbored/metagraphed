@@ -25,7 +25,7 @@ export const BlockEventsArtifactSchema = z
     offset: z.int().nullable(),
     events: z.array(AccountEventSchema),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref.",
   );

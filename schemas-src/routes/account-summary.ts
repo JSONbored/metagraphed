@@ -38,6 +38,7 @@
 // entities.json artifact), which the hand-edited component's optional
 // `labels` array already models.
 import { z } from "zod";
+import { EntityLabelSchema } from "./account-entities.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 import { EntityCategorySchema } from "../shared.ts";
 
@@ -84,18 +85,6 @@ export const AccountActivitySchema = z
 // accounts/{coldkey}/entities, outside this batch's 15 routes), so its
 // hand-edited component key must stay registered rather than orphaned; this
 // batch only needs its shape, not a new local export.
-const EntityLabelSchema = z
-  .object({
-    name: z.string().nullable().optional(),
-    // #8372: widened to match schemas/entity.schema.json's category enum
-    // (bridge/pool/infra/project added; exchange/foundation/operator/other
-    // retained so an existing entry stays valid). Keep both in sync.
-    category: EntityCategorySchema.nullable().optional(),
-    notes: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-    source_urls: z.array(z.string()).optional(),
-  })
-  .passthrough();
 
 export const AccountSummaryArtifactSchema = z
   .object({
@@ -123,7 +112,7 @@ export const AccountSummaryArtifactSchema = z
     activity: AccountActivitySchema.optional(),
     labels: z.array(EntityLabelSchema).optional(),
   })
-  .passthrough();
+  .strict();
 export type AccountSummaryArtifact = z.infer<
   typeof AccountSummaryArtifactSchema
 >;
@@ -139,7 +128,7 @@ export const AccountSubnetsArtifactSchema = z
         "Where this hotkey is currently registered, ordered by netuid -- each an AccountRegistration (netuid/uid/stake/validator_permit/active).",
       ),
   })
-  .passthrough()
+  .strict()
   .describe(
     "One account's live cross-subnet registration footprint (the neurons snapshot), backing account_subnets. The lightweight sibling of AccountPortfolio -- registration facts only, no economics rollup.",
   );

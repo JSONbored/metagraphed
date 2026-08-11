@@ -72,6 +72,11 @@ function valueForPattern(pattern: string, name = ""): string {
       return "/metagraph/example.json";
     case "^/api/v1":
       return "/api/v1/example";
+    case "^/api/v1/feeds/":
+      // A REAL feed path, not a placeholder: the contract's `feeds` block is
+      // the catalog an agent reads to learn which feeds exist, and an example
+      // that names a route nobody serves would be the wrong kind of sample.
+      return "/api/v1/feeds/registry";
     case "^#/components/schemas/[A-Za-z0-9]+$":
       return "#/components/schemas/Example";
     case "^[Hh][Tt][Tt][Pp][Ss]?://":

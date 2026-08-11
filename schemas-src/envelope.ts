@@ -59,8 +59,42 @@ export const ArtifactBaseSchema = z
       ),
     schema_version: z.literal(1),
   })
-  .passthrough();
+  .strict();
 export type ArtifactBase = z.infer<typeof ArtifactBaseSchema>;
+
+/**
+ * A publish stamp, declared once for the five artifacts that actually carry it.
+ *
+ * ONE DECLARATION, but NOT on `ArtifactBaseSchema` (#10790). Four artifact
+ * schemas each re-declared `published_at`, and `AgentCatalogArtifact` declared
+ * neither while the build stamps both on it -- served for months, because
+ * `.passthrough()` waved through what the contract did not describe. So the
+ * vocabulary is single-sourced here and named by the five that stamp it.
+ *
+ * Putting it on the shared base instead was the obvious move and the wrong one:
+ * the build writes `content_hash` on TWO artifacts and `published_at` on FIVE,
+ * so a base-level declaration would tell ~40 components they may carry a field
+ * their producer never writes. Optional fields are cheap in Zod and expensive
+ * downstream -- every GraphQL mirror of those components would owe two fields
+ * that are structurally null on every request, which is the over-promise class
+ * #10786 spent its length removing. A field belongs to the schema whose
+ * producer writes it.
+ */
+export const ContentHashSchema = z
+  .string()
+  .optional()
+  .describe(
+    "Deterministic fingerprint of this artifact's content, so a consumer can tell a rebuild that changed nothing from one that changed something -- `generated_at` is an epoch stamp on local/CI builds and cannot (#349).",
+  );
+
+/** @see ContentHashSchema -- the same note applies, and the same five carriers. */
+export const PublishedAtSchema = z
+  .string()
+  .nullable()
+  .optional()
+  .describe(
+    "Real publish time from the KV latest pointer, distinct from `generated_at`. Null before the first publish, and on local/deterministic builds.",
+  );
 
 // The bare artifact wrapper as its own published component (#9830) — what an
 // artifact carries before any route-specific field is layered on. z.lazy()
@@ -115,8 +149,9 @@ export const ResponseMetaSchema = z
   })
   // meta carries route-specific extra fields beyond this shared shape
   // (workers/responses.ts's `extraMeta`/`payload.meta` are open records) —
-  // real openness in the contract, not a placeholder.
-  .passthrough();
+  // real openness in the contract, not a placeholder. Spelled
+  // `.catchall(z.unknown())` since #10790 so that reads as a decision.
+  .catchall(z.unknown());
 export type ResponseMeta = z.infer<typeof ResponseMetaSchema>;
 
 // Generic success-envelope builder — one schema per route via
@@ -143,7 +178,10 @@ export function successEnvelopeSchema<DataSchema extends z.ZodType>(
 // and validate-contract-drift.ts both reject a route whose data schema is a
 // generic one).
 export const SuccessEnvelopeSchema = successEnvelopeSchema(
-  z.object({}).passthrough(),
+  // The DATA slot of the generic envelope component: every route's payload is
+  // a different shape, so this one carries none. Open by construction, and
+  // declared so since #10790.
+  z.object({}).catchall(z.unknown()),
 );
 export type SuccessEnvelope = z.infer<typeof SuccessEnvelopeSchema>;
 

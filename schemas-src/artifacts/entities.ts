@@ -45,7 +45,7 @@ const UnspendableProofSchema = z
     evidence_url: z.string(),
     note: z.string().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     'Why this address cannot spend what it receives. Required for `category: burn`, because a burn is a CLAIM until proven -- "the team says they burn here" is an operator attestation, not a burn.',
   );
@@ -63,7 +63,7 @@ const EntityReviewSchema = z
       ),
     review_notes: z.string().optional(),
   })
-  .passthrough()
+  .strict()
   .describe(
     "Human-governance axis only, the same shape and meaning as a subnet surface's own `review` block. `rejected` entries are filtered out at build time and never appear here.",
   );
@@ -102,7 +102,7 @@ export const EntitySchema = z
       ),
     review: EntityReviewSchema,
   })
-  .passthrough()
+  .strict()
   .describe(
     "One curated address label. There is deliberately no `owner` category: subnet ownership is chain-derived from SubnetOwner and must never be hand-declared.",
   );

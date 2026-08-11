@@ -76,7 +76,7 @@ export const ChainConcentrationSubnetsArtifactSchema = z
       .strict(),
     subnets: z.array(SubnetConcentrationRowSchema),
   })
-  .passthrough();
+  .strict();
 export type ChainConcentrationSubnetsArtifact = z.infer<
   typeof ChainConcentrationSubnetsArtifactSchema
 >;

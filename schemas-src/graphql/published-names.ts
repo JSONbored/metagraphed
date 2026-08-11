@@ -79,6 +79,28 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   SubnetPerformanceArtifactIncentive: "ConcentrationMetrics",
   SubnetPerformanceArtifactTrust: "ScoreDistribution",
   SubnetPerformanceArtifactValidatorTrust: "ScoreDistribution",
+  // The two meta documents' own vocabulary, published for the first time in
+  // #10790 -- /api/v1/contracts has always served `feeds` and `networks` and
+  // neither component declared them, so GraphQL could not select either.
+  //
+  // The emitter names a nested shape after the FIELD that holds it, so one Zod
+  // schema reached through two fields comes out as two components:
+  // `ApiQueryParameterSchema` is `ContractsArtifactFeedsPathParameters` under
+  // one and `...QueryParameters` under the other. Both land on ONE published
+  // name, which is sound precisely because it is one schema -- there is no
+  // second declaration that could drift away from the first.
+  ContractsArtifactFeeds: "ContractsFeed",
+  ContractsArtifactFeedsPathParameters: "ContractsFeedParameter",
+  ContractsArtifactFeedsQueryParameters: "ContractsFeedParameter",
+  ContractsArtifactNetworks: "ContractsNetworks",
+  BuildSummaryArtifactSchemaIndexDiscard: "BuildSummarySchemaIndexDiscard",
+  // The upgrade radar (#10790), published on GraphQL for the first time. The
+  // emitter names a nested shape after the field that holds it; these are the
+  // names the published schema gives them.
+  RuntimeVersionsArtifactCurrent: "UpgradeRadar",
+  RuntimeVersionsArtifactCurrentMainnet: "ChainSpecReading",
+  RuntimeVersionsArtifactCurrentTestnet: "ChainSpecReading",
+  RuntimeVersionsArtifactCurrentLatestRelease: "SubtensorRelease",
   ChainBurnArtifact: "ChainBurn",
   ChainBurnEntry: "ChainBurnEntry",
   ChainState: "EmissionPipelineChainState",
@@ -1006,6 +1028,12 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
       "network",
       "chain_state",
       "field_sources",
+      // The USD overlay (#10790). `withAlphaUsdEconomics` decorates the REST
+      // payload at serve time; this field's own loader does not run it, so the
+      // GraphQL economics view is TAO-only and says so here rather than
+      // publishing two fields that would be absent on every request.
+      "tao_usd",
+      "tao_usd_unavailable",
     ],
   },
   EndpointList: {

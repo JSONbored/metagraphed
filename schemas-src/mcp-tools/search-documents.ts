@@ -87,5 +87,5 @@ export const ListSearchOutputSchema = z
     sort: z.string().nullable().optional(),
     order: z.string().nullable().optional(),
   })
-  .passthrough();
+  .strict();
 export type ListSearchOutput = z.infer<typeof ListSearchOutputSchema>;
