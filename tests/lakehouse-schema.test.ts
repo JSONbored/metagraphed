@@ -17,9 +17,11 @@ import path from "node:path";
 import { describe, test } from "vitest";
 import { repoRoot } from "../scripts/lib.ts";
 import {
+  emitRustTypes,
   emitTypes,
   readSnapshot,
   SNAPSHOT_PATH,
+  RUST_PATH,
   TYPES_PATH,
   type LakehouseColumn,
 } from "../scripts/generate-lakehouse-types.ts";
@@ -157,6 +159,73 @@ describe("the snapshot boundary", () => {
     // R2_CATALOG_TOKEN -- the same split generate-db-types.ts uses for Neon.
     assert.ok(
       readFileSync(path.join(repoRoot, SNAPSHOT_PATH), "utf8").length > 0,
+    );
+  });
+});
+
+// The producer half (#10315). The decoder that WRITES these tables builds its
+// rows as `serde_json::json!({ "hotkey": …, … })`, so a column rename is caught
+// by iceberg_load.py's cast inside the append rather than by the compiler. A
+// struct whose field names ARE the columns moves that to compile time.
+describe("emitRustTypes", () => {
+  const columns = [
+    { table: "t", field_id: 2, column: "b", type: "string", required: false },
+    { table: "t", field_id: 1, column: "a", type: "long", required: false },
+  ];
+
+  test("emits one struct per table, fields in FIELD-ID order", () => {
+    const out = emitRustTypes(columns);
+    assert.match(out, /pub struct TRow \{/);
+    // serde preserves declaration order, so this order IS the append order.
+    assert.ok(
+      out.indexOf("pub a:") < out.indexOf("pub b:"),
+      "field_id 1 must precede field_id 2",
+    );
+  });
+
+  test("maps Iceberg primitives to Rust, Option for every non-required column", () => {
+    const out = emitRustTypes(columns);
+    assert.match(out, /pub a: Option<i64>,/);
+    assert.match(out, /pub b: Option<String>,/);
+  });
+
+  test("a required column is not wrapped in Option", () => {
+    const out = emitRustTypes([
+      { table: "t", field_id: 1, column: "a", type: "int", required: true },
+    ]);
+    assert.match(out, /pub a: i32,/);
+  });
+
+  // The same refusal emitTypes makes: an unmapped type must stop the build
+  // rather than fall back to something plausible.
+  test("throws on an Iceberg type it has no Rust mapping for", () => {
+    assert.throws(
+      () =>
+        emitRustTypes([
+          {
+            table: "t",
+            field_id: 1,
+            column: "a",
+            type: "timestamptz",
+            required: false,
+          },
+        ]),
+      /unmapped Iceberg type/,
+    );
+  });
+
+  test("the column constant is sized and ordered like the struct", () => {
+    const out = emitRustTypes(columns);
+    assert.match(
+      out,
+      /pub const T_COLUMNS: \[&str; 2\] = \[\n {4}"a",\n {4}"b",\n\];/,
+    );
+  });
+
+  test("the committed artifact is what the committed snapshot produces", () => {
+    assert.equal(
+      readFileSync(path.join(repoRoot, RUST_PATH), "utf8"),
+      emitRustTypes(readSnapshot()),
     );
   });
 });
