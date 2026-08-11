@@ -37,14 +37,14 @@ import {
 } from "./account-events.ts";
 import { SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT } from "./route-limits.ts";
 import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 
 type Row = Record<string, unknown>;
 
 /** Kept identical to the sibling feed's SELECT list so both hand
  * `formatAccountEvent` the same shape. */
-const EVENT_COLUMNS =
-  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
-  "netuid, uid, amount_tao, alpha_amount, observed_at";
+// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
+const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 
 /**
  * `count(DISTINCT <column>)` per event_kind, expressed as a nested GROUP BY.

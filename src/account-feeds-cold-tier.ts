@@ -100,13 +100,13 @@ import {
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import { readStore } from "./read-store.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
-const EVENT_COLUMNS =
-  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
-  "netuid, uid, amount_tao, alpha_amount, observed_at";
+// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
+const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 
 /** EXACTLY the Postgres tier's feed order -- the public cursor token encodes
  * this composite key, so a different order would emit tokens the other tier

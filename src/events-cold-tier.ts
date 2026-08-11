@@ -49,12 +49,14 @@ import {
   safeSs58Literal,
 } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
-const EVENT_COLUMNS =
-  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
-  "netuid, uid, amount_tao, alpha_amount, observed_at";
+// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
+// This exact eleven-name list was written out by hand in four separate files;
+// they now share one source.
+const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 
 /** The 3-part key the account-events feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 3;

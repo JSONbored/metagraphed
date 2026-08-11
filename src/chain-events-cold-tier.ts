@@ -40,6 +40,7 @@ import { formatChainEvent } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
+import { CHAIN_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
@@ -48,9 +49,8 @@ import {
 
 /** Kept identical to the deleted handler's SELECT list so both tiers hand the
  * caller the same event shape. */
-const EVENT_COLUMNS =
-  "block_number, event_index, pallet, method, args, phase, extrinsic_index, " +
-  "observed_at";
+// The generated tuple, not a retyped copy -- see src/r2-sql-blocks.ts for why.
+const EVENT_COLUMNS = CHAIN_EVENTS_COLUMNS.join(", ");
 
 /**
  * How many blocks one page may scan. ~16.7 hours of chain at 12s/block, and
