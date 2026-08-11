@@ -27,6 +27,7 @@ import {
   FLUSH_INTERVAL_MS,
   MAX_BUFFERED_STATEMENTS,
 } from "../src/neon-write-buffer.ts";
+import { neonLaneKey, recordNeonWriteVerdict } from "../src/neon-write.ts";
 
 const NOW = 1_785_800_000_000;
 
@@ -236,9 +237,58 @@ describe("flushBuffer", () => {
       },
     });
     const byLane = Object.fromEntries(spy.rows.map((r) => [r.lane, r.verdict]));
-    assert.equal(byLane["blocks-head"], "ok");
-    assert.equal(byLane["chain-detail"], "ok");
+    // `neon:`-PREFIXED (#10851). The tag on a buffered statement is the bare
+    // lane name; the verdict has to be filed under the key the write path uses,
+    // or it clears nothing it was meant to clear.
+    assert.equal(byLane["neon:blocks-head"], "ok");
+    assert.equal(byLane["neon:chain-detail"], "ok");
     assert.equal(byLane[BUFFER_FLUSH_LANE], "ok");
+    // And NOT under the bare name, which is the poller's own report for the
+    // same lane -- the collision half of #10851.
+    assert.equal(byLane["blocks-head"], undefined);
+    assert.equal(byLane["chain-detail"], undefined);
+  });
+
+  test("the flush clears a failure the write path recorded for the same lane", async () => {
+    // THE REGRESSION #10851 EXISTS FOR, asserted as the two writers meeting on
+    // one key rather than as a string.
+    //
+    // A buffered failure is recorded by recordNeonWriteVerdict (the enqueue was
+    // refused); buffered successes are suppressed there on the assumption the
+    // flush files an honest verdict later. That only holds if both agree on the
+    // key. Measured in production when they did not:
+    // `neon:validator-nominator-counts` held `stale` from 10:15 UTC while its
+    // table wrote 112,250 rows at 11:30, and nothing could clear it.
+    const failSpy = laneSpy();
+    await recordNeonWriteVerdict(
+      failSpy.db as never,
+      "chain-detail",
+      { ok: false, rows: 0, statements: 0, reason: "buffer full" },
+      NOW,
+      true,
+    );
+    const failure = failSpy.rows.at(-1);
+    assert.equal(failure?.lane, neonLaneKey("chain-detail"));
+    assert.equal(failure?.verdict, "stale");
+
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("chain-detail", "A"), NOW);
+    const spy = laneSpy();
+    await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: spy.db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    const cleared = spy.rows.find((r) => r.lane === failure?.lane);
+    assert.equal(
+      cleared?.verdict,
+      "ok",
+      "the flush must write the SAME key the failure landed on, or the lane alarms forever",
+    );
   });
 
   test("an unreadable entry is discarded, never left to wedge the backlog", async () => {
