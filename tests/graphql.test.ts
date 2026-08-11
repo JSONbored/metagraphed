@@ -1933,7 +1933,15 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
   const INCIDENTS_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["probe-derived only"],
-    summary: { incident_count: 2, active_count: 2 },
+    summary: {
+      incident_count: 2,
+      active_count: 2,
+      by_kind: { "subnet-api": 2 },
+      by_layer: { "subnet-app": 2 },
+      by_provider: { allways: 2 },
+      by_severity: { critical: 1, warning: 1 },
+      by_status: { failed: 2 },
+    },
     incidents: [
       {
         id: "incident-a",
@@ -1992,7 +2000,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
   test("endpoint_pools filters by kind and paginates", async () => {
     const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
     const filtered = await gql(
-      '{ endpoint_pools(kind: "archive") { pools total } }',
+      '{ endpoint_pools(kind: "archive") { pools { id kind best_endpoint_id endpoint_count eligible_count } total } }',
       env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
@@ -2003,7 +2011,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     );
 
     const paged = await gql(
-      "{ endpoint_pools(limit: 1) { pools total returned next_cursor } }",
+      "{ endpoint_pools(limit: 1) { pools { id kind best_endpoint_id endpoint_count eligible_count } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(paged.body.data.endpoint_pools.pools.length, 1);
@@ -2030,7 +2038,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
   test("rpc_pools returns the same pools[] row shape via its own artifact", async () => {
     const env = fixtureEnv({ "/metagraph/rpc/pools.json": POOLS_BLOB });
     const { status, body } = await gql(
-      '{ rpc_pools(sort: "eligible_count", order: "desc") { pools total } }',
+      '{ rpc_pools(sort: "eligible_count", order: "desc") { pools { id kind best_endpoint_id endpoint_count eligible_count } total } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2076,7 +2084,7 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
       "/metagraph/endpoint-incidents.json": INCIDENTS_BLOB,
     });
     const { status, body } = await gql(
-      '{ endpoint_incidents(severity: "critical") { incidents { id severity } total summary } }',
+      '{ endpoint_incidents(severity: "critical") { incidents { id severity } total summary { incident_count active_count by_kind by_layer by_provider by_severity by_status } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2121,24 +2129,38 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
 // own loader unchanged (same filter/sort/page + error behavior as REST and
 // MCP) rather than a GraphQL-only reimplementation.
 describe("graphql — source_snapshots", () => {
+  // Complete rows, not a sketch: `sources` and `summary` are published types
+  // now (#10214), so a row missing a field the component requires is a null in
+  // a non-null position -- graphql-js nulls the whole row and attaches an
+  // error. `hash` rather than `input_hash` is what /api/v1/source-snapshots
+  // actually serves; the old spelling here was never a key the producer had.
   const SNAPSHOTS_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     schema_version: 1,
-    summary: { source_count: 2 },
+    summary: {
+      adapter_snapshot_count: 0,
+      candidate_count: 0,
+      overlay_count: 0,
+      provider_count: 0,
+      source_count: 2,
+      verification_result_count: 0,
+    },
     sources: [
       {
+        captured_at: "2026-07-01T00:00:00.000Z",
+        hash: "abc",
         id: "chain-events",
         kind: "db",
         path: "chain_events",
         record_count: 100,
-        input_hash: "abc",
       },
       {
+        captured_at: "2026-07-01T00:00:00.000Z",
+        hash: "def",
         id: "economics",
         kind: "kv",
         path: "economics.json",
         record_count: 50,
-        input_hash: "def",
       },
     ],
   };
@@ -2148,7 +2170,7 @@ describe("graphql — source_snapshots", () => {
       "/metagraph/source-snapshots.json": SNAPSHOTS_BLOB,
     });
     const filtered = await gql(
-      '{ source_snapshots(q: "chain") { sources total generated_at } }',
+      '{ source_snapshots(q: "chain") { sources { captured_at hash id kind path record_count } total generated_at } }',
       env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
@@ -2163,7 +2185,7 @@ describe("graphql — source_snapshots", () => {
     );
 
     const paged = await gql(
-      "{ source_snapshots(limit: 1) { sources total returned next_cursor } }",
+      "{ source_snapshots(limit: 1) { sources { captured_at hash id kind path record_count } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(paged.body.data.source_snapshots.sources.length, 1);
@@ -2177,7 +2199,7 @@ describe("graphql — source_snapshots", () => {
       "/metagraph/source-snapshots.json": SNAPSHOTS_BLOB,
     });
     const { status, body } = await gql(
-      '{ source_snapshots(sort: "record_count", order: "desc") { sources summary schema_version } }',
+      '{ source_snapshots(sort: "record_count", order: "desc") { sources { captured_at hash id kind path record_count } summary { adapter_snapshot_count candidate_count overlay_count provider_count source_count verification_result_count } schema_version } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2248,16 +2270,32 @@ describe("graphql — changelog", () => {
     generated_at: "2026-07-01T00:00:00.000Z",
     source: "publish",
     notes: ["one", "two"],
-    summary: { artifacts_changed: 3, subnets_changed: 1 },
+    summary: {
+      artifacts_changed: 3,
+      subnets_changed: 1,
+      artifact_added_count: 1,
+      artifact_modified_count: 0,
+      artifact_removed_count: 0,
+      netuid_added_count: 0,
+      netuid_removed_count: 0,
+      netuid_renamed_count: 1,
+    },
     artifacts: { added: ["adapters.json"], modified: [], removed: [] },
-    subnets: { added: [], removed: [], renamed: ["sn-7"] },
+    // `renamed` carries ROWS, not names -- verified against production, where
+    // each is `{after, before, netuid}`. It read as a string list only while
+    // `subnets` was opaque JSON and nothing could contradict it.
+    subnets: {
+      added: [],
+      removed: [],
+      renamed: [{ netuid: 7, before: "sn-7", after: "sn-seven" }],
+    },
     coverage_delta: { surfaces: 4 },
   };
 
   test("serves the baked changelog artifact verbatim", async () => {
     const env = fixtureEnv({ "/metagraph/changelog.json": CHANGELOG_BLOB });
     const { status, body } = await gql(
-      "{ changelog { generated_at source notes summary artifacts subnets coverage_delta } }",
+      "{ changelog { generated_at source notes summary { artifact_added_count artifact_modified_count artifact_removed_count coverage_delta netuid_added_count netuid_removed_count netuid_renamed_count } artifacts { added modified removed } subnets { added { netuid } removed { netuid } renamed { netuid before after } } coverage_delta } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2265,9 +2303,16 @@ describe("graphql — changelog", () => {
     assert.equal(changelog.generated_at, "2026-07-01T00:00:00.000Z");
     assert.equal(changelog.source, "publish");
     assert.deepEqual(changelog.notes, ["one", "two"]);
-    assert.equal(changelog.summary.artifacts_changed, 3);
+    // `artifacts_changed` is NOT a field the summary component declares --
+    // production does not serve it, and asserting it here passed only because
+    // the whole summary was an opaque blob echoed back. The six counts it does
+    // declare are asserted instead.
+    assert.equal(changelog.summary.artifact_added_count, 1);
+    assert.equal(changelog.summary.netuid_renamed_count, 1);
     assert.deepEqual(changelog.artifacts.added, ["adapters.json"]);
-    assert.deepEqual(changelog.subnets.renamed, ["sn-7"]);
+    assert.deepEqual(changelog.subnets.renamed, [
+      { netuid: 7, before: "sn-7", after: "sn-seven" },
+    ]);
     assert.equal(changelog.coverage_delta.surfaces, 4);
   });
 
@@ -2281,6 +2326,14 @@ describe("graphql — changelog", () => {
       generated_at: "2026-07-01T00:00:00.000Z",
       summary: {
         artifacts_changed: 3,
+        // The six counts the component declares non-null. They were absent
+        // while `summary` was opaque JSON, which typed nothing.
+        artifact_added_count: 1,
+        artifact_modified_count: 0,
+        artifact_removed_count: 0,
+        netuid_added_count: 0,
+        netuid_removed_count: 0,
+        netuid_renamed_count: 0,
         coverage_delta: {
           surface_count: { before: 3493, after: 3496, delta: 3 },
         },
@@ -2288,7 +2341,7 @@ describe("graphql — changelog", () => {
     };
     const env = fixtureEnv({ "/metagraph/changelog.json": nested });
     const { status, body } = await gql(
-      "{ changelog { coverage_delta summary } }",
+      "{ changelog { coverage_delta summary { artifact_added_count artifact_modified_count artifact_removed_count coverage_delta netuid_added_count netuid_removed_count netuid_renamed_count } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2324,12 +2377,25 @@ describe("graphql — contracts", () => {
     openapi_url: "https://api.metagraph.sh/openapi.json",
     type_definitions_url: "https://api.metagraph.sh/types.d.ts",
     notes: ["read-only"],
+    // `tier` was never a key /api/v1/contracts serves -- it is `storage_tier`,
+    // alongside the id/status/contract_version the component requires. The
+    // misspelling survived because `artifacts` was opaque JSON.
     artifacts: [
-      { path: "/metagraph/subnets.json", tier: "r2", schema_ref: "subnets" },
       {
+        id: "subnets",
+        path: "/metagraph/subnets.json",
+        storage_tier: "r2",
+        schema_ref: "subnets",
+        status: "live",
+        contract_version: "abc123",
+      },
+      {
+        id: "changelog",
         path: "/metagraph/changelog.json",
-        tier: "r2",
+        storage_tier: "r2",
         schema_ref: "changelog",
+        status: "live",
+        contract_version: "abc123",
       },
     ],
   };
@@ -2337,7 +2403,7 @@ describe("graphql — contracts", () => {
   test("serves the baked contracts artifact verbatim", async () => {
     const env = fixtureEnv({ "/metagraph/contracts.json": CONTRACTS_BLOB });
     const { status, body } = await gql(
-      "{ contracts { schema_version contract_version generated_at name base_path primary_domain openapi_url type_definitions_url notes artifacts } }",
+      "{ contracts { schema_version contract_version generated_at name base_path primary_domain openapi_url type_definitions_url notes artifacts { content_type status contract_version description id path schema_ref storage_tier } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2381,14 +2447,44 @@ describe("graphql — build", () => {
     surface_count: 400,
     provider_count: 50,
     artifacts: [{ path: "/metagraph/subnets.json", size_bytes: 1000 }],
-    coverage: { surfaces: 10 },
-    artifact_budget_summary: { ok: 1, warn: 0, fail: 0 },
+    // The whole coverage card, because that is what /api/v1/build embeds --
+    // `{surfaces: 10}` is not a shape the artifact has ever had, and it stood
+    // only while `coverage` was opaque JSON echoed straight back.
+    coverage: {
+      schema_version: 1,
+      generated_at: "2026-07-01T00:00:00.000Z",
+      application_subnet_count: 1,
+      candidate_count: 1,
+      candidate_subnet_count: 1,
+      chain_subnet_count: 1,
+      curated_overlay_count: 1,
+      curation_level_counts: { curated: 1 },
+      domain_coverage: { "example.com": 1 },
+      first_party_subnet_count: 1,
+      manifested_count: 1,
+      native_only_count: 1,
+      native_only_with_candidates: 1,
+      native_only_without_candidates: 0,
+      native_snapshot_captured_at: "2026-07-01T00:00:00.000Z",
+      network: "finney",
+      probed_count: 1,
+      probed_surface_count: 10,
+      official_surface_count: 1,
+      registry_observed_surface_count: 1,
+      root_subnet_count: 1,
+      source: { candidates: "registry", native: {}, overlays: "registry" },
+      subnets_without_official_surface: 0,
+      surface_count: 10,
+    },
+    // `{ok, warn, fail}` were never the producer's key names -- production
+    // serves `{fail_count, ok_count, warn_count}`.
+    artifact_budget_summary: { fail_count: 0, ok_count: 1, warn_count: 0 },
   };
 
   test("serves the baked build-summary artifact verbatim", async () => {
     const env = fixtureEnv({ "/metagraph/build-summary.json": BUILD_BLOB });
     const { status, body } = await gql(
-      "{ build { schema_version contract_version generated_at published_at artifact_count artifact_size_bytes subnet_count surface_count provider_count artifacts coverage artifact_budget_summary } }",
+      "{ build { schema_version contract_version generated_at published_at artifact_count artifact_size_bytes subnet_count surface_count provider_count artifacts { path sha256 size_bytes storage_tier } coverage { contract_version generated_at notes schema_version application_subnet_count candidate_count candidate_subnet_count chain_subnet_count curated_overlay_count curation_level_counts manifested_count native_only_count native_only_with_candidates native_only_without_candidates native_snapshot_captured_at network probed_count probed_surface_count root_subnet_count surface_count } artifact_budget_summary { fail_count ok_count warn_count } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2400,8 +2496,30 @@ describe("graphql — build", () => {
     assert.equal(build.artifact_count, 99);
     assert.equal(build.subnet_count, 129);
     assert.deepEqual(build.artifacts[0].path, "/metagraph/subnets.json");
-    assert.equal(build.coverage.surfaces, 10);
-    assert.equal(build.artifact_budget_summary.ok, 1);
+    assert.equal(build.coverage.surface_count, 10);
+    assert.equal(build.artifact_budget_summary.ok_count, 1);
+  });
+
+  // Its own query rather than more fields on the one above: that one already
+  // costs 50 of the published complexity limit's 50, so adding to it makes the
+  // test fail as COMPLEXITY_LIMIT_EXCEEDED rather than on what it asserts.
+  test("the coverage card carries the five fields it served but never declared (#10214)", async () => {
+    const env = fixtureEnv({ "/metagraph/build-summary.json": BUILD_BLOB });
+    const { status, body } = await gql(
+      "{ build { coverage { domain_coverage first_party_subnet_count official_surface_count registry_observed_surface_count subnets_without_official_surface source { candidates native overlays } } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    const coverage = body.data.build.coverage;
+    // Served by /api/v1/build and /api/v1/coverage all along, declared
+    // nowhere -- the artifact is `.passthrough()`, so they reached callers
+    // while the contract said nothing about them.
+    assert.deepEqual(coverage.domain_coverage, { "example.com": 1 });
+    assert.equal(coverage.first_party_subnet_count, 1);
+    assert.equal(coverage.official_surface_count, 1);
+    assert.equal(coverage.registry_observed_surface_count, 1);
+    assert.equal(coverage.subnets_without_official_surface, 0);
+    assert.equal(coverage.source.candidates, "registry");
   });
 
   test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
@@ -2482,7 +2600,14 @@ describe("graphql — health_history", () => {
   };
   const HISTORY_BLOB = {
     date: "2026-07-01",
-    summary: { incident_count: 0, surface_count: 2 },
+    // `status_counts`/`classification_counts` are what the snapshot actually
+    // summarises -- checked against production, which serves those two beside
+    // `surface_count` and has no `incident_count` at all.
+    summary: {
+      surface_count: 2,
+      status_counts: { ok: 2 },
+      classification_counts: { live: 2 },
+    },
     surfaces: [
       SURFACE_ROW,
       {
@@ -2499,7 +2624,7 @@ describe("graphql — health_history", () => {
       "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
     });
     const { status, body } = await gql(
-      '{ health_history(date: "2026-07-01") { date summary surfaces total returned limit cursor next_cursor } }',
+      '{ health_history(date: "2026-07-01") { date summary { surface_count status_counts classification_counts } surfaces { surface_id netuid kind provider status classification latency_ms status_code last_checked last_ok verified_at error_class } total returned limit cursor next_cursor } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2510,7 +2635,7 @@ describe("graphql — health_history", () => {
     assert.equal(history.surfaces.length, 2);
 
     const paged = await gql(
-      '{ health_history(date: "2026-07-01", limit: 1) { surfaces total returned next_cursor } }',
+      '{ health_history(date: "2026-07-01", limit: 1) { surfaces { surface_id netuid kind provider status classification latency_ms status_code last_checked last_ok verified_at error_class } total returned next_cursor } }',
       env as unknown as Env,
     );
     assert.equal(paged.body.data.health_history.surfaces.length, 1);
@@ -2524,7 +2649,7 @@ describe("graphql — health_history", () => {
       "/metagraph/health/history/2026-07-01.json": HISTORY_BLOB,
     });
     const filtered = await gql(
-      '{ health_history(date: "2026-07-01", netuid: 1) { total surfaces } }',
+      '{ health_history(date: "2026-07-01", netuid: 1) { total surfaces { surface_id netuid kind provider status classification latency_ms status_code last_checked last_ok verified_at error_class } } }',
       env as unknown as Env,
     );
     assert.equal(filtered.body.data.health_history.total, 1);
@@ -2534,7 +2659,7 @@ describe("graphql — health_history", () => {
     );
 
     const sorted = await gql(
-      '{ health_history(date: "2026-07-01", sort: "latency_ms", order: "desc") { surfaces sort order } }',
+      '{ health_history(date: "2026-07-01", sort: "latency_ms", order: "desc") { surfaces { surface_id netuid kind provider status classification latency_ms status_code last_checked last_ok verified_at error_class } sort order } }',
       env as unknown as Env,
     );
     assert.equal(sorted.body.data.health_history.surfaces[0].netuid, 1);
@@ -2586,15 +2711,98 @@ describe("graphql — health_history", () => {
 // unchanged (same filter/sort/page + error behavior as REST and MCP) rather
 // than a GraphQL-only reimplementation.
 describe("graphql — profiles", () => {
+  // Every field SubnetProfile declares non-null -- 31 of them -- taken from a
+  // real /api/v1/profiles row rather than invented, so what the resolver sees
+  // here is the shape it sees in production. A short row was fine while the
+  // type was opaque JSON; now a single missing key nulls the whole profile
+  // and every assertion below it reads as a paging bug instead.
   const PROFILE_ROW = {
-    netuid: 7,
-    slug: "allways",
-    name: "Allways",
+    candidate_count: 1,
+    categories: ["baseline-augmented", "chain-rpc", "root", "system"],
+    completeness: {
+      confidence: "high",
+      gap_reasons: ["stale-subtensor-rpc"],
+      identity_level: "complete",
+      identity_surface_count: 3,
+      missing_critical_count: 0,
+      missing_identity: [],
+      missing_operational: [],
+      missing_required: [],
+      profile_level: "operational",
+      score: 90,
+    },
     completeness_score: 82,
-    curation_level: "machine-verified",
-    review_state: "verified",
     confidence: "high",
+    curation_level: "machine-verified",
+    derived_categories: [],
+    endpoint_count: 17,
+    gap_reasons: ["stale-subtensor-rpc"],
+    identity_evidence: {
+      candidate_identity_count: 0,
+      curated_identity_count: 3,
+      curated_identity_kinds: ["docs", "source-repo", "website"],
+      live_candidate_identity_kinds: [],
+      native_contact_present: false,
+      native_description_present: false,
+      native_identity_count: 0,
+      native_identity_kinds: [],
+      needs_promotion_kinds: [],
+      stale_candidate_identity_kinds: [],
+      unverified_candidate_identity_kinds: [],
+    },
+    identity_level: "complete",
+    identity_surface_count: 3,
+    missing_critical_count: 0,
+    missing_identity: [],
+    missing_operational: [],
+    missing_required: [],
+    monitored_endpoint_count: 16,
+    name: "Allways",
+    netuid: 7,
+    operational_interface_kinds: ["archive", "subtensor-rpc", "subtensor-wss"],
+    primary_links: {
+      dashboard_url: "https://taomarketcap.com/subnets/0",
+      docs_url: "https://docs.learnbittensor.org/concepts/bittensor-networks",
+      source_repo: "https://github.com/opentensor/subtensor",
+      website_url: "https://bittensor.com",
+    },
     profile_level: "operational",
+    project_name: "root",
+    provenance: {
+      curation_level: "maintainer-reviewed",
+      identity_source: "curated-overlay",
+      interface_source_count: 12,
+      review_state: "maintainer-reviewed",
+      reviewed_at: "2026-06-06T00:00:00.000Z",
+      source_urls: [
+        "https://api.taomarketcap.com/public/v1/subnets/0",
+        "https://backprop.finance/dtao/subnets/0-root",
+        "https://bittensor.com",
+        "https://docs.learnbittensor.org/concepts/bittensor-networks",
+        "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements",
+        "https://docs.nodies.app/rpc-services/public-endpoints",
+        "https://github.com/opentensor/subtensor",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/0/subnet.json",
+        "https://onfinality.io/en/networks/bittensor-finney",
+        "https://subnetradar.com/subnet/0",
+        "https://taomarketcap.com/subnets/0",
+        "https://www.comparenodes.com/library/public-endpoints/bittensor/",
+      ],
+    },
+    review_state: "verified",
+    slug: "allways",
+    status: "active",
+    subnet_type: "root",
+    suggested_submission_kinds: [],
+    supported_interface_kinds: [
+      "archive",
+      "dashboard",
+      "docs",
+      "source-repo",
+      "subtensor-rpc",
+      "subtensor-wss",
+      "website",
+    ],
     surface_count: 5,
   };
 
@@ -2636,7 +2844,7 @@ describe("graphql — profiles", () => {
   test("filters by netuid and paginates", async () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
     const filtered = await gql(
-      "{ profiles(netuid: 7) { profiles total captured_at } }",
+      "{ profiles(netuid: 7) { profiles { netuid slug name subnet_type status categories surface_count endpoint_count curation_level review_state confidence profile_level completeness_score gap_reasons } total captured_at } }",
       env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
@@ -2648,7 +2856,7 @@ describe("graphql — profiles", () => {
     );
 
     const paged = await gql(
-      "{ profiles(limit: 1) { profiles total returned next_cursor } }",
+      "{ profiles(limit: 1) { profiles { netuid slug name subnet_type status categories surface_count endpoint_count curation_level review_state confidence profile_level completeness_score gap_reasons } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(paged.body.data.profiles.profiles.length, 1);
@@ -2660,14 +2868,14 @@ describe("graphql — profiles", () => {
   test("searches by q and sorts by completeness_score", async () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
     const searched = await gql(
-      '{ profiles(q: "alpha") { profiles total } }',
+      '{ profiles(q: "alpha") { profiles { netuid slug name subnet_type status categories surface_count endpoint_count curation_level review_state confidence profile_level completeness_score gap_reasons } total } }',
       env as unknown as Env,
     );
     assert.equal(searched.body.data.profiles.total, 1);
     assert.equal(searched.body.data.profiles.profiles[0].slug, "alpha");
 
     const sorted = await gql(
-      '{ profiles(sort: "completeness_score", order: "desc") { profiles } }',
+      '{ profiles(sort: "completeness_score", order: "desc") { profiles { netuid slug name subnet_type status categories surface_count endpoint_count curation_level review_state confidence profile_level completeness_score gap_reasons } } }',
       env as unknown as Env,
     );
     assert.equal(sorted.body.data.profiles.profiles[0].slug, "allways");
@@ -2702,7 +2910,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
 
   test("block_extrinsics: cold store returns a schema-stable empty list, never an error", async () => {
     const { status, body } = await gql(
-      '{ block_extrinsics(ref: "9") { block_number extrinsic_count extrinsics } }',
+      '{ block_extrinsics(ref: "9") { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
     );
     assert.equal(status, 200);
     assert.equal(body.data.block_extrinsics.block_number, null);
@@ -2736,7 +2944,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       ),
     };
     const { status, body } = await gql(
-      '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics } }',
+      '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -2839,14 +3047,18 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     resetDecodeWatermarkCache();
     const env = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
     const { status, body } = await gql(
-      "{ block_chain_events(block_number: 9) { block_number event_count events } }",
+      "{ block_chain_events(block_number: 9) { block_number event_count events { block_number event_index pallet method args phase extrinsic_index observed_at summary } } }",
       env,
     );
     assert.ok(queries.length > 0, "the lakehouse was never queried");
     assert.equal(status, 200);
     assert.equal(body.data.block_chain_events.block_number, 9);
     assert.equal(body.data.block_chain_events.event_count, 2);
+    // The RAW pallet-level row this tier serves -- not the curated AccountEvent
+    // the projection used to name. Selecting `event_kind`/`hotkey` here returned
+    // null for every row while the rows carried pallet/method all along.
     assert.equal(body.data.block_chain_events.events[1].method, "Transfer");
+    assert.equal(body.data.block_chain_events.events[1].pallet, "Balances");
   });
 
   test("block_chain_events: an absent all-events tier is a GraphQL error, not null-degrade", async () => {
@@ -2880,20 +3092,94 @@ describe("graphql — review_* contributor-review family", () => {
   const ADAPTER_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["adapter shortlist"],
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     candidates: [
       {
-        netuid: 7,
+        candidate_api_count: 5,
+        candidate_api_ids: [
+          "sn-51-website-common-health",
+          "sn-51-website-common-openapi-json",
+          "sn-51-website-common-swagger",
+          "sn-51-website-common-swagger-json",
+          "sn-51-website-link-lium-io-subnet-api-9",
+        ],
+        candidate_api_kinds: ["openapi", "subnet-api"],
+        curation_level: "maintainer-reviewed",
         name: "Allways",
-        priority_score: 88,
-        curation_level: "candidate-discovered",
+        netuid: 7,
+        operational_kinds: ["data-artifact", "openapi", "subnet-api"],
+        operational_surface_count: 151,
+        operational_surface_ids: [
+          "sn-51-lium-admin-banned-machines",
+          "sn-51-lium-admin-banned-machines-ban-id",
+          "sn-51-lium-admin-custom-referral-links",
+          "sn-51-lium-admin-custom-referral-links-link-id",
+          "sn-51-lium-admin-custom-referral-links-stats",
+          "sn-51-lium-admin-custom-referral-links-validate-code",
+          "sn-51-lium-admin-expiring-credit-grants",
+          "sn-51-lium-auth-github-login",
+          "sn-51-lium-auth-github-login-complete",
+          "sn-51-lium-auth-google-login",
+          "sn-51-lium-auth-google-login-complete",
+          "sn-51-lium-auth-logout",
+        ],
+        priority_score: 91,
+        reason_codes: [
+          "candidate-api-evidence",
+          "data-artifact-surface",
+          "multiple-operational-kinds",
+          "openapi-surface",
+          "subnet-api-surface",
+        ],
         recommended_adapter_kind: "generic-openapi-or-custom",
+        slug: "allways",
+        suggested_next_action:
+          "snapshot schema shape and consider normalized metrics from stable read-only operations",
       },
       {
-        netuid: 12,
-        name: "Compute",
-        priority_score: 72,
+        candidate_api_count: 5,
+        candidate_api_ids: [
+          "sn-51-website-common-health",
+          "sn-51-website-common-openapi-json",
+          "sn-51-website-common-swagger",
+          "sn-51-website-common-swagger-json",
+          "sn-51-website-link-lium-io-subnet-api-9",
+        ],
+        candidate_api_kinds: ["openapi", "subnet-api"],
         curation_level: "maintainer-reviewed",
-        recommended_adapter_kind: "custom-adapter",
+        name: "Compute",
+        netuid: 12,
+        operational_kinds: ["data-artifact", "openapi", "subnet-api"],
+        operational_surface_count: 151,
+        operational_surface_ids: [
+          "sn-51-lium-admin-banned-machines",
+          "sn-51-lium-admin-banned-machines-ban-id",
+          "sn-51-lium-admin-custom-referral-links",
+          "sn-51-lium-admin-custom-referral-links-link-id",
+          "sn-51-lium-admin-custom-referral-links-stats",
+          "sn-51-lium-admin-custom-referral-links-validate-code",
+          "sn-51-lium-admin-expiring-credit-grants",
+          "sn-51-lium-auth-github-login",
+          "sn-51-lium-auth-github-login-complete",
+          "sn-51-lium-auth-google-login",
+          "sn-51-lium-auth-google-login-complete",
+          "sn-51-lium-auth-logout",
+        ],
+        priority_score: 55,
+        reason_codes: [
+          "candidate-api-evidence",
+          "data-artifact-surface",
+          "multiple-operational-kinds",
+          "openapi-surface",
+          "subnet-api-surface",
+        ],
+        recommended_adapter_kind: "generic-openapi-or-custom",
+        slug: "compute",
+        suggested_next_action:
+          "snapshot schema shape and consider normalized metrics from stable read-only operations",
       },
     ],
   };
@@ -2901,20 +3187,74 @@ describe("graphql — review_* contributor-review family", () => {
   const EVIDENCE_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["evidence"],
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     entries: [
       {
-        netuid: 7,
-        name: "Allways",
-        priority_score: 90,
+        candidate_evidence_by_kind: {
+          sse: {
+            candidate_count: 0,
+            classifications: {},
+            live_or_redirected_count: 0,
+            reviewable_count: 0,
+            sample_candidate_ids: [],
+            stale_or_failed_count: 0,
+            unverified_count: 0,
+          },
+        },
+        candidate_evidence_summary: {
+          candidate_count: 0,
+          kinds_with_candidates: [],
+          live_kinds: [],
+          live_or_redirected_count: 0,
+          reviewable_count: 0,
+          stale_kinds: [],
+          stale_or_failed_count: 0,
+          unverified_count: 0,
+          unverified_kinds: [],
+        },
+        direct_submission_kinds: [],
+        evidence_action: "maintainer-review-existing-evidence",
         lane: "direct-submission",
-        evidence_action: "submit-new-evidence",
+        missing_kinds: ["sse"],
+        name: "Allways",
+        netuid: 7,
+        priority_score: 91,
+        slug: "allways",
       },
       {
-        netuid: 12,
-        name: "Compute",
-        priority_score: 40,
+        candidate_evidence_by_kind: {
+          sse: {
+            candidate_count: 0,
+            classifications: {},
+            live_or_redirected_count: 0,
+            reviewable_count: 0,
+            sample_candidate_ids: [],
+            stale_or_failed_count: 0,
+            unverified_count: 0,
+          },
+        },
+        candidate_evidence_summary: {
+          candidate_count: 0,
+          kinds_with_candidates: [],
+          live_kinds: [],
+          live_or_redirected_count: 0,
+          reviewable_count: 0,
+          stale_kinds: [],
+          stale_or_failed_count: 0,
+          unverified_count: 0,
+          unverified_kinds: [],
+        },
+        direct_submission_kinds: [],
+        evidence_action: "maintainer-review-existing-evidence",
         lane: "monitoring-followup",
-        evidence_action: "monitor",
+        missing_kinds: ["sse"],
+        name: "Compute",
+        netuid: 12,
+        priority_score: 55,
+        slug: "compute",
       },
     ],
   };
@@ -2922,20 +3262,132 @@ describe("graphql — review_* contributor-review family", () => {
   const QUEUE_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["queue"],
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     queue: [
       {
-        netuid: 7,
-        name: "Allways",
-        priority_score: 95,
-        lane: "direct-submission",
+        adapter_score: 3181,
+        candidate_count: 14,
+        candidate_evidence_summary: {
+          candidate_count: 0,
+          kinds_with_candidates: [],
+          live_kinds: [],
+          live_or_redirected_count: 0,
+          reviewable_count: 0,
+          stale_kinds: [],
+          stale_or_failed_count: 0,
+          unverified_count: 0,
+          unverified_kinds: [],
+        },
+        completeness_score: 93,
+        contribution_hint:
+          "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
         curation_level: "candidate-discovered",
+        direct_submission_kinds: [],
+        endpoint_count: 161,
+        evidence_action: "maintainer-review-existing-evidence",
+        identity_level: "complete",
+        identity_surface_count: 3,
+        lane: "adapter-candidate",
+        manual_review_required: true,
+        missing_identity: [],
+        missing_kinds: ["sse"],
+        name: "Allways",
+        netuid: 7,
+        operational_interface_count: 3,
+        priority_score: 91,
+        profile_level: "operational",
+        reason_codes: ["adapter-candidate"],
+        recommended_action:
+          "evaluate adapter support for data-artifact, openapi, subnet-api",
+        review_state: "maintainer-reviewed",
+        sample_candidate_ids: [
+          "sn-51-taostats-metagraph",
+          "sn-51-website-common-docs",
+          "sn-51-website-common-health",
+          "sn-51-website-common-openapi-json",
+          "sn-51-website-common-swagger",
+        ],
+        sample_live_candidate_ids: [],
+        sample_stale_candidate_ids: [],
+        sample_target_candidate_ids: [],
+        slug: "allways",
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/51",
+          "https://backprop.finance/dtao/subnets/51-lium-io",
+          "https://docs.lium.io/bittensor-subnet/overview",
+          "https://github.com/Datura-ai/lium-io",
+          "https://github.com/Datura-ai/lium-io/blob/main/README.md",
+          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json",
+          "https://lium.io/",
+        ],
+        stale_candidate_count: 0,
+        surface_count: 161,
+        verified_candidate_count: 8,
       },
       {
-        netuid: 12,
-        name: "Compute",
-        priority_score: 50,
-        lane: "baseline-monitoring",
+        adapter_score: 3181,
+        candidate_count: 14,
+        candidate_evidence_summary: {
+          candidate_count: 0,
+          kinds_with_candidates: [],
+          live_kinds: [],
+          live_or_redirected_count: 0,
+          reviewable_count: 0,
+          stale_kinds: [],
+          stale_or_failed_count: 0,
+          unverified_count: 0,
+          unverified_kinds: [],
+        },
+        completeness_score: 93,
+        contribution_hint:
+          "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
         curation_level: "maintainer-reviewed",
+        direct_submission_kinds: [],
+        endpoint_count: 161,
+        evidence_action: "maintainer-review-existing-evidence",
+        identity_level: "complete",
+        identity_surface_count: 3,
+        lane: "adapter-candidate",
+        manual_review_required: true,
+        missing_identity: [],
+        missing_kinds: ["sse"],
+        name: "Compute",
+        netuid: 12,
+        operational_interface_count: 3,
+        priority_score: 55,
+        profile_level: "operational",
+        reason_codes: ["adapter-candidate"],
+        recommended_action:
+          "evaluate adapter support for data-artifact, openapi, subnet-api",
+        review_state: "maintainer-reviewed",
+        sample_candidate_ids: [
+          "sn-51-taostats-metagraph",
+          "sn-51-website-common-docs",
+          "sn-51-website-common-health",
+          "sn-51-website-common-openapi-json",
+          "sn-51-website-common-swagger",
+        ],
+        sample_live_candidate_ids: [],
+        sample_stale_candidate_ids: [],
+        sample_target_candidate_ids: [],
+        slug: "compute",
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/51",
+          "https://backprop.finance/dtao/subnets/51-lium-io",
+          "https://docs.lium.io/bittensor-subnet/overview",
+          "https://github.com/Datura-ai/lium-io",
+          "https://github.com/Datura-ai/lium-io/blob/main/README.md",
+          "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx",
+          "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json",
+          "https://lium.io/",
+        ],
+        stale_candidate_count: 0,
+        surface_count: 161,
+        verified_candidate_count: 8,
       },
     ],
   };
@@ -2943,20 +3395,110 @@ describe("graphql — review_* contributor-review family", () => {
   const TARGETS_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["targets"],
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     targets: [
       {
-        netuid: 7,
-        name: "Allways",
-        priority_score: 91,
-        target_type: "surface-candidate",
+        auto_review_candidate: false,
+        contribution_prompt:
+          "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.",
+        evidence_action: "maintainer-review-existing-evidence",
+        identity_level: "complete",
         lane: "direct-submission",
+        manual_review_required: true,
+        missing_kinds: ["sse"],
+        name: "Allways",
+        netuid: 7,
+        priority_score: 91,
+        profile_level: "operational",
+        queue_context: {
+          adapter_score: 3181,
+          candidate_count: 14,
+          completeness_score: 93,
+          curation_level: "maintainer-reviewed",
+          direct_submission_kind_count: 0,
+          endpoint_count: 161,
+          identity_surface_count: 3,
+          operational_interface_count: 3,
+          profile_level: "operational",
+          review_state: "maintainer-reviewed",
+          source_url_count: 8,
+          stale_candidate_count: 0,
+          surface_count: 161,
+          verified_candidate_count: 8,
+        },
+        reason_codes: ["adapter-candidate"],
+        recommended_action:
+          "evaluate adapter support for data-artifact, openapi, subnet-api",
+        sample_live_candidate_ids: [],
+        sample_stale_candidate_ids: [],
+        sample_target_candidate_ids: [],
+        slug: "allways",
+        source_requirements: [
+          "Existing public API/schema/data evidence should be stable enough to normalize.",
+          "Adapter work requires maintainer review before publication.",
+        ],
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/51",
+          "https://backprop.finance/dtao/subnets/51-lium-io",
+          "https://docs.lium.io/bittensor-subnet/overview",
+        ],
+        submission_route: "adapter-request",
+        target_action: "adapter-review",
+        target_id: "sn-51-adapter-review-adapter-candidate",
+        target_type: "surface-candidate",
       },
       {
-        netuid: 12,
-        name: "Compute",
-        priority_score: 55,
-        target_type: "monitoring-followup",
+        auto_review_candidate: false,
+        contribution_prompt:
+          "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.",
+        evidence_action: "maintainer-review-existing-evidence",
+        identity_level: "complete",
         lane: "monitoring-followup",
+        manual_review_required: true,
+        missing_kinds: ["sse"],
+        name: "Compute",
+        netuid: 12,
+        priority_score: 55,
+        profile_level: "operational",
+        queue_context: {
+          adapter_score: 3181,
+          candidate_count: 14,
+          completeness_score: 93,
+          curation_level: "maintainer-reviewed",
+          direct_submission_kind_count: 0,
+          endpoint_count: 161,
+          identity_surface_count: 3,
+          operational_interface_count: 3,
+          profile_level: "operational",
+          review_state: "maintainer-reviewed",
+          source_url_count: 8,
+          stale_candidate_count: 0,
+          surface_count: 161,
+          verified_candidate_count: 8,
+        },
+        reason_codes: ["adapter-candidate"],
+        recommended_action:
+          "evaluate adapter support for data-artifact, openapi, subnet-api",
+        sample_live_candidate_ids: [],
+        sample_stale_candidate_ids: [],
+        sample_target_candidate_ids: [],
+        slug: "compute",
+        source_requirements: [
+          "Existing public API/schema/data evidence should be stable enough to normalize.",
+          "Adapter work requires maintainer review before publication.",
+        ],
+        source_urls: [
+          "https://api.taomarketcap.com/public/v1/subnets/51",
+          "https://backprop.finance/dtao/subnets/51-lium-io",
+          "https://docs.lium.io/bittensor-subnet/overview",
+        ],
+        submission_route: "adapter-request",
+        target_action: "adapter-review",
+        target_id: "sn-51-adapter-review-adapter-candidate",
+        target_type: "monitoring-followup",
       },
     ],
   };
@@ -2964,20 +3506,36 @@ describe("graphql — review_* contributor-review family", () => {
   const GAPS_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["gaps"],
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     priorities: [
       {
-        netuid: 7,
-        name: "Allways",
-        priority_score: 88,
+        candidate_count: 14,
         curation_level: "candidate-discovered",
         missing_kinds: ["openapi"],
+        name: "Allways",
+        netuid: 7,
+        priority_score: 88,
+        review_state: "maintainer-reviewed",
+        slug: "allways",
+        suggested_next_action: "evaluate for subnet-specific adapter",
+        surface_count: 161,
+        verified_candidate_count: 8,
       },
       {
-        netuid: 12,
-        name: "Compute",
-        priority_score: 72,
+        candidate_count: 14,
         curation_level: "maintainer-reviewed",
         missing_kinds: ["website"],
+        name: "Compute",
+        netuid: 12,
+        priority_score: 72,
+        review_state: "maintainer-reviewed",
+        slug: "compute",
+        suggested_next_action: "evaluate for subnet-specific adapter",
+        surface_count: 161,
+        verified_candidate_count: 8,
       },
     ],
   };
@@ -2985,23 +3543,147 @@ describe("graphql — review_* contributor-review family", () => {
   const PROFILE_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     notes: ["profile gaps"],
-    summary: { profile_count: 2 },
+    summary: {
+      average_completeness_score: 81,
+      by_confidence: {
+        high: 126,
+        low: 3,
+      },
+      by_identity_level: {
+        complete: 120,
+        partial: 9,
+      },
+      by_profile_level: {
+        "adapter-backed": 2,
+        "identity-complete": 1,
+        "identity-partial": 1,
+        operational: 125,
+      },
+      critical_gap_counts: {
+        "missing-data-artifact": 9,
+        "missing-openapi": 62,
+        "missing-source-repo": 6,
+        "missing-sse": 123,
+        "missing-subnet-api": 7,
+        "missing-website": 7,
+        "stale-data-artifact": 8,
+        "stale-openapi": 7,
+        "stale-subnet-api": 26,
+        "stale-subtensor-rpc": 1,
+      },
+      identity_promotion_candidate_count: 0,
+      native_identity_count: 124,
+      native_identity_unpromoted_count: 0,
+      needs_identity_count: 9,
+      needs_operational_count: 2,
+      // Two, because the fixture has two rows -- the shape is production\'s,
+      // the counts are this test\'s.
+      profile_count: 2,
+    },
+    // Rows taken from the live review artifact and filtered to the fields the
+    // type requires, then re-keyed to the two subjects these filter tests use.
+    // A four-key sketch was enough while these were opaque JSON; each is a
+    // published type now, so a missing required key nulls the whole row.
     profiles: [
       {
-        netuid: 7,
+        candidate_count: 1,
+        completeness_score: 25,
+        confidence: "medium",
+        curation_level: "maintainer-reviewed",
+        gap_reasons: [
+          "missing-source-repo",
+          "missing-website",
+          "missing-openapi",
+          "missing-subnet-api",
+          "missing-sse",
+          "missing-data-artifact",
+        ],
+        identity_evidence: {
+          candidate_identity_count: 0,
+          curated_identity_count: 1,
+          curated_identity_kinds: ["docs"],
+          live_candidate_identity_kinds: [],
+          native_contact_present: false,
+          native_description_present: true,
+          native_identity_count: 0,
+          native_identity_kinds: [],
+          needs_promotion_kinds: [],
+          stale_candidate_identity_kinds: [],
+          unverified_candidate_identity_kinds: [],
+        },
+        identity_level: "partial",
+        identity_promotion_kind_count: 0,
+        identity_promotion_kinds: [],
+        identity_surface_count: 1,
+        live_identity_candidate_kind_count: 0,
+        missing_critical_count: 6,
+        missing_identity: ["source-repo", "website"],
+        missing_operational: ["openapi", "subnet-api", "sse", "data-artifact"],
+        missing_required: ["source-repo", "website"],
         name: "Allways",
+        native_identity_signal_count: 0,
+        native_name_quality: "chain",
+        netuid: 7,
+        operational_interface_count: 0,
         priority_score: 80,
         profile_level: "identity-partial",
-        identity_level: "partial",
-        confidence: "medium",
+        review_state: "maintainer-reviewed",
+        slug: "allways",
+        source_count: 5,
+        stale_identity_candidate_kind_count: 0,
+        suggested_next_action:
+          "submit official docs, website, or source repository evidence",
+        supported_interface_kinds: ["dashboard", "docs"],
       },
       {
-        netuid: 12,
+        candidate_count: 1,
+        completeness_score: 25,
+        confidence: "low",
+        curation_level: "maintainer-reviewed",
+        gap_reasons: [
+          "missing-source-repo",
+          "missing-website",
+          "missing-openapi",
+          "missing-subnet-api",
+          "missing-sse",
+          "missing-data-artifact",
+        ],
+        identity_evidence: {
+          candidate_identity_count: 0,
+          curated_identity_count: 1,
+          curated_identity_kinds: ["docs"],
+          live_candidate_identity_kinds: [],
+          native_contact_present: false,
+          native_description_present: true,
+          native_identity_count: 0,
+          native_identity_kinds: [],
+          needs_promotion_kinds: [],
+          stale_candidate_identity_kinds: [],
+          unverified_candidate_identity_kinds: [],
+        },
+        identity_level: "none",
+        identity_promotion_kind_count: 0,
+        identity_promotion_kinds: [],
+        identity_surface_count: 1,
+        live_identity_candidate_kind_count: 0,
+        missing_critical_count: 6,
+        missing_identity: ["source-repo", "website"],
+        missing_operational: ["openapi", "subnet-api", "sse", "data-artifact"],
+        missing_required: ["source-repo", "website"],
         name: "Compute",
+        native_identity_signal_count: 0,
+        native_name_quality: "chain",
+        netuid: 12,
+        operational_interface_count: 0,
         priority_score: 40,
         profile_level: "directory-only",
-        identity_level: "none",
-        confidence: "low",
+        review_state: "maintainer-reviewed",
+        slug: "compute",
+        source_count: 5,
+        stale_identity_candidate_kind_count: 0,
+        suggested_next_action:
+          "submit official docs, website, or source repository evidence",
+        supported_interface_kinds: ["dashboard", "docs"],
       },
     ],
   };
@@ -3019,7 +3701,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_adapter_candidates filters by netuid and paginates", async () => {
     const env = reviewEnv();
     const filtered = await gql(
-      "{ review_adapter_candidates(netuid: 7) { candidates total generated_at } }",
+      "{ review_adapter_candidates(netuid: 7) { candidates { candidate_api_count candidate_api_ids candidate_api_kinds curation_level name netuid operational_kinds operational_surface_count operational_surface_ids priority_score reason_codes recommended_adapter_kind suggested_next_action slug } total generated_at } }",
       env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
@@ -3034,7 +3716,7 @@ describe("graphql — review_* contributor-review family", () => {
     );
 
     const paged = await gql(
-      "{ review_adapter_candidates(limit: 1) { candidates total returned next_cursor } }",
+      "{ review_adapter_candidates(limit: 1) { candidates { candidate_api_count candidate_api_ids candidate_api_kinds curation_level name netuid operational_kinds operational_surface_count operational_surface_ids priority_score reason_codes recommended_adapter_kind suggested_next_action slug } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(
@@ -3049,7 +3731,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_enrichment_evidence filters by lane and sorts", async () => {
     const env = reviewEnv();
     const filtered = await gql(
-      '{ review_enrichment_evidence(lane: "direct-submission") { entries total } }',
+      '{ review_enrichment_evidence(lane: "direct-submission") { entries { candidate_evidence_by_kind direct_submission_kinds evidence_action lane missing_kinds name netuid priority_score slug } total } }',
       env as unknown as Env,
     );
     assert.equal(filtered.body.data.review_enrichment_evidence.total, 1);
@@ -3059,7 +3741,7 @@ describe("graphql — review_* contributor-review family", () => {
     );
 
     const sorted = await gql(
-      '{ review_enrichment_evidence(sort: "priority_score", order: "asc") { entries } }',
+      '{ review_enrichment_evidence(sort: "priority_score", order: "asc") { entries { candidate_evidence_by_kind direct_submission_kinds evidence_action lane missing_kinds name netuid priority_score slug } } }',
       env as unknown as Env,
     );
     assert.equal(
@@ -3071,7 +3753,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_enrichment_queue filters by curation_level", async () => {
     const env = reviewEnv();
     const { body } = await gql(
-      '{ review_enrichment_queue(curation_level: "maintainer-reviewed") { queue total } }',
+      '{ review_enrichment_queue(curation_level: "maintainer-reviewed") { queue { adapter_score candidate_count completeness_score contribution_hint curation_level direct_submission_kinds endpoint_count evidence_action identity_level identity_surface_count lane manual_review_required missing_kinds missing_identity name netuid operational_interface_count priority_score profile_level reason_codes recommended_action review_state sample_candidate_ids sample_live_candidate_ids sample_stale_candidate_ids sample_target_candidate_ids slug source_urls stale_candidate_count surface_count verified_candidate_count } total } }',
       env as unknown as Env,
     );
     assert.equal(body.data.review_enrichment_queue.total, 1);
@@ -3081,7 +3763,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_enrichment_targets filters by target_type", async () => {
     const env = reviewEnv();
     const { body } = await gql(
-      '{ review_enrichment_targets(target_type: "surface-candidate") { targets total } }',
+      '{ review_enrichment_targets(target_type: "surface-candidate") { targets { auto_review_candidate candidate_command contribution_prompt evidence_action identity_level kind lane manual_review_required missing_kinds name netuid priority_score profile_level reason_codes recommended_action sample_live_candidate_ids sample_stale_candidate_ids sample_target_candidate_ids slug source_requirements source_urls submission_route target_action target_id target_type } total } }',
       env as unknown as Env,
     );
     assert.equal(body.data.review_enrichment_targets.total, 1);
@@ -3091,7 +3773,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_gaps filters by missing_kinds", async () => {
     const env = reviewEnv();
     const { body } = await gql(
-      '{ review_gaps(missing_kinds: "openapi") { priorities total } }',
+      '{ review_gaps(missing_kinds: "openapi") { priorities { candidate_count curation_level missing_kinds name netuid priority_score review_state slug suggested_next_action surface_count verified_candidate_count } total } }',
       env as unknown as Env,
     );
     assert.equal(body.data.review_gaps.total, 1);
@@ -3101,7 +3783,7 @@ describe("graphql — review_* contributor-review family", () => {
   test("review_profile_completeness filters by identity_level and exposes summary", async () => {
     const env = reviewEnv();
     const { body } = await gql(
-      '{ review_profile_completeness(identity_level: "partial") { profiles total summary } }',
+      '{ review_profile_completeness(identity_level: "partial") { profiles { candidate_count completeness_score confidence curation_level gap_reasons identity_level identity_promotion_kind_count identity_promotion_kinds identity_surface_count live_identity_candidate_kind_count missing_critical_count missing_identity missing_operational missing_required name native_name_quality native_identity_signal_count netuid operational_interface_count priority_score profile_level review_state slug source_count stale_identity_candidate_kind_count supported_interface_kinds suggested_next_action } total summary { profile_count needs_identity_count needs_operational_count average_completeness_score native_identity_count identity_promotion_candidate_count native_identity_unpromoted_count by_identity_level by_profile_level by_confidence critical_gap_counts } } }',
       env as unknown as Env,
     );
     assert.equal(body.data.review_profile_completeness.total, 1);
@@ -6041,7 +6723,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       ),
     };
     const { status, body } = await gql(
-      "{ subnet_ownership_history(netuid: 7) { schema_version netuid count ownership_changes } }",
+      "{ subnet_ownership_history(netuid: 7) { schema_version netuid count ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -6081,7 +6763,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       ),
     };
     const { status, body } = await gql(
-      "{ subnet_conviction(netuid: 7) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
+      "{ subnet_conviction(netuid: 7) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard { hotkey is_owner locked_mass conviction } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -6112,7 +6794,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       ),
     };
     const { status, body } = await gql(
-      "{ subnet_lease_history(netuid: 9) { schema_version netuid count lease_events } }",
+      "{ subnet_lease_history(netuid: 9) { schema_version netuid count lease_events { event_kind beneficiary block_number observed_at } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -6135,7 +6817,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       ),
     };
     const { body } = await gql(
-      "{ subnet_ownership_history(netuid: 4) { count ownership_changes } }",
+      "{ subnet_ownership_history(netuid: 4) { count ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }",
       env as unknown as Env,
     );
     assert.equal(body.data.subnet_ownership_history.count, 0);
@@ -6149,7 +6831,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     const env = { DATA_API: { fetch: async () => Response.json({}) } };
 
     const ownership = await gql(
-      "{ subnet_ownership_history(netuid: 4) { schema_version netuid count ownership_changes } }",
+      "{ subnet_ownership_history(netuid: 4) { schema_version netuid count ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }",
       env as unknown as Env,
     );
     assert.deepEqual(ownership.body.data.subnet_ownership_history, {
@@ -6160,7 +6842,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     });
 
     const conviction = await gql(
-      "{ subnet_conviction(netuid: 4) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard } }",
+      "{ subnet_conviction(netuid: 4) { schema_version netuid queried_at_block unlock_rate maturity_rate king count leaderboard { hotkey is_owner locked_mass conviction } } }",
       env as unknown as Env,
     );
     assert.deepEqual(conviction.body.data.subnet_conviction, {
@@ -6175,7 +6857,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     });
 
     const leaseHistory = await gql(
-      "{ subnet_lease_history(netuid: 4) { schema_version netuid count lease_events } }",
+      "{ subnet_lease_history(netuid: 4) { schema_version netuid count lease_events { event_kind beneficiary block_number observed_at } } }",
       env as unknown as Env,
     );
     assert.deepEqual(leaseHistory.body.data.subnet_lease_history, {
@@ -6252,7 +6934,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
           DATA_API: dataApi(new Response("err", { status: 502 })),
         };
         const { status, body } = await gql(
-          "{ subnet_ownership_history(netuid: 7) { netuid count ownership_changes } }",
+          "{ subnet_ownership_history(netuid: 7) { netuid count ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }",
           env as unknown as Env,
         );
         assert.equal(status, 200);
@@ -6283,7 +6965,7 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
           DATA_API: dataApi(new Response("err", { status: 502 })),
         };
         const { body } = await gql(
-          "{ subnet_ownership_history(netuid: 18) { count ownership_changes } }",
+          "{ subnet_ownership_history(netuid: 18) { count ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }",
           env as unknown as Env,
         );
         assert.equal(body.errors, undefined);
@@ -6461,7 +7143,7 @@ describe("graphql — subnet_lease (#6719, live chain RPC via subnet-lease.ts)",
       }),
       async () => {
         const { status, body } = await gql(
-          "{ subnet_lease(netuid: 7) { schema_version netuid leased lease queried_at } }",
+          "{ subnet_lease(netuid: 7) { schema_version netuid leased lease { lease_id beneficiary coldkey hotkey emissions_share_percent end_block netuid cost_tao accumulated_dividends_alpha } queried_at } }",
         );
         assert.equal(status, 200);
         assert.equal(body.errors, undefined);
@@ -8794,12 +9476,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
           source: "postgres",
           summary: {
             incident_count: 2,
-            active_count: 1,
-            by_status: { down: 1, warn: 1 },
-            by_severity: { high: 1, medium: 1 },
-            by_kind: {},
-            by_layer: {},
-            by_provider: { acme: 2 },
+            affected_surface_count: 1,
           },
           surfaces: [
             {
@@ -8817,7 +9494,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
     const { status, body } = await gql(
       `{ incidents(window: "30d") {
           schema_version window observed_at source
-          summary
+          summary { incident_count affected_surface_count }
           surfaces { surface_id netuid incident_count downtime_ms transient_failure_count transient_failed_samples }
         } }`,
       env as unknown as Env,
@@ -8826,11 +9503,13 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
     const inc = body.data.incidents;
     assert.equal(inc.window, "30d");
     assert.equal(inc.observed_at, "2026-07-01T00:00:00.000Z");
-    // JSON scalar passes the dynamic-keyed summary through as-is.
+    // The summary is a TYPE now, not a JSON blob (#10214): it declares
+    // incident_count and affected_surface_count and nothing else, so the
+    // by_status/by_provider maps this used to echo back are not part of the
+    // contract and cannot be selected. Asserting them proved only that a blob
+    // round-trips.
     assert.equal(inc.summary.incident_count, 2);
-    assert.equal(inc.summary.active_count, 1);
-    assert.deepEqual(inc.summary.by_status, { down: 1, warn: 1 });
-    assert.deepEqual(inc.summary.by_provider, { acme: 2 });
+    assert.equal(inc.summary.affected_surface_count, 1);
     assert.equal(inc.surfaces.length, 1);
     // A per-surface ROLLUP, not an endpoint incident. The row was published as
     // `EndpointIncident` until #10214, and this test selected eleven of that
@@ -8846,7 +9525,7 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
       DATA_API: dataApi(Response.json({})),
     };
     const { status, body } = await gql(
-      '{ incidents(window: "30d") { schema_version window observed_at source summary surfaces { surface_id } } }',
+      '{ incidents(window: "30d") { schema_version window observed_at source summary { incident_count affected_surface_count } surfaces { surface_id } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -8893,8 +9572,7 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
         source: "postgres",
         summary: {
           incident_count: 1,
-          active_count: 1,
-          by_status: { down: 1 },
+          affected_surface_count: 1,
         },
         surfaces: [
           {
@@ -8912,7 +9590,8 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
     // the complexity budget -- both fields carry the fan-out weight); dataApi
     // serves each resolver a fresh Response, so the envelopes must be identical.
     const selection = `{
-        schema_version window observed_at source summary
+        schema_version window observed_at source
+        summary { incident_count affected_surface_count }
         surfaces { surface_id netuid incident_count downtime_ms }
       }`;
     const { status, body } = await gql(
@@ -9723,13 +10402,25 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const env = fixtureEnv({
       "/metagraph/search.json": {
         documents: [
-          { id: "subnet:1", type: "subnet", title: "Alpha", tokens: "a b" },
-          { id: "subnet:2", type: "subnet", title: "Beta", tokens: "c d" },
+          {
+            id: "subnet:1",
+            type: "subnet",
+            title: "Alpha",
+            tokens: ["a", "b"],
+            artifact_path: "/metagraph/subnets/1.json",
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            title: "Beta",
+            tokens: ["c", "d"],
+            artifact_path: "/metagraph/subnets/1.json",
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      "{ search(limit: 1) { documents total next_cursor } }",
+      "{ search(limit: 1) { documents { id type netuid slug title subtitle url artifact_path tokens categories service_kinds } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9738,8 +10429,10 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.equal(s.total, 2);
     assert.equal(s.documents.length, 1);
     assert.equal(s.documents[0].id, "subnet:1");
-    // The full index keeps the per-document token blob.
-    assert.equal(s.documents[0].tokens, "a b");
+    // The full index keeps the per-document tokens -- a LIST, which is what
+    // /api/v1/search serves; the string here typechecked against nothing while
+    // `documents` was opaque JSON.
+    assert.deepEqual(s.documents[0].tokens, ["a", "b"]);
     assert.ok(s.next_cursor);
   });
 
@@ -9747,13 +10440,25 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const env = fixtureEnv({
       "/metagraph/search-index.json": {
         documents: [
-          { id: "subnet:1", type: "subnet", title: "Alpha" },
-          { id: "subnet:2", type: "subnet", title: "Beta" },
+          {
+            id: "subnet:1",
+            type: "subnet",
+            title: "Alpha",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            title: "Beta",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      "{ search_index(limit: 1) { documents total next_cursor } }",
+      "{ search_index(limit: 1) { documents { id type netuid slug title subtitle url artifact_path categories service_kinds } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9770,13 +10475,25 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const env = fixtureEnv({
       "/metagraph/search-index.json": {
         documents: [
-          { id: "subnet:1", type: "subnet", title: "Alpha network" },
-          { id: "subnet:2", type: "subnet", title: "Beta protocol" },
+          {
+            id: "subnet:1",
+            type: "subnet",
+            title: "Alpha network",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            title: "Beta protocol",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      '{ search_index(q: "Alpha") { documents total returned } }',
+      '{ search_index(q: "Alpha") { documents { id type netuid slug title subtitle url artifact_path categories service_kinds } total returned } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9790,14 +10507,34 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const env = fixtureEnv({
       "/metagraph/search-index.json": {
         documents: [
-          { id: "subnet:1", type: "subnet", netuid: 1, title: "Alpha" },
-          { id: "subnet:2", type: "subnet", netuid: 2, title: "Beta" },
-          { id: "provider:datura", type: "provider", title: "Datura" },
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "Alpha",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Beta",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
+          {
+            id: "provider:datura",
+            type: "provider",
+            title: "Datura",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      '{ search_index(type: "subnet", netuid: 1) { documents total returned } }',
+      '{ search_index(type: "subnet", netuid: 1) { documents { id type netuid slug title subtitle url artifact_path categories service_kinds } total returned } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9811,7 +10548,9 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     // MCP list_search use -- so a cold/absent artifact is a GraphQL error exactly
     // as REST returns not_found, not the empty-page degradation the old listPage
     // path uniquely produced. Matches the source_snapshots/evidence convention.
-    const { body } = await gql("{ search { documents total } }");
+    const { body } = await gql(
+      "{ search { documents { id type netuid slug title subtitle url artifact_path tokens categories service_kinds } total } }",
+    );
     assert.ok(
       body.errors,
       "expected a GraphQL error when the search artifact is cold",
@@ -9828,27 +10567,30 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
             type: "subnet",
             netuid: 1,
             title: "Alpha",
-            tokens: "alpha vision",
+            tokens: ["alpha", "vision"],
+            artifact_path: "/metagraph/subnets/1.json",
           },
           {
             id: "surface:2",
             type: "surface",
             netuid: 2,
             title: "Beta",
-            tokens: "beta audio",
+            tokens: ["beta", "audio"],
+            artifact_path: "/metagraph/subnets/1.json",
           },
           {
             id: "provider:3",
             type: "provider",
             netuid: 3,
             title: "Gamma",
-            tokens: "gamma data",
+            tokens: ["gamma", "data"],
+            artifact_path: "/metagraph/subnets/1.json",
           },
         ],
       },
     });
     const { status, body } = await gql(
-      '{ search(q: "beta") { documents total } }',
+      '{ search(q: "beta") { documents { id type netuid slug title subtitle url artifact_path tokens categories service_kinds } total } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9863,19 +10605,35 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const env = fixtureEnv({
       "/metagraph/search.json": {
         documents: [
-          { id: "subnet:1", type: "subnet", netuid: 1, title: "Alpha" },
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "Alpha",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
           {
             id: "surface:1",
             type: "surface",
             netuid: 1,
             title: "Alpha surface",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
           },
-          { id: "subnet:2", type: "subnet", netuid: 2, title: "Beta" },
+          {
+            id: "subnet:2",
+            type: "subnet",
+            netuid: 2,
+            title: "Beta",
+            artifact_path: "/metagraph/subnets/1.json",
+            tokens: ["t"],
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      '{ search(type: "subnet", netuid: 1) { documents total } }',
+      '{ search(type: "subnet", netuid: 1) { documents { id type netuid slug title subtitle url artifact_path tokens categories service_kinds } total } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -9987,7 +10745,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     const { status, body } = await gql(
       `{ compare_validators(hotkeys: ["${HOTKEY_A}", "${HOTKEY_B}"]) {
           schema_version netuid validator_count
-          validators { hotkey total_stake_tao subnet_count subnet_context }
+          validators { hotkey total_stake_tao subnet_count subnet_context { netuid uid hotkey coldkey active validator_permit rank trust validator_trust consensus incentive dividends emission_alpha stake_alpha registered_at_block is_immunity_period axon take } }
         } }`,
     );
     assert.equal(status, 200);
@@ -11518,7 +12276,7 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   test("cold store: no Postgres flag returns a schema-stable empty surfaces list, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_health_percentiles(netuid: 5) {
-          schema_version netuid window surfaces
+          schema_version netuid window surfaces { surface_id samples }
         } }`,
     );
     assert.equal(status, 200);
@@ -11540,21 +12298,29 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
           window: "30d",
           observed_at: "2026-07-19T00:00:00.000Z",
           source: "live-cron-prober",
+          // The shape /api/v1/subnets/{netuid}/health/percentiles actually
+          // serves: the percentiles nest under `latency_ms`. The flat
+          // `p95_ms`/`latency_sample_count` keys here were never the
+          // producer's, and nothing could say so while `surfaces` was JSON.
           surfaces: [
             {
-              surface: "api",
-              latency_sample_count: 120,
-              p50_ms: 88,
-              p90_ms: 210,
-              p95_ms: 280,
-              p99_ms: 640,
+              surface_id: "s1",
+              samples: 120,
+              latency_ms: {
+                p50: 88,
+                p95: 280,
+                p99: 640,
+                avg: 120,
+                min: 40,
+                max: 900,
+              },
             },
           ],
         }),
       ),
     };
     const { status, body } = await gql(
-      '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces } }',
+      '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces { surface_id samples latency_ms { p50 p95 p99 avg min max } } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -11563,7 +12329,7 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
     assert.equal(p.netuid, 7);
     assert.equal(p.window, "30d");
     assert.equal(p.source, "live-cron-prober");
-    assert.equal(p.surfaces[0].p95_ms, 280);
+    assert.equal(p.surfaces[0].latency_ms.p95, 280);
   });
 
   test("forwards the window to the health/percentiles Postgres path", async () => {
@@ -11607,7 +12373,7 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     const { status, body } = await gql(
       `{ subnet_event_summary(netuid: 5) {
           schema_version netuid window total_events kind_count category_count
-          recent_event_count limit categories event_kinds
+          recent_event_count limit categories { category event_count kind_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } event_kinds { event_kind category event_count hotkey_count coldkey_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at }
           recent_events { block_number event_kind }
         } }`,
     );
@@ -11642,14 +12408,33 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
           category_count: 2,
           recent_event_count: 2,
           limit: 10,
-          categories: [{ category: "stake", event_count: 30 }],
-          event_kinds: [{ event_kind: "StakeAdded", event_count: 30 }],
+          categories: [
+            {
+              category: "stake",
+              event_count: 30,
+              // Non-null on the component; absent while this was opaque JSON.
+              kind_count: 1,
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+          ],
+          event_kinds: [
+            {
+              event_kind: "StakeAdded",
+              event_count: 30,
+              category: "stake",
+              hotkey_count: 1,
+              coldkey_count: 1,
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+          ],
           recent_events: [{ event_kind: "StakeAdded", block_number: 91 }],
         }),
       ),
     };
     const { status, body } = await gql(
-      '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories event_kinds recent_events { block_number event_kind } } }',
+      '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories { category event_count kind_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } event_kinds { event_kind category event_count hotkey_count coldkey_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } recent_events { block_number event_kind } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -11883,6 +12668,10 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
             source_url: "https://alpha.example.com/openapi.json",
             support_summary: "probe returned 200",
             verified_at: "2026-06-01T00:00:00.000Z",
+            source_type: "docs",
+            source_tier: "official",
+            confidence: "high",
+            limits: "none",
           },
           {
             subject: "beta-docs",
@@ -11890,6 +12679,10 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
             source_url: "https://beta.example.com/docs",
             support_summary: "manual review",
             verified_at: "2026-06-02T00:00:00.000Z",
+            source_type: "docs",
+            source_tier: "official",
+            confidence: "high",
+            limits: "none",
           },
           {
             subject: "gamma-api",
@@ -11897,6 +12690,10 @@ describe("graphql — subnet_gaps / subnet_evidence (#6980, baked review artifac
             source_url: "https://gamma.example.com/openapi.json",
             support_summary: "openapi lint clean",
             verified_at: "2026-06-03T00:00:00.000Z",
+            source_type: "docs",
+            source_tier: "official",
+            confidence: "high",
+            limits: "none",
           },
         ],
       },
@@ -14186,9 +14983,16 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
 describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fallback)", () => {
   const NETUID = 3;
 
+  // `surfaces` carries a type now (#10214), so it needs a selection -- asking
+  // for it as a leaf is a 400 before any resolver runs.
   function incidentsQuery(argsClause: string) {
     return `{ subnet_health_incidents${argsClause} {
-      schema_version netuid window observed_at source surfaces
+      schema_version netuid window observed_at source
+      surfaces {
+        surface_id samples uptime_ratio incident_count downtime_ms
+        transient_failure_count transient_failed_samples
+        incidents { started_at ended_at duration_ms failed_samples }
+      }
     } }`;
   }
 
@@ -14224,6 +15028,8 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
                 uptime_ratio: 0.98,
                 incident_count: 1,
                 downtime_ms: 60000,
+                transient_failure_count: 0,
+                transient_failed_samples: 0,
                 incidents: [
                   {
                     started_at: 1000,
@@ -23385,7 +24191,7 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
 
   const query = `{ adapter(slug: "gittensor") {
     schema_version contract_version generated_at slug subnet netuid
-    notes snapshot extensions
+    notes snapshot { schema_version contract_version generated_at slug netuid source status notes adapter_kind excluded_dimensions dimensions } extensions
   } }`;
 
   test("resolves a baked adapter artifact via loadAdapter", async () => {
@@ -23393,7 +24199,25 @@ describe("graphql — adapter (#6984, reuses loadAdapter / MCP get_adapter)", ()
     const { status, body } = await gql(query, env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.adapter, SAMPLE);
+    const adapter = body.data.adapter;
+    // Field by field rather than deepEqual against SAMPLE: `snapshot` is a
+    // TYPE now (#10214), so the answer carries every field the selection asks
+    // for -- null for the ones this fixture omits -- while SAMPLE carries only
+    // the two it sets. Comparing whole objects would compare a selection to a
+    // fixture and fail on the difference between "absent" and "selected, null".
+    assert.equal(adapter.schema_version, SAMPLE.schema_version);
+    assert.equal(adapter.contract_version, SAMPLE.contract_version);
+    assert.equal(adapter.generated_at, SAMPLE.generated_at);
+    assert.equal(adapter.slug, SAMPLE.slug);
+    assert.equal(adapter.subnet, SAMPLE.subnet);
+    assert.equal(adapter.netuid, SAMPLE.netuid);
+    assert.deepEqual(adapter.notes, SAMPLE.notes);
+    assert.deepEqual(adapter.extensions, SAMPLE.extensions);
+    // The two the fixture sets are carried through the new type, and a field
+    // it does not set reads null rather than being missing.
+    assert.equal(adapter.snapshot.status, "captured");
+    assert.equal(adapter.snapshot.adapter_kind, "gittensor");
+    assert.equal(adapter.snapshot.source, null);
   });
 
   test("a missing slug resolves to null (schema-stable), never a GraphQL error", async () => {
@@ -23494,7 +24318,7 @@ describe("graphql — gaps", () => {
   test("filters by netuid and paginates", async () => {
     const env = fixtureEnv({ "/metagraph/gaps.json": GAPS_BLOB });
     const filtered = await gql(
-      "{ gaps(netuid: 7) { gaps total generated_at } }",
+      "{ gaps(netuid: 7) { gaps { netuid slug name coverage_level curation_level gap_count gap_severity gap_priority } total generated_at } }",
       env as unknown as Env,
     );
     assert.equal(filtered.status, 200);
@@ -23507,7 +24331,7 @@ describe("graphql — gaps", () => {
     );
 
     const paged = await gql(
-      "{ gaps(limit: 1) { gaps total returned next_cursor } }",
+      "{ gaps(limit: 1) { gaps { netuid slug name coverage_level curation_level gap_count gap_severity gap_priority } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(paged.body.data.gaps.gaps.length, 1);
@@ -23519,7 +24343,7 @@ describe("graphql — gaps", () => {
   test("sorts by gap_count and filters coverage_level", async () => {
     const env = fixtureEnv({ "/metagraph/gaps.json": GAPS_BLOB });
     const { status, body } = await gql(
-      '{ gaps(sort: "gap_count", order: "desc", coverage_level: "manifested") { gaps total } }',
+      '{ gaps(sort: "gap_count", order: "desc", coverage_level: "manifested") { gaps { netuid slug name coverage_level curation_level gap_count gap_severity gap_priority } total } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -23549,7 +24373,12 @@ describe("graphql — evidence", () => {
   const EVIDENCE_BLOB = {
     generated_at: "2026-07-01T00:00:00.000Z",
     schema_version: 1,
-    summary: { claim_count: 2 },
+    summary: {
+      claim_count: 2,
+      candidate_claim_count: 0,
+      subnet_claim_count: 2,
+      surface_claim_count: 0,
+    },
     claims: [
       {
         subject: "sn-7",
@@ -23557,6 +24386,10 @@ describe("graphql — evidence", () => {
         source_url: "https://example.org/a",
         support_summary: "README documents the API",
         verified_at: "2026-06-01T00:00:00.000Z",
+        source_type: "docs",
+        source_tier: "official",
+        confidence: "high",
+        limits: "none",
       },
       {
         subject: "sn-31",
@@ -23564,6 +24397,10 @@ describe("graphql — evidence", () => {
         source_url: "https://example.org/b",
         support_summary: "operator site links it",
         verified_at: null,
+        source_type: "docs",
+        source_tier: "official",
+        confidence: "high",
+        limits: "none",
       },
     ],
   };
@@ -23573,7 +24410,7 @@ describe("graphql — evidence", () => {
       "/metagraph/evidence-ledger.json": EVIDENCE_BLOB,
     });
     const searched = await gql(
-      '{ evidence(q: "OpenAPI") { claims total generated_at summary } }',
+      '{ evidence(q: "OpenAPI") { claims { claim subject source_url source_type source_tier confidence support_summary limits verified_at } total generated_at summary { candidate_claim_count claim_count subnet_claim_count surface_claim_count } } }',
       env as unknown as Env,
     );
     assert.equal(searched.status, 200);
@@ -23583,7 +24420,7 @@ describe("graphql — evidence", () => {
     assert.equal(searched.body.data.evidence.summary.claim_count, 2);
 
     const paged = await gql(
-      "{ evidence(limit: 1) { claims total returned next_cursor } }",
+      "{ evidence(limit: 1) { claims { claim subject source_url source_type source_tier confidence support_summary limits verified_at } total returned next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(paged.body.data.evidence.claims.length, 1);
@@ -23596,7 +24433,7 @@ describe("graphql — evidence", () => {
       "/metagraph/evidence-ledger.json": EVIDENCE_BLOB,
     });
     const { status, body } = await gql(
-      '{ evidence(sort: "subject", order: "desc") { claims schema_version } }',
+      '{ evidence(sort: "subject", order: "desc") { claims { claim subject source_url source_type source_tier confidence support_summary limits verified_at } schema_version } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
@@ -24081,16 +24918,34 @@ describe("graphql — curation parity (#6982, #8550)", () => {
             netuid: 1,
             coverage_level: "probed",
             curation_level: "maintainer-reviewed",
+            slug: "sn",
+            name: "SN",
+            surface_count: 0,
+            candidate_count: 0,
+            curation: {},
+            gaps: {},
           },
           {
             netuid: 2,
             coverage_level: "manifested",
             curation_level: "adapter-backed",
+            slug: "sn",
+            name: "SN",
+            surface_count: 0,
+            candidate_count: 0,
+            curation: {},
+            gaps: {},
           },
           {
             netuid: 3,
             coverage_level: "probed",
             curation_level: "adapter-backed",
+            slug: "sn",
+            name: "SN",
+            surface_count: 0,
+            candidate_count: 0,
+            curation: {},
+            gaps: {},
           },
         ],
       },
@@ -24098,7 +24953,7 @@ describe("graphql — curation parity (#6982, #8550)", () => {
 
   test("curation resolves the baked artifact as a CurationList envelope (#8550)", async () => {
     const { status, body } = await gql(
-      "{ curation { curation total next_cursor } }",
+      "{ curation { curation { netuid slug name coverage_level curation_level surface_count candidate_count gap_count description lifecycle } total next_cursor } }",
       env(),
     );
     assert.equal(status, 200);
@@ -24109,7 +24964,7 @@ describe("graphql — curation parity (#6982, #8550)", () => {
 
   test("curation filters by netuid/coverage_level/curation_level and sorts, at parity with REST/MCP (#8550)", async () => {
     const byNetuid = await gql(
-      "{ curation(netuid: 2) { curation total } }",
+      "{ curation(netuid: 2) { curation { netuid slug name coverage_level curation_level surface_count candidate_count gap_count description lifecycle } total } }",
       env(),
     );
     assert.equal(byNetuid.body.errors, undefined);
@@ -24129,7 +24984,7 @@ describe("graphql — curation parity (#6982, #8550)", () => {
     assert.equal(byLevel.body.data.curation.total, 2);
 
     const sorted = await gql(
-      '{ curation(sort: "netuid", order: "desc") { curation } }',
+      '{ curation(sort: "netuid", order: "desc") { curation { netuid slug name coverage_level curation_level surface_count candidate_count gap_count description lifecycle } } }',
       env(),
     );
     assert.equal(sorted.body.errors, undefined);

@@ -4679,7 +4679,7 @@ const rootValue = {
   },
 
   async incidents(
-    { window, netuid, fields, sort, order, limit, cursor }: QueryIncidentsArgs,
+    { window, netuid, sort, order, limit, cursor }: QueryIncidentsArgs,
     context: GqlContext,
   ) {
     // Checked against the window enum the ROUTE publishes, not against
@@ -4723,10 +4723,11 @@ const rootValue = {
     const queryUrl = new URL("https://graphql.internal/incidents");
     for (const [name, value] of [
       ["netuid", netuid],
-      // #10065: the rows are opaque JSON here, so a selection set cannot
-      // project them and `fields` is the caller's only narrowing. Validated by
-      // the shared engine, the same one REST and MCP run.
-      ["fields", fields],
+      // `fields` was here while the rows were opaque JSON and a selection set
+      // could not project them (#10065). #10214 gave them a named type, so the
+      // selection set IS the projection now and the argument was removed from
+      // the SDL -- the rule that `fields` belongs only where the return type
+      // carries a JSON member, applied in the direction that retires one.
       ["sort", sort],
       ["order", order],
       ["limit", limit],

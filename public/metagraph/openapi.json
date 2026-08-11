@@ -2100,6 +2100,8 @@
               "contract_version": "2026-06-29.1",
               "curated_overlay_count": 1,
               "curation_level_counts": {},
+              "domain_coverage": {},
+              "first_party_subnet_count": 1,
               "generated_at": "2026-06-01T00:00:00.000Z",
               "manifested_count": 1,
               "native_only_count": 1,
@@ -2108,8 +2110,10 @@
               "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
               "network": "finney",
               "notes": "Example description.",
+              "official_surface_count": 1,
               "probed_count": 1,
               "probed_surface_count": 1,
+              "registry_observed_surface_count": 1,
               "root_subnet_count": 1,
               "schema_version": 1,
               "source": {
@@ -2117,6 +2121,7 @@
                 "native": "example",
                 "overlays": "example"
               },
+              "subnets_without_official_surface": 1,
               "surface_count": 1
             },
             "endpoint_count": 1,
@@ -4521,6 +4526,10 @@
             "curation_level_counts": {
               "example": 1
             },
+            "domain_coverage": {
+              "example": 1
+            },
+            "first_party_subnet_count": 1,
             "generated_at": "2026-06-01T00:00:00.000Z",
             "manifested_count": 1,
             "native_only_count": 1,
@@ -4529,8 +4538,10 @@
             "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
             "network": "finney",
             "notes": "Example description.",
+            "official_surface_count": 1,
             "probed_count": 1,
             "probed_surface_count": 1,
+            "registry_observed_surface_count": 1,
             "root_subnet_count": 1,
             "schema_version": 1,
             "source": {
@@ -4538,6 +4549,7 @@
               "native": "example",
               "overlays": "example"
             },
+            "subnets_without_official_surface": 1,
             "surface_count": 1
           },
           "meta": {
@@ -27412,6 +27424,14 @@
           "curation_level_counts": {
             "$ref": "#/components/schemas/CountMap"
           },
+          "domain_coverage": {
+            "$ref": "#/components/schemas/CountMap"
+          },
+          "first_party_subnet_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "generated_at": {
             "type": "string"
           },
@@ -27455,12 +27475,22 @@
             ],
             "description": "Public-safe notes; may be a string or a string list depending on the adapter."
           },
+          "official_surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "probed_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "probed_surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "registry_observed_surface_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
@@ -27564,6 +27594,11 @@
             ],
             "type": "object"
           },
+          "subnets_without_official_surface": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "surface_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -27579,6 +27614,8 @@
           "chain_subnet_count",
           "curated_overlay_count",
           "curation_level_counts",
+          "domain_coverage",
+          "first_party_subnet_count",
           "manifested_count",
           "native_only_count",
           "native_only_with_candidates",
@@ -27587,8 +27624,11 @@
           "network",
           "probed_count",
           "probed_surface_count",
+          "official_surface_count",
+          "registry_observed_surface_count",
           "root_subnet_count",
           "source",
+          "subnets_without_official_surface",
           "surface_count"
         ],
         "type": "object"

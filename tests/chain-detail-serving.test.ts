@@ -412,7 +412,7 @@ describe("GraphQL runs the same cascade", () => {
     // field actually publishes, so this reads as the asymmetry it is.
     const body = await gql(
       `{ block_extrinsics(ref: "${RECENT}") ` +
-        `{ block_number extrinsic_count extrinsics } }`,
+        `{ block_number extrinsic_count extrinsics { call_function } } }`,
       envWith({ covered: [RECENT] }),
     );
     assert.equal(body.errors, undefined);

@@ -158,69 +158,16 @@ export const DECLARED: Record<string, string> = {
  * had only ever run on the MIRRORS, and 27 of these sit on a projection or a
  * paginated view, where nothing had compared a type to a type. The debt did
  * not grow -- half of it had simply never been counted.
+ *
+ * EMPTY as of #10214. The 50 that remained are published types now, emitted
+ * from the same components this gate compares against. The map stays because
+ * the RULE is what stops the next one: an under-typed field with no entry is
+ * still a violation, so a field cannot quietly become `JSON` again. Reaching
+ * zero removes the debt, not the check that kept it counted -- and an empty
+ * declaration list is the only shape in which "the list only shrinks" has
+ * nothing left to shrink.
  */
-const JSON_UNDERTYPED: Record<string, string> = {
-  "Adapter.snapshot": "AdapterArtifactSnapshot",
-  "BlockChainEvents.events": "[AccountEvent!]",
-  "BlockExtrinsics.extrinsics": "[BlockExtrinsicsArtifactExtrinsics!]",
-  "BuildSummary.artifact_budget_summary":
-    "BuildSummaryArtifactArtifactBudgetSummary",
-  "BuildSummary.artifacts": "[BuildSummaryArtifactArtifacts!]",
-  "BuildSummary.coverage": "CoverageArtifact",
-  "ChainConcentrationHistoryPoint.emission": "ChainConcentrationScorecard",
-  "ChainConcentrationHistoryPoint.entity_emission":
-    "ChainConcentrationScorecard",
-  "ChainConcentrationHistoryPoint.entity_stake": "ChainConcentrationScorecard",
-  "ChainConcentrationHistoryPoint.stake": "ChainConcentrationScorecard",
-  "ChainConcentrationHistoryPoint.validator_stake":
-    "ChainConcentrationScorecard",
-  "Changelog.artifacts": "ChangelogArtifactArtifacts",
-  "Changelog.subnets": "ChangelogArtifactSubnets",
-  "Changelog.summary": "ChangelogArtifactSummary",
-  "ComparedValidator.coldkey_identity":
-    "CompareValidatorsArtifactValidatorsColdkeyIdentity",
-  "ComparedValidator.subnet_context":
-    "CompareValidatorsArtifactValidatorsSubnetContext",
-  "Contracts.artifacts": "[ContractsArtifactArtifacts!]",
-  "CurationList.curation": "[CurationArtifactCuration!]",
-  "EndpointPoolList.pools": "[RpcPool!]",
-  "EvidenceList.claims": "[EvidenceClaim!]",
-  "EvidenceList.summary": "EvidenceLedgerArtifactSummary",
-  "GapsList.gaps": "[GapsArtifactGaps!]",
-  "GlobalIncidents.summary": "GlobalIncidentsArtifactSummary",
-  "HealthHistory.summary": "HealthProbeSummary",
-  "HealthHistory.surfaces": "[HealthHistoryArtifactSurfaces!]",
-  "IncidentList.summary": "EndpointIncidentsArtifactSummary",
-  "PoolList.pools": "[RpcPool!]",
-  "ProfileList.profiles": "[SubnetProfile!]",
-  "ReviewAdapterCandidateList.candidates": "[ReviewAdapterCandidate!]",
-  "ReviewEnrichmentEvidenceList.entries":
-    "[ReviewEnrichmentEvidenceArtifactEntries!]",
-  "ReviewEnrichmentEvidenceList.notes": "String",
-  "ReviewEnrichmentQueueList.notes": "String",
-  "ReviewEnrichmentQueueList.queue": "[ReviewEnrichmentQueueArtifactQueue!]",
-  "ReviewEnrichmentTargetList.notes": "String",
-  "ReviewEnrichmentTargetList.targets":
-    "[ReviewEnrichmentTargetsArtifactTargets!]",
-  "ReviewGapPriorityList.priorities": "[ReviewGapPriority!]",
-  "ReviewProfileCompletenessList.profiles":
-    "[ReviewProfileCompletenessArtifactProfiles!]",
-  "ReviewProfileCompletenessList.summary":
-    "ReviewProfileCompletenessArtifactSummary",
-  "SearchDocumentList.documents": "[SearchArtifactDocuments!]",
-  "SearchIndexList.documents": "[SearchIndexArtifactDocuments!]",
-  "SourceSnapshotList.sources": "[SourceSnapshotsArtifactSources!]",
-  "SourceSnapshotList.summary": "SourceSnapshotsArtifactSummary",
-  "SubnetConviction.leaderboard": "[SubnetConvictionArtifactLeaderboard!]",
-  "SubnetEventSummary.categories": "[SubnetEventSummaryArtifactCategories!]",
-  "SubnetEventSummary.event_kinds": "[SubnetEventSummaryArtifactEventKinds!]",
-  "SubnetHealthIncidents.surfaces": "[HealthIncidentsArtifactSurfaces!]",
-  "SubnetHealthPercentiles.surfaces": "[HealthPercentilesArtifactSurfaces!]",
-  "SubnetLease.lease": "SubnetLeaseArtifactLease",
-  "SubnetLeaseHistory.lease_events": "[SubnetLeaseHistoryArtifactLeaseEvents!]",
-  "SubnetOwnershipHistory.ownership_changes":
-    "[SubnetOwnershipHistoryArtifactOwnershipChanges!]",
-};
+const JSON_UNDERTYPED: Record<string, string> = {};
 
 export interface ParityReport {
   violations: string[];
@@ -416,6 +363,11 @@ export function checkComponentParity(
   projectedTypesMap: Readonly<
     Record<string, (typeof PROJECTED_TYPES)[string]>
   > = PROJECTED_TYPES,
+  // Injectable for the same reason `declared` is, and newly load-bearing:
+  // `JSON_UNDERTYPED` is empty now, so the shrink-only rule has no live entry
+  // to demonstrate on. A rule provable only while something violates it is a
+  // rule that stops being tested the moment it works.
+  undertypedMap: Readonly<Record<string, string>> = JSON_UNDERTYPED,
 ): ParityReport {
   const sdlTypes = new Map<string, ObjectTypeDefinitionNode>();
   for (const def of parse(sdl).definitions) {
@@ -571,7 +523,7 @@ export function checkComponentParity(
               // because closing one means publishing a new named type, and
               // that is the generator's job (#10214). The list only SHRINKS:
               // an entry that stops being under-typed fails below.
-              if (JSON_UNDERTYPED[key] === wanted) undertypedMatched.add(key);
+              if (undertypedMap[key] === wanted) undertypedMatched.add(key);
               else
                 violations.push(
                   `${key} -- the SDL declares JSON, ${componentName} emits ` +
@@ -701,7 +653,7 @@ export function checkComponentParity(
       if (divergence) {
         const { published, wanted } = divergence;
         if (published.replace(/[![\]]/g, "") === "JSON") {
-          if (JSON_UNDERTYPED[key] === wanted) undertypedMatched.add(key);
+          if (undertypedMap[key] === wanted) undertypedMatched.add(key);
           else
             violations.push(
               `${key} -- the SDL declares JSON, ${projection.component} ` +
@@ -766,7 +718,7 @@ export function checkComponentParity(
     violations,
     stale: [
       ...Object.keys(declared).filter((key) => !matched.has(key)),
-      ...Object.keys(JSON_UNDERTYPED).filter(
+      ...Object.keys(undertypedMap).filter(
         (key) => !undertypedMatched.has(key),
       ),
     ],

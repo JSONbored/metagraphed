@@ -74,6 +74,13 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   completeness: CoverageCompletenessSchema,
   curated_overlay_count: z.int().min(0),
   curation_level_counts: CountMapSchema,
+  // #10214: served by /api/v1/build and /api/v1/coverage all along, declared
+  // nowhere. The artifact is `.passthrough()`, so they reached a caller while
+  // the contract said nothing about them -- invisible until this component was
+  // published as a GraphQL type and the emitted shape could be compared
+  // field-for-field against what production returns.
+  domain_coverage: CountMapSchema,
+  first_party_subnet_count: z.int().min(0),
   manifested_count: z.int().min(0),
   native_only_count: z.int().min(0),
   native_only_with_candidates: z.int().min(0),
@@ -82,8 +89,11 @@ export const CoverageArtifactSchema = ArtifactBaseSchema.extend({
   network: BittensorNetworkSchema,
   probed_count: z.int().min(0),
   probed_surface_count: z.int().min(0),
+  official_surface_count: z.int().min(0),
+  registry_observed_surface_count: z.int().min(0),
   root_subnet_count: z.int().min(0),
   source: CoverageSourceSchema,
+  subnets_without_official_surface: z.int().min(0),
   surface_count: z.int().min(0),
 }).passthrough();
 export type CoverageArtifact = z.infer<typeof CoverageArtifactSchema>;

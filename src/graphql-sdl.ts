@@ -172,7 +172,6 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
-      fields: String
     ): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Filter by type/netuid/q, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error. Mirrors GET /api/v1/search-index."
     search_index(
@@ -183,7 +182,6 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
-      fields: String
     ): SearchIndexList!
     "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."
     domains: DomainOverview!
@@ -523,7 +521,6 @@ export const SDL = /* GraphQL */ `
       q: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): SourceSnapshotList!
@@ -543,7 +540,6 @@ export const SDL = /* GraphQL */ `
       q: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): EvidenceList!
@@ -558,7 +554,6 @@ export const SDL = /* GraphQL */ `
       q: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): ProfileList!
@@ -586,7 +581,6 @@ export const SDL = /* GraphQL */ `
       missing_kinds: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): ReviewEnrichmentEvidenceList!
@@ -606,7 +600,6 @@ export const SDL = /* GraphQL */ `
       review_state: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): ReviewEnrichmentQueueList!
@@ -628,7 +621,6 @@ export const SDL = /* GraphQL */ `
       reason_codes: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): ReviewEnrichmentTargetList!
@@ -709,7 +701,6 @@ export const SDL = /* GraphQL */ `
       classification: String
       sort: String
       order: String
-      fields: String
       limit: Int
       cursor: Int
     ): HealthHistory!
@@ -723,7 +714,6 @@ export const SDL = /* GraphQL */ `
     incidents(
       window: String
       netuid: Int
-      fields: String
       sort: String
       order: String
       limit: Int
@@ -733,7 +723,6 @@ export const SDL = /* GraphQL */ `
     global_incidents(
       window: String
       netuid: Int
-      fields: String
       sort: String
       order: String
       limit: Int
@@ -1207,7 +1196,7 @@ export const SDL = /* GraphQL */ `
     "Public-safe notes; may be a string or a string list depending on the adapter."
     notes: JSON
     "Captured adapter metrics payload; shape is adapter-specific."
-    snapshot: JSON
+    snapshot: AdapterArtifactSnapshot
     "Per-adapter extension metadata keyed by provider id; each value's shape is adapter-specific."
     extensions: JSON
   }
@@ -2434,7 +2423,7 @@ export const SDL = /* GraphQL */ `
     generated_at: String
     notes: JSON
     source: String
-    pools: [JSON!]!
+    pools: [RpcPool!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2450,7 +2439,7 @@ export const SDL = /* GraphQL */ `
     notes: JSON
     source: String
     operational_observed_at: String
-    pools: [JSON!]!
+    pools: [RpcPool!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2463,7 +2452,7 @@ export const SDL = /* GraphQL */ `
   type IncidentList {
     generated_at: String
     notes: JSON
-    summary: JSON
+    summary: EndpointIncidentsArtifactSummary
     incidents: [EndpointIncident!]!
     total: Int!
     returned: Int!
@@ -2477,8 +2466,8 @@ export const SDL = /* GraphQL */ `
   type SourceSnapshotList {
     generated_at: String
     schema_version: Int
-    summary: JSON
-    sources: [JSON!]!
+    summary: SourceSnapshotsArtifactSummary
+    sources: [SourceSnapshotsArtifactSources!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2492,7 +2481,7 @@ export const SDL = /* GraphQL */ `
   type GapsList {
     generated_at: String
     notes: JSON
-    gaps: [JSON!]!
+    gaps: [GapsArtifactGaps!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2507,7 +2496,7 @@ export const SDL = /* GraphQL */ `
     generated_at: String
     "A string or a list of strings, depending on the producer -- /api/v1/endpoints serves three. Declared String until #10409, which nulls the whole row on a list: graphql-js' String serializer throws on a non-scalar."
     notes: JSON
-    curation: [JSON!]!
+    curation: [CurationArtifactCuration!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2520,8 +2509,8 @@ export const SDL = /* GraphQL */ `
   type EvidenceList {
     generated_at: String
     schema_version: Int
-    summary: JSON
-    claims: [JSON!]!
+    summary: EvidenceLedgerArtifactSummary
+    claims: [EvidenceClaim!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2570,7 +2559,7 @@ export const SDL = /* GraphQL */ `
   type ProfileList {
     "When the profile rows were gathered. Sourced from the artifact's generated_at, which is the only stamp it carries -- profile rows are derived at build time, so there is no separate capture event (#9892)."
     captured_at: String
-    profiles: [JSON!]!
+    profiles: [SubnetProfile!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2584,9 +2573,9 @@ export const SDL = /* GraphQL */ `
     generated_at: String
     source: String
     notes: JSON
-    summary: JSON
-    artifacts: JSON
-    subnets: JSON
+    summary: ChangelogArtifactSummary
+    artifacts: ChangelogArtifactArtifacts
+    subnets: ChangelogArtifactSubnets
     coverage_delta: JSON
     contract_version: String
     schema_version: Int
@@ -2602,7 +2591,7 @@ export const SDL = /* GraphQL */ `
     openapi_url: String
     type_definitions_url: String
     notes: JSON
-    artifacts: [JSON!]!
+    artifacts: [ContractsArtifactArtifacts!]
   }
 
   type BuildSummary {
@@ -2616,9 +2605,9 @@ export const SDL = /* GraphQL */ `
     subnet_count: Int
     surface_count: Int
     provider_count: Int
-    artifacts: JSON
-    coverage: JSON
-    artifact_budget_summary: JSON
+    artifacts: [BuildSummaryArtifactArtifacts!]
+    coverage: CoverageArtifact
+    artifact_budget_summary: BuildSummaryArtifactArtifactBudgetSummary
     notes: JSON
     full_artifact_count: Int
     full_artifact_size_bytes: Int
@@ -2671,8 +2660,8 @@ export const SDL = /* GraphQL */ `
 
   type HealthHistory {
     date: String
-    summary: JSON
-    surfaces: [JSON!]!
+    summary: HealthProbeSummary
+    surfaces: [HealthHistoryArtifactSurfaces!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2685,7 +2674,7 @@ export const SDL = /* GraphQL */ `
   type ReviewAdapterCandidateList {
     generated_at: String
     notes: JSON
-    candidates: [JSON!]!
+    candidates: [ReviewAdapterCandidate!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2697,8 +2686,8 @@ export const SDL = /* GraphQL */ `
 
   type ReviewEnrichmentEvidenceList {
     generated_at: String
-    notes: JSON
-    entries: [JSON!]!
+    notes: String
+    entries: [ReviewEnrichmentEvidenceArtifactEntries!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2710,8 +2699,8 @@ export const SDL = /* GraphQL */ `
 
   type ReviewEnrichmentQueueList {
     generated_at: String
-    notes: JSON
-    queue: [JSON!]!
+    notes: String
+    queue: [ReviewEnrichmentQueueArtifactQueue!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2723,8 +2712,8 @@ export const SDL = /* GraphQL */ `
 
   type ReviewEnrichmentTargetList {
     generated_at: String
-    notes: JSON
-    targets: [JSON!]!
+    notes: String
+    targets: [ReviewEnrichmentTargetsArtifactTargets!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2737,7 +2726,7 @@ export const SDL = /* GraphQL */ `
   type ReviewGapPriorityList {
     generated_at: String
     notes: JSON
-    priorities: [JSON!]!
+    priorities: [ReviewGapPriority!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -2750,8 +2739,8 @@ export const SDL = /* GraphQL */ `
   type ReviewProfileCompletenessList {
     generated_at: String
     notes: JSON
-    summary: JSON
-    profiles: [JSON!]!
+    summary: ReviewProfileCompletenessArtifactSummary
+    profiles: [ReviewProfileCompletenessArtifactProfiles!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -3291,11 +3280,11 @@ export const SDL = /* GraphQL */ `
     builder_version: Int
     uids_per_entity: Float
     "NULL means no measurable distribution, NOT missing."
-    stake: JSON
-    emission: JSON
-    entity_stake: JSON
-    entity_emission: JSON
-    validator_stake: JSON
+    stake: ChainConcentrationScorecard
+    emission: ChainConcentrationScorecard
+    entity_stake: ChainConcentrationScorecard
+    entity_emission: ChainConcentrationScorecard
+    validator_stake: ChainConcentrationScorecard
   }
 
   type ChainConcentrationHistory {
@@ -3790,7 +3779,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     source: String
     "Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape."
-    summary: JSON
+    summary: GlobalIncidentsArtifactSummary
     "Per-surface incident summaries -- NOT endpoint incidents. Published as [EndpointIncident!]! until #10214: those rows carry surface_id/netuid/incident_count/downtime_ms and answered null for all 18 of that type's own fields, on every one of 232 sampled."
     surfaces: [GlobalIncidentSurface!]!
     "Surfaces matching the filters before paging (#7875). Equals the surfaces length when no limit/cursor is supplied."
@@ -3852,20 +3841,20 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     source: String
     "Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows)."
-    surfaces: JSON!
+    surfaces: [HealthIncidentsArtifactSurfaces!]
     min_incident_samples: Int
   }
 
   type SearchDocumentList {
     "Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON."
-    documents: [JSON!]!
+    documents: [SearchArtifactDocuments!]
     total: Int!
     next_cursor: String
   }
 
   "Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index)."
   type SearchIndexList {
-    documents: [JSON!]!
+    documents: [SearchIndexArtifactDocuments!]
     total: Int!
     returned: Int!
     limit: Int!
@@ -3900,7 +3889,7 @@ export const SDL = /* GraphQL */ `
     hotkey: String!
     coldkey: String
     "The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape."
-    coldkey_identity: JSON
+    coldkey_identity: CompareValidatorsArtifactValidatorsColdkeyIdentity
     take: Float
     apy_estimate: Float
     apy_estimate_eligible_subnet_count: Int!
@@ -3911,7 +3900,7 @@ export const SDL = /* GraphQL */ `
     max_validator_trust: Float
     subnet_count: Int!
     "This validator's membership row in the requested netuid; null when netuid was omitted or it has no permit there. Opaque JSON, matching the REST/MCP shape."
-    subnet_context: JSON
+    subnet_context: CompareValidatorsArtifactValidatorsSubnetContext
   }
 
   "Several validators placed side by side (#6989). Mirrors GET /api/v1/compare/validators."
@@ -4157,7 +4146,7 @@ export const SDL = /* GraphQL */ `
     observed_at: String
     source: String
     "Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces)."
-    surfaces: JSON!
+    surfaces: [HealthPercentilesArtifactSurfaces!]
   }
 
   "One subnet's chain-event activity summary over a window (#6980). Mirrors GET /api/v1/subnets/{netuid}/event-summary' data envelope."
@@ -4174,9 +4163,9 @@ export const SDL = /* GraphQL */ `
     "The resolved recent-event cap actually applied (1-50, default 10)."
     limit: Int!
     "Per event category: its kind list and rolled-up counts. Opaque JSON passed through verbatim, matching the get_subnet_event_summary MCP/REST shape."
-    categories: JSON!
+    categories: [SubnetEventSummaryArtifactCategories!]
     "Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim."
-    event_kinds: JSON!
+    event_kinds: [SubnetEventSummaryArtifactEventKinds!]
     "The bounded newest-first recent-event list. Opaque JSON passed through verbatim."
     recent_events: [AccountEvent!]!
   }
@@ -4374,7 +4363,7 @@ export const SDL = /* GraphQL */ `
     event_method: String
     count: Int!
     "Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null)."
-    ownership_changes: [JSON!]!
+    ownership_changes: [SubnetOwnershipHistoryArtifactOwnershipChanges!]
     "The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read."
     observed_through: String
   }
@@ -4388,7 +4377,7 @@ export const SDL = /* GraphQL */ `
     maturity_rate: Float
     king: String
     count: Int!
-    leaderboard: [JSON!]!
+    leaderboard: [SubnetConvictionArtifactLeaderboard!]
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
     """
@@ -4400,7 +4389,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     netuid: Int!
     count: Int!
-    lease_events: [JSON!]!
+    lease_events: [SubnetLeaseHistoryArtifactLeaseEvents!]
     event_pallet: String
     event_kinds: [String!]
   }
@@ -4410,7 +4399,7 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     netuid: Int!
     leased: Boolean
-    lease: JSON
+    lease: SubnetLeaseArtifactLease
     queried_at: String
     """
     Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.
@@ -4645,7 +4634,7 @@ export const SDL = /* GraphQL */ `
     extrinsic_count: Int!
     limit: Int
     offset: Int
-    extrinsics: [JSON!]!
+    extrinsics: [BlockExtrinsicsArtifactExtrinsics!]
   }
 
   "One block's decoded, account-attributed events list (#6977). Rows are opaque JSON; block_number is null for an unknown ref."
@@ -4659,12 +4648,12 @@ export const SDL = /* GraphQL */ `
     events: [AccountEvent!]!
   }
 
-  "One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows are opaque JSON."
+  "One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows carry the raw pallet-level shape (pallet, method, args, phase, summary), not the curated AccountEvent."
   type BlockChainEvents {
     schema_version: Int
     block_number: Int
     event_count: Int!
-    events: [JSON!]!
+    events: [BlockChainEventsArtifactEvents!]!
   }
 
   type BlockDetail {
@@ -5616,5 +5605,887 @@ export const SDL = /* GraphQL */ `
     min_blocks: Int
     max_blocks: Int
     censored: Boolean!
+  }
+
+  # ── Types the mirrors above stopped under-typing as JSON (#10214) ──────────
+  #
+  # Emitted verbatim from the Zod components -- printType over the same
+  # emitTypes() the parity gate compares against -- so each is the component's
+  # own shape rather than a hand-read of it. That is the point: a field
+  # published as JSON promised nothing, and a hand-written replacement would
+  # have promised whatever its author believed instead of what the producer
+  # actually returns.
+
+  type AdapterArtifactSnapshot {
+    schema_version: Int
+    contract_version: String
+    generated_at: String
+    slug: String
+    netuid: Int
+    source: String
+    status: String
+    notes: JSON
+    adapter_kind: String
+    excluded_dimensions: [String!]
+    dimensions: JSON
+  }
+
+  """
+  One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload).
+  """
+  type BlockChainEventsArtifactEvents {
+    block_number: Int
+    event_index: Int
+    pallet: String
+    method: String
+    args: JSON
+    phase: String
+    extrinsic_index: Int
+    observed_at: Float
+
+    """
+    Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525).
+    """
+    summary: String
+  }
+
+  type BlockExtrinsicsArtifactExtrinsics {
+    block_number: Int
+    extrinsic_index: Int
+    extrinsic_hash: String
+    signer: String
+    call_module: String
+    call_function: String
+    call_args: JSON
+    success: Boolean
+    fee_tao: Float
+    tip_tao: Float
+    observed_at: String
+    summary: String
+  }
+
+  type BuildSummaryArtifactArtifactBudgetSummary {
+    fail_count: Int!
+    ok_count: Int!
+    warn_count: Int!
+  }
+
+  type BuildSummaryArtifactArtifacts {
+    path: String!
+    sha256: String
+    size_bytes: Int
+    storage_tier: String
+  }
+
+  type ChainConcentrationScorecard {
+    holders: Int!
+    total: Float!
+    gini: Float
+    hhi: Float
+    hhi_normalized: Float
+    nakamoto_coefficient: Int
+    entropy: Float
+    entropy_normalized: Float
+  }
+
+  type ChangelogArtifactArtifacts {
+    added: [JSON!]!
+    modified: [JSON!]!
+    removed: [JSON!]!
+  }
+
+  type ChangelogArtifactSubnets {
+    added: [ChangelogArtifactSubnetsAdded!]!
+    removed: [ChangelogArtifactSubnetsRemoved!]!
+    renamed: [ChangelogArtifactSubnetsRenamed!]!
+  }
+
+  type ChangelogArtifactSubnetsAdded {
+    netuid: Int!
+    name: String
+    slug: String
+  }
+
+  type ChangelogArtifactSubnetsRemoved {
+    netuid: Int!
+    name: String
+    slug: String
+  }
+
+  type ChangelogArtifactSubnetsRenamed {
+    netuid: Int!
+    before: String
+    after: String
+  }
+
+  type ChangelogArtifactSummary {
+    artifact_added_count: Int!
+    artifact_modified_count: Int!
+    artifact_removed_count: Int!
+    coverage_delta: JSON
+    netuid_added_count: Int!
+    netuid_removed_count: Int!
+    netuid_renamed_count: Int!
+  }
+
+  """
+  Self-reported on-chain identity (SubtensorModule::set_identity) for a \`coldkey\`.
+  """
+  type CompareValidatorsArtifactValidatorsColdkeyIdentity {
+    has_identity: Boolean!
+    name: String
+    url: String
+    github: String
+    image: String
+    discord: String
+    description: String
+    additional: String
+    captured_at: String
+  }
+
+  type CompareValidatorsArtifactValidatorsSubnetContext {
+    netuid: Int!
+    uid: Int!
+    hotkey: String
+    coldkey: String
+    active: Boolean!
+    validator_permit: Boolean!
+    rank: Float
+    trust: Float
+    validator_trust: Float
+    consensus: Float
+    incentive: Float
+    dividends: Float
+
+    """
+    This row's emission on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`emission_tao\` in #10514, because the entry's own \`total_stake_tao\` IS priced TAO and a shared \`_tao\` suffix across different units is a trap no description undoes.
+    """
+    emission_alpha: Float
+
+    """
+    This row's stake on the subnet named by the sibling \`netuid\`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from \`stake_tao\` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion.
+    """
+    stake_alpha: Float
+    registered_at_block: Int
+    is_immunity_period: Boolean!
+    axon: String
+    take: Float
+  }
+
+  type ContractsArtifactArtifacts {
+    content_type: String
+    retirement: ContractsArtifactArtifactsRetirement
+    status: String!
+    contract_version: String!
+    description: String
+    id: String!
+    path: String!
+    schema_ref: String
+    storage_tier: String!
+  }
+
+  type ContractsArtifactArtifactsRetirement {
+    code: String!
+    http_status: Int!
+    message: String!
+  }
+
+  type CoverageArtifact {
+    contract_version: String
+    generated_at: String!
+
+    """
+    Public-safe notes; may be a string or a string list depending on the adapter.
+    """
+    notes: JSON
+    schema_version: Int!
+    application_subnet_count: Int!
+    candidate_count: Int!
+    candidate_subnet_count: Int!
+    chain_subnet_count: Int!
+    completeness: CoverageCompleteness
+    curated_overlay_count: Int!
+    curation_level_counts: JSON!
+    domain_coverage: JSON!
+    first_party_subnet_count: Int!
+    manifested_count: Int!
+    native_only_count: Int!
+    native_only_with_candidates: Int!
+    native_only_without_candidates: Int!
+    native_snapshot_captured_at: String!
+    network: String!
+    probed_count: Int!
+    probed_surface_count: Int!
+    official_surface_count: Int!
+    registry_observed_surface_count: Int!
+    root_subnet_count: Int!
+    source: CoverageArtifactSource!
+    subnets_without_official_surface: Int!
+    surface_count: Int!
+  }
+
+  type CoverageArtifactSource {
+    candidates: String!
+    native: JSON!
+    overlays: String!
+  }
+
+  type CoverageCompleteness {
+    scored_subnet_count: Int
+    average_score: Int
+    median_score: Int
+    fully_complete_count: Int
+    fully_complete_pct: Int
+    score_distribution: JSON
+    dimension_coverage: JSON
+    methodology: String
+  }
+
+  type CurationArtifactCuration {
+    netuid: Int!
+    slug: String!
+    name: String!
+    coverage_level: String!
+    curation_level: String
+    surface_count: Int!
+    candidate_count: Int!
+    gap_count: Int
+    description: String
+    lifecycle: String
+    curation: CurationMetadata!
+    gaps: Gaps!
+  }
+
+  type CurationMetadata {
+    gap_notes: [String!]
+    level: String!
+    review_state: String!
+    reviewed_at: String
+    source_count: Int
+    verified_at: String
+  }
+
+  type EndpointIncidentsArtifactSummary {
+    incident_count: Int!
+    active_count: Int!
+    by_kind: JSON!
+    by_layer: JSON!
+    by_provider: JSON!
+    by_severity: JSON!
+    by_status: JSON!
+  }
+
+  type EndpointScoreReason {
+    points: Int!
+    reason: String!
+  }
+
+  type EvidenceClaim {
+    claim: String!
+    subject: String!
+    source_url: String!
+    source_type: String!
+    source_tier: String!
+    confidence: String!
+    support_summary: String!
+    limits: String!
+    verified_at: String
+  }
+
+  type EvidenceLedgerArtifactSummary {
+    candidate_claim_count: Int!
+    claim_count: Int!
+    subnet_claim_count: Int!
+    surface_claim_count: Int!
+  }
+
+  type Gaps {
+    gap_notes: [String!]!
+    missing_kinds: [String!]!
+    moving_target_surfaces: [String!]
+    supported_kinds: [String!]!
+  }
+
+  type GapsArtifactGaps {
+    netuid: Int!
+    slug: String!
+    name: String!
+    coverage_level: String!
+    curation_level: String!
+    gap_count: Int
+    gaps: Gaps!
+    gap_severity: String
+    gap_priority: Int
+  }
+
+  """
+  Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape.
+  """
+  type GlobalIncidentsArtifactSummary {
+    incident_count: Int!
+    affected_surface_count: Int!
+  }
+
+  type HealthHistoryArtifactSurfaces {
+    surface_id: String!
+    netuid: Int!
+    kind: String!
+    provider: String!
+    status: String!
+    classification: String!
+    latency_ms: Int
+    status_code: Int
+    last_checked: String
+    last_ok: String
+    verified_at: String
+    error_class: String
+  }
+
+  type HealthIncidentsArtifactSurfaces {
+    surface_id: String!
+    samples: Int!
+    uptime_ratio: Float
+    incident_count: Int!
+    downtime_ms: Int!
+    transient_failure_count: Int!
+    transient_failed_samples: Int!
+    incidents: [HealthIncidentsArtifactSurfacesIncidents!]!
+  }
+
+  type HealthIncidentsArtifactSurfacesIncidents {
+    started_at: Float!
+    ended_at: Float!
+    duration_ms: Int!
+    failed_samples: Int!
+  }
+
+  type HealthPercentilesArtifactSurfaces {
+    surface_id: String!
+    samples: Int!
+    latency_ms: HealthPercentilesArtifactSurfacesLatencyMs!
+  }
+
+  type HealthPercentilesArtifactSurfacesLatencyMs {
+    p50: Int
+    p95: Int
+    p99: Int
+    avg: Int
+    min: Int
+    max: Int
+  }
+
+  type HealthProbeSummary {
+    surface_count: Int!
+    status_counts: JSON!
+    classification_counts: JSON!
+  }
+
+  type IntegrationReadiness {
+    score: Int!
+    readiness_tier: String!
+    readiness_version: Int!
+    readiness_verified: Boolean
+    components: IntegrationReadinessComponents!
+  }
+
+  type IntegrationReadinessComponents {
+    has_callable_api: Boolean
+    documented: Boolean
+    auth_clarity: Boolean
+    callable_now: Boolean
+    active_lifecycle: Boolean
+    profile_complete: Boolean
+    has_source_repo: Boolean
+    has_public_docs: Boolean
+    has_candidate_api: Boolean
+  }
+
+  type ReviewAdapterCandidate {
+    candidate_api_count: Int!
+    candidate_api_ids: [String!]!
+    candidate_api_kinds: [String!]!
+    curation_level: String!
+    name: String!
+    netuid: Int!
+    operational_kinds: [String!]!
+    operational_surface_count: Int!
+    operational_surface_ids: [String!]!
+    priority_score: Int!
+    reason_codes: [String!]!
+    recommended_adapter_kind: String!
+    suggested_next_action: String!
+    slug: String!
+  }
+
+  type ReviewEnrichmentEvidenceArtifactEntries {
+    candidate_evidence_by_kind: JSON!
+    candidate_evidence_summary: ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary!
+    direct_submission_kinds: [String!]!
+    evidence_action: String!
+    lane: String!
+    missing_kinds: [String!]!
+    name: String!
+    netuid: Int!
+    priority_score: Int!
+    slug: String!
+  }
+
+  type ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary {
+    candidate_count: Int!
+    kinds_with_candidates: [String!]!
+    live_kinds: [String!]!
+    live_or_redirected_count: Int!
+    reviewable_count: Int!
+    stale_kinds: [String!]!
+    stale_or_failed_count: Int!
+    unverified_count: Int!
+    unverified_kinds: [String!]!
+  }
+
+  type ReviewEnrichmentQueueArtifactQueue {
+    adapter_score: Int!
+    candidate_count: Int!
+    candidate_evidence_summary: ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary!
+    completeness_score: Int!
+    contribution_hint: String!
+    curation_level: String!
+    direct_submission_kinds: [String!]!
+    endpoint_count: Int!
+    evidence_action: String!
+    identity_level: String!
+    identity_surface_count: Int!
+    lane: String!
+    manual_review_required: Boolean!
+    missing_kinds: [String!]!
+    missing_identity: [String!]!
+    name: String!
+    netuid: Int!
+    operational_interface_count: Int!
+    priority_score: Int!
+    profile_level: String!
+    reason_codes: [String!]!
+    recommended_action: String!
+    review_state: String!
+    sample_candidate_ids: [String!]!
+    sample_live_candidate_ids: [String!]!
+    sample_stale_candidate_ids: [String!]!
+    sample_target_candidate_ids: [String!]!
+    slug: String!
+    source_urls: [String!]!
+    stale_candidate_count: Int!
+    surface_count: Int!
+    verified_candidate_count: Int!
+  }
+
+  type ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary {
+    candidate_count: Int!
+    kinds_with_candidates: [String!]!
+    live_kinds: [String!]!
+    live_or_redirected_count: Int!
+    reviewable_count: Int!
+    stale_kinds: [String!]!
+    stale_or_failed_count: Int!
+    unverified_count: Int!
+    unverified_kinds: [String!]!
+  }
+
+  type ReviewEnrichmentTargetsArtifactTargets {
+    auto_review_candidate: Boolean!
+    candidate_command: String
+    candidate_evidence: ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence
+    contribution_prompt: String!
+    evidence_action: String!
+    identity_level: String!
+    kind: String
+    lane: String!
+    manual_review_required: Boolean!
+    missing_kinds: [String!]!
+    name: String!
+    netuid: Int!
+    priority_score: Int!
+    profile_level: String!
+    queue_context: ReviewEnrichmentTargetsArtifactTargetsQueueContext!
+    reason_codes: [String!]!
+    recommended_action: String!
+    sample_live_candidate_ids: [String!]!
+    sample_stale_candidate_ids: [String!]!
+    sample_target_candidate_ids: [String!]!
+    slug: String!
+    source_requirements: [String!]!
+    source_urls: [String!]!
+    submission_route: String!
+    target_action: String!
+    target_id: String!
+    target_type: String!
+  }
+
+  type ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence {
+    candidate_count: Int!
+    classifications: JSON!
+    live_or_redirected_count: Int!
+    reviewable_count: Int!
+    sample_candidate_ids: [String!]!
+    stale_or_failed_count: Int!
+    unverified_count: Int!
+  }
+
+  type ReviewEnrichmentTargetsArtifactTargetsQueueContext {
+    adapter_score: Int!
+    candidate_count: Int!
+    completeness_score: Int!
+    curation_level: String!
+    direct_submission_kind_count: Int!
+    endpoint_count: Int!
+    identity_surface_count: Int!
+    operational_interface_count: Int!
+    profile_level: String!
+    review_state: String!
+    source_url_count: Int!
+    stale_candidate_count: Int!
+    surface_count: Int!
+    verified_candidate_count: Int!
+  }
+
+  type ReviewGapPriority {
+    candidate_count: Int!
+    curation_level: String!
+    missing_kinds: [String!]!
+    name: String!
+    netuid: Int!
+    priority_score: Int!
+    review_state: String!
+    slug: String!
+    suggested_next_action: String!
+    surface_count: Int!
+    verified_candidate_count: Int!
+  }
+
+  type ReviewProfileCompletenessArtifactProfiles {
+    candidate_count: Int!
+    completeness_score: Int!
+    confidence: String!
+    curation_level: String!
+    gap_reasons: [String!]!
+    identity_level: String!
+    identity_evidence: SubnetProfileIdentityEvidence!
+    identity_promotion_kind_count: Int!
+    identity_promotion_kinds: [String!]!
+    identity_surface_count: Int!
+    live_identity_candidate_kind_count: Int!
+    missing_critical_count: Int!
+    missing_identity: [String!]!
+    missing_operational: [String!]!
+    missing_required: [String!]!
+    name: String!
+    native_name_quality: String!
+    native_identity_signal_count: Int!
+    netuid: Int!
+    operational_interface_count: Int!
+    priority_score: Int!
+    profile_level: String!
+    review_state: String!
+    slug: String!
+    source_count: Int!
+    stale_identity_candidate_kind_count: Int!
+    supported_interface_kinds: [String!]!
+    suggested_next_action: String!
+  }
+
+  type ReviewProfileCompletenessArtifactSummary {
+    profile_count: Int!
+    needs_identity_count: Int!
+    needs_operational_count: Int!
+    average_completeness_score: Int!
+    native_identity_count: Int!
+    identity_promotion_candidate_count: Int!
+    native_identity_unpromoted_count: Int!
+    by_identity_level: JSON!
+    by_profile_level: JSON!
+    by_confidence: JSON!
+    critical_gap_counts: JSON!
+  }
+
+  type RpcPool {
+    id: String!
+    kind: String!
+    best_endpoint_id: String
+    endpoint_count: Int!
+    eligible_count: Int!
+    endpoints: [RpcPoolEndpoints!]!
+  }
+
+  type RpcPoolEndpoints {
+    id: String!
+    surface_id: String
+    surface_key: String
+    kind: String
+    layer: String
+    url: String!
+    provider: String!
+    auth_required: Boolean
+    public_safe: Boolean
+    status: String!
+    score: Int!
+    score_reasons: [EndpointScoreReason!]
+    pool_eligible: Boolean!
+    pool_eligibility_reasons: [String!]
+    reliability_score: Int
+    reliability_grade: String
+    archive_support: Boolean
+    latency_ms: Int
+    observed_at: String
+    health_source: String!
+    health_stale: Boolean!
+    last_ok: String
+    latest_block: Int
+  }
+
+  type SearchArtifactDocuments {
+    id: String!
+    type: String!
+    netuid: Int
+    slug: String
+    title: String!
+    subtitle: String
+    url: String
+    artifact_path: String!
+    tokens: [String!]!
+    categories: [String!]
+    service_kinds: [String!]
+  }
+
+  type SearchIndexArtifactDocuments {
+    id: String!
+    type: String!
+    netuid: Int
+    slug: String
+    title: String!
+    subtitle: String
+    url: String
+    artifact_path: String!
+    categories: [String!]
+    service_kinds: [String!]
+  }
+
+  type SourceSnapshotsArtifactSources {
+    captured_at: String!
+    hash: String!
+    id: String!
+    kind: String!
+    path: String!
+    record_count: Int!
+  }
+
+  type SourceSnapshotsArtifactSummary {
+    adapter_snapshot_count: Int!
+    candidate_count: Int!
+    overlay_count: Int!
+    provider_count: Int!
+    source_count: Int!
+    verification_result_count: Int!
+  }
+
+  type SubnetConvictionArtifactLeaderboard {
+    hotkey: String
+    is_owner: Boolean
+    locked_mass: Float
+    conviction: Float
+  }
+
+  type SubnetEventSummaryArtifactCategories {
+    category: String!
+    event_count: Int!
+    kind_count: Int!
+    amount_tao: Float!
+    alpha_amount: Float!
+    first_block: Int
+    last_block: Int
+    first_observed_at: String
+    last_observed_at: String
+  }
+
+  type SubnetEventSummaryArtifactEventKinds {
+    event_kind: String!
+    category: String!
+    event_count: Int!
+    hotkey_count: Int!
+    coldkey_count: Int!
+    amount_tao: Float!
+    alpha_amount: Float!
+    first_block: Int
+    last_block: Int
+    first_observed_at: String
+    last_observed_at: String
+  }
+
+  type SubnetLeaseArtifactLease {
+    lease_id: Int!
+    beneficiary: String!
+    coldkey: String!
+    hotkey: String!
+    emissions_share_percent: Int
+    end_block: Int
+    netuid: Int!
+    cost_tao: Float
+    accumulated_dividends_alpha: Float
+  }
+
+  type SubnetLeaseHistoryArtifactLeaseEvents {
+    event_kind: String
+    beneficiary: String
+    block_number: Int
+    observed_at: String
+  }
+
+  type SubnetOwnershipHistoryArtifactOwnershipChanges {
+    netuid: Int
+    old_coldkey: String
+    new_coldkey: String
+    block_number: Int
+    observed_at: String
+    source: String
+  }
+
+  type SubnetProfile {
+    netuid: Int!
+    slug: String!
+    name: String!
+    native_name: String
+    native_name_quality: String
+    native_identity: SubnetProfileNativeIdentity
+    injection_scrubbed: Boolean
+    subnet_type: String!
+    status: String!
+    symbol: String
+    github_languages: JSON
+    github_last_push_at: String
+    github_stars: Int
+    github_commits_weekly: [SubnetProfileGithubCommitsWeekly!]
+    github_releases: [SubnetProfileGithubReleases!]
+    github_unreachable: Boolean
+    project_name: String!
+    team: String
+    categories: [String!]!
+    derived_categories: [String!]!
+    derived_description: String
+    lineage: SubnetProfileLineage
+    primary_links: SubnetProfilePrimaryLinks!
+    primary_app_surface: SubnetProfilePrimaryAppSurface
+    supported_interface_kinds: [String!]!
+    operational_interface_kinds: [String!]!
+    surface_count: Int!
+    endpoint_count: Int!
+    monitored_endpoint_count: Int!
+    candidate_count: Int!
+    identity_evidence: SubnetProfileIdentityEvidence!
+    interface_count: Int
+    operational_interface_count: Int
+    completeness: SubnetProfileCompleteness!
+    provenance: SubnetProfileProvenance!
+    curation_level: String!
+    review_state: String!
+    confidence: String!
+    profile_level: String!
+    identity_level: String!
+    identity_surface_count: Int!
+    completeness_score: Int!
+    missing_identity: [String!]!
+    missing_required: [String!]!
+    missing_operational: [String!]!
+    missing_critical_count: Int!
+    gap_reasons: [String!]!
+    suggested_submission_kinds: [String!]!
+    integration_readiness: Int
+    readiness: IntegrationReadiness
+  }
+
+  type SubnetProfileCompleteness {
+    score: Int!
+    profile_level: String!
+    identity_level: String!
+    identity_surface_count: Int!
+    confidence: String!
+    missing_identity: [String!]!
+    missing_required: [String!]!
+    missing_operational: [String!]!
+    missing_critical_count: Int!
+    gap_reasons: [String!]!
+  }
+
+  type SubnetProfileGithubCommitsWeekly {
+    week: String!
+    count: Int!
+  }
+
+  type SubnetProfileGithubReleases {
+    tag: String!
+    name: String
+    published_at: String!
+    url: String!
+    prerelease: Boolean!
+  }
+
+  type SubnetProfileIdentityEvidence {
+    candidate_identity_count: Int!
+    curated_identity_count: Int!
+    curated_identity_kinds: [String!]!
+    live_candidate_identity_kinds: [String!]!
+    native_contact_present: Boolean!
+    native_description_present: Boolean!
+    native_identity_count: Int!
+    native_identity_kinds: [String!]!
+    needs_promotion_kinds: [String!]!
+    stale_candidate_identity_kinds: [String!]!
+    unverified_candidate_identity_kinds: [String!]!
+  }
+
+  type SubnetProfileLineage {
+    graduated_from_testnet: Boolean
+    also_on: [SubnetProfileLineageAlsoOn!]
+  }
+
+  type SubnetProfileLineageAlsoOn {
+    network: String
+    netuid: Int
+    name: String
+    matched_by: String
+  }
+
+  type SubnetProfileNativeIdentity {
+    source: String!
+    subnet_name: String
+    description: String
+    additional: String
+    website_url: String
+    github_url: String
+    discord: String
+    discord_url: String
+    logo_url: String
+    contact_present: Boolean!
+  }
+
+  type SubnetProfilePrimaryAppSurface {
+    id: String!
+    key: String
+    kind: String!
+    name: String!
+    provider: String!
+    url: String!
+  }
+
+  type SubnetProfilePrimaryLinks {
+    website_url: String
+    docs_url: String
+    source_repo: String
+    dashboard_url: String
+  }
+
+  type SubnetProfileProvenance {
+    identity_source: String!
+    interface_source_count: Int!
+    review_state: String!
+    curation_level: String!
+    reviewed_at: String
+    source_urls: [String!]!
   }
 `;
