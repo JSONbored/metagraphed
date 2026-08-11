@@ -16131,25 +16131,22 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse(
-      [
-        {
-          // The lakehouse row, per generated/lakehouse/types.ts's own column list:
-          // hotkey is the from side, coldkey the to side, and `direction` is
-          // DERIVED by the builder from which side this account is on. The retired
-          // tier handed over a finished `from`/`to`/`direction` triple, so none of
-          // that derivation ran here.
-          block_number: 1200,
-          event_index: 3,
-          event_kind: "Transfer",
-          hotkey: SS58,
-          coldkey: OTHER,
-          amount_tao: 1.5,
-          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
-        },
-      ],
-      { once: true },
-    );
+    const lake = lakehouse([
+      {
+        // The lakehouse row, per generated/lakehouse/types.ts's own column list:
+        // hotkey is the from side, coldkey the to side, and `direction` is
+        // DERIVED by the builder from which side this account is on. The retired
+        // tier handed over a finished `from`/`to`/`direction` triple, so none of
+        // that derivation ran here.
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "Transfer",
+        hotkey: SS58,
+        coldkey: OTHER,
+        amount_tao: 1.5,
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+      },
+    ]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
@@ -16260,7 +16257,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse([{}]);
+    const lake = lakehouse([{}], { once: true });
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
@@ -16353,24 +16350,21 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // was never asked. The cold tier answers, and it feeds the SAME builder
     // -- so the envelope below is derived from these rows, not asserted
     // into existence by a hand-written payload.
-    const lake = lakehouse(
-      [
-        {
-          block_number: 1200,
-          event_index: 3,
-          event_kind: "StakeAdded",
-          hotkey: SS58,
-          coldkey: OTHER,
-          netuid: 7,
-          uid: 42,
-          amount_tao: 1.5,
-          alpha_amount: 2.25,
-          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
-          extrinsic_index: 4,
-        },
-      ],
-      { once: true },
-    );
+    const lake = lakehouse([
+      {
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "StakeAdded",
+        hotkey: SS58,
+        coldkey: OTHER,
+        netuid: 7,
+        uid: 42,
+        amount_tao: 1.5,
+        alpha_amount: 2.25,
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+        extrinsic_index: 4,
+      },
+    ]);
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
@@ -16478,25 +16472,21 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
-    assert.deepEqual(
-      body.data.account_events.events,
-      [
-        {
-          block_number: null,
-          event_index: null,
-          event_kind: null,
-          hotkey: null,
-          coldkey: null,
-          netuid: null,
-          uid: null,
-          amount_tao: null,
-          alpha_amount: null,
-          observed_at: null,
-          extrinsic_index: null,
-        },
-      ],
-      { once: true },
-    );
+    assert.deepEqual(body.data.account_events.events, [
+      {
+        block_number: null,
+        event_index: null,
+        event_kind: null,
+        hotkey: null,
+        coldkey: null,
+        netuid: null,
+        uid: null,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: null,
+        extrinsic_index: null,
+      },
+    ]);
     lake.restore();
   });
 
@@ -16769,26 +16759,23 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("a day row with missing fields degrades each to null / empty kinds", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ days: [{}] })),
-    };
+    // #10190: the tier is retired; one bare day row through the lakehouse is
+    // what degrades now. `event_kinds` comes from the SECOND read, so an empty
+    // kinds list here is the honest answer rather than an omitted field.
+    const lake = lakehouse((sql) => (sql.includes("event_kind") ? [] : [{}]));
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
-    assert.deepEqual(
-      body.data.account_history.days,
-      [
-        {
-          day: null,
-          netuid: null,
-          event_count: null,
-          event_kinds: [],
-          first_block: null,
-          last_block: null,
-        },
-      ],
-      { once: true },
-    );
+    assert.deepEqual(body.data.account_history.days, [
+      {
+        day: null,
+        netuid: null,
+        event_count: null,
+        event_kinds: [],
+        first_block: null,
+        last_block: null,
+      },
+    ]);
   });
 
   // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
