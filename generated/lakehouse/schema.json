@@ -1174,5 +1174,264 @@
     "column": "captured_at",
     "type": "long",
     "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 1,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 2,
+    "column": "uid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 3,
+    "column": "snapshot_date",
+    "type": "date",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 4,
+    "column": "hotkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 5,
+    "column": "coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 6,
+    "column": "active",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 7,
+    "column": "validator_permit",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 8,
+    "column": "rank",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 9,
+    "column": "trust",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 10,
+    "column": "validator_trust",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 11,
+    "column": "consensus",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 12,
+    "column": "incentive",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 13,
+    "column": "dividends",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 14,
+    "column": "emission_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 15,
+    "column": "stake_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 16,
+    "column": "registered_at_block",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 17,
+    "column": "is_immunity_period",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 18,
+    "column": "axon",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 19,
+    "column": "block_number",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 20,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 21,
+    "column": "updated_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "neuron_daily",
+    "field_id": 22,
+    "column": "take",
+    "type": "float",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 1,
+    "column": "account",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 2,
+    "column": "netuid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 3,
+    "column": "snapshot_date",
+    "type": "date",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 4,
+    "column": "uid",
+    "type": "int",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 5,
+    "column": "coldkey",
+    "type": "string",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 6,
+    "column": "active",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 7,
+    "column": "validator_permit",
+    "type": "boolean",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 8,
+    "column": "rank",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 9,
+    "column": "trust",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 10,
+    "column": "incentive",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 11,
+    "column": "dividends",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 12,
+    "column": "stake_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 13,
+    "column": "emission_tao",
+    "type": "double",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 14,
+    "column": "captured_at",
+    "type": "long",
+    "required": false
+  },
+  {
+    "table": "account_position_daily",
+    "field_id": 15,
+    "column": "updated_at",
+    "type": "long",
+    "required": false
   }
 ]
