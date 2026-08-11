@@ -3643,13 +3643,61 @@ async function requireAiRateLimit(ctx: McpCtx, scope: string) {
 
 // Run an ai-search call, mapping its input-validation errors to tool errors so
 // they surface as a clean isError result instead of a thrown transport error.
+/**
+ * Wrap a non-input AI failure so the caller gets guidance and we keep the fault
+ * (#10641).
+ *
+ * dispatchTool's rule was binary: a toolError is an expected outcome and is not
+ * captured; anything else is an unexpected fault and is. Right for the codes it
+ * names — a rate limit, a mainnet-only refusal — and wrong for exactly one
+ * family. An upstream AI failure is BOTH: the agent needs a stable code it can
+ * act on (`ai_unavailable` → fall back to keyword discovery, the whole reason
+ * that code exists), and we need the stack, because from outside "Workers AI
+ * blipped" and "our embedding code is broken" are the same event. Making it a
+ * plain toolError buys the first and silently gives up the second — measured,
+ * one `semantic_search` call failed as `internal_error: The tool failed to
+ * complete.`, actionable to nobody.
+ *
+ * MARKED, NOT KEYED ON THE CODE. `ai_unavailable` is already what requireAi
+ * throws when the AI layer is simply not enabled in an environment — an
+ * expected configuration state that must NOT be captured, and precisely the
+ * noise #10636 removed on the UI side. Capturing by code would have swept it
+ * back in. The flag says "this particular instance is a fault", which is the
+ * thing dispatch actually needs to know, and it keeps the caller-facing
+ * vocabulary unchanged.
+ *
+ * `cause` carries the original so the recorded stack points at what broke
+ * rather than at this wrapper.
+ */
+function aiUnavailableToolError(rawError: unknown) {
+  const error = toolError(
+    "ai_unavailable",
+    "The AI layer failed to answer. This is usually transient — retry, or use " +
+      "search_subnets / find_subnets_by_capability for keyword discovery.",
+  ) as Error & { cause?: unknown; captureAsFault?: boolean };
+  error.cause = rawError;
+  error.captureAsFault = true;
+  return error;
+}
+
+// Run an ai-search call, mapping its failures onto codes an agent can branch on.
+//
+// Anything that escapes here is a failure OF the AI path by construction —
+// runAi wraps only semanticSearch/ask — so the two outcomes are an input error
+// (the caller's) and everything else (ours or the model host's). The second used
+// to rethrow raw and degrade to `internal_error`, which told the agent nothing
+// and cost it the keyword fallback it would otherwise have taken.
 async function runAi(fn: AnyFn) {
   try {
     return await fn();
   } catch (rawError) {
     const error = rawError as Row;
     if (error?.aiInput) throw toolError("invalid_params", error.message);
-    throw rawError;
+    // Already classified deeper in the stack (requireAi's own ai_unavailable,
+    // requireAiRateLimit's rate_limited) — do not re-wrap and do not turn a
+    // rate limit into a fault.
+    if (error?.toolError) throw rawError;
+    throw aiUnavailableToolError(rawError);
   }
 }
 
@@ -16128,6 +16176,22 @@ async function dispatchTool(
   } catch (rawError) {
     const error = rawError as Row;
     if (error?.toolError) {
+      // Classified AND captured, for the one family that is both (#10641).
+      // Keyed on the MARKER, never on the code: `ai_unavailable` is also what
+      // requireAi throws for "no AI binding here", which is an expected
+      // configuration state and must stay uncaptured. See
+      // aiUnavailableToolError.
+      if (error.captureAsFault) {
+        scheduleExceptionEvent(ctx, {
+          // `cause` unconditionally, with no `?? error` fallback: the ONLY
+          // thing that sets captureAsFault is aiUnavailableToolError, and it
+          // always sets cause on the same object. A fallback here would be an
+          // unreachable branch pretending to be caution.
+          error: error.cause as Error,
+          mcpTool: name,
+          errorCode: error.code,
+        });
+      }
       return {
         content: [{ type: "text", text: `${error.code}: ${error.message}` }],
         // Machine-readable error so an agent can branch on a stable code
