@@ -738,6 +738,30 @@ export const API_QUERY_COLLECTIONS = {
     search: ["id", "kind", "path"],
     sort: ["id", "kind", "path", "record_count"],
   }),
+  // #9981: four routes served a whole baked document with no way to ask for
+  // less. Measured against production: /contracts is 223 `artifacts`,
+  // /fixtures 408 `fixtures`, /agent-catalog 126 `subnets` and one subnet's
+  // /trajectory 400 `points` -- collections wearing a document's clothes, not
+  // documents whose size is the point. Declaring the collection is the whole
+  // change: the router already pages any route that names one, so these get
+  // the same limit/offset/sort/fields every other list route has, and the
+  // count fields keep spanning the unfiltered set.
+  //
+  // No filters or sort keys are declared. Paging is what these routes lacked;
+  // inventing a filter vocabulary for them without a caller asking would be
+  // guessing at a contract, and each is additive later.
+  "agent-catalog": queryCollection("subnets", {
+    sort: ["netuid", "callable_count", "completeness_score", "example_count"],
+  }),
+  contracts: queryCollection("artifacts", {
+    sort: ["id", "path", "contract_version"],
+  }),
+  fixtures: queryCollection("fixtures", {
+    sort: ["captured_at", "netuid", "surface_id"],
+  }),
+  "subnet-trajectory": queryCollection("points", {
+    sort: ["date", "completeness_score", "surface_count", "endpoint_count"],
+  }),
   subnets: queryCollection("subnets", {
     csvFilters: { netuids: "netuid" },
     // ?domain= matches the union of curated categories + derived_categories
@@ -2416,6 +2440,7 @@ export const API_ROUTES = [
     "List subnets exposing callable services for AI agents (compact capability index).",
     "standard",
     ["agents", "subnets"],
+    listQuery("agent-catalog"),
   ),
   route(
     "agent-catalog-subnet",
@@ -2687,6 +2712,7 @@ export const API_ROUTES = [
     "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json.",
     "standard",
     ["registry", "api-dx"],
+    listQuery("fixtures"),
   ),
   route(
     "fixture-detail",
@@ -2895,7 +2921,7 @@ export const API_ROUTES = [
     "Fetch the week-over-week structural trajectory (completeness + surface/endpoint counts) for one subnet from daily snapshots (computed live from D1). Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([]),
+    csvListQuery("subnet-trajectory"),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -4805,6 +4831,7 @@ export const API_ROUTES = [
     "Fetch artifact contract metadata.",
     "standard",
     ["contracts"],
+    listQuery("contracts"),
   ),
   route(
     "openapi",
