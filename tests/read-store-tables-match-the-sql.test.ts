@@ -32,6 +32,13 @@ const OWNER: Record<string, string[]> = {
     "src/hotkey-alpha-completeness.ts",
   ],
   SUBNET_BURN_HISTORY_TABLES: ["src/subnet-burn-history.ts"],
+  // #10773. Only the network feed's module is listed: the per-subnet loader
+  // shares src/subnet-identity-history.ts with latestBlockNumber, whose
+  // `blocks_head` read carries its own module-private declaration, and this
+  // scanner is file-scoped rather than function-scoped. Naming that file here
+  // would force `blocks_head` into this set -- routing the identity read on a
+  // table it does not touch, which is the opposite of what the set is for.
+  SUBNET_IDENTITY_HISTORY_TABLES: ["src/chain-identity-history.ts"],
   TAO_USD_TABLES: ["src/tao-usd-series.ts"],
   ATTRIBUTION_SWEEP_TABLES: ["src/attribution-sweep.ts"],
   // The feed's own SQL is the revenue pair; the denominator legs are read

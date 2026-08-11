@@ -28,7 +28,10 @@ const BLOCKS_HEAD_TABLES = ["blocks_head"] as const;
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
-const READ_COLUMNS =
+/** The identity columns both timelines select. Exported so the network
+ * feed in chain-identity-history.ts selects the SAME list rather than a second
+ * copy that can drift from this one. */
+export const READ_COLUMNS =
   "id, block_number, observed_at, subnet_name, symbol, description, github_repo, subnet_url, discord, logo_url, identity_hash";
 
 function stableStringify(value: unknown): string {
