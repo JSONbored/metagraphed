@@ -13582,6 +13582,51 @@ describe("graphql — neuron_history (#5900, Postgres-tier + empty-points fallba
     ]);
   });
 
+  test("neuron_history publishes the coverage the SDL declares, from the tier and on the cold path (#10788)", async () => {
+    // Same reason as the subnet_history case: a built resolver object is
+    // invisible to the schema-vs-schema parity gate, so only selecting the
+    // fields proves they resolve.
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          netuid: 5,
+          uid: 12,
+          window: "90d",
+          point_count: 1,
+          days_covered: 1,
+          oldest_day: "2026-07-01",
+          newest_day: "2026-07-01",
+          points: [{ snapshot_date: "2026-07-01" }],
+        }),
+      ),
+    };
+    const { body } = await gql(
+      `{ neuron_history(netuid: 5, uid: 12, window: "90d") {
+          point_count days_covered oldest_day newest_day
+        } }`,
+      env as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.neuron_history, {
+      point_count: 1,
+      days_covered: 1,
+      oldest_day: "2026-07-01",
+      newest_day: "2026-07-01",
+    });
+
+    const cold = await gql(
+      "{ neuron_history(netuid: 5, uid: 12) { days_covered oldest_day newest_day } }",
+    );
+    assert.equal(cold.body.errors, undefined);
+    assert.deepEqual(cold.body.data.neuron_history, {
+      days_covered: 0,
+      oldest_day: null,
+      newest_day: null,
+    });
+  });
+
   test("window is forwarded as a query param to the Postgres tier", async () => {
     let capturedUrl: URL | undefined;
     const env = {
@@ -14524,6 +14569,51 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     assert.equal(h.window, "90d");
     assert.equal(h.point_count, 0);
     assert.deepEqual(h.points, []);
+  });
+
+  test("subnet_history publishes the coverage the SDL declares, from the tier and on the cold path (#10788)", async () => {
+    // The parity gate compares the SDL to the component and cannot see this
+    // resolver, which BUILDS its object -- so declaring days_covered as
+    // non-null while the resolver omitted it would pass every schema gate and
+    // error at request time. Only selecting the fields proves they resolve.
+    const env = tierEnv("METAGRAPH_NEURONS_SOURCE", {
+      schema_version: 1,
+      netuid: 7,
+      window: "7d",
+      point_count: 2,
+      days_covered: 2,
+      oldest_day: "2026-06-29",
+      newest_day: "2026-06-30",
+      points: [
+        { snapshot_date: "2026-06-30" },
+        { snapshot_date: "2026-06-29" },
+      ],
+    });
+    const { body } = await gql(
+      `{ subnet_history(netuid: 7, window: "7d") {
+          point_count days_covered oldest_day newest_day
+        } }`,
+      env as unknown as Env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_history, {
+      point_count: 2,
+      days_covered: 2,
+      oldest_day: "2026-06-29",
+      newest_day: "2026-06-30",
+    });
+
+    // Cold path: an empty series still answers, rather than erroring on the
+    // non-null field.
+    const cold = await gql(
+      "{ subnet_history(netuid: 5) { days_covered oldest_day newest_day } }",
+    );
+    assert.equal(cold.body.errors, undefined);
+    assert.deepEqual(cold.body.data.subnet_history, {
+      days_covered: 0,
+      oldest_day: null,
+      newest_day: null,
+    });
   });
 
   test("subnet_history rejects an invalid window", async () => {
