@@ -184,6 +184,39 @@ describe("unknown MCP tool arguments are reported, not just refused", () => {
     assert.equal(error, undefined);
   });
 
+  // A DIFFERENT rejection that was also costing live calls, fixed alongside:
+  // MCP refused a zero-padded netuid that the REST side of the same request
+  // accepts. `GET /api/v1/subnets/080/health` serves netuid 80 (verified
+  // against production); `{"netuid":"080"}` answered invalid_params. HTTP
+  // hands every path value over as a string, so coercion is the established
+  // contract of this pair of surfaces, not a leniency invented here.
+  describe("numeric arguments accept the spellings REST already accepts", () => {
+    for (const netuid of ["080", "80", "0080", 80]) {
+      test(`accepts netuid ${JSON.stringify(netuid)}`, async () => {
+        const error = await callTool("get_subnet_metagraph", {
+          netuid,
+          fields: ["uid"],
+        });
+        // Not an argument rejection. The handler may still decline for want of
+        // a live binding; what must not happen is invalid_params on the shape.
+        assert.notEqual(error?.code, "invalid_params");
+      });
+    }
+
+    // The coercion must not widen past what REST accepts -- it 404s `one` and
+    // `-5`, and these must stay rejected for the same reason.
+    for (const netuid of ["one", "-5", "1.5", "1e3", "+5", "", "  ", true]) {
+      test(`still rejects netuid ${JSON.stringify(netuid)}`, async () => {
+        const error = await callTool("get_subnet_metagraph", {
+          netuid,
+          fields: ["uid"],
+        });
+        assert.equal(error?.code, "invalid_params");
+        assert.match(String(error.message), /non-negative integer/);
+      });
+    }
+  });
+
   test("the intent argument is still accepted, not read as unknown", async () => {
     // `context` is declared on every tool and stripped before the handler --
     // it must never read as an unknown key.

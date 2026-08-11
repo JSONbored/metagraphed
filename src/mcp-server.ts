@@ -3907,9 +3907,39 @@ export function splitMcpIntent(args: Row): { intent?: string; rest: Row } {
   };
 }
 
+/**
+ * A non-negative integer, from a number OR from the decimal string spelling
+ * of one -- because the REST side of the same request already accepts both.
+ *
+ * `GET /api/v1/subnets/080/health` serves netuid 80; `get_subnet_health` with
+ * `{"netuid":"080"}` answered `invalid_params`. Same logical request, two
+ * answers, and the MCP one was the wrong answer: HTTP hands every path and
+ * query value over as a string, so the REST parser has always had to coerce,
+ * and coercion is the established contract of this pair of surfaces rather
+ * than a leniency being invented here. Live agents hit it -- zero-padded
+ * netuids were three of the day's failures.
+ *
+ * Strictly the decimal-digit spelling, so nothing else widens with it: REST
+ * rejects `one` and `-5` (404) and so does this. `1.5`, `1e3`, `+5`, ``, and
+ * whitespace-only are rejected for the same reason -- they are not how the
+ * REST parser reads an unsigned integer either.
+ */
+const UNSIGNED_INT_TEXT = /^\d+$/;
+
+function coerceNonNegativeInt(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  if (!UNSIGNED_INT_TEXT.test(text)) return undefined;
+  const parsed = Number(text);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 function requireNonNegativeInt(args: Row, key: string) {
-  const value = args?.[key];
-  if (!Number.isInteger(value) || value < 0) {
+  const value = coerceNonNegativeInt(args?.[key]);
+  if (value === undefined) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a non-negative integer.`,
@@ -3919,9 +3949,10 @@ function requireNonNegativeInt(args: Row, key: string) {
 }
 
 function optionalNonNegativeInt(args: Row, key: string) {
-  const value = args?.[key];
-  if (value === undefined || value === null) return null;
-  if (!Number.isInteger(value) || value < 0) {
+  const raw = args?.[key];
+  if (raw === undefined || raw === null) return null;
+  const value = coerceNonNegativeInt(raw);
+  if (value === undefined) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a non-negative integer.`,
