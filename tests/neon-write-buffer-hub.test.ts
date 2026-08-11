@@ -15,6 +15,7 @@ import {
   BUFFER_FLUSH_LANE,
   BUFFER_ROUTE,
   countPending,
+  FLUSH_LIST_LIMIT,
   enqueueStatement,
   flushBuffer,
   NeonWriteBufferHub,
@@ -41,11 +42,19 @@ function fakeStorage(): BufferStorage & { map: Map<string, unknown> } {
     async put(entries: Record<string, unknown>) {
       for (const [key, value] of Object.entries(entries)) map.set(key, value);
     },
-    async list<T>({ prefix }: { prefix: string }) {
+    async list<T>({ prefix, limit }: { prefix: string; limit?: number }) {
       // Sorted, exactly as the platform returns it -- an unsorted fake would
       // hide the ordering bug this module's padding exists to prevent.
+      //
+      // AND BOUNDED, which this fake did NOT model until #10722. Durable Object
+      // storage caps what list() returns; the fake returned everything, so the
+      // truncation path was invisible to every test here and the production
+      // stall was the first thing to exercise it. A double that is more capable
+      // than the thing it stands in for does not simplify a test, it deletes a
+      // case.
       const out = new Map<string, T>();
       for (const key of [...map.keys()].sort()) {
+        if (limit !== undefined && out.size >= limit) break;
         if (key.startsWith(prefix)) out.set(key, map.get(key) as T);
       }
       return out;
@@ -135,7 +144,12 @@ describe("enqueueStatement", () => {
 describe("flushBuffer", () => {
   test("an empty buffer is a clean no-op", async () => {
     const out = await flushBuffer(fakeStorage(), {}, CTX, { sql: null });
-    assert.deepEqual(out, { drained: 0, undecodable: 0, ok: true });
+    assert.deepEqual(out, {
+      drained: 0,
+      undecodable: 0,
+      ok: true,
+      remaining: false,
+    });
   });
 
   test("drains every statement through ONE runner, in order", async () => {
@@ -583,5 +597,81 @@ describe("PostHog capture (#10694)", () => {
     });
     assert.ok(spy.events.length > 0);
     assert.ok(spy.events.every((e) => e.route === BUFFER_ROUTE));
+  });
+});
+
+describe("a truncated drain must come back (#10722)", () => {
+  // THE BUG THIS PINS. storage.list() is bounded, so a backlog past the limit
+  // comes back TRUNCATED -- and a flush that drained everything it LISTED still
+  // left rows behind. The alarm handler read `if (!outcome.ok)` and skipped the
+  // re-arm on that "success", while the only other path that could arm one (a
+  // later enqueue) was failing because deploys were resetting the Durable
+  // Object. The buffer stalled for 47 minutes with no alarm pending.
+
+  test("a full page reports remaining, so the caller re-arms", async () => {
+    const storage = fakeStorage();
+    for (let i = 0; i < FLUSH_LIST_LIMIT + 20; i += 1) {
+      await enqueueStatement(storage, stmt("neurons", `S${i}`), NOW);
+    }
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(out.ok, true, "the drain itself succeeded");
+    assert.equal(out.remaining, true, "but it did NOT drain everything");
+    assert.ok((await countPending(storage)) > 0, "rows are still buffered");
+  });
+
+  test("a drain that fits reports nothing remaining", async () => {
+    const storage = fakeStorage();
+    await enqueueStatement(storage, stmt("neurons", "A"), NOW);
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(out.remaining, false);
+    assert.equal(await countPending(storage), 0);
+  });
+
+  test("the alarm re-arms after a SUCCESSFUL but truncated drain", async () => {
+    // The exact regression: ok === true, work left, and previously no alarm.
+    const storage = fakeStorage();
+    const state = { storage, waitUntil() {} } as unknown as DurableObjectState;
+    const h = {
+      storage,
+      do: new NeonWriteBufferHub(state, {}),
+    };
+    for (let i = 0; i < FLUSH_LIST_LIMIT + 20; i += 1) {
+      await h.do.fetch(
+        new Request("https://neon-write-buffer/enqueue", {
+          method: "POST",
+          body: JSON.stringify(stmt("neurons", `S${i}`)),
+        }),
+      );
+    }
+    // Watch setAlarm rather than getAlarm: the enqueues already armed one, so
+    // reading getAlarm afterwards cannot distinguish "the drain re-armed" from
+    // "the enqueue's alarm is still there" -- and that ambiguity is exactly
+    // what let the missing re-arm look fine.
+    let reArmed = false;
+    storage.setAlarm = async () => {
+      reArmed = true;
+    };
+    await h.do.alarm();
+    assert.equal(
+      reArmed,
+      true,
+      "a drain that left work behind MUST schedule another",
+    );
   });
 });
