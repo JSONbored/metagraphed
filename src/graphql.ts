@@ -6271,11 +6271,20 @@ const rootValue = {
                   limit: safeLimit,
                   offset: safeOffset,
                 }),
+              // #10394: the network reaches the COLD leg too. It was passed to
+              // answerBlockDetail (which uses it to skip the mainnet-only hot
+              // tier) but not to the reader underneath, so `network: test`
+              // skipped mainnet's hot tier and then read mainnet's lakehouse --
+              // an answer labelled testnet built from mainnet rows. Hidden until
+              // now because the test asserted the path of a tier that never
+              // answered (#10190).
               cold: () =>
-                loadBlockExtrinsicsColdTier(context.env, ref, {
-                  limit: safeLimit,
-                  offset: safeOffset,
-                }),
+                loadBlockExtrinsicsColdTier(
+                  context.env,
+                  ref,
+                  { limit: safeLimit, offset: safeOffset },
+                  chainNetworkFromChainName(network),
+                ),
               isEmpty: isEmptyExtrinsicPayload,
             },
             // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --
@@ -6331,11 +6340,15 @@ const rootValue = {
                   limit: safeLimit,
                   offset: safeOffset,
                 }),
+              // #10394, same as block_extrinsics above: the cold leg needs the
+              // network or a testnet ref resolves out of mainnet's lakehouse.
               cold: () =>
-                loadBlockEventsColdTier(context.env, ref, {
-                  limit: safeLimit,
-                  offset: safeOffset,
-                }),
+                loadBlockEventsColdTier(
+                  context.env,
+                  ref,
+                  { limit: safeLimit, offset: safeOffset },
+                  chainNetworkFromChainName(network),
+                ),
               isEmpty: isEmptyEventPayload,
             },
             // Off mainnet `answerBlockDetail` skips the D1 hot tier entirely --

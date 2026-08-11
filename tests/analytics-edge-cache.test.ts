@@ -1027,9 +1027,7 @@ describe("analytics edge cache", () => {
     const cache = mockCaches();
     cache.install();
     const calls: unknown[] = [];
-    const env = storeUpstreamEnv(calls, {
-      body: { schema_version: 1, windows: { "7d": {}, "30d": {} } },
-    });
+    const env = storeUpstreamEnv(calls);
 
     let putAt: Promise<unknown> | null = null;
     const putCtx = {

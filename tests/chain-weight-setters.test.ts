@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { Row } from "./row-type.ts";
 import {
   forbiddenDataApi,
   lakehouse,
