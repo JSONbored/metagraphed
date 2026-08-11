@@ -25,7 +25,8 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mg-type-caption text-ink-muted">
         {profile.github_stars != null ? (
           <span className="inline-flex items-center gap-1.5">
-            <Star className="size-3.5" aria-hidden /> {profile.github_stars.toLocaleString()} stars
+            <Star className="size-3.5" aria-hidden /> {profile.github_stars.toLocaleString("en-US")}{" "}
+            stars
           </span>
         ) : null}
         {profile.github_last_push_at ? (
@@ -43,7 +44,7 @@ export function DevActivityPanel({ profile }: { profile?: SubnetProfile }) {
         <div className="mt-4">
           <BarMini
             data={weeks.map((w) => ({
-              label: new Date(w.week).toLocaleDateString(undefined, {
+              label: new Date(w.week).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
               }),

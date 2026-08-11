@@ -219,7 +219,7 @@ function CompareColumn({
           {values.length > 1 ? (
             <Sparkline
               values={values}
-              points={series.map((p) => ({ t: new Date(p.t).toLocaleTimeString(), v: p.v }))}
+              points={series.map((p) => ({ t: new Date(p.t).toLocaleTimeString("en-US"), v: p.v }))}
               width={240}
               height={36}
               color={healthColor(endpoint.health)}

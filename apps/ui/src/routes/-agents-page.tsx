@@ -41,9 +41,12 @@ export function AgentsPage() {
 /** The masthead's numbers, said once and out loud instead of buried mid-paragraph. */
 function StatRail({ res }: { res: AgentResources }) {
   const stats: { label: string; value: string }[] = [
-    { label: "Subnets covered", value: res.summary.subnet_count.toLocaleString() },
-    { label: "Callable services", value: res.summary.callable_service_count.toLocaleString() },
-    { label: "MCP tools", value: res.mcp.tools.length.toLocaleString() },
+    { label: "Subnets covered", value: res.summary.subnet_count.toLocaleString("en-US") },
+    {
+      label: "Callable services",
+      value: res.summary.callable_service_count.toLocaleString("en-US"),
+    },
+    { label: "MCP tools", value: res.mcp.tools.length.toLocaleString("en-US") },
   ];
   return (
     <div className="flex flex-wrap gap-x-8 gap-y-3 border-b border-border pb-6">

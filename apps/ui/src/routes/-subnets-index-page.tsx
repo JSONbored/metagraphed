@@ -2052,7 +2052,7 @@ function FinancialTrendCell({
         ? `${(n / 1_000_000).toFixed(2)}M`
         : n >= 1_000
           ? `${(n / 1_000).toFixed(1)}K`
-          : n.toLocaleString(undefined, { maximumFractionDigits: digits });
+          : n.toLocaleString("en-US", { maximumFractionDigits: digits });
     return `${compactNum} ${unit}`;
   };
   return (

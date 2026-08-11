@@ -621,7 +621,7 @@ function DataDisplaySection() {
           </div>
         </Show>
         <Show name="BarMini">
-          <BarMini data={BAR_DATA} showValue formatValue={(v) => v.toLocaleString()} />
+          <BarMini data={BAR_DATA} showValue formatValue={(v) => v.toLocaleString("en-US")} />
         </Show>
         <Show name="Donut, DonutLegend">
           <div className="flex items-center gap-4">

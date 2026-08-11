@@ -157,7 +157,7 @@ export function EndpointDetailDrawer({
             {latencyValues.length > 1 ? (
               <Sparkline
                 values={latencyValues}
-                points={series.map((p) => ({ t: new Date(p.t).toLocaleString(), v: p.v }))}
+                points={series.map((p) => ({ t: new Date(p.t).toLocaleString("en-US"), v: p.v }))}
                 width={560}
                 height={88}
                 color="var(--accent)"
@@ -180,7 +180,7 @@ export function EndpointDetailDrawer({
                   <div className="mg-label">{index === 0 ? "Latest" : `Prior ${index}`}</div>
                   <div className="mt-1 mg-type-data text-ink-strong">{Math.round(p.v)}ms</div>
                   <div className="mt-0.5 truncate mg-type-data-sm text-ink-muted">
-                    {new Date(p.t).toLocaleString()}
+                    {new Date(p.t).toLocaleString("en-US")}
                   </div>
                 </div>
               ))}
@@ -274,7 +274,9 @@ export function EndpointDetailDrawer({
                         </span>
                         <span className="flex items-center gap-1">
                           <span className="mg-type-data-sm text-ink-muted tabular-nums">
-                            {inc.started_at ? new Date(inc.started_at).toLocaleString() : "—"}
+                            {inc.started_at
+                              ? new Date(inc.started_at).toLocaleString("en-US")
+                              : "—"}
                           </span>
                           <CopyLinkButton
                             hash={`incident-${inc.id}`}
@@ -297,7 +299,7 @@ export function EndpointDetailDrawer({
                           {affected.length > 12 ? "…" : ""}
                         </a>
                         {inc.ended_at ? (
-                          <span>· ended {new Date(inc.ended_at).toLocaleString()}</span>
+                          <span>· ended {new Date(inc.ended_at).toLocaleString("en-US")}</span>
                         ) : (
                           <span className="text-health-warn-text">· active</span>
                         )}
