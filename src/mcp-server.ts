@@ -239,6 +239,7 @@ import {
   loadExtrinsicFeedColdTier,
 } from "./extrinsics-cold-tier.ts";
 import {
+  loadAccountPrometheusColdTier,
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
@@ -1325,6 +1326,7 @@ import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "./subnet-alpha-volume-artifact.ts";
 import {
+  CHAIN_PROMETHEUS_ROLLUP,
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
   CHAIN_STAKE_TRANSFERS_ROLLUP,
@@ -7438,7 +7440,21 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetPrometheus(null, netuid, { window })
+        )) ??
+        // #10322: same cold-tier rung as its REST and GraphQL twins.
+        (await loadSubnetEventCardColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetEventCardColdTier
+          >[0],
+          CHAIN_PROMETHEUS_ROLLUP,
+          netuid,
+          buildSubnetPrometheus,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_PROMETHEUS_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetPrometheus(null, netuid, { window })
       );
     },
   },
@@ -10337,7 +10353,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountPrometheus([], ss58, { window })
+        )?.data ??
+        // #10322: the cold-tier rung REST and GraphQL gained; without it this
+        // tool alone would answer a confident zero and the three surfaces
+        // would disagree on one event stream.
+        (await loadAccountPrometheusColdTier(ctx.env, ss58, { window }))
+          ?.data ??
+        buildAccountPrometheus([], ss58, { window })
       );
     },
   },

@@ -85,6 +85,12 @@ import {
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.ts";
 import {
+  buildAccountPrometheus,
+  PROMETHEUS_EVENT_KIND,
+  PROMETHEUS_WINDOWS,
+  DEFAULT_PROMETHEUS_WINDOW,
+} from "./account-prometheus.ts";
+import {
   buildValidatorNominators,
   DEFAULT_NOMINATOR_SORT,
   DEFAULT_NOMINATOR_WINDOW,
@@ -412,6 +418,44 @@ export async function loadAccountServingColdTier(
   if (rows === null) return null;
   return {
     data: buildAccountServing(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/**
+ * One account's per-subnet PrometheusServed footprint -- the telemetry
+ * companion to loadAccountServingColdTier above, same query shape, same
+ * hotkey-only attribution, differing only in event kind.
+ *
+ * #10322: this rung did not exist, so `/accounts/{ss58}/prometheus` bottomed
+ * out in `buildAccountPrometheus([])` for every account while the chain-level
+ * card answered from the same PrometheusServed stream.
+ */
+export async function loadAccountPrometheusColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountPrometheus>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(
+    PROMETHEUS_WINDOWS,
+    DEFAULT_PROMETHEUS_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE hotkey = '${addr}' AND event_kind = '${PROMETHEUS_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountPrometheus(rows, ss58, { window: label }),
     generatedAt: latestObservedIso(rows),
   };
 }
