@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -30,28 +31,26 @@ test("GET /blocks/{ref}/extrinsics?format=csv emits a header-only CSV for an emp
 });
 
 test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via the Postgres tier", async () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          data: {
-            block_number: Number(REF),
-            extrinsics: [
-              {
-                block_number: Number(REF),
-                extrinsic_index: 0,
-                signer: "5Signer",
-                call_module: "SubtensorModule",
-                call_function: "set_weights",
-                success: true,
-              },
-            ],
-          },
-        }),
+  // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // The per-block extrinsics come from the lakehouse, through the same builder --
+  // so the CSV below is produced from lakehouse rows exactly as in production.
+  const lake = lakehouse([
+    {
+      block_number: Number(REF),
+      extrinsic_index: 0,
+      extrinsic_hash: `0x${"a".repeat(64)}`,
+      signer: "5Signer",
+      call_module: "SubtensorModule",
+      call_function: "set_weights",
+      success: true,
+      fee_tao: 0,
+      tip_tao: 0,
+      call_args: null,
+      observed_at: 1_750_009_000_000,
     },
-  };
+  ]);
+  const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/extrinsics?format=csv`),
     env as unknown as Env,
@@ -66,6 +65,7 @@ test("GET /blocks/{ref}/extrinsics?format=csv exports the block's extrinsics via
     lines[1],
     /^8621331-0,8621331,5Signer,SubtensorModule,set_weights,/,
   );
+  lake.restore();
 });
 
 test("GET /blocks/{ref}/extrinsics rejects an invalid ?format with 400", async () => {
@@ -90,33 +90,24 @@ test("GET /blocks/{ref}/events?format=csv emits a header-only CSV for an empty b
 });
 
 test("GET /blocks/{ref}/events?format=csv exports the block's events via the Postgres tier", async () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          data: {
-            block_number: Number(REF),
-            events: [
-              {
-                block_number: Number(REF),
-                event_index: 0,
-                event_kind: "Transfer",
-                hotkey: "5Hot",
-                coldkey: "5Cold",
-                netuid: 1,
-                uid: 0,
-                amount_tao: 10.5,
-                alpha_amount: null,
-                observed_at: 1750000000000,
-                extrinsic_index: 0,
-              },
-            ],
-          },
-        }),
+  // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // The per-block events come from the lakehouse, through the same builder --
+  // so the CSV below is produced from lakehouse rows exactly as in production.
+  const lake = lakehouse([
+    {
+      block_number: Number(REF),
+      event_index: 0,
+      event_kind: "Transfer",
+      hotkey: "5Hot",
+      coldkey: "5Cold",
+      netuid: 1,
+      uid: 0,
+      amount_tao: 10.5,
+      observed_at: 1_750_009_000_000,
     },
-  };
+  ]);
+  const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req(`/api/v1/blocks/${REF}/events?format=csv`),
     env as unknown as Env,
@@ -128,6 +119,7 @@ test("GET /blocks/{ref}/events?format=csv exports the block's events via the Pos
   assert.equal(lines[0], EVENTS_CSV_HEADER);
   assert.equal(lines.length, 2);
   assert.match(lines[1], /^8621331,0,Transfer,5Hot,5Cold,1,0,10\.5,/);
+  lake.restore();
 });
 
 test("GET /blocks/{ref}/events rejects an invalid ?format with 400", async () => {
