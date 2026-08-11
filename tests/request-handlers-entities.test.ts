@@ -2730,7 +2730,11 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
   });
 
   test("handleAccountEvents serves the account feed from the lakehouse", async () => {
-    const q = lakeFetch([EVENT_ROW]);
+    // DISTINCT WINDOWS, not one response replayed. The reader steps down the
+    // block range until the page fills, and lakeFetch repeats its last response
+    // for every call -- so a single-element stub hands back the same row once
+    // per window, an arrangement no real lakehouse produces.
+    const q = lakeFetch([EVENT_ROW], []);
     const body = await json(
       await handleAccountEvents(
         req(`/api/v1/accounts/${ADDR}/events`),
@@ -2740,11 +2744,11 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
       ),
     );
     assert.equal(body.data.events.length, 1);
-    assert.match(q[0]!, /event_kind = 'StakeAdded'/);
-    assert.match(
-      q[0]!,
-      new RegExp(`hotkey = '${ADDR}' OR coldkey = '${ADDR}'`),
-    );
+    // BY CONTENT, NOT POSITION: the head read now precedes the account read.
+    const read = q.find((sql) => sql.includes("account_events"));
+    assert.ok(read, `no account_events read among ${q.length} queries`);
+    assert.match(read, /event_kind = 'StakeAdded'/);
+    assert.match(read, new RegExp(`hotkey = '${ADDR}' OR coldkey = '${ADDR}'`));
   });
 
   const COUNTERPARTY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";

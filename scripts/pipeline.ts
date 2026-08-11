@@ -123,6 +123,7 @@ function checkCommands(): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
+    step("validate:untyped-lakehouse-reads"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.
@@ -237,6 +238,7 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     // build artifacts.
     step("validate:ui-route-coverage"),
     step("validate:untyped-db-reads"),
+    step("validate:untyped-lakehouse-reads"),
     // Same shape, and it was in neither the pipeline nor CI until #10251: the
     // registry README's catalog section is generated, so a registry change
     // invalidates it without touching the README.

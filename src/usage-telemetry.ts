@@ -659,6 +659,11 @@ export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
   body_too_large: "validation",
   daily_quota: "rate_limited",
   method_not_allowed: "validation",
+  // A duplicate SSE stream on one session. `validation` rather than a 4xx
+  // bucket for the same reason method_not_allowed and bad_request are: this is
+  // OUR refusal of a caller's request, not an upstream's 4xx reaching us, and
+  // the caller fixes it by not opening a second stream.
+  stream_taken: "validation",
   unauthorized: "permission",
   // "This surface exists but declares no callable path/schema" — the caller
   // is missing context about the target, not sending bad syntax.

@@ -49,6 +49,7 @@ import {
   safeSs58Literal,
 } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
 import { ACCOUNT_EVENTS_COLUMNS } from "../generated/lakehouse/types.ts";
 import type { AccountEventsRow } from "../generated/lakehouse/types.ts";
 
@@ -61,6 +62,122 @@ const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 
 /** The 3-part key the account-events feed pages on, mirroring data-api. */
 const CURSOR_ARITY = 3;
+
+/**
+ * How many blocks the FIRST window of an account read covers.
+ *
+ * Measured end to end through the deployed Worker, `/accounts/{ss58}/events`
+ * for a busy account, edge cache defeated:
+ *
+ *   unbounded                        6.35s  6.01s
+ *   WHERE block_number >= head-68k   2.51s  1.76s
+ *
+ * ~3x, and the reason is that `account_events` is already clustered by block:
+ * the decoder appends in block order, so file min/max on `block_number` prunes
+ * well. The table was never the problem -- the query simply declined to use the
+ * clustering it already had, and scanned all 452M rows for every page.
+ *
+ * The same fix `chain-events-cold-tier.ts` documents (1.93 GB -> 15.8 MB), one
+ * table over. Partitioning would NOT have helped here: the predicate is
+ * `(hotkey = X OR coldkey = X)`, a disjunction across two columns, so bucketing
+ * on either one cannot prune -- a row matching the other side sits in any
+ * bucket.
+ */
+export const ACCOUNT_EVENTS_BLOCK_WINDOW = 250_000;
+
+/**
+ * How wide each successive window gets when a page has not filled.
+ *
+ * EXPONENTIAL, NOT A FIXED STEP, because account density varies by orders of
+ * magnitude. A validator has events in most blocks and fills its page from the
+ * first window; an address with nine lifetime events needs to reach back
+ * millions of blocks, and stepping 250k at a time would take 30+ queries to get
+ * there. Quadrupling reaches the full ~8.8M-block history in six.
+ */
+const WINDOW_GROWTH = 4;
+
+/** Hard stop, so a pathological read cannot walk forever. Six windows at this
+ * growth already spans the whole chain, so hitting this means the walk reached
+ * block 0 anyway. */
+const MAX_WINDOW_STEPS = 8;
+
+/**
+ * Read an account's events newest-first, widening the block window until the
+ * page fills.
+ *
+ * WHY THE WINDOWS ACCUMULATE RATHER THAN RE-QUERYING A WIDER RANGE. Each step
+ * scans only the slice below the last one, so the total scanned is the union
+ * rather than the sum of prefixes. Rows arrive block-descending within each
+ * slice and each slice is strictly below its predecessor, so concatenation is
+ * globally ordered -- no merge, no re-sort.
+ *
+ * THE EXTERNAL CONTRACT IS UNCHANGED, which is the whole reason for looping
+ * here instead of exposing a `next_before` the way the chain-events feed does.
+ * That feed can hand back a short page because its caller is walking a firehose
+ * and expects to keep asking; an account feed returning three events and
+ * "there might be more, ask again" would be a worse answer than the slow one it
+ * replaces.
+ */
+async function windowedAccountEventsRead(
+  env: Env | null | undefined,
+  {
+    where,
+    need,
+    ceiling,
+    network,
+  }: {
+    where: readonly string[];
+    need: number;
+    /** The cursor's block, or null to start from the lakehouse head. */
+    ceiling: number | null;
+    network?: ChainNetworkId;
+  },
+): Promise<AccountEventsRow[] | null> {
+  const table = chainTable("account_events", network);
+  const order = ` ORDER BY observed_at DESC, block_number DESC, event_index DESC`;
+
+  // The head is READ, never assumed -- the same rule chain-events states.
+  //
+  // BUT AN UNKNOWABLE HEAD FALLS BACK, it does not decline. chain-events can
+  // refuse there because a window IS its contract; here the window is only an
+  // optimization over a query that worked without one, so failing the read
+  // would trade a slow answer for no answer and invent a failure mode this
+  // route never had. No ceiling, no windowing, same unbounded query as before.
+  const head = ceiling ?? (await lakehouseHeadBlock(env, {}, network));
+  if (head === null || !Number.isFinite(head) || head < 0) {
+    return r2SqlQuery<AccountEventsRow>(
+      env,
+      `SELECT ${EVENT_COLUMNS} FROM ${table} WHERE ${where.join(" AND ")}` +
+        `${order} LIMIT ${need}`,
+    );
+  }
+  let top = head;
+
+  const collected: AccountEventsRow[] = [];
+  let window = ACCOUNT_EVENTS_BLOCK_WINDOW;
+  for (
+    let step = 0;
+    step < MAX_WINDOW_STEPS && collected.length < need;
+    step++
+  ) {
+    const floor = Math.max(0, top - window);
+    const slice = await r2SqlQuery<AccountEventsRow>(
+      env,
+      `SELECT ${EVENT_COLUMNS} FROM ${table} WHERE ${where.join(" AND ")}` +
+        ` AND block_number >= ${floor} AND block_number <= ${top}` +
+        `${order} LIMIT ${need - collected.length}`,
+    );
+    // A failed slice fails the read. Returning what landed so far would publish
+    // a page that is short for a reason the caller cannot see, which is the
+    // silently-truncated answer this whole family declines rather than serves.
+    if (slice === null) return null;
+    collected.push(...slice);
+    if (floor === 0) break;
+    top = floor - 1;
+    window *= WINDOW_GROWTH;
+  }
+  return collected;
+}
 
 export interface AccountEventsQuery {
   limit: number;
@@ -121,12 +238,12 @@ export async function loadAccountEventsColdTier(
 
   // Cursor pages never carry an offset, mirroring data-api.
   const paged = cursor ? 0 : offset;
-  const rows = await r2SqlQuery<AccountEventsRow>(
-    env,
-    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
-      ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
-      ` LIMIT ${limit + paged}`,
-  );
+  const rows = await windowedAccountEventsRead(env, {
+    where,
+    need: limit + paged,
+    ceiling: cursor ? (cursor[1] as number) : null,
+    network,
+  });
   if (rows === null) return null;
 
   const page = paged > 0 ? rows.slice(paged) : rows;
