@@ -13126,7 +13126,14 @@
             ]
           },
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "dominant_netuid": {
             "anyOf": [
@@ -13735,7 +13742,14 @@
             ]
           },
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "derivation": {
             "$ref": "#/components/schemas/DeregistrationDerivation"
@@ -15494,7 +15508,14 @@
             "description": "Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements."
           },
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "dominant_netuid": {
             "anyOf": [
@@ -18980,10 +19001,24 @@
                   ]
                 },
                 "title": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "url": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -20990,7 +21025,14 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "intensity_distribution": {
             "anyOf": [
@@ -21382,8 +21424,15 @@
             ]
           },
           "emission": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
-            "description": "Raw emission concentration across every neuron network-wide."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Raw emission concentration across every neuron network-wide; null on a cold or all-zero store."
           },
           "entity_count": {
             "description": "Distinct controlling entities (coldkeys) network-wide, collapsed across subnets.",
@@ -21392,11 +21441,25 @@
             "type": "integer"
           },
           "entity_emission": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Emission concentration per controlling entity -- hotkeys collapsed across subnets."
           },
           "entity_stake": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Stake concentration per controlling entity -- hotkeys collapsed across subnets, so one operator counts once."
           },
           "neuron_count": {
@@ -21410,8 +21473,15 @@
             "type": "integer"
           },
           "stake": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
-            "description": "Raw stake concentration across every neuron network-wide."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Raw stake concentration across every neuron network-wide; null on a cold or all-zero store."
           },
           "subnet_count": {
             "description": "Distinct subnets the snapshot spans.",
@@ -21431,8 +21501,15 @@
             "description": "UIDs per controlling entity network-wide -- a consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many). Null when no entities."
           },
           "validator_stake": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
-            "description": "Stake concentration across permitted validators network-wide only."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stake concentration across permitted validators network-wide only; null when no permitted validator carries stake."
           }
         },
         "required": [
@@ -22084,7 +22161,14 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "derivation": {
             "$ref": "#/components/schemas/DeregistrationDerivation"
@@ -22680,12 +22764,26 @@
                   "type": "integer"
                 },
                 "total_fee_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "total_tip_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -22737,12 +22835,26 @@
                   "type": "string"
                 },
                 "total_fee_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "total_tip_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -23509,15 +23621,36 @@
             ]
           },
           "consensus": {
-            "$ref": "#/components/schemas/ScoreDistribution",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Consensus score spread across all neurons network-wide."
           },
           "dividends": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Dividends concentration across permitted validators network-wide only."
           },
           "incentive": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Incentive concentration across all neurons network-wide with positive incentive."
           },
           "neuron_count": {
@@ -23537,7 +23670,14 @@
             "type": "integer"
           },
           "trust": {
-            "$ref": "#/components/schemas/ScoreDistribution",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Trust score spread across all neurons network-wide."
           },
           "validator_count": {
@@ -23546,7 +23686,14 @@
             "type": "integer"
           },
           "validator_trust": {
-            "$ref": "#/components/schemas/ScoreDistribution",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "description": "Validator-trust score spread across permitted validators network-wide only."
           }
         },
@@ -23565,7 +23712,14 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "intensity_distribution": {
             "anyOf": [
@@ -24381,8 +24535,16 @@
                   "description": "Total fees paid across the window's extrinsics; null when the tier has no fee data."
                 },
                 "total_tip_tao": {
-                  "minimum": 0,
-                  "type": "number"
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Total tips paid across the window's extrinsics; null when the tier has no fee data."
                 },
                 "tx_count": {
                   "maximum": 9007199254740991,
@@ -28506,7 +28668,14 @@
             "type": "array"
           },
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "field_sources": {
             "additionalProperties": {
@@ -41366,7 +41535,14 @@
             "type": "integer"
           },
           "source": {
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "summary": {
             "additionalProperties": {},
@@ -42925,10 +43101,24 @@
                   ]
                 },
                 "title": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "type": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "url": {
                   "anyOf": [
@@ -43505,7 +43695,14 @@
         "additionalProperties": false,
         "properties": {
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "distinct_removers": {
             "maximum": 9007199254740991,
@@ -44437,7 +44634,14 @@
         "description": "Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
         "properties": {
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "deregistrations": {
             "maximum": 9007199254740991,
@@ -50007,12 +50211,26 @@
             ]
           },
           "consensus": {
-            "$ref": "#/components/schemas/ScoreDistribution",
-            "description": "Consensus score spread across all neurons."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Consensus score spread across all neurons; null when none carries a finite consensus."
           },
           "dividends": {
-            "$ref": "#/components/schemas/ConcentrationMetrics",
-            "description": "Dividends concentration across permitted validators only."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConcentrationMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dividends concentration across permitted validators only; null when no permitted validator earns any."
           },
           "incentive": {
             "anyOf": [
@@ -50041,8 +50259,15 @@
             "type": "integer"
           },
           "trust": {
-            "$ref": "#/components/schemas/ScoreDistribution",
-            "description": "Trust score spread across all neurons."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trust score spread across all neurons; null when none carries a finite trust."
           },
           "validator_count": {
             "maximum": 9007199254740991,
@@ -50050,8 +50275,15 @@
             "type": "integer"
           },
           "validator_trust": {
-            "$ref": "#/components/schemas/ScoreDistribution",
-            "description": "Validator-trust score spread across permitted validators only."
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScoreDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Validator-trust score spread across permitted validators only; null when none carries a finite value."
           }
         },
         "required": [
@@ -51307,7 +51539,14 @@
             ]
           },
           "degraded": {
-            "$ref": "#/components/schemas/DegradedInfo"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DegradedInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "distinct_exporters": {
             "maximum": 9007199254740991,

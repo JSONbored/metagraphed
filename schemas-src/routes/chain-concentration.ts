@@ -28,20 +28,31 @@ export const ChainConcentrationArtifactSchema = z
         "UIDs per controlling entity network-wide -- a consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many). Null when no entities.",
       ),
     captured_at: z.string().nullable(),
-    stake: ConcentrationMetricsSchema.describe(
-      "Raw stake concentration across every neuron network-wide.",
+    // NULLABLE, and this card's own description already said so -- "Metric
+    // blocks are null on a cold/empty store" -- while all five promised
+    // non-null (#10786).
+    //
+    // The PRODUCER is right. `computeConcentration` (src/concentration.ts)
+    // returns `ConcentrationScorecard | null` and answers null when no value in
+    // the population is positive, so a cold store or an all-zero network has no
+    // scorecard to report. The HISTORY variant of this same card
+    // (chain-concentration-history.ts) has carried `.nullable()` on all five
+    // since it was written -- one shape, two schemas, and only one of them
+    // true.
+    stake: ConcentrationMetricsSchema.nullable().describe(
+      "Raw stake concentration across every neuron network-wide; null on a cold or all-zero store.",
     ),
-    emission: ConcentrationMetricsSchema.describe(
-      "Raw emission concentration across every neuron network-wide.",
+    emission: ConcentrationMetricsSchema.nullable().describe(
+      "Raw emission concentration across every neuron network-wide; null on a cold or all-zero store.",
     ),
-    entity_stake: ConcentrationMetricsSchema.describe(
+    entity_stake: ConcentrationMetricsSchema.nullable().describe(
       "Stake concentration per controlling entity -- hotkeys collapsed across subnets, so one operator counts once.",
     ),
-    entity_emission: ConcentrationMetricsSchema.describe(
+    entity_emission: ConcentrationMetricsSchema.nullable().describe(
       "Emission concentration per controlling entity -- hotkeys collapsed across subnets.",
     ),
-    validator_stake: ConcentrationMetricsSchema.describe(
-      "Stake concentration across permitted validators network-wide only.",
+    validator_stake: ConcentrationMetricsSchema.nullable().describe(
+      "Stake concentration across permitted validators network-wide only; null when no permitted validator carries stake.",
     ),
   })
   .passthrough()

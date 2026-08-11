@@ -76,7 +76,7 @@ export const ChainAxonRemovalsArtifactSchema = z
     ),
     // #9307: AxonInfoRemoved has never been emitted, so the empty answer this
     // route can only ever give is not a measurement.
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type ChainAxonRemovalsArtifact = z.infer<
@@ -143,7 +143,7 @@ export const ChainDeregistrationsArtifactSchema = z
     // #9307: derived from UID reuse, with the derivation's own lower-bound
     // statement; `degraded` when nothing derived it.
     derivation: DeregistrationDerivationSchema.optional(),
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type ChainDeregistrationsArtifact = z.infer<
@@ -190,7 +190,7 @@ export const ChainPrometheusArtifactSchema = z
     ),
     // #9307: the chain emits PrometheusServed and our account_events curation
     // drops it, so the empty answer is not a measurement.
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type ChainPrometheusArtifact = z.infer<

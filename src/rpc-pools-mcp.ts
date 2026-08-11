@@ -17,6 +17,7 @@ import {
   ListRpcPoolsOutputSchema,
 } from "../schemas-src/mcp-tools/registry-catalogs-2.ts";
 import { inputJsonSchema, outputJsonSchema } from "./mcp-input-schema.ts";
+import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 
 export const RPC_POOLS_ARTIFACT = "/metagraph/rpc/pools.json";
 
@@ -211,7 +212,7 @@ export async function loadRpcPoolsList(
   ) {
     overlaid = {
       ...overlaid,
-      source: "live-cron-prober",
+      source: LIVE_CRON_PROBER,
       operational_observed_at: livePool.last_run_at || null,
       pools: (overlaid.pools as Row[]).map((pool) =>
         overlayRpcPoolEligibility(pool, livePool),

@@ -39,6 +39,7 @@
 // network call inside the build would end that — the store read is
 // credential-gated for exactly that reason.
 
+import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 /** One surface's probe record, as snapshotted from the uptime endpoint. */
 export interface SurfaceProbeRecord {
   /** Distinct UTC days that carry at least one probe sample. */
@@ -244,7 +245,7 @@ export function probeVerificationBlock(verdict: VerificationVerdict): {
   if (!verdict.verified || !verdict.verifiedAt) return null;
   return {
     verified_at: verdict.verifiedAt,
-    method: "live-cron-prober",
+    method: LIVE_CRON_PROBER,
     evidence: verdict.reason,
   };
 }
@@ -315,7 +316,7 @@ export interface SurfaceHealthArtifact {
   schema_version: 1;
   generated_at: string;
   notes: string;
-  source: "live-cron-prober";
+  source: typeof LIVE_CRON_PROBER;
   subnets_reached: number;
   subnets_total: number;
   surface_count: number;
@@ -363,7 +364,7 @@ export function buildSurfaceHealthArtifact({
       "Per-surface probe evidence from the live cron prober, snapshotted for " +
       "deterministic Git review. Consumed by scripts/lib.ts flattenSurfaces to " +
       "derive machine verification; see src/surface-verification.ts for the bar.",
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     subnets_reached: subnetsReached,
     subnets_total: subnetsTotal,
     surface_count: surfaceIds.length,

@@ -31,7 +31,7 @@ export const SubnetAxonRemovalsArtifactSchema = z
     removals_per_remover: z.number().min(0).nullable(),
     // #9307: AxonInfoRemoved has never been emitted, so this card's zero has
     // never measured this subnet.
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type SubnetAxonRemovalsArtifact = z.infer<
@@ -88,7 +88,7 @@ export const SubnetDeregistrationsArtifactSchema = z
     // #9307: derived from UID reuse out of the same projection rows the chain
     // leaderboard ranks; `degraded` when nothing derived it.
     derivation: DeregistrationDerivationSchema.optional(),
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(

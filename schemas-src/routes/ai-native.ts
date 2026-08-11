@@ -21,7 +21,14 @@ export const AskCitationSchema = z
   .object({
     ref: z.int().min(1),
     score: z.number(),
-    title: z.string(),
+    // THE SIBLINGS #9903 missed (#10786). It made `netuid` and `slug` nullable
+    // for the provider-document case and left `title`/`url` promising a string,
+    // while the producer writes `?? null` on all four from ONE read: the hit is
+    // built from Vectorize METADATA, which is `Record<string, unknown>` on the
+    // way back and written from an `EmbeddableDoc` whose every field is
+    // optional. A value that round-trips through an untyped store cannot be
+    // promised by the thing reading it.
+    title: z.string().nullable(),
     // NULL for a provider document (#9903). The retrieval index holds three
     // kinds of document -- subnets, their surfaces, and the PROVIDER teams
     // behind them -- and a team is not a subnet, so it has neither. Declared
@@ -31,7 +38,7 @@ export const AskCitationSchema = z
     // catching up, not a loosening.
     netuid: z.int().min(0).nullable(),
     slug: z.string().nullable(),
-    url: z.string(),
+    url: z.string().nullable(),
   })
   .strict();
 
@@ -67,10 +74,12 @@ export const SemanticSearchResultSchema = z
      * team behind them). The third case is why the two fields below are
      * nullable: a team has no netuid and no slug (#9903).
      */
-    type: z.string(),
+    // Same Vectorize round-trip as the citation above, same four fields, and
+    // the same two were left non-null (#10786).
+    type: z.string().nullable(),
     netuid: z.int().min(0).nullable(),
     slug: z.string().nullable(),
-    title: z.string(),
+    title: z.string().nullable(),
     subtitle: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
     categories: z.array(z.string()),

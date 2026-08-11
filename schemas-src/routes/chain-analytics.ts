@@ -84,7 +84,18 @@ const ChainSignerEntrySchema = z
       .describe(
         "Total fees paid across the window's extrinsics; null when the tier has no fee data.",
       ),
-    total_tip_tao: z.number().min(0),
+    // THE SIBLING, and it is the whole shape of this issue (#10786). The line
+    // above already answers null "when the tier has no fee data" -- the tip
+    // comes from the SAME tier read, so it has the same answer and promised
+    // non-null anyway. Fixing one field of a fallback and not its siblings is
+    // how a zeroed card keeps one live over-promise.
+    total_tip_tao: z
+      .number()
+      .min(0)
+      .nullable()
+      .describe(
+        "Total tips paid across the window's extrinsics; null when the tier has no fee data.",
+      ),
     last_tx_block: z.int().nullable(),
   })
   .strict()
@@ -114,10 +125,13 @@ const ChainFeeDaySchema = z
     day: z.string(),
     extrinsic_count: z.int().min(0),
     signed_extrinsic_count: z.int().min(0),
-    total_fee_tao: z.number().min(0),
+    // The avg/median pair beside each total has always been nullable; the
+    // totals were not, and the producer writes `?? null` on all six from one
+    // degraded read (src/graphql.ts `chain_fees`). One row, one answer.
+    total_fee_tao: z.number().min(0).nullable(),
     avg_fee_tao: z.number().min(0).nullable(),
     median_fee_tao: z.number().min(0).nullable(),
-    total_tip_tao: z.number().min(0),
+    total_tip_tao: z.number().min(0).nullable(),
     avg_tip_tao: z.number().min(0).nullable(),
     median_tip_tao: z.number().min(0).nullable(),
   })
@@ -129,8 +143,9 @@ const ChainFeeDaySchema = z
 const ChainFeePayerSchema = z
   .object({
     signer: z.string(),
-    total_fee_tao: z.number().min(0),
-    total_tip_tao: z.number().min(0),
+    // Same degraded read as the daily row above, same two fields.
+    total_fee_tao: z.number().min(0).nullable(),
+    total_tip_tao: z.number().min(0).nullable(),
     extrinsic_count: z.int().min(0),
   })
   .strict()

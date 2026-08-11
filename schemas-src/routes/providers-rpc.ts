@@ -433,7 +433,18 @@ export const RpcUsageArtifactSchema = z
         "When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.",
       )
       .meta({ examples: [1786099339000] }),
-    source: z.string(),
+    // NULLABLE because production answers null RIGHT NOW (#10786). Verified
+    // live: GET /api/v1/rpc-usage serves `"source": null`, while this line
+    // promised a string -- a published non-null field the route has never
+    // filled. `answerRpcUsage` (src/rpc-usage-answer.ts) stamps no source at
+    // all, unlike its health siblings in src/health-serving.ts, which set one
+    // unconditionally.
+    //
+    // The PRODUCER is the one that cannot answer here, so the schema is what
+    // moves. Giving the answer a label would be inventing provenance for a
+    // read that composes a hot tier, a cold tier and a floor -- and this
+    // surface's rule is that provenance is derived, never asserted.
+    source: z.string().nullable(),
     coverage: RpcUsageCoverageSchema.describe(
       "What the answer is actually about, as opposed to what window was asked for.",
     ),

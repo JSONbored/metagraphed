@@ -57,7 +57,7 @@ export const CrowdloansArtifactSchema = z
     // read, so its presence is the signal -- the same discipline the sibling
     // /crowdloans/{id} already uses with `exists: null`, and the list route was
     // the outlier.
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .passthrough();
 export type CrowdloansArtifact = z.infer<typeof CrowdloansArtifactSchema>;

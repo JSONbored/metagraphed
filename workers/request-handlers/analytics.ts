@@ -120,6 +120,7 @@ import { loadChainStakeTransfersFromArtifact } from "../../src/chain-stake-trans
 import { loadChainTransferPairsFromArtifact } from "../../src/chain-transfer-pairs-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-artifact.ts";
 import { buildChainAlphaVolume } from "../../src/chain-alpha-volume.ts";
+import { LIVE_CRON_PROBER } from "../../src/field-provenance.ts";
 
 // The shape of the api.ts-local in-isolate memoized KV read (see
 // configureAnalytics below) -- loose on the return value beyond `last_run_at`
@@ -458,7 +459,7 @@ async function analyticsMeta(
     // Canonical human-facing freshness, consistent with the artifact routes and
     // handleHealthTrends (generated_at is a deterministic build marker per #349).
     published_at: await publishedAt(env),
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
   };
 }
 
@@ -706,7 +707,7 @@ export async function handleBulkHealthTrends(
             contract_version: contractVersion(env),
             generated_at: data.observed_at,
             published_at: await publishedAt(env),
-            source: "live-cron-prober",
+            source: LIVE_CRON_PROBER,
           },
         },
         "short",
@@ -768,7 +769,7 @@ export async function handleHealthTrends(
           contract_version: contractVersion(env),
           generated_at: data.observed_at,
           published_at: await publishedAt(env),
-          source: "live-cron-prober",
+          source: LIVE_CRON_PROBER,
         },
       },
       "short",

@@ -30,18 +30,36 @@ export const SubnetPerformanceArtifactSchema = z
     incentive: ConcentrationMetricsSchema.nullable().describe(
       "Incentive concentration across all neurons with positive incentive; null when none carry any.",
     ),
-    dividends: ConcentrationMetricsSchema.describe(
-      "Dividends concentration across permitted validators only.",
+    // NULLABLE for the same reason `incentive` is, and this card's own
+    // description already said so -- "Metric blocks are null on a cold/empty
+    // subnet" -- while four of the five promised non-null (#10786).
+    //
+    // The PRODUCER is right and the schema was wrong. `computeConcentration`
+    // returns `ConcentrationScorecard | null` and answers null when no value in
+    // the population is positive; `scoreDistribution` returns
+    // `ScoreDistribution | null` and answers null when no cell is finite.
+    // src/subnet-performance.ts says it at the top of the file: "Null-safe by
+    // design: an empty / all-zero distribution yields a schema-stable null
+    // block". A subnet with no permitted validator earning dividends is an
+    // ordinary state, not a degraded one.
+    //
+    // Only `incentive` had been fixed, which is the sibling-cluster shape this
+    // issue exists to stop chasing one field at a time: they are one fallback,
+    // not five findings.
+    dividends: ConcentrationMetricsSchema.nullable().describe(
+      "Dividends concentration across permitted validators only; null when no permitted validator earns any.",
     ),
-    trust: ScoreDistributionSchema.describe(
-      "Trust score spread across all neurons.",
+    trust: ScoreDistributionSchema.nullable().describe(
+      "Trust score spread across all neurons; null when none carries a finite trust.",
     ),
-    consensus: ScoreDistributionSchema.describe(
-      "Consensus score spread across all neurons.",
+    consensus: ScoreDistributionSchema.nullable().describe(
+      "Consensus score spread across all neurons; null when none carries a finite consensus.",
     ),
-    validator_trust: ScoreDistributionSchema.optional().describe(
-      "Validator-trust score spread across permitted validators only.",
-    ),
+    validator_trust: ScoreDistributionSchema.nullable()
+      .optional()
+      .describe(
+        "Validator-trust score spread across permitted validators only; null when none carries a finite value.",
+      ),
   })
   .passthrough()
   .describe(

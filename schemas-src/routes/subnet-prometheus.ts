@@ -19,7 +19,7 @@ export const SubnetPrometheusArtifactSchema = z
     announcements_per_exporter: z.number().min(0).nullable(),
     // #9307: the chain emits PrometheusServed and our account_events curation
     // drops all 18,041 of them, so this card's zero is "we could not look".
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict()
   .describe(
