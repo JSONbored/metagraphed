@@ -411,6 +411,7 @@ import {
 } from "./chain-firehose-hub.ts";
 import { McpSessionHub } from "./mcp-session-hub.ts";
 import { AlerterHub } from "./alerter-hub.ts";
+import { NeonWriteBufferHub } from "./neon-write-buffer-hub.ts";
 import { SubnetStatusHub } from "./subnet-status-hub.ts";
 import {
   handleFeedRequest,
@@ -2093,7 +2094,13 @@ export async function handleWebhookQueue(
 // classes defined in chain-firehose-hub.ts/mcp-session-hub.ts is what
 // makes the "durable_objects"/"migrations" bindings in wrangler.jsonc
 // resolvable.
-export { ChainFirehoseHub, McpSessionHub, AlerterHub, SubnetStatusHub };
+export {
+  ChainFirehoseHub,
+  McpSessionHub,
+  AlerterHub,
+  SubnetStatusHub,
+  NeonWriteBufferHub,
+};
 
 // The staged-artifact loaders (request-handlers/staging.mjs, #1763) are fully
 // retired: loadStagedNeurons/Events/Blocks/Extrinsics went alongside their D1

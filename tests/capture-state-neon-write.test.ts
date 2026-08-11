@@ -122,3 +122,136 @@ describe("raw_capture_state", () => {
     assert.equal(out.result, undefined);
   });
 });
+
+describe("the write-behind buffer seam (#10659)", () => {
+  /** A DO namespace double that records what the lane enqueued. */
+  function bufferNamespace(status = 200) {
+    const sent: unknown[] = [];
+    return {
+      sent,
+      NEON_WRITE_BUFFER: {
+        idFromName: (name: string) => name,
+        get: () => ({
+          async fetch(request: Request) {
+            sent.push(await request.json());
+            return new Response("{}", { status });
+          },
+        }),
+      },
+    };
+  }
+
+  test("an UNFLAGGED lane still opens its own connection", async () => {
+    // The flag defaults empty, so the deploy that introduces buffering must
+    // change nothing until a lane is named.
+    const ns = bufferNamespace();
+    const rec = recordingSql();
+    await mirrorBlocksHeadToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
+        HYPERDRIVE: HD,
+        ...ns,
+      },
+      ctx,
+      block,
+      { sql: rec.sql },
+    );
+    assert.equal(rec.calls.length, 1);
+    assert.deepEqual(ns.sent, []);
+  });
+
+  test("a FLAGGED lane enqueues instead of writing", async () => {
+    const ns = bufferNamespace();
+    await mirrorBlocksHeadToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
+        HYPERDRIVE: HD,
+        ...ns,
+      },
+      ctx,
+      block,
+      {},
+    );
+    assert.equal(ns.sent.length, 1);
+    const sent = ns.sent[0] as {
+      lane: string;
+      text: string;
+      values: unknown[];
+    };
+    assert.equal(sent.lane, BLOCKS_HEAD_NEON_LANE);
+    // The SAME statement the direct path would have run -- buffering must not
+    // reshape the write, only defer it.
+    assert.match(sent.text, /INSERT INTO blocks_head/);
+    assert.equal(sent.values[0], 10);
+  });
+
+  test("a refused enqueue costs the lane a stale verdict, not silence", async () => {
+    // Backpressure has to be visible. The lane's own record() turns the throw
+    // into the verdict; swallowing it would let the buffer fill while every
+    // lane reported ok.
+    const ns = bufferNamespace(503);
+    const out = await mirrorBlocksHeadToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
+        HYPERDRIVE: HD,
+        ...ns,
+      },
+      ctx,
+      block,
+      {},
+    );
+    assert.equal(out.result?.ok, false);
+    assert.match(String(out.result?.reason), /buffer refused/);
+  });
+});
+
+describe("the buffer seam degrades safely", () => {
+  test("a flagged lane with NO buffer binding still writes directly", async () => {
+    // Flag on, binding absent -- a config half-applied. Falling through to the
+    // direct connection keeps the rows landing; refusing here would drop
+    // capture data over a missing binding, which is the wrong direction.
+    const rec = recordingSql();
+    await mirrorBlocksHeadToNeon(
+      {
+        NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE,
+        NEON_WRITE_BUFFER_LANES: BLOCKS_HEAD_NEON_LANE,
+        HYPERDRIVE: HD,
+      },
+      ctx,
+      block,
+      { sql: rec.sql },
+    );
+    assert.equal(rec.calls.length, 1);
+    assert.match(rec.calls[0].text, /INSERT INTO blocks_head/);
+  });
+});
+
+describe("the runner's unbound cases", () => {
+  test("a bound Hyperdrive with no ctx is unbound, not a crash", async () => {
+    // createPgSql needs somewhere to park its teardown. Without a ctx there is
+    // no runner to build, and the lane must say so rather than throw.
+    const out = await mirrorBlocksHeadToNeon(
+      { NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE, HYPERDRIVE: HD },
+      null,
+      block,
+      {},
+    );
+    assert.equal(out.attempted, true);
+    assert.equal(out.result, undefined);
+  });
+});
+
+describe("no store bound at all", () => {
+  test("an enabled lane with no Hyperdrive is a MISCONFIGURATION, and says so", async () => {
+    const out = await mirrorBlocksHeadToNeon(
+      { NEON_DUAL_WRITE_LANES: BLOCKS_HEAD_NEON_LANE },
+      ctx,
+      block,
+      {},
+    );
+    assert.equal(out.attempted, true);
+    assert.equal(out.result, undefined);
+  });
+});

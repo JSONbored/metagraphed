@@ -872,6 +872,13 @@
       // file's own header comment for why this is a SEPARATE DO from
       // ChainFirehoseHub rather than a fourth connection population on it.
       { "name": "MCP_SESSION_HUB", "class_name": "McpSessionHub" },
+      // #10659: the Neon write-behind buffer, a SINGLETON like the hubs above
+      // (idFromName("global")). Singleton is load-bearing rather than
+      // conventional here -- the whole saving comes from every lane's writes
+      // landing in ONE flush, and a second instance would mean a second alarm
+      // drifting apart from the first, waking the compute twice per window.
+      // See workers/neon-write-buffer-hub.ts.
+      { "name": "NEON_WRITE_BUFFER", "class_name": "NeonWriteBufferHub" },
       // #4984 Part 2: the alerter evaluator, a SINGLETON (idFromName("global"),
       // like ChainFirehoseHub itself) -- pinged unconditionally on every
       // broadcast(), unlike McpSessionHub's per-session Set, since there is
@@ -908,6 +915,10 @@
     {
       "tag": "v4-subnet-status-hub",
       "new_sqlite_classes": ["SubnetStatusHub"],
+    },
+    {
+      "tag": "v5-neon-write-buffer-hub",
+      "new_sqlite_classes": ["NeonWriteBufferHub"],
     },
   ],
   // Cron prober: every 15 minutes probes the operational surfaces into D1/KV
