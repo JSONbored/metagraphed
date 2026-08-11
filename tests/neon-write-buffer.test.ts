@@ -21,7 +21,9 @@ import {
   FLUSH_INTERVAL_MS,
   groupChunkKeys,
   joinPayload,
+  MAX_BUFFERED_PAYLOAD_BYTES,
   MAX_BUFFERED_STATEMENTS,
+  payloadBytes,
   NEVER_BUFFER_LANES,
   neonWriteBufferEnabled,
   neonWriteBufferLanes,
@@ -568,5 +570,81 @@ describe("a non-Error throw from the stub", () => {
       ENQUEUE_ATTEMPTS,
       "classified as transient, so retried",
     );
+  });
+});
+
+describe("oversized statements go direct, not into DO storage (#10744)", () => {
+  const HD = { connectionString: "postgresql://x" };
+  const CTX = { waitUntil: () => undefined };
+
+  function seam() {
+    const enqueued: unknown[] = [];
+    const direct: string[] = [];
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({
+        async fetch(request: Request) {
+          enqueued.push(await request.json());
+          return new Response("{}", { status: 200 });
+        },
+      }),
+    };
+    return { enqueued, direct, ns };
+  }
+
+  test("a SMALL statement is buffered -- that is the whole point", async () => {
+    const s = seam();
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: s.ns, NEON_WRITE_BUFFER_LANES: "neurons" },
+      CTX,
+      "neurons",
+      HD,
+    );
+    await sql?.unsafe("INSERT INTO neurons VALUES ($1)", [1]);
+    assert.equal(s.enqueued.length, 1);
+  });
+
+  test("an OVERSIZED statement bypasses the buffer entirely", async () => {
+    // DO storage rejected these outright in production -- "Internal error in
+    // Durable Object storage caused object to be reset" -- and no retry helps,
+    // because the platform is refusing the shape rather than failing
+    // transiently. It must never reach storage at all.
+    const s = seam();
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: s.ns, NEON_WRITE_BUFFER_LANES: "neurons" },
+      CTX,
+      "neurons",
+      HD,
+    );
+    const huge = "x".repeat(MAX_BUFFERED_PAYLOAD_BYTES + 1);
+    // The direct runner is a real createPgSql against an unusable host, so the
+    // proof is that it TRIED to connect rather than enqueueing.
+    await assert.rejects(() => sql!.unsafe(`INSERT INTO t VALUES ('${huge}')`));
+    assert.deepEqual(s.enqueued, [], "nothing may reach DO storage");
+  });
+
+  test("the cap is measured in BYTES, not code units", async () => {
+    // A multi-byte payload just under the cap in characters is over it in
+    // bytes. Counting characters would let exactly the payloads this exists to
+    // stop straight through.
+    const twoByte = "τ".repeat(MAX_BUFFERED_PAYLOAD_BYTES - 100);
+    assert.ok(payloadBytes(twoByte) > MAX_BUFFERED_PAYLOAD_BYTES);
+    assert.ok(twoByte.length < MAX_BUFFERED_PAYLOAD_BYTES);
+  });
+
+  test("with NO direct runner an oversized statement still buffers", async () => {
+    // Nothing to fall back to. Buffering and failing loudly at the enqueue
+    // beats silently dropping a capture row.
+    const s = seam();
+    const sql = neonWriteRunner(
+      { NEON_WRITE_BUFFER: s.ns, NEON_WRITE_BUFFER_LANES: "neurons" },
+      null,
+      "neurons",
+      undefined,
+    );
+    await sql?.unsafe(
+      `INSERT INTO t VALUES ('${"x".repeat(MAX_BUFFERED_PAYLOAD_BYTES + 1)}')`,
+    );
+    assert.equal(s.enqueued.length, 1);
   });
 });

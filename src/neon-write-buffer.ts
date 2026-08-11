@@ -359,6 +359,35 @@ const TRANSIENT_STUB_ERROR =
 export const ENQUEUE_ATTEMPTS = 3;
 
 /**
+ * The largest statement that may be buffered. Anything bigger goes DIRECT.
+ *
+ * WHY A CAP EXISTS AT ALL (#10744). Durable Object storage rejected the bulk
+ * writes outright -- "Internal error in Durable Object storage caused object to
+ * be reset" in production on 2026-08-11 -- and no retry helps, because the
+ * platform is refusing the shape rather than failing transiently. A neuron or
+ * account-position upsert is thousands of rows and megabytes of JSON; chunking
+ * it into 96 KiB values and committing them in one put() is simply more than
+ * that store wants to hold at once.
+ *
+ * 64 KiB, AND THE NUMBER MATTERS LESS THAN THE SPLIT IT CREATES. The buffer
+ * exists to collapse FREQUENT writes -- tao_usd_index every 60s, the ledger
+ * lanes every few seconds -- and every one of those is small. The megabyte
+ * upserts are the infrequent ones: neurons every 15 minutes. Sending those
+ * direct costs one connection per quarter hour and removes the entire class of
+ * failure, while the writes that actually pin the compute still batch.
+ *
+ * MEASURED IN BYTES, not rows or characters: an SS58 address is ASCII but a
+ * subnet name need not be, and a cap counted in code units would let a
+ * multi-byte payload past it.
+ */
+export const MAX_BUFFERED_PAYLOAD_BYTES = 64 * 1024;
+
+/** UTF-8 byte length -- the unit the cap is stated in. */
+export function payloadBytes(payload: string): number {
+  return new TextEncoder().encode(payload).length;
+}
+
+/**
  * A `PgUnsafe` that enqueues instead of executing.
  *
  * Drop-in for `createPgSql` on the write lanes: `PgUnsafe` is a one-method
@@ -448,11 +477,25 @@ export function neonWriteRunner(
   lane: string,
   hyperdrive: HyperdriveLike | undefined,
 ): { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null {
+  const direct =
+    hyperdrive?.connectionString && ctx ? createPgSql(hyperdrive, ctx) : null;
   const buffer = env?.NEON_WRITE_BUFFER as NeonWriteBufferNamespace | undefined;
-  if (buffer && neonWriteBufferEnabled(env, lane)) {
-    return createBufferedPgSql(buffer, lane);
-  }
-  return hyperdrive?.connectionString && ctx
-    ? createPgSql(hyperdrive, ctx)
-    : null;
+  if (!buffer || !neonWriteBufferEnabled(env, lane)) return direct;
+  const buffered = createBufferedPgSql(buffer, lane);
+  // No direct runner to fall back to: buffer everything and let an oversized
+  // statement fail loudly at the enqueue rather than be silently dropped.
+  if (!direct) return buffered;
+  return {
+    async unsafe(text: string, values: unknown[] = []): Promise<unknown> {
+      // SIZE DECIDES, PER STATEMENT. One lane issues both shapes -- the same
+      // neurons lane writes a small watermark row and a thousands-row upsert --
+      // so this cannot be a per-lane flag without either losing the batching on
+      // the small writes or keeping the failure on the big ones.
+      const size = payloadBytes(encodeStatement({ lane, text, values }));
+      if (size > MAX_BUFFERED_PAYLOAD_BYTES) {
+        return direct.unsafe(text, values);
+      }
+      return buffered.unsafe(text, values);
+    },
+  };
 }
