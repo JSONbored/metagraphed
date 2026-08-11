@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 // The Int-range gate (#10386): does it actually fail?
 //
 // A gate only ever run against a passing tree proves nothing, so every test
@@ -15,9 +16,11 @@ import {
 } from "graphql";
 import {
   GRAPHQL_MAX_INT,
-  dataComponent,
   findOverflows,
 } from "../scripts/check-graphql-int-range.ts";
+// The `$ref` walk moved to one module the four readers share -- it is tested
+// here, once, rather than wherever the next copy would have been written.
+import { dataComponent } from "../scripts/openapi-document.ts";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 
 const EPOCH_MS = 1786323600000;
@@ -112,42 +115,55 @@ describe("findOverflows", () => {
 });
 
 describe("dataComponent", () => {
-  it("reads the component a route's data property refs", () => {
-    expect(
-      dataComponent(
+  it("answers from API_ROUTES, and agrees with the published document", () => {
+    // The check that matters: the component is DERIVED from the route's
+    // artifact path now, not read out of openapi.json, so the two could drift
+    // apart without anything noticing. Every route the document defines is
+    // compared against the derivation, which is the only thing that keeps
+    // "ask the source" honest.
+    const spec = JSON.parse(
+      readFileSync("public/metagraph/openapi.json", "utf8"),
+    ) as {
+      paths: Record<
+        string,
         {
-          paths: {
-            "/r": {
-              get: {
-                responses: {
-                  "200": {
-                    content: {
-                      "application/json": {
-                        schema: {
-                          allOf: [
-                            {},
-                            {
-                              properties: {
-                                data: { $ref: "#/components/schemas/Thing" },
-                              },
-                            },
-                          ],
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        "/r",
-      ),
-    ).toBe("Thing");
+          get?: {
+            responses?: Record<
+              string,
+              {
+                content?: Record<
+                  string,
+                  {
+                    schema?: {
+                      allOf?: { properties?: { data?: { $ref?: string } } }[];
+                    };
+                  }
+                >;
+              }
+            >;
+          };
+        }
+      >;
+    };
+    let compared = 0;
+    for (const [route, item] of Object.entries(spec.paths)) {
+      const published = (
+        item.get?.responses?.["200"]?.content?.["application/json"]?.schema
+          ?.allOf ?? []
+      )
+        .map((part) => part?.properties?.data?.$ref)
+        .find((ref): ref is string => typeof ref === "string");
+      if (!published) continue;
+      compared += 1;
+      expect(dataComponent(route)).toBe(
+        published.replace("#/components/schemas/", ""),
+      );
+    }
+    expect(compared).toBeGreaterThan(150);
   });
 
-  it("answers null for a route with no data ref", () => {
-    expect(dataComponent({ paths: {} }, "/r")).toBeNull();
+  it("answers null for a route the contract does not define", () => {
+    expect(dataComponent("/api/v1/not-a-route")).toBeNull();
   });
 });
 

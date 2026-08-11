@@ -54,35 +54,15 @@ import type {
   TypeNode,
 } from "graphql";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
+// Re-exported, not redeclared: `tests/graphql-component-parity.test.ts` and
+// `scripts/report-graphql-sdl-equivalence.ts` import the type from here.
+import { dataComponent, type OpenApiDocument } from "./openapi-document.ts";
+export type { OpenApiDocument } from "./openapi-document.ts";
 import {
   ALIASED_TYPE_NAMES,
   PROJECTED_TYPES,
   PUBLISHED_TYPE_NAMES,
 } from "../schemas-src/graphql/published-names.ts";
-
-/** Only the sliver of the OpenAPI document this gate reads. */
-export interface OpenApiDocument {
-  paths?: Record<
-    string,
-    {
-      get?: {
-        responses?: Record<
-          string,
-          {
-            content?: Record<
-              string,
-              {
-                schema?: {
-                  allOf?: { properties?: { data?: { $ref?: string } } }[];
-                };
-              }
-            >;
-          }
-        >;
-      };
-    }
-  >;
-}
 
 const SDL_PATH = "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
@@ -375,20 +355,6 @@ export function checkComponentParity(
   }
   const { types: generated } = emitTypes();
   const publishedAs = publishedNameResolver(projectedTypesMap);
-
-  /** The component a route's `data` property refs. */
-  const dataComponent = (route: string): string | null => {
-    const schema =
-      openapi.paths?.[route]?.get?.responses?.["200"]?.content?.[
-        "application/json"
-      ]?.schema;
-    for (const part of schema?.allOf ?? []) {
-      const ref = part?.properties?.data?.$ref;
-      if (typeof ref === "string")
-        return ref.replace("#/components/schemas/", "");
-    }
-    return null;
-  };
 
   // ── seed from the Query bindings, then propagate through matching fields ──
   const queue: [string, string][] = [];

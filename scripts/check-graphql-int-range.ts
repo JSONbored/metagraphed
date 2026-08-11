@@ -23,7 +23,6 @@
 // Run against production out of band, like its conformance siblings: a check
 // that needs production data should not pretend to run on a pull request.
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
 import {
   GraphQLInt,
   GraphQLList,
@@ -34,10 +33,9 @@ import type { GraphQLOutputType } from "graphql";
 import { API_ROUTES } from "../src/contracts.ts";
 import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import { apiRouteUrl } from "./smoke-live-api.ts";
+import { dataComponent } from "./openapi-document.ts";
 
 const BASE = process.env.CONFORMANCE_API_BASE || "https://api.metagraph.sh";
-const SPEC_PATH =
-  process.env.CONFORMANCE_SPEC_PATH || "public/metagraph/openapi.json";
 
 /** GraphQL's Int is a signed 32-bit integer (graphql-js GRAPHQL_MAX_INT). */
 export const GRAPHQL_MAX_INT = 2147483647;
@@ -52,45 +50,6 @@ export interface Overflow {
 }
 
 /** Only the sliver of the OpenAPI document this script reads. */
-export interface OpenApiDocument {
-  paths?: Record<
-    string,
-    {
-      get?: {
-        responses?: Record<
-          string,
-          {
-            content?: Record<
-              string,
-              {
-                schema?: {
-                  allOf?: { properties?: { data?: { $ref?: string } } }[];
-                };
-              }
-            >;
-          }
-        >;
-      };
-    }
-  >;
-}
-
-/** The component a route's `data` property refs, or null. */
-export function dataComponent(
-  openapi: OpenApiDocument,
-  route: string,
-): string | null {
-  const schema =
-    openapi.paths?.[route]?.get?.responses?.["200"]?.content?.[
-      "application/json"
-    ]?.schema;
-  for (const part of schema?.allOf ?? []) {
-    const ref = part?.properties?.data?.$ref;
-    if (typeof ref === "string")
-      return ref.replace("#/components/schemas/", "");
-  }
-  return null;
-}
 
 /**
  * Walk a live response beside the GraphQL type that would publish it, and
@@ -146,9 +105,6 @@ export function findOverflows(
 }
 
 async function main(): Promise<void> {
-  const openapi = JSON.parse(
-    readFileSync(SPEC_PATH, "utf8"),
-  ) as OpenApiDocument;
   const { types } = emitTypes();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -161,7 +117,7 @@ async function main(): Promise<void> {
     method: string;
   }[]) {
     if (route.method !== "GET") continue;
-    const component = dataComponent(openapi, route.path);
+    const component = dataComponent(route.path);
     const type = component ? types.get(component) : null;
     if (!type) {
       skipped += 1; // no component, or one the emitter answers no type for
