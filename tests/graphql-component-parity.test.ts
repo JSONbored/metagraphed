@@ -63,19 +63,38 @@ describe("Zod -> GraphQL type emitter (#10214)", () => {
     }
   });
 
-  test("drops a z.null() property instead of publishing an empty field", () => {
+  test("publishes a z.null() property as a nullable String, and reports it", () => {
     const { nullOnly, types } = emitTypes();
     // buildContractsArtifact hardcodes `status_domain: null`, so z.null() is
-    // faithful -- and GraphQL has no null type. Publishing it as JSON would
-    // advertise a field a client can select and never learn anything from.
+    // faithful -- and GraphQL has no null type. This USED to drop the field
+    // and report it, which held for exactly as long as one assertion named
+    // the one entry: `field_sources_usd.storage` became the second and third
+    // and left the schema silently, on two components (#10214). Publishing a
+    // nullable String makes the emitter total -- every declared property
+    // reaches the schema -- so a field can no longer leave the contract by
+    // being typed in a way the emitter had no case for.
     assert.ok(
       nullOnly.includes("ContractsArtifact.status_domain"),
       `expected the null-only field to be reported, got ${nullOnly.join(", ")}`,
     );
     assert.equal(
-      types.get("ContractsArtifact")!.getFields().status_domain,
-      undefined,
+      String(types.get("ContractsArtifact")!.getFields().status_domain.type),
+      "String",
+      "a null-only field is published nullable: null is the only value it can carry",
     );
+    // Every reported entry is published, not just the one named above.
+    for (const entry of nullOnly) {
+      const [component, ...path] = entry.split(".");
+      const type = types.get(component);
+      if (!type) continue; // a nested path, named for its parent component
+      const field = type.getFields()[path[path.length - 1]];
+      if (!field) continue;
+      assert.equal(
+        String(field.type),
+        "String",
+        `${entry} is reported as null-only but published as ${String(field.type)}`,
+      );
+    }
   });
 
   test("pascalCase joins on any non-alphanumeric boundary", () => {

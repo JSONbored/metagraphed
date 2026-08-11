@@ -8,6 +8,7 @@
 // sub-shape gets silently inlined by the OpenAPI registry rather than
 // $ref'd -- see the Zod-registry gotcha in the schema notes.
 import { z } from "zod";
+import { DurationMillisSchema } from "../shared.ts";
 
 export const SelfHealthDaySchema = z
   .object({
@@ -32,7 +33,7 @@ export const SelfHealthComponentSchema = z
       .nullable()
       .describe("Null when the component has never been probed -- NOT false."),
     http_status: z.int().nullable(),
-    latency_ms: z.int().nullable(),
+    latency_ms: DurationMillisSchema.nullable(),
     checked_at: z.string().nullable(),
     // metagraphed#8352: qualifies a false current_ok with WHY, for the one
     // component class (publish) whose failure is a cadence miss rather than
@@ -85,7 +86,7 @@ export const SelfHealthLaneSchema = z
     // with null above.
     verdict: z.enum(LANE_VERDICTS),
     // Null when the watchdog could not measure how far behind the lane was.
-    age_ms: z.int().min(0).nullable(),
+    age_ms: DurationMillisSchema.min(0).nullable(),
     detail: z.string().nullable(),
     checked_at: z.string().nullable(),
   })

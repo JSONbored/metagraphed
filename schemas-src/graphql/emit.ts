@@ -112,6 +112,15 @@ export function componentSchemas(): Record<string, SchemaNode> {
  */
 const SCALAR_COMPONENTS: Readonly<Record<string, GraphQLScalarType>> = {
   EpochMillis: GraphQLFloat,
+  // The paragraph above ends "a DURATION is a span rather than an instant and
+  // stays `z.int()` -> `Int`". That was wrong, and the arithmetic says so:
+  // 2^31 ms is 24.8 days. `SelfHealthLane.age_ms` counts how long a lane has
+  // been silent off a row nothing prunes once its producer dies, and
+  // `TaoUsd.age_ms` is bounded only by the requested window -- whose
+  // vocabulary includes `30d`, 1.21x the ceiling. See `DurationMillisSchema`.
+  DurationMillis: GraphQLFloat,
+  // Decoded from chain storage with `Number(value)` and no range guard.
+  ChainU64: GraphQLFloat,
 };
 
 /** `#/components/schemas/Foo` -> `Foo`; anything else -> null. */
@@ -188,13 +197,24 @@ export interface EmittedTypes {
    */
   unnameable: string[];
   /**
-   * Properties typed `z.null()` -- the value is null and nothing else.
+   * Properties typed `z.null()`, published as a nullable `String` (#10214).
    *
-   * GraphQL has no null type. Publishing one as `JSON` or `String` would
-   * advertise a field a client can select and never learn anything from, so
-   * these are dropped and reported instead. `ContractsArtifact.status_domain`
-   * is the one today: the builder hardcodes `status_domain: null`, so the Zod
-   * type is faithful and the field is vestigial.
+   * GraphQL has no null type, so the value cannot be spelled exactly. These
+   * used to be DROPPED and reported, which was wrong in the one way that
+   * matters: nothing read the report. `nullOnly` was consumed by a single
+   * assertion naming `ContractsArtifact.status_domain`, so when
+   * `field_sources_usd.storage` became the second and third entries they
+   * disappeared from the emitted schema with no gate, no failure and no note
+   * -- and the hand-written SDL, which publishes `AlphaUsdFieldSource.storage`
+   * but not `Contracts.status_domain`, had already drifted into disagreeing
+   * with itself about which of the two to publish.
+   *
+   * `String` over-promises very slightly: it says "a string or null" where the
+   * schema says "null". That is the same over-promise the SDL already makes
+   * for `storage`, it keeps a published field published, and it is the only
+   * spelling that makes the emitter TOTAL -- every declared property reaches
+   * the schema, so a field can no longer leave the contract by being typed in
+   * a way the emitter had no case for.
    */
   nullOnly: string[];
 }
@@ -284,6 +304,10 @@ export function emitTypes(): EmittedTypes {
           }
           if (raw?.type === "null") {
             nullOnly.push(`${path}.${key}`);
+            fields[key] = {
+              type: GraphQLString,
+              description: raw.description ?? undefined,
+            };
             continue;
           }
           const inner = outputType(

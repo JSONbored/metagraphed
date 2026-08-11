@@ -563,6 +563,14 @@ export const UptimeArtifactSchema = z
     schema_version: z.int(),
     netuid: z.int().min(0),
     window: z.string().nullable().optional(),
+    // When the health cron that produced these samples last ran. Declared
+    // because it is SERVED: `formatUptime` (src/health-serving.ts) emits it on
+    // every card, both transports feed it (`readHealthMetaKv` on REST, the
+    // memoized `loadObservedAt` on GraphQL), and REST reads it back out into
+    // the response meta. It went undeclared only because `.passthrough()` let
+    // it through -- so the contract omitted a field production always sends,
+    // and the emitted GraphQL type omitted it too (#10214).
+    observed_at: z.string().nullable(),
     source: z.string(),
     // Always-present key in formatUptime()'s real return (its value is the
     // JS null when there are no samples, never an omitted key) -- required,

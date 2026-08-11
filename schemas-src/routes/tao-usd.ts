@@ -7,6 +7,7 @@
 // the pairing as a CHECK. Null means "not priceable at that block"; a zero
 // would mean TAO is worthless.
 import { z } from "zod";
+import { DurationMillisSchema } from "../shared.ts";
 
 export const TaoUsdPointSchema = z
   .object({
@@ -70,12 +71,9 @@ export const TaoUsdArtifactSchema = z
       .describe(
         "The bound `stale` is measured against -- the same one the API refuses to derive USD figures from, so 'this response says stale' and 'no USD anywhere on the API' are one condition rather than two that can drift.",
       ),
-    age_ms: z
-      .int()
-      .nullable()
-      .describe(
-        "How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading.",
-      ),
+    age_ms: DurationMillisSchema.nullable().describe(
+      "How old the newest reading is, so a caller can render 'N minutes ago' without re-deriving it. Null when there is no reading.",
+    ),
     /** How many points carried a price. A gap from point_count is how a window
      * with unpriceable blocks announces itself. */
     priced_point_count: z

@@ -5,7 +5,7 @@
 // it replaces. No query params (verified: the DATA_API route reads only the
 // netuid path segment).
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { ChainU64Schema, FieldSourcesSchema } from "../shared.ts";
 
 const SubnetConvictionEntrySchema = z
   .object({
@@ -21,8 +21,8 @@ export const SubnetConvictionArtifactSchema = z
     schema_version: z.int(),
     netuid: z.int().min(0).max(65535),
     queried_at_block: z.int().nullable().optional(),
-    unlock_rate: z.int().nullable().optional(),
-    maturity_rate: z.int().nullable().optional(),
+    unlock_rate: ChainU64Schema.nullable().optional(),
+    maturity_rate: ChainU64Schema.nullable().optional(),
     king: z.string().nullable().optional(),
     count: z.int().min(0),
     leaderboard: z.array(SubnetConvictionEntrySchema),

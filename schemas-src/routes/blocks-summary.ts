@@ -8,16 +8,16 @@
 // repo-wide $ref grep), so the hand-edited component key becomes fully
 // orphaned.
 import { z } from "zod";
-import { ConcentrationMetricsSchema } from "../shared.ts";
+import { ConcentrationMetricsSchema, DurationMillisSchema } from "../shared.ts";
 
 const BlockTimeDistributionSchema = z
   .object({
     count: z.int().min(0),
-    mean_ms: z.int(),
-    min_ms: z.int(),
-    max_ms: z.int(),
-    p50_ms: z.int(),
-    p90_ms: z.int(),
+    mean_ms: DurationMillisSchema,
+    min_ms: DurationMillisSchema,
+    max_ms: DurationMillisSchema,
+    p50_ms: DurationMillisSchema,
+    p90_ms: DurationMillisSchema,
   })
   .strict()
   .describe(

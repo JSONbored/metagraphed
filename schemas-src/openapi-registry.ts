@@ -59,6 +59,8 @@ import {
   HealthStatusSchema,
   PartnershipMetadataSchema,
   PartnershipTierSchema,
+  ChainU64Schema,
+  DurationMillisSchema,
   EpochMillisSchema,
   ScoreDistributionSchema,
   SubnetEconomicsSchema,
@@ -852,6 +854,13 @@ register(ScoreDistributionSchema, "ScoreDistribution");
 // alone cannot tell one from the other, and GraphQL's Int is 32-bit. The
 // GraphQL emitter maps this id to Float; a `z.int()` stays Int.
 register(EpochMillisSchema, "EpochMillis");
+// The two other integers whose range the type cannot state (#10214). A span in
+// milliseconds passes 32 bits at 24.8 days, and a chain u64 is decoded with
+// `Number(value)` and no guard -- both map to Float in the GraphQL emitter for
+// the same reason `EpochMillis` does, and both are registered here so the fact
+// lives in the schema instead of in a field name.
+register(DurationMillisSchema, "DurationMillis");
+register(ChainU64Schema, "ChainU64");
 
 // Batch 8 (#8062) additions. Only the 18 top-level route artifacts (each
 // required -- schemaRefForArtifactPath binds its route to exactly this
