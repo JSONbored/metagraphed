@@ -446,6 +446,96 @@ export const SUBNET_OWNERSHIP_HISTORY_COLUMNS = [
   "captured_at",
 ] as const;
 
+/** `chain.neuron_daily` */
+export type NeuronDailyRow = {
+  netuid: number | null;
+  uid: number | null;
+  snapshot_date: string | null;
+  hotkey: string | null;
+  coldkey: string | null;
+  active: boolean | null;
+  validator_permit: boolean | null;
+  rank: number | null;
+  trust: number | null;
+  validator_trust: number | null;
+  consensus: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  emission_tao: number | null;
+  stake_tao: number | null;
+  registered_at_block: number | null;
+  is_immunity_period: boolean | null;
+  axon: string | null;
+  block_number: number | null;
+  captured_at: number | null;
+  updated_at: number | null;
+  take: number | null;
+};
+
+/** `chain.neuron_daily` columns, in field-id order. */
+export const NEURON_DAILY_COLUMNS = [
+  "netuid",
+  "uid",
+  "snapshot_date",
+  "hotkey",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "validator_trust",
+  "consensus",
+  "incentive",
+  "dividends",
+  "emission_tao",
+  "stake_tao",
+  "registered_at_block",
+  "is_immunity_period",
+  "axon",
+  "block_number",
+  "captured_at",
+  "updated_at",
+  "take",
+] as const;
+
+/** `chain.account_position_daily` */
+export type AccountPositionDailyRow = {
+  account: string | null;
+  netuid: number | null;
+  snapshot_date: string | null;
+  uid: number | null;
+  coldkey: string | null;
+  active: boolean | null;
+  validator_permit: boolean | null;
+  rank: number | null;
+  trust: number | null;
+  incentive: number | null;
+  dividends: number | null;
+  stake_tao: number | null;
+  emission_tao: number | null;
+  captured_at: number | null;
+  updated_at: number | null;
+};
+
+/** `chain.account_position_daily` columns, in field-id order. */
+export const ACCOUNT_POSITION_DAILY_COLUMNS = [
+  "account",
+  "netuid",
+  "snapshot_date",
+  "uid",
+  "coldkey",
+  "active",
+  "validator_permit",
+  "rank",
+  "trust",
+  "incentive",
+  "dividends",
+  "stake_tao",
+  "emission_tao",
+  "captured_at",
+  "updated_at",
+] as const;
+
 /** Every Iceberg table this repo reads, by name. */
 export const LAKEHOUSE_TABLES = [
   "blocks",
@@ -461,4 +551,6 @@ export const LAKEHOUSE_TABLES = [
   "subnet_hyperparams_history",
   "subnet_identity_history",
   "subnet_ownership_history",
+  "neuron_daily",
+  "account_position_daily",
 ] as const;
