@@ -2999,14 +2999,20 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
     // answers, through the SAME builder. Given the lane's own columns, so
     // the envelope below is derived rather than echoed.
     // Same offset emulation as block_extrinsics above: rows to page past first.
+    // The query pages with offset: 3, and R2 SQL has no OFFSET -- the reader
+    // over-fetches and slices. Four events in the block, so the page is the one
+    // left after skipping three. That also separates two things the retired
+    // tier's echo conflated: `event_count` is the BLOCK's true total (the read
+    // was short, so it is known exactly), while `events` is only this page.
     const lake = lakehouse([
-      { block_number: 9, event_index: 8, observed_at: 1_750_009_000_002 },
-      { block_number: 9, event_index: 9, observed_at: 1_750_009_000_001 },
+      { block_number: 9, event_index: 0, event_kind: "Balances.Deposit" },
+      { block_number: 9, event_index: 1, event_kind: "Balances.Withdraw" },
+      { block_number: 9, event_index: 2, event_kind: "Balances.Endowed" },
       {
         block_number: 9,
-        event_index: 0,
+        event_index: 3,
         extrinsic_index: 0,
-        event_kind: "Transfer",
+        event_kind: "Balances.Transfer",
         hotkey: null,
         coldkey: null,
         netuid: null,
@@ -3022,7 +3028,9 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.block_events.event_count, 1);
+    // The block's total, not the page's -- four events, one of them on this page.
+    assert.equal(body.data.block_events.event_count, 4);
+    assert.equal(body.data.block_events.events.length, 1);
     assert.equal(
       body.data.block_events.events[0].event_kind,
       "Balances.Transfer",
@@ -4763,46 +4771,42 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: resolves Postgres-tier rows from the Sudo feed, serving call_args decoded", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 9,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"b".repeat(64)}`,
-              signer: "5Sudo",
-              call_module: "Sudo",
-              call_function: "sudo",
-              call_args: [{ name: "call", value: "setWeights" }],
-              success: true,
-              fee_tao: 0,
-              tip_tao: 0,
-              observed_at: "2026-07-15T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 9,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        signer: "5Sudo",
+        call_module: "Sudo",
+        call_function: "sudo",
+        call_args: [{ name: "call", value: "setWeights" }],
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.sudo.total, 1);
-    assert.equal(body.data.sudo.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.sudo.next_cursor, null);
     const item = body.data.sudo.items[0];
     assert.equal(item.call_module, "Sudo");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it -- the JSON scalar carries
     // the value rather than a JSON-encoded copy of it (#10391).
     assert.deepEqual(item.call_args, [{ name: "call", value: "setWeights" }]);
+    lake.restore();
   });
 
   test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module — the retired tier is not consulted (#10190)", async () => {
@@ -4960,45 +4964,41 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: resolves Postgres-tier rows, serving call_args decoded", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "SubtensorModule",
-              call_function: "register",
-              call_args: [{ name: "netuid", value: 1 }],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "register",
+        call_args: [{ name: "netuid", value: 1 }],
+        success: true,
+        fee_tao: 0.001,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { block_number call_module call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.extrinsics.total, 1);
-    assert.equal(body.data.extrinsics.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.extrinsics.next_cursor, null);
     const item = body.data.extrinsics.items[0];
     assert.equal(item.call_module, "SubtensorModule");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
   test("extrinsics: exposes the action-sentence summary field, and null for an unmatched call (#8525)", async () => {
@@ -5269,46 +5269,42 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: resolves Postgres-tier AdminUtils rows", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: null,
-              call_module: "AdminUtils",
-              call_function: "sudo_set_weights_set_rate_limit",
-              call_args: [{ name: "netuid", value: 1 }],
-              success: true,
-              fee_tao: 0,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 11,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Admin",
+        call_module: "AdminUtils",
+        call_function: "sudo_set_weights_set_rate_limit",
+        call_args: [{ name: "netuid", value: 3 }],
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.governance_config_changes.total, 1);
-    assert.equal(body.data.governance_config_changes.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.governance_config_changes.next_cursor, null);
     const item = body.data.governance_config_changes.items[0];
     assert.equal(item.call_module, "AdminUtils");
     assert.equal(item.call_function, "sudo_set_weights_set_rate_limit");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
   test("governance_config_changes: a partial Postgres-tier body degrades to a schema-stable empty page", async () => {
