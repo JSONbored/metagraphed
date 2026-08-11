@@ -188,3 +188,29 @@ describe("a successful AI call is unaffected", () => {
     assert.deepEqual(captured, []);
   });
 });
+
+describe("a non-object throw from the AI layer", () => {
+  // runAi reads `error?.aiInput` and `error?.toolError`, so it has to survive a
+  // throw that is not an object at all. Nothing in-tree does this deliberately,
+  // but a rejected fetch inside a Workers binding can surface a primitive, and
+  // the optional chaining is only load-bearing for that case.
+  for (const [label, thrown] of Object.entries({
+    "a bare string": "vectorize said no",
+    null: null,
+    "a number": 500,
+  })) {
+    test(`${label} is still classified as ai_unavailable and captured`, async () => {
+      const { error, captured } = await callSemanticSearch({
+        METAGRAPH_ENABLE_AI: "true",
+        AI: { run: () => Promise.reject(thrown) },
+        VECTORIZE: { query: () => Promise.resolve({ matches: [] }) },
+      } as Row);
+
+      assert.equal(error.code, "ai_unavailable");
+      // Still recorded — a primitive throw is exactly the shape most likely to
+      // be lost, and losing it is the thing this whole change is about.
+      assert.equal(captured.length, 1);
+      assert.equal(captured[0].errorCode, "ai_unavailable");
+    });
+  }
+});

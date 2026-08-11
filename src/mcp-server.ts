@@ -16183,7 +16183,11 @@ async function dispatchTool(
       // aiUnavailableToolError.
       if (error.captureAsFault) {
         scheduleExceptionEvent(ctx, {
-          error: (error.cause ?? error) as Error,
+          // `cause` unconditionally, with no `?? error` fallback: the ONLY
+          // thing that sets captureAsFault is aiUnavailableToolError, and it
+          // always sets cause on the same object. A fallback here would be an
+          // unreachable branch pretending to be caution.
+          error: error.cause as Error,
           mcpTool: name,
           errorCode: error.code,
         });
