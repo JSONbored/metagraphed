@@ -4,6 +4,10 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
+import {
+  AskArtifactSchema,
+  SemanticSearchArtifactSchema,
+} from "../routes/ai-native.ts";
 import { SEMANTIC_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { limitSchema, netuidSchema, querySchema } from "./shared.ts";
@@ -134,26 +138,10 @@ export const SemanticSearchInputSchema = z
   .strict();
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
 
-const SemanticSearchResultItemSchema = z
-  .object({
-    score: z.unknown().optional(),
-    type: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    title: z.string().nullable().optional(),
-    subtitle: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-  })
-  .strict();
-
-export const SemanticSearchOutputSchema = z
-  .object({
-    query: z.string(),
-    count: z.int(),
-    model: z.string().nullable().optional(),
-    results: z.array(SemanticSearchResultItemSchema),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790). `model` was `.nullable().optional()` here
+// against the route's required `z.string()` -- and the route's prose says why
+// it is published at all: so a caller can tell two runs apart.
+export const SemanticSearchOutputSchema = SemanticSearchArtifactSchema;
 export type SemanticSearchOutput = z.infer<typeof SemanticSearchOutputSchema>;
 
 export const AskInputSchema = z
@@ -171,26 +159,12 @@ export const AskInputSchema = z
   .strict();
 export type AskInput = z.infer<typeof AskInputSchema>;
 
-const AskCitationItemSchema = z
-  .object({
-    ref: z.unknown().optional(),
-    score: z.number().optional(),
-    title: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-  })
-  .strict();
-
-export const AskOutputSchema = z
-  .object({
-    question: z.string(),
-    answer: z.string(),
-    model: z.string().nullable().optional(),
-    context_count: z.int().nullable().optional(),
-    citations: z.array(AskCitationItemSchema).optional(),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790). The copy typed `ref: z.unknown()` where the
+// route says `z.int().min(1)` -- the bracketed marker used inline in `answer`,
+// which is the whole mechanism a client resolves a citation by -- and made
+// `citations`/`context_count`/`model` optional where the producer always sends
+// them.
+export const AskOutputSchema = AskArtifactSchema;
 export type AskOutput = z.infer<typeof AskOutputSchema>;
 
 export const FindSubnetForTaskInputSchema = z
