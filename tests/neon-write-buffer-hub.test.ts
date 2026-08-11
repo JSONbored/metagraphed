@@ -863,3 +863,47 @@ describe("the flush never scans either (#10775)", () => {
     assert.equal(await storage.get("pending"), before - out.drained);
   });
 });
+
+describe("the counter may be absent, and the drain must cope", () => {
+  // A buffer written before the counter existed, or an object whose storage was
+  // reset between the enqueue and the drain. `?? 0` is what stops the reconcile
+  // producing NaN and poisoning the ceiling for good.
+
+  test("a TRUNCATED drain with no counter still reconciles", async () => {
+    const storage = fakeStorage();
+    for (let i = 0; i < FLUSH_LIST_LIMIT + 5; i += 1) {
+      await enqueueStatement(storage, stmt("l", `S${i}`), NOW);
+    }
+    storage.map.delete("pending");
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe() {
+          return [];
+        },
+      },
+    });
+    assert.equal(out.remaining, true);
+    assert.equal(await storage.get("pending"), 0, "clamped, never negative");
+  });
+
+  test("a FAILED drain with no counter still reconciles", async () => {
+    const storage = fakeStorage();
+    for (const t of ["A", "B"])
+      await enqueueStatement(storage, stmt("l", t), NOW);
+    storage.map.delete("pending");
+    const out = await flushBuffer(storage, {}, CTX, {
+      laneHealthDb: laneSpy().db,
+      now: () => NOW,
+      sql: {
+        async unsafe(text: string) {
+          if (text === "B") throw new Error("connection reset");
+          return [];
+        },
+      },
+    });
+    assert.equal(out.ok, false);
+    assert.equal(await storage.get("pending"), 0, "clamped, never negative");
+  });
+});
