@@ -17149,6 +17149,18 @@ export function mcpRefusalReason(response: Response): string | null {
           ? "blocked"
           : "rate_limited";
     }
+    // A second SSE stream on a session that already has one (the push channel
+    // is single-holder — see the GET /mcp branch, which keeps 409 rather than
+    // flattening it to 405 because a stream IS on offer there, just taken).
+    //
+    // Named because it is now known to HAPPEN: the refusal usage_event started
+    // landing once its missing durationMs was fixed, and the first thing it
+    // showed was 8 of these in six hours, previously invisible. The catch-all
+    // `status_409` spelling was fine while nothing was known to produce it and
+    // is worse than nothing now — an anonymous number in a breakdown that
+    // somebody has to go and decode.
+    case 409:
+      return "stream_taken";
     case 405:
       return "method_not_allowed";
     case 413:

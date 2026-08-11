@@ -114,6 +114,9 @@ describe("pre-dispatch refusals reach the $mcp_* family", () => {
     [400, {}, "bad_request", "validation"],
     [405, {}, "method_not_allowed", "validation"],
     [413, {}, "body_too_large", "validation"],
+    // Named after the refusal usage_event started landing and showed 8 of
+    // these in six hours — a second SSE stream on a session that has one.
+    [409, {}, "stream_taken", "validation"],
     [503, {}, "status_503", "api_5xx"],
     [418, {}, "status_418", "api_4xx"],
   ] as [number, Record<string, string>, string, string][]) {
