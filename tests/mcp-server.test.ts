@@ -96,7 +96,6 @@ import {
   buildExtrinsicFeed,
   buildBlockExtrinsics,
 } from "../src/extrinsics.ts";
-import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
 import {
@@ -11881,17 +11880,21 @@ describe("MCP economics + metagraph data tools", () => {
   // the same bug one step later.
   describe("degraded-tier marker (#9120)", () => {
     // Tier flags on with no DATA_API bound: every tier read degrades.
+    //
+    // METAGRAPH_BLOCKS_SOURCE is deliberately NOT here: it is retired, so the
+    // blocks tools read no tier and have no tier miss to mark (#10190). Listing
+    // it would assert a marker on a read that cannot happen.
     const degradedEnv = {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
     };
 
     test("a tier miss is marked, whichever tool it happened in", async () => {
       const unmarked: string[] = [];
       for (const [name, args] of [
         ["get_subnet_metagraph", { netuid: 7 }],
-        ["list_blocks", { limit: 1 }],
+        ["get_chain_transfers", { window: "7d" }],
         ["get_chain_calls", { window: "7d" }],
       ] as [string, Row][]) {
         const res = await callTool(name, args, { env: degradedEnv });
@@ -17770,40 +17773,14 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     // builders directly, so the mocked response is byte-identical to what
     // production would actually serve -- mirrors chainTransfersPostgresEnv
     // above.
+    //
+    // list_blocks and get_block are the exception: their flag is retired
+    // (#10190) and no tier read remains, so they are validated against the
+    // cold-tier shape their own fallback builds. The point of the loop is the
+    // published SCHEMA, which holds either way.
     const cases = [
-      [
-        "list_blocks",
-        {
-          METAGRAPH_BLOCKS_SOURCE: "postgres",
-          DATA_API: {
-            fetch: async () =>
-              Response.json(
-                buildBlockFeed([BLOCK_ROW], {
-                  limit: 50,
-                  offset: 0,
-                  nextCursor: null,
-                }),
-              ),
-          },
-        },
-        {},
-      ],
-      [
-        "get_block",
-        {
-          METAGRAPH_BLOCKS_SOURCE: "postgres",
-          DATA_API: {
-            fetch: async () =>
-              Response.json(
-                buildBlock(BLOCK_ROW, "4200000", {
-                  prev: 4199999,
-                  next: 4200001,
-                }),
-              ),
-          },
-        },
-        { ref: "4200000" },
-      ],
+      ["list_blocks", {}, {}],
+      ["get_block", {}, { ref: "4200000" }],
       [
         "list_block_extrinsics",
         {
@@ -22616,27 +22593,41 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.equal(out.coverage_from_block, null);
   });
 
-  test("get_runtime: flag=postgres uses Postgres data", async () => {
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          assert.equal(new URL(req.url).pathname, "/api/v1/runtime");
-          return Response.json({
-            schema_version: 1,
-            transition_count: 1,
-            current_spec_version: 300,
-            coverage_from_block: 100,
-            coverage_from_at: null,
-            transitions: [
-              { spec_version: 300, block_number: 100, observed_at: null },
-            ],
-          });
+  test("get_runtime resolves the lakehouse timeline, not the retired tier", async () => {
+    // #10190: METAGRAPH_BLOCKS_SOURCE is retired, so the tier leg of this tool
+    // was always null and `chain.blocks`'s spec_version column is the source.
+    const tierPaths: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      const rows = [{ spec_version: 300, block_number: 100, observed_at: 1 }];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    try {
+      const res = await callTool(
+        "get_runtime",
+        {},
+        {
+          env: {
+            R2_SQL_TOKEN: "cfut_test",
+            METAGRAPH_BLOCKS_SOURCE: "postgres",
+            DATA_API: {
+              fetch: async (req: Request) => {
+                tierPaths.push(new URL(req.url).pathname);
+                return Response.json({ schema_version: 1 });
+              },
+            },
+          },
         },
-      },
-    };
-    const res = await callTool("get_runtime", {}, { env });
-    assert.equal(res.body.result.structuredContent.current_spec_version, 300);
+      );
+      assert.deepEqual(tierPaths, []);
+      assert.equal(res.body.result.structuredContent.current_spec_version, 300);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   test("get_runtime carries the #8702 upgrade radar alongside the timeline", async () => {
@@ -23365,18 +23356,17 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
   });
 });
 
-// list_blocks / get_blocks_summary / get_block are gated on
-// METAGRAPH_BLOCKS_SOURCE, not METAGRAPH_NEURONS_SOURCE or
-// METAGRAPH_EXTRINSICS_SOURCE, so they don't fit either shared CASES loop
-// above -- same two-test-per-tool contract, just with the correct flag name
-// and its own CASES array.
-describe("MCP blocks-tier chain-explorer tools — Postgres tier wiring", () => {
+// list_blocks / get_blocks_summary / get_block USED to be gated on
+// METAGRAPH_BLOCKS_SOURCE. That flag is retired in every deployed config and
+// absent from DATA_API_FORWARD_FLAGS, so the tier read resolved to null on every
+// call and the cold tier has been the answer all along (#10190).
+//
+// These pin the retirement rather than the wiring: flag set, DATA_API bound and
+// answering, and nothing asks it. That is what stops the dead read from being
+// reintroduced by a future edit that "restores parity" with the other families.
+describe("MCP blocks-tier chain-explorer tools — no tier read (#10190)", () => {
   const CASES = [
-    {
-      tool: "list_blocks",
-      args: {},
-      path: "/api/v1/blocks?limit=50&offset=0",
-    },
+    { tool: "list_blocks", args: {} },
     {
       tool: "list_blocks",
       args: {
@@ -23392,82 +23382,46 @@ describe("MCP blocks-tier chain-explorer tools — Postgres tier wiring", () => 
         offset: 5,
         cursor: "abc123",
       },
-      path:
-        "/api/v1/blocks?author=5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" +
-        "&spec_version=300&block_start=100&block_end=200&from=1000&to=2000" +
-        "&min_extrinsics=1&min_events=2&limit=10&offset=5&cursor=abc123",
+      label: "list_blocks (filtered)",
     },
-    {
-      tool: "get_blocks_summary",
-      args: {},
-      path: "/api/v1/blocks/summary",
-    },
-    {
-      tool: "get_block",
-      args: { ref: "4200000" },
-      path: "/api/v1/blocks/4200000",
-    },
+    { tool: "get_blocks_summary", args: {} },
+    { tool: "get_block", args: { ref: "4200000" } },
   ];
 
-  for (const { tool, args, path } of CASES) {
-    const label = path.includes("author=") ? `${tool} (filtered)` : tool;
-
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_BLOCKS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
+  /** A DATA_API that records every path it is asked for. */
+  function recordingDataApi() {
+    const paths: string[] = [];
+    return {
+      paths,
+      binding: {
+        fetch: async (req: Request) => {
+          paths.push(new URL(req.url).pathname);
+          return Response.json({ schema_version: 1, marker: "from-postgres" });
         },
-      };
-      const res = await callTool(tool, args, { env });
+      },
+    };
+  }
+
+  for (const { tool, args, label = tool } of CASES) {
+    test(`${label}: the retired flag is not consulted even when set`, async () => {
+      const tier = recordingDataApi();
+      const res = await callTool(tool, args, {
+        env: {
+          METAGRAPH_BLOCKS_SOURCE: "postgres",
+          DATA_API: tier.binding,
+        },
+      });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
+      assert.deepEqual(tier.paths, [], label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
     });
 
-    test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
-      const env = {
-        METAGRAPH_BLOCKS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async () => {
-            throw new Error("boom");
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: a cold store still yields the schema-stable empty shape`, async () => {
+      const res = await callTool(tool, args, { env: {} });
       assert.equal(res.body.result.isError, false, label);
       assert.equal(res.body.result.structuredContent.marker, undefined, label);
     });
   }
-
-  test("flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({ schema_version: 1, marker: "should-not-be-used" }),
-      },
-    };
-    for (const { tool, args } of CASES) {
-      const res = await callTool(tool, args, { env });
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        undefined,
-        `${tool} should not reach DATA_API without the flag`,
-      );
-    }
-  });
 });
 
 // get_subnet_hyperparams / get_subnet_hyperparams_history are gated on

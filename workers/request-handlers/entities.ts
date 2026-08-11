@@ -6331,11 +6331,9 @@ export async function handleBlocks(
   // one of them -- see src/blocks-cold-tier.ts. All tiers feed the SAME
   // buildBlockFeed formatter, so the payload is identical whichever answered.
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_BLOCKS_SOURCE",
-    )) as ReturnType<typeof buildBlockFeed> | null) ??
+    // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // on every request.
     (await loadBlockFeedColdTier(
       env,
       {
@@ -6364,8 +6362,7 @@ export async function handleBlocks(
         minEvents: routeInt(url, "min_events"),
       } as never,
       network,
-    )) ??
-    buildBlockFeed([], { limit, offset, nextCursor: null });
+    )) ?? buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
       data.blocks as unknown[],
@@ -6403,12 +6400,14 @@ export async function handleBlocksSummary(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
-  const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
-  // #9146: on a tier miss, serve the precomputed card from the blocks-summary
-  // projection rather than a zeroed one. The reader declines (null) when it
-  // cannot answer faithfully, which keeps buildBlocksSummary([]) as the floor.
-  const projected =
-    pgData ?? (await loadBlocksSummaryFromArtifact(env, network));
+  // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+  // config and absent from DATA_API_FORWARD_FLAGS, so `pgData` was always null
+  // and the projection below always the answer.
+  //
+  // #9146: serve the precomputed card from the blocks-summary projection rather
+  // than a zeroed one. The reader declines (null) when it cannot answer
+  // faithfully, which keeps buildBlocksSummary([]) as the floor.
+  const projected = await loadBlocksSummaryFromArtifact(env, network);
   const data = projected ?? buildBlocksSummary([]);
   const response = await envelopeResponse(
     request,
@@ -6441,13 +6440,10 @@ export async function handleBlock(
   // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
   // a block served from R2 is byte-identical to one served from Postgres.
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_BLOCKS_SOURCE",
-    )) as ReturnType<typeof buildBlock> | null) ??
-    (await loadBlockColdTier(env, ref, network)) ??
-    buildBlock(undefined, ref);
+    // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // on every request.
+    (await loadBlockColdTier(env, ref, network)) ?? buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
   // on the short profile so clients re-check when the block lands.
   const cacheProfile = data.block ? "static" : "short";
@@ -6900,18 +6896,15 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const history =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_BLOCKS_SOURCE",
-    )) as ReturnType<typeof buildRuntimeVersionHistory> | null) ??
+    // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+    // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+    // on every request.
     // The same spec_version column, from the tier that actually has it
     // (#9265). Through the shared reader so MCP and GraphQL get the timeline
     // too rather than being wired one surface at a time.
     (await loadRuntimeVersionHistoryColdTier(
       env as unknown as Parameters<typeof loadRuntimeVersionHistoryColdTier>[0],
-    )) ??
-    buildRuntimeVersionHistory([]);
+    )) ?? buildRuntimeVersionHistory([]);
   // #8702: the forward-looking half of the same question. `transitions` is
   // where the runtime has BEEN (first-party block observations); `current` is
   // where it IS and what is queued behind it (live chain reads + the captured

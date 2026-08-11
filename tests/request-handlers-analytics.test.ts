@@ -851,9 +851,9 @@ describe("withEdgeCache", () => {
       "blocks-summary",
       async () => {
         await tryPostgresTier(
-          { METAGRAPH_BLOCKS_SOURCE: "postgres" } as unknown as Env,
+          { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" } as unknown as Env,
           req("/api/v1/blocks/summary"),
-          "METAGRAPH_BLOCKS_SOURCE",
+          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         );
         return new Response(JSON.stringify({ ok: true }), { status: 200 });
       },

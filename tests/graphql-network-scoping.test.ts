@@ -15,7 +15,48 @@ import {
   DEFAULT_CHAIN_NETWORK,
   networkScopedRoute,
 } from "../src/chain-network.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { chainTable } from "../src/chain-network.ts";
 import type { Row } from "./row-type.ts";
+
+/**
+ * A lakehouse transport double that records the SQL each leg issued.
+ *
+ * The blocks fields no longer read the Postgres tier at all (#10190 -- the flag
+ * is retired in every deployed config), so the cold tier IS the read, and the
+ * network reaches it through the TABLE NAME `chainTable` resolves rather than
+ * through a request path. Asserting the path a dead tier is asked for would pass
+ * on a resolver that dropped the argument from the leg that actually answers.
+ */
+function recordingLakehouse(rows: unknown[] = []) {
+  const queries: string[] = [];
+  globalThis.fetch = (async (_url: string, init: RequestInit) => {
+    queries.push(JSON.parse(String(init.body)).query as string);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, result: { rows } }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  return queries;
+}
+
+/** An archive double that records the projection keys it is asked for. */
+function recordingArchive(body: unknown) {
+  const keys: string[] = [];
+  return {
+    keys,
+    binding: {
+      get: async (key: string) => {
+        keys.push(key);
+        return body === undefined ? null : { json: async () => body };
+      },
+    },
+  };
+}
+
+/** Enough env for the lakehouse leg to be attempted at all. */
+const LAKEHOUSE_ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
 /** A DATA_API double that records every path it is asked for. */
 function recordingDataApi(payload: Row) {
@@ -77,23 +118,25 @@ describe("networkScopedRoute", () => {
 });
 
 describe("the resolvers ask the twin path", () => {
-  test("blocks(network: test) reads /api/v1/test/blocks", async () => {
-    const api = recordingDataApi({ blocks: [], block_count: 0 });
+  test("blocks(network: test) reads the testnet lakehouse table", async () => {
+    const queries = recordingLakehouse();
     const { status } = await query(
       "{ blocks(limit: 1, network: test) { total } }",
-      { METAGRAPH_BLOCKS_SOURCE: "postgres", DATA_API: api.binding },
+      LAKEHOUSE_ENV,
     );
     assert.equal(status, 200);
-    assert.deepEqual(api.paths, ["/api/v1/test/blocks"]);
+    assert.equal(queries.length, 1);
+    assert.match(queries[0], new RegExp(chainTable("blocks", "testnet")));
   });
 
-  test("blocks() with no network still reads the base path", async () => {
-    const api = recordingDataApi({ blocks: [], block_count: 0 });
-    await query("{ blocks(limit: 1) { total } }", {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: api.binding,
-    });
-    assert.deepEqual(api.paths, ["/api/v1/blocks"]);
+  test("blocks() with no network still reads the mainnet table", async () => {
+    const queries = recordingLakehouse();
+    await query("{ blocks(limit: 1) { total } }", LAKEHOUSE_ENV);
+    assert.equal(queries.length, 1);
+    assert.match(queries[0], new RegExp(chainTable("blocks")));
+    // Same read, different chain -- the two tables must not be the same string,
+    // or the assertion above would hold for a resolver that ignored `network`.
+    assert.notEqual(chainTable("blocks"), chainTable("blocks", "testnet"));
   });
 
   test("a chain rollup forwards it too", async () => {
@@ -106,12 +149,10 @@ describe("the resolvers ask the twin path", () => {
   });
 
   test("a per-block read forwards it", async () => {
-    const api = recordingDataApi({ schema_version: 1, ref: "9", block: null });
-    await query('{ block(ref: "9", network: test) { ref } }', {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: api.binding,
-    });
-    assert.deepEqual(api.paths, ["/api/v1/test/blocks/9"]);
+    const queries = recordingLakehouse();
+    await query('{ block(ref: "9", network: test) { ref } }', LAKEHOUSE_ENV);
+    assert.equal(queries.length, 1);
+    assert.match(queries[0], new RegExp(chainTable("blocks", "testnet")));
   });
 
   test("a block-detail cascade forwards it to the hot/cold decision", async () => {
@@ -191,12 +232,21 @@ describe("the resolvers ask the twin path", () => {
     assert.equal(events.status, 200);
   });
 
-  test("blocks_summary forwards it", async () => {
-    const api = recordingDataApi({ schema_version: 1, block_count: 0 });
+  test("blocks_summary forwards it to the projection key", async () => {
+    // This one's cold read is the archived projection, not the lakehouse, so
+    // the network arrives in the OBJECT KEY (#9412).
+    const archive = recordingArchive({ schema_version: 1, summary: {} });
     await query("{ blocks_summary(network: test) { block_count } }", {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: api.binding,
+      METAGRAPH_ARCHIVE: archive.binding,
     });
-    assert.deepEqual(api.paths, ["/api/v1/test/blocks/summary"]);
+    assert.equal(archive.keys.length, 1);
+    assert.match(archive.keys[0], /testnet/);
+
+    const mainnet = recordingArchive({ schema_version: 1, summary: {} });
+    await query("{ blocks_summary { block_count } }", {
+      METAGRAPH_ARCHIVE: mainnet.binding,
+    });
+    assert.equal(mainnet.keys.length, 1);
+    assert.doesNotMatch(mainnet.keys[0], /testnet/);
   });
 });

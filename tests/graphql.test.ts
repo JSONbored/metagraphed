@@ -5564,9 +5564,45 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 });
 
-describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+// #10190: METAGRAPH_BLOCKS_SOURCE is retired in every deployed config and absent
+// from DATA_API_FORWARD_FLAGS, so these fields never read the Postgres tier --
+// the lakehouse is what answers, and the filters that used to be asserted as
+// query params on the tier's URL are SQL predicates now.
+describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
+  /** Stub the lakehouse transport; captures every SQL the cold tier issued. */
+  function lakehouse(rows: Row[] = []) {
+    const original = globalThis.fetch;
+    const queries: string[] = [];
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      queries.push(String(JSON.parse(String(init.body)).query));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return { queries, restore: () => (globalThis.fetch = original) };
+  }
+
+  /** Enough env for the lakehouse leg to be attempted at all. */
+  const COLD = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
+
+  // A real SS58: safeAuthorLiteral rejects anything else, and the cold tier
+  // declines the whole query rather than widening an unexpressible filter.
+  const AUTHOR = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+
+  function blockRow(overrides: Row = {}) {
+    return {
+      block_number: 123,
+      block_hash: `0x${"b".repeat(64)}`,
+      parent_hash: `0x${"a".repeat(64)}`,
+      author: "5Author",
+      extrinsic_count: 3,
+      event_count: 7,
+      spec_version: 200,
+      observed_at: 1_752_451_200_000,
+      ...overrides,
+    };
   }
 
   test("blocks: cold/no-tier store returns a schema-stable empty page (fallback builder, production steady state)", async () => {
@@ -5581,141 +5617,85 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     });
   });
 
-  test("blocks: resolves Postgres-tier rows into the block feed", async () => {
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          block_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          blocks: [
-            {
-              block_number: 123,
-              block_hash: `0x${"b".repeat(64)}`,
-              parent_hash: `0x${"a".repeat(64)}`,
-              author: "5Author",
-              extrinsic_count: 3,
-              event_count: 7,
-              spec_version: 200,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      "{ blocks { items { block_number block_hash extrinsic_count event_count } total next_cursor } }",
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.blocks.total, 1);
-    assert.equal(body.data.blocks.next_cursor, "cursor-1");
-    const item = body.data.blocks.items[0];
-    assert.equal(item.block_number, 123);
-    assert.equal(item.extrinsic_count, 3);
-    assert.equal(item.event_count, 7);
+  test("blocks: resolves lakehouse rows into the block feed", async () => {
+    const lake = lakehouse([blockRow()]);
+    try {
+      const { status, body } = await gql(
+        "{ blocks { items { block_number block_hash extrinsic_count event_count } total next_cursor } }",
+        COLD,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.data.blocks.total, 1);
+      const item = body.data.blocks.items[0];
+      assert.equal(item.block_number, 123);
+      assert.equal(item.extrinsic_count, 3);
+      assert.equal(item.event_count, 7);
+    } finally {
+      lake.restore();
+    }
   });
 
-  test("blocks: limit/offset/cursor are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            block_count: 0,
-            limit: 5,
-            offset: 10,
-            next_cursor: null,
-            blocks: [],
-          });
-        },
-      },
-    };
-    await gql(
-      `{ blocks(limit: 5, offset: 10, cursor: "abc123") { total } }`,
-      env as unknown as Env,
-    );
-    assert.equal(capturedUrl!.pathname, "/api/v1/blocks");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
+  test("blocks: limit/offset reach the lakehouse query", async () => {
+    const lake = lakehouse();
+    try {
+      await gql(`{ blocks(limit: 5, offset: 10) { total } }`, COLD);
+      // OFFSET is emulated by over-fetching then slicing (see
+      // OFFSET_EMULATION_CAP), so limit+offset is the LIMIT that goes out.
+      assert.match(lake.queries[0], /LIMIT 15$/);
+      assert.match(lake.queries[0], /FROM chain\.blocks/);
+    } finally {
+      lake.restore();
+    }
   });
 
-  test("blocks: the REST-parity filters are all forwarded as query params to the Postgres tier (#7870)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            block_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            blocks: [],
-          });
-        },
-      },
-    };
-    await gql(
-      `{ blocks(
-          author: "5Author"
-          spec_version: 200
-          block_start: 100
-          block_end: 500
-          from: "1750000000000"
-          to: "1760000000000"
-          min_extrinsics: 2
-          min_events: 3
-        ) { total } }`,
-      env as unknown as Env,
-    );
-    assert.equal(capturedUrl!.pathname, "/api/v1/blocks");
-    assert.equal(capturedUrl!.searchParams.get("author"), "5Author");
-    assert.equal(capturedUrl!.searchParams.get("spec_version"), "200");
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
-    assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
-    assert.equal(capturedUrl!.searchParams.get("to"), "1760000000000");
-    assert.equal(capturedUrl!.searchParams.get("min_extrinsics"), "2");
-    assert.equal(capturedUrl!.searchParams.get("min_events"), "3");
+  test("blocks: the REST-parity filters all become lakehouse predicates (#7870)", async () => {
+    const lake = lakehouse();
+    try {
+      await gql(
+        `{ blocks(
+            author: "${AUTHOR}"
+            spec_version: 200
+            block_start: 100
+            block_end: 500
+            from: "1750000000000"
+            to: "1760000000000"
+            min_extrinsics: 2
+            min_events: 3
+          ) { total } }`,
+        COLD,
+      );
+      const sql = lake.queries[0];
+      assert.match(sql, new RegExp(`author = '${AUTHOR}'`));
+      assert.match(sql, /spec_version = 200/);
+      assert.match(sql, /block_number >= 100/);
+      assert.match(sql, /block_number <= 500/);
+      assert.match(sql, /observed_at >= 1750000000000/);
+      assert.match(sql, /observed_at <= 1760000000000/);
+      assert.match(sql, /extrinsic_count >= 2/);
+      assert.match(sql, /event_count >= 3/);
+    } finally {
+      lake.restore();
+    }
   });
 
-  test("blocks: a single filter is forwarded and the unset filters are omitted (#7870)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            block_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            blocks: [],
-          });
-        },
-      },
-    };
-    await gql(`{ blocks(author: "5Solo") { total } }`, env as unknown as Env);
-    assert.equal(capturedUrl!.searchParams.get("author"), "5Solo");
-    assert.equal(capturedUrl!.searchParams.has("spec_version"), false);
-    assert.equal(capturedUrl!.searchParams.has("block_start"), false);
-    assert.equal(capturedUrl!.searchParams.has("block_end"), false);
-    assert.equal(capturedUrl!.searchParams.has("from"), false);
-    assert.equal(capturedUrl!.searchParams.has("to"), false);
-    assert.equal(capturedUrl!.searchParams.has("min_extrinsics"), false);
-    assert.equal(capturedUrl!.searchParams.has("min_events"), false);
+  test("blocks: a single filter is applied and the unset filters are omitted (#7870)", async () => {
+    const lake = lakehouse();
+    try {
+      await gql(`{ blocks(author: "${AUTHOR}") { total } }`, COLD);
+      // One predicate and nothing else between WHERE and ORDER BY: the unset
+      // filters are omitted rather than sent as a widening default.
+      const sql = lake.queries[0];
+      // The seam ceiling is always present -- it is what keeps this leg from
+      // reading a range the head leg owns. Nothing else is.
+      assert.match(
+        sql,
+        new RegExp(
+          `WHERE author = '${AUTHOR}' AND block_number < \\d+ ORDER BY`,
+        ),
+      );
+    } finally {
+      lake.restore();
+    }
   });
 
   test("introspection: blocks exposes the new REST-parity filter args with the right scalar types (#7870)", async () => {
@@ -5774,76 +5754,39 @@ describe("graphql — blocks / block (#5575, Postgres-tier feed)", () => {
     });
   });
 
-  test("block: resolves a Postgres-tier row by numeric height, with chain-walk nav", async () => {
-    const ref = "123";
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ref,
-          block: {
-            block_number: 123,
-            block_hash: `0x${"b".repeat(64)}`,
-            parent_hash: `0x${"a".repeat(64)}`,
-            author: "5Author",
-            extrinsic_count: 3,
-            event_count: 7,
-            spec_version: 200,
-            observed_at: "2026-07-14T00:00:00.000Z",
-          },
-          prev_block_number: 122,
-          next_block_number: 124,
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      `{ block(ref: "${ref}") { ref block { block_number spec_version } prev_block_number next_block_number } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    assert.equal(body.data.block.ref, ref);
-    assert.equal(body.data.block.block.block_number, 123);
-    assert.equal(body.data.block.block.spec_version, 200);
-    assert.equal(body.data.block.prev_block_number, 122);
-    assert.equal(body.data.block.next_block_number, 124);
+  test("block: resolves a lakehouse row by numeric height", async () => {
+    // Below the seam, so the lakehouse is the source (above it the head leg
+    // owns the height and the lakehouse is not consulted at all).
+    const lake = lakehouse([blockRow()]);
+    try {
+      const { status, body } = await gql(
+        `{ block(ref: "123") { ref block { block_number spec_version } } }`,
+        COLD,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.data.block.ref, "123");
+      assert.equal(body.data.block.block.block_number, 123);
+      assert.equal(body.data.block.block.spec_version, 200);
+      assert.match(lake.queries[0], /block_number = 123/);
+    } finally {
+      lake.restore();
+    }
   });
 
-  test("block: resolves a Postgres-tier row by 0x block hash", async () => {
+  test("block: resolves a lakehouse row by 0x block hash", async () => {
     const ref = `0x${"b".repeat(64)}`;
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            ref,
-            block: {
-              block_number: 123,
-              block_hash: ref,
-              parent_hash: null,
-              author: null,
-              extrinsic_count: 0,
-              event_count: 0,
-              spec_version: 200,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-            prev_block_number: null,
-            next_block_number: null,
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(
-      `{ block(ref: "${ref}") { ref block { block_number block_hash } } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, `/api/v1/blocks/${ref}`);
-    assert.equal(body.data.block.block.block_number, 123);
-    assert.equal(body.data.block.block.block_hash, ref);
+    const lake = lakehouse([blockRow({ block_hash: ref })]);
+    try {
+      const { status, body } = await gql(
+        `{ block(ref: "${ref}") { ref block { block_number block_hash } } }`,
+        COLD,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.data.block.block.block_hash, ref);
+      assert.match(lake.queries[0], new RegExp(`block_hash = '${ref}'`));
+    } finally {
+      lake.restore();
+    }
   });
 
   test("block: unresolved ref returns block:null, never a GraphQL error", async () => {
@@ -9059,9 +9002,15 @@ function asPlainJson(value: unknown) {
   return JSON.parse(JSON.stringify(value));
 }
 
-describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+describe("graphql — blocks_summary (#5664, archived projection)", () => {
+  /** The artifact envelope the blocks-summary lane writes. */
+  function summaryProjection(summary: Row) {
+    return { schema_version: 1, summary };
+  }
+
+  /** An archive binding that answers every key with the same body. */
+  function archive(body: unknown) {
+    return { get: async () => ({ json: async () => body }) };
   }
 
   test("cold store: no Postgres flag returns a schema-stable empty summary, never null", async () => {
@@ -9091,12 +9040,12 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
     });
   });
 
-  test("resolves the Postgres-tier summary, including nested time/throughput/concentration", async () => {
+  test("resolves the projected summary, including nested time/throughput/concentration", async () => {
     const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
+      // #10190: the retired tier is gone; #9146's blocks-summary projection is
+      // what serves this card, read from the archive by network-scoped key.
+      METAGRAPH_ARCHIVE: archive(
+        summaryProjection({
           block_count: 3,
           first_block: 100,
           last_block: 102,
@@ -9163,27 +9112,25 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
     assert.equal(s.author_concentration.top_1pct_share, 0.67);
   });
 
-  test("forwards to /api/v1/blocks/summary with no query params", async () => {
-    let capturedUrl: URL | undefined;
+  test("reads the mainnet projection key, and asks for nothing else", async () => {
+    const keys: string[] = [];
     const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({ schema_version: 1, block_count: 0 });
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) => {
+          keys.push(key);
+          return { json: async () => summaryProjection({ block_count: 0 }) };
         },
       },
     };
     await gql("{ blocks_summary { block_count } }", env);
-    assert.equal(capturedUrl!.pathname, "/api/v1/blocks/summary");
-    assert.equal(capturedUrl!.search, "");
+    assert.equal(keys.length, 1);
+    assert.doesNotMatch(keys[0], /testnet/);
   });
 
-  test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
+  test("a partial projection body degrades to the schema-stable defaults, never null", async () => {
     const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
       // Every field absent -- the resolver's own ?? defaults must fill them in.
-      DATA_API: dataApi(Response.json({})),
+      METAGRAPH_ARCHIVE: archive(summaryProjection({})),
     };
     const { status, body } = await gql(
       `{ blocks_summary {
@@ -9209,10 +9156,36 @@ describe("graphql — blocks_summary (#5664, Postgres-tier + retired-D1 fallback
   });
 });
 
-describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + retired-D1 fallback)", () => {
+describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
   function dataApi(response: Row) {
     return { fetch: async () => response };
   }
+
+  /**
+   * Stub the lakehouse transport for the two queries the runtime cold tier
+   * issues: the GROUP BY timeline, and the separately-queried head block that
+   * current_spec_version has to come from (a rollback would make the last
+   * transition the wrong answer).
+   */
+  function lakehouse(transitions: Row[]) {
+    const original = globalThis.fetch;
+    const queries: string[] = [];
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init.body)).query);
+      queries.push(sql);
+      const rows = sql.includes("ORDER BY block_number DESC")
+        ? transitions.slice(-1)
+        : transitions;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return { queries, restore: () => (globalThis.fetch = original) };
+  }
+
+  const COLD = { R2_SQL_TOKEN: "cfut_test" } as unknown as Env;
 
   test("cold store: no Postgres flag returns a schema-stable empty timeline, never null", async () => {
     const { status, body } = await gql(
@@ -9233,75 +9206,72 @@ describe("graphql — runtime (#5898, Postgres-tier spec-version timeline + reti
     });
   });
 
-  test("resolves the Postgres-tier spec-version transition timeline", async () => {
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          transitions: [
-            {
-              spec_version: 200,
-              block_number: 100,
-              observed_at: "2026-06-25T00:00:00.000Z",
-            },
-            {
-              spec_version: 201,
-              block_number: 500,
-              observed_at: "2026-07-01T00:00:00.000Z",
-            },
-          ],
-          transition_count: 2,
-          current_spec_version: 201,
-          coverage_from_block: 100,
-          coverage_from_at: "2026-06-25T00:00:00.000Z",
-        }),
-      ),
-    };
-    const { status, body } = await gql(
-      `{ runtime {
-          schema_version transition_count current_spec_version
-          coverage_from_block coverage_from_at
-          transitions { spec_version block_number observed_at }
-        } }`,
-      env as unknown as Env,
-    );
-    assert.equal(status, 200);
-    assert.deepEqual(body.data.runtime, {
-      schema_version: 1,
-      transition_count: 2,
-      current_spec_version: 201,
-      coverage_from_block: 100,
-      coverage_from_at: "2026-06-25T00:00:00.000Z",
-      transitions: [
-        {
-          spec_version: 200,
-          block_number: 100,
-          observed_at: "2026-06-25T00:00:00.000Z",
-        },
-        {
-          spec_version: 201,
-          block_number: 500,
-          observed_at: "2026-07-01T00:00:00.000Z",
-        },
-      ],
-    });
+  test("resolves the lakehouse spec-version transition timeline", async () => {
+    // observed_at is epoch ms because that is the lakehouse column's type; the
+    // ISO strings below are the builder's formatting.
+    const lake = lakehouse([
+      {
+        spec_version: 200,
+        block_number: 100,
+        observed_at: Date.parse("2026-06-25T00:00:00.000Z"),
+      },
+      {
+        spec_version: 201,
+        block_number: 500,
+        observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
+      },
+    ]);
+    try {
+      const { status, body } = await gql(
+        `{ runtime {
+            schema_version transition_count current_spec_version
+            coverage_from_block coverage_from_at
+            transitions { spec_version block_number observed_at }
+          } }`,
+        COLD,
+      );
+      assert.equal(status, 200);
+      assert.deepEqual(body.data.runtime, {
+        schema_version: 1,
+        transition_count: 2,
+        current_spec_version: 201,
+        coverage_from_block: 100,
+        coverage_from_at: "2026-06-25T00:00:00.000Z",
+        transitions: [
+          {
+            spec_version: 200,
+            block_number: 100,
+            observed_at: "2026-06-25T00:00:00.000Z",
+          },
+          {
+            spec_version: 201,
+            block_number: 500,
+            observed_at: "2026-07-01T00:00:00.000Z",
+          },
+        ],
+      });
+    } finally {
+      lake.restore();
+    }
   });
 
-  test("forwards to /api/v1/runtime with no query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({ schema_version: 1, transition_count: 0 });
-        },
-      },
-    };
-    await gql("{ runtime { transition_count } }", env);
-    assert.equal(capturedUrl!.pathname, "/api/v1/runtime");
-    assert.equal(capturedUrl!.search, "");
+  test("asks the lakehouse for the timeline AND the head block, separately", async () => {
+    // Two queries, not one: current_spec_version must not be read off the last
+    // transition, because GROUP BY collapses each version to its EARLIEST
+    // block and a rollback would then report the superseded version.
+    const lake = lakehouse([
+      { spec_version: 200, block_number: 100, observed_at: 1 },
+    ]);
+    try {
+      await gql("{ runtime { transition_count } }", COLD);
+      assert.equal(lake.queries.length, 2);
+      assert.ok(lake.queries.some((q) => q.includes("GROUP BY spec_version")));
+      assert.ok(
+        lake.queries.some((q) => q.includes("ORDER BY block_number DESC")),
+      );
+    } finally {
+      lake.restore();
+    }
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults, never null", async () => {
@@ -25093,7 +25063,6 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
     }) as unknown as Env;
   const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
   const events = { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" };
-  const blocks = { METAGRAPH_BLOCKS_SOURCE: "postgres" };
   const health = { METAGRAPH_HEALTH_SOURCE: "postgres" };
   const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
 
@@ -25128,34 +25097,54 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
     ]);
   });
 
-  test("runtime forwards the coverage completeness marker and its gaps", async () => {
-    const { body } = await gql(
-      `{ runtime {
-          coverage_complete
-          coverage_gaps { after_spec_version before_spec_version after_block before_block block_span }
-        } }`,
-      api(
-        {
-          schema_version: 1,
-          transitions: [],
-          transition_count: 0,
-          coverage_complete: false,
-          coverage_gaps: [
-            {
-              after_spec_version: 200,
-              before_spec_version: 205,
-              after_block: 100,
-              before_block: 900,
-              block_span: 800,
-            },
-          ],
-        },
-        blocks,
-      ),
-    );
-    assert.equal(body.errors, undefined);
-    assert.equal(body.data.runtime.coverage_complete, false);
-    assert.equal(body.data.runtime.coverage_gaps[0].block_span, 800);
+  test("runtime publishes the coverage completeness marker and its gaps", async () => {
+    // #10190: the tier that used to hand these fields over pre-built is retired,
+    // so they are DERIVED from the lakehouse timeline now. Two transitions five
+    // spec versions apart is the gap -- feeding the gap in ready-made would no
+    // longer exercise anything the resolver does.
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init.body)).query);
+      // Non-consecutive versions AND a span over
+      // MAX_PLAUSIBLE_TRANSITION_BLOCK_SPAN: both are required, because a long
+      // quiet stretch under one runtime is a fact about the chain, not a hole.
+      const rows = [
+        { spec_version: 200, block_number: 100, observed_at: 1 },
+        { spec_version: 205, block_number: 1_000_100, observed_at: 2 },
+      ];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: sql.includes("ORDER BY block_number DESC")
+              ? rows.slice(-1)
+              : rows,
+          },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    try {
+      const { body } = await gql(
+        `{ runtime {
+            coverage_complete
+            coverage_gaps { after_spec_version before_spec_version after_block before_block block_span }
+          } }`,
+        { R2_SQL_TOKEN: "cfut_test" } as unknown as Env,
+      );
+      assert.equal(body.errors, undefined);
+      assert.equal(body.data.runtime.coverage_complete, false);
+      assert.deepEqual(body.data.runtime.coverage_gaps[0], {
+        after_spec_version: 200,
+        before_spec_version: 205,
+        after_block: 100,
+        before_block: 1_000_100,
+        block_span: 1_000_000,
+      });
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   test("subnet_weight_setters forwards tempo and the overdue counters", async () => {

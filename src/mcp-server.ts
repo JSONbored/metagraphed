@@ -6968,15 +6968,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // the schema-stable zeroed card now that blocks' D1 write path is
       // retired (#4772) and the table is dropped in production.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/blocks/summary"),
-          "METAGRAPH_BLOCKS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // on every request.
         // #9146: same blocks-summary projection REST reads, so the tool and
         // the route cannot report different block-production numbers.
-        (await loadBlocksSummaryFromArtifact(ctx.env)) ??
-        buildBlocksSummary([])
+        (await loadBlocksSummaryFromArtifact(ctx.env)) ?? buildBlocksSummary([])
       );
     },
   },
@@ -11111,23 +11108,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // schema-stable empty feed now that blocks' D1 write path is retired
       // (#4772) and the table is dropped in production.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/blocks", {
-            author,
-            spec_version: specVersion,
-            block_start: blockStart,
-            block_end: blockEnd,
-            from,
-            to,
-            min_extrinsics: minExtrinsics,
-            min_events: minEvents,
-            limit,
-            offset,
-            cursor,
-          }),
-          "METAGRAPH_BLOCKS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // on every request.
         (await loadBlockFeedColdTier(ctx.env, {
           limit,
           offset,
@@ -11164,13 +11147,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // schema-stable block:null shape now that blocks' D1 write path is
       // retired (#4772) and the table is dropped in production.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/blocks/${encodeURIComponent(ref)}`),
-          "METAGRAPH_BLOCKS_SOURCE",
-        )) ??
-        (await loadBlockColdTier(ctx.env, ref)) ??
-        buildBlock(undefined, ref)
+        // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every deployed
+        // config and absent from DATA_API_FORWARD_FLAGS, so this arm resolved to null
+        // on every request.
+        (await loadBlockColdTier(ctx.env, ref)) ?? buildBlock(undefined, ref)
       );
     },
   },
@@ -11622,23 +11602,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
-      const [history, current] = await Promise.all([
-        tryPostgresTier(
-          ctx.env,
-          new Request("https://d/api/v1/runtime"),
-          "METAGRAPH_BLOCKS_SOURCE",
-        ),
-        // #8702 parity: the same `current` block the REST route serves, from
-        // the same loader, so an agent asking "is an upgrade pending" gets the
-        // answer instead of only the historical timeline.
-        loadUpgradeRadar(ctx.env),
-      ]);
+      // NO TIER READ (#10190): METAGRAPH_BLOCKS_SOURCE is retired in every
+      // deployed config and absent from DATA_API_FORWARD_FLAGS, so the history
+      // leg of this Promise.all resolved to null on every call. The lakehouse is
+      // what has been answering.
+      //
+      // #8702 parity: the same `current` block the REST route serves, from the
+      // same loader, so an agent asking "is an upgrade pending" gets the answer
+      // instead of only the historical timeline.
+      const current = await loadUpgradeRadar(ctx.env);
       return {
-        ...((history as Record<string, unknown> | null) ??
-          // #9265: the lakehouse carries the same spec_version column, so an
-          // agent gets the real timeline instead of an empty one beside a
-          // `current` that reports a live spec version.
-          (await loadRuntimeVersionHistoryColdTier(ctx.env)) ??
+        // #9265: the lakehouse carries the same spec_version column, so an agent
+        // gets the real timeline instead of an empty one beside a `current` that
+        // reports a live spec version.
+        ...((await loadRuntimeVersionHistoryColdTier(ctx.env)) ??
           buildRuntimeVersionHistory([])),
         current,
       };
