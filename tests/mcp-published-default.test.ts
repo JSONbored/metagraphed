@@ -157,3 +157,35 @@ describe("the two tools #10306 was filed for, through the real dispatcher", () =
     );
   });
 });
+
+// The two shapes validateToolArguments has to survive that no real tool has
+// (#10617).
+describe("validateToolArguments on schemas the registry does not contain", () => {
+  test("a tool whose inputSchema declares no properties accepts anything", () => {
+    // `properties` is optional in JSON Schema, and `?? {}` is what stops the
+    // unknown-key scan below from reading keys off undefined. No shipped tool
+    // is spelled this way today, which is exactly why the fallback was never
+    // taken -- and a tool added without `properties` would hit it first.
+    const resolved = validateToolArguments(
+      { name: "no_properties", inputSchema: { type: "object" } } as Row,
+      { anything: 1 },
+    );
+    assert.deepEqual(resolved, { anything: 1 });
+  });
+
+  test("a closed schema with no properties still rejects unknown keys", () => {
+    // additionalProperties:false plus no declared properties means EVERY key
+    // is unknown -- the fallback and the rejection have to compose.
+    assert.throws(
+      () =>
+        validateToolArguments(
+          {
+            name: "closed_empty",
+            inputSchema: { type: "object", additionalProperties: false },
+          } as Row,
+          { nope: 1 },
+        ),
+      /nope/,
+    );
+  });
+});

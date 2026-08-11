@@ -328,3 +328,30 @@ describe("the published MCP enum is the schema's own field list (#9082)", () => 
     assert.deepEqual(schemaResolver([...NEURON_FIELD_NAMES]), []);
   });
 });
+
+// A row set is not guaranteed to be rows (#10617).
+//
+// `unknownAgainstRows` is handed whatever a route already has in hand, and the
+// error path calls `.known()` over ALL of it to name the valid fields. A JSON
+// array whose entries are null, or nested arrays, reaches here unchanged --
+// `Object.keys(null)` throws, and `Object.keys([1,2])` would offer "0" and "1"
+// as field names. The guard exists for both; this is what proves it.
+describe("unknownAgainstRows tolerates a row set that is not objects", () => {
+  test("null, arrays and primitives contribute no field names", () => {
+    const resolver = unknownAgainstRows([
+      null,
+      undefined,
+      42,
+      "a string",
+      ["nested", "array"],
+      { netuid: 64 },
+    ] as never);
+    // The one real object still resolves, so the scan is not simply skipped.
+    assert.deepEqual(resolver.known!().sort(), ["netuid"]);
+  });
+
+  test("a row set with no objects at all yields an empty known set", () => {
+    const resolver = unknownAgainstRows([null, [1, 2]] as never);
+    assert.deepEqual(resolver.known!(), []);
+  });
+});

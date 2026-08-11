@@ -16110,8 +16110,11 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         // (see mcpToolLabel).
         const result = await readResource(params, ctx);
         scheduleMcpResourceReadEvent(ctx, {
-          resourceName:
-            typeof params?.uri === "string" ? params.uri : undefined,
+          // No `typeof ... : undefined` guard: readResource above THREW unless
+          // `uri` matched a resource this server serves, and every one of those
+          // is a string. The false half was unreachable, and codecov counts an
+          // unreachable branch the same as an untested one.
+          resourceName: params.uri as string,
           sessionId: ctx?.sessionId,
           parameters: params,
           response: result,
@@ -16151,8 +16154,9 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         // one of this server's own.
         const prompt = getPrompt(params);
         scheduleMcpPromptGetEvent(ctx, {
-          resourceName:
-            typeof params?.name === "string" ? params.name : undefined,
+          // Same as resources/read above: getPrompt threw unless the name is
+          // one of PROMPTS_BY_NAME's own keys, all of which are strings.
+          resourceName: params.name as string,
           sessionId: ctx?.sessionId,
           parameters: params,
           ...mcpAttributionFor(ctx),

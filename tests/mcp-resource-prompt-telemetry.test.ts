@@ -258,6 +258,30 @@ describe("resource and prompt telemetry never breaks the method", () => {
       assert.ok(payload.result?.messages);
       assert.equal(payload.error, undefined);
     });
+
+    // The two LIST methods were missing from this loop, so their schedulers'
+    // rejection path was the only half of the family never exercised -- and it
+    // is the half that matters most, because a list call is the one an agent
+    // makes on every connect.
+    test(`resources/list still answers when ${label}`, async () => {
+      const payload = await call(
+        "resources/list",
+        {},
+        { recordMcpResourcesListEvent: override },
+      );
+      assert.ok(payload.result?.resources);
+      assert.equal(payload.error, undefined);
+    });
+
+    test(`prompts/list still answers when ${label}`, async () => {
+      const payload = await call(
+        "prompts/list",
+        {},
+        { recordMcpPromptsListEvent: override },
+      );
+      assert.ok(payload.result?.prompts);
+      assert.equal(payload.error, undefined);
+    });
   }
 
   test("a missing ExecutionContext does not break the method", async () => {
