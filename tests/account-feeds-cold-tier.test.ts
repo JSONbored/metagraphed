@@ -566,10 +566,14 @@ describe("loadCounterpartyRelationshipColdTier", () => {
     assert.equal(data!.counterparty_count, 1);
     assert.equal(data!.relationship.transfer_count, 2);
     assert.equal(data!.counterparties[0]!.net_tao, 0);
+    // observed_at is KEPT now (#10190). It was stripped for payload parity with
+    // the Postgres tier, whose projection dropped it -- and that tier is retired,
+    // so the strip only nulled three published fields for no remaining reason
+    // while the query still paid to select and sort by the column.
     assert.equal(
       data!.relationship.last_seen_at,
-      null,
-      "observed_at is stripped so this tier matches data-api's projection",
+      new Date(transferRow(10).observed_at as number).toISOString(),
+      "the newest transfer's observed_at is the relationship's last_seen_at",
     );
   });
 

@@ -760,11 +760,20 @@ export async function loadValidatorNominatorsColdTier(
   };
 }
 
-/** The bounded newest-first Transfer scan both counterparty modes read.
- * observed_at is selected (it drives the ORDER BY) but STRIPPED before the
- * rows reach a builder: data-api's outer projection drops it, so keeping it
- * would let this tier populate relationship timestamps the Postgres tier
- * leaves null -- a payload difference callers could observe. */
+/**
+ * The bounded newest-first Transfer scan both counterparty modes read.
+ *
+ * observed_at USED TO BE STRIPPED here. The reason was payload parity: data-api's
+ * outer projection dropped it, so keeping it would have let this tier populate
+ * relationship timestamps the Postgres tier left null -- "a payload difference
+ * callers could observe".
+ *
+ * That tier is retired (#10190), and with it the only reason to throw the column
+ * away. Stripping it now just nulls three published fields on purpose --
+ * `first_seen_at`, `last_seen_at`, and every transfer's `observed_at` -- while
+ * the query still pays to select and sort by it. The parity it protected was
+ * parity with a leg that no longer answers.
+ */
 async function counterpartyScan(
   env: Env | null | undefined,
   predicate: string,
@@ -775,8 +784,7 @@ async function counterpartyScan(
       `FROM chain.account_events WHERE event_kind = 'Transfer' AND ${predicate} ` +
       `${FEED_ORDER} LIMIT ${COUNTERPARTIES_SCAN_CAP}`,
   );
-  if (rows === null) return null;
-  return rows.map(({ observed_at: _observedAt, ...rest }) => rest);
+  return rows;
 }
 
 /**

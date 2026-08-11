@@ -14,7 +14,7 @@ import {
   subscribe,
   validate,
 } from "graphql";
-import { beforeEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 
 // The resolvers that still read a hot tier reach it through readStore ->
 // `new Client({ connectionString })` (#10179), and a resolver is entered with
@@ -2931,10 +2931,6 @@ describe("graphql — profiles", () => {
 // #6977: block-scoped extrinsics/events/chain-events lists mirror the same
 // Postgres tier + schema-stable fallback the block/extrinsics feeds already use.
 describe("graphql — block_extrinsics / block_events / block_chain_events (#6977)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("block_extrinsics: cold store returns a schema-stable empty list, never an error", async () => {
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9") { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
@@ -4754,10 +4750,6 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
 });
 
 describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("sudo: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ sudo { items { call_module } total next_cursor } }",
@@ -5254,10 +5246,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 });
 
 describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("governance_config_changes: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ governance_config_changes { items { call_module } total next_cursor } }",
@@ -15717,8 +15705,37 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered. Both modes
+  // read the lakehouse: list mode scans this account's Transfer rows and
+  // buildCounterparties AGGREGATES them, relationship mode narrows to one pair.
+  //
+  // Raw rows, not a finished leaderboard: sent/received/net and the ranking are
+  // exactly what the aggregation computes, and a built payload skipped it.
+  let lake: ReturnType<typeof lakehouse> | undefined;
+  afterEach(() => {
+    lake?.restore();
+    lake = undefined;
+  });
+  function transfer(
+    from: string,
+    to: string,
+    amountTao: number,
+    block: number,
+  ) {
+    return {
+      hotkey: from,
+      coldkey: to,
+      event_kind: "Transfer",
+      amount_tao: amountTao,
+      block_number: block,
+      event_index: 0,
+      observed_at: 1_750_000_000_000 + block,
+    };
+  }
+  function transferStore(rows: Row[]) {
+    lake = lakehouse(rows, { once: true });
+    return { ...LAKEHOUSE_ENV } as unknown as Env;
   }
 
   test("cold store: no Postgres flag returns a schema-stable zero list card, never null", async () => {
@@ -15746,37 +15763,28 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("resolves the Postgres-tier list envelope, mapping each ranked counterparty", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          counterparty_count: 2,
-          transfers_scanned: 7,
-          scan_capped: false,
-          total_sent_tao: 12.5,
-          total_received_tao: 4.25,
-          counterparties: [
-            {
-              address: OTHER,
-              sent_tao: 10,
-              received_tao: 4.25,
-              net_tao: -5.75,
-              transfer_count: 5,
-              last_block: 4321,
-            },
-            {
-              address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-              sent_tao: 2.5,
-              received_tao: 0,
-              net_tao: -2.5,
-              transfer_count: 2,
-            },
-          ],
-        }),
+    // Seven scanned transfers across two counterparties: OTHER nets -5.75 on
+    // five, the second nets -2.5 on two. Both the ranking and every total below
+    // are what buildCounterparties derives from these rows.
+    const env = transferStore([
+      transfer(SS58, OTHER, 4, 4321),
+      transfer(SS58, OTHER, 3, 4320),
+      transfer(SS58, OTHER, 3, 4319),
+      transfer(OTHER, SS58, 4.25, 4318),
+      transfer(SS58, OTHER, 0, 4317),
+      transfer(
+        SS58,
+        "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        2.5,
+        4000,
       ),
-    };
+      transfer(
+        SS58,
+        "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        0,
+        3999,
+      ),
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", limit: 5) {
           ss58 counterparty_count transfers_scanned scan_capped
@@ -15807,64 +15815,37 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         received_tao: 0,
         net_tao: -2.5,
         transfer_count: 2,
-        last_block: null,
+        // DERIVED as the MAX block across this pair's rows. The retired tier's
+        // payload simply omitted the field, so it read null.
+        last_block: 4000,
       },
     ]);
   });
 
   test("relationship mode: maps the Postgres-tier composite envelope with transfer evidence", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          counterparty_count: 1,
-          transfers_scanned: 3,
-          scan_capped: false,
-          total_sent_tao: 8,
-          total_received_tao: 1,
-          counterparties: [
-            {
-              address: OTHER,
-              sent_tao: 8,
-              received_tao: 1,
-              net_tao: -7,
-              transfer_count: 3,
-              last_block: 900,
-            },
-          ],
-          relationship: {
-            schema_version: 1,
-            ss58: SS58,
-            counterparty: OTHER,
-            transfer_count: 3,
-            transfers_scanned: 3,
-            scan_capped: false,
-            total_sent_tao: 8,
-            total_received_tao: 1,
-            net_tao: -7,
-            first_block: 700,
-            last_block: 900,
-            first_seen_at: "2026-05-01T00:00:00.000Z",
-            last_seen_at: "2026-06-01T00:00:00.000Z",
-            limit: 50,
-            transfers: [
-              {
-                block_number: 900,
-                event_index: 2,
-                netuid: 0,
-                from: SS58,
-                to: OTHER,
-                amount_tao: 5,
-                direction: "sent",
-                observed_at: "2026-06-01T00:00:00.000Z",
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // Relationship mode narrows to ONE pair, so the same rows serve both the
+    // ranked list and the per-pair evidence -- the composite envelope is built,
+    // not echoed.
+    const env = transferStore([
+      {
+        ...transfer(SS58, OTHER, 5, 900),
+        event_index: 2,
+        netuid: 0,
+        observed_at: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      {
+        ...transfer(SS58, OTHER, 3, 800),
+        event_index: 1,
+        netuid: 0,
+        observed_at: Date.parse("2026-05-15T00:00:00.000Z"),
+      },
+      {
+        ...transfer(OTHER, SS58, 1, 700),
+        event_index: 0,
+        netuid: 0,
+        observed_at: Date.parse("2026-05-01T00:00:00.000Z"),
+      },
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}", limit: 50) {
           counterparty_count
@@ -15885,6 +15866,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
     assert.equal(r.relationship.net_tao, -7);
     assert.equal(r.relationship.first_block, 700);
     assert.equal(r.relationship.limit, 50);
+    // ALL THREE, newest first -- the evidence list is the rows themselves, so a
+    // relationship that dropped one would be visible here. The retired tier
+    // handed over a single pre-selected transfer, which could not show that.
     assert.deepEqual(r.relationship.transfers, [
       {
         block_number: 900,
@@ -15895,6 +15879,26 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         amount_tao: 5,
         direction: "sent",
         observed_at: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        block_number: 800,
+        event_index: 1,
+        netuid: 0,
+        from: SS58,
+        to: OTHER,
+        amount_tao: 3,
+        direction: "sent",
+        observed_at: "2026-05-15T00:00:00.000Z",
+      },
+      {
+        block_number: 700,
+        event_index: 0,
+        netuid: 0,
+        from: OTHER,
+        to: SS58,
+        amount_tao: 1,
+        direction: "received",
+        observed_at: "2026-05-01T00:00:00.000Z",
       },
     ]);
   });
@@ -15925,12 +15929,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({ counterparties: [{ address: OTHER }] }),
-      ),
-    };
+    // A store with nothing to aggregate is what degrades now; the floor is
+    // unchanged.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}") {
           schema_version ss58 counterparty_count transfers_scanned scan_capped
@@ -15949,25 +15950,17 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
       scan_capped: false,
       total_sent_tao: 0,
       total_received_tao: 0,
-      counterparties: [
-        {
-          address: OTHER,
-          sent_tao: 0,
-          received_tao: 0,
-          net_tao: 0,
-          transfer_count: 0,
-          last_block: null,
-        },
-      ],
+      // No rows to aggregate means no counterparties -- the retired tier handed
+      // over a list entry with zeroed metrics, which nothing could have derived.
+      counterparties: [],
       relationship: null,
     });
   });
 
   test("a Postgres-tier body with no counterparties key degrades to an empty list, never null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ schema_version: 1 })),
-    };
+    // Same floor from the other direction: no rows means no counterparties,
+    // and the list must be empty rather than null.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}") {
           schema_version ss58 counterparty_count transfers_scanned scan_capped
@@ -15992,15 +15985,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("relationship mode: a bare relationship object degrades every field to the resolver's defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          counterparties: [{ address: OTHER }],
-          relationship: {},
-        }),
-      ),
-    };
+    // No rows at all: every relationship field must reach its default through
+    // the builder rather than surfacing undefined.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
           relationship {
@@ -16027,24 +16014,19 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
       last_block: null,
       first_seen_at: null,
       last_seen_at: null,
-      limit: 0,
+      // The builder's own default page size, not 0: the retired tier echoed
+      // whatever `limit` its body carried.
+      limit: 20,
       transfers: [],
     });
   });
 
   test("relationship mode: a partial transfer row degrades its nullable fields, keeping the required direction", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          counterparties: [{ address: OTHER }],
-          relationship: {
-            counterparty: OTHER,
-            transfers: [{ direction: "received" }],
-          },
-        }),
-      ),
-    };
+    // One received transfer carrying only what the lane always has -- the
+    // nullable columns are absent, so each must degrade on its own.
+    const env = transferStore([
+      { hotkey: OTHER, coldkey: SS58, event_kind: "Transfer", amount_tao: 0 },
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
           relationship {
@@ -16059,8 +16041,11 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         block_number: null,
         event_index: null,
         netuid: null,
-        from: null,
-        to: null,
+        // `from`/`to` come from the row's own hotkey/coldkey, which the lane
+        // ALWAYS has -- they are how the direction is decided. The retired tier
+        // let a transfer arrive with neither, which its own SQL could not produce.
+        from: OTHER,
+        to: SS58,
         amount_tao: 0,
         direction: "received",
         observed_at: null,
@@ -16413,7 +16398,6 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
-    const capture: Row = {};
     // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
     // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
     // was never asked. The cold tier answers, and it feeds the SAME builder
@@ -16456,7 +16440,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
     // A negative offset clamps to 0, so the LIMIT is the limit alone.
     // No filters were supplied, so none appear as predicates.
     assert.doesNotMatch(sql, /event_kind = /);
-    assert.doesNotMatch(sql, /netuid\ =/);
+    assert.doesNotMatch(sql, /netuid = /);
     lake.restore();
   });
 
@@ -16752,7 +16736,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
     assert.ok(limitOut > 0 && limitOut < 100000);
     // A negative offset clamps to 0, so the LIMIT is the limit alone.
     // No filters were supplied, so none appear as predicates.
-    assert.doesNotMatch(sql, /netuid\ =/);
+    assert.doesNotMatch(sql, /netuid = /);
     lake.restore();
   });
 
