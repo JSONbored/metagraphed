@@ -16184,12 +16184,10 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
-    const capture: Row = {};
-    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
-    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
-    // was never asked. The cold tier answers, and it feeds the SAME builder
-    // -- so the envelope below is derived from these rows, not asserted
-    // into existence by a hand-written payload.
+    // #10190: the filters used to be asserted as query params on the tier
+    // request. The lakehouse reader takes none of them as params -- they become
+    // SQL PREDICATES, which is both where they actually go now and a stronger
+    // statement: a dropped filter cannot hide behind a URL that still carries it.
     const lake = lakehouse([]);
     const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
@@ -16414,34 +16412,36 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/events`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("kind"), "StakeAdded");
-    assert.equal(capture.url.searchParams.get("netuid"), "7");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
-    assert.equal(capture.url.searchParams.get("block_start"), "10");
-    assert.equal(capture.url.searchParams.get("block_end"), "20");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`hotkey = '${SS58}'`));
+    assert.match(sql, /event_kind = 'StakeAdded'/);
+    assert.match(sql, /netuid = 7/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 20/);
+    // limit+offset is the LIMIT that goes out: R2 SQL has no OFFSET, so the
+    // reader over-fetches and slices.
+    assert.match(sql, /LIMIT 7\b/);
     lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the clamp used to be read off the tier request's query string. The
+    // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
+    // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
+    // produces no predicate. Asserting the SQL is what the clamp actually reaches.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    // No filter params were supplied, so none are forwarded.
-    assert.equal(capture.url.searchParams.get("kind"), null);
-    assert.equal(capture.url.searchParams.get("netuid"), null);
-    assert.equal(capture.url.searchParams.get("cursor"), null);
-    assert.equal(capture.url.searchParams.get("block_start"), null);
-    assert.equal(capture.url.searchParams.get("block_end"), null);
+    const sql = lake.queries[0];
+    // The clamp is visible as the LIMIT that went out: bounded, and never
+    // the 100000 the caller asked for.
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, so the LIMIT is the limit alone.
+    // No filters were supplied, so none appear as predicates.
+    assert.doesNotMatch(sql, /event_kind = /);
+    assert.doesNotMatch(sql, /netuid\ =/);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
@@ -16729,20 +16729,22 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the clamp used to be read off the tier request's query string. The
+    // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
+    // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
+    // produces no predicate. Asserting the SQL is what the clamp actually reaches.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    assert.equal(capture.url.searchParams.get("netuid"), null);
-    assert.equal(capture.url.searchParams.get("from"), null);
-    assert.equal(capture.url.searchParams.get("to"), null);
-    assert.equal(capture.url.searchParams.get("cursor"), null);
+    const sql = lake.queries[0];
+    // The clamp is visible as the LIMIT that went out: bounded, and never
+    // the 100000 the caller asked for.
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, so the LIMIT is the limit alone.
+    // No filters were supplied, so none appear as predicates.
+    assert.doesNotMatch(sql, /netuid\ =/);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
