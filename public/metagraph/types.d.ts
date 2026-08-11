@@ -5061,7 +5061,7 @@ export interface components {
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -5173,7 +5173,7 @@ export interface components {
         AccountDeregistrationsArtifact: {
             address: string;
             concentration: number | null;
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             derivation?: components["schemas"]["DeregistrationDerivation"];
             dominant_netuid: number | null;
             schema_version: number;
@@ -5453,7 +5453,7 @@ export interface components {
             address: string;
             /** @description Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements. */
             concentration: number | null;
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -6120,8 +6120,8 @@ export interface components {
                 ref: number;
                 score: number;
                 slug: string | null;
-                title: string;
-                url: string;
+                title: string | null;
+                url: string | null;
             }[];
             context_count: number;
             model: string;
@@ -6478,7 +6478,7 @@ export interface components {
             window: "24h";
         };
         ChainAxonRemovalsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Spread of per-subnet teardown intensity (AxonInfoRemoved events per remover) across EVERY subnet with removals in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -6545,24 +6545,24 @@ export interface components {
         /** @description Network-wide stake & emission decentralization card (#5872). Metric blocks are null on a cold/empty store. Mirrors GET /api/v1/chain/concentration. */
         ChainConcentrationArtifact: {
             captured_at: string | null;
-            /** @description Raw emission concentration across every neuron network-wide. */
-            emission: components["schemas"]["ConcentrationMetrics"];
+            /** @description Raw emission concentration across every neuron network-wide; null on a cold or all-zero store. */
+            emission: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Distinct controlling entities (coldkeys) network-wide, collapsed across subnets. */
             entity_count: number;
             /** @description Emission concentration per controlling entity -- hotkeys collapsed across subnets. */
-            entity_emission: components["schemas"]["ConcentrationMetrics"];
+            entity_emission: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Stake concentration per controlling entity -- hotkeys collapsed across subnets, so one operator counts once. */
-            entity_stake: components["schemas"]["ConcentrationMetrics"];
+            entity_stake: components["schemas"]["ConcentrationMetrics"] | null;
             neuron_count: number;
             schema_version: number;
-            /** @description Raw stake concentration across every neuron network-wide. */
-            stake: components["schemas"]["ConcentrationMetrics"];
+            /** @description Raw stake concentration across every neuron network-wide; null on a cold or all-zero store. */
+            stake: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Distinct subnets the snapshot spans. */
             subnet_count: number;
             /** @description UIDs per controlling entity network-wide -- a consolidation signal (1.0 = every UID a distinct owner; higher = fewer operators each running many). Null when no entities. */
             uids_per_entity: number | null;
-            /** @description Stake concentration across permitted validators network-wide only. */
-            validator_stake: components["schemas"]["ConcentrationMetrics"];
+            /** @description Stake concentration across permitted validators network-wide only; null when no permitted validator carries stake. */
+            validator_stake: components["schemas"]["ConcentrationMetrics"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -6654,7 +6654,7 @@ export interface components {
             [key: string]: unknown;
         };
         ChainDeregistrationsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             derivation?: components["schemas"]["DeregistrationDerivation"];
             /** @description Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
@@ -6737,8 +6737,8 @@ export interface components {
                 median_fee_tao: number | null;
                 median_tip_tao: number | null;
                 signed_extrinsic_count: number;
-                total_fee_tao: number;
-                total_tip_tao: number;
+                total_fee_tao: number | null;
+                total_tip_tao: number | null;
             }[];
             day_count: number;
             observed_at?: string | null;
@@ -6746,8 +6746,8 @@ export interface components {
             top_fee_payers: {
                 extrinsic_count: number;
                 signer: string;
-                total_fee_tao: number;
-                total_tip_tao: number;
+                total_fee_tao: number | null;
+                total_tip_tao: number | null;
             }[];
             window: string;
         } & {
@@ -6879,25 +6879,25 @@ export interface components {
             active_count?: number;
             captured_at?: string | null;
             /** @description Consensus score spread across all neurons network-wide. */
-            consensus: components["schemas"]["ScoreDistribution"];
+            consensus: components["schemas"]["ScoreDistribution"] | null;
             /** @description Dividends concentration across permitted validators network-wide only. */
-            dividends: components["schemas"]["ConcentrationMetrics"];
+            dividends: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Incentive concentration across all neurons network-wide with positive incentive. */
-            incentive: components["schemas"]["ConcentrationMetrics"];
+            incentive: components["schemas"]["ConcentrationMetrics"] | null;
             neuron_count: number;
             schema_version: number;
             /** @description Distinct subnets the snapshot spans. */
             subnet_count: number;
             /** @description Trust score spread across all neurons network-wide. */
-            trust: components["schemas"]["ScoreDistribution"];
+            trust: components["schemas"]["ScoreDistribution"] | null;
             validator_count?: number;
             /** @description Validator-trust score spread across permitted validators network-wide only. */
-            validator_trust?: components["schemas"]["ScoreDistribution"];
+            validator_trust?: components["schemas"]["ScoreDistribution"] | null;
         } & {
             [key: string]: unknown;
         };
         ChainPrometheusArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Spread of per-subnet re-announcement intensity (PrometheusServed events per exporter) across EVERY subnet with announcements in the window -- network-wide even when limit truncates the leaderboard. */
             intensity_distribution: components["schemas"]["IntensityDistribution"] | null;
             /** @description Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts. */
@@ -7048,7 +7048,8 @@ export interface components {
                 signer: string;
                 /** @description Total fees paid across the window's extrinsics; null when the tier has no fee data. */
                 total_fee_tao: number | null;
-                total_tip_tao: number;
+                /** @description Total tips paid across the window's extrinsics; null when the tier has no fee data. */
+                total_tip_tao: number | null;
                 tx_count: number;
             }[];
             /**
@@ -7789,7 +7790,7 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -10322,7 +10323,7 @@ export interface components {
              */
             observed_at?: components["schemas"]["EpochMillis"] | null;
             schema_version: number;
-            source: string;
+            source: string | null;
             /** @description Window-total rollup for RPC reverse-proxy traffic. */
             summary: {
                 /** @description Null when there are no requests in the window. */
@@ -10651,8 +10652,8 @@ export interface components {
                 service_kinds: string[];
                 slug: string | null;
                 subtitle?: string | null;
-                title: string;
-                type: string;
+                title: string | null;
+                type: string | null;
                 url?: string | null;
             } & {
                 [key: string]: unknown;
@@ -10787,7 +10788,7 @@ export interface components {
             window: "24h" | null;
         };
         SubnetAxonRemovalsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_removers: number;
             netuid: number;
             observed_at: string | null;
@@ -10963,7 +10964,7 @@ export interface components {
         };
         /** @description Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
         SubnetDeregistrationsArtifact: {
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             deregistrations: number;
             deregistrations_per_hotkey: number | null;
             derivation?: components["schemas"]["DeregistrationDerivation"];
@@ -11887,20 +11888,20 @@ export interface components {
         SubnetPerformanceArtifact: {
             active_count?: number;
             captured_at?: string | null;
-            /** @description Consensus score spread across all neurons. */
-            consensus: components["schemas"]["ScoreDistribution"];
-            /** @description Dividends concentration across permitted validators only. */
-            dividends: components["schemas"]["ConcentrationMetrics"];
+            /** @description Consensus score spread across all neurons; null when none carries a finite consensus. */
+            consensus: components["schemas"]["ScoreDistribution"] | null;
+            /** @description Dividends concentration across permitted validators only; null when no permitted validator earns any. */
+            dividends: components["schemas"]["ConcentrationMetrics"] | null;
             /** @description Incentive concentration across all neurons with positive incentive; null when none carry any. */
             incentive: components["schemas"]["ConcentrationMetrics"] | null;
             netuid: number;
             neuron_count: number;
             schema_version: number;
-            /** @description Trust score spread across all neurons. */
-            trust: components["schemas"]["ScoreDistribution"];
+            /** @description Trust score spread across all neurons; null when none carries a finite trust. */
+            trust: components["schemas"]["ScoreDistribution"] | null;
             validator_count?: number;
-            /** @description Validator-trust score spread across permitted validators only. */
-            validator_trust?: components["schemas"]["ScoreDistribution"];
+            /** @description Validator-trust score spread across permitted validators only; null when none carries a finite value. */
+            validator_trust?: components["schemas"]["ScoreDistribution"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -12121,7 +12122,7 @@ export interface components {
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
-            degraded?: components["schemas"]["DegradedInfo"];
+            degraded?: components["schemas"]["DegradedInfo"] | null;
             distinct_exporters: number;
             netuid: number;
             observed_at: string | null;

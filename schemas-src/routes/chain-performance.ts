@@ -23,19 +23,29 @@ export const ChainPerformanceArtifactSchema = z
     validator_count: z.int().min(0).optional(),
     active_count: z.int().min(0).optional(),
     captured_at: z.string().nullable().optional(),
-    incentive: ConcentrationMetricsSchema.describe(
+    // NULLABLE for the reason the sibling subnet card records (#10786): the
+    // PRODUCERS answer null. `computeConcentration` returns
+    // `ConcentrationScorecard | null` when no value in the population is
+    // positive, and `scoreDistribution` returns `ScoreDistribution | null` when
+    // no cell is finite -- src/subnet-performance.ts states it at the top of
+    // the file, "an empty / all-zero distribution yields a schema-stable null
+    // block". The network-wide card runs the same two functions over the same
+    // shape, so it has the same answer on a cold store.
+    incentive: ConcentrationMetricsSchema.nullable().describe(
       "Incentive concentration across all neurons network-wide with positive incentive.",
     ),
-    dividends: ConcentrationMetricsSchema.describe(
+    dividends: ConcentrationMetricsSchema.nullable().describe(
       "Dividends concentration across permitted validators network-wide only.",
     ),
-    trust: ScoreDistributionSchema.describe(
+    trust: ScoreDistributionSchema.nullable().describe(
       "Trust score spread across all neurons network-wide.",
     ),
-    consensus: ScoreDistributionSchema.describe(
+    consensus: ScoreDistributionSchema.nullable().describe(
       "Consensus score spread across all neurons network-wide.",
     ),
-    validator_trust: ScoreDistributionSchema.optional().describe(
+    validator_trust: ScoreDistributionSchema.nullable()
+      .optional()
+      .describe(
       "Validator-trust score spread across permitted validators network-wide only.",
     ),
   })

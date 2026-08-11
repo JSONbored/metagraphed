@@ -13210,6 +13210,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const candidates = [...bestById.values()]
         .sort((a, b) => b.score - a.score || a.latencyMs - b.latencyMs)
         .map((ranked) => ranked.endpoint);
+      // The `?? null` stays and the SCHEMA moved (#10786). A pool endpoint is
+      // whatever the artifact carries: today all 13 on
+      // /metagraph/rpc/pools.json carry url/provider/kind/score/status/
+      // health_source, but this tool reads a store it does not write, and a
+      // sparsely-registered endpoint is a shape it has to answer for -- which
+      // is what tests/mcp-server-branch-coverage.test.ts pins with endpoint
+      // "b". Dropping the fallback would have made the code claim a guarantee
+      // the artifact does not give it.
       const endpoints = candidates.slice(0, limit).map((endpoint) => ({
         id: endpoint.id,
         // The connectable endpoint URL — the whole point of the tool.

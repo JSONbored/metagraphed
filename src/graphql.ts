@@ -506,6 +506,8 @@ import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts
 import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
 import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
 import { subnetOwnershipHistoryNode } from "./subnet-ownership-answer.ts";
+import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
+import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -3910,8 +3912,15 @@ const rootValue = {
       neuron_count: data.neuron_count ?? 0,
       validator_count: data.validator_count ?? 0,
       miner_count: data.miner_count ?? 0,
-      total_stake_alpha: data.total_stake_alpha ?? null,
-      total_emission_alpha: data.total_emission_alpha ?? null,
+      // THE PRODUCER (#10786). buildSubnetYield accumulates these in rao and
+      // converts once at the end, so an empty subnet yields 0 -- there is no
+      // arm on which it declines to answer, and `?? null` nulled the two
+      // totals the card is FOR. The fallback stays (unlike the sibling cards
+      // below, whose value never leaves this Worker) because the other leg is
+      // a DATA_API body, and the schema's own zero is what an empty subnet
+      // means -- matching the counts on the line above.
+      total_stake_alpha: data.total_stake_alpha ?? 0,
+      total_emission_alpha: data.total_emission_alpha ?? 0,
       subnet_yield: data.subnet_yield ?? null,
       mean_yield: data.mean_yield ?? null,
       median_yield: data.median_yield ?? null,
@@ -4370,8 +4379,16 @@ const rootValue = {
       buildSubnetWeightSetters([], null, netuid, { window: windowParam });
     return {
       tempo: data.tempo ?? null,
-      overdue_tempo_multiple: data.overdue_tempo_multiple ?? null,
-      overdue_setter_count: data.overdue_setter_count ?? null,
+      // THE PRODUCER, and the fallback is DELETED rather than corrected
+      // (#10786). Both legs above end in a card this Worker built:
+      // `loadSubnetWeightSettersColdTier` shapes the lakehouse rows, and
+      // `buildSubnetWeightSetters` stamps `overdue_tempo_multiple` from a
+      // module constant (it is the DEFINITION of overdue, not a measurement)
+      // and `overdue_setter_count` from a `.filter().length`. Neither can omit
+      // them, so `?? null` was not a safety net -- it was an unreachable arm
+      // that turned a non-null field nullable for nothing.
+      overdue_tempo_multiple: data.overdue_tempo_multiple,
+      overdue_setter_count: data.overdue_setter_count,
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       window: data.window ?? windowParam,
@@ -4884,7 +4901,7 @@ const rootValue = {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      source: data.source,
       summary: data.summary ?? null,
       surfaces: data.surfaces ?? [],
     };
@@ -5412,7 +5429,14 @@ const rootValue = {
       netuid: data.netuid ?? netuid,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      // NOT `?? null` (#10786). `formatPercentiles` and its siblings in
+      // src/health-serving.ts stamp `source` unconditionally -- it is a literal
+      // in their return object -- so the fallback was dead code left over from
+      // the untyped `Row`, and it published a nullable field the route has
+      // never actually answered null. Verified live: every one of these six
+      // routes serves the live-cron-prober label. The one that answers null is
+      // rpc-usage, and there the SCHEMA is what moved.
+      source: data.source,
       surfaces: data.surfaces ?? [],
     };
   },
@@ -5681,12 +5705,17 @@ const rootValue = {
         ),
       });
     return {
-      min_incident_samples: data.min_incident_samples ?? null,
+      // THE PRODUCER (#10786). MIN_INCIDENT_SAMPLES is the threshold this
+      // ledger APPLIES, stamped unconditionally by both of health-serving's
+      // builders, so there is no arm on which `loadSubnetIncidents` omits it.
+      // Nulling it dropped the caveat that says how many samples an incident
+      // needed -- the confident-zeros class (#9803) by another route.
+      min_incident_samples: data.min_incident_samples,
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       window: data.window ?? label,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      source: data.source,
       surfaces: data.surfaces ?? [],
     };
   },
@@ -6201,8 +6230,14 @@ const rootValue = {
         >[0],
       )) as Row | null) ?? buildRuntimeVersionHistory([]);
     return {
-      coverage_complete: data.coverage_complete ?? null,
-      coverage_gaps: data.coverage_gaps ?? null,
+      // THE PRODUCER (#10786). `coverage_complete` is `gaps.length === 0` and
+      // `coverage_gaps` is the array it counted -- buildRuntimeVersionHistory
+      // computes both from the same pass and the cold reader returns its card,
+      // so no arm omits them. These two are the caveat that says whether the
+      // timeline has holes; nulling them left the transitions readable and the
+      // warning about them gone (#9803).
+      coverage_complete: data.coverage_complete,
+      coverage_gaps: data.coverage_gaps,
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
       transition_count: data.transition_count ?? 0,
@@ -6223,7 +6258,10 @@ const rootValue = {
       ((await loadBlockColdTier(context.env, ref, chain)) as Row | null) ??
       buildBlock(undefined, ref);
     return {
-      schema_version: data.schema_version ?? null,
+      // THE PRODUCER (#10786). `loadBlockColdTier` and `buildBlock` both stamp
+      // the envelope version, so this never had a second arm to take -- and a
+      // null schema_version is not a value any client can read.
+      schema_version: data.schema_version,
       ref: data.ref ?? ref,
       block: data.block ?? null,
       prev_block_number: data.prev_block_number ?? null,
@@ -6548,7 +6586,12 @@ const rootValue = {
         offset: offset ?? undefined,
       });
     return {
-      concentration_complete: data.concentration_complete ?? null,
+      // THE PRODUCER (#10786). This is the caveat that says whether the three
+      // shares below were computed over the WHOLE nominator set, and both legs
+      // answer it unconditionally -- the cold reader's card and
+      // buildValidatorNominators alike. Nulling it left `nominator_gini`
+      // quotable with nothing saying it was computed over a partial set.
+      concentration_complete: data.concentration_complete,
       top_nominator_share: data.top_nominator_share ?? null,
       top5_nominator_share: data.top5_nominator_share ?? null,
       nominator_gini: data.nominator_gini ?? null,
@@ -6634,7 +6677,12 @@ const rootValue = {
       take_last_changed_date: data.take_last_changed_date ?? null,
       next_take_change_eligible_date:
         data.next_take_change_eligible_date ?? null,
-      take_change_observable: data.take_change_observable ?? null,
+      // THE PRODUCER (#10786). This flag is the whole reason a null
+      // `take_last_changed_date` is readable -- it separates "the take has not
+      // changed" from "we cannot see whether it changed" -- and
+      // overlayValidatorHistoryColdTier answers it on every leg. Nulling it
+      // erased the distinction the field exists to draw.
+      take_change_observable: data.take_change_observable,
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
       window: data.window ?? label,
@@ -7597,11 +7645,18 @@ const rootValue = {
         transfer_count: c.transfer_count ?? 0,
         last_block: c.last_block ?? null,
       })),
+      // THE PRODUCER (#10786), and the fallback is DELETED rather than
+      // guarded. `rel` only exists on the drill-down leg, where
+      // buildCounterpartyRelationship takes the counterparty as a REQUIRED
+      // parameter and writes it back unchanged -- so `?? counterparty` could
+      // only fire on a leg that never runs, and the argument it fell back to
+      // is itself optional, which is the one thing that made this non-null
+      // field answer null.
       relationship: rel
         ? {
             schema_version: rel.schema_version ?? 1,
             ss58: rel.ss58 ?? ss58,
-            counterparty: rel.counterparty ?? counterparty,
+            counterparty: rel.counterparty,
             transfer_count: rel.transfer_count ?? 0,
             transfers_scanned: rel.transfers_scanned ?? 0,
             scan_capped: rel.scan_capped ?? false,
@@ -7617,8 +7672,15 @@ const rootValue = {
               block_number: t.block_number ?? null,
               event_index: t.event_index ?? null,
               netuid: t.netuid ?? null,
-              from: t.from ?? null,
-              to: t.to ?? null,
+              // Same call (#10786), and this pair is the one no probe could
+              // settle -- `AccountCounterpartyTransfer.from`/`.to` were the
+              // two UNPROVED tightenings in report:graphql-tightening-evidence
+              // because production is never on this arm. The builder pushes a
+              // row only after `from === ss58 && to === counterparty` (or the
+              // mirror) holds, so both sides equal a non-empty address by
+              // construction and the null was unreachable.
+              from: t.from,
+              to: t.to,
               amount_tao: t.amount_tao ?? 0,
               direction: t.direction,
               observed_at: t.observed_at ?? null,
@@ -9315,7 +9377,7 @@ const rootValue = {
     return {
       schema_version: data.schema_version ?? 1,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      source: data.source,
       windows: data.windows ?? {},
     };
   },
@@ -9346,7 +9408,7 @@ const rootValue = {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      source: data.source,
       windows: data.windows ?? {},
     };
   },
@@ -9501,7 +9563,7 @@ const rootValue = {
       netuid: data.netuid ?? netuid,
       window: data.window ?? windowParam,
       observed_at: data.observed_at ?? null,
-      source: data.source ?? null,
+      source: data.source,
       reliability: data.reliability ?? null,
       surfaces: data.surfaces ?? [],
     };
@@ -9882,7 +9944,13 @@ const rootValue = {
       `/api/v1/subnets/${netuid}/conviction`,
     );
     return {
-      field_sources: data?.field_sources ?? null,
+      // THE PRODUCER (#10786). `field_sources` is the per-field measured/
+      // reconstructed provenance map, and buildSubnetConviction stamps the
+      // SAME module constant on every card -- cold, degraded or live. It is a
+      // description of the derivation, not a reading, so falling back to it is
+      // restating what the builder would have said; nulling it strips ADR
+      // 0023's provenance from the one arm where a caller most needs it.
+      field_sources: data?.field_sources ?? SUBNET_CONVICTION_FIELD_SOURCES,
       schema_version: data?.schema_version ?? 1,
       netuid,
       queried_at_block: data?.queried_at_block ?? null,
@@ -9904,17 +9972,32 @@ const rootValue = {
         { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
-    const data = await fetchAllEventsTier(
-      context,
-      `/api/v1/subnets/${netuid}/lease/history`,
-    );
+    // The same builder the cold tier runs for this path
+    // (coldTierChainEventsPayload -> buildSubnetLeaseHistory), so the two
+    // constants below come from ONE place rather than being restated here.
+    const empty = buildSubnetLeaseHistory([], netuid);
+    const data =
+      (await fetchAllEventsTier(
+        context,
+        `/api/v1/subnets/${netuid}/lease/history`,
+      )) ?? empty;
     return {
-      event_pallet: data?.event_pallet ?? null,
-      event_kinds: data?.event_kinds ?? null,
-      schema_version: data?.schema_version ?? 1,
+      // THE PRODUCER (#10786), and here the fallback STAYS. Both fields are
+      // fixed vocabulary -- the pallet these events come from and the two
+      // event ids this feed is made of -- which buildSubnetLeaseHistory stamps
+      // unconditionally. Unlike the cards whose value never leaves this
+      // Worker, the other leg is a DATA_API body, so the fallback is a real
+      // arm rather than dead code; it now falls back to the SAME builder
+      // instead of to null, which is what made a non-null field answerable
+      // with one. subnet-lease.ts records the schema half of this: an earlier
+      // hand-written schema left both out of its required set even though the
+      // builder always sets them.
+      event_pallet: data.event_pallet ?? empty.event_pallet,
+      event_kinds: data.event_kinds ?? empty.event_kinds,
+      schema_version: data.schema_version ?? 1,
       netuid,
-      count: data?.count ?? 0,
-      lease_events: Array.isArray(data?.lease_events) ? data.lease_events : [],
+      count: data.count ?? 0,
+      lease_events: Array.isArray(data.lease_events) ? data.lease_events : [],
     };
   },
 

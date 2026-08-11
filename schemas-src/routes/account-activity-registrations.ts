@@ -41,7 +41,7 @@ export const AccountAxonRemovalsArtifactSchema = z
     ),
     // #9307: AxonInfoRemoved has never been emitted, so this footprint's zero
     // has never measured this account.
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type AccountAxonRemovalsArtifact = z.infer<
@@ -73,7 +73,7 @@ export const AccountDeregistrationsArtifactSchema = z
     // #9307: the slots where this account was the PREVIOUS holder, derived
     // from UID reuse; `degraded` when nothing derived it.
     derivation: DeregistrationDerivationSchema.optional(),
-    degraded: EventStreamDegradedSchema.optional(),
+    degraded: EventStreamDegradedSchema.nullable().optional(),
   })
   .strict();
 export type AccountDeregistrationsArtifact = z.infer<

@@ -988,6 +988,15 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
       total: "Int!",
       next_cursor: "String",
     },
+    // THE PROJECTION (#10786), for the reason this field exists. The artifact's
+    // producer always writes a summary -- it is computed from the same rows it
+    // ships -- so `EconomicsArtifact.summary` keeps its promise and relaxing it
+    // would weaken a contract /api/v1/economics honours. What differs is the
+    // VIEW: `loadEconomics` returns null when both the live KV and the
+    // committed artifact are cold, and this list answers that with an empty
+    // page rather than an error, so `summary` is the one field the view has
+    // nothing to build from. Same shape as `OpportunityEntry` above.
+    nullable: ["summary"],
     dropped: [
       "contract_version",
       "generated_at",

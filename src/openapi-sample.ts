@@ -8,6 +8,7 @@
 // responses rather than bare placeholders. Validity is enforced downstream by
 // scripts/validate-openapi-examples.ts (ajv against each operation's schema).
 
+import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 export type Schema = Record<string, unknown>;
 type Sample = Record<string, unknown>;
 
@@ -112,7 +113,7 @@ function seededString(name: unknown): string {
   if (/(provider|operator)/.test(n)) return "example-provider";
   if (/(content_hash|_hash$|^hash$)/.test(n)) return HEX64;
   if (/health_source/.test(n)) return "probe-derived";
-  if (/source$/.test(n)) return "live-cron-prober";
+  if (/source$/.test(n)) return LIVE_CRON_PROBER;
   if (/status$/.test(n)) return "ok";
   if (/grade/.test(n)) return "A";
   if (/method/.test(n)) return "GET";

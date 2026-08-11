@@ -27,6 +27,7 @@ import {
   endpointScoreBreakdown,
 } from "./endpoint-score.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
+import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 
 type Row = Record<string, unknown>;
 
@@ -214,7 +215,7 @@ export function overlaySubnetHealth(
       status_code: live.status_code,
       last_checked: live.last_checked,
       last_ok: live.last_ok,
-      observed_by: "live-cron-prober",
+      observed_by: LIVE_CRON_PROBER,
     });
   }
 
@@ -241,7 +242,7 @@ export function buildGlobalHealth(
   if (!liveCurrent || !liveCurrent.summary) {
     return null;
   }
-  const source = liveCurrent.health_source || "live-cron-prober";
+  const source = liveCurrent.health_source || LIVE_CRON_PROBER;
   return {
     schema_version: 1,
     contract_version: staticSummary?.contract_version,
@@ -330,7 +331,7 @@ export function mergeRpcEndpoints(
   return {
     ...staticArtifact,
     generated_at: liveRpcPool.generated_at ?? staticArtifact.generated_at,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     operational_observed_at: liveRpcPool.last_run_at || null,
     summary: {
       ...(staticArtifact.summary as Row),
@@ -355,7 +356,7 @@ export function mergeRpcEndpoints(
 // daily by publish-cloudflare.yml), never restore it once the 15-minute
 // live-cron-prober found a previously-degraded endpoint healthy again -- a
 // real, live-reproduced incident: all 4 finney-rpc endpoints showed
-// status:"ok" (health_source:"live-cron-prober", so genuinely fresh) with
+// status:"ok" (health_source:LIVE_CRON_PROBER, so genuinely fresh) with
 // pool_eligible:false / pool_eligibility_reasons:["status-degraded"] served
 // from api.metagraph.sh, and POST /rpc/v1/finney genuinely 503'd with "No
 // eligible public RPC endpoint" -- up to ~24h of self-contradictory served
@@ -407,7 +408,7 @@ export function overlayRpcPoolEligibility(
             status: normalizeProbeStatus(live.status),
             latency_ms: live.latency_ms ?? endpoint.latency_ms,
             latest_block: live.latest_block ?? endpoint.latest_block ?? null,
-            health_source: "live-cron-prober",
+            health_source: LIVE_CRON_PROBER,
             health_stale: false,
             // 30-day observed behaviour, computed once per prober run (#9357).
             // Null when the window holds no samples for this surface.
@@ -724,7 +725,7 @@ export function formatTrends({
     schema_version: 1,
     netuid,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     windows: windowsOut,
   };
 }
@@ -851,7 +852,7 @@ export function formatBulkTrends({
   return {
     schema_version: 1,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     windows: windowsOut,
   };
 }
@@ -893,7 +894,7 @@ export function formatPercentiles({
     netuid,
     window: window || null,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     surfaces,
   };
 }
@@ -1191,7 +1192,7 @@ export function formatIncidents({
     netuid,
     window: window || null,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     min_incident_samples: MIN_INCIDENT_SAMPLES,
     surfaces,
   };
@@ -1288,7 +1289,7 @@ export function formatGlobalIncidents({
     schema_version: 1,
     window: window || null,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     summary: {
       incident_count: acceptedIncidents,
       affected_surface_count: surfaces.length,
@@ -1900,7 +1901,7 @@ export function formatUptime({
     netuid,
     window: window || null,
     observed_at: observedAt || null,
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     reliability: reliability.subnet,
     surfaces,
   };
@@ -2026,7 +2027,7 @@ export async function resolveLiveHealth({
           !Number.isFinite(lastRun) ||
           lastRun >= currentTime - HEALTH_FALLBACK_MAX_AGE_MS
         ) {
-          return { ...current, health_source: "live-cron-prober" };
+          return { ...current, health_source: LIVE_CRON_PROBER };
         }
       }
     } catch {
@@ -2234,10 +2235,10 @@ export function overlayOverviewHealth(
   return {
     ...(staticOverview || { netuid }),
     health: summary
-      ? { netuid, ...summary, observed_by: "live-cron-prober" }
+      ? { netuid, ...summary, observed_by: LIVE_CRON_PROBER }
       : { netuid, status: "unknown", surface_count: 0 },
     operational_observed_at: live.last_run_at || null,
-    health_source: live.health_source || "live-cron-prober",
+    health_source: live.health_source || LIVE_CRON_PROBER,
   };
 }
 
@@ -2276,7 +2277,7 @@ export function overlayCatalogDetail(
         last_ok: row ? row.last_ok : null,
         last_checked: row ? row.last_checked : null,
         stale: false,
-        observed_by: row ? "live-cron-prober" : "unavailable",
+        observed_by: row ? LIVE_CRON_PROBER : "unavailable",
       },
       eligibility: {
         ...((service.eligibility as Row) || {}),
@@ -2302,7 +2303,7 @@ export function overlayCatalogDetail(
         }
       : staticDetail?.readiness,
     operational_observed_at: live.last_run_at || null,
-    health_source: live.health_source || "live-cron-prober",
+    health_source: live.health_source || LIVE_CRON_PROBER,
   };
 }
 
@@ -2324,7 +2325,7 @@ export function overlayCatalogIndex(
     ...staticIndex,
     subnets,
     operational_observed_at: live.last_run_at || null,
-    health_source: live.health_source || "live-cron-prober",
+    health_source: live.health_source || LIVE_CRON_PROBER,
   };
 }
 
@@ -2380,7 +2381,7 @@ function overlayEndpointHealth(endpoint: Row, liveRow: Row | null): Row {
     observed_at: liveRow.last_checked || null,
     last_checked: liveRow.last_checked || null,
     last_ok: liveRow.last_ok || null,
-    health_source: "live-cron-prober",
+    health_source: LIVE_CRON_PROBER,
     health_stale: false,
     error: liveRow.status === "ok" ? null : (endpoint.error ?? null),
   });

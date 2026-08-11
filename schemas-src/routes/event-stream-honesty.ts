@@ -21,6 +21,14 @@
 import { z } from "zod";
 
 /** A route's own statement that its zero is not a measurement. */
+// CARRIED AS `.nullable().optional()` BY EVERY FIELD THAT USES IT (#10786).
+//
+// It was `.optional()` alone, which admits `undefined` and REJECTS `null` --
+// while all ten producers write `degraded: data.degraded ?? null` on the
+// degraded read this block exists to describe. GraphQL has no `undefined`: a
+// field is a value or it is null, so null IS the absent-spelling on the surface
+// that enforces this at execution. The schema described a shape none of its
+// producers could emit when the thing it reports actually happened.
 export const EventStreamDegradedSchema = z
   .object({
     reason: z.string(),

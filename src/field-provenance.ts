@@ -81,6 +81,26 @@ export interface FieldSource {
 export type FieldSources = Record<string, FieldSource>;
 
 /**
+ * The label a value carries when the 15-minute health cron measured it.
+ *
+ * ONE CONSTANT because it was THIRTY string literals across seven producer
+ * files (#10786) -- `src/health-prober.ts`, `src/health-serving.ts` (18 of
+ * them), `src/openapi-sample.ts`, `src/rpc-pools-mcp.ts`,
+ * `src/surface-verification.ts`, `workers/api.ts` and
+ * `workers/request-handlers/analytics.ts` -- published under four different
+ * key names: `source` (16), `health_source` (4), `observed_by` (2) and
+ * `method` (1). Three schemas and a validator match on the value, so it is a
+ * vocabulary; a vocabulary spelled by hand at thirty sites is one nothing
+ * owns, where a typo at any of them is a label no consumer matches and
+ * nothing fails.
+ *
+ * This module already holds the rule that provenance is a CONTRACT rather than
+ * prose, so the label belongs here beside it rather than in whichever producer
+ * happened to need it first.
+ */
+export const LIVE_CRON_PROBER = "live-cron-prober";
+
+/**
  * A measurement's `storage` must name a qualified chain read: either a storage
  * item (`SubtensorModule.MinerBurned`) or a runtime-API method
  * (`SubnetInfoRuntimeApi.get_all_metagraphs_info`).

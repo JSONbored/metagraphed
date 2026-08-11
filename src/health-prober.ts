@@ -65,6 +65,7 @@ import {
 } from "./endpoint-reliability.ts";
 import { emptyStatusCounts } from "./endpoint-score.ts";
 import { readLiveSurfaceStatus } from "./health-status-live.ts";
+import { LIVE_CRON_PROBER } from "./field-provenance.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 type Row = Record<string, unknown>;
@@ -813,7 +814,7 @@ async function persistToKv(
     schema_version: 1,
     generated_at: iso(runAt),
     last_run_at: iso(runAt),
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     summary: { surface_count: probed.length, status_counts: counts },
     subnets,
     surfaces: surfaceRows,
@@ -852,7 +853,7 @@ async function persistToKv(
     schema_version: 1,
     generated_at: iso(runAt),
     last_run_at: iso(runAt),
-    source: "live-cron-prober",
+    source: LIVE_CRON_PROBER,
     endpoint_count: rpcRows.length,
     eligible_count: rpcRows.filter((r) => r.pool_eligible).length,
     endpoints: rpcRows,

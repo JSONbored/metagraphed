@@ -823,6 +823,7 @@ import {
 } from "../src/wallet-feed.ts";
 import type { WalletFlowRow } from "../src/wallet-activity.ts";
 import { ENTITY_LABELS_ARTIFACT } from "../src/entity-labels.ts";
+import { LIVE_CRON_PROBER } from "../src/field-provenance.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -8687,7 +8688,7 @@ async function handleApiRequest(
   const liveSource =
     stringOf(live?.source) ??
     stringOf(baseData?.health_source) ??
-    "live-cron-prober";
+    LIVE_CRON_PROBER;
   const baseSource = !artifact.ok
     ? liveSource
     : live
@@ -9796,7 +9797,7 @@ async function liveHealthOverlay(
       ) {
         data = {
           ...staticData,
-          source: "live-cron-prober",
+          source: LIVE_CRON_PROBER,
           operational_observed_at: livePool.last_run_at || null,
           pools: staticData.pools.map((pool) =>
             overlayRpcPoolEligibility(pool, livePool),
