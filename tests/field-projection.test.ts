@@ -159,6 +159,10 @@ describe("parseFieldsParam", () => {
     assert.equal(knownCalls, 1, "the error path is where it is paid");
   });
 
+  // The union walk's own non-object guard is covered under "the two resolvers"
+  // below ("null, arrays and primitives contribute no field names"), against
+  // the resolver directly rather than through this message.
+
   // A resolver with no `known` (nothing in-tree, but the type allows it)
   // degrades to the old message rather than emitting a dangling label.
   test("a resolver that cannot enumerate omits the list cleanly", () => {

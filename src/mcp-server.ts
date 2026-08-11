@@ -201,6 +201,7 @@ import {
   recordAiDegradedEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
+  recordMcpMissingCapabilityEvent,
   recordMcpPromptGetEvent,
   recordMcpPromptsListEvent,
   recordMcpResourceReadEvent,
@@ -1021,6 +1022,11 @@ import {
   GetCoverageDepthInputSchema,
   GetCoverageDepthOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-2.ts";
+import {
+  type GetMoreToolsInput,
+  GetMoreToolsInputSchema,
+  GetMoreToolsOutputSchema,
+} from "../schemas-src/mcp-tools/missing-capability.ts";
 import { GetFeedInputSchema } from "../schemas-src/mcp-tools/feed.ts";
 import { GetAdapterInputSchema } from "../schemas-src/mcp-tools/get-adapter.ts";
 import {
@@ -1768,6 +1774,7 @@ interface McpCtx {
   recordMcpToolCallEvent?: AnyFn;
   recordMcpInitializeEvent?: AnyFn;
   recordMcpToolsListEvent?: AnyFn;
+  recordMcpMissingCapabilityEvent?: AnyFn;
   recordMcpResourcesListEvent?: AnyFn;
   recordMcpResourceReadEvent?: AnyFn;
   recordMcpPromptsListEvent?: AnyFn;
@@ -4952,7 +4959,50 @@ export function withIntentArgument(tool: McpToolDefinition): McpToolDefinition {
 //
 // Once at module load, not per request: 224 shallow copies at cold start
 // against one on every tools/list.
+/** The name PostHog's own MCP analytics uses for the missing-capability tool.
+ * Matching it is what makes the event land in their prebuilt views rather than
+ * in a bespoke one nobody opens. */
+export const MCP_MISSING_CAPABILITY_TOOL = "get_more_tools";
+
 const MCP_TOOLS_BASE: McpToolDefinition[] = [
+  {
+    // The only tool here that answers nothing and exists to be told something.
+    //
+    // With 232 tools an agent that cannot find what it needs simply gives up,
+    // and that giving-up is invisible: no call, no error, no row. This is the
+    // one signal that names a gap in the catalogue in the agent's own words,
+    // which is why PostHog treats it as the most actionable event an MCP
+    // server owner can collect. The reasoning rides on the standard `context`
+    // argument (withIntentArgument puts it on every tool) so it lands in
+    // $mcp_intent, which is the field their missing-capability views read.
+    //
+    // Deliberately NOT annotated open-world: it reads nothing at all.
+    name: MCP_MISSING_CAPABILITY_TOOL,
+    title: "Report a capability this server does not have",
+    description:
+      "Call this ONLY when you have looked through the available tools and " +
+      "none of them can do what you need. Describe what you were trying to " +
+      "accomplish in the `context` argument, in plain language -- that text " +
+      "is the whole point of the call and is what gets read. This tool " +
+      "returns no data and unlocks no additional tools; it records the gap " +
+      "so the capability can be built. Do not call it as a discovery step: " +
+      "the full catalogue is already in tools/list.",
+    inputSchema: inputJsonSchema(GetMoreToolsInputSchema),
+    async handler(_args: GetMoreToolsInput, _ctx: McpCtx) {
+      // Answering honestly matters as much as recording. An agent told
+      // something vague retries; told plainly that no more tools exist, it
+      // stops and reports back to its user, which is the correct outcome.
+      return {
+        acknowledged: true,
+        additional_tools_available: false,
+        message:
+          "No additional tools exist beyond those already listed by " +
+          "tools/list. Your request has been recorded as a capability gap. " +
+          "Do not retry -- use the closest available tool, or tell the user " +
+          "this is not supported.",
+      };
+    },
+  },
   {
     name: "search_subnets",
     title: "Search Bittensor subnets",
@@ -14632,6 +14682,7 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
   get_self_health: GET_SELF_HEALTH_OUTPUT_SCHEMA,
+  [MCP_MISSING_CAPABILITY_TOOL]: outputJsonSchema(GetMoreToolsOutputSchema),
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
   get_agent_catalog: outputJsonSchema(GetAgentCatalogOutputSchema),
   get_agent_resources: GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
@@ -15452,6 +15503,18 @@ async function callTool(params: Row, ctx: McpCtx) {
   );
   scheduleMcpToolCallEvent(ctx, {
     toolName: toolLabel,
+    // $mcp_tool_description: the description the agent actually chose from,
+    // which is the ADVERTISED one -- tools/list appends UNTRUSTED_DATA_NOTE,
+    // so the raw registry entry is not the text any caller ever saw. PostHog
+    // defines this property as the description "at the moment of the call"
+    // and their own SDK caches it from tools/list; recording the unadvertised
+    // string would quietly answer a different question than the one the field
+    // is for. Built from the same expression tools/list uses so the two
+    // cannot drift.
+    //
+    // Never from the request, and absent for an unregistered name — there is
+    // no description to report for a tool that does not exist.
+    toolDescription: advertisedToolDescription(params?.name),
     isError: result.isError === true,
     durationMs,
     sessionId: ctx?.sessionId,
@@ -15468,6 +15531,21 @@ async function callTool(params: Row, ctx: McpCtx) {
       : {}),
     ...mcpAttributionFor(ctx),
   });
+  // The capability gap, recorded from the same split intent the tool call
+  // already carries -- not from the handler, which never sees `context`
+  // (validateToolArguments strips it before dispatch, by design).
+  //
+  // Only when the agent actually said something. A bare `get_more_tools()`
+  // with no context reports nothing, because an empty gap report is not a
+  // data point -- it would inflate the count of unmet asks with calls that
+  // name no ask.
+  if (params?.name === MCP_MISSING_CAPABILITY_TOOL && intent) {
+    scheduleMcpMissingCapabilityEvent(ctx, {
+      intent,
+      sessionId: ctx?.sessionId,
+      ...mcpAttributionFor(ctx),
+    });
+  }
   return result;
 }
 
@@ -15595,6 +15673,21 @@ function mcpToolLabel(name: unknown): string | undefined {
   return TOOLS_BY_NAME.has(name) ? name : UNREGISTERED_MCP_TOOL_LABEL;
 }
 
+/**
+ * The description tools/list PUBLISHED for this tool, or undefined.
+ *
+ * Shares listToolDefinitions' own expression rather than reading
+ * `tool.description` directly: the advertised text carries
+ * UNTRUSTED_DATA_NOTE, and `$mcp_tool_description` is defined as what the
+ * agent saw. Two spellings of "the description" is exactly how this field
+ * would come to disagree with the catalogue it claims to quote.
+ */
+function advertisedToolDescription(name: unknown): string | undefined {
+  if (typeof name !== "string") return undefined;
+  const tool = TOOLS_BY_NAME.get(name);
+  return tool ? `${tool.description} ${UNTRUSTED_DATA_NOTE}` : undefined;
+}
+
 function scheduleMcpProtocolUsageEvent(
   ctx: McpCtx,
   method: string,
@@ -15647,6 +15740,19 @@ function scheduleMcpToolsListEvent(ctx: McpCtx, event: Row) {
 // per method rather than one that takes an event name, so the dispatch site
 // reads as a statement of WHICH event it emits and a test can stub exactly one.
 // Same waitUntil/no-throw discipline as every scheduler here.
+function scheduleMcpMissingCapabilityEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record =
+      ctx?.recordMcpMissingCapabilityEvent ?? recordMcpMissingCapabilityEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
 function scheduleMcpResourcesListEvent(ctx: McpCtx, event: Row) {
   try {
     const record =
@@ -16481,6 +16587,7 @@ function buildContext(
     // The resource/prompt four belong in the same list for the same reason the
     // comment above gives -- declaring them on McpCtx without copying them here
     // is precisely the silent fall-through it describes.
+    recordMcpMissingCapabilityEvent: deps.recordMcpMissingCapabilityEvent,
     recordMcpResourcesListEvent: deps.recordMcpResourcesListEvent,
     recordMcpResourceReadEvent: deps.recordMcpResourceReadEvent,
     recordMcpPromptsListEvent: deps.recordMcpPromptsListEvent,
@@ -17041,6 +17148,50 @@ export function scheduleMcpRefusalEvent(
       ),
     ).catch(() => false);
     (deps.executionCtx as Row | undefined)?.waitUntil?.(pending);
+
+    // ...and the same refusal in PostHog's OWN event family.
+    //
+    // Until now a refusal produced a usage_event and nothing else, so every
+    // MCP Analytics error breakdown was computed over dispatched calls only.
+    // A caller being rate-limited, blocked, or rejected as unauthorized is a
+    // failed MCP call by any reading, and it was the one class of failure
+    // invisible on the surface built to show failures -- the error rate looked
+    // best exactly when the gate was refusing the most traffic.
+    //
+    // No `$mcp_tool_name`: the refusal happens in front of the dispatcher, so
+    // there is no registered tool to name, and inventing one would put gate
+    // traffic in a real tool's breakdown. The reason rides on
+    // `$mcp_error_code` instead, which classifyMcpErrorType buckets into
+    // rate_limited / permission / validation / api_5xx -- see the
+    // refusal-vocabulary block in MCP_ERROR_TYPE_BY_CODE.
+    //
+    // Shares admitMcpRefusalCapture's throttle by construction: this is inside
+    // the same `suppressed === null` early return, so a storm cannot double
+    // its own cost by being counted twice.
+    const recordMcp = (deps.recordMcpToolCallEvent ??
+      recordMcpToolCallEvent) as AnyFn;
+    const pendingMcp = Promise.resolve(
+      recordMcp(
+        env,
+        {
+          isError: true,
+          errorCode: reason,
+          // Unmeasurable rather than instant: the gate rejected before any
+          // handler ran, so there is no duration to report. The recorder omits
+          // a zero for exactly this reason.
+          durationMs: 0,
+          clientName: parseUserAgentClient(
+            request.headers.get("user-agent") ?? undefined,
+          ),
+          clientNameSource: "user_agent",
+          sessionId: request.headers.get("mcp-session-id"),
+          serverName: MCP_SERVER_INFO.name,
+          serverVersion: MCP_SERVER_VERSION,
+        },
+        {},
+      ),
+    ).catch(() => false);
+    (deps.executionCtx as Row | undefined)?.waitUntil?.(pendingMcp);
   } catch {
     // Telemetry must never surface into the MCP path.
   }

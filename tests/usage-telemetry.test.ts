@@ -23,6 +23,7 @@ import {
   recordMcpInitializeEvent,
   normalizeExceptionMessage,
   recordMcpToolCallEvent,
+  recordMcpMissingCapabilityEvent,
   recordMcpPromptGetEvent,
   recordMcpPromptsListEvent,
   recordMcpResourceReadEvent,
@@ -2901,6 +2902,15 @@ describe("every recorder stamps the deployment dimensions", () => {
         recordMcpPromptGetEvent(
           env,
           { resourceName: "integrate_with_subnet" },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_missing_capability",
+      (env, deps) =>
+        recordMcpMissingCapabilityEvent(
+          env,
+          { intent: "needed per-validator slippage, no tool has it" },
           deps,
         ),
     ],

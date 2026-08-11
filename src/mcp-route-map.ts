@@ -56,6 +56,13 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
     reason:
       "Composes five subnet routes in one round trip; no single route answers it.",
   },
+  get_more_tools: {
+    route: null,
+    reason:
+      "Reports a capability this server lacks; it reads no data and has no " +
+      "REST equivalent, because the caller is an MCP agent telling us what " +
+      "the catalogue is missing rather than asking for anything.",
+  },
   get_network_health: { route: "/api/v1/health" },
   get_health_history: { route: "/api/v1/health/history/{date}" },
   get_subnet_health: { route: "/api/v1/subnets/{netuid}/health" },

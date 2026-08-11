@@ -646,6 +646,20 @@ export const MCP_ERROR_TYPE_BY_CODE: Record<string, McpErrorType> = {
   forbidden: "permission",
   auth_required: "permission",
   internal_error: "internal",
+  // ── The pre-dispatch refusal vocabulary (mcpRefusalReason) ──────────────
+  // These never pass through toolError, because they are raised by the gate
+  // in front of the dispatcher rather than by a handler. They reach this
+  // projection all the same now that a refusal also emits $mcp_tool_call, and
+  // none of them would have bucketed correctly on the naming rules alone:
+  // `blocked` and `rate_limited` are bare words the `_blocked$` /
+  // `_rate_limited$` suffixes do not match, and the rest are unlike anything
+  // this codebase's handlers mint.
+  bad_request: "validation",
+  blocked: "permission",
+  body_too_large: "validation",
+  daily_quota: "rate_limited",
+  method_not_allowed: "validation",
+  unauthorized: "permission",
   // "This surface exists but declares no callable path/schema" — the caller
   // is missing context about the target, not sending bad syntax.
   no_schema: "missing_context",
@@ -695,6 +709,11 @@ const MCP_ERROR_TYPE_RULES: [RegExp, McpErrorType][] = [
   // emitted event.
   [/^rate_limited$|_rate_limited$/, "rate_limited"],
   [/^timeout$|_timeout$/, "timeout"],
+  // mcpRefusalReason's catch-all spelling for a status it has no name for
+  // (`status_503`). Mapped by class so a refusal the gate has not been taught
+  // to name still lands in the right bucket rather than in `internal`.
+  [/^status_4\d\d$/, "api_4xx"],
+  [/^status_5\d\d$/, "api_5xx"],
   [/^invalid_|^malformed_|_invalid$/, "validation"],
   // Our own dependency (a tier, a binding, an upstream provider) could not
   // serve the call. From the caller's side this is indistinguishable from a
@@ -859,6 +878,18 @@ export type McpClientNameSource = "client_info" | "user_agent";
 /** Inputs for a single MCP tool-call analytics event. */
 export interface McpToolCallEvent extends McpServerIdentity {
   toolName?: string;
+  /**
+   * The tool's description AT THE MOMENT OF THE CALL, emitted as
+   * `$mcp_tool_description` — a documented member of this event's property set
+   * that this server had never sent.
+   *
+   * Worth carrying because it is the input the agent actually chose from: when
+   * a tool's failure rate moves, the question is almost always whether the
+   * description changed, and an event that records only the name cannot
+   * answer it. Reads from the registered definition rather than the request,
+   * so it is never caller-supplied text.
+   */
+  toolDescription?: string;
   isError: boolean;
   /**
    * Elapsed wall-clock ms. Cloudflare Workers freeze Date.now() between I/O
@@ -975,6 +1006,18 @@ export async function recordMcpToolCallEvent(
 
     const toolName = sanitizeLabel(event.toolName);
     if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+
+    // Not sanitizeLabel: a tool description is prose, and MAX_LABEL_CHARS is
+    // sized for identifiers. Same reasoning as $mcp_intent below, and the same
+    // ceiling — this is server-authored text, but it still rides on an event
+    // that is never sampled.
+    const toolDescription = trimToLength(
+      event.toolDescription,
+      MAX_MCP_INTENT_CHARS,
+    );
+    if (toolDescription !== undefined) {
+      properties["$mcp_tool_description"] = toolDescription;
+    }
 
     // Agent intent (#9642). NOT sanitizeLabel: that caps at MAX_LABEL_CHARS,
     // which is sized for identifiers like a tool or route name, and would
@@ -1276,6 +1319,78 @@ export async function recordMcpPromptGetEvent(
   deps: RecordUsageEventDeps = {},
 ): Promise<boolean> {
   return postMcpResourceEvent(env, "$mcp_prompt_get", event, deps);
+}
+
+/** Inputs for `$mcp_missing_capability`. */
+export interface McpMissingCapabilityEvent extends McpServerIdentity {
+  /**
+   * What the agent said it needed and could not find. Emitted as
+   * `$mcp_intent` -- the same property a tool call's `context` lands in,
+   * deliberately, because PostHog's missing-capability views read that field.
+   */
+  intent?: string;
+  clientName?: string;
+  clientVersion?: string;
+  clientNameSource?: McpClientNameSource;
+  authTier?: string;
+  sessionId?: string | null;
+}
+
+/**
+ * Emit `$mcp_missing_capability` -- the agent asked for something this server
+ * does not have.
+ *
+ * The one event here that is not a record of traffic. Everything else in this
+ * module measures what the server DID; this measures what it could not do, in
+ * the agent's own words, and it is the only signal that names a gap in the
+ * catalogue before somebody thinks to look for it.
+ *
+ * `$mcp_intent_source` is `context_parameter` and not `inferred`: the agent
+ * typed the string. PostHog's own docs note the same thing about this event --
+ * the SDK defined the schema, but the words are the caller's.
+ */
+export async function recordMcpMissingCapabilityEvent(
+  env: Env | null | undefined,
+  event: McpMissingCapabilityEvent,
+  deps: RecordUsageEventDeps = {},
+): Promise<boolean> {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return false;
+
+    const properties: Record<string, unknown> = {};
+
+    const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
+    if (intent !== undefined) {
+      properties["$mcp_intent"] = intent;
+      properties["$mcp_intent_source"] = "context_parameter";
+    }
+
+    assignMcpAttribution(properties, event);
+
+    if (typeof event.sessionId === "string" && event.sessionId.trim()) {
+      properties["$session_id"] = event.sessionId.trim();
+    }
+
+    assignDeployment(properties, env);
+    const doFetch = deps.fetch ?? globalThis.fetch;
+    const response = await doFetch(
+      `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          api_key: String(env?.[POSTHOG_PROJECT_TOKEN_ENV]).trim(),
+          event: "$mcp_missing_capability",
+          distinct_id: deps.distinctId ?? USAGE_EVENT_DISTINCT_ID,
+          properties,
+        }),
+      },
+    );
+
+    return response?.ok === true;
+  } catch {
+    return false;
+  }
 }
 
 // Error tracking via PostHog's `$exception` capture (#7758).
