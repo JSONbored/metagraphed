@@ -11,6 +11,7 @@ const startSessionRecording = vi.hoisted(() => vi.fn());
 const stopSessionRecording = vi.hoisted(() => vi.fn());
 const onFeatureFlags = vi.hoisted(() => vi.fn());
 const isFeatureEnabledSpy = vi.hoisted(() => vi.fn());
+const register = vi.hoisted(() => vi.fn());
 
 vi.mock("posthog-js", () => ({
   default: {
@@ -21,6 +22,7 @@ vi.mock("posthog-js", () => ({
     stopSessionRecording,
     onFeatureFlags,
     isFeatureEnabled: isFeatureEnabledSpy,
+    register,
   },
 }));
 
@@ -34,6 +36,7 @@ describe("analytics (PostHog web analytics)", () => {
     stopSessionRecording.mockClear();
     onFeatureFlags.mockClear();
     isFeatureEnabledSpy.mockClear();
+    register.mockClear();
   });
 
   afterEach(() => {
@@ -111,6 +114,23 @@ describe("analytics (PostHog web analytics)", () => {
       expect(options.capture_pageview).toBe(false);
       expect(typeof options.defaults).toBe("string");
       expect(options.defaults.length).toBeGreaterThan(0);
+    });
+
+    // The browser half was the only surface whose events carried no
+    // `environment`, so a developer's `vite dev` exception was indistinguishable
+    // from a production one in Error Tracking. Registered as a SUPER property
+    // on purpose: exception autocapture bypasses this module's wrappers, so a
+    // per-capture-site property would miss exactly the events that need it.
+    it("registers an environment super property on every event", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { initAnalytics } = await import("./analytics");
+      initAnalytics();
+      await vi.waitFor(() => expect(register).toHaveBeenCalled());
+      expect(register).toHaveBeenCalledWith({
+        // Vitest runs with import.meta.env.PROD false, which is the branch a
+        // developer's machine takes -- and the whole point of the dimension.
+        environment: "development",
+      });
     });
 
     it("respects DNT and uses localStorage (no-cookie) persistence for cross-visit continuity", async () => {

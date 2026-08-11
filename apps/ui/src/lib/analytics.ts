@@ -285,6 +285,28 @@ function loadPostHog(): Promise<PostHog | null> {
         // for what this replay rollout reviewed.
         enable_recording_console_log: false,
       });
+      // #8963 gave every Worker-side event an `environment` dimension
+      // (src/usage-telemetry.ts's assignDeployment). The browser half never
+      // got one, so it is the only surface left whose events cannot be
+      // separated from a developer's laptop: measured on the live project,
+      // every `$lib: web` exception in the last three days carries
+      // `environment: (unset)`, while the Worker's carry `production`.
+      //
+      // That matters most for Error Tracking, where it is the difference
+      // between "this is happening to users" and "this is somebody running
+      // `vite dev`". Registered as a super property rather than passed at
+      // each capture site because exception AUTOCAPTURE bypasses this
+      // module's wrappers entirely (the same reason before_send above exists)
+      // -- a per-call-site property would miss exactly the events that need
+      // it most.
+      //
+      // Deliberately environment only, no `release`: #7766 removed the
+      // WORKERS_CI_COMMIT_SHA -> import.meta.env bridge on the grounds that
+      // no client code read it, and re-adding a build-config bridge is a
+      // larger change than this one. import.meta.env.PROD is already there.
+      posthog.register({
+        environment: import.meta.env?.PROD ? "production" : "development",
+      });
       return posthog;
     })
     .catch((err) => {
