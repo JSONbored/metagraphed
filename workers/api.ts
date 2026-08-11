@@ -547,6 +547,7 @@ import {
   SUBNET_BURN_CAPTURE_CRON,
   REVENUE_PROBE_CRON,
   ATTRIBUTION_SWEEP_CRON,
+  ORIGIN_REACHABILITY_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
@@ -674,7 +675,19 @@ import {
   runAttributionSweepTick,
   type SweepStoreDb,
 } from "../src/attribution-sweep.ts";
-import { ATTRIBUTION_SWEEP_TABLES } from "../src/read-store-tables.ts";
+import {
+  ATTRIBUTION_SWEEP_TABLES,
+  ORIGIN_REACHABILITY_TABLES,
+} from "../src/read-store-tables.ts";
+import {
+  ORIGIN_PROBE_MAX_BYTES,
+  ORIGIN_PROBE_TIMEOUT_MS,
+  loadOriginCheckedAt,
+  normaliseBody,
+  runOriginReachabilityTick,
+  type OriginStoreDb,
+  type SurfaceRef,
+} from "../src/origin-reachability.ts";
 import {
   loadRevenueFeedItems,
   type RevenueFeedDb,
@@ -2176,6 +2189,7 @@ function cronLabel(cron: string): string {
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
   if (cron === REVENUE_PROBE_CRON) return "revenue-probe";
+  if (cron === ORIGIN_REACHABILITY_CRON) return "origin-reachability";
   if (cron === ATTRIBUTION_SWEEP_CRON) return "attribution-sweep";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
@@ -2406,6 +2420,46 @@ export async function fetchSweepText(url: string): Promise<string | null> {
   }
 }
 
+/** Every registered surface url, from the served artifact this Worker already
+ * publishes -- including the probe-disabled ones, which is the entire point. */
+export async function registeredSurfaces(env: Env): Promise<SurfaceRef[]> {
+  const artifact = await readArtifact(env, "/metagraph/surfaces.json");
+  if (!artifact.ok) return [];
+  const list = (artifact.data as Row | undefined)?.surfaces;
+  const out: SurfaceRef[] = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const surface = (raw ?? {}) as Row;
+    if (typeof surface.id === "string" && typeof surface.url === "string") {
+      out.push({ id: surface.id, url: surface.url });
+    }
+  }
+  return out;
+}
+
+/** One sample. Reads the body only to HASH it -- never for content, and never
+ * with a credential: the question is whether the host is there. */
+export async function probeOrigin(
+  url: string,
+): Promise<{ status: number | null; bodyHash: string | null }> {
+  try {
+    const res = await fetch(url, {
+      headers: { "user-agent": "metagraphed-origin-check" },
+      signal: AbortSignal.timeout(ORIGIN_PROBE_TIMEOUT_MS),
+    });
+    const body = (await res.text()).slice(0, ORIGIN_PROBE_MAX_BYTES);
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(normaliseBody(body)),
+    );
+    const hash = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return { status: res.status, bodyHash: hash };
+  } catch {
+    return { status: null, bodyHash: null };
+  }
+}
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
@@ -2550,6 +2604,31 @@ async function dispatchScheduled(
           store.db as SweepStoreDb,
           await sweepableSubnets(env),
           { fetchText: fetchSweepText },
+        );
+      } finally {
+        store.close();
+      }
+    }
+  }
+  if (cron === ORIGIN_REACHABILITY_CRON) {
+    // #10548: is the HOST still there. scripts/build-artifacts.ts builds the
+    // prober's targets from surfaces with probe.enabled, so a disabled one is
+    // never checked -- forever. SN37 Aurelius had ~60 surfaces on a deleted
+    // Railway app, ~50 of them invisible, and not one incident was raised.
+    //
+    // Checking origins rather than surfaces is what makes the disabled ones
+    // covered at all, and costs one request instead of sixty.
+    {
+      const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
+      try {
+        const db = store.db as OriginStoreDb;
+        return await runOriginReachabilityTick(
+          db,
+          await registeredSurfaces(env),
+          {
+            probe: probeOrigin,
+            checkedAt: await loadOriginCheckedAt(db),
+          },
         );
       } finally {
         store.close();

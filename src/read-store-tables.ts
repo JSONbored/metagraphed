@@ -84,6 +84,9 @@ export const TAO_USD_TABLES = ["tao_usd_index"] as const;
 /** loadSweepRecord and the sweep lane's own write (#10489-#10509). Both tables
  * move together: the verdict is meaningless without the candidates it counted,
  * and a split store would return a count with nothing behind it. */
+/** loadOriginReachability and the origin lane's own write (#10548). */
+export const ORIGIN_REACHABILITY_TABLES = ["origin_reachability"] as const;
+
 export const ATTRIBUTION_SWEEP_TABLES = [
   "attribution_sweeps",
   "attribution_candidates",
