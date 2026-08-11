@@ -3031,7 +3031,13 @@ export type Neuron = {
 /** One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history. */
 export type NeuronHistory = {
   __typename?: 'NeuronHistory';
+  /** DISTINCT days present in points, counted from the ROWS rather than the requested window -- so a day with no snapshot is absent rather than reported as a day of zero. Does not equal point_count when a day carries several rows. */
+  days_covered: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
+  /** Latest snapshot_date in points, or null on an empty series. */
+  newest_day?: Maybe<Scalars['String']['output']>;
+  /** Earliest snapshot_date in points, or null on an empty series. With newest_day, says what the answer COVERS -- window only says what was asked for. */
+  oldest_day?: Maybe<Scalars['String']['output']>;
   point_count: Scalars['Int']['output'];
   points: Array<NeuronHistoryPoint>;
   schema_version: Scalars['Int']['output'];
@@ -6272,7 +6278,13 @@ export type SubnetHealthTrends = {
 /** One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope. */
 export type SubnetHistory = {
   __typename?: 'SubnetHistory';
+  /** DISTINCT days present in points, counted from the ROWS rather than the requested window -- so a day with no snapshot is absent rather than reported as a day of zero. Does not equal point_count when a day carries several rows. */
+  days_covered: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
+  /** Latest snapshot_date in points, or null on an empty series. */
+  newest_day?: Maybe<Scalars['String']['output']>;
+  /** Earliest snapshot_date in points, or null on an empty series. With newest_day, says what the answer COVERS -- window only says what was asked for. */
+  oldest_day?: Maybe<Scalars['String']['output']>;
   point_count: Scalars['Int']['output'];
   points: Array<SubnetHistoryPoint>;
   schema_version: Scalars['Int']['output'];
@@ -11002,7 +11014,10 @@ export type NeuronResolvers<ContextType = GqlContext, ParentType extends Resolve
 }>;
 
 export type NeuronHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NeuronHistory'] = ResolversParentTypes['NeuronHistory']> = ResolversObject<{
+  days_covered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['NeuronHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -12298,7 +12313,10 @@ export type SubnetHealthTrendsResolvers<ContextType = GqlContext, ParentType ext
 }>;
 
 export type SubnetHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHistory'] = ResolversParentTypes['SubnetHistory']> = ResolversObject<{
+  days_covered?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['SubnetHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

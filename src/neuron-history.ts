@@ -24,6 +24,48 @@ import type { NeuronDaily } from "../generated/db/types.ts";
 // Bounds any single time-series response (1y = 365 daily points < this cap).
 export const MAX_HISTORY_POINTS = 400;
 
+/**
+ * What the response ACTUALLY covered, beside what was asked for.
+ *
+ * WHY THIS IS NOT COSMETIC (#10788). `window` echoes the request -- ask for
+ * `1y` and the payload says `1y` -- while `point_count` says how many days came
+ * back. Nothing said which days, so a consumer asking for a year and receiving
+ * 33 points could not tell "that is all that happened on chain" from "that is
+ * all we hold". Those are different answers and only one of them is a reason to
+ * go looking elsewhere.
+ *
+ * The repo already made this call once, in the opposite direction, and the
+ * reasoning is quoted in src/contracts.ts for /health/failure-reasons: depth is
+ * counted from the ROWS rather than the requested window, "so a day the prober
+ * did not run is absent rather than reported as a day of perfect health". The
+ * history routes were the family that never got it.
+ *
+ * Counted from the points themselves for the same reason -- a gap in the middle
+ * is invisible to `oldest`/`newest`, but `days_covered` is the count of days
+ * actually present, so the two together say "33 days spanning 2026-07-10 to
+ * 2026-08-11" rather than implying a dense month.
+ */
+function coverage(points: readonly Row[]): {
+  oldest_day: string | null;
+  newest_day: string | null;
+  days_covered: number;
+} {
+  const days = new Set<string>();
+  for (const p of points) {
+    const day = p.snapshot_date;
+    if (typeof day === "string" && day !== "") days.add(day);
+  }
+  if (days.size === 0) {
+    return { oldest_day: null, newest_day: null, days_covered: 0 };
+  }
+  const sorted = [...days].sort();
+  return {
+    oldest_day: sorted[0]!,
+    newest_day: sorted[sorted.length - 1]!,
+    days_covered: days.size,
+  };
+}
+
 export function unsupportedWindowMessage(
   value: unknown,
   windows: Record<string, unknown>,
@@ -117,6 +159,7 @@ export function buildNeuronHistory(
     uid,
     window: window ?? null,
     point_count: points.length,
+    ...coverage(points),
     points,
   };
 }
@@ -318,6 +361,7 @@ export function buildSubnetHistory(
     netuid,
     window: window ?? null,
     point_count: points.length,
+    ...coverage(points),
     points,
   };
 }

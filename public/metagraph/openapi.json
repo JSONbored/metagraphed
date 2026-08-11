@@ -6735,7 +6735,10 @@
       "NeuronHistoryArtifactResponse": {
         "value": {
           "data": {
+            "days_covered": 1,
             "netuid": 7,
+            "newest_day": "example",
+            "oldest_day": "example",
             "point_count": 1,
             "points": [
               {
@@ -9696,7 +9699,10 @@
       "SubnetHistoryArtifactResponse": {
         "value": {
           "data": {
+            "days_covered": 1,
             "netuid": 7,
+            "newest_day": "example",
+            "oldest_day": "example",
             "point_count": 1,
             "points": [
               {
@@ -36260,10 +36266,35 @@
         "additionalProperties": {},
         "description": "One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
         "properties": {
+          "days_covered": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "newest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oldest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "point_count": {
             "maximum": 9007199254740991,
@@ -36510,6 +36541,9 @@
           "netuid",
           "uid",
           "point_count",
+          "oldest_day",
+          "newest_day",
+          "days_covered",
           "points"
         ],
         "type": "object"
@@ -46416,10 +46450,35 @@
         "additionalProperties": {},
         "description": "One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope.",
         "properties": {
+          "days_covered": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "netuid": {
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "newest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oldest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "point_count": {
             "maximum": 9007199254740991,
@@ -46506,6 +46565,9 @@
           "schema_version",
           "netuid",
           "point_count",
+          "oldest_day",
+          "newest_day",
+          "days_covered",
           "points"
         ],
         "type": "object"

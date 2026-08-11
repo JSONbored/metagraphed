@@ -9260,7 +9260,10 @@ export interface components {
         };
         /** @description One neuron's per-day metagraph history. Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history. */
         NeuronHistoryArtifact: {
+            days_covered: number;
             netuid: number;
+            newest_day: string | null;
+            oldest_day: string | null;
             point_count: number;
             points: ({
                 active: boolean;
@@ -11318,7 +11321,10 @@ export interface components {
         };
         /** @description One subnet's daily history series (#7172) from the neuron_daily rollup, newest first. Empty series (point_count 0) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/history' data envelope. */
         SubnetHistoryArtifact: {
+            days_covered: number;
             netuid: number;
+            newest_day: string | null;
+            oldest_day: string | null;
             point_count: number;
             points: {
                 neuron_count?: number | null;
@@ -42729,7 +42735,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "days_covered": 1,
                      *         "netuid": 7,
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
                      *         "point_count": 1,
                      *         "points": [
                      *           {
@@ -44079,7 +44088,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "days_covered": 1,
                      *         "netuid": 7,
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
                      *         "point_count": 1,
                      *         "points": [
                      *           {

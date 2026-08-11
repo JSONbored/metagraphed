@@ -3658,6 +3658,13 @@ const rootValue = {
       uid: data.uid ?? uid,
       window: data.window ?? label,
       point_count: data.point_count ?? 0,
+      // Explicit, because this object is BUILT rather than spread: the parity
+      // gate compares the SDL to the component and cannot see a resolver that
+      // drops a field, so a declared-but-unlisted non-null field would resolve
+      // to undefined and error at request time.
+      days_covered: data.days_covered ?? 0,
+      oldest_day: data.oldest_day ?? null,
+      newest_day: data.newest_day ?? null,
       points: data.points || [],
     };
   },
@@ -4062,6 +4069,11 @@ const rootValue = {
       netuid: data.netuid ?? netuid,
       window: data.window ?? label,
       point_count: data.point_count ?? 0,
+      // See the neuron-history resolver: built object, so the coverage fields
+      // have to be listed or the SDL declares what nothing returns.
+      days_covered: data.days_covered ?? 0,
+      oldest_day: data.oldest_day ?? null,
+      newest_day: data.newest_day ?? null,
       points: data.points ?? [],
     };
   },

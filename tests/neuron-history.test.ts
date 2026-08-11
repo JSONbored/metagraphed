@@ -565,3 +565,50 @@ describe("history endpoints (via the Worker dispatch)", () => {
     assert.equal(body.meta.parameter, "window");
   });
 });
+
+describe("coverage: what the response actually held (#10788)", () => {
+  // `window` echoes the REQUEST. Without these, a consumer asking for 1y and
+  // getting 33 points cannot tell "that is all that happened" from "that is all
+  // we hold" -- and only one of those is a reason to look elsewhere.
+  const row = (day: string) => ({
+    snapshot_date: day,
+    netuid: 1,
+    uid: 0,
+    hotkey: "5F",
+    coldkey: "5G",
+    captured_at: 1_785_800_000_000,
+    block_number: 100,
+  });
+
+  test("reports the real span and DISTINCT day count", () => {
+    const out = buildNeuronHistory(
+      [row("2026-08-11"), row("2026-07-10"), row("2026-08-01")],
+      1,
+      0,
+      { window: "1y" },
+    );
+    assert.equal(out.window, "1y", "the request is still echoed");
+    assert.equal(out.oldest_day, "2026-07-10");
+    assert.equal(out.newest_day, "2026-08-11");
+    assert.equal(out.days_covered, 3);
+  });
+
+  test("counts DISTINCT days, so a duplicated day is not double-counted", () => {
+    // days_covered is the count of days PRESENT, not the row count -- a neuron
+    // with two rows on one day has one day of coverage.
+    const out = buildNeuronHistory(
+      [row("2026-08-11"), row("2026-08-11")],
+      1,
+      0,
+    );
+    assert.equal(out.days_covered, 1);
+    assert.equal(out.point_count, 2, "point_count still counts rows");
+  });
+
+  test("an empty series reports null span rather than a fabricated one", () => {
+    const out = buildNeuronHistory([], 1, 0, { window: "1y" });
+    assert.equal(out.oldest_day, null);
+    assert.equal(out.newest_day, null);
+    assert.equal(out.days_covered, 0);
+  });
+});

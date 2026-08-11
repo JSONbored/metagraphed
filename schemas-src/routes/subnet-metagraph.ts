@@ -184,6 +184,21 @@ export const NeuronHistoryArtifactSchema = z
     uid: z.int().min(0),
     window: z.string().nullable().optional(),
     point_count: z.int().min(0),
+    /**
+     * WHAT THE RESPONSE ACTUALLY COVERED, beside what was asked for (#10788).
+     *
+     * `window` echoes the REQUEST -- ask for `1y` and this says `1y` -- so
+     * without these a consumer receiving 33 points could not tell "that is all
+     * that happened" from "that is all we hold". Same reasoning, and the same
+     * shape, as /health/failure-reasons: depth counted from the ROWS rather
+     * than the requested window.
+     *
+     * `days_covered` counts DISTINCT days present rather than the span, so a
+     * gap in the middle is visible instead of implied away by oldest/newest.
+     */
+    oldest_day: z.string().nullable(),
+    newest_day: z.string().nullable(),
+    days_covered: z.int().min(0),
     points: z.array(NeuronHistoryPointSchema),
   })
   .passthrough()

@@ -3491,6 +3491,12 @@ export const SDL = /* GraphQL */ `
     netuid: Int!
     window: String
     point_count: Int!
+    "DISTINCT days present in points, counted from the ROWS rather than the requested window -- so a day with no snapshot is absent rather than reported as a day of zero. Does not equal point_count when a day carries several rows."
+    days_covered: Int!
+    "Earliest snapshot_date in points, or null on an empty series. With newest_day, says what the answer COVERS -- window only says what was asked for."
+    oldest_day: String
+    "Latest snapshot_date in points, or null on an empty series."
+    newest_day: String
     points: [SubnetHistoryPoint!]!
   }
 
@@ -4802,6 +4808,12 @@ export const SDL = /* GraphQL */ `
     uid: Int!
     window: String
     point_count: Int!
+    "DISTINCT days present in points, counted from the ROWS rather than the requested window -- so a day with no snapshot is absent rather than reported as a day of zero. Does not equal point_count when a day carries several rows."
+    days_covered: Int!
+    "Earliest snapshot_date in points, or null on an empty series. With newest_day, says what the answer COVERS -- window only says what was asked for."
+    oldest_day: String
+    "Latest snapshot_date in points, or null on an empty series."
+    newest_day: String
     points: [NeuronHistoryPoint!]!
   }
 
