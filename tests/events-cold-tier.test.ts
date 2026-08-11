@@ -66,6 +66,61 @@ describe("loadAccountEventsColdTier", () => {
     );
   });
 
+  test("bounds the scan to a block window instead of all history", async () => {
+    // THE PERFORMANCE PROPERTY, and it is invisible in the response: the rows
+    // are identical either way. Measured end to end before this landed, the
+    // unbounded form took 6.35s/6.01s against 2.51s/1.76s with a block floor,
+    // because account_events is already clustered by block and the query
+    // simply was not using it.
+    const q = sqlFetch([eventRow(8_759_000, 1), eventRow(8_759_000, 0)]);
+    await loadAccountEventsColdTier(TOKEN as never, ADDR, { limit: 2 });
+    assert.match(q[0]!, /block_number >= \d+ AND block_number <= \d+/);
+  });
+
+  test("widens the window when a page does not fill, and keeps order", async () => {
+    // A sparse account: nothing in the first window, one row in the second.
+    // The page must still come back FULL-shaped rather than short -- the whole
+    // reason this loops internally instead of handing back a `next_before`.
+    const q = sqlFetch([], [eventRow(8_000_000)], [eventRow(7_000_000)]);
+    const data = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
+      limit: 1,
+    });
+    assert.equal(data!.events.length, 1);
+    assert.ok(q.length >= 2, `expected a second window, issued ${q.length}`);
+    // Each window sits strictly below its predecessor, so concatenation is
+    // globally ordered and no merge step is needed.
+    const ceil = (sql: string) => Number(/block_number <= (\d+)/.exec(sql)![1]);
+    assert.ok(
+      ceil(q[1]!) < ceil(q[0]!),
+      "the second window must read below the first",
+    );
+  });
+
+  test("a failed slice fails the read rather than returning a short page", async () => {
+    // A partial answer here would be short for a reason the caller cannot see,
+    // which is the silently-truncated result this family declines to serve.
+    let call = 0;
+    globalThis.fetch = (async () => {
+      call += 1;
+      if (call === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, result: { rows: [] } }),
+        } as unknown as Response;
+      }
+      return {
+        ok: false,
+        status: 500,
+        text: async () => "boom",
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const data = await loadAccountEventsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+    });
+    assert.equal(data, null);
+  });
+
   test("applies kind/netuid/range filters as validated literals", async () => {
     const q = sqlFetch([eventRow(5)]);
     await loadAccountEventsColdTier(TOKEN as never, ADDR, {
