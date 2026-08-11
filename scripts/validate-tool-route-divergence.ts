@@ -147,10 +147,7 @@ const usedDeclarations = new Set<string>();
 let pairs = 0;
 let agree = 0;
 
-for (const tool of listToolDefinitions() as unknown as {
-  name: string;
-  inputSchema?: Row;
-}[]) {
+for (const tool of listToolDefinitions()) {
   const entry = (
     MCP_TOOL_ROUTES as Record<
       string,

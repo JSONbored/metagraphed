@@ -70,6 +70,31 @@ export const BUFFER_ROUTE = "neon-write-buffer";
 /** Where the monotonic sequence lives, outside the statement prefix. */
 const SEQ_KEY = "seq";
 
+/**
+ * How many statements are waiting, maintained as a COUNTER.
+ *
+ * THE BUG THIS EXISTS TO KILL (#10755). enqueueStatement used to call
+ * countPending(), which does a full storage.list() over every chunk in the
+ * buffer and then sorts and groups the keys -- on EVERY enqueue. Cloudflare's
+ * own logs show what that cost once a backlog existed:
+ *
+ *     POST /enqueue   outcome: exception
+ *     cpuTimeMs: 2424   wallTimeMs: 2699
+ *     -> Internal error in Durable Object storage caused object to be reset
+ *
+ * 2.4 SECONDS OF CPU TO APPEND ONE ROW. And it is a death spiral rather than a
+ * slow path: each enqueue scans a bigger backlog, takes more CPU, and the
+ * platform eventually resets the object mid-request -- at which point the
+ * enqueue throws BEFORE reaching setAlarm, so nothing arms the flush, so the
+ * backlog grows, so the next scan is worse.
+ *
+ * That one O(n) call is what produced all three failures this buffer was
+ * disabled for: the storage "internal error", the enqueues that stopped
+ * landing, and the alarm that never fired. A counter makes the enqueue O(1)
+ * and the whole spiral unreachable.
+ */
+const PENDING_KEY = "pending";
+
 export interface FlushOutcome {
   /** Statements this drain took from storage. */
   drained: number;
@@ -137,7 +162,8 @@ export async function enqueueStatement(
   statement: BufferedStatement,
   now: number,
 ): Promise<{ accepted: boolean; seq?: number; reason?: string }> {
-  const pending = await countPending(storage);
+  // O(1). NEVER countPending() here -- see PENDING_KEY.
+  const pending = (await storage.get<number>(PENDING_KEY)) ?? 0;
   if (pending >= MAX_BUFFERED_STATEMENTS) {
     // REFUSE rather than grow. See this file's header: an unbounded queue is
     // an outage nobody can see, and the producer's retry still holds the rows.
@@ -148,7 +174,10 @@ export async function enqueueStatement(
   }
   const seq = ((await storage.get<number>(SEQ_KEY)) ?? 0) + 1;
   const parts = splitPayload(encodeStatement(statement));
-  const entries: Record<string, unknown> = { [SEQ_KEY]: seq };
+  const entries: Record<string, unknown> = {
+    [SEQ_KEY]: seq,
+    [PENDING_KEY]: pending + 1,
+  };
   parts.forEach((part, index) => {
     entries[chunkKey(seq, index)] = part;
   });
@@ -278,6 +307,7 @@ export async function flushBuffer(
       // alarm, and a failure here is nearly always the connection rather than
       // the row -- so the rest would fail too, one wasted round trip each.
       await storage.delete(drainedKeys);
+      await storage.put({ [PENDING_KEY]: await countPending(storage) });
       await recordFlushVerdicts(laneDb, perLane, now());
       const reason = error instanceof Error ? error.message : String(error);
       await capture(asEnv, {
@@ -299,6 +329,13 @@ export async function flushBuffer(
   }
 
   await storage.delete(drainedKeys);
+  // RECONCILE, do not just decrement. A drain that was not truncated has
+  // emptied the buffer by definition, so writing the true value here stops any
+  // drift between the counter and the keys from accumulating -- a counter that
+  // can only be adjusted is a counter that eventually lies.
+  await storage.put({
+    [PENDING_KEY]: truncated ? Math.max(0, await countPending(storage)) : 0,
+  });
   await recordFlushVerdicts(laneDb, perLane, now());
   await recordLaneVerdict(laneDb, {
     lane: BUFFER_FLUSH_LANE,

@@ -168,6 +168,37 @@ export const CHAIN_FIREHOSE_MAX_FIELD_STRING_BYTES = 256;
 // hibernatable sockets), so a per-message byte watermark isn't a reliable WS
 // primitive here; the connection cap plus per-send try/catch are the bounds.
 export const CHAIN_FIREHOSE_SSE_HIGH_WATER_MARK = 64;
+/**
+ * Which cap turned a subscriber away.
+ *
+ * ALL FOUR RETURN THE SAME BODY, deliberately -- a distinct message per cap
+ * would tell a scraper which limit it had hit and how to spread around it. What
+ * changes is that the LOG now says, because the two facts are operationally
+ * opposite and were indistinguishable in production (#10744):
+ *
+ *   - a GLOBAL cap means every subscriber is being refused. An outage.
+ *   - a PER-IP cap means one client is being contained. The design working.
+ *
+ * On 2026-08-11 a headless-browser farm on Azure addresses drew a steady stream
+ * of 503s from /subscribe, and nothing in the telemetry could say which of those
+ * two it was.
+ */
+export type ChainFirehoseCapKind =
+  "ws-global" | "ws-per-ip" | "sse-global" | "sse-per-ip";
+
+/** The 503 every cap answers with, and the one line that tells them apart. */
+export function chainFirehoseCapRefusal(
+  kind: ChainFirehoseCapKind,
+  observed: number,
+  limit: number,
+): Response {
+  // Same labelled shape src/r2-sql.ts gives its suppressed queries, for the same
+  // reason: the tail is where every occurrence can be read, and the response
+  // deliberately will not carry it.
+  console.error("[chain-firehose] cap", kind, `${observed}/${limit}`);
+  return new Response("too many connections", { status: 503 });
+}
+
 export const CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS = 1000;
 export const CHAIN_FIREHOSE_MAX_WS_CONNECTIONS = 1000;
 
@@ -1143,7 +1174,11 @@ export class ChainFirehoseHub implements DurableObject {
       if (
         this.state.getWebSockets().length >= CHAIN_FIREHOSE_MAX_WS_CONNECTIONS
       ) {
-        return new Response("too many connections", { status: 503 });
+        return chainFirehoseCapRefusal(
+          "ws-global",
+          this.state.getWebSockets().length,
+          CHAIN_FIREHOSE_MAX_WS_CONNECTIONS,
+        );
       }
       // #5004 item 1: per-IP sub-quota, checked in addition to the global cap
       // above. Applies to BOTH WS "modes" below (plain firehose and
@@ -1158,7 +1193,11 @@ export class ChainFirehoseHub implements DurableObject {
         (this.wsClientsByIp.get(clientIp) || 0) >=
         CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
       ) {
-        return new Response("too many connections", { status: 503 });
+        return chainFirehoseCapRefusal(
+          "ws-per-ip",
+          this.wsClientsByIp.get(clientIp) ?? 0,
+          CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
+        );
       }
       const requestedProtocols = (
         request.headers.get("sec-websocket-protocol") || ""
@@ -1236,18 +1275,26 @@ export class ChainFirehoseHub implements DurableObject {
     /* v8 ignore stop */
 
     if (this.sseClients.size >= CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS) {
-      return new Response("too many connections", { status: 503 });
+      return chainFirehoseCapRefusal(
+        "sse-global",
+        this.sseClients.size,
+        CHAIN_FIREHOSE_MAX_SSE_CONNECTIONS,
+      );
     }
 
     // #5004 item 1: per-IP sub-quota, checked in addition to the global cap
     // above. Same 503 shape as the global-cap response -- see the WS-upgrade
     // branch's identical comment above for why no distinct error is used.
     const clientIp = resolveClientIp(request);
-    if (
-      (this.sseClientsByIp.get(clientIp) || 0) >=
-      CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP
-    ) {
-      return new Response("too many connections", { status: 503 });
+    const sseForIp = this.sseClientsByIp.get(clientIp) || 0;
+    if (sseForIp >= CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP) {
+      // Read once: the guard has already proved this is at the cap, so a second
+      // `|| 0` in the refusal would be a branch that cannot be taken.
+      return chainFirehoseCapRefusal(
+        "sse-per-ip",
+        sseForIp,
+        CHAIN_FIREHOSE_MAX_CONNECTIONS_PER_IP,
+      );
     }
 
     const encoder = new TextEncoder();

@@ -7,7 +7,10 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   currentR2SqlFailureGeneration,
+  R2_SQL_OUTAGE_COOLDOWN_MS,
+  R2_SQL_OUTAGE_STREAK,
   isExpectedR2SqlFailure,
+  r2SqlOutageRemainingMs,
   isR2SqlConfigured,
   r2SqlQuery,
   r2SqlQueryKind,
@@ -975,5 +978,130 @@ describe("r2SqlQuery marks capacity failures expected (#9900)", () => {
     });
     assert.equal(captured[0]?.expected, false);
     assert.equal(captured[0]?.errorCode, "http_422");
+  });
+});
+
+describe("the upstream-outage breaker (#10741)", () => {
+  const SQL = "SELECT 1";
+  function res(status: number) {
+    return {
+      ok: status < 400,
+      status,
+      json: async () => ({ result: [], success: true }),
+      text: async () => "",
+    } as unknown as Response;
+  }
+
+  test("a FIRST 500 still throws — it may be our query that broke the engine", async () => {
+    const clock = 1_000;
+    let calls = 0;
+    const out = await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: (async () => {
+        calls += 1;
+        return res(500);
+      }) as unknown as typeof fetch,
+      now: () => clock,
+    });
+    assert.equal(out, null);
+    assert.equal(calls, 1, "the first 5xx is SENT, not suppressed");
+    assert.equal(r2SqlOutageRemainingMs(clock), 0, "one 500 is a blip");
+  });
+
+  test("a SECOND consecutive 500 opens the breaker", async () => {
+    const clock = 1_000;
+    const fetchImpl = (async () => res(500)) as unknown as typeof fetch;
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    assert.equal(r2SqlOutageRemainingMs(clock), R2_SQL_OUTAGE_COOLDOWN_MS);
+  });
+
+  test("queries behind the open breaker are NOT sent, and do not throw", async () => {
+    // The 1,546 that followed the first said nothing it had not.
+    const clock = 1_000;
+    let sent = 0;
+    const fetchImpl = (async () => {
+      sent += 1;
+      return res(500);
+    }) as unknown as typeof fetch;
+    for (let i = 0; i < 5; i += 1) {
+      await r2SqlQuery(mockEnv(TOKEN), SQL, {
+        fetch: fetchImpl,
+        now: () => clock,
+      });
+    }
+    assert.equal(
+      sent,
+      R2_SQL_OUTAGE_STREAK,
+      "only the streak reached upstream",
+    );
+  });
+
+  test("the breaker reopens the tier once the cooldown passes", async () => {
+    let clock = 1_000;
+    const fetchImpl = (async () => res(500)) as unknown as typeof fetch;
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    assert.ok(r2SqlOutageRemainingMs(clock) > 0);
+    clock += R2_SQL_OUTAGE_COOLDOWN_MS + 1;
+    assert.equal(r2SqlOutageRemainingMs(clock), 0, "cooldowns expire");
+  });
+
+  test("a NON-5xx response ends the streak — the far side is answering", async () => {
+    // A 429 or a 422 both prove the engine is alive, so the streak is over,
+    // not merely paused.
+    const clock = 1_000;
+    let n = 0;
+    const fetchImpl = (async () =>
+      res([500, 422, 500][n++] ?? 500)) as unknown as typeof fetch;
+    for (let i = 0; i < 3; i += 1) {
+      await r2SqlQuery(mockEnv(TOKEN), SQL, {
+        fetch: fetchImpl,
+        now: () => clock,
+      });
+    }
+    assert.equal(
+      r2SqlOutageRemainingMs(clock),
+      0,
+      "500, 422, 500 is never two IN A ROW",
+    );
+  });
+
+  test("a fetch that resolves to nothing is not counted as a 5xx", async () => {
+    // `res?.status ?? 0` is reachable: a transport-level failure can hand back
+    // no response at all, and that is a `transport` fault, not an upstream 5xx.
+    const clock = 1_000;
+    const fetchImpl = (async () => undefined) as unknown as typeof fetch;
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    await r2SqlQuery(mockEnv(TOKEN), SQL, {
+      fetch: fetchImpl,
+      now: () => clock,
+    });
+    assert.equal(
+      r2SqlOutageRemainingMs(clock),
+      0,
+      "no response is not evidence the engine returned 5xx",
+    );
+  });
+
+  test("a suppressed query is a usage event; the 5xx itself is not", async () => {
+    // The distinction the whole fix rests on: the follow-ups stop being billed
+    // as errors, while a first 500 still reaches the inbox.
+    assert.equal(isExpectedR2SqlFailure("upstream_down"), true);
+    assert.equal(isExpectedR2SqlFailure("http_500"), false);
   });
 });

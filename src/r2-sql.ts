@@ -115,10 +115,51 @@ let r2SqlFailureGeneration = 0;
  */
 let r2SqlRateLimitedUntilMs = 0;
 
+/**
+ * How many CONSECUTIVE upstream 5xx open the outage breaker.
+ *
+ * Two, not one, and the difference is the whole point: a lone 500 is a blip
+ * worth an exception, because it might be the first sign of a query this repo
+ * needs to fix. Two in a row is an upstream that is down, and the 1,546 that
+ * followed the first on 2026-08-03..10 said nothing the first had not (#10741).
+ */
+export const R2_SQL_OUTAGE_STREAK = 2;
+
+/** Shorter than the rate-limit cooldown deliberately. A 429 has a budget that
+ * genuinely needs a minute to refill; an upstream fault has no budget, so the
+ * only thing this cooldown buys is not re-reporting -- and holding a whole tier
+ * dark for a minute to save log lines is the wrong trade. */
+export const R2_SQL_OUTAGE_COOLDOWN_MS = 15_000;
+
+/** The status floor this module treats as "the far side broke, not us". */
+const SERVER_ERROR_FLOOR = 500;
+
+/**
+ * When the upstream-outage cooldown expires; 0 when closed.
+ *
+ * A SEPARATE breaker from the rate-limit one, not a widened version of it. They
+ * mean different things and must be able to be open at once: 429 says the
+ * ACCOUNT budget is spent and backing off refills it, 5xx says R2 SQL itself is
+ * failing and backing off changes nothing upstream. Collapsing them would let a
+ * 15s outage cooldown clear a 60s rate-limit cooldown early.
+ */
+let r2SqlOutageUntilMs = 0;
+
+/** Consecutive 5xx seen. Reset by ANY response that is not a 5xx -- including a
+ * rejection, because a 429 or a 422 both prove the far side is answering. */
+let r2SqlServerErrorStreak = 0;
+
 registerModuleStateReset("src/r2-sql.ts", () => {
   r2SqlFailureGeneration = 0;
   r2SqlRateLimitedUntilMs = 0;
+  r2SqlOutageUntilMs = 0;
+  r2SqlServerErrorStreak = 0;
 });
+
+/** Milliseconds remaining on the upstream-outage cooldown, or 0 when closed. */
+export function r2SqlOutageRemainingMs(nowMs: number = Date.now()): number {
+  return Math.max(0, r2SqlOutageUntilMs - nowMs);
+}
 
 // Same contract as usage-telemetry's storm window: wrangler vars arrive as
 // strings, and stating the shape once as a schema beats a typeof/isFinite
@@ -314,6 +355,13 @@ function failureClassification(
  */
 const RATE_LIMITED_CODE = "rate_limited";
 
+/** The `error_code` a query suppressed by the OUTAGE breaker reports.
+ *
+ * Distinct from `rate_limited` so a reader can tell which breaker declined:
+ * "the account budget is spent" and "the engine is failing" call for different
+ * responses, and one label for both would hide that. */
+const UPSTREAM_DOWN_CODE = "upstream_down";
+
 /**
  * The failure codes that are CAPACITY, not correctness (#9900).
  *
@@ -336,6 +384,11 @@ const EXPECTED_FAILURE_CODES: ReadonlySet<string> = new Set([
   "timeout",
   "http_429",
   RATE_LIMITED_CODE,
+  // The query the OUTAGE breaker never sent. The 5xx responses themselves stay
+  // OFF this list on purpose: a first 500 must still reach the inbox, because
+  // it is the only thing that would tell us a query in this repo started
+  // breaking the engine. It is the suppressed follow-ups that carry nothing.
+  UPSTREAM_DOWN_CODE,
 ]);
 
 /** Whether a classified r2-sql failure is an expected capacity condition. */
@@ -381,6 +434,22 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
     return null;
   }
   const now = deps.now ?? Date.now;
+  const outage = r2SqlOutageRemainingMs(now());
+  if (outage > 0) {
+    // The engine is failing, so this query cannot succeed. Decline WITHOUT the
+    // exception hop, for the same reason the rate-limit branch below does: the
+    // 5xx that opened this breaker already recorded one, and 1,546 identical
+    // follow-ups said nothing it had not (#10741).
+    r2SqlFailureGeneration += 1;
+    const detail = `r2 sql: upstream unavailable, ${outage}ms of cooldown remaining`;
+    console.error("[r2-sql]", UPSTREAM_DOWN_CODE, r2SqlQueryKind(sql), detail);
+    try {
+      deps.onError?.(detail);
+    } catch {
+      // A caller's own reporting must never turn a declined query into a thrown one.
+    }
+    return null;
+  }
   const remaining = r2SqlRateLimitRemainingMs(now());
   if (remaining > 0) {
     // The account budget is known-exhausted, so this query cannot succeed and
@@ -433,6 +502,19 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
     } as RequestInit);
     if (!res?.ok) {
       thrownCode = `http_${res?.status}`;
+      if ((res?.status ?? 0) >= SERVER_ERROR_FLOOR) {
+        // Opened BEFORE the throw, exactly as the rate-limit branch is, so this
+        // rejection records one exception and the callers behind it are
+        // declined rather than each paying for their own.
+        r2SqlServerErrorStreak += 1;
+        if (r2SqlServerErrorStreak >= R2_SQL_OUTAGE_STREAK) {
+          r2SqlOutageUntilMs = now() + R2_SQL_OUTAGE_COOLDOWN_MS;
+        }
+      } else {
+        // ANY non-5xx response proves the far side is answering, so the streak
+        // is not merely paused -- it is over.
+        r2SqlServerErrorStreak = 0;
+      }
       if (res?.status === RATE_LIMIT_STATUS) {
         // Opened BEFORE the throw, so the catch below records exactly one
         // exception for this rejection and every caller behind it is suppressed
@@ -444,6 +526,7 @@ export async function r2SqlQuery<Row = Record<string, unknown>>(
         `r2 sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
       );
     }
+    r2SqlServerErrorStreak = 0;
     const body = (await res.json()) as R2SqlBody;
     if (body?.success !== true) {
       const first = body?.errors?.[0];

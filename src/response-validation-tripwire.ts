@@ -36,6 +36,7 @@
 // quietly shipping. That is the trade the flag exists to make.
 import { successEnvelopeSchema } from "../schemas-src/envelope.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import type { z } from "zod";
 
 /** A response that does not match the schema its route publishes. */
 export class ResponseSchemaDriftError extends Error {
@@ -50,7 +51,9 @@ export class ResponseSchemaDriftError extends Error {
 }
 
 /** Resolved schemas, so a hot route pays the lookup once per isolate. */
-const cache = new Map<string, { safeParse: (value: unknown) => unknown }>();
+/** The composed envelope schema per artifact path -- Zod's own type, so
+ * `safeParse` narrows here rather than being re-declared at the call site. */
+const cache = new Map<string, z.ZodType>();
 
 /** Artifact paths with no component -- reported once, never re-resolved. */
 const unresolved = new Set<string>();
@@ -90,9 +93,7 @@ async function schemaForArtifact(artifactPath: string) {
     );
     return null;
   }
-  const schema = successEnvelopeSchema(component) as unknown as {
-    safeParse: (value: unknown) => unknown;
-  };
+  const schema = successEnvelopeSchema(component);
   cache.set(artifactPath, schema);
   return schema;
 }
@@ -111,10 +112,7 @@ export async function validateResponseTripwire(
   try {
     const schema = await schemaForArtifact(artifactPath);
     if (!schema) return;
-    const result = schema.safeParse(envelope) as {
-      success: boolean;
-      error?: unknown;
-    };
+    const result = schema.safeParse(envelope);
     if (!result.success) {
       throw new ResponseSchemaDriftError(routeId, result.error);
     }

@@ -24,13 +24,30 @@ export interface QueryArgument {
   type: string;
 }
 
-/** Only the sliver of the OpenAPI document this module reads. */
+/**
+ * One published parameter, or the `$ref` that stands in for it.
+ *
+ * Both spellings appear in the same array -- the document inlines a
+ * route-specific parameter and `$ref`s a shared one -- which is why `deref`
+ * below exists at all. Declared as the union rather than `unknown` so that
+ * function's INPUT is typed, not just its output.
+ */
+export type ParameterOrRef = Parameter | { $ref: string };
+
+/**
+ * Only the sliver of the OpenAPI document this module reads.
+ *
+ * Narrow on purpose. Nothing in this repo generates a type for the spec
+ * DOCUMENT -- `public/metagraph/types.d.ts` models the API's requests and
+ * responses, which is a different thing -- so this is a model of a document
+ * rather than a hand-rolled copy of something already declared.
+ */
 export interface OpenApiParameters {
-  paths?: Record<string, { get?: { parameters?: unknown[] } }>;
-  components?: { parameters?: Record<string, unknown> };
+  paths?: Record<string, { get?: { parameters?: readonly ParameterOrRef[] } }>;
+  components?: { parameters?: Record<string, Parameter> };
 }
 
-interface Parameter {
+export interface Parameter {
   name: string;
   in: string;
   required?: boolean;
@@ -41,7 +58,10 @@ interface Parameter {
 }
 
 /** Resolve a `$ref`'d parameter against the document that holds it. */
-function deref(node: unknown, openapi: OpenApiParameters): Parameter | null {
+function deref(
+  node: ParameterOrRef | undefined,
+  openapi: OpenApiParameters,
+): Parameter | null {
   if (!node || typeof node !== "object") return null;
   const ref = (node as { $ref?: string }).$ref;
   if (typeof ref !== "string") return node as Parameter;

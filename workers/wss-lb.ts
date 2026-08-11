@@ -255,7 +255,7 @@ export async function dialUpstream(
       headers: { Upgrade: "websocket" },
       signal: abort.signal,
     } as RequestInit);
-    const socket = (res as unknown as { webSocket?: WebSocket }).webSocket;
+    const socket = res.webSocket;
     if (res.status !== 101 || !socket) return null;
     socket.accept();
     return socket;

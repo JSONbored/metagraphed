@@ -5,9 +5,16 @@
 // own comment at the assertion).
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { handleScheduled } from "../workers/api.ts";
+import {
+  EMISSION_GATE_SAMPLE_CRON,
+  EMISSION_GATE_SAMPLE_INTERVAL_MS,
+} from "../workers/config.ts";
 import {
   netuidFromKey,
+  EMISSION_SAMPLER_ARCHIVE_URLS,
   sampleEmissionGate,
+  sampleEmissionGateWithFailover,
   STORAGE_BATCH_SIZE,
   SUBNET_EMA_TAO_FLOW_PREFIX,
   SUBNET_EMISSION_ENABLED_PREFIX,
@@ -68,9 +75,14 @@ function changesFor(
   return [{ changes: keys.map((key) => [key, value(key)]) }];
 }
 
-/** The minimal healthy chain: header, null gate params, one enabled subnet,
- * flow params unset, one EMA entry. */
+/** The finalized block every call in a sample must be pinned to. */
+const FINALIZED_HASH =
+  "0xe37c081adf43c0e284d4fb7ee3c21b58e057bf50548d8821d340f631f91ba244";
+
+/** The minimal healthy chain: finalized head, header, null gate params, one
+ * enabled subnet, flow params unset, one EMA entry. */
 function healthyAnswer(method: string, params: unknown[]): unknown {
+  if (method === "chain_getFinalizedHead") return FINALIZED_HASH;
   if (method === "chain_getHeader") return { number: "0x85a1c8" };
   if (method === "state_getKeysPaged") {
     const prefix = params[0];
@@ -161,15 +173,47 @@ describe("sampleEmissionGate", () => {
     assert.deepEqual(sample.current_enabled, [[7, true]]);
   });
 
-  test("state_getKeysPaged omits params[2] on the first page — null 400s the proxy", async () => {
+  test("state_getKeysPaged never passes null for params[2] — it 400s the proxy", async () => {
+    // The block hash is params[3], so params[2] must be occupied to reach it,
+    // and `null` is the one value the RPC proxy rejects. The PREFIX is used
+    // instead: it sorts before every key under it, so it skips nothing.
     const { impl, calls } = rpcFetch(healthyAnswer);
     await sampleEmissionGate({ rpcUrl: "https://rpc.test", fetchImpl: impl });
     const firstPaged = calls.find((c) => c.method === "state_getKeysPaged")!;
+    assert.notEqual(firstPaged.params[2], null, "null 400s the proxy");
     assert.equal(
-      firstPaged.params.length,
-      2,
-      "third param must be ABSENT, not null",
+      firstPaged.params[2],
+      firstPaged.params[0],
+      "the prefix is the first page's startKey",
     );
+    assert.equal(firstPaged.params[3], FINALIZED_HASH);
+  });
+
+  test("EVERY read is pinned to the one finalized block", async () => {
+    // A sample is a dozen calls. Unpinned, each resolves "best block" on
+    // whichever archive node the rotation handed it, so block_number could come
+    // from one block and the values from another -- and this lane's whole job is
+    // to say WHEN a parameter changed. It is also what threw UnknownBlock in
+    // production (#10742): a node that had not imported another node's head.
+    const { impl, calls } = rpcFetch(healthyAnswer);
+    await sampleEmissionGate({ rpcUrl: "https://rpc.test", fetchImpl: impl });
+
+    assert.equal(
+      calls.filter((c) => c.method === "chain_getFinalizedHead").length,
+      1,
+      "the block is resolved ONCE, then reused",
+    );
+    assert.deepEqual(
+      calls.find((c) => c.method === "chain_getHeader")!.params,
+      [FINALIZED_HASH],
+      "the header is read AT that block, not at the head",
+    );
+    for (const c of calls.filter((x) => x.method === "state_queryStorageAt")) {
+      assert.equal(c.params[1], FINALIZED_HASH, "storage read off-block");
+    }
+    for (const c of calls.filter((x) => x.method === "state_getKeysPaged")) {
+      assert.equal(c.params[3], FINALIZED_HASH, "keys read off-block");
+    }
   });
 
   test("paginates keysPaged past a full page, passing the last key", async () => {
@@ -373,5 +417,198 @@ describe("sampleEmissionGate", () => {
       fetchImpl: impl,
     });
     assert.equal(sample.current.emission_gate_bar, 1);
+  });
+});
+
+describe("rotating the archive pool", () => {
+  test("both declared endpoints serve ARCHIVE state", () => {
+    // The lite and entrypoint endpoints prune, and a pruned node cannot answer
+    // a finalized-block read that is more than a few blocks old.
+    assert.deepEqual(EMISSION_SAMPLER_ARCHIVE_URLS, [
+      "https://archive.chain.opentensor.ai",
+      "https://bittensor-finney.api.onfinality.io/public",
+    ]);
+  });
+
+  test("the offset picks the endpoint, so consecutive ticks alternate", async () => {
+    // One sample is a dozen fetches to the SAME endpoint, so what is asserted
+    // is the endpoint each sample ran on -- not the call count.
+    const perSample: string[] = [];
+    async function runAt(offset: number) {
+      const seen = new Set<string>();
+      const impl = (async (url: string, init?: RequestInit) => {
+        seen.add(String(url));
+        const body = JSON.parse(String(init?.body ?? "{}")) as {
+          method: string;
+          params: unknown[];
+        };
+        return {
+          ok: true,
+          json: async () => ({
+            result: healthyAnswer(body.method, body.params),
+          }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+      await sampleEmissionGateWithFailover({ offset, fetchImpl: impl });
+      assert.equal(seen.size, 1, "a sample must not split across endpoints");
+      perSample.push([...seen][0]!);
+    }
+    for (const offset of [0, 1, 2, 3]) await runAt(offset);
+    assert.deepEqual(perSample, [
+      EMISSION_SAMPLER_ARCHIVE_URLS[0],
+      EMISSION_SAMPLER_ARCHIVE_URLS[1],
+      EMISSION_SAMPLER_ARCHIVE_URLS[0],
+      EMISSION_SAMPLER_ARCHIVE_URLS[1],
+    ]);
+  });
+
+  test("a failing endpoint fails the WHOLE sample over, not one call", async () => {
+    // Completing a half-sample from one node against another is the split this
+    // lane exists to stop making.
+    const seen: string[] = [];
+    const impl = (async (url: string, init?: RequestInit) => {
+      const host = String(url);
+      seen.push(host);
+      if (host === EMISSION_SAMPLER_ARCHIVE_URLS[0]) {
+        throw new Error("archive unreachable");
+      }
+      const body = JSON.parse(String(init?.body ?? "{}")) as {
+        method: string;
+        params: unknown[];
+      };
+      return {
+        ok: true,
+        json: async () => ({
+          result: healthyAnswer(body.method, body.params),
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const sample = await sampleEmissionGateWithFailover({
+      offset: 0,
+      fetchImpl: impl,
+    });
+    assert.equal(sample.block_number, 0x85a1c8);
+    assert.equal(seen[0], EMISSION_SAMPLER_ARCHIVE_URLS[0], "tried first");
+    assert.ok(
+      seen.slice(1).every((u) => u === EMISSION_SAMPLER_ARCHIVE_URLS[1]),
+      "every call after the failover ran on the SECOND endpoint",
+    );
+  });
+
+  test("all endpoints failing throws the LAST reason, not a generic one", async () => {
+    // A lane reporting a generic failure over a specific one is how #10742 hid
+    // behind a stale issue title for a week.
+    const impl = (async (url: string) => {
+      throw new Error(
+        `down: ${String(url).includes("onfinality") ? "b" : "a"}`,
+      );
+    }) as unknown as typeof fetch;
+    await assert.rejects(
+      () => sampleEmissionGateWithFailover({ offset: 0, fetchImpl: impl }),
+      /down: b/,
+    );
+  });
+
+  test("an explicit override runs alone, with no failover", async () => {
+    const used: string[] = [];
+    const impl = (async (url: string) => {
+      used.push(String(url));
+      throw new Error("nope");
+    }) as unknown as typeof fetch;
+    await assert.rejects(() =>
+      sampleEmissionGateWithFailover({
+        urls: ["https://operator.example"],
+        fetchImpl: impl,
+      }),
+    );
+    assert.deepEqual(used, ["https://operator.example"]);
+  });
+});
+
+describe("the cron branch", () => {
+  test("no sync secret declines before any chain read", async () => {
+    let fetched = 0;
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      fetched += 1;
+      return new Response("{}");
+    }) as typeof fetch;
+    try {
+      const out = (await handleScheduled(
+        { cron: EMISSION_GATE_SAMPLE_CRON } as unknown as ScheduledController,
+        {} as unknown as Parameters<typeof handleScheduled>[1],
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      )) as { ok: boolean; skipped?: boolean; reason?: string };
+      assert.equal(out.ok, false);
+      assert.equal(out.skipped, true);
+      assert.equal(fetched, 0, "a lane that cannot persist must not read");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("an operator's override runs alone; otherwise the pool rotates", async () => {
+    // The branch's own decision, asserted through the URLs the sample reaches.
+    const original = globalThis.fetch;
+    async function hostsFor(env: Record<string, unknown>) {
+      const seen = new Set<string>();
+      globalThis.fetch = (async (url: string, init?: RequestInit) => {
+        const href = String(url);
+        if (href.includes("internal.metagraph.sh")) {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        seen.add(new URL(href).origin);
+        const body = JSON.parse(String(init?.body ?? "{}")) as {
+          method: string;
+          params: unknown[];
+        };
+        return new Response(
+          JSON.stringify({ result: healthyAnswer(body.method, body.params) }),
+        );
+      }) as typeof fetch;
+      await handleScheduled(
+        { cron: EMISSION_GATE_SAMPLE_CRON } as unknown as ScheduledController,
+        { EMISSION_GATE_SYNC_SECRET: "s", ...env } as never,
+        { waitUntil: () => {} } as unknown as ExecutionContext,
+      ).catch(() => {});
+      return [...seen];
+    }
+    try {
+      assert.deepEqual(
+        await hostsFor({
+          EMISSION_SAMPLER_RPC_URL: "https://operator.example",
+        }),
+        ["https://operator.example"],
+        "an explicit endpoint means THAT endpoint",
+      );
+      const rotated = await hostsFor({});
+      assert.equal(rotated.length, 1, "one sample, one endpoint");
+      assert.ok(
+        (EMISSION_SAMPLER_ARCHIVE_URLS as readonly string[]).some((u) =>
+          u.startsWith(rotated[0]!),
+        ),
+        "absent an override it comes from the archive pool",
+      );
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("the interval is the cron's cadence, which is what rotates the pool", () => {
+    // A wrong constant here would not fail anything loudly -- it would just
+    // stop alternating, and quietly pin every sample to one endpoint.
+    assert.equal(EMISSION_GATE_SAMPLE_INTERVAL_MS, 10 * 60 * 1000);
+    assert.equal(EMISSION_GATE_SAMPLE_CRON, "3,13,23,33,43,53 * * * *");
+  });
+
+  test("a non-Error thrown by every endpoint still yields an Error", async () => {
+    const impl = (async () => {
+      throw "a bare string";
+    }) as unknown as typeof fetch;
+    await assert.rejects(
+      () => sampleEmissionGateWithFailover({ offset: 0, fetchImpl: impl }),
+      /failed on all 2 endpoint\(s\)/,
+    );
   });
 });
