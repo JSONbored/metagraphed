@@ -16,7 +16,9 @@ import { describe, test } from "vitest";
 
 import {
   ACCOUNT_IDENTITY_NEON_LANE,
+  FAMILY_MIRROR_PLANS,
   SUBNET_HYPERPARAMS_NEON_LANE,
+  SUBNET_OWNERSHIP_NEON_LANE,
   failedTables,
   mirrorFamilyToNeon,
 } from "../src/hyperparams-identity-neon-write.ts";
@@ -44,6 +46,59 @@ const ctx = { waitUntil: () => undefined };
 
 const HP_ROW = { netuid: 1, captured_at: 5, registration_allowed: true };
 const HP_HIST = { netuid: 1, observed_at: 5, hyperparams_hash: "h" };
+
+describe("every plan's history guard", () => {
+  // DERIVED, not restated. The rule is: a history whose conflict key already
+  // CONTAINS its timestamp needs no guard, because a conflict there is the
+  // identical row arriving twice. A history keyed on CONTENT does need one, or
+  // buildPgUpsert's `DO UPDATE SET <every non-key column>` rewrites the
+  // first-seen stamp to last-seen on every pass.
+  //
+  // That is not hypothetical -- it is #10836, measured on production:
+  // subnet_identity_history held 125 rows across 7 landed passes with 124 of
+  // them sitting at the single newest one. Asserting the RULE rather than
+  // listing today's four plans is what makes the fifth plan inherit it.
+  const timestampColumns = ["observed_at", "captured_at"];
+
+  for (const [lane, plan] of Object.entries(FAMILY_MIRROR_PLANS)) {
+    test(`${lane}: guarded iff its history is content-keyed`, () => {
+      const keyedOnTime = plan.history.conflict.some((column) =>
+        timestampColumns.includes(column),
+      );
+      if (keyedOnTime) {
+        assert.equal(
+          plan.history.guard,
+          undefined,
+          `${lane}'s history key contains its timestamp, so a guard would be dead weight`,
+        );
+        return;
+      }
+      assert.ok(
+        plan.history.guard,
+        `${lane}'s history is keyed on content, so without a guard every ` +
+          `re-send rewrites its first-seen stamp -- the #10836 bug`,
+      );
+      // The guard must compare the history's OWN stamp, and in the direction
+      // that keeps the older one. `<` here would be the bug with extra steps.
+      assert.match(
+        plan.history.guard,
+        new RegExp(`^${plan.history.table}\\.\\w+ > EXCLUDED\\.\\w+$`),
+        `${lane}'s guard must keep the EARLIER observation`,
+      );
+    });
+  }
+
+  test("only a family whose producer posts everything at once may prune", () => {
+    // Pruning against a CHUNK deletes the rows the other chunks carried. Only
+    // subnet-ownership posts its whole population in one request, so it is the
+    // only plan allowed a prune -- pinned so a future plan cannot pick it up
+    // by copy-paste without this test failing.
+    const pruning = Object.entries(FAMILY_MIRROR_PLANS)
+      .filter(([, plan]) => plan.prune)
+      .map(([lane]) => lane);
+    assert.deepEqual(pruning, [SUBNET_OWNERSHIP_NEON_LANE]);
+  });
+});
 
 describe("the lane gate", () => {
   test("an unnamed lane writes nothing", async () => {

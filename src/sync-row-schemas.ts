@@ -286,6 +286,38 @@ export function subnetIdentitySyncRowSchema({
     });
 }
 
+/**
+ * subnet_ownership / subnet_ownership_history rows, as the poller's
+ * `subnet-ownership` lane sends them (#10836).
+ *
+ * STRICTER THAN ITS IDENTITY SIBLING, because the data is. Every field is
+ * REQUIRED and non-null: 0024 made both key columns `NOT NULL` on the grounds
+ * that the Rust producer binds `String` rather than `Option<String>`, and a
+ * netuid whose owner resolves to the zero account is dropped from the snapshot
+ * rather than written as null. A nullable owner here would be a row the table
+ * refuses at write time -- a 500 where a 400 belongs.
+ *
+ * Both keys are SS58 account strings, capped in bytes like every other key on
+ * these routes rather than pattern-matched: an ss58 regex here would be a
+ * second, weaker copy of a rule the chain already enforced upstream, and it
+ * would reject a future address format the producer legitimately resolved.
+ */
+export function subnetOwnershipSyncRowSchema({
+  columns,
+  minCapturedAtMs,
+  maxNetuid,
+  maxKeyBytes,
+}: SyncRowSchemaOptions & { maxNetuid: number; maxKeyBytes: number }) {
+  return z
+    .looseObject({
+      netuid: z.number().int().min(0).max(maxNetuid),
+      owner_hotkey: keyString(maxKeyBytes),
+      owner_coldkey: keyString(maxKeyBytes),
+      captured_at: capturedAtMs(minCapturedAtMs),
+    })
+    .superRefine((row, ctx) => onlyKnownColumns(columns)(row as Row, ctx));
+}
+
 /** validator_nominator_counts. */
 export function nominatorCountSyncRowSchema({
   columns,

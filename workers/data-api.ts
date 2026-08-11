@@ -26,6 +26,7 @@ import {
   nominatorPositionSyncRowSchema,
   subnetHyperparamsSyncRowSchema,
   subnetIdentitySyncRowSchema,
+  subnetOwnershipSyncRowSchema,
   validateSyncRows,
 } from "../src/sync-row-schemas.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
@@ -383,6 +384,8 @@ import {
   SUBNET_IDENTITY_NEON_LANE,
   SUBNET_IDENTITY_FIELDS,
   SUBNET_IDENTITY_INSERT_COLUMNS,
+  SUBNET_OWNERSHIP_COLUMNS,
+  SUBNET_OWNERSHIP_NEON_LANE,
   failedTables,
   mirrorFamilyToNeon,
   FAMILY_MIRROR_PLANS,
@@ -2062,6 +2065,165 @@ async function handleSubnetIdentitySync(
     ok: true,
     subnet_identity_written: rows.length,
     history_appended: historyRows.length,
+    stores: ["neon"],
+    neon: neon.results,
+  });
+}
+
+// --- POST /api/v1/internal/subnet-ownership-sync (#10836) -----------------
+//
+// THE LAST LANE THAT WROTE POSTGRES FROM INSIDE THE CONTAINER, and the reason
+// this route exists at all. The poller cannot use Hyperdrive: it is a plain
+// Linux process, not a Worker isolate, and the pooled connection string is
+// only reachable from a Worker. Eight of the eleven lanes already POST here
+// and let this Worker -- which holds the HYPERDRIVE binding -- do the write;
+// `subnet-ownership` kept a raw DATABASE_URL from the self-hosted box, which
+// meant a Neon credential in a container image AND every write bypassing the
+// pool that exists to protect Neon's compute.
+//
+// THE DIFF MOVES FROM RUST INTO THE CONSTRAINT. The producer used to SELECT
+// the whole card (`fetch_current_owners`), compare each resolved owner
+// (`owner_changed`), and INSERT into the history only on a change. That
+// read-then-write cannot come along: two passes overlapping would both read
+// the old card and both append. So the route posts every row to both tables
+// unconditionally and 0026's unique index on (netuid, owner_hotkey,
+// owner_coldkey) decides what is new -- the same move subnet_identity_history
+// made with its content hash.
+//
+// AND THE PRUNE COMES WITH IT. The producer ended each pass with `DELETE FROM
+// subnet_ownership WHERE netuid <> ALL($1)`, so a deregistered subnet leaves
+// the card. Dropping it would have left dead netuids in a latest-only table
+// forever, so it is `plan.prune` here instead -- after the upsert, never
+// before, and refused outright on an empty key set (measured: `<> ALL('{}')`
+// would delete all 128 rows).
+const SUBNET_OWNERSHIP_SYNC_TOKEN_HEADER = "x-subnet-ownership-sync-token";
+// ~129 rows of four small scalars. Two orders of magnitude of headroom.
+const SUBNET_OWNERSHIP_SYNC_MAX_BODY_BYTES = 500_000;
+const SUBNET_OWNERSHIP_SYNC_MAX_ROWS = 2_000;
+const SUBNET_OWNERSHIP_SYNC_MAX_NETUID = 65_535;
+// The same 128-byte ceiling nominator-positions-sync puts on its SS58 keys.
+const SUBNET_OWNERSHIP_SYNC_MAX_KEY_BYTES = 128;
+
+const SUBNET_OWNERSHIP_SYNC_ROW_SCHEMA = subnetOwnershipSyncRowSchema({
+  columns: SUBNET_OWNERSHIP_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxNetuid: SUBNET_OWNERSHIP_SYNC_MAX_NETUID,
+  maxKeyBytes: SUBNET_OWNERSHIP_SYNC_MAX_KEY_BYTES,
+});
+
+async function handleSubnetOwnershipSync(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
+  if (!env.SUBNET_OWNERSHIP_SYNC_SECRET) {
+    return writeJson(
+      { error: "subnet-ownership sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided =
+    request.headers.get(SUBNET_OWNERSHIP_SYNC_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.SUBNET_OWNERSHIP_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${SUBNET_OWNERSHIP_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > SUBNET_OWNERSHIP_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${SUBNET_OWNERSHIP_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of subnet-ownership rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > SUBNET_OWNERSHIP_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${SUBNET_OWNERSHIP_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  const check = validateSyncRows(
+    incoming,
+    SUBNET_OWNERSHIP_SYNC_ROW_SCHEMA,
+    "subnet-ownership",
+  );
+  if (!check.ok) {
+    return writeJson({ error: check.error }, 400);
+  }
+
+  const rows = incoming as Row[];
+  // A netuid twice in one request is refused HERE rather than left to
+  // Postgres. The card upsert would raise "ON CONFLICT DO UPDATE command
+  // cannot affect row a second time" and fail the whole pass with a 502 whose
+  // text names no netuid -- and this producer's stdout is unreachable, which
+  // is the same reason these routes validate shapes at all.
+  const netuids = rows.map((row) => row.netuid as number);
+  const duplicate = netuids.find((id, i) => netuids.indexOf(id) !== i);
+  if (duplicate !== undefined) {
+    return writeJson(
+      { error: `netuid ${duplicate} appears more than once in this request` },
+      400,
+    );
+  }
+
+  const neon = await mirrorFamilyToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    SUBNET_OWNERSHIP_NEON_LANE,
+    // The card and the history take the SAME columns (0024 names the
+    // timestamp `captured_at` in both), so one row set feeds both. The unique
+    // index is what makes the history append-on-change rather than
+    // append-every-pass.
+    { rows, historyRows: rows, pruneKeys: netuids },
+  );
+
+  // AUTHORITATIVE: Neon is the only store, so its failure is the request's.
+  // The prune counts -- rows landing while deregistered subnets survive is not
+  // a partial success, it is a card that serves owners for subnets that no
+  // longer exist.
+  const failed = failedTables(neon);
+  if (!neon.attempted || failed.length > 0) {
+    console.error("data-api subnet-ownership-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "subnet-ownership-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    subnet_ownership_written: rows.length,
     stores: ["neon"],
     neon: neon.results,
   });
@@ -7850,6 +8012,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/subnet-identity-sync"
     ) {
       return handleSubnetIdentitySync(request, env, ctx);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/subnet-ownership-sync"
+    ) {
+      return handleSubnetOwnershipSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&

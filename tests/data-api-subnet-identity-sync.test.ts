@@ -200,6 +200,52 @@ test("an unchanged identity appends nothing on a second pass", async () => {
   assert.equal(await count("subnet_identity"), 1);
 });
 
+test("a repeated identity keeps its FIRST observed_at, not its latest", async () => {
+  // THE BUG THE ROW COUNT ABOVE COULD NOT SEE (#10836). Counting rows proved
+  // repetition appended nothing; it said nothing about the row that was
+  // already there. `buildPgUpsert` emits a DO UPDATE for every non-key column,
+  // so the hourly re-send rewrote observed_at every pass and an
+  // append-on-CHANGE table published "changed an hour ago" for every subnet
+  // that had not changed at all.
+  //
+  // Measured on production before the fix: 125 rows across 7 landed passes,
+  // 124 of them sitting at the single newest pass. That is what
+  // /chain/identity-history was serving.
+  await call(req([row({ captured_at: 1_780_000_000_000 })]));
+  const first = (
+    await db.query<Row>("SELECT observed_at FROM subnet_identity_history")
+  ).rows[0]!.observed_at;
+  assert.equal(Number(first), 1_780_000_000_000);
+
+  await call(req([row({ captured_at: 1_780_009_999_000 })]));
+  const after = (
+    await db.query<Row>("SELECT observed_at FROM subnet_identity_history")
+  ).rows[0]!.observed_at;
+  assert.equal(
+    Number(after),
+    1_780_000_000_000,
+    "a later sighting of the same revision must not move its first-seen stamp",
+  );
+
+  // The CARD still tracks the latest, which is the direction that guard runs.
+  const card = (await db.query<Row>("SELECT captured_at FROM subnet_identity"))
+    .rows[0]!;
+  assert.equal(Number(card.captured_at), 1_780_009_999_000);
+});
+
+test("an EARLIER sighting of a revision moves its observed_at back", async () => {
+  // The guard is `>` rather than DO NOTHING on purpose: a backfill supplying
+  // an older observation of the same revision is a BETTER first-seen, so it
+  // wins. Only a later one is refused.
+  await call(req([row({ captured_at: 1_780_005_000_000 })]));
+  await call(req([row({ captured_at: 1_780_000_000_000 })]));
+  const stored = (
+    await db.query<Row>("SELECT observed_at FROM subnet_identity_history")
+  ).rows[0]!;
+  assert.equal(Number(stored.observed_at), 1_780_000_000_000);
+  assert.equal(await count("subnet_identity_history"), 1);
+});
+
 test("a CHANGED identity appends a second history row", async () => {
   await call(req([row()]));
   await call(

@@ -20,6 +20,7 @@ import {
 } from "../src/nominator-positions-neon-write.ts";
 import {
   normalizeShareFractionsInNeon,
+  pruneCardOutsideKeySet,
   pruneKeysInNeon,
   resetNeonWriteVerdictMemo,
 } from "../src/neon-write.ts";
@@ -143,6 +144,80 @@ describe("pruneKeysInNeon", () => {
     };
     assert.equal(
       (await pruneKeysInNeon(sql, "t", "k", cutoffs)).reason,
+      "connection terminated",
+    );
+  });
+});
+
+describe("pruneCardOutsideKeySet", () => {
+  // The OTHER prune shape (#10836). pruneKeysInNeon above deletes per key
+  // against that key's own cutoff, because its producer posts in chunks. This
+  // one deletes everything OUTSIDE a key set, which is only correct because
+  // its producer posts the whole population in one request.
+  test("deletes rows whose key this pass did not carry", async () => {
+    const sql = fakeSql();
+    const result = await pruneCardOutsideKeySet(
+      sql,
+      "subnet_ownership",
+      "netuid",
+      [1, 2, 3],
+    );
+    assert.deepEqual(result, { ok: true, rows: 3, statements: 1 });
+    assert.equal(sql.calls.length, 1);
+    assert.equal(
+      sql.calls[0]!.text,
+      "DELETE FROM subnet_ownership WHERE netuid <> ALL($1::int[])",
+    );
+    assert.deepEqual(sql.calls[0]!.values, [[1, 2, 3]]);
+  });
+
+  test("an EMPTY key set deletes nothing, and says why", async () => {
+    // THE SAFETY PROPERTY, not a convenience. `WHERE netuid <> ALL('{}')` is
+    // TRUE for every row, so an empty set means "delete the entire table" --
+    // which is exactly what a pass that resolved nothing would ask for.
+    // Measured against production while designing this: the empty form would
+    // have deleted all 128 rows of subnet_ownership.
+    const sql = fakeSql();
+    const result = await pruneCardOutsideKeySet(sql, "t", "netuid", []);
+    assert.equal(result.ok, true);
+    assert.equal(result.rows, 0);
+    assert.match(String(result.reason), /empty key set/);
+    assert.equal(sql.calls.length, 0);
+  });
+
+  test("the cast is written out, so validate:pg-json-binds can see it", async () => {
+    // Not decoration. That gate exempts an array bind by reading the STATEMENT
+    // for `::<type>[]`; an earlier cut assembled the cast from a parameter,
+    // which made it invisible and the gate flagged this as the JSON-bind bug.
+    // A cast that only exists at runtime is a cast the gate cannot check.
+    const sql = fakeSql();
+    await pruneCardOutsideKeySet(sql, "t", "k", [1]);
+    assert.match(sql.calls[0]!.text, /::int\[\]/);
+  });
+
+  test("an unbound runner and a failing delete are both reported", async () => {
+    assert.equal(
+      (await pruneCardOutsideKeySet(null, "t", "k", [1])).reason,
+      "unbound",
+    );
+    const failed = await pruneCardOutsideKeySet(
+      fakeSql("delete"),
+      "t",
+      "k",
+      [1],
+    );
+    assert.equal(failed.ok, false);
+    assert.match(String(failed.reason), /deadlock/);
+  });
+
+  test("a non-Error throw is still reported as a reason", async () => {
+    const sql = {
+      async unsafe() {
+        throw "connection terminated";
+      },
+    };
+    assert.equal(
+      (await pruneCardOutsideKeySet(sql, "t", "k", [1])).reason,
       "connection terminated",
     );
   });

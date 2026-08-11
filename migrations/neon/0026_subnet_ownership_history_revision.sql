@@ -1,0 +1,44 @@
+-- #10836: state subnet_ownership_history's append-on-change contract as a
+-- constraint, so the sync route can rely on it.
+--
+-- 0024 created both tables WITHOUT this index, and that was right at the time:
+-- the producer wrote Postgres directly and did its own diffing -- it SELECTed
+-- the whole card up front (`fetch_current_owners`), compared each resolved
+-- owner against it (`owner_changed`), and only then issued a bare
+--
+--   INSERT INTO subnet_ownership_history (netuid, owner_hotkey, owner_coldkey, captured_at)
+--
+-- with no conflict target, because by construction it only ran on a change.
+-- A unique index would have constrained nothing that the writer was not
+-- already enforcing in application code.
+--
+-- WHAT CHANGES. The lane moves onto a sync route so its write goes through
+-- Hyperdrive like the other eight (#10836, metagraphed-infra#461). The route
+-- receives a snapshot over HTTP and has no cheap way to re-read the card first
+-- -- and should not, because that read-then-write is a race between two
+-- concurrent passes. So the diff moves from application code into the
+-- database, exactly as subnet_identity_history's own (netuid, identity_hash)
+-- index does it (0021).
+--
+-- THE KEY IS THE OWNER PAIR, not a hash and not `captured_at`. Conflicting on
+-- the timestamp -- what subnet_hyperparams_history and account_identity_history
+-- do -- would append a duplicate row every 300s, because the producer re-reads
+-- every subnet's owner on every pass; that is the failure 0021 documents.
+-- subnet_identity_history needed a hash because its revision is seven nullable
+-- text fields; here the owner pair IS the content, so it is the direct
+-- analogue with nothing to hash.
+--
+-- WHAT THIS COLLAPSES, stated rather than discovered later: an owner that
+-- leaves and returns (A -> B -> A) records one row for A, not two, so the
+-- trail shows which owners a subnet has had but not a repeat tenure. That is
+-- the same trade-off 0021 accepted. VERIFIED against the seeded rows before
+-- choosing it: 135 history rows, 135 distinct (netuid, owner_hotkey,
+-- owner_coldkey) triples, and no subnet has ever returned to a previous owner
+-- -- so the index is creatable today without deduplicating anything, and the
+-- collapse describes a case that has not occurred.
+--
+-- NOT `CONCURRENTLY`. The runner wraps every migration in a transaction unless
+-- the file opts out, and this table is 135 rows -- the lock is measured in
+-- milliseconds. See 0020 for the marker a build-heavy index would need.
+CREATE UNIQUE INDEX IF NOT EXISTS subnet_ownership_history_netuid_owner_idx
+  ON subnet_ownership_history (netuid, owner_hotkey, owner_coldkey);

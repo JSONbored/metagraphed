@@ -4434,6 +4434,24 @@ async function handleSubnetIdentitySyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/subnet-ownership-sync -- the write path into
+// subnet_ownership + subnet_ownership_history (#10836).
+//
+// THE PRODUCER POSTS TO api.metagraph.sh, not to data-api directly, because
+// the container only knows the public host. So the route existing on data-api
+// is necessary and not sufficient: without this proxy the POST 404s at the
+// edge, which is the same shape of failure subnet-identity spent its whole
+// life in above -- a lane faithfully posting to a URL nothing served.
+async function handleSubnetOwnershipSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "subnet_ownership_sync_unavailable",
+    notBoundMessage:
+      "The subnet-ownership sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The subnet-ownership sync tier returned an unreadable response.",
+  });
+}
+
 // Proxies POST /api/v1/internal/validator-nominator-counts-sync -- the write
 // path into validator_nominator_counts (#2549). Same DATA_API service
 // binding as the other internal sync routes above.
@@ -5377,6 +5395,9 @@ async function dispatchRequest(
   }
   if (url.pathname === "/api/v1/internal/subnet-identity-sync") {
     return handleSubnetIdentitySyncProxy(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/subnet-ownership-sync") {
+    return handleSubnetOwnershipSyncProxy(request, env);
   }
   // The write path into validator_nominator_counts (#2549) --
   // refresh-validator-nominator-counts's own low-frequency cron calls this,
