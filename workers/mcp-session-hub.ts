@@ -208,11 +208,7 @@ export class McpSessionHub implements DurableObject {
   private emit(record: () => Promise<unknown>): void {
     try {
       const pending = Promise.resolve(record()).catch(() => false);
-      (
-        this.state as unknown as {
-          waitUntil?: (p: Promise<unknown>) => void;
-        }
-      ).waitUntil?.(pending);
+      this.state.waitUntil(pending);
     } catch {
       // Telemetry must never surface into the session path.
     }

@@ -159,7 +159,15 @@ function opaqueTag(tag: string): string {
 
 // True when an If-None-Match precondition matches the current `etag` (caller
 // answers 304). Handles `*`, a comma-separated tag list, and weak validators.
-export function ifNoneMatchSatisfied(request: Request, etag: string): boolean {
+//
+// `etag` is nullable because `Headers.get()` is: a cached response without an
+// ETag has nothing to match, which the body below already answered correctly
+// (`!etag` -> false). Only the signature disagreed, and it type-checked at the
+// call sites solely because they reached the response through a cast.
+export function ifNoneMatchSatisfied(
+  request: Request,
+  etag: string | null,
+): boolean {
   const header = request.headers.get("if-none-match");
   if (!header || !etag) return false;
   const current = opaqueTag(etag);

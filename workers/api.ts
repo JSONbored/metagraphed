@@ -32,9 +32,30 @@ type Ctx = {
    */
   methodProbe?: boolean;
 };
-// The Cache API (`caches.default`) isn't in the generated Env/global types --
-// it's a Workers-runtime global, not an Env binding.
-const globalWithCaches = globalThis as unknown as { caches?: Row };
+/**
+ * The Workers Cache API, or null where there isn't one.
+ *
+ * `caches` IS in the generated types -- `declare const caches: CacheStorage`
+ * in worker-configuration.d.ts -- which is not what the comment here used to
+ * say while it reached the global through a cast on `globalThis`.
+ *
+ * That cast was carrying a second job, though, and it is why this is a
+ * function rather than a plain reference: outside the Workers runtime the
+ * identifier is not merely undefined, it is UNDECLARED, so naming it throws
+ * `ReferenceError` before any `?.` can help -- which is exactly what the test
+ * suite does. Reading it off `globalThis` turned that into a property access
+ * on an object that simply lacked the key. `typeof` is the narrowing that
+ * survives both, and it keeps the real `CacheStorage` type.
+ */
+function edgeCacheStore(): Cache | null {
+  return typeof caches === "undefined" ? null : caches.default;
+}
+
+/** A key paired with the store, or null where the runtime has no cache. */
+function cacheableWith(key: Request): { store: Cache; key: Request } | null {
+  const store = edgeCacheStore();
+  return store ? { store, key } : null;
+}
 import {
   isUsageTelemetryConfigured,
   recordExceptionEvent,
@@ -658,11 +679,7 @@ import {
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
-import type {
-  EnqueueResult,
-  LaneMessage,
-  LaneQueue,
-} from "../src/lane-queue.ts";
+import type { EnqueueResult, LaneMessage } from "../src/lane-queue.ts";
 import {
   OPERATIONAL_SURFACES_ARTIFACT,
   REVENUE_PROBE_QUEUE,
@@ -2557,25 +2574,16 @@ export const LANE_PRODUCERS: ReadonlyArray<{
     name: "attribution-sweep",
     enqueue: async (env) =>
       enqueueSweeps(
-        (
-          env as unknown as {
-            ATTRIBUTION_SWEEPS?: LaneQueue<{ netuid: number }>;
-          }
-        ).ATTRIBUTION_SWEEPS,
+        env.ATTRIBUTION_SWEEPS,
         (await sweepableSubnets(env)).map((s) => s.netuid),
       ),
   },
   {
     name: "origin-reachability",
     enqueue: async (env) =>
-      enqueueOriginChecks(
-        (
-          env as unknown as {
-            ORIGIN_REACHABILITY?: LaneQueue<{ origin: string }>;
-          }
-        ).ORIGIN_REACHABILITY,
-        [...surfacesByOrigin(await registeredSurfaces(env)).keys()],
-      ),
+      enqueueOriginChecks(env.ORIGIN_REACHABILITY, [
+        ...surfacesByOrigin(await registeredSurfaces(env)).keys(),
+      ]),
   },
   {
     name: "revenue-probe",
@@ -2585,11 +2593,7 @@ export const LANE_PRODUCERS: ReadonlyArray<{
         `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
       );
       return enqueueRevenueProbes(
-        (
-          env as unknown as {
-            REVENUE_PROBES?: LaneQueue<{ surface_id: string }>;
-          }
-        ).REVENUE_PROBES,
+        env.REVENUE_PROBES,
         eligibleRevenueSurfaces(
           artifact.ok ? (artifact.data as Row | undefined) : null,
         ).map((s) => s.id),
@@ -3415,12 +3419,17 @@ export async function handleChainEventsFamily(
   }
 
   const chain = chainNetworkId(network.id);
-  const cache =
+  // ONE nullable, not two: the store and its key are only ever both present or
+  // both absent, and holding them apart made that a fact only the reader kept
+  // -- `cache.match(cacheKey)` type-checked solely because reaching `caches`
+  // through a cast had erased the store's type.
+  const cacheable =
     request.method === "GET" || request.method === "HEAD"
-      ? globalWithCaches.caches?.default
+      ? cacheableWith(await chainEventsCacheKey(env, url, chain))
       : null;
-  const cacheKey = cache ? await chainEventsCacheKey(env, url, chain) : null;
-  const cacheHit = cacheKey ? await cache.match(cacheKey) : null;
+  const cacheHit = cacheable
+    ? await cacheable.store.match(cacheable.key)
+    : null;
   // The tier travels WITH the payload through the cache, so a hit reports the
   // same `meta.source` the miss did rather than guessing one back.
   let answer = cacheHit ? ((await cacheHit.json()) as ColdTierAnswer) : null;
@@ -3447,10 +3456,10 @@ export async function handleChainEventsFamily(
                 : "chain-detail-hot-tier",
           }
         : await coldTierChainEventsPayload(env, url, chain);
-    if (answer && cacheKey) {
+    if (answer && cacheable) {
       ctx?.waitUntil?.(
-        cache.put(
-          cacheKey,
+        cacheable.store.put(
+          cacheable.key,
           new Response(JSON.stringify(answer), {
             status: 200,
             headers: {
@@ -8156,44 +8165,49 @@ async function handleApiRequest(
   // The key namespaces by network + contract version so a deploy or a network
   // switch can never serve a cross-version body; the response's own
   // cache-control max-age bounds staleness.
-  const edgeCache =
+  const edgeCacheable =
     request.method === "GET" &&
     !wantsCsv &&
     isStaticEdgeCacheEligible(matched, network)
-      ? globalWithCaches.caches?.default
+      ? cacheableWith(
+          new Request(
+            `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
+              contractVersion(env),
+            )}${url.pathname}${canonicalCacheSearch(url, matched)}`,
+          ),
+        )
       : null;
-  const edgeCacheKey = edgeCache
-    ? new Request(
-        `https://edge-cache.metagraph.sh/${network.id}/${encodeURIComponent(
-          contractVersion(env),
-        )}${url.pathname}${canonicalCacheSearch(url, matched)}`,
-      )
-    : null;
   // Live-overlay collection cache (the large /api/v1/endpoints index). Excluded
   // from the static edge cache above, but its overlay only changes when the
   // 2-min cron writes a new health snapshot, so cache it keyed on last_run_at —
   // turning a per-request R2-GET + parse + 3-pass overlay + 1.43 MB re-stringify
   // + SHA-256 into at-most-once-per-cron-tick, staleness bounded to one interval.
-  const overlayCache =
+  const overlayCacheStore =
     request.method === "GET" &&
     !wantsCsv &&
     network.isDefault &&
     CACHEABLE_OVERLAY_ROUTE_IDS.has(matched.id)
-      ? globalWithCaches.caches?.default
+      ? edgeCacheStore()
       : null;
-  let overlayCacheKey = null;
-  if (overlayCache) {
+  /** Set only once a real `last_run_at` gives it a key -- see below. */
+  let overlayCacheable: { store: Cache; key: Request } | null = null;
+  if (overlayCacheStore) {
     // Cheap KV read of just the snapshot time; on a hit this + the cache match
     // is the whole request (no R2 GET / overlay / re-stringify).
     const opMeta = await readHealthMetaKv(env);
     const lastRunAt = opMeta?.last_run_at || null;
     if (lastRunAt) {
-      overlayCacheKey = new Request(
-        `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
-          contractVersion(env),
-        )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalCacheSearch(url, matched)}`,
+      overlayCacheable = {
+        store: overlayCacheStore,
+        key: new Request(
+          `https://edge-cache.metagraph.sh/overlay/${network.id}/${encodeURIComponent(
+            contractVersion(env),
+          )}/${encodeURIComponent(lastRunAt)}${url.pathname}${canonicalCacheSearch(url, matched)}`,
+        ),
+      };
+      const overlayHit = await overlayCacheable.store.match(
+        overlayCacheable.key,
       );
-      const overlayHit = await overlayCache.match(overlayCacheKey);
       if (overlayHit) {
         if (ifNoneMatchSatisfied(request, overlayHit.headers.get("etag"))) {
           return new Response(null, {
@@ -8205,8 +8219,8 @@ async function handleApiRequest(
       }
     }
   }
-  if (edgeCache) {
-    const hit = await edgeCache.match(edgeCacheKey);
+  if (edgeCacheable) {
+    const hit = await edgeCacheable.store.match(edgeCacheable.key);
     if (hit) {
       // Honour conditional requests against the cached body's weak ETag so
       // polling agents still get a 304 on a warm cache (mirrors envelopeResponse).
@@ -8575,15 +8589,19 @@ async function handleApiRequest(
   // are skipped even when their live store is cold and the response falls back
   // to the static artifact. 304/HEAD/non-200 are skipped. The edge entry
   // expires per the response's cache-control max-age.
-  if (edgeCache && live === null && response.status === 200) {
-    ctx?.waitUntil?.(edgeCache.put(edgeCacheKey, response.clone()));
+  if (edgeCacheable && live === null && response.status === 200) {
+    ctx?.waitUntil?.(
+      edgeCacheable.store.put(edgeCacheable.key, response.clone()),
+    );
   }
   // Cache the live-overlay collection only when the overlay actually applied
   // (live !== null) and we keyed on a real last_run_at (overlayCacheKey set) —
   // never cache a cold-KV fallback, which would pin build-time health under a
   // stable key. The entry busts on the next cron snapshot (key) + max-age.
-  if (overlayCacheKey && live !== null && response.status === 200) {
-    ctx?.waitUntil?.(overlayCache.put(overlayCacheKey, response.clone()));
+  if (overlayCacheable && live !== null && response.status === 200) {
+    ctx?.waitUntil?.(
+      overlayCacheable.store.put(overlayCacheable.key, response.clone()),
+    );
   }
   return response;
 }

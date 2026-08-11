@@ -285,12 +285,25 @@ export async function buildNetworkRegistry({
     ),
   });
 
+  // A deregistered netuid must not keep a detail file, so the stale ones go --
+  // but PRUNED by name rather than by clearing the directory first.
+  //
+  // `rm -rf` then `mkdir` is destructive for as long as it takes to rewrite
+  // every subnet, and this builder is not the only caller in the process: two
+  // test files build the same testnet registry, and vitest runs them in
+  // different workers. One `rm` landing while the other was writing failed the
+  // build outright (`ENOTEMPTY`) or, worse, left the survivor reading a
+  // half-built directory and answering 404 for subnets that exist. Writing
+  // first and deleting only what this build did NOT write is idempotent: the
+  // content is deterministic, so two concurrent builds converge instead of
+  // racing.
   const detailDir = path.dirname(
     artifactOutputPath(`${prefix}/subnets/0.json`),
   );
-  await fs.rm(detailDir, { recursive: true, force: true });
   await fs.mkdir(detailDir, { recursive: true });
+  const written = new Set<string>();
   for (const subnet of subnets) {
+    written.add(`${subnet.netuid}.json`);
     await writeJson(
       artifactOutputPath(`${prefix}/subnets/${subnet.netuid}.json`),
       {
@@ -305,6 +318,13 @@ export async function buildNetworkRegistry({
         verified_surfaces: [],
       },
     );
+  }
+  for (const entry of await fs.readdir(detailDir)) {
+    if (written.has(entry)) continue;
+    await fs.rm(path.join(detailDir, entry), {
+      recursive: true,
+      force: true,
+    });
   }
 
   await writeJson(
