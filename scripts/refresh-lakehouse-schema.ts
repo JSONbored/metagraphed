@@ -40,11 +40,10 @@ const WAREHOUSE =
  * READ, rather than "all 26", on purpose. A type for a table nothing queries is
  * dead code the moment it is generated -- `DatabaseTables` and `TableName` on
  * the Neon side are the standing example, generated and imported by nothing.
- * The twelve unlisted tables (account_balances, featured_validators, neurons,
- * neuron_daily, account_position_daily, providers, rehearsal, subnet_ownership,
- * subnet_snapshots, subnets, surfaces, validator_nominator_counts) are written
- * by producers outside this repo and never read through R2 SQL here; add one
- * here the moment a reader does.
+ * The ten unlisted tables (account_balances, featured_validators, neurons,
+ * providers, rehearsal, subnet_ownership, subnet_snapshots, subnets, surfaces,
+ * validator_nominator_counts) are written by producers outside this repo and
+ * never read through R2 SQL here; add one here the moment a reader does.
  */
 const TABLES = [
   // The four the decoder appends to.
@@ -67,6 +66,18 @@ const TABLES = [
   "subnet_hyperparams_history",
   "subnet_identity_history",
   "subnet_ownership_history",
+  // The two daily rollups. Listed the moment they became READABLE rather than
+  // when they became present: they have existed since the 2026-08-02 seed, but
+  // that seed is a strict SUBSET of Neon (lakehouse 07-10..08-02, Neon
+  // 07-10..08-11, measured), so nothing could have been served from them. The
+  // continuous producer (metagraphed-infra#445) is what changes that.
+  //
+  // Neither is written by the decoder, so neither belongs in DECODER_TABLES --
+  // they are derived in the Worker from one metagraph snapshot and copied out
+  // of Postgres. The generator's `decoderTables` subset test is what keeps that
+  // distinction honest.
+  "neuron_daily",
+  "account_position_daily",
 ];
 
 const token = process.env.R2_CATALOG_TOKEN ?? "";
