@@ -12,6 +12,8 @@
 // threading a network through makes mainnet start reading `chain_testnet`.
 
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -31,6 +33,7 @@ import {
   isChainHistoryRouteTemplate,
 } from "../src/chain-history-routes.ts";
 import { isMainnetOnlyApiPath } from "../workers/api.ts";
+import { API_ROUTES } from "../src/contracts.ts";
 import { concretePath } from "./concrete-path.ts";
 import {
   loadBlockFeedFromR2Sql,
@@ -384,6 +387,137 @@ describe("the chain-history route list is derived from the router", () => {
     assert.equal(
       new Set(CHAIN_HISTORY_ROUTE_PATHS).size,
       CHAIN_HISTORY_ROUTE_PATHS.length,
+    );
+  });
+});
+
+// The readers that hardcode `chain.` -- and why that is CORRECT, which is not
+// obvious and was very nearly "fixed" into a bug.
+//
+// Nine cold tiers embed the mainnet namespace in their FROM clause instead of
+// going through chainTable(). That looks exactly like the mistake this file's
+// header warns about, and an audit reported it as one. It is not: every route
+// they back is declared in MAINNET_ONLY_ROUTE_PATHS, and the reason is
+// physical rather than a policy choice --
+//
+//   chain_testnet holds FOUR tables: blocks, extrinsics, chain_events,
+//   account_events. Verified against the live catalog 2026-08-11.
+//
+// -- so there is no chain_testnet.subnet_hyperparams to read. Threading a
+// network through these readers would let them build a FROM clause naming a
+// table that does not exist. The 42 network-scoped routes are precisely the
+// chain-history surface those four tables can serve; the other 168 are backed
+// by producers that only run for mainnet.
+//
+// WHAT THIS GUARDS. The day a testnet counterpart appears and its route leaves
+// MAINNET_ONLY_ROUTE_PATHS, these nine keep reading mainnet and serve it as
+// testnet -- well-formed, plausible, wrong. Nothing else would notice.
+const NAMESPACE_HARDCODED_READERS: Readonly<Record<string, readonly string[]>> =
+  {
+    "src/account-feeds-cold-tier.ts": [
+      "/api/v1/accounts/{ss58}/events",
+      "/api/v1/accounts/{ss58}/transfers",
+    ],
+    "src/account-history-cold-tier.ts": ["/api/v1/accounts/{ss58}/history"],
+    "src/account-identity-cold-tier.ts": [
+      "/api/v1/accounts/{ss58}/identity",
+      "/api/v1/accounts/{ss58}/identity-history",
+    ],
+    "src/rpc-usage-cold-tier.ts": ["/api/v1/rpc/usage"],
+    "src/runtime-versions-cold-tier.ts": ["/api/v1/runtime"],
+    "src/subnet-event-summary-cold-tier.ts": [
+      "/api/v1/subnets/{netuid}/event-summary",
+    ],
+    "src/subnet-hyperparams-cold-tier.ts": [
+      "/api/v1/subnets/{netuid}/hyperparameters",
+      "/api/v1/subnets/{netuid}/hyperparameters/history",
+    ],
+    "src/subnet-identity-cold-tier.ts": [
+      "/api/v1/subnets/{netuid}/identity-history",
+      "/api/v1/chain/identity-history",
+    ],
+    "src/subnet-ownership-cold-tier.ts": [
+      "/api/v1/subnets/{netuid}/ownership-history",
+    ],
+    "src/chain-event-rollup-cold-tier.ts": [
+      "/api/v1/chain/serving",
+      "/api/v1/chain/prometheus",
+      "/api/v1/chain/weights",
+    ],
+    "src/nominator-positions-cold-tier.ts": [
+      "/api/v1/validators/{hotkey}/nominators",
+    ],
+    "src/self-health-cold-tier.ts": ["/api/v1/self-health"],
+    "src/subnet-ohlc-cold-tier.ts": ["/api/v1/subnets/{netuid}/ohlc"],
+  };
+
+/**
+ * Hardcodes the namespace but serves no route.
+ *
+ * lakehouse-seam-watchdog runs on LAKEHOUSE_SEAM_CRON and asks how far the
+ * decode lane has got. There is one seam to watch and it is mainnet's, so
+ * there is no network to thread -- but it still has to be declared, or the
+ * completeness check below cannot tell it from a reader that forgot.
+ */
+const NAMESPACE_HARDCODED_NON_ROUTES: readonly string[] = [
+  "src/lakehouse-seam-watchdog.ts",
+];
+
+describe("readers that hardcode the mainnet namespace", () => {
+  test("every route they claim to back actually EXISTS", () => {
+    // THE TEST THAT WOULD HAVE CAUGHT MY OWN ERROR. Membership in a set answers
+    // "is this string present", and an invented path is absent -- so a typo
+    // ("hyperparams" for "hyperparameters", "chain/runtime" for "runtime")
+    // reads as "not mainnet-only" and inverts the conclusion. Assert existence
+    // BEFORE asserting the property.
+    const declared = new Set(API_ROUTES.map((r) => r.path));
+    for (const [file, routes] of Object.entries(NAMESPACE_HARDCODED_READERS)) {
+      for (const route of routes) {
+        assert.ok(
+          declared.has(route),
+          `${file} claims to back ${route}, which is not in API_ROUTES -- ` +
+            `fix the path here rather than trusting the assertion below`,
+        );
+      }
+    }
+  });
+
+  test("every one of those routes is mainnet-only", () => {
+    for (const [file, routes] of Object.entries(NAMESPACE_HARDCODED_READERS)) {
+      for (const route of routes) {
+        assert.ok(
+          isMainnetOnlyApiPath(concretePath(route)),
+          `${route} is no longer mainnet-only, but ${file} still hardcodes ` +
+            `the \`chain.\` namespace -- it would serve mainnet data for a ` +
+            `testnet request. Thread a network through it, or keep the route gated.`,
+        );
+      }
+    }
+  });
+
+  test("no OTHER source file hardcodes the namespace without declaring it", () => {
+    // Keeps the map complete by construction: a new reader that embeds `chain.`
+    // has to justify itself here, rather than joining a list nobody rereads.
+    const dir = path.join(process.cwd(), "src");
+    const offenders: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      if (!entry.endsWith(".ts")) continue;
+      const rel = `src/${entry}`;
+      if (NAMESPACE_HARDCODED_READERS[rel]) continue;
+      if (NAMESPACE_HARDCODED_NON_ROUTES.includes(rel)) continue;
+      const code = readFileSync(path.join(dir, entry), "utf8")
+        .split("\n")
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join("\n");
+      if (/\b(FROM|JOIN)\s+chain(_testnet)?\.[a-z_]+/.test(code)) {
+        offenders.push(rel);
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `these embed a lakehouse namespace but are not declared above. Either ` +
+        `use chainTable(), or add them with the routes they back:\n${offenders.join("\n")}`,
     );
   });
 });
