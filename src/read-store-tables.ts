@@ -61,10 +61,6 @@ export const TOP_HOLDERS_HOLDINGS_TABLES = [
   "subnet_snapshots",
 ] as const;
 
-/** loadAccountStakeMovesColdTier's #4332 price-at-tx enrichment: the daily
- * alpha price on the day of each subnet's most recent move. */
-export const ACCOUNT_STAKE_MOVES_PRICE_TABLES = ["subnet_snapshots"] as const;
-
 /** loadSubnetTempo, in the weight-setters loader. */
 export const SUBNET_HYPERPARAMS_TEMPO_TABLES = ["subnet_hyperparams"] as const;
 

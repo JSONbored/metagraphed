@@ -97,7 +97,6 @@ import {
   NOMINATOR_SORTS,
   NOMINATOR_WINDOWS,
 } from "./validator-nominators.ts";
-import { ACCOUNT_STAKE_MOVES_PRICE_TABLES } from "./read-store-tables.ts";
 import { d1All } from "./analytics-live.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
@@ -354,6 +353,17 @@ export async function loadAccountStakeMovesColdTier(
     generatedAt: latestObservedIso(rows),
   };
 }
+
+/** The price enrichment's own read (#4332).
+ *
+ * Declared HERE rather than in src/read-store-tables.ts, whose sets exist for
+ * loaders called from two or three modules: this one has a single consumer, and
+ * tests/read-store-declares-its-tables.test.ts holds every ported reader --
+ * this file among them -- to declaring the tables its own SQL names, which it
+ * checks by reading this module. A set it has to follow an import to find is a
+ * set that gate cannot check.
+ */
+const ACCOUNT_STAKE_MOVES_PRICE_TABLES = ["subnet_snapshots"] as const;
 
 /**
  * `netuid:YYYY-MM-DD -> alpha_price_tao`, for the days the rows actually land
