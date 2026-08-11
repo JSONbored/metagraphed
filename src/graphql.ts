@@ -603,6 +603,12 @@ import {
   parseHistoryWindow,
   unsupportedWindowMessage,
 } from "./neuron-history.ts";
+import {
+  overlayAccountPositionHistoryColdTier,
+  overlayNeuronHistoryColdTier,
+  overlaySubnetHistoryColdTier,
+  overlayValidatorHistoryColdTier,
+} from "./neuron-daily-cold-tier.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
 import { loadEconomicsTrends } from "./economics-trends.ts";
 import { loadSubnetTrajectory } from "./analytics-live.ts";
@@ -3634,14 +3640,14 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildNeuronHistory([])
     // fallback contract handleNeuronHistory / MCP get_neuron_history use; a
     // UID with no neuron_daily rows in the window is a schema-stable
     // empty-points card, never a GraphQL error.
-    const data =
+    const hot =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -3652,6 +3658,16 @@ const rootValue = {
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ??
       buildNeuronHistory([], netuid, uid, { window: label });
+    // The cold leg, on the third surface. All three wire it because a caller
+    // must not get a different depth of history depending on which door they
+    // came through.
+    const data = await overlayNeuronHistoryColdTier(
+      context.env as Env,
+      hot,
+      netuid,
+      uid,
+      { label, days },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -4048,13 +4064,13 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildSubnetHistory([])
     // empty-series fallback handleSubnetHistory uses; a subnet with no daily
     // rollup is a schema-stable point_count:0 series, never a GraphQL error.
-    const data =
+    const hot =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -4064,6 +4080,13 @@ const rootValue = {
         ),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ?? buildSubnetHistory([], netuid, { window: label });
+    // See the neuron-history resolver: same seam, same reason.
+    const data = await overlaySubnetHistoryColdTier(
+      context.env as Env,
+      hot,
+      netuid,
+      { label, days },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6459,7 +6482,7 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // #9383: the same optional netuid scope the REST route and the MCP tool take.
@@ -6477,7 +6500,7 @@ const rootValue = {
     // fallback contract handleValidatorHistory uses; a hotkey with no
     // neuron_daily rows in the window is a schema-stable empty-points card,
     // never a GraphQL error.
-    const data =
+    const hot =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -6491,6 +6514,15 @@ const rootValue = {
         window: label,
         netuid: netuid ?? null,
       });
+    // The cold leg, third surface. Needs chain.subnet_snapshots as well as
+    // chain.neuron_daily, because the TAO pricing is a join.
+    const data = await overlayValidatorHistoryColdTier(
+      context.env as Env,
+      hot,
+      hotkey,
+      netuid ?? null,
+      { label, days },
+    );
     return {
       take_u16: data.take_u16 ?? null,
       take_last_changed_date: data.take_last_changed_date ?? null,
@@ -6529,14 +6561,14 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const { label } = windowResult;
+    const { label, days } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildAccountPositionHistory
     // fallback contract the REST handler uses; an account with no neuron_daily
     // rows for the subnet in the window is a schema-stable empty-points card,
     // never a GraphQL error.
-    const data =
+    const hot =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -6547,6 +6579,14 @@ const rootValue = {
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ??
       buildAccountPositionHistory([], ss58, netuid, { window: label });
+    // See the validator resolver: same seam, same reason to wire every surface.
+    const data = await overlayAccountPositionHistoryColdTier(
+      context.env as Env,
+      hot as ReturnType<typeof buildAccountPositionHistory>,
+      ss58,
+      netuid,
+      { label, days },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,

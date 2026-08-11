@@ -55,6 +55,12 @@ import {
   markPostgresTierFallbackResponse,
 } from "./analytics.ts";
 import {
+  overlayAccountPositionHistoryColdTier,
+  overlayNeuronHistoryColdTier,
+  overlaySubnetHistoryColdTier,
+  overlayValidatorHistoryColdTier,
+} from "../../src/neuron-daily-cold-tier.ts";
+import {
   historyWindow,
   pageLimit,
   parseRouteQuery,
@@ -1623,13 +1629,13 @@ export async function handleValidatorHistory(
   hotkey: string,
   url: URL,
 ) {
-  const { label } = historyWindow(url);
+  const { label, days } = historyWindow(url);
   // #9383: `netuid` scopes the series to one subnet and switches the points to
   // the per-subnet shape. The router rejects a typo'd netuid against the u16
   // bound the route publishes, so what reaches here is a subnet id or nothing
   // -- never a silently unscoped series that looks like an answer.
   const { netuid: requestedNetuid = null } = routeQuery(url);
-  const data =
+  const hot =
     ((await tryPostgresTier(
       env,
       request,
@@ -1639,6 +1645,16 @@ export async function handleValidatorHistory(
       window: label,
       netuid: requestedNetuid,
     });
+  // See handleNeuronHistory. This one needs chain.subnet_snapshots as well as
+  // chain.neuron_daily -- the TAO pricing is a join -- which is why
+  // metagraphed-infra#447 carries that table too.
+  const data = await overlayValidatorHistoryColdTier(
+    env,
+    hot,
+    hotkey,
+    requestedNetuid as number | null,
+    { label, days },
+  );
   return envelopeResponse(
     request,
     {
@@ -1666,10 +1682,10 @@ export async function handleNeuronHistory(
   uid: number,
   url: URL,
 ) {
-  const { label } = historyWindow(url);
+  const { label, days } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const data =
+  const hot =
     ((await tryPostgresTier(
       env,
       request,
@@ -1678,6 +1694,13 @@ export async function handleNeuronHistory(
     buildNeuronHistory([], netuid, uid, {
       window: label,
     });
+  // Days below Neon's floor, from the lakehouse. HERE and not in data-api
+  // because R2_SQL_TOKEN is a secret on THIS Worker only -- the tier that
+  // built `hot` cannot reach the lakehouse at all.
+  const data = await overlayNeuronHistoryColdTier(env, hot, netuid, uid, {
+    label,
+    days,
+  });
   return envelopeResponse(
     request,
     {
@@ -1702,10 +1725,10 @@ export async function handleSubnetHistory(
   netuid: number,
   url: URL,
 ) {
-  const { label } = historyWindow(url);
+  const { label, days } = historyWindow(url);
   // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const data =
+  const hot =
     ((await tryPostgresTier(
       env,
       request,
@@ -1714,6 +1737,12 @@ export async function handleSubnetHistory(
     buildSubnetHistory([], netuid, {
       window: label,
     });
+  // See handleNeuronHistory: the cold leg lives on this Worker because the
+  // lakehouse credential does.
+  const data = await overlaySubnetHistoryColdTier(env, hot, netuid, {
+    label,
+    days,
+  });
   return envelopeResponse(
     request,
     {
@@ -5192,14 +5221,23 @@ export async function handleAccountPositionHistory(
   netuid: number,
   url: URL,
 ) {
-  const { label } = historyWindow(url);
-  const data =
+  const { label, days } = historyWindow(url);
+  const hot =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildAccountPositionHistory> | null) ??
     buildAccountPositionHistory([], ss58, Number(netuid), { window: label });
+  // See handleNeuronHistory: the cold leg lives on this Worker because the
+  // lakehouse credential does.
+  const data = await overlayAccountPositionHistoryColdTier(
+    env,
+    hot,
+    ss58,
+    Number(netuid),
+    { label, days },
+  );
   return envelopeResponse(
     request,
     {
