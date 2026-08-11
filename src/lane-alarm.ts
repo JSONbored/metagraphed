@@ -134,6 +134,34 @@ export const LANE_ALARM_MIN_SILENCE_MS = 90 * 60 * 1000;
  */
 export const LANE_ALARM_MAX_VERDICT_AGE_MS = LANE_ALARM_CADENCE_WINDOW_MS;
 
+/**
+ * The one-line summary a capture carries, with the CADENCE that makes its
+ * duration readable (#10809).
+ *
+ * "lane neon:validator-nominator-counts is stale: 7.9h" is unreadable on its
+ * own, and was read wrongly in production: that lane's producer runs every 24
+ * hours, so 7.9h is a third of ONE cycle after a single failed flush -- not
+ * eight hours of a worsening outage. Measured 2026-08-11, the figure climbed
+ * 1h per hour from 1.4h to 7.9h while nothing new failed, because a stale
+ * verdict simply ages until the next pass overwrites it.
+ *
+ * The alarm already RESOLVES the cadence -- `cadence_ms` is on every alarm, for
+ * the silence bound -- so this is the number it had all along and did not say.
+ * Stating it is the whole fix: a reader can then tell "less than one cycle,
+ * one failure" from "several cycles missed, the producer is gone", which is the
+ * distinction the bare duration erases.
+ *
+ * Silence is left alone: its bound IS the cadence (three intervals), so its
+ * duration is already expressed in the unit that matters.
+ */
+export function laneAlarmSummary(alarm: LaneAlarm, nowMs: number): string {
+  const elapsed = humanDuration(nowMs - alarm.since);
+  const base = `lane ${alarm.lane} is ${alarm.kind}: ${elapsed}`;
+  return alarm.kind === "stale" && alarm.cadence_ms
+    ? `${base} (producer cadence ${humanDuration(alarm.cadence_ms)})`
+    : base;
+}
+
 /** Title prefix. The dedup key: stable across ticks, and greppable by a human. */
 export const LANE_ALARM_TITLE_PREFIX = "alarm(lane): ";
 
@@ -826,9 +854,7 @@ export async function runLaneAlarm(
     // consecutive hours, while this watchdog's own verdict read "4 alarming".
     // The lane set is declared and small, so per-lane windows are bounded.
     await record(env as never, {
-      error: new Error(
-        `lane ${alarm.lane} is ${alarm.kind}: ${humanDuration(nowMs - alarm.since)}`,
-      ),
+      error: new Error(laneAlarmSummary(alarm, nowMs)),
       route: "watchdog:lane-alarm",
       fingerprintDetail: alarm.lane,
       errorCode: alarm.kind === "stale" ? "lane_stale" : "lane_silent",

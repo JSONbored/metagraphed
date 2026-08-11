@@ -31,6 +31,7 @@ const { pg } = await vi.hoisted(async () => ({
 vi.mock("pg", () => pg.module);
 
 import {
+  laneAlarmSummary,
   LANE_ALARM_MAX_OPENS_PER_TICK,
   LANE_ALARM_MIN_STALE_MS,
   LANE_SILENCE_EXEMPT,
@@ -1216,5 +1217,51 @@ describe("laneAlarmTitle", () => {
       laneAlarmTitle("neurons-staleness"),
       `${LANE_ALARM_TITLE_PREFIX}neurons-staleness`,
     );
+  });
+});
+
+describe("the summary a capture carries (#10809)", () => {
+  const NOW = 1_760_000_000_000;
+  const staleFor = (hours: number, cadenceMs: number | null) => ({
+    lane: "neon:validator-nominator-counts",
+    kind: "stale" as const,
+    since: NOW - hours * 3_600_000,
+    ticks: 1,
+    detail: "1 statement(s) flushed, 1 failed",
+    age_ms: null,
+    cadence_ms: cadenceMs,
+  });
+
+  test("a stale duration is stated against the cadence that makes it readable", () => {
+    // Measured on production 2026-08-11: this lane's figure climbed 1h per hour
+    // from 1.4h to 7.9h while NOTHING new failed -- a stale verdict simply ages
+    // until the next pass overwrites it. Its producer runs every 24 hours, so
+    // 7.9h is a third of one cycle after a single failed flush. The bare
+    // duration read as eight hours of a worsening outage, and it was not.
+    const summary = laneAlarmSummary(staleFor(7.9, 86_400_000), NOW);
+    assert.match(summary, /is stale: /);
+    assert.match(
+      summary,
+      /producer cadence 24\.0h/,
+      `the duration needs its unit: ${summary}`,
+    );
+  });
+
+  test("an uncalibrated lane says only what it measured", () => {
+    // No declared producer and too little history to estimate one: inventing a
+    // cadence here would be exactly the false precision the alarm's own
+    // LANE_ALARM_MIN_CADENCE_SAMPLES rule refuses.
+    const summary = laneAlarmSummary(staleFor(7.9, null), NOW);
+    assert.match(summary, /is stale: /);
+    assert.doesNotMatch(summary, /cadence/);
+  });
+
+  test("silence is left alone -- its bound already IS the cadence", () => {
+    const summary = laneAlarmSummary(
+      { ...staleFor(4, 86_400_000), kind: "silent" as const },
+      NOW,
+    );
+    assert.match(summary, /is silent: /);
+    assert.doesNotMatch(summary, /cadence/);
   });
 });
