@@ -376,6 +376,7 @@ export interface NominatorPositions {
   hotkey: string;
   netuid: number;
   share_fraction: number | null;
+  shares: string | null;
 }
 
 /** `public.nominator_positions_passes` */
