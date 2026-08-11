@@ -25127,6 +25127,7 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
         "limit",
         "netuid",
         "order",
+        "q",
         "sort",
         "tier",
       ],

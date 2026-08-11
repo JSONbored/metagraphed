@@ -5,8 +5,11 @@
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
 import { CHAIN_EVENTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { keysetCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
+
+const RouteQuery_chain_events = ROUTE_QUERY_SCHEMAS["/api/v1/chain-events"];
 
 export const GetBlockChainEventsInputSchema = z
   .object({
@@ -74,6 +77,25 @@ export const GetExtrinsicChainEventsInputSchema = z
         "Extrinsic reference, as the composite id `block_number-extrinsic_index` -- the index is the extrinsic's position within that block, from 0. A bare block number or block hash is NOT accepted here, unlike the sibling block-scoped tools.",
       )
       .meta({ examples: ["8791987-0"] }),
+    // The two filters an extrinsic's OWN event list can still take (#10793).
+    // One extrinsic emits many events, often across several pallets -- a
+    // `add_stake` carries Balances, SubtensorModule and System events together
+    // -- so "which Balances events did this extrinsic emit" is a real question
+    // that cost a full page and a client-side scan before.
+    //
+    // Straight off the route's query schema, the same way list_chain_events
+    // takes them, so the three surfaces cannot disagree about the length bound
+    // or the case sensitivity.
+    pallet: RouteQuery_chain_events.shape.pallet
+      .describe(
+        "Restrict to events emitted by this pallet, by runtime name (`SubtensorModule`). Case-sensitive. Applied within this extrinsic's events, not across the feed.",
+      )
+      .meta({ examples: ["SubtensorModule"] }),
+    method: RouteQuery_chain_events.shape.method
+      .describe(
+        "Restrict to events emitted by this runtime call, by name (`set_weights`). Case-sensitive. Applied within this extrinsic's events, not across the feed.",
+      )
+      .meta({ examples: ["set_weights"] }),
     limit: limitSchema(200, CHAIN_EVENTS_LIMIT_DEFAULT).optional(),
     // `block_number.event_index`, not an opaque token -- the route publishes
     // and enforces that shape, so a bare string advertised a value it rejects

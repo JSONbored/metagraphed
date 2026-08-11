@@ -226,7 +226,21 @@ const COMPOSITE_REF_RE = /^(\d+)-(\d+)$/;
 export async function loadExtrinsicChainEvents(
   ctx: DataApiMcpContext,
   ref: unknown,
-  { limit, cursor }: { limit?: unknown; cursor?: unknown } = {},
+  {
+    limit,
+    cursor,
+    // #10793: the two feed filters that still mean something once the read is
+    // pinned to one extrinsic. `block` and `extrinsic` are NOT accepted here --
+    // this function derives both from `ref`, and taking them separately would
+    // let a caller contradict the reference they passed.
+    pallet,
+    method,
+  }: {
+    limit?: unknown;
+    cursor?: unknown;
+    pallet?: unknown;
+    method?: unknown;
+  } = {},
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   schema_version: 1;
@@ -263,6 +277,13 @@ export async function loadExtrinsicChainEvents(
       extrinsic: extrinsicIndex,
       limit: lim,
       cursor: cursor ?? undefined,
+      // Passed straight through, unlike `cursor` above. Both the validator and
+      // the query builder gate these on `value == null`, which is true for an
+      // absent argument and a null alike, so an omitted filter cannot widen the
+      // read -- and an unusable one is the caller's `invalid_params` rather
+      // than a silently dropped filter.
+      pallet,
+      method,
     },
     network,
   );

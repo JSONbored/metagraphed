@@ -36,7 +36,10 @@ import {
 import { GlobalValidatorsArtifactSchema } from "../routes/global-validators.ts";
 import { ValidatorDetailArtifactSchema } from "../routes/validator-detail.ts";
 import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
-import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
+import {
+  ValidatorNominatorPositionsSchema,
+  ValidatorNominatorsArtifactSchema,
+} from "../routes/validator-nominators.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import { CompareValidatorEntrySchema } from "../routes/compare-validators.ts";
 import {} from "../routes/validator-nominators.ts";
@@ -202,6 +205,19 @@ export type CompareValidatorsOutput = z.infer<
 export const GetValidatorNominatorsInputSchema = z
   .object({
     hotkey: accountKeySchema("hotkey"),
+    // WHICH QUESTION is answered, not how well (#9617, exposed on MCP by
+    // #10793). The default does not move, and must not: the two bases are
+    // different units over different time semantics, so flipping it would
+    // silently change what every existing caller's numbers mean.
+    //
+    // It was the one parameter of this route's five that MCP could not reach,
+    // and the gap had teeth. `flow` sums TAO MOVED inside the window, so a
+    // nominator who staked before it and has not touched it since is invisible
+    // and a long-standing one reads as smaller than they are -- which is the
+    // wrong answer to "who delegates to this validator", the question an agent
+    // actually asks. Taken from the route's own query schema, alongside the
+    // `window` and `sort` already read from it.
+    basis: RouteQuery_validators_hotkey_nominators.shape.basis,
     window: RouteQuery_validators_hotkey_nominators.shape.window,
     sort: RouteQuery_validators_hotkey_nominators.shape.sort,
     // NOT the route's ceiling. REST enforces GLOBAL_VALIDATOR_LIMIT_MAX (2000)
@@ -220,8 +236,57 @@ export type GetValidatorNominatorsInput = z.infer<
 >;
 
 // objectItems(...) properties, none required at the item level.
-export const GetValidatorNominatorsOutputSchema =
-  ValidatorNominatorsArtifactSchema;
+//
+// TWO CARDS IN ONE OBJECT, since #10793 gave the tool `basis`. Not a
+// `z.union` -- MCP's outputSchema must be an object schema (the registry test
+// asserts `outputSchema.type === "object"` for every tool), and a union emits
+// a top-level `anyOf` with no `type` at all, so the union that reads better
+// here is one the protocol cannot carry.
+//
+// So: the fields BOTH cards always carry stay required, and each basis's own
+// fields are optional with prose saying which basis brings them. That is a
+// weaker statement than either card alone -- it cannot say "window is required
+// when basis=flow" -- but it is a TRUE one, where declaring only the flow card
+// would leave every positions call serving a response its own published schema
+// rejects.
+export const GetValidatorNominatorsOutputSchema = z
+  .object({
+    // Carried by both builders, on every path including the decline.
+    schema_version: z.int(),
+    hotkey: z.unknown(),
+    limit: z.union([z.int().min(0), z.null()]),
+    offset: z.int().min(0),
+    nominator_count: z.int().min(0).nullable(),
+    // The item shape follows the basis: TAO totals over a window, or standing
+    // alpha broken down per subnet. An item-level union is fine -- the
+    // protocol's object requirement is on the TOP level only.
+    nominators: z.array(
+      z.union([
+        ValidatorNominatorsArtifactSchema.shape.nominators.element,
+        ValidatorNominatorPositionsSchema.shape.nominators.element,
+      ]),
+    ),
+    // --- basis=flow only ---------------------------------------------------
+    window: ValidatorNominatorsArtifactSchema.shape.window.optional(),
+    sort: ValidatorNominatorsArtifactSchema.shape.sort.optional(),
+    concentration_complete:
+      ValidatorNominatorsArtifactSchema.shape.concentration_complete.optional(),
+    top_nominator_share:
+      ValidatorNominatorsArtifactSchema.shape.top_nominator_share.optional(),
+    top5_nominator_share:
+      ValidatorNominatorsArtifactSchema.shape.top5_nominator_share.optional(),
+    nominator_gini:
+      ValidatorNominatorsArtifactSchema.shape.nominator_gini.optional(),
+    // --- basis=positions only ----------------------------------------------
+    // Absent on the flow card, which never stamps a basis -- verified against
+    // production: the default response has no `basis` key at all.
+    basis: ValidatorNominatorPositionsSchema.shape.basis.optional(),
+    captured_at: ValidatorNominatorPositionsSchema.shape.captured_at.optional(),
+    positions_captured_at:
+      ValidatorNominatorPositionsSchema.shape.positions_captured_at.optional(),
+    degraded: ValidatorNominatorPositionsSchema.shape.degraded,
+  })
+  .passthrough();
 export type GetValidatorNominatorsOutput = z.infer<
   typeof GetValidatorNominatorsOutputSchema
 >;

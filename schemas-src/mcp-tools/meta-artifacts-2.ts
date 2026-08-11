@@ -25,6 +25,7 @@ import {
   limitSchema,
   numericCursorSchema,
   orderSchema,
+  querySchema,
   sortSchema,
   projectableRows,
 } from "./shared.ts";
@@ -102,6 +103,12 @@ export const GetCoverageDepthInputSchema = z
         "Restrict to subnets blocked this badly. `none` means nothing is blocking promotion.",
       )
       .meta({ examples: ["hard-blocked"] }),
+    // Free-text over the collection's own `search_keys` -- name, slug,
+    // top_gap_codes, recommended_next_action (#10793). The engine this handler
+    // already runs through implements it; only the argument was missing, so a
+    // caller could narrow by tier or netuid but not by "which subnets have a
+    // schema gap".
+    q: querySchema().optional(),
     sort: sortSchema(
       API_QUERY_COLLECTIONS["coverage-depth"].sort_fields,
     ).optional(),

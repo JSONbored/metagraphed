@@ -30,11 +30,16 @@ import { readLiveSurfaceStatus } from "./health-status-live.ts";
 
 type Row = Record<string, unknown>;
 
-// Must exceed the probe cadence (15 min) so a live D1 health row is never treated
+// Must exceed the probe cadence (15 min) so a live health row is never treated
 // as stale just because the next probe hasn't run yet. 25 min = cadence + a
-// one-missed-run buffer. (KV health:current has no TTL, so this only bounds the
-// D1 fallback path.)
-const D1_HEALTH_FALLBACK_MAX_AGE_MS = 25 * 60 * 1000;
+// one-missed-run buffer.
+//
+// It bounds BOTH tiers, despite the old name saying otherwise: KV
+// health:current has no TTL, so without this gate a wedged prober would serve
+// its last snapshot as fresh forever. Renamed off the retired store's name
+// -- the fallback it gates has been Postgres since D1 was eliminated, and a
+// constant naming a store this repo no longer has is a reader's wrong turn.
+const HEALTH_FALLBACK_MAX_AGE_MS = 25 * 60 * 1000;
 
 // Pool-eligibility hysteresis (cosmos.directory-style "don't flap"): an RPC
 // endpoint is only dropped from the proxy pool after this many CONSECUTIVE
@@ -2104,7 +2109,7 @@ export async function resolveLiveHealth({
         const lastRun = Date.parse(current.last_run_at as string);
         if (
           !Number.isFinite(lastRun) ||
-          lastRun >= currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS
+          lastRun >= currentTime - HEALTH_FALLBACK_MAX_AGE_MS
         ) {
           return { ...current, health_source: "live-cron-prober" };
         }
@@ -2114,7 +2119,7 @@ export async function resolveLiveHealth({
     }
   }
   const currentTime = typeof now === "function" ? now() : Date.now();
-  const freshnessCutoff = currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS;
+  const freshnessCutoff = currentTime - HEALTH_FALLBACK_MAX_AGE_MS;
   if (env) {
     // #9522: same route, same previously-dead read as the prober's continuity
     // load — see src/health-status-live.ts. A freshness cutoff here rather

@@ -227,6 +227,7 @@ import {
 import { MCP_TIERED_RATE_LIMIT } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
+import { searchMatchingRows } from "../workers/list-query.ts";
 import { applyMcpQueryFilters } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
@@ -1676,6 +1677,11 @@ import {
   NOMINATOR_LIMIT_MAX,
 } from "./validator-nominators.ts";
 import { buildValidatorHistory } from "./validator-history.ts";
+import {
+  NOMINATOR_BASES,
+  buildNominatorPositions,
+  loadNominatorPositions,
+} from "./validator-nominator-positions.ts";
 import { readStore } from "./read-store.ts";
 import {
   ALPHA_PRICING_TABLES,
@@ -3845,6 +3851,48 @@ export function validateToolArguments(tool: Row, args: Row) {
 }
 
 /**
+ * Which arguments were SUPPLIED here rather than by the caller (#10793).
+ *
+ * `url.searchParams.has(name)` is the question a REST handler asks when a
+ * parameter is only valid in some modes -- handleValidatorNominators 400s on
+ * `window` under `?basis=positions` precisely that way. Filling defaults (above)
+ * takes that question away from an MCP handler: once `window: "30d"` is in the
+ * object, "the caller asked for 30d" and "nobody asked" are the same value.
+ *
+ * That is not hypothetical. get_validator_nominators' positions basis rejects
+ * `window` and `sort`, and reading them straight off `args` made EVERY
+ * positions call fail on an argument the caller never sent -- caught by
+ * tests/mcp-published-parameter-parity.ts before it shipped.
+ *
+ * A SYMBOL key, so it cannot reach anywhere the value would be mistaken for
+ * input: `Object.entries`, `Object.keys` and `JSON.stringify` all skip it, and
+ * several handlers forward their whole argument object into a query builder or
+ * an upstream call, where an unexpected key becomes a filter or someone else's
+ * 400. Use `callerSuppliedArg` rather than reading it directly.
+ */
+const DEFAULTED_ARGS: unique symbol = Symbol("mcp.defaulted-args");
+
+/**
+ * Did the CALLER name this argument, as opposed to it being defaulted in?
+ *
+ * The MCP equivalent of `url.searchParams.has(name)`. False for an argument
+ * absent from the call and for one this dispatch supplied; true only when the
+ * caller wrote it down -- including when they wrote the default's own value,
+ * which is a real request and not a coincidence to be guessed at.
+ */
+function callerSuppliedArg(args: Row, name: string) {
+  // Not `args?.` -- validateToolArguments resolves an absent `arguments` to an
+  // object before any handler runs, so a nullable guard here would be a branch
+  // that cannot be taken. An explicit `null` CAN arrive (dispatch does no
+  // schema validation) and reads as "no value", matching the REST side where
+  // `?window=` resolves to null and is not applied.
+  if (args[name] === undefined || args[name] === null) return false;
+  const defaulted = (args as Record<symbol, unknown>)[DEFAULTED_ARGS] as
+    Set<string> | undefined;
+  return !defaulted?.has(name);
+}
+
+/**
  * Fill every omitted argument the tool PUBLISHES a default for (#10306).
  *
  * A tool that advertises `"default": 100` and then serves nothing is lying to
@@ -3875,19 +3923,33 @@ export function validateToolArguments(tool: Row, args: Row) {
  * would get for omitting the argument -- the same thing `pageLimit` does on the
  * REST side, at the one place every tools/call passes through rather than in
  * the 230 handlers behind it.
+ *
+ * WHAT IT COSTS (#10793): once a default is in the object, a handler can no
+ * longer tell "the caller asked for this" from "nobody asked". That matters to
+ * the handlers whose parameters are only valid in some modes.
+ * `callerSuppliedArg` above gives the distinction back.
  */
 function applyPublishedDefaults(tool: Row, args: Row): Row {
   const properties = tool.inputSchema?.properties as
     Record<string, Row> | undefined;
   if (!properties) return args;
   let filled: Row | null = null;
+  const supplied = new Set<string>();
   for (const [name, schema] of Object.entries(properties)) {
     if (schema?.default === undefined) continue;
     if (args[name] !== undefined) continue;
     filled ??= { ...args };
     filled[name] = schema.default;
+    supplied.add(name);
   }
-  return filled ?? args;
+  if (!filled) return args;
+  // Non-enumerable as well as symbol-keyed, so a spread of these args does not
+  // carry the marker into a copy that may outlive the dispatch.
+  Object.defineProperty(filled, DEFAULTED_ARGS, {
+    value: supplied,
+    enumerable: false,
+  });
+  return filled;
 }
 
 /**
@@ -5074,8 +5136,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Enumerate the full Bittensor subnet registry, paginated. Returns every " +
       "subnet's netuid, slug, title, type, status, integration-readiness score " +
       "(0-100), and callable-surface count. Use this to walk or page through the " +
-      "whole registry; for keyword or capability discovery use search_subnets / " +
-      "find_subnets_by_capability instead. Defaults to mainnet; pass " +
+      "whole registry, and q to narrow it by name/slug alongside the other " +
+      "filters -- for ranked keyword or capability discovery use search_subnets " +
+      "/ find_subnets_by_capability instead. Defaults to mainnet; pass " +
       'network:"test" for the Bittensor testnet registry, which is native-only ' +
       "(chain identity, no curated surfaces/health, so readiness and " +
       "surface_count are zero there).",
@@ -5094,7 +5157,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // (not_status/not_subnet_type/not_domain), then the numeric range bounds.
       const categorical = categoricalFilterSubnets(all, args);
       const identified = identityFilterSubnets(categorical, args);
-      const filtered = rangeFilterSubnets(identified, args);
+      const bounded = rangeFilterSubnets(identified, args);
+      // Free-text over the collection's own `search_keys` (#10793). Through the
+      // ENGINE's matcher, not a second one written here, so `q` means the same
+      // thing on both surfaces -- and over `search_keys` rather than a list
+      // repeated here, so a key added to the collection reaches this tool too.
+      //
+      // Last in the chain because it is the most expensive pass (a join and a
+      // substring scan per row) and the three cheap filters above have already
+      // cut the set. It composes with them, which is the point: "inference in
+      // the name AND readiness above 70" is reachable from neither this tool
+      // nor search_subnets today.
+      const filtered = searchMatchingRows(
+        bounded,
+        optionalString(args, "q"),
+        API_QUERY_COLLECTIONS.subnets.search_keys,
+      );
       // Sort the filtered list before paging; unscored subnets sort last and
       // equal values tie-break by netuid for a stable page (sortSubnets).
       const sort = optionalEnum(args, "sort", LIST_SUBNETS_SORT_FIELDS);
@@ -8343,15 +8421,74 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Get who has staked to a validator",
     description:
       "Fetch the nominators (stakers) of one validator across every subnet it " +
-      "operates in, over a window (7d, 30d, default 90d), ranked by net_staked " +
-      "(default), gross_staked, or last_activity. Optional coldkey narrows to " +
-      "one nominator's own flow. Mirrors GET /api/v1/validators/{hotkey}/nominators.",
+      "operates in. `basis` selects WHICH QUESTION is answered. basis=flow (the " +
+      "default) is TAO MOVED over a window (7d, 30d, default 90d), ranked by " +
+      "net_staked (default), gross_staked, or last_activity, with coldkey " +
+      "narrowing to one nominator's own flow — so a delegator who staked before " +
+      "the window and has not touched it since is INVISIBLE there. " +
+      "basis=positions instead reads the standing ledger: every coldkey " +
+      "(an ss58 address) " +
+      "currently delegating and how much alpha each holds PER SUBNET, whenever " +
+      "they staked. Ask for positions when the question is who delegates now; " +
+      "flow when it is who moved stake lately. The two are different units over " +
+      "different time semantics and are not comparable, which is why the " +
+      "default does not move. On the positions basis window and sort are " +
+      "REJECTED rather than ignored, nominator_count is the whole delegator set " +
+      "rather than the page, and there is no cross-subnet alpha total because " +
+      "each subnet's alpha is a different token. Mirrors " +
+      "GET /api/v1/validators/{hotkey}/nominators.",
     inputSchema: inputJsonSchema(GetValidatorNominatorsInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorNominatorsInputSchema>,
       ctx: McpCtx,
     ) {
       const hotkey = requireHotkey(args);
+      // #10793: the one parameter of this route's five MCP could not reach, and
+      // the gap had teeth -- measured against production on 2026-08-11, the
+      // flow basis reports 0 nominators for 5E2LP6En...TKeZ5u while positions
+      // reports 2,377. "Who delegates to this validator" was answerable only
+      // over REST.
+      if (optionalEnum(args, "basis", NOMINATOR_BASES) === "positions") {
+        // REJECTED, not ignored -- the same two the route 400s on. Accepting
+        // them would imply the snapshot honoured them, and a caller who asked
+        // for a 7d window and got an all-time holdings card has no way to tell.
+        //
+        // On what the CALLER named, not on what `args` holds: both carry a
+        // published default that dispatch fills in, so reading them directly
+        // would refuse every positions call over arguments nobody sent.
+        for (const unsupported of ["window", "sort"] as const) {
+          if (callerSuppliedArg(args as Row, unsupported)) {
+            throw toolError(
+              "invalid_params",
+              `\`${unsupported}\` applies to basis=flow only; the positions basis is a current-holdings snapshot, not a windowed aggregation.`,
+            );
+          }
+        }
+        return buildNominatorPositions(
+          await loadNominatorPositions(
+            readStore(
+              ctx.env,
+              ALPHA_PRICING_TABLES,
+            ) as never as unknown as Parameters<
+              typeof loadNominatorPositions
+            >[0],
+            hotkey,
+          ),
+          hotkey,
+          // Its own page expressions rather than ones shared with the flow
+          // path below, matching how handleValidatorNominators splits the two
+          // bases: they page over different row sets, and the day one of them
+          // needs a different ceiling a shared line would have to be unpicked.
+          {
+            limit: clampToolLimit(
+              args?.limit,
+              NOMINATOR_LIMIT_DEFAULT,
+              NOMINATOR_LIMIT_MAX,
+            ),
+            offset: optionalNonNegativeInt(args, "offset") ?? 0,
+          },
+        );
+      }
       const window =
         optionalEnum(args, "window", Object.keys(NOMINATOR_WINDOWS)) ??
         DEFAULT_NOMINATOR_WINDOW;
@@ -11745,7 +11882,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch raw pallet.method events one extrinsic emitted from the all-events " +
       "lakehouse tier (newest first). ref must be the composite id " +
-      "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
+      "'block_number-extrinsic_index' (e.g. '4200000-3'). Narrow to one pallet " +
+      "or runtime call with pallet/method — an extrinsic usually emits events " +
+      "from several. Page with limit (1-200, " +
       "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
       "account_events embedded in get_extrinsic. Pass network to read testnet's " +
       "decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
@@ -11759,7 +11898,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return loadExtrinsicChainEvents(
         ctx,
         ref,
-        { limit: args?.limit, cursor: cursor ?? undefined },
+        {
+          limit: args?.limit,
+          cursor: cursor ?? undefined,
+          // #10793. `block` and `extrinsic` stay unexposed on purpose: both are
+          // already carried by `ref`, and a second way to say them is a way to
+          // contradict it.
+          pallet: optionalString(args, "pallet") ?? undefined,
+          method: optionalString(args, "method") ?? undefined,
+        },
         chainNetworkFromChainName(
           optionalEnum(args, "network", MCP_NETWORK_VALUES),
         ),
@@ -12665,14 +12812,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch the public evidence-ledger claims for one subnet by netuid: the " +
       "provenance and verification evidence recorded for that subnet's surfaces " +
       "(what was checked and the outcome). The per-subnet view of list_evidence " +
-      "(the network-wide ledger). Mirrors GET /api/v1/subnets/{netuid}/evidence.",
+      "(the network-wide ledger). Search with q across subject, claim, " +
+      "source_url and support_summary; sort with sort + order; page with limit " +
+      "(1-100, default 20) / cursor. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/evidence.",
     inputSchema: inputJsonSchema(GetSubnetEvidenceInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEvidenceInputSchema>,
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/evidence/${netuid}.json`);
+      // #10793: this returned the whole ledger on every call -- measured at 77
+      // claims / ~33 KB for SN64, with no pagination block at all -- while the
+      // route published q/sort/order/limit/cursor. Through the SAME engine the
+      // route uses, so the two cannot search or order differently. "claims" is
+      // the collection's own data_key, and `netuid` stays the default SUBJECT
+      // key: the artifact already holds one subnet, so passing it on as a row
+      // filter would match nothing (the claims carry `subject`, not `netuid`).
+      return applySubnetListQuery(
+        await loadArtifactData(ctx, `/metagraph/evidence/${netuid}.json`),
+        args as Row,
+        "claims",
+        "claims",
+      );
     },
   },
   {
@@ -13380,8 +13542,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the coverage-depth scorecard's ranked enrichment targets: which " +
       "subnets need schema, fixture, example/SDK, provenance, candidate-review, " +
-      "or hard-blocker follow-up next. Use this for curation/work-planning, not " +
-      "live uptime; call get_subnet_health for current health.",
+      "or hard-blocker follow-up next. Narrow with q across name, slug, " +
+      "top_gap_codes and recommended_next_action — the queue's own ranking is " +
+      "preserved, so there is no sort/order here. Use this for " +
+      "curation/work-planning, not live uptime; call get_subnet_health for " +
+      "current health.",
     inputSchema: inputJsonSchema(ListEnrichmentTargetsInputSchema),
     async handler(
       args: z.infer<typeof ListEnrichmentTargetsInputSchema>,
@@ -13431,16 +13596,36 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           }))
           .filter((entry: Row) => Number.isInteger(entry.row?.netuid));
       }
+      // Free-text over the collection's own search_keys, through the ENGINE's
+      // matcher rather than a second one (#10793). Matched once over the row
+      // objects and tested by identity below, so the {row, rank} pairing --
+      // and with it the queue's ranking -- survives the filter.
+      const q = optionalString(args, "q");
+      const matched = new Set(
+        searchMatchingRows(
+          candidates.map(({ row }: Row) => row),
+          q,
+          API_QUERY_COLLECTIONS["coverage-depth"].search_keys,
+        ),
+      );
       const filters = {
         tier,
         severity,
         gap_code: gapCode,
         agent_status: agentStatus,
         netuid,
+        q,
       };
       const targets = candidates
-        .filter(({ row }: Row) =>
-          coverageDepthMatches(row, { tier, severity, gapCode, agentStatus }),
+        .filter(
+          ({ row }: Row) =>
+            matched.has(row) &&
+            coverageDepthMatches(row, {
+              tier,
+              severity,
+              gapCode,
+              agentStatus,
+            }),
         )
         .slice(0, limit)
         .map(({ row, rank }: Row) => coverageDepthTarget(row, rank));

@@ -34,6 +34,58 @@ const SRC_DIR = path.resolve(
  */
 const MAY_IMPORT_THE_RAW_ENGINE = new Set(["mcp-list-query.ts", "graphql.ts"]);
 
+/**
+ * Symbols in the raw engine that CANNOT page, and so are not what this gate is
+ * about (#10793).
+ *
+ * The rule was written as "do not import the module", which is a proxy for the
+ * real one: do not reach a function that returns every row when nobody asked.
+ * `searchMatchingRows` is `?q=`'s matcher with the URLSearchParams lifted off
+ * -- it filters and returns a subset, and cannot produce a page of any size.
+ * Two MCP tools filter their rows by hand (`list_subnets`,
+ * `list_enrichment_targets`) and need it so that `q` means the same thing on
+ * both surfaces; the alternative was a second copy of the matcher, which is how
+ * the two surfaces start disagreeing about what a search is.
+ *
+ * An ALLOWLIST of names rather than a relaxed module check, so the gate still
+ * fails on the next symbol somebody reaches for. Adding one here is a claim
+ * that it cannot page, and it has to be true.
+ */
+const NON_PAGING_ENGINE_EXPORTS = new Set(["searchMatchingRows"]);
+
+/** The symbols a `from "../workers/list-query.ts"` import brings in. */
+function importedEngineSymbols(source: string): string[] {
+  const names: string[] = [];
+  const importRe =
+    /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"\.\.\/workers\/list-query\.ts"/g;
+  for (const match of source.matchAll(importRe)) {
+    for (const clause of match[1].split(",")) {
+      const name = clause
+        .trim()
+        .split(/\s+as\s+/)[0]
+        .trim();
+      if (name) names.push(name);
+    }
+  }
+  return names;
+}
+
+/**
+ * The rule itself, over one module's source: which PAGING symbols it reaches.
+ *
+ * Extracted from the sweep so it can be run against sources written to break
+ * it -- a gate nobody has seen fail is a gate nobody knows still works.
+ */
+export function pagingEngineImports(source: string): string[] {
+  if (!/from "\.\.\/workers\/list-query\.ts"/.test(source)) return [];
+  const symbols = importedEngineSymbols(source);
+  // A bare/namespace/`export *` form parses to no named symbols and is refused
+  // outright -- it reaches everything, including what pages.
+  return symbols.length === 0
+    ? ["<non-named import>"]
+    : symbols.filter((symbol) => !NON_PAGING_ENGINE_EXPORTS.has(symbol));
+}
+
 function sourceFiles(): string[] {
   return readdirSync(SRC_DIR).filter((name) => name.endsWith(".ts"));
 }
@@ -48,16 +100,16 @@ describe("MCP list pagination default (#9730)", () => {
       checked += 1;
       if (MAY_IMPORT_THE_RAW_ENGINE.has(name)) continue;
       // The import specifier, not the call: a module could alias the symbol,
-      // and what must not happen is reaching the raw module at all.
-      if (/from "\.\.\/workers\/list-query\.ts"/.test(source)) {
-        offenders.push(name);
-      }
+      // and what must not happen is reaching a PAGING function at all.
+      const paging = pagingEngineImports(source);
+      if (paging.length > 0) offenders.push(`${name} (${paging.join(", ")})`);
     }
     assert.deepEqual(
       offenders,
       [],
-      `these import the raw engine directly and so page unbounded — import ` +
-        `applyMcpQueryFilters from ./mcp-list-query.ts instead: ${offenders.join(", ")}`,
+      `these import a paging function from the raw engine and so page ` +
+        `unbounded — import applyMcpQueryFilters from ./mcp-list-query.ts ` +
+        `instead: ${offenders.join(", ")}`,
     );
     // A pass over nothing proves nothing. If the layout changes such that no
     // module matches, this fails rather than going quietly green.
@@ -65,6 +117,54 @@ describe("MCP list pagination default (#9730)", () => {
       checked > 25,
       `expected well over 25 modules touching the list engine, saw ${checked}`,
     );
+  });
+
+  // The rule was narrowed from "imports the module" to "imports something that
+  // PAGES" when #10793 needed the `?q=` matcher in two hand-filtered tools.
+  // Narrowing a gate is where gates quietly stop working, so these run it
+  // against sources written to break it.
+  describe("the narrowed rule still catches what it was written for", () => {
+    test("a paging import is an offender, however it is written", () => {
+      for (const source of [
+        `import { applyQueryFilters } from "../workers/list-query.ts";`,
+        // Aliased -- the reason the check reads the specifier, not the call.
+        `import { applyQueryFilters as page } from "../workers/list-query.ts";`,
+        // Smuggled in beside an allowed one.
+        `import { searchMatchingRows, paginateRows } from "../workers/list-query.ts";`,
+        // Multi-line, which is how a real import of two symbols is formatted.
+        `import {\n  searchMatchingRows,\n  applyQueryFilters,\n} from "../workers/list-query.ts";`,
+        // Type-only still reaches the module's shape; refuse it too rather
+        // than reason about erasure.
+        `import type { Row } from "../workers/list-query.ts";`,
+        // Namespace and side-effect forms name nothing, so they reach
+        // everything.
+        `import * as engine from "../workers/list-query.ts";`,
+      ]) {
+        assert.notDeepEqual(
+          pagingEngineImports(source),
+          [],
+          `should have been refused: ${source.replace(/\n/g, " ")}`,
+        );
+      }
+    });
+
+    test("the declared non-paging symbol is allowed, alone", () => {
+      assert.deepEqual(
+        pagingEngineImports(
+          `import { searchMatchingRows } from "../workers/list-query.ts";`,
+        ),
+        [],
+      );
+    });
+
+    test("a module that does not touch the engine is not an offender", () => {
+      assert.deepEqual(
+        pagingEngineImports(
+          `import { applyMcpQueryFilters } from "./mcp-list-query.ts";`,
+        ),
+        [],
+      );
+    });
   });
 
   test("the wrapper defaults a page the raw engine would have left unbounded", () => {

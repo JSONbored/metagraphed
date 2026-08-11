@@ -8114,6 +8114,7 @@
       "query_filter_names": [],
       "query_parameters": [
         {
+          "description": "Which question to answer. `flow` (the default) sums TAO MOVED inside `window`, so a delegator who staked earlier and has not touched it since is absent. `positions` reads the standing ledger instead: every coldkey (an ss58 address) delegating right now and how much alpha each holds per subnet, whenever they staked. Different units over different time semantics, so the two are not comparable. On `positions`, `window` and `sort` are REJECTED rather than ignored.",
           "name": "basis",
           "schema": {
             "default": "flow",

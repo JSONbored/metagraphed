@@ -427,12 +427,25 @@ function applyListTransform(
   };
 }
 
-function searchRows(
+/**
+ * What `?q=` MEANS, separated from where it arrives (#10793).
+ *
+ * EXPORTED so a hand-rolled loader can search the way the engine does. Two MCP
+ * tools (`list_subnets`, `list_enrichment_targets`) filter and page their rows
+ * themselves rather than through `applyQueryFilters`, so exposing `q` on them
+ * meant either a second matcher or this. A second matcher is how the two
+ * surfaces start disagreeing about what a search is -- and they would disagree
+ * on real cases, not hypothetical ones: every term must match (AND, not OR),
+ * matching is case-insensitive substring rather than word or prefix, an array
+ * field is flattened and joined so a match may span two of its entries, and
+ * falsy values are dropped before the join so `0` and `false` are not
+ * searchable text. Nobody writing the second copy guesses all five.
+ */
+export function searchMatchingRows(
   rows: Row[],
-  params: URLSearchParams,
-  keys: string[],
+  q: string | null | undefined,
+  keys: readonly string[],
 ): Row[] {
-  const q = params.get("q");
   if (!q || keys.length === 0) {
     return rows;
   }
@@ -455,6 +468,14 @@ function searchRows(
       .toLowerCase();
     return terms.every((term) => haystack.includes(term));
   });
+}
+
+function searchRows(
+  rows: Row[],
+  params: URLSearchParams,
+  keys: string[],
+): Row[] {
+  return searchMatchingRows(rows, params.get("q"), keys);
 }
 
 function sortRows(rows: Row[], params: URLSearchParams): Row[] {
