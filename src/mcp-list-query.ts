@@ -46,6 +46,48 @@ import { MCP_LIST_LIMIT_DEFAULT } from "./route-limits.ts";
  * same validation, same errors. An explicit `limit` in the query string still
  * wins; this only supplies one when the caller gave none.
  */
+/**
+ * The query-string spelling of a boolean, and the one decoder for it (#10787).
+ *
+ * A route that publishes a filter as a `["true","false"]` STRING enum is
+ * spelling a boolean the only way a query string can. GraphQL has a real
+ * `Boolean` and publishes it, which is the stricter and more honest of the two
+ * spellings -- but four fields could not, because their resolvers hand the
+ * argument straight to an MCP loader that validated it with
+ * `optionalEnum(args, name, ["true","false"])`. A JS boolean was rejected
+ * there where the string was accepted, and NOTHING PREVENTED IT BUT A COMMENT:
+ * the divergence table carried a paragraph saying "moving the spelling means
+ * moving the forwarding with it", and nobody moved either.
+ *
+ * This is that forwarding, once. It is a LENIENT codec in the sense #8942
+ * measured -- MCP's decoder accepts what REST's would reject, over the same
+ * canonical vocabulary -- and it is declared here rather than hand-written at
+ * each site, so a loader written next month gets it by importing the decoder
+ * it already needs.
+ */
+export const BOOLEAN_WORDS = ["true", "false"] as const;
+
+/**
+ * `args` with the named boolean filters rewritten in the route's spelling.
+ *
+ * Returns the SAME object when nothing needed rewriting, so a loader whose
+ * caller already sent the string form allocates nothing.
+ */
+export function withBooleanWords(
+  args: Record<string, unknown> | null | undefined,
+  keys: readonly string[],
+): Record<string, unknown> | null | undefined {
+  if (!args) return args;
+  let decoded: Record<string, unknown> | null = null;
+  for (const key of keys) {
+    const value = args[key];
+    if (typeof value !== "boolean") continue;
+    decoded ??= { ...args };
+    decoded[key] = value ? "true" : "false";
+  }
+  return decoded ?? args;
+}
+
 export function applyMcpQueryFilters(
   data: Record<string, unknown> | null | undefined,
   url: URL,

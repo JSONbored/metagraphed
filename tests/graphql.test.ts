@@ -12675,8 +12675,13 @@ describe("graphql — subnet_endpoints (#7869, baked per-subnet endpoint artifac
   });
 
   test("filters by provider, pool_eligible, and score range (#7869)", async () => {
+    // `pool_eligible` is a real `Boolean` since #10787. It published `String`
+    // only because this field's resolver hands the argument to an MCP loader
+    // that validated it with `optionalEnum(args, name, ["true","false"])` --
+    // the forwarding moved to `withBooleanWords`, so the spelling could move
+    // with it and match the ~20 sibling arguments that always had it.
     const { body } = await gql(
-      '{ subnet_endpoints(netuid: 5, provider: "alpha", pool_eligible: "true") }',
+      '{ subnet_endpoints(netuid: 5, provider: "alpha", pool_eligible: true) }',
       FILTER_ENV(),
     );
     assert.equal(body.errors, undefined);

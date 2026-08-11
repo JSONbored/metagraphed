@@ -19,7 +19,7 @@ import { parse, print } from "graphql";
 import type { ObjectTypeDefinitionNode } from "graphql";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import {
-  DECLARED_ARGUMENT_TYPES,
+  ARGUMENT_CODECS,
   DECLARED_MISSING_NETWORK,
 } from "../schemas-src/graphql/argument-divergences.ts";
 import {
@@ -157,7 +157,7 @@ export function checkQueryArguments(
       [],
     );
     for (const argument of derived) {
-      if (DECLARED_ARGUMENT_TYPES[`${binding.field}.${argument.name}`]) {
+      if (ARGUMENT_CODECS[`${binding.field}.${argument.name}`]) {
         usedDeclared.add(`${binding.field}.${argument.name}`);
       }
     }
@@ -202,9 +202,7 @@ export function checkQueryArguments(
     violations,
     stale: [
       ...missingNetwork.filter((field) => !usedNetwork.has(field)),
-      ...Object.keys(DECLARED_ARGUMENT_TYPES).filter(
-        (key) => !usedDeclared.has(key),
-      ),
+      ...Object.keys(ARGUMENT_CODECS).filter((key) => !usedDeclared.has(key)),
     ],
   };
 }
@@ -233,7 +231,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const line of report.violations.sort()) console.error(`  - ${line}`);
     console.error(
       "\nFix the SDL to match the route, or declare the spelling in " +
-        "DECLARED_ARGUMENT_TYPES with the reason.",
+        "ARGUMENT_CODECS with the reason.",
     );
   }
   if (report.stale.length) {

@@ -10,6 +10,7 @@
 // resolve, and it prints a clean bill of health forever.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { ARGUMENT_CODECS } from "../schemas-src/graphql/argument-divergences.ts";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -24,19 +25,17 @@ function run() {
 /**
  * Each declared-exemption map and the file that owns it.
  *
- * `DECLARED_ARGUMENTS` moved to `schemas-src/` (#10316) because the runtime
- * needs it too: the GraphQL dispatch parse has to skip an argument the two
+ * The argument half moved to `schemas-src/` (#10316) because the runtime needs
+ * it too: the GraphQL argument boundary has to skip an argument the two
  * surfaces legitimately spell differently, and `src/` cannot import from
- * `scripts/`. This test follows it rather than pinning it to the gate -- what
- * matters is that every entry carries a written reason, not which file it
- * sits in.
+ * `scripts/`. It is `ARGUMENT_CODECS` since #10787, which merged the two lists
+ * that had said the same thing about one argument -- its presence and its type
+ * -- and were read by different components. This test follows the table rather
+ * than pinning it to a file: what matters is that every entry carries a written
+ * reason.
  */
 const DECLARED_MAPS = [
   { name: "DECLARED", file: SCRIPT },
-  {
-    name: "DECLARED_ARGUMENTS",
-    file: "schemas-src/graphql/argument-divergences.ts",
-  },
   { name: "DECLARED_MISSING_ARGUMENTS", file: SCRIPT },
 ] as const;
 
@@ -126,6 +125,37 @@ describe("graphql route parity gate", () => {
         .length;
       assert.equal(reasons, keys, `every ${name} entry needs a reason`);
     }
+  });
+
+  test("every argument codec carries a written reason", () => {
+    // Read as a VALUE, not as source text. The two maps above still have to be
+    // regexed because they are private to the gate script, but the codec table
+    // is exported for the runtime -- and a gate that regexes source goes blind
+    // the moment a formatter rewraps it, which is the failure mode this table
+    // is least able to afford now that three components read it.
+    const entries = Object.entries(ARGUMENT_CODECS);
+    assert.ok(entries.length > 40, `only ${entries.length} codecs declared`);
+    for (const [key, codec] of entries) {
+      assert.ok(
+        codec.graphql.length > 0,
+        `${key} declares no GraphQL spelling`,
+      );
+      assert.ok(
+        codec.reason.trim().length > 40,
+        `${key} needs a reason, not a marker`,
+      );
+    }
+  });
+
+  test("`owner` is declared only where the derivation cannot see it", () => {
+    // The bit that survived the merge, and the whole point of merging: nine of
+    // the ten presence declarations were restating what the derivation already
+    // answers. An entry that adds `owner` back for one of those is the second
+    // list returning under a new name.
+    const declared = Object.entries(ARGUMENT_CODECS)
+      .filter(([, codec]) => codec.owner === "graphql")
+      .map(([key]) => key);
+    assert.deepEqual(declared, ["compare.netuids"]);
   });
 
   test("the SDL still annotates the routes it mirrors", () => {

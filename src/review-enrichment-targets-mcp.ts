@@ -4,7 +4,12 @@
 // /metagraph/review/enrichment-targets.json artifact.
 
 import { clampToolLimit } from "../workers/request-params.ts";
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  BOOLEAN_WORDS,
+  withBooleanWords,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -36,7 +41,6 @@ const LANES = [
   "monitoring-followup",
   "baseline-monitoring",
 ];
-const BOOLEAN_STRINGS = ["true", "false"];
 const SUBMISSION_ROUTES = [
   "direct-candidate-pr",
   "adapter-request",
@@ -149,18 +153,25 @@ export function reviewEnrichmentTargetsQueryUrl(
   );
   if (submissionRoute)
     url.searchParams.set("submission_route", submissionRoute);
-  const autoReviewCandidate = optionalEnum(
-    args,
+  // Both filters are spelled `["true","false"]` by the route because a query
+  // string has no boolean; GraphQL publishes real Booleans and this decodes
+  // them, in the one place the decoding is written (#10787).
+  const booleans = withBooleanWords(args, [
     "auto_review_candidate",
-    BOOLEAN_STRINGS,
+    "manual_review_required",
+  ]);
+  const autoReviewCandidate = optionalEnum(
+    booleans,
+    "auto_review_candidate",
+    BOOLEAN_WORDS,
   );
   if (autoReviewCandidate) {
     url.searchParams.set("auto_review_candidate", autoReviewCandidate);
   }
   const manualReviewRequired = optionalEnum(
-    args,
+    booleans,
     "manual_review_required",
-    BOOLEAN_STRINGS,
+    BOOLEAN_WORDS,
   );
   if (manualReviewRequired) {
     url.searchParams.set("manual_review_required", manualReviewRequired);

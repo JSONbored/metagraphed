@@ -3,7 +3,12 @@
 // /metagraph/review/enrichment-queue.json artifact.
 
 import { clampToolLimit } from "../workers/request-params.ts";
-import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
+import {
+  applyMcpQueryFilters,
+  BOOLEAN_WORDS,
+  withBooleanWords,
+  type Row,
+} from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -35,7 +40,6 @@ const LANES = [
   "monitoring-followup",
   "baseline-monitoring",
 ];
-const BOOLEAN_STRINGS = ["true", "false"];
 
 export interface EnrichmentQueueMcpError extends Error {
   toolError: true;
@@ -127,9 +131,9 @@ export function enrichmentQueueQueryUrl(
   const missingKinds = optionalEnum(args, "missing_kinds", SURFACE_KINDS);
   if (missingKinds) url.searchParams.set("missing_kinds", missingKinds);
   const manualReviewRequired = optionalEnum(
-    args,
+    withBooleanWords(args, ["manual_review_required"]),
     "manual_review_required",
-    BOOLEAN_STRINGS,
+    BOOLEAN_WORDS,
   );
   if (manualReviewRequired) {
     url.searchParams.set("manual_review_required", manualReviewRequired);

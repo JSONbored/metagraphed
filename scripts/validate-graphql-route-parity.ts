@@ -19,10 +19,9 @@
 // production traffic and covers every field rather than a sample.
 import { readFileSync } from "node:fs";
 import {
-  DECLARED_ARGUMENTS,
   DECLARED_MISSING_NETWORK,
   DECLARED_UNPUBLISHED_ARGUMENTS,
-  isDeclaredArgumentType,
+  hasArgumentCodec,
 } from "../schemas-src/graphql/argument-divergences.ts";
 
 type Json = Record<string, unknown>;
@@ -445,15 +444,12 @@ for (const field of queryType.fields) {
     const parameter = published.get(arg.name);
     if (!parameter) {
       if (arg.name === "network" && hasNetworkTwin(route)) continue;
-      // `DECLARED_ARGUMENT_TYPES` carries the same fact for an argument whose
-      // TYPE is declared -- `extrinsic.ref` and `block_chain_events.block_number`
-      // are the route's path parameter under the name GraphQL publishes, and
-      // the generator emits them from that entry. One list, read by the gate
-      // that would otherwise contradict it (#10772).
-      if (
-        key in DECLARED_ARGUMENTS ||
-        isDeclaredArgumentType(field.name, arg.name)
-      ) {
+      // `ARGUMENT_CODECS` carries this fact for an argument whose spelling is
+      // declared -- `extrinsic.ref` and `block_chain_events.block_number` are
+      // the route's path parameter under the name GraphQL publishes, and the
+      // generator emits them from that entry. ONE table, read by the gate that
+      // would otherwise contradict it (#10772, merged in #10787).
+      if (hasArgumentCodec(field.name, arg.name)) {
         suppressedArguments.add(key);
         continue;
       }
@@ -475,14 +471,11 @@ for (const field of queryType.fields) {
     const allowed = SCALAR_JSON_TYPES[bare] ?? [];
     if (jsonTypes.some((t) => allowed.includes(t))) continue;
     // A published type that diverges from the route's is exactly what
-    // `DECLARED_ARGUMENT_TYPES` records, and the generator EMITS the spelling
-    // from it -- so a gate reporting it as drift contradicts the artifact it
-    // helped produce. `subnets.cursor`/`providers.cursor` are the opaque
-    // keyset against the route's integer offset (#10772).
-    if (
-      key in DECLARED_ARGUMENTS ||
-      isDeclaredArgumentType(field.name, arg.name)
-    ) {
+    // `ARGUMENT_CODECS` records, and the generator EMITS the spelling from it
+    // -- so a gate reporting it as drift contradicts the artifact it helped
+    // produce. `subnets.cursor`/`providers.cursor` are the opaque keyset
+    // against the route's integer offset (#10772).
+    if (hasArgumentCodec(field.name, arg.name)) {
       suppressedArguments.add(key);
       continue;
     }
@@ -548,10 +541,12 @@ for (const field of queryType.fields) {
 // --- report ----------------------------------------------------------------
 
 const declaredKeys = Object.keys(DECLARED);
-const argumentDeclaredKeys = [
-  ...Object.keys(DECLARED_ARGUMENTS),
-  ...Object.keys(DECLARED_MISSING_ARGUMENTS),
-];
+// The codec table's own staleness is `validate:graphql-query-arguments`', and
+// deliberately so: it checks all 55 entries against what the GENERATOR emits,
+// which is why an entry exists at all. Checking the ten this gate happened to
+// suppress would be a strict subset of that, computed a second way -- the
+// two-lists-for-one-concept shape #10787 merged away.
+const argumentDeclaredKeys = [...Object.keys(DECLARED_MISSING_ARGUMENTS)];
 const stale = [
   ...declaredKeys.filter((key) => !suppressed.has(key)),
   ...argumentDeclaredKeys.filter((key) => !suppressedArguments.has(key)),
@@ -611,7 +606,7 @@ if (argumentFindings.length > 0) {
   }
   console.error(
     "\nAdd the argument to the SDL and forward it in the resolver, or declare it in\n" +
-      "DECLARED_ARGUMENTS / DECLARED_MISSING_ARGUMENTS with the reason.",
+      "ARGUMENT_CODECS / DECLARED_MISSING_ARGUMENTS with the reason.",
   );
 }
 
