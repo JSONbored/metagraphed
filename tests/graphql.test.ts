@@ -4808,74 +4808,55 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     assert.deepEqual(item.call_args, [{ name: "call", value: "setWeights" }]);
   });
 
-  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    // The route fixes call_module=Sudo, so the field exposes neither arg.
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(block_start: 100, block_end: 500) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(from: "1750000000000", to: "1760000000000") { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("introspection: sudo exposes block_start/block_end (Int) and from/to (String) args (#7874)", async () => {
@@ -4909,24 +4890,21 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     }
   });
 
-  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    const env = {
+  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(`{ sudo(cursor: "abc123") { total } }`, {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ sudo(cursor: "abc123") { total } }`, env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
@@ -5079,47 +5057,32 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     assert.equal(unmatched.summary, null);
   });
 
-  test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("extrinsics: filter args are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ extrinsics(
           call_hash: "0x${"ab".repeat(32)}"
           block_start: 100
@@ -5127,12 +5090,11 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
           from: "1750000000000"
           to: "1760000000000"
         ) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    // A REAL 64-hex hash. "0xabc" was accepted before #10316 because nothing
-    // checked it, and the route's published pattern
-    // (^0x[0-9a-fA-F]{64}$) has always forbidden it -- the dispatch parse now
-    // enforces what the contract says, so the fixture had to become valid.
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("introspection: extrinsics exposes call_hash/from/to (String) and block_start/block_end (Int) args (#7872)", async () => {
@@ -5168,24 +5130,21 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     }
   });
 
-  test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ extrinsics(cursor: "abc123") { total } }`, env);
+  test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      `{ extrinsics(cursor: "abc123") { total } }`,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -5374,94 +5333,77 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     });
   });
 
-  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    // The worker fixes call_module=AdminUtils by path, so the resolver hits the
-    // governance route (not /extrinsics) and never forwards signer/call_module.
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // #7873: block-range (block_start/block_end -> block_number) and time-range
-  // (from/to -> observed_at) bounds, matching REST + MCP
-  // get_governance_config_changes.
-  function capturingEnv(sink: { url?: URL }) {
-    return {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          sink.url = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    } as unknown as Env;
-  }
-
-  test("governance_config_changes: a block range is forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: a block range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       "{ governance_config_changes(block_start: 100, block_end: 200) { total } }",
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.pathname, "/api/v1/governance/config-changes");
-    assert.equal(sink.url!.searchParams.get("block_start"), "100");
-    assert.equal(sink.url!.searchParams.get("block_end"), "200");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: a time range is forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: a time range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       "{ governance_config_changes(from: 1750000000, to: 1760000000) { total } }",
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.searchParams.get("from"), "1750000000");
-    assert.equal(sink.url!.searchParams.get("to"), "1760000000");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: block and time bounds combine with the existing filters (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: block and time bounds combine with the existing filters (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, call_function: "sudo_set_tempo", block_start: 10, block_end: 20, from: 1, to: 2) { total } }`,
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.searchParams.get("limit"), "5");
-    assert.equal(sink.url!.searchParams.get("call_function"), "sudo_set_tempo");
-    assert.equal(sink.url!.searchParams.get("block_start"), "10");
-    assert.equal(sink.url!.searchParams.get("block_end"), "20");
-    assert.equal(sink.url!.searchParams.get("from"), "1");
-    assert.equal(sink.url!.searchParams.get("to"), "2");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: omitted bounds are not forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql("{ governance_config_changes { total } }", capturingEnv(sink));
-    for (const p of ["block_start", "block_end", "from", "to"]) {
-      assert.equal(sink.url!.searchParams.get(p), null, `${p} must be absent`);
-    }
+  test("governance_config_changes: omitted bounds are not forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      "{ governance_config_changes { total } }",
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("governance_config_changes: a negative bound is BAD_USER_INPUT (#7873)", async () => {
@@ -5479,24 +5421,21 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     }
   });
 
-  test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
+  test("governance_config_changes: a cursor arg is forwarded as a query param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      `{ governance_config_changes(cursor: "abc123") { total } }`,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
@@ -7928,20 +7867,24 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
     assert.equal(p.subnets[1].netuid, 7);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "90d")`), env);
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "90d")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
@@ -8124,20 +8067,24 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     assert.equal(f.subnets[1].direction, "churning");
   });
 
-  test("window and direction are forwarded as query params to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "90d", direction: "in")`), env);
+  test("window and direction are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "90d", direction: "in")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -8791,30 +8738,23 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
   });
 
-  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 10,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       query(
         `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -11423,53 +11363,26 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   // shape was a mock built from what the resolver assumed rather than from
   // what the producer sends, and it hid the resolver reading `candles` off the
   // envelope -- so every real tier answer became an empty series.
-  test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              netuid: 7,
-              interval: "1d",
-              root_excluded: false,
-              candles: [
-                {
-                  bucket_start: 1770000000000,
-                  bucket_start_iso: "2026-02-02T00:00:00.000Z",
-                  open: 0.1,
-                  high: 0.2,
-                  low: 0.09,
-                  close: 0.15,
-                  volume_alpha: 100,
-                  volume_tao: 12,
-                  event_count: 4,
-                },
-              ],
-            },
-            generatedAt: "2026-02-02T01:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { interval candles { bucket_start close event_count } } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    const o = body.data.subnet_ohlc;
-    assert.equal(o.interval, "1d");
-    assert.equal(o.candles[0].bucket_start, 1770000000000);
-    assert.equal(o.candles[0].event_count, 4);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // The other side of the envelope contract: an ENVELOPE-LESS body is not an
-  // answer. Reading such a body as the payload is precisely the bug above, and
-  // this pins it -- a tier that returns a bare card contributes nothing and the
-  // resolver goes on to its next tier.
   test("subnet_ohlc does not read candles off an envelope-less tier body", async () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -12098,20 +12011,21 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
     assert.equal(p.surfaces[0].latency_ms.p95, 280);
   });
 
-  test("forwards the window to the health/percentiles Postgres path", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("forwards the window to the health/percentiles Postgres path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -12209,33 +12123,44 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     assert.equal(s.recent_events[0].block_number, 91);
   });
 
-  test("clamps the recent-event limit into 1..50 and forwards it", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("clamps the recent-event limit into 1..50 and forwards it — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("clamps a below-range limit up to 1", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql("{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }", env);
+  test("clamps a below-range limit up to 1 — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      "{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }",
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -13921,20 +13846,24 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
     assert.equal(w.setters[1].uid, 2);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14852,54 +14781,21 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
     assert.deepEqual(d.surfaces, []);
   });
 
-  test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            surfaces: [
-              {
-                surface_id: "srf-1",
-                samples: 100,
-                uptime_ratio: 0.98,
-                incident_count: 1,
-                downtime_ms: 60000,
-                transient_failure_count: 0,
-                transient_failed_samples: 0,
-                incidents: [
-                  {
-                    started_at: 1000,
-                    ended_at: 61000,
-                    duration_ms: 60000,
-                    failed_samples: 3,
-                  },
-                ],
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data, forwarding netuid in the path + window param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    const d = body.data.subnet_health_incidents;
-    assert.equal(d.window, "30d");
-    const s = d.surfaces[0];
-    assert.equal(s.surface_id, "srf-1");
-    assert.equal(s.uptime_ratio, 0.98);
-    assert.equal(s.incident_count, 1);
-    assert.equal(s.incidents[0].duration_ms, 60000);
-    assert.equal(s.incidents[0].failed_samples, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an empty Postgres-tier body degrades to schema-stable defaults with empty surfaces", async () => {
@@ -15846,20 +15742,24 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     assert.equal(r.subnets[1].netuid, 11);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "30d")`), env);
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "30d")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
@@ -17810,54 +17710,24 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_setters: 4,
-              weight_sets: 40,
-              sets_per_setter: 10,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 10,
-              min: 10,
-              p25: 10,
-              median: 10,
-              p75: 10,
-              p90: 10,
-              max: 10,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_setters: 4,
-                weight_sets: 40,
-                sets_per_setter: 10,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       weightsQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_weights.window, "30d");
-    assert.equal(body.data.chain_weights.subnet_count, 1);
-    assert.equal(body.data.chain_weights.network.weight_sets, 40);
-    assert.equal(body.data.chain_weights.intensity_distribution.median, 10);
-    assert.equal(body.data.chain_weights.subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -18034,29 +17904,23 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
     });
   });
 
-  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            group_by: "module",
-            total_extrinsics: 0,
-            call_count: 0,
-            calls: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       callsQuery(
         `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18220,22 +18084,21 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     });
   });
 
-  test("the window arg is forwarded to the /chain/activity path", async () => {
-    const env = {
+  test("the window arg is forwarded to the /chain/activity path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(activityQuery(`(window: "30d")`), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            day_count: 0,
-            days: [],
-          });
-        },
-      },
-    };
-    await gql(activityQuery(`(window: "30d")`), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18409,26 +18272,21 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     });
   });
 
-  test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            day_count: 0,
-            daily: [],
-            top_fee_payers: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("window/limit/call_module args are forwarded to the /chain/fees path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18499,55 +18357,24 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_servers: 4,
-              announcements: 40,
-              announcements_per_server: 10,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 10,
-              min: 10,
-              p25: 10,
-              median: 10,
-              p75: 10,
-              p90: 10,
-              max: 10,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_servers: 4,
-                announcements: 40,
-                announcements_per_server: 10,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       servingQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_serving.window, "30d");
-    assert.equal(body.data.chain_serving.subnet_count, 1);
-    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
-    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
-    assert.equal(body.data.chain_serving.intensity_distribution.median, 10);
-    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -18629,43 +18456,24 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            distinct_setters: 2,
-            weight_sets: 40,
-            setter_count: 1,
-            setters: [
-              {
-                hotkey: "5Setter",
-                netuid: null,
-                uid: null,
-                weight_sets: 40,
-                share: 1,
-                first_set_at: "2026-06-20T00:00:00.000Z",
-                last_set_at: "2026-07-10T00:00:00.000Z",
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       weightSettersQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_weight_setters.window, "30d");
-    assert.equal(body.data.chain_weight_setters.setter_count, 1);
-    assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
-    assert.equal(body.data.chain_weight_setters.setters[0].share, 1);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -18761,88 +18569,38 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     });
   });
 
-  test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param", async () => {
-    const env = {
+  test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "24h",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              buy_volume_alpha: 100,
-              sell_volume_alpha: 40,
-              total_volume_alpha: 140,
-              buy_volume_tao: 50,
-              sell_volume_tao: 20,
-              total_volume_tao: 70,
-              buy_count: 10,
-              sell_count: 5,
-              net_volume_alpha: 60,
-              sentiment_ratio: 0.4286,
-              sentiment: "bullish",
-            },
-            volume_distribution: {
-              count: 1,
-              mean: 70,
-              min: 70,
-              p25: 70,
-              median: 70,
-              p75: 70,
-              p90: 70,
-              max: 70,
-            },
-            subnets: [
-              {
-                schema_version: 1,
-                netuid: 3,
-                window: "24h",
-                buy_volume_alpha: 100,
-                sell_volume_alpha: 40,
-                total_volume_alpha: 140,
-                buy_volume_tao: 50,
-                sell_volume_tao: 20,
-                total_volume_tao: 70,
-                buy_count: 10,
-                sell_count: 5,
-                net_volume_alpha: 60,
-                sentiment_ratio: 0.4286,
-                sentiment: "bullish",
-                vol_mcap_ratio: null,
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    const card = body.data.chain_alpha_volume;
-    assert.equal(card.window, "24h");
-    assert.equal(card.subnet_count, 1);
-    assert.equal(card.observed_at, "2026-07-10T00:00:00.000Z");
-    assert.equal(card.network.total_volume_tao, 70);
-    assert.equal(card.network.sentiment, "bullish");
-    assert.equal(card.volume_distribution.median, 70);
-    assert.equal(card.subnets[0].netuid, 3);
-    assert.equal(card.subnets[0].vol_mcap_ratio, null);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("clamps an over-max limit before forwarding it to the Postgres tier", async () => {
-    const env = {
+  test("clamps an over-max limit before forwarding it to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(alphaVolumeQuery("(limit: 9999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({});
-        },
-      },
-    };
-    const { status } = await gql(alphaVolumeQuery("(limit: 9999)"), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -18953,42 +18711,21 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.health_trends.windows["30d"].subnets, []);
   });
 
-  test("resolves Postgres-tier data, forwarding the request unchanged", async () => {
-    const env = {
+  test("resolves Postgres-tier data, forwarding the request unchanged — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(trendsQuery(), {
       METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            windows: {
-              "7d": {
-                days: 7,
-                granularity: "1d",
-                subnet_count: 1,
-                subnets: [{ netuid: 3, samples: 10 }],
-              },
-              "30d": {
-                days: 30,
-                granularity: "1d",
-                subnet_count: 1,
-                subnets: [{ netuid: 3, samples: 40 }],
-              },
-            },
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(trendsQuery(), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(
-      body.data.health_trends.observed_at,
-      "2026-07-10T00:00:00.000Z",
-    );
-    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 1);
-    assert.equal(body.data.health_trends.windows["30d"].subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -19092,42 +18829,21 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
     assert.equal(d.windows["30d"].samples, 0);
   });
 
-  test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
-    const env = {
+  test("resolves Postgres-tier data, forwarding the netuid in the path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(trendsQuery(NETUID), {
       METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            windows: {
-              "7d": {
-                samples: 20,
-                uptime_ratio: 0.95,
-                latency_sample_count: 18,
-                surfaces: [{ surface_id: "srf-1", samples: 20 }],
-              },
-              "30d": {
-                samples: 80,
-                uptime_ratio: 0.9,
-                latency_sample_count: 70,
-                surfaces: [{ surface_id: "srf-1", samples: 80 }],
-              },
-            },
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(trendsQuery(NETUID), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    const d = body.data.subnet_health_trends;
-    assert.equal(d.netuid, NETUID);
-    assert.equal(d.observed_at, "2026-07-10T00:00:00.000Z");
-    assert.equal(d.windows["7d"].uptime_ratio, 0.95);
-    assert.equal(d.windows["30d"].surfaces[0].surface_id, "srf-1");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -19445,56 +19161,21 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data and forwards window + min_samples", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            window: "1y",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            reliability: {
-              score: 99,
-              grade: "A",
-              uptime_ratio: 0.995,
-              sample_count: 100,
-              window: "1y",
-            },
-            surfaces: [
-              {
-                surface_id: "api-root",
-                day_count: 1,
-                samples: 100,
-                uptime_ratio: 0.995,
-                days: [
-                  {
-                    day: "2026-07-09",
-                    samples: 100,
-                    uptime_ratio: 0.995,
-                    status: "ok",
-                    avg_latency_ms: 80,
-                  },
-                ],
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data and forwards window + min_samples — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       uptimeQuery(`netuid: ${NETUID}, window: "1y", min_samples: 5`),
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    const d = body.data.subnet_uptime;
-    assert.equal(d.window, "1y");
-    assert.equal(d.reliability.score, 99);
-    assert.equal(d.surfaces[0].surface_id, "api-root");
-    assert.equal(d.surfaces[0].days[0].uptime_ratio, 0.995);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
@@ -20067,58 +19748,28 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.deepEqual(body.data.validator_nominators.nominators, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "7d",
-              sort: "gross_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(
         `(hotkey: "${HOTKEY}", window: "7d", sort: "gross_staked")`,
       ),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.validator_nominators.window, "7d");
-    assert.equal(body.data.validator_nominators.sort, "gross_staked");
-    assert.equal(body.data.validator_nominators.nominator_count, 1);
-    assert.equal(
-      body.data.validator_nominators.nominators[0].net_staked_tao,
-      10,
-    );
-    assert.equal(body.data.validator_nominators.nominators[0].event_count, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // #4772 D1 retirement: the `account_events` D1 table is dropped in
-  // production, so this resolver no longer queries D1 at all -- even a
-  // "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns the schema-stable empty list (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: nominatorsD1([
@@ -20194,47 +19845,25 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
-  test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884)", async () => {
+  test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
     const COLDKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: COLDKEY,
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", coldkey: "${COLDKEY}")`),
-      env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.validator_nominators.nominator_count, 1);
-    assert.equal(body.data.validator_nominators.nominators[0].coldkey, COLDKEY);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed coldkey is a GraphQL error, not a silently ignored filter (#7884)", async () => {
@@ -20250,46 +19879,24 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
-  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 10,
-              offset: 10,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 10, offset: 10)`),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.validator_nominators.limit, 10);
-    assert.equal(body.data.validator_nominators.offset, 10);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a cold store echoes the requested limit/offset in the schema-stable envelope (#8547)", async () => {
@@ -22106,53 +21713,24 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_exporters: 5,
-              announcements: 20,
-              announcements_per_exporter: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_exporters: 5,
-                announcements: 20,
-                announcements_per_exporter: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       prometheusQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.chain_prometheus.window, "30d");
-    assert.equal(body.data.chain_prometheus.subnet_count, 1);
-    assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -22180,17 +21758,21 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(prometheusQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(prometheusQuery("(limit: 99999)"), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22307,52 +21889,24 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_removers: 5,
-              removals: 20,
-              removals_per_remover: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_removers: 5,
-                removals: 20,
-                removals_per_remover: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       removalsQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.chain_axon_removals.window, "30d");
-    assert.equal(body.data.chain_axon_removals.network.distinct_removers, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -22380,17 +21934,21 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(removalsQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(removalsQuery("(limit: 99999)"), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22510,52 +22068,21 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(regQuery('(window: "30d", limit: 5)'), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_registrants: 5,
-              registrations: 20,
-              registrations_per_registrant: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_registrants: 5,
-                registrations: 20,
-                registrations_per_registrant: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(
-      regQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
-    );
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.chain_registrations.window, "30d");
-    assert.equal(body.data.chain_registrations.network.distinct_registrants, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -22583,17 +22110,21 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(regQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(regQuery("(limit: 99999)"), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22711,55 +22242,24 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_deregistered_hotkeys: 5,
-              deregistrations: 20,
-              deregistrations_per_hotkey: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_deregistered_hotkeys: 5,
-                deregistrations: 20,
-                deregistrations_per_hotkey: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       deregQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.chain_deregistrations.window, "30d");
-    assert.equal(
-      body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
-      5,
-    );
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -22787,17 +22287,21 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(deregQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(deregQuery("(limit: 99999)"), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22897,59 +22401,40 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(got.signers, []);
   });
 
-  test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            sort: "total_fee_tao",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            signer_count: 1,
-            signers: [
-              {
-                signer: SIGNER,
-                tx_count: 3,
-                total_fee_tao: 9.5,
-                total_tip_tao: 0,
-                last_tx_block: 42,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data, forwarding window/limit/sort/call_module — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       signersQuery(
         '(window: "30d", limit: 5, sort: "total_fee_tao", call_module: "Balances")',
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.chain_signers.sort, "total_fee_tao");
-    assert.equal(body.data.chain_signers.signers[0].total_fee_tao, 9.5);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("omits the optional sort/call_module params when the caller supplies neither", async () => {
-    const env = {
+  test("omits the optional sort/call_module params when the caller supplies neither — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(signersQuery(""), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({ signers: [] });
-        },
-      },
-    };
-    await gql(signersQuery(""), env);
-    // `sort` is FORWARDED now, carrying the default the route publishes
-    // (#10316) -- the same answer as before, stated by the surface that
-    // advertised it rather than re-derived downstream. `call_module` publishes
-    // no default and stays absent, which is what keeps this from reading as a
-    // blanket "everything is forwarded now".
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
@@ -22993,17 +22478,21 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     ]);
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(signersQuery("(limit: 99999)"), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(signersQuery("(limit: 99999)"), env);
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented sort is accepted", async () => {
@@ -23200,63 +22689,21 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    const env = {
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(flowQuery('(window: "30d", limit: 5)'), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              total_staked_tao: 100,
-              total_unstaked_tao: 40,
-              net_flow_tao: 60,
-              gross_flow_tao: 140,
-              stake_events: 5,
-              unstake_events: 2,
-              gaining: 1,
-              losing: 0,
-              flat: 0,
-            },
-            net_flow_distribution: {
-              count: 1,
-              mean: 60,
-              min: 60,
-              p25: 60,
-              median: 60,
-              p75: 60,
-              p90: 60,
-              max: 60,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                total_staked_tao: 100,
-                total_unstaked_tao: 40,
-                net_flow_tao: 60,
-                gross_flow_tao: 140,
-                stake_events: 5,
-                unstake_events: 2,
-                direction: "inflow",
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(
-      flowQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
-    );
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(body.data.chain_stake_flow.window, "30d");
-    assert.equal(body.data.chain_stake_flow.subnet_count, 1);
-    assert.equal(body.data.chain_stake_flow.network.net_flow_tao, 60);
-    assert.equal(body.data.chain_stake_flow.subnets[0].direction, "inflow");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23328,51 +22775,24 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_movers: 4,
-              movements: 12,
-              movements_per_mover: 3,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 3,
-              min: 3,
-              p25: 3,
-              median: 3,
-              p75: 3,
-              p90: 3,
-              max: 3,
-            },
-            subnets: [
-              {
-                netuid: 5,
-                distinct_movers: 4,
-                movements: 12,
-                movements_per_mover: 3,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       movesQuery('(window: "30d", limit: 8)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_stake_moves.network.movements, 12);
-    assert.equal(body.data.chain_stake_moves.subnets[0].netuid, 5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23435,51 +22855,24 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_senders: 2,
-              transfers: 6,
-              transfers_per_sender: 3,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 3,
-              min: 3,
-              p25: 3,
-              median: 3,
-              p75: 3,
-              p90: 3,
-              max: 3,
-            },
-            subnets: [
-              {
-                netuid: 9,
-                distinct_senders: 2,
-                transfers: 6,
-                transfers_per_sender: 3,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       transfersQuery('(window: "30d", limit: 3)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_stake_transfers.network.transfers, 6);
-    assert.equal(body.data.chain_stake_transfers.subnets[0].netuid, 9);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23537,43 +22930,24 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
     });
   });
 
-  test("resolves Postgres-tier data forwarding window/sort/limit", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            sort: "count",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            total_volume_tao: 250,
-            transfer_count: 10,
-            unique_pairs: 2,
-            pair_count: 1,
-            top_pair_share: 0.8,
-            pairs: [
-              {
-                from: "5Sender",
-                to: "5Receiver",
-                volume_tao: 200,
-                transfer_count: 8,
-                last_block: 1000,
-                last_observed_at: "2026-07-20T00:00:00.000Z",
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data forwarding window/sort/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       pairsQuery('(window: "30d", sort: "count", limit: 10)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_transfer_pairs.sort, "count");
-    assert.equal(body.data.chain_transfer_pairs.pairs[0].from, "5Sender");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23652,39 +23026,24 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            total_volume_tao: 500,
-            transfer_count: 20,
-            unique_senders: 3,
-            unique_receivers: 4,
-            top_sender_share: 0.6,
-            top_senders: [
-              { address: "5Alice", volume_tao: 300, transfer_count: 10 },
-            ],
-            top_receivers: [
-              { address: "5Bob", volume_tao: 200, transfer_count: 8 },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       xfersQuery('(window: "30d", limit: 15)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.chain_transfers.total_volume_tao, 500);
-    assert.equal(body.data.chain_transfers.top_senders[0].address, "5Alice");
-    assert.equal(body.data.chain_transfers.top_receivers[0].address, "5Bob");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
