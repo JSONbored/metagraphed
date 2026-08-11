@@ -46,8 +46,8 @@ export const ChainPerformanceArtifactSchema = z
     validator_trust: ScoreDistributionSchema.nullable()
       .optional()
       .describe(
-      "Validator-trust score spread across permitted validators network-wide only.",
-    ),
+        "Validator-trust score spread across permitted validators network-wide only.",
+      ),
   })
   .passthrough()
   .describe(
