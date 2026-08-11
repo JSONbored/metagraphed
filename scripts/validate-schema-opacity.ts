@@ -123,6 +123,13 @@ const MCP_REASONED_OPEN_SITES: Record<string, string> = {
   // artifacts. Same embedded document, same reason.
   "get_contracts.feeds[].path_parameters[].schema": EMBEDDED_JSON_SCHEMA,
   "get_contracts.feeds[].query_parameters[].schema": EMBEDDED_JSON_SCHEMA,
+  // The decoded event arguments, reachable since #10790 collapsed these two
+  // tools onto the route's own `ChainEventSchema`. They were `z.unknown()`
+  // before -- which is not an OPEN OBJECT, so this gate could not see them,
+  // and which described the payload less than the open record does. Same blob
+  // as the REST entries above, same reason.
+  "get_block_chain_events.events[].args": DECODED_CHAIN_PAYLOAD,
+  "get_extrinsic_chain_events.events[].args": DECODED_CHAIN_PAYLOAD,
   "get_api_schema.document": EMBEDDED_THIRD_PARTY_DOCUMENT,
   // Surfaced by typing `extrinsic` from the route's ExtrinsicSchema (#9797):
   // the same decoded-arguments blob its two feed siblings already declare.
