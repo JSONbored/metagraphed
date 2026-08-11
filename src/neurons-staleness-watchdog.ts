@@ -44,14 +44,64 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { missedTicksMs, passWindowMs } from "./producer-cadence.ts";
+import {
+  FLUSH_INTERVAL_MS,
+  neonWriteBufferEnabled,
+} from "./neon-write-buffer.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { readStore } from "./read-store.ts";
+
+/** The buffer lane these rows are written on, when buffering is on. */
+export const NEURONS_BUFFER_LANE = "neurons";
 
 /** Three missed 15-minute ticks: one restart is routine (a deploy or an
  * eviction costs one tick by design), two could be an unlucky pair, three is
  * a stall. */
 export const NEURONS_STALENESS_THRESHOLD_MS = missedTicksMs("metagraph", 3);
+
+/**
+ * The threshold, plus the delay the WRITE PATH can add before a captured row
+ * becomes readable (#10665).
+ *
+ * ## What this watchdog actually measures
+ *
+ * `now - MAX(captured_at)`, where `captured_at` is the PRODUCER's clock but
+ * the row is only in the table once it has been WRITTEN. So the age is
+ * producer lag plus write-visibility lag, and until 2026-08-11 the second term
+ * was ~zero because every lane wrote straight through.
+ *
+ * `neurons` is now a buffered lane (#10758), and the buffer holds statements
+ * for up to FLUSH_INTERVAL_MS before they land. Ten of the forty-five minutes
+ * this alarm allows are therefore spent by a producer that is working
+ * perfectly and a buffer that is merely waiting -- so the alarm would fire
+ * after ~2.3 missed ticks while its own message claimed three. Adding the
+ * flush interval keeps the threshold meaning what it says.
+ *
+ * MEASURED, not theorised. On 2026-08-11 the buffer was enabled at 01:33 PDT
+ * and this lane alarmed from 02:21 with an age climbing 80.6 -> 170.6 minutes
+ * in exact 15-minute steps; it was disabled at 03:47 and the age fell back to
+ * 52.4 by 04:52. Three hours of "the poller Container has missed at least
+ * three ticks" for a poller that had missed nothing -- the rows existed, and
+ * the buffer had not flushed them. The O(n) enqueue behind that stall is
+ * #10755, fixed in #10756; this is the watchdog half, which would have
+ * misreported the same way again on the next flush that ran long.
+ *
+ * Conditional on the lane actually being buffered, so turning the buffer off
+ * restores the tighter bound rather than leaving ten minutes of permanent
+ * slack behind a flag nobody re-reads.
+ */
+export function neuronsStalenessThresholdMs(
+  env: Record<string, unknown> | null | undefined,
+): number {
+  const declared =
+    Number(env?.NEURONS_STALENESS_THRESHOLD_MS) ||
+    NEURONS_STALENESS_THRESHOLD_MS;
+  return (
+    declared +
+    (neonWriteBufferEnabled(env, NEURONS_BUFFER_LANE) ? FLUSH_INTERVAL_MS : 0)
+  );
+}
 
 /**
  * How many subnets a COMPLETE pass is expected to cover.
@@ -217,9 +267,7 @@ export async function runNeuronsStalenessWatchdog(
   const db = readStore(env, ["neurons"]) as unknown as D1Like | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
-  const thresholdMs =
-    Number(env?.NEURONS_STALENESS_THRESHOLD_MS) ||
-    NEURONS_STALENESS_THRESHOLD_MS;
+  const thresholdMs = neuronsStalenessThresholdMs(env);
   const passWindowMs =
     Number(env?.NEURONS_PASS_WINDOW_MS) || NEURONS_PASS_WINDOW_MS;
   const coverageFloorNetuids =
@@ -251,10 +299,21 @@ export async function runNeuronsStalenessWatchdog(
         verdict.age_ms === null
           ? "no rows at all"
           : `${(verdict.age_ms / 60_000).toFixed(1)} min old`;
+      // NAMES WHAT WAS MEASURED, NOT A CAUSE IT DID NOT CHECK (#10665). This
+      // used to end "the poller Container has missed at least three ticks",
+      // which is one of two explanations and the watchdog can tell them apart
+      // from neither end: it reads the table, so a producer that stopped and a
+      // write path that is holding rows are the same observation. It said the
+      // first for three hours on 2026-08-11 while the truth was the second,
+      // and an alert that asserts a cause sends its reader to the wrong place
+      // before they have read the second line.
+      const suspects = neonWriteBufferEnabled(env, NEURONS_BUFFER_LANE)
+        ? "the poller Container has stopped capturing, or the neon write buffer is not flushing"
+        : "the poller Container has stopped capturing";
       const message =
         verdict.reason === "partial"
           ? `neurons lane truncated: the newest pass covered only ${verdict.covered_netuids} of ${verdict.total_netuids} subnets against a floor of ${verdict.coverage_floor_netuids} (newest stamp ${age}) -- the capture is RECENT and PARTIAL, so every route over a subnet the scan never reached is serving a pass-old metagraph behind a MAX(captured_at) that just advanced`
-          : `neurons lane stalled: latest snapshot is ${age} (threshold ${thresholdMs / 60_000} min) -- the poller Container has missed at least three ticks`;
+          : `neurons lane stalled: the newest READABLE snapshot is ${age} (threshold ${thresholdMs / 60_000} min) -- ${suspects}`;
       await record(env as never, {
         error: new Error(message),
         route: "watchdog:neurons-staleness",

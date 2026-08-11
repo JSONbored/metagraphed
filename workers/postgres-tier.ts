@@ -1,4 +1,5 @@
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import { maskRouteParams } from "../src/route-label.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 // DATA_API-forwarding serving gate, one env flag per data source (originally
@@ -71,6 +72,16 @@ export function currentPostgresTierFallbackGeneration(): number {
 // tryPostgresTier is a shared chokepoint across every data source (blocks,
 // health, neurons, ...), so `flagName` (e.g. "METAGRAPH_HEALTH_SOURCE") is
 // the tag -- the one thing that distinguishes which tier actually degraded.
+//
+// THE ROUTE STAYS FLAG-SCOPED AND THE PATH GOES IN THE MESSAGE (#10665).
+// PostHog fingerprints on `route`, so folding the path into it would split one
+// issue into one-per-endpoint and multiply a fingerprint count that the free
+// tier's $exception budget actually binds. But flag-scoped alone is what made
+// #10665 unanswerable: sixteen days of captures that named the tier and never
+// the request, so "which route is degrading" could not be read off the events
+// at all -- and the issue's own title said 502 while every recent event said
+// 503, because both group under the same flag. The path in the message is
+// per-event, which is exactly where that distinction is legible.
 async function capturePostgresTierFallback(
   err: unknown,
   flagName: keyof Env,
@@ -82,6 +93,41 @@ async function capturePostgresTierFallback(
     errorCode: "upstream_unavailable",
   });
 }
+
+/**
+ * The masked path a failure was serving, for the message above.
+ *
+ * Masked with the same function the analytics labels use, so an ss58 or a
+ * block height cannot turn one recurring fault into thousands of distinct
+ * messages. No parse guard: the Request constructor rejects a URL it cannot
+ * parse, so by the time one exists here `request.url` is absolute and valid --
+ * a try/catch would be a branch no test could ever reach.
+ */
+function maskedPath(request: Request): string {
+  return maskRouteParams(new URL(request.url).pathname);
+}
+
+/**
+ * How many times a 5xx is worth asking again.
+ *
+ * ONE RETRY (#10665). A 5xx here is overwhelmingly the service binding failing
+ * to produce a response while the DATA_API Worker is mid-deploy -- the same
+ * transient #10730 fixed one layer over for the Durable Object enqueue path,
+ * and the reason those captures arrive in BURSTS separated by clean days
+ * rather than at a steady rate. Degrading straight to the schema-stable empty
+ * response turns that blip into a confidently wrong answer served to a caller,
+ * which is strictly worse than the extra round trip.
+ *
+ * ONLY 5xx, deliberately. A 4xx is the request being wrong and will be exactly
+ * as wrong the second time; retrying it would double the load on a path that
+ * cannot recover. And the retry is capped at one because a DATA_API that is
+ * genuinely down should degrade quickly rather than hold every request open --
+ * the empty response is still the right destination, just not the first stop.
+ */
+export const POSTGRES_TIER_RETRY_ATTEMPTS = 2;
+
+/** The floor for "the upstream failed", as opposed to "we asked wrongly". */
+const SERVER_ERROR_FLOOR = 500;
 
 // Flags whose "d1" value FORWARDS to DATA_API. "d1" is a legacy token here,
 // not a store: DATA_API's dispatcher for these three routes sits ahead of its
@@ -123,23 +169,42 @@ export async function tryPostgresTier(
     request.method === "HEAD"
       ? new Request(request, { method: "GET" })
       : request;
-  let upstream;
-  try {
-    upstream = await env.DATA_API.fetch(upstreamRequest);
-  } catch (err) {
+  const path = maskedPath(request);
+  // Safe to re-issue: DATA_API is GET-only and this request has been
+  // normalized to GET above, so there is no consumed body to replay.
+  let upstream: Response | undefined;
+  let transportError: unknown = null;
+  for (let attempt = 0; attempt < POSTGRES_TIER_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      upstream = await env.DATA_API.fetch(upstreamRequest);
+      transportError = null;
+    } catch (err) {
+      upstream = undefined;
+      transportError = err;
+    }
+    // A transport failure and a 5xx are the same fault seen from two sides --
+    // the binding could not reach a Worker that could answer -- so both get
+    // the second ask, and anything else (2xx, or a 4xx we will not fix by
+    // asking twice) leaves the loop on the first pass.
+    const retryable =
+      transportError !== null ||
+      (upstream !== undefined && upstream.status >= SERVER_ERROR_FLOOR);
+    if (!retryable) break;
+  }
+  if (upstream === undefined) {
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API fetch failed, degrading to the schema-stable empty response:`,
-      err,
+      `tryPostgresTier(${flagName}): DATA_API fetch failed for ${path}, degrading to the schema-stable empty response:`,
+      transportError,
     );
-    await capturePostgresTierFallback(err, flagName, env);
+    await capturePostgresTierFallback(transportError, flagName, env);
     return markPostgresTierFallback();
   }
   if (!upstream.ok) {
     const err = new Error(
-      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status}`,
+      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status} for ${path}`,
     );
     console.error(
-      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status}, degrading to the schema-stable empty response`,
+      `tryPostgresTier(${flagName}): DATA_API returned ${upstream.status} for ${path}, degrading to the schema-stable empty response`,
     );
     await capturePostgresTierFallback(err, flagName, env);
     return markPostgresTierFallback();

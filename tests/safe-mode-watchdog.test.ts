@@ -84,67 +84,58 @@ describe("SafeMode alerting rule (#8696)", () => {
     }
   });
 
+  // `fetchImpl` now serves the STORAGE read only -- the history half is
+  // `readExtrinsics`, an in-process tier call rather than an HTTP hop (#10765).
+  const storageReads = (result: unknown) =>
+    (async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+        status: 200,
+      })) as unknown as typeof fetch;
+
   test("a quiet chain reports a ran-and-found-nothing tick", async () => {
-    // The measured path. Injectable fetch, because a branch that only runs
-    // against a live chain is a branch nothing verifies.
+    // The measured path. Both reads injectable, because a branch that only
+    // runs against a live chain is a branch nothing verifies.
     const result = await runSafeModeWatchdog(null, {
-      fetchImpl: (async (url: string) =>
-        String(url).includes("/api/v1/extrinsics")
-          ? new Response(
-              JSON.stringify({ ok: true, data: { extrinsics: [] } }),
-              { status: 200 },
-            )
-          : new Response(
-              JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }),
-              {
-                status: 200,
-              },
-            )) as unknown as typeof fetch,
+      fetchImpl: storageReads(null),
+      readExtrinsics: async () => [],
     });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.equal(result.chain_paused, false);
+    assert.equal(result.history_read, true);
   });
 
   test("an ACTIVE pause alerts through the runner", async () => {
     const result = await runSafeModeWatchdog(null, {
-      fetchImpl: (async (url: string) =>
-        String(url).includes("/api/v1/extrinsics")
-          ? new Response(
-              JSON.stringify({ ok: true, data: { extrinsics: [] } }),
-              { status: 200 },
-            )
-          : new Response(
-              JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }),
-              { status: 200 },
-            )) as unknown as typeof fetch,
+      fetchImpl: storageReads("0x1234"),
+      readExtrinsics: async () => [],
     });
     assert.equal(result.alerted, true);
     assert.equal(result.chain_paused, true);
   });
 
-  test("a degraded extrinsics tier is an ERROR, not 'no activity'", async () => {
-    // The false negative this monitor exists to avoid: an ok:false envelope
-    // carries an empty list, which would otherwise read as a clean chain.
+  test("a degraded extrinsics tier is UNREAD, not 'no activity'", async () => {
+    // The false negative this monitor exists to avoid, unchanged in intent and
+    // moved in mechanism (#10765). It used to fail the whole tick, which threw
+    // away the pause check with it; now the history half alone goes null. What
+    // must never happen either way is a degraded tier reading as a clean chain.
     const result = await runSafeModeWatchdog(null, {
-      fetchImpl: (async (url: string) =>
-        String(url).includes("/api/v1/extrinsics")
-          ? new Response(JSON.stringify({ ok: false, data: null }), {
-              status: 200,
-            })
-          : new Response(
-              JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }),
-              {
-                status: 200,
-              },
-            )) as unknown as typeof fetch,
+      fetchImpl: (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+          status: 200,
+        })) as unknown as typeof fetch,
+      readExtrinsics: async () => null,
     });
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, "unreachable");
+    assert.equal(result.history_read, false);
     assert.equal(
-      result.alerted,
-      undefined,
-      "a failed read must not read as quiet",
+      result.succeeded,
+      null,
+      "a failed read must not count zero successes",
+    );
+    assert.equal(
+      result.safe_mode_extrinsics,
+      null,
+      "nor zero extrinsics -- that is an assertion it did not earn",
     );
   });
 
@@ -177,63 +168,95 @@ describe("SafeMode alerting rule (#8696)", () => {
     );
   });
 
-  test("every upstream failure mode reports unreachable, never 'quiet'", async () => {
-    // Each of these is a way the two reads can fail while still returning a
-    // response. All of them must surface as a failed TICK -- a monitor that
-    // reports "no SafeMode activity" because it could not look is worse than
-    // one that reports nothing at all.
+  test("a failed PRIMARY read reports unreachable, never 'quiet'", async () => {
+    // The storage read is the authoritative "are we paused right now" signal.
+    // Without it there is no verdict to give, so both of its failure modes
+    // have to surface as a failed TICK -- a monitor that reports "no SafeMode
+    // activity" because it could not look is worse than one that reports
+    // nothing at all.
     const ok = (body: unknown, status = 200) =>
       new Response(JSON.stringify(body), { status });
-    const rpcOk = { jsonrpc: "2.0", id: 1, result: null };
-    const cases: [string, (url: string) => Response][] = [
-      [
-        "RPC returns a non-200",
-        (url) =>
-          url.includes("/api/v1/extrinsics")
-            ? ok({ ok: true, data: { extrinsics: [] } })
-            : ok({}, 503),
-      ],
+    const cases: [string, () => Response][] = [
+      ["RPC returns a non-200", () => ok({}, 503)],
       [
         "RPC returns a JSON-RPC error",
-        (url) =>
-          url.includes("/api/v1/extrinsics")
-            ? ok({ ok: true, data: { extrinsics: [] } })
-            : ok({ jsonrpc: "2.0", id: 1, error: { code: -32000 } }),
-      ],
-      [
-        "the extrinsics route returns a non-200",
-        (url) => (url.includes("/api/v1/extrinsics") ? ok({}, 502) : ok(rpcOk)),
+        () => ok({ jsonrpc: "2.0", id: 1, error: { code: -32000 } }),
       ],
     ];
     for (const [name, impl] of cases) {
       const result = await runSafeModeWatchdog(null, {
-        fetchImpl: (async (url: string) =>
-          impl(String(url))) as unknown as typeof fetch,
+        fetchImpl: (async () => impl()) as unknown as typeof fetch,
+        readExtrinsics: async () => [],
       });
       assert.equal(result.ok, false, name);
       assert.equal(result.reason, "unreachable", name);
     }
   });
 
-  test("an ok envelope with no extrinsics array is treated as empty, not as a crash", async () => {
-    // `data.extrinsics` absent on an ok:true envelope is a shape question, not
-    // a trust question -- the envelope asserted success, so an absent list is
-    // an empty list.
+  // #10765. THE REGRESSION THIS FILE EXISTS TO HOLD FROM NOW ON. For a week
+  // every hourly tick returned unreachable because the history read 522'd on a
+  // self-fetch, and the pause check -- which had SUCCEEDED on every one of
+  // those ticks -- was discarded with it. A chain pause would not have been
+  // reported. The two halves fail independently now.
+  test("a failed history read keeps the pause verdict", async () => {
+    const paused = (async () =>
+      new Response(
+        JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }),
+        {
+          status: 200,
+        },
+      )) as unknown as typeof fetch;
+    for (const [name, readExtrinsics] of [
+      ["the tier declined", async () => null],
+      [
+        "the reader threw",
+        async () => {
+          throw new Error("r2 sql: HTTP 500");
+        },
+      ],
+    ] as const) {
+      const result = await runSafeModeWatchdog(null, {
+        fetchImpl: paused,
+        readExtrinsics: readExtrinsics as never,
+      });
+      assert.equal(result.ok, true, name);
+      assert.equal(result.alerted, true, `${name}: the pause still alerts`);
+      assert.equal(result.chain_paused, true, name);
+      assert.equal(result.history_read, false, name);
+    }
+  });
+
+  test("history that could not be read counts nothing, rather than zero", async () => {
+    // `succeeded: 0` from a monitor that failed to look asserts that no
+    // SafeMode call has ever landed. Null is the only honest value.
     const result = await runSafeModeWatchdog(null, {
-      fetchImpl: (async (url: string) =>
-        String(url).includes("/api/v1/extrinsics")
-          ? new Response(JSON.stringify({ ok: true, data: {} }), {
-              status: 200,
-            })
-          : new Response(
-              JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }),
-              {
-                status: 200,
-              },
-            )) as unknown as typeof fetch,
+      fetchImpl: (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+          status: 200,
+        })) as unknown as typeof fetch,
+      readExtrinsics: async () => null,
     });
     assert.equal(result.ok, true);
+    assert.equal(result.history_read, false);
+    assert.equal(result.safe_mode_extrinsics, null);
+    assert.equal(result.succeeded, null);
+    assert.equal(result.known_failed, null);
+  });
+
+  test("an empty history IS an answer, and counts zero", async () => {
+    // The distinction the null case above turns on: the tier answering "the
+    // decoded range holds no SafeMode call" is a real reading, not a decline.
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+          status: 200,
+        })) as unknown as typeof fetch,
+      readExtrinsics: async () => [],
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.history_read, true);
     assert.equal(result.safe_mode_extrinsics, 0);
+    assert.equal(result.succeeded, 0);
   });
 
   test("a non-Error thrown upstream still yields a readable detail", async () => {
@@ -268,29 +291,24 @@ describe("the watchdog's own reporting", () => {
     };
   }
 
-  const quietChain = (async (url: string) =>
-    String(url).includes("/api/v1/extrinsics")
-      ? new Response(JSON.stringify({ ok: true, data: { extrinsics: [] } }), {
-          status: 200,
-        })
-      : new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
-          status: 200,
-        })) as unknown as typeof fetch;
+  const quietChain = (async () =>
+    new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+      status: 200,
+    })) as unknown as typeof fetch;
 
-  const pausedChain = (async (url: string) =>
-    String(url).includes("/api/v1/extrinsics")
-      ? new Response(JSON.stringify({ ok: true, data: { extrinsics: [] } }), {
-          status: 200,
-        })
-      : new Response(
-          JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }),
-          { status: 200 },
-        )) as unknown as typeof fetch;
+  const pausedChain = (async () =>
+    new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }), {
+      status: 200,
+    })) as unknown as typeof fetch;
+
+  /** The history half answering normally: no SafeMode call in range. */
+  const quietHistory = async () => [];
 
   test("an ACTIVE pause is reported, not merely returned", async () => {
     const spy = captureSpy();
     const result = await runSafeModeWatchdog(null, {
       fetchImpl: pausedChain,
+      readExtrinsics: quietHistory,
       recordExceptionEvent: spy.recordExceptionEvent,
     });
     assert.equal(result.alerted, true);
@@ -304,10 +322,44 @@ describe("the watchdog's own reporting", () => {
     const spy = captureSpy();
     const result = await runSafeModeWatchdog(null, {
       fetchImpl: quietChain,
+      readExtrinsics: quietHistory,
       recordExceptionEvent: spy.recordExceptionEvent,
     });
     assert.equal(result.alerted, false);
     assert.deepEqual(spy.captures, [], "a quiet chain pages no one");
+  });
+
+  test("a blind history half reports on the MONITOR's channel, not the chain's", async () => {
+    // It has to be reported -- "the history read has been failing for a week"
+    // is precisely the fact that went unnoticed while the 522 ran (#10765).
+    // But it carries watchdog_unreachable, not safe_mode_active: nothing about
+    // the chain was observed, and filing it as a chain event would be a false
+    // statement on the alert channel that exists for real pauses.
+    const spy = captureSpy();
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: quietChain,
+      readExtrinsics: async () => null,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.alerted, false, "a blind half is not a chain alert");
+    assert.equal(spy.captures.length, 1);
+    assert.equal(spy.captures[0].errorCode, "watchdog_unreachable");
+    assert.equal(spy.captures[0].route, "watchdog:safe-mode");
+  });
+
+  test("a pause AND a blind history report on both channels", async () => {
+    const spy = captureSpy();
+    await runSafeModeWatchdog(null, {
+      fetchImpl: pausedChain,
+      readExtrinsics: async () => null,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.deepEqual(
+      spy.captures.map((c) => c.errorCode).sort(),
+      ["safe_mode_active", "watchdog_unreachable"],
+      "neither report may swallow the other",
+    );
   });
 
   test("an unreachable tick reports itself", async () => {
@@ -330,6 +382,7 @@ describe("the watchdog's own reporting", () => {
   test("a capture that fails never breaks the tick", async () => {
     const result = await runSafeModeWatchdog(null, {
       fetchImpl: pausedChain,
+      readExtrinsics: quietHistory,
       recordExceptionEvent: (async () => {
         throw new Error("posthog unreachable");
       }) as never,
@@ -337,4 +390,53 @@ describe("the watchdog's own reporting", () => {
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
+});
+
+// ---- the rule's third state, at the pure-function level (#10765) ----
+describe("history that could not be read is a state of its own", () => {
+  test("null extrinsics never alert, and never assert a count", () => {
+    const v = evaluateSafeMode({ enteredUntil: null, extrinsics: null });
+    assert.deepEqual(v.reasons, [], "a blind read is not a chain event");
+    assert.equal(v.summary.history_read, false);
+    assert.equal(v.summary.safe_mode_extrinsics, null);
+    assert.equal(v.summary.succeeded, null);
+    assert.equal(v.summary.known_failed, null);
+  });
+
+  test("the pause verdict is computed from storage alone", () => {
+    // The regression: for a week the pause check succeeded on every tick and
+    // was discarded because the history read threw beside it.
+    const v = evaluateSafeMode({
+      enteredUntil: "0x40e2010000000000",
+      extrinsics: null,
+    });
+    assert.equal(v.paused, true);
+    assert.equal(v.reasons.length, 1);
+    assert.match(v.reasons[0], /SafeMode is ACTIVE/);
+  });
+
+  test("an empty list still reads as a real, counted answer", () => {
+    const v = evaluateSafeMode({ enteredUntil: null, extrinsics: [] });
+    assert.equal(v.summary.history_read, true);
+    assert.equal(v.summary.safe_mode_extrinsics, 0);
+    assert.equal(v.summary.succeeded, 0);
+    assert.deepEqual(v.summary.known_failed, []);
+  });
+});
+
+test("a capture that fails on the BLIND-HALF report never breaks the tick", async () => {
+  // Same contract as the pause-report capture beside it: PostHog being
+  // unreachable must not turn one missed report into a failed tick.
+  const result = await runSafeModeWatchdog(null, {
+    fetchImpl: (async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+        status: 200,
+      })) as unknown as typeof fetch,
+    readExtrinsics: async () => null,
+    recordExceptionEvent: (async () => {
+      throw new Error("posthog unreachable");
+    }) as never,
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.history_read, false);
 });
