@@ -65,6 +65,37 @@ export interface ShapeDuplicate {
   sites: ShapeSite[];
 }
 
+/**
+ * How many of this literal's fields are DERIVED rather than declared.
+ *
+ * A derivation reads its constraint from somewhere else -- `Other.shape.field`,
+ * or a spread of a shared block -- so it adds no second opinion about what the
+ * field is. Only hand-written values count toward the duplicate threshold.
+ */
+function derivedKeyCount(literal: ts.ObjectLiteralExpression): number {
+  let derived = 0;
+  for (const property of literal.properties) {
+    if (!ts.isPropertyAssignment(property)) continue;
+    let expression: ts.Expression = property.initializer;
+    // Peel the `.optional()` / `.nullable()` / `.describe(...)` a derivation
+    // may carry: narrowing a borrowed field is still borrowing it.
+    while (
+      ts.isCallExpression(expression) &&
+      ts.isPropertyAccessExpression(expression.expression)
+    ) {
+      expression = expression.expression.expression;
+    }
+    if (
+      ts.isPropertyAccessExpression(expression) &&
+      ts.isPropertyAccessExpression(expression.expression) &&
+      expression.expression.name.text === "shape"
+    ) {
+      derived += 1;
+    }
+  }
+  return derived;
+}
+
 /** Every `z.object({ … })` literal under the given files. */
 export function findObjectShapes(files: readonly string[]): ShapeSite[] {
   const out: ShapeSite[] = [];
@@ -94,7 +125,15 @@ export function findObjectShapes(files: readonly string[]): ShapeSite[] {
             ? [property.name.text]
             : [],
         );
-        if (keys.length >= MIN_KEYS) {
+        // A field DERIVED from another schema is not a second declaration of
+        // it. `netuid: RouteQuery_x.shape.netuid` restates a name, not a
+        // vocabulary -- the constraint still has exactly one home, and a
+        // rename there is still a compile error here. Counting those the same
+        // as a hand-written `netuid: z.int().min(0)` reported the #10064 idiom
+        // -- MCP inputs built field by field off their route's schema -- as
+        // the very duplication it exists to prevent.
+        const declared = keys.length - derivedKeyCount(node.arguments[0]!);
+        if (keys.length >= MIN_KEYS && declared >= MIN_KEYS) {
           out.push({
             file,
             line:
