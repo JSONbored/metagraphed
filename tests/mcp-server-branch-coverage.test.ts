@@ -1221,10 +1221,16 @@ describe("resolveNetuid — subnets index array fallback", () => {
 });
 
 // ── extra targeted arms ──────────────────────────────────────────────────────
-describe("AI tools — runAi re-throws a non-input AI fault", () => {
-  test("semantic_search wraps a Vectorize rejection as an internal error", async () => {
-    // semanticSearch rejects with a plain (non-aiInput) Error → runAi re-throws
-    // → callTool's internal-error path (sanitized isError, code internal_error).
+describe("AI tools — runAi classifies a non-input AI fault", () => {
+  // CHANGED DELIBERATELY (#10641). This used to assert `internal_error`, which
+  // was the behaviour and was the bug: a Vectorize or Workers AI rejection
+  // reached the agent as "The tool failed to complete", indistinguishable from
+  // a bug in our code, so it neither retried nor took the keyword fallback that
+  // `ai_unavailable` exists to point at.
+  //
+  // The property this test was really protecting — the upstream message never
+  // leaks to the caller — is unchanged and still asserted below.
+  test("semantic_search reports a Vectorize rejection as ai_unavailable", async () => {
     const env = aiEnvWithMatches([1], {
       vectorError: new Error("vectorize exploded"),
     });
@@ -1232,9 +1238,15 @@ describe("AI tools — runAi re-throws a non-input AI fault", () => {
     assert.equal(res.body.result.isError, true);
     assert.equal(
       res.body.result.structuredContent.error.code,
-      "internal_error",
+      "ai_unavailable",
     );
+    // Still sanitized: the upstream's own words never reach an unauthenticated
+    // caller, only the classification and the fallback advice.
     assert.ok(!JSON.stringify(res.body).includes("vectorize exploded"));
+    assert.match(
+      res.body.result.structuredContent.error.message,
+      /search_subnets/,
+    );
   });
 });
 

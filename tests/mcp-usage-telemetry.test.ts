@@ -654,9 +654,14 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
       await Promise.all(executionCtx.scheduled);
 
       assert.equal(payload.result.isError, true);
+      // #10641 changed the CODE, not the capture. An upstream AI failure is
+      // now classified `ai_unavailable` so the agent can fall back, and this
+      // test is what proves classifying it did not cost us the fault: the
+      // $exception below still carries the original error, threaded through
+      // aiUnavailableToolError's `cause`.
       assert.equal(
         payload.result.structuredContent.error.code,
-        "internal_error",
+        "ai_unavailable",
       );
       // The PUBLIC tool response stays sanitized (no internal message) --
       // already covered by tests/mcp-server-branch-coverage.test.ts. The
@@ -666,7 +671,7 @@ describe("MCP dispatchTool exception capture ($exception)", () => {
       const exceptionPost = posted.find((p) => p.body.event === "$exception");
       assert.ok(exceptionPost, "$exception should be posted");
       assert.equal(exceptionPost.body.properties.mcp_tool, "semantic_search");
-      assert.equal(exceptionPost.body.properties.error_code, "internal_error");
+      assert.equal(exceptionPost.body.properties.error_code, "ai_unavailable");
       assert.equal(
         exceptionPost.body.properties.$exception_list[0].value,
         "vectorize exploded",
