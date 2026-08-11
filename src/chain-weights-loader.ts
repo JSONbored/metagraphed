@@ -47,7 +47,6 @@ export async function loadChainWeightsColdTier(
 ): Promise<ReturnType<typeof buildChainWeights> | null> {
   const rollup = await loadChainEventRollup(env, CHAIN_WEIGHTS_ROLLUP, {
     windowDays: (ANALYTICS_WINDOW_DAYS as Record<string, number>)[window] ?? 7,
-    limit,
     query,
   });
   if (!rollup) return null;

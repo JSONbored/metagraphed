@@ -1,4 +1,10 @@
 import assert from "node:assert/strict";
+import {
+  archiveEnv,
+  forbiddenDataApi,
+  lakehouse,
+  LAKEHOUSE_ENV,
+} from "./helpers/cold-tier-env.ts";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 
@@ -49,20 +55,6 @@ import {
 import { handleRequest } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
-import { buildChainStakeMoves } from "../src/chain-stake-moves.ts";
-import { buildChainStakeTransfers } from "../src/chain-stake-transfers.ts";
-import { buildChainWeightSetters } from "../src/chain-weight-setters.ts";
-import { buildChainAxonRemovals } from "../src/chain-axon-removals.ts";
-import { buildChainDeregistrations } from "../src/chain-deregistrations.ts";
-import { buildChainServing } from "../src/chain-serving.ts";
-import { buildChainPrometheus } from "../src/chain-prometheus.ts";
-import { buildChainRegistrations } from "../src/chain-registrations.ts";
-import { buildChainStakeFlow } from "../src/chain-stake-flow.ts";
-import { buildChainAlphaVolume } from "../src/chain-alpha-volume.ts";
-import { buildChainWeights } from "../src/chain-weights.ts";
-import { buildChainTransferPairs } from "../src/chain-transfer-pairs.ts";
-import { buildChainTransfers } from "../src/chain-transfers.ts";
-import { buildChainCalls } from "../src/chain-analytics.ts";
 import { buildStakeFlow } from "../src/stake-flow.ts";
 import { buildAccountStakeFlow } from "../src/account-stake-flow.ts";
 import { buildAccountStakeMoves } from "../src/account-stake-moves.ts";
@@ -107,7 +99,7 @@ import {
   DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
-import type { AnyFn, Row } from "./row-type.ts";
+import type { Row } from "./row-type.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -5741,18 +5733,13 @@ describe("MCP get_subnet_snapshot", () => {
                 ],
               });
             }
-            if (url.pathname === "/api/v1/subnets/7/events") {
-              assert.equal(url.searchParams.get("limit"), "10");
-              return Response.json({
-                schema_version: 1,
-                netuid: 7,
-                event_count: 1,
-                limit: 10,
-                offset: 0,
-                next_cursor: null,
-                events: [{ kind: "Transfer" }],
-              });
-            }
+            // /subnets/7/events is deliberately NOT served here. Four of these
+            // five views still go through tryPostgresTier on a flag that
+            // FORWARDS (hyperparams and neurons are both in
+            // DATA_API_FORWARD_FLAGS); the events view's flag is retired, so a
+            // path served here would be a path production never requests. The
+            // events fixture rides on the lakehouse instead -- see
+            // subnetSnapshotEventsLake below.
             throw new Error(`unexpected DATA_API path: ${url.pathname}`);
           },
         },
@@ -5760,17 +5747,56 @@ describe("MCP get_subnet_snapshot", () => {
     };
   }
 
-  test("composes all five live Postgres-tier views under their named keys", async () => {
-    const { env } = subnetSnapshotPostgresEnv();
-    const res = await callTool("get_subnet_snapshot", { netuid: 7 }, { env });
-    assert.equal(res.body.result.isError, false);
-    const out = res.body.result.structuredContent;
-    assert.equal(out.netuid, 7);
-    assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
-    assert.equal(out.concentration.entity_count, 2);
-    assert.equal(out.performance.incentive, 0.5);
-    assert.equal(out.top_validators.validator_count, 3);
-    assert.equal(out.recent_events.events[0].kind, "Transfer");
+  /** One account_events row for the snapshot's `recent_events` view, which reads
+   * the lakehouse (its own tier flag is retired) rather than the service
+   * binding the other four views still forward to. */
+  function subnetSnapshotEventsLake() {
+    return lakehouse([
+      {
+        block_number: 4_200_000,
+        event_index: 0,
+        extrinsic_index: 1,
+        event_kind: "Transfer",
+        hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        coldkey: null,
+        netuid: 7,
+        uid: null,
+        amount_tao: 1.5,
+        alpha_amount: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+  }
+
+  test("composes all five views, from the two transports that answer them", async () => {
+    // WAS "composes all five live Postgres-tier views under their named keys",
+    // with all five served by one DATA_API double. Only FOUR of them can be:
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so `recent_events` came from
+    // the composer's cold rung and the fifth mocked path was never requested.
+    const lake = subnetSnapshotEventsLake();
+    try {
+      const { env } = subnetSnapshotPostgresEnv();
+      const res = await callTool(
+        "get_subnet_snapshot",
+        { netuid: 7 },
+        { env: { ...env, ...LAKEHOUSE_ENV } },
+      );
+      assert.equal(res.body.result.isError, false);
+      const out = res.body.result.structuredContent;
+      assert.equal(out.netuid, 7);
+      assert.equal(out.hyperparameters.hyperparameters.tempo, 99);
+      assert.equal(out.concentration.entity_count, 2);
+      assert.equal(out.performance.incentive, 0.5);
+      assert.equal(out.top_validators.validator_count, 3);
+      assert.equal(
+        out.recent_events.events[0].event_kind,
+        "Transfer",
+        "the events view must come from the lakehouse, not a zeroed card",
+      );
+      assert.match(lake.queries[0], /netuid = 7/);
+    } finally {
+      lake.restore();
+    }
   });
 
   test("top_validators_limit slices the validator list and recomputes validator_count", async () => {
@@ -6005,56 +6031,65 @@ describe("MCP get_chain_fees", () => {
   // live D1 read. The COALESCE/median SQL-shape assertions this used to
   // verify against D1 now apply to Postgres's own equivalent query in
   // workers/data-api.ts's chain-fees route (its own dedicated coverage).
-  test("returns daily series and top payers from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 1,
-            daily: [
-              {
-                day: new Date().toISOString().slice(0, 10),
-                extrinsic_count: 20,
-                signed_extrinsic_count: 14,
-                total_fee_tao: 8,
-                avg_fee_tao: 0.4,
-                median_fee_tao: 0.4,
-                total_tip_tao: 2,
-                avg_tip_tao: 0.1,
-                median_tip_tao: 0.05,
-              },
-            ],
-            top_fee_payers: [
-              {
-                signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                total_fee_tao: 4,
-                total_tip_tao: 1,
-                extrinsic_count: 6,
-              },
-            ],
-          }),
+  test("derives the daily series and top payers from the projection's rows", async () => {
+    // WAS a DATA_API double returning the FINISHED card -- avg_fee_tao,
+    // median_fee_tao and all -- which the tool then handed straight back. Every
+    // derived field asserted itself. METAGRAPH_EXTRINSICS_SOURCE forwards
+    // nothing, so the card was never fetched either.
+    //
+    // The lane stores three row sets, and the medians ride SEPARATELY from the
+    // daily aggregate because a median is not summable. So: 20 extrinsics of
+    // which 14 signed, 8 TAO of fees -> avg 8/14, and the median comes from the
+    // median_rows join rather than from anything in the daily row.
+    const day = new Date().toISOString().slice(0, 10);
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: [
+            {
+              day,
+              extrinsic_count: 20,
+              signed_extrinsic_count: 14,
+              total_fee_tao: 8,
+              total_tip_tao: 2,
+            },
+          ],
+          median_rows: [{ day, median_fee_tao: 0.4, median_tip_tao: 0.05 }],
+          payer_rows: [
+            {
+              signer: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+              total_fee_tao: 4,
+              total_tip_tao: 1,
+              extrinsic_count: 6,
+            },
+          ],
+        },
       },
-    };
+    });
     const res = await callTool(
       "get_chain_fees",
       { window: "7d", limit: 25 },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
     assert.equal(out.daily[0].extrinsic_count, 20);
     assert.equal(out.daily[0].signed_extrinsic_count, 14);
-    assert.equal(out.daily[0].median_fee_tao, 0.4);
+    assert.equal(out.daily[0].avg_fee_tao, 0.571428571, "8 / 14, derived");
+    assert.equal(out.daily[0].median_fee_tao, 0.4, "from median_rows");
     assert.equal(out.daily[0].median_tip_tao, 0.05);
     assert.equal(out.top_fee_payers[0].total_fee_tao, 4);
   });
 
   test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
+    // The lane can store a boundary day the window no longer covers (its own
+    // cutoff is a timestamp, the rows are dates), so the trim has to happen on
+    // the way out or a "7d" card publishes eight days.
     const eightDays = [
       "2026-07-26",
       "2026-07-25",
@@ -6065,29 +6100,27 @@ describe("MCP get_chain_fees", () => {
       "2026-07-20",
       "2026-07-19",
     ];
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            daily: eightDays.map((day) => ({
-              day,
-              extrinsic_count: 1,
-              total_fee_tao: 1,
-              total_tip_tao: 0,
-            })),
-            top_fee_payers: [],
-          }),
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: eightDays.map((day) => ({
+            day,
+            extrinsic_count: 1,
+            signed_extrinsic_count: 1,
+            total_fee_tao: 1,
+            total_tip_tao: 0,
+          })),
+          median_rows: [],
+          payer_rows: [],
+        },
       },
-    };
+    });
     const res = await callTool(
       "get_chain_fees",
       { window: "7d", limit: 25 },
-      { env },
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.day_count, 7);
@@ -6096,32 +6129,50 @@ describe("MCP get_chain_fees", () => {
     assert.ok(!out.daily.some((x: Row) => x.day === "2026-07-19"));
   });
 
-  test("forwards call_module on the Postgres-tier request", async () => {
-    let requestedUrl;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          requestedUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: null,
-            day_count: 0,
-            daily: [],
-            top_fee_payers: [],
-          });
+  test("a call_module scope declines rather than serving the unfiltered series", async () => {
+    // WAS an assertion on the `call_module=Balances` query param the tier
+    // request carried. The lane precomputes NO pallet scope, so the reader
+    // refuses the scope before it reads the bucket -- asserted as the absence of
+    // the read, because an in-memory filter over the unfiltered series would
+    // still produce a plausible-looking card.
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          newest_observed: 1_750_000_000_000,
+          daily_rows: [
+            {
+              day: "2026-07-26",
+              extrinsic_count: 9,
+              signed_extrinsic_count: 9,
+              total_fee_tao: 3,
+              total_tip_tao: 0,
+            },
+          ],
+          median_rows: [],
+          payer_rows: [],
         },
       },
-    };
-    await callTool(
+    });
+    const res = await callTool(
       "get_chain_fees",
       { window: "30d", call_module: "Balances", limit: 10 },
-      { env },
+      { env: archive as unknown as Row },
     );
-    assert.equal(requestedUrl!.searchParams.get("call_module"), "Balances");
-    assert.equal(requestedUrl!.searchParams.get("window"), "30d");
-    assert.equal(requestedUrl!.searchParams.get("limit"), "10");
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.equal(out.window, "30d", "the label is still the caller's");
+    assert.equal(out.day_count, 0);
+    assert.deepEqual(out.daily, []);
+
+    // The SAME projection answers the unscoped question, so the decline is the
+    // scope and not a broken fixture.
+    const open = await callTool(
+      "get_chain_fees",
+      { window: "30d", limit: 10 },
+      { env: archive as unknown as Row },
+    );
+    assert.equal(open.body.result.structuredContent.day_count, 1);
   });
 
   test("rejects an invalid window", async () => {
@@ -6156,6 +6207,10 @@ describe("MCP get_chain_registrations", () => {
   // goes tryPostgresTier -> buildChainRegistrations([], {...}) on any
   // miss/outage. This mocks the Postgres tier by running the same pure
   // builder the real Postgres route would.
+  // The #9146 chain-registrations lane, which stores the per-subnet rows and the
+  // network aggregate the builder needs -- the aggregate SEPARATELY, because one
+  // hotkey registering on three subnets is three per-subnet rows and one
+  // network-wide registrant.
   function registrationsPostgresEnv({
     network = { distinct_registrants: 7, newest_observed: 1_700_000_000_000 },
     subnets = [
@@ -6163,24 +6218,12 @@ describe("MCP get_chain_registrations", () => {
       { netuid: 2, registrations: 4, distinct_registrants: 4 },
     ],
   } = {}) {
-    return {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          const url = new URL(request.url);
-          const window = url.searchParams.get("window") || "7d";
-          const limitParam = url.searchParams.get("limit");
-          const limit = limitParam != null ? Number(limitParam) : undefined;
-          return Response.json(
-            buildChainRegistrations(subnets, {
-              window,
-              limit,
-              networkDistinct: network,
-            }),
-          );
-        },
-      },
-    };
+    const window = { rows: subnets, network };
+    return archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-registrations.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    ) as unknown as Row;
   }
 
   test("returns the per-subnet leaderboard and network rollup from the Postgres tier", async () => {
@@ -6435,26 +6478,18 @@ describe("MCP get_chain_transfers", () => {
   // running the same pure builder over the caller's own window query param,
   // so the mocked response is byte-identical to what production would
   // actually serve.
+  // The #9146 chain-transfers lane. `totals` rides separately from the sender
+  // and receiver lists for the same reason it does on every other lane here: a
+  // unique-address count does not sum across a capped page, and the top-sender
+  // SHARE needs the window's own volume as its denominator.
   function chainTransfersPostgresEnv({ totals, senders, receivers }: Row) {
+    const window = { totals, senders, receivers };
     return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            return Response.json(
-              buildChainTransfers({
-                window,
-                observedAt: null,
-                totals,
-                senders,
-                receivers,
-              }),
-            );
-          },
-        },
-      },
+      env: archiveEnv((key: string) =>
+        key === "metagraph/projections/chain-transfers.json"
+          ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+          : null,
+      ) as unknown as Row,
     };
   }
 
@@ -7714,44 +7749,49 @@ describe("MCP get_network_activity", () => {
   // retired (#4772) and the tables are dropped in production, so
   // loadNetworkActivity (the D1-querying loader) is gone -- the tool now
   // goes tryPostgresTier -> buildChainActivity({...}) on any miss/outage.
-  test("merges extrinsics + blocks tiers from the Postgres tier", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 1,
-            days: [
-              {
-                day: "2026-06-25",
-                block_count: 7200,
-                extrinsic_count: 100,
-                event_count: 15000,
-                successful_extrinsics: 99,
-                success_rate: 0.99,
-                unique_signers: 40,
-              },
-            ],
-          }),
-      },
+  test("merges the extrinsic and block row sets into one day series", async () => {
+    // WAS a DATA_API double returning the finished `days` array, success_rate
+    // included -- the merge and the rate asserted themselves, over a request
+    // METAGRAPH_EXTRINSICS_SOURCE never made.
+    //
+    // The lane stores TWO row sets, from two tables: extrinsic counts and block
+    // counts, keyed by day. The merge is the thing under test, and success_rate
+    // is derived from the extrinsic side alone (99/100).
+    const tier = forbiddenDataApi();
+    const window = {
+      newest_observed: 1_750_000_000_000,
+      extrinsic_rows: [
+        {
+          day: "2026-06-25",
+          extrinsic_count: 100,
+          successful_extrinsics: 99,
+          unique_signers: 40,
+        },
+      ],
+      block_rows: [
+        { day: "2026-06-25", block_count: 7200, event_count: 15000 },
+      ],
     };
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-activity.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    );
     const res = await callTool(
       "get_network_activity",
       { window: "7d" },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
     assert.equal(out.window, "7d");
     assert.equal(out.day_count, 1);
-    assert.equal(out.days[0].success_rate, 0.99);
-    assert.equal(out.days[0].block_count, 7200);
-    assert.equal(out.days[0].unique_signers, 40);
+    assert.equal(out.days[0].block_count, 7200, "from the block rows");
+    assert.equal(out.days[0].unique_signers, 40, "from the extrinsic rows");
+    assert.equal(out.days[0].success_rate, 0.99, "99 / 100, derived");
   });
 
-  test("trims an 8-day Postgres-tier series to the requested 7d window (#8421)", async () => {
+  test("trims an 8-day series to the requested 7d window (#8421)", async () => {
     const eightDays = [
       "2026-07-26",
       "2026-07-25",
@@ -7762,31 +7802,29 @@ describe("MCP get_network_activity", () => {
       "2026-07-20",
       "2026-07-19",
     ];
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            days: eightDays.map((day) => ({
-              day,
-              block_count: 1,
-              extrinsic_count: 1,
-              event_count: 1,
-              successful_extrinsics: 1,
-              success_rate: 1,
-              unique_signers: 1,
-            })),
-          }),
-      },
+    const window = {
+      newest_observed: 1_750_000_000_000,
+      extrinsic_rows: eightDays.map((day) => ({
+        day,
+        extrinsic_count: 1,
+        successful_extrinsics: 1,
+        unique_signers: 1,
+      })),
+      block_rows: eightDays.map((day) => ({
+        day,
+        block_count: 1,
+        event_count: 1,
+      })),
     };
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-activity.json"
+        ? { schema_version: 1, windows: { "7d": window, "30d": window } }
+        : null,
+    );
     const res = await callTool(
       "get_network_activity",
       { window: "7d" },
-      { env },
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.day_count, 7);
@@ -11883,21 +11921,32 @@ describe("MCP economics + metagraph data tools", () => {
   describe("degraded-tier marker (#9120)", () => {
     // Tier flags on with no DATA_API bound: every tier read degrades.
     //
-    // METAGRAPH_BLOCKS_SOURCE is deliberately NOT here: it is retired, so the
-    // blocks tools read no tier and have no tier miss to mark (#10190). Listing
-    // it would assert a marker on a read that cannot happen.
+    // ONLY THE FLAGS THAT STILL FORWARD. The marker fires when a call advances
+    // tryPostgresTier's fallback generation, so a tool that reads no tier can
+    // never carry it -- and after #10190's sweep that is most of them.
+    // DATA_API_FORWARD_FLAGS is the whole surviving set: NEURONS,
+    // SUBNET_HYPERPARAMS and ACCOUNT_IDENTITY. METAGRAPH_EXTRINSICS_SOURCE and
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE were here and are gone with the reads they
+    // gated; listing a flag whose call sites are deleted asserts a marker on
+    // something that cannot happen, which is how this test came to pass over
+    // two tools that never consulted a tier at all.
     const degradedEnv = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
       METAGRAPH_NEURONS_SOURCE: "postgres",
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+      METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
     };
 
     test("a tier miss is marked, whichever tool it happened in", async () => {
+      // One tool per surviving flag, so "whichever tool" still means what it
+      // says: the marker lives at the dispatch chokepoint, not in a handler.
       const unmarked: string[] = [];
       for (const [name, args] of [
         ["get_subnet_metagraph", { netuid: 7 }],
-        ["get_chain_transfers", { window: "7d" }],
-        ["get_chain_calls", { window: "7d" }],
+        ["get_subnet_hyperparams", { netuid: 7 }],
+        [
+          "get_account_identity",
+          { ss58: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY" },
+        ],
       ] as [string, Row][]) {
         const res = await callTool(name, args, { env: degradedEnv });
         const out = res.body.result.structuredContent as Row;
@@ -12676,11 +12725,7 @@ describe("MCP economics + metagraph data tools", () => {
   // buildFn ignores the unused networkDistinct arg for this tool, which
   // computes its network rollup straight off the row list).
   function chainStakeFlowEnv(rows: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeFlow,
-      null as unknown as Row,
-      rows,
-    );
+    return projectionEnv("chain-stake-flow", () => ({ rows }));
   }
 
   test("get_chain_stake_flow returns schema-stable zeros on cold D1", async () => {
@@ -12785,11 +12830,15 @@ describe("MCP economics + metagraph data tools", () => {
   // chainAccountEventsPostgresEnv helper (this builder ignores the unused
   // window/networkDistinct options — fixed 24h window, own row-derived rollup).
   function chainAlphaVolumeEnv(rows: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainAlphaVolume,
-      null as unknown as Row,
-      rows,
-    );
+    // The one lane with a single fixed window (no ?window= param), stored under
+    // "24h" so the envelope matches its siblings.
+    return {
+      env: archiveEnv((asked: string) =>
+        asked === "metagraph/projections/chain-alpha-volume.json"
+          ? { schema_version: 1, windows: { "24h": { rows } } }
+          : null,
+      ) as unknown as Row,
+    };
   }
 
   test("get_chain_alpha_volume returns schema-stable zeros on cold D1", async () => {
@@ -12899,8 +12948,24 @@ describe("MCP economics + metagraph data tools", () => {
   // on any miss/outage, never a live D1 read. Reuses the shared
   // chainAccountEventsPostgresEnv helper -- same shape as
   // get_chain_stake_moves' Postgres-tier test above.
+  // The three rollup lanes read the LAKEHOUSE, not a projection: a per-netuid
+  // GROUP BY is ~129 rows, small enough to serve at request time, so
+  // loadChainEventRollup issues three queries per call -- the grouped page, the
+  // ungrouped participant count, and the window's subnet count. Answered by
+  // shape rather than by order: they run in one Promise.all.
+  function chainEventRollupEnv(network: Row, subnets: Row[]) {
+    const lake = lakehouse((sql: string) =>
+      sql.includes("AS subnet_count")
+        ? [{ subnet_count: subnets.length }]
+        : sql.includes("ORDER BY")
+          ? subnets
+          : [network],
+    );
+    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
+  }
+
   function chainWeightsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(buildChainWeights, network, subnets);
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_weights returns schema-stable zeros on cold D1", async () => {
@@ -12979,60 +13044,64 @@ describe("MCP economics + metagraph data tools", () => {
     assertValid(validate, res.body.result.structuredContent);
   });
 
-  // D1 fully eliminated (2026-07-16): account_events' D1 write path is
-  // retired (#4772) and the table is dropped in production, so these tools'
-  // D1-querying loaders are gone -- they now go tryPostgresTier ->
-  // buildX([], ...) on any miss/outage. This mocks the Postgres tier by
-  // running the SAME pure builder the real Postgres route
-  // (workers/data-api.ts) would, over the caller's own window/limit query
-  // params, so the mocked response is byte-identical to what production
-  // would actually serve.
-  function chainAccountEventsPostgresEnv(
-    buildFn: AnyFn,
-    networkDistinct: Row,
-    subnetRows: Row[],
-  ) {
+  // WAS chainAccountEventsPostgresEnv: a DATA_API double that ran the SAME pure
+  // builder the tool runs, behind METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres".
+  // Two things were wrong with it. That flag reads "retired" in wrangler.jsonc
+  // and is absent from DATA_API_FORWARD_FLAGS, so the binding was never asked --
+  // every one of these tests was reading the empty fallback. And had it been
+  // asked, running the builder to check the builder proves only that it is
+  // deterministic.
+  //
+  // What answers now is the #9146 projection lane: an R2 object per lane, one
+  // `windows` entry per label, holding data-api's own aggregate rows verbatim,
+  // handed to that same builder by a reader that validates the envelope and
+  // DECLINES on anything else. So the fixture is the artifact, and the assertions
+  // below are unchanged -- they were always about the builder's contract, and now
+  // they reach it through the transport production reads.
+  //
+  // BOTH LABELS, because the lane writes both: every one of these routes offers
+  // {7d, 30d} and the reader refuses to answer one window's question with
+  // another's rows, so a single-label fixture would decline for half the tests
+  // here and pass for the wrong reason.
+  function projectionEnv(key: string, window: (label: string) => Row) {
+    const objectKey = `metagraph/projections/${key}.json`;
     return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const limitParam = url.searchParams.get("limit");
-            const limit = limitParam != null ? Number(limitParam) : undefined;
-            return Response.json(
-              buildFn(subnetRows, { window, limit, networkDistinct }),
-            );
-          },
-        },
-      },
+      env: archiveEnv((asked: string) =>
+        asked === objectKey
+          ? {
+              schema_version: 1,
+              windows: { "7d": window("7d"), "30d": window("30d") },
+            }
+          : null,
+      ) as unknown as Row,
     };
   }
 
+  // The identity rollup, one level finer than chainEventRollupEnv: keyed by
+  // (netuid, uid) rather than by netuid, and its totals are TWO separate
+  // queries -- an ungrouped COUNT(*) for the share denominator, and a GROUP BY
+  // subquery for the distinct setters. Answered by shape, in one Promise.all.
+  //
+  // The denominator is why they are separate: the row page is capped, so a share
+  // computed against a summed page would grow as the page shrank.
   function chainWeightSettersPostgresEnv({
     leaderboardRows = [],
     totalsRow = null,
   }: Row = {}) {
-    return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const limitParam = url.searchParams.get("limit");
-            const limit = limitParam != null ? Number(limitParam) : undefined;
-            return Response.json(
-              buildChainWeightSetters(leaderboardRows, totalsRow, {
-                window,
-                limit,
-              }),
-            );
-          },
-        },
-      },
-    };
+    const totals = (totalsRow ?? {}) as Row;
+    const lake = lakehouse((sql: string) =>
+      sql.includes("ORDER BY")
+        ? (leaderboardRows as Row[])
+        : sql.includes("max(observed_at)")
+          ? [
+              {
+                weight_sets: totals.weight_sets,
+                newest_observed: totals.newest_observed,
+              },
+            ]
+          : [{ distinct_setters: totals.distinct_setters }],
+    );
+    return { env: { ...LAKEHOUSE_ENV } as unknown as Row, lake };
   }
 
   test("get_chain_weight_setters ranks setters with network-wide shares", async () => {
@@ -13148,11 +13217,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeMovesEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeMoves,
+    return projectionEnv("chain-stake-moves", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_stake_moves returns schema-stable zeros on cold D1", async () => {
@@ -13251,11 +13319,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainStakeTransfersEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainStakeTransfers,
+    return projectionEnv("chain-stake-transfers", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_stake_transfers returns schema-stable zeros on cold D1", async () => {
@@ -13341,29 +13408,20 @@ describe("MCP economics + metagraph data tools", () => {
   // The network-wide aggregate row loadChainAxonRemovals reads first (its
   // COUNT(DISTINCT hotkey)/MAX(observed_at) probe); a non-null newest_observed
   // unlocks the per-subnet read.
-  function axonRemovalsNetwork(distinct_removers: unknown) {
-    return {
-      distinct_removers,
-      newest_observed: 1_750_000_000_000,
-    };
-  }
-
-  // A per-subnet GROUP BY netuid row (COUNT removals + distinct removers).
-  function axonRemovalsRow(
-    netuid: number,
-    removals: unknown,
-    distinct_removers: unknown,
-  ) {
-    return { netuid, removals, distinct_removers };
-  }
-
-  function chainAxonRemovalsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainAxonRemovals,
-      network,
-      subnets,
-    );
-  }
+  // NO SOURCE, NOT A MOCKING PROBLEM. The axonRemovalsNetwork/axonRemovalsRow
+  // fixtures and their chainAxonRemovalsEnv were deleted with the tier they fed:
+  // the whole axon-removals family (chain, subnet, account) has no reader on any
+  // surface now, because AxonInfoRemoved has ZERO rows in both
+  // chain.account_events and chain.chain_events -- surveyed for #9146 and
+  // recorded in src/chain-event-rollup-cold-tier.ts's header, which is why that
+  // module gives serving and registrations a rollup spec and this kind none.
+  //
+  // So the ranking, the network rollup and the intensity distribution cannot be
+  // asserted through anything production reads. buildChainAxonRemovals' own
+  // tests (tests/chain-axon-removals.test.ts) hold those contracts over the
+  // rows directly, which is the right level for them while no source exists.
+  // What the TOOL can be held to is the shape of the card it will actually
+  // serve, and that it says nothing it has not measured.
 
   test("get_chain_axon_removals returns schema-stable zeros on cold D1", async () => {
     const res = await callTool("get_chain_axon_removals", {});
@@ -13378,31 +13436,34 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.observed_at, null);
   });
 
-  test("get_chain_axon_removals ranks subnets by removals with a network rollup", async () => {
-    const res = await callTool(
-      "get_chain_axon_removals",
-      { window: "30d", limit: 10 },
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        // netuid 2: fewer removals -> ranks last despite higher intensity.
-        axonRemovalsRow(2, 10, 4),
-        // netuid 1: most AxonInfoRemoved events -> ranks first.
-        axonRemovalsRow(1, 20, 5),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.window, "30d");
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets[0].netuid, 1);
-    assert.equal(out.subnets[0].removals, 20);
-    assert.equal(out.subnets[0].removals_per_remover, 4); // 20 / 5
-    assert.equal(out.subnets[1].netuid, 2);
-    assert.equal(out.subnets[1].removals_per_remover, 2.5); // 10 / 4
-    // Network rollup: total removals 30 over 8 distinct removers -> 3.75.
-    assert.equal(out.network.removals, 30);
-    assert.equal(out.network.distinct_removers, 8);
-    assert.equal(out.network.removals_per_remover, 3.75);
-    assert.equal(out.intensity_distribution.count, 2);
-    assert.equal(out.observed_at, new Date(1_750_000_000_000).toISOString());
+  test("get_chain_axon_removals has no rung to read, at any window", async () => {
+    // The card is the same with every store bound and every flag set to the
+    // value that WOULD forward: there is no read to make. `observed_at: null` is
+    // the load-bearing assertion -- a zero card that also claims a reading time
+    // would be a measurement, and this one is an absence.
+    for (const window of ["7d", "30d"]) {
+      const tier = forbiddenDataApi();
+      const archive = archiveEnv({ schema_version: 1, windows: {} });
+      const res = await callTool(
+        "get_chain_axon_removals",
+        { window, limit: 10 },
+        {
+          env: {
+            METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+            ...LAKEHOUSE_ENV,
+            ...tier,
+            ...(archive as unknown as Row),
+          },
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false, window);
+      assert.equal(out.window, window, "the label is still the caller's");
+      assert.deepEqual(tier.paths, [], `${window} consulted the retired tier`);
+      assert.deepEqual(archive.keys, [], `${window} read a projection`);
+      assert.equal(out.subnet_count, 0, window);
+      assert.equal(out.observed_at, null, `${window} claimed a reading time`);
+    }
   });
 
   test("get_chain_axon_removals rejects an unsupported window", async () => {
@@ -13415,32 +13476,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /window/);
   });
 
-  test("get_chain_axon_removals caps the leaderboard by limit", async () => {
-    const res = await callTool(
-      "get_chain_axon_removals",
-      { limit: 1 },
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        axonRemovalsRow(1, 20, 5),
-        axonRemovalsRow(2, 10, 4),
-      ]),
-    );
-    const out = res.body.result.structuredContent;
-    // Both subnets feed the rollup/distribution, but the page is capped.
-    assert.equal(out.subnet_count, 2);
-    assert.equal(out.subnets.length, 1);
-    assert.equal(out.intensity_distribution.count, 2);
-  });
-
   test("get_chain_axon_removals payload validates against its declared outputSchema", async () => {
+    // Both changes: #10802's outputSchemaFor helper, over the empty card.
+    //
+    // The empty card is the one production serves, so it is the one that has to
+    // satisfy the schema -- an outputSchema only the populated shape passes is a
+    // schema for a payload no caller receives.
     const schema = outputSchemaFor("get_chain_axon_removals");
-    const res = await callTool(
-      "get_chain_axon_removals",
-      {},
-      chainAxonRemovalsEnv(axonRemovalsNetwork(8), [
-        axonRemovalsRow(1, 20, 5),
-        axonRemovalsRow(2, 10, 4),
-      ]),
-    );
+    const res = await callTool("get_chain_axon_removals", {});
     const validate = new Ajv2020({ strict: false }).compile(schema);
     assertValid(validate, res.body.result.structuredContent);
   });
@@ -13465,11 +13508,10 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainDeregistrationsEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainDeregistrations,
+    return projectionEnv("chain-deregistrations", () => ({
+      rows: subnets,
       network,
-      subnets,
-    );
+    }));
   }
 
   test("get_chain_deregistrations returns schema-stable zeros on cold D1", async () => {
@@ -13572,7 +13614,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainServingEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(buildChainServing, network, subnets);
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_serving returns schema-stable zeros on cold D1", async () => {
@@ -13671,11 +13713,7 @@ describe("MCP economics + metagraph data tools", () => {
   }
 
   function chainPrometheusEnv(network: Row, subnets: Row[]) {
-    return chainAccountEventsPostgresEnv(
-      buildChainPrometheus,
-      network,
-      subnets,
-    );
+    return chainEventRollupEnv(network, subnets);
   }
 
   test("get_chain_prometheus returns schema-stable zeros on cold D1", async () => {
@@ -13795,27 +13833,13 @@ describe("MCP economics + metagraph data tools", () => {
   // caller's own window/sort query params, so the mocked response is
   // byte-identical to what production would actually serve.
   function chainTransferPairsEnv(totals: Row, pairs: Row[]) {
-    return {
-      env: {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const sort = url.searchParams.get("sort") || "volume";
-            return Response.json(
-              buildChainTransferPairs({
-                window,
-                sort,
-                observedAt: null,
-                totals,
-                pairs,
-              }),
-            );
-          },
-        },
-      },
-    };
+    // Keyed by sort as well as by window: only the precomputed orders exist, and
+    // the reader declines rather than answer one order's rows under another's
+    // name.
+    return projectionEnv("chain-transfer-pairs", () => ({
+      totals,
+      sorts: { volume: pairs, count: pairs },
+    }));
   }
 
   test("get_chain_transfer_pairs returns schema-stable zeros on cold D1", async () => {
@@ -14417,27 +14441,12 @@ describe("MCP economics + metagraph data tools", () => {
   // mocked response is byte-identical to what production would actually
   // serve.
   function chainCallsPostgresEnv({ total, rows }: Row) {
-    return {
-      env: {
-        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (request: Request) => {
-            const url = new URL(request.url);
-            const window = url.searchParams.get("window") || "7d";
-            const groupBy = url.searchParams.get("group_by") || "module";
-            return Response.json(
-              buildChainCalls({
-                window,
-                groupBy,
-                observedAt: null,
-                total,
-                rows,
-              }),
-            );
-          },
-        },
-      },
-    };
+    // The extrinsics family's projection, keyed by group_by the way
+    // transfer-pairs is keyed by sort.
+    return projectionEnv("chain-calls", () => ({
+      total,
+      groups: { module: rows, module_function: rows },
+    }));
   }
 
   test("get_chain_calls aggregates extrinsic rows with honest shares", async () => {
@@ -14467,23 +14476,38 @@ describe("MCP economics + metagraph data tools", () => {
     assert.match(res.body.result.content[0].text, /call_module/i);
   });
 
-  test("get_chain_calls scopes grouped rows and totals by call_module", async () => {
-    let requestedUrl;
-    const env = chainCallsPostgresEnv({
-      total: 80,
-      rows: [
-        {
-          call_module: "SubtensorModule",
-          call_function: "add_stake",
-          count: 50,
+  test("a call_module scope never touches the unscoped projection", async () => {
+    // WAS "scopes grouped rows and totals by call_module", asserting that
+    // `call_module=SubtensorModule` reached the tier as a query param over a
+    // payload the mocked tier built from the caller's own rows.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and forwards nothing, so that
+    // request was never made -- and the lane behind it precomputes NO pallet
+    // scope, which is the thing worth proving instead.
+    //
+    // The failure mode a filtered read invites is serving the unfiltered rows
+    // under a filtered label: 80 extrinsics network-wide reported as 80 in one
+    // pallet. loadChainCallsFromArtifact refuses the scope BEFORE it reads the
+    // bucket, so the assertion is that the bucket was never asked -- an
+    // in-memory filter over the projection would still produce a plausible
+    // number, and only the absence of the read rules it out.
+    const archive = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          total: 80,
+          groups: {
+            module: [{ call_module: "SubtensorModule", count: 50 }],
+            module_function: [
+              {
+                call_module: "SubtensorModule",
+                call_function: "add_stake",
+                count: 50,
+              },
+            ],
+          },
         },
-      ],
+      },
     });
-    const originalFetch = env.env.DATA_API.fetch;
-    env.env.DATA_API.fetch = async (request) => {
-      requestedUrl = new URL(request.url);
-      return originalFetch(request);
-    };
     const res = await callTool(
       "get_chain_calls",
       {
@@ -14492,18 +14516,44 @@ describe("MCP economics + metagraph data tools", () => {
         call_module: "SubtensorModule",
         limit: 3,
       },
-      env,
+      { env: archive as unknown as Row },
     );
     const out = res.body.result.structuredContent;
-    assert.equal(out.group_by, "module_function");
-    assert.equal(out.total_extrinsics, 80);
-    assert.equal(out.calls[0].share, 0.625);
-    assert.equal(
-      requestedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
-    );
-  });
+    assert.deepEqual(archive.keys, [], "the scope must decline before reading");
+    assert.equal(out.total_extrinsics, 0, "no unscoped total under a scope");
+    assert.deepEqual(out.calls, []);
+    assert.equal(out.degraded?.reason, "call_module_scope_not_precomputed");
 
+    // The SAME projection answers the unscoped question, so the decline above
+    // is the scope and not a broken fixture.
+    const unscoped = await callTool(
+      "get_chain_calls",
+      { window: "7d", group_by: "module_function", limit: 3 },
+      {
+        env: archiveEnv({
+          schema_version: 1,
+          windows: {
+            "7d": {
+              total: 80,
+              groups: {
+                module_function: [
+                  {
+                    call_module: "SubtensorModule",
+                    call_function: "add_stake",
+                    count: 50,
+                  },
+                ],
+              },
+            },
+          },
+        }) as unknown as Row,
+      },
+    );
+    const open = unscoped.body.result.structuredContent;
+    assert.equal(open.group_by, "module_function");
+    assert.equal(open.total_extrinsics, 80);
+    assert.equal(open.calls[0].share, 0.625);
+  });
   test("get_registry_leaderboards returns boards from committed profiles", async () => {
     const res = await callTool(
       "get_registry_leaderboards",
@@ -14641,60 +14691,61 @@ describe("MCP economics + metagraph data tools", () => {
   // folds it down to surface_count/ok_count/avg_latency_ms per netuid, so
   // there's no top-level `marker` field to assert on -- same two-test
   // contract as the shared CASES loops, adapted to that shape.
-  test("compare_subnets: health dimension flag=postgres uses Postgres data at the internal REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            rows: [
-              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
-            ],
-          });
-        },
+  test("compare_subnets: the health dimension groups surface_status in the live store", async () => {
+    // WAS an assertion on "/api/v1/internal/compare-health?netuids=7" -- a
+    // request METAGRAPH_HEALTH_SOURCE cannot make: it reads "d1" and is absent
+    // from DATA_API_FORWARD_FLAGS, and DATA_API does not implement that route
+    // anyway. So compare_subnets served `health: null` for every subnet while
+    // this test read a health block straight back out of its own mock.
+    //
+    // The dimension is a GROUP BY over surface_status in the store MCP already
+    // reads for every other health surface, filtered to the asked netuids -- so
+    // the extra row below must not appear.
+    const tier = forbiddenDataApi();
+    pg.control.answers = [
+      {
+        match: /FROM surface_status/i,
+        rows: [
+          { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+          { netuid: 31, surface_count: 4, ok_count: 1, avg_latency_ms: 900 },
+        ],
       },
-    };
+    ];
     const res = await callTool(
       "compare_subnets",
       { netuids: [7], dimensions: ["health"] },
-      { deps: liveAnalyticsDeps, env },
+      { deps: liveAnalyticsDeps, env: { ...pgMockEnv(), ...tier } },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    assert.deepEqual(tier.paths, [], "the health flag forwards nothing");
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.subnets[0].health, {
       surface_count: 9,
       ok_count: 8,
       avg_latency_ms: 55,
     });
+    assert.equal(out.subnets.length, 1, "netuid 31 was not asked for");
   });
 
-  test("compare_subnets: health+economics dimensions flag=postgres still includes economicsRows", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            rows: [
-              { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
-            ],
-          });
-        },
+  test("compare_subnets: health and economics compose from two different stores", async () => {
+    // The composition is the claim: health comes from the live store, economics
+    // from the economics artifact, and asking for both must not cost either.
+    const tier = forbiddenDataApi();
+    pg.control.answers = [
+      {
+        match: /FROM surface_status/i,
+        rows: [
+          { netuid: 7, surface_count: 9, ok_count: 8, avg_latency_ms: 55 },
+        ],
       },
-    };
+    ];
     const res = await callTool(
       "compare_subnets",
       { netuids: [7], dimensions: ["health", "economics"] },
-      { deps: liveAnalyticsDeps, env },
+      { deps: liveAnalyticsDeps, env: { ...pgMockEnv(), ...tier } },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(captured, "/api/v1/internal/compare-health?netuids=7");
+    assert.deepEqual(tier.paths, []);
     const out = res.body.result.structuredContent;
     assert.deepEqual(out.subnets[0].health, {
       surface_count: 9,
@@ -14756,43 +14807,72 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.surfaces, []);
   });
 
-  test("get_global_incidents filters by netuid over Postgres-tier surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            surfaces: [
-              { netuid: 7, surface_id: "a", incident_count: 1 },
-              { netuid: 31, surface_id: "b", incident_count: 2 },
-            ],
-          }),
+  test("get_global_incidents filters by netuid over the incident rows it derived", async () => {
+    // WAS answered by a DATA_API double returning ready-made `surfaces` with an
+    // `incident_count` each -- a shape the reader does not produce and the flag
+    // could not have fetched. The rows below are what surface_checks actually
+    // yields: one row per failure RUN, grouped by (netuid, surface_key), with
+    // started_at/ended_at/failed_samples. The surface list and its counts are
+    // derived from those.
+    const tier = forbiddenDataApi();
+    const started = Date.now() - 3_600_000;
+    pg.control.answers = [
+      {
+        match: /FROM grouped/i,
+        rows: [
+          {
+            netuid: 7,
+            surface_id: "a",
+            surface_key: "a",
+            started_at: started,
+            ended_at: started + 60_000,
+            failed_samples: 2,
+          },
+          {
+            netuid: 31,
+            surface_id: "b",
+            surface_key: "b",
+            started_at: started,
+            ended_at: started + 60_000,
+            failed_samples: 3,
+          },
+        ],
       },
-    };
-    const res = await callTool("get_global_incidents", { netuid: 7 }, { env });
+    ];
+    const res = await callTool(
+      "get_global_incidents",
+      { netuid: 7 },
+      { env: { ...pgMockEnv(), ...tier } },
+    );
     const out = res.body.result.structuredContent;
+    assert.deepEqual(tier.paths, [], "the health flag forwards nothing");
     assert.equal(out.returned, 1);
     assert.equal(out.surfaces.length, 1);
     assert.equal(out.surfaces[0].netuid, 7);
   });
 
-  test("get_global_incidents pages Postgres-tier surfaces with limit/cursor", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            surfaces: [
-              { netuid: 7, surface_id: "a", incident_count: 1 },
-              { netuid: 31, surface_id: "b", incident_count: 2 },
-            ],
-          }),
+  test("get_global_incidents pages the derived surfaces with limit/cursor", async () => {
+    const started = Date.now() - 3_600_000;
+    const rows = [
+      {
+        netuid: 7,
+        surface_id: "a",
+        surface_key: "a",
+        started_at: started,
+        ended_at: started + 60_000,
+        failed_samples: 2,
       },
-    };
+      {
+        netuid: 31,
+        surface_id: "b",
+        surface_key: "b",
+        started_at: started,
+        ended_at: started + 60_000,
+        failed_samples: 3,
+      },
+    ];
+    pg.control.answers = [{ match: /FROM grouped/i, rows }];
+    const env = { ...pgMockEnv() };
     const res = await callTool(
       "get_global_incidents",
       { sort: "netuid", order: "desc", limit: 1 },
@@ -14804,6 +14884,7 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.surfaces[0].netuid, 31);
     assert.equal(out.next_cursor, 1);
 
+    pg.control.answers = [{ match: /FROM grouped/i, rows }];
     const nextPage = await callTool(
       "get_global_incidents",
       { sort: "netuid", order: "desc", limit: 1, cursor: out.next_cursor },
@@ -16236,30 +16317,46 @@ describe("MCP account tail tools (history, extrinsics, transfers)", () => {
   });
 
   test("get_account_transfers treats direction='all' identically to omitting direction", async () => {
-    const seenDirectionParams: (string | null)[] = [];
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (request: Request) => {
-          const url = new URL(request.url);
-          seenDirectionParams.push(url.searchParams.get("direction"));
-          return Response.json(
-            buildAccountTransfers([], SS58, {
-              limit: 100,
-              offset: 0,
-              nextCursor: null,
-            }),
-          );
-        },
-      },
+    // WAS asserted on the `direction` query param tryPostgresTier sent (null in
+    // both cases). The flag forwards nothing, so that proved only that the tool
+    // dropped the argument. The claim is about the ROWS: "all" and omitted must
+    // select the same set, which on the lakehouse means the same predicate --
+    // both sides of the key, `hotkey = addr OR coldkey = addr`.
+    const ROW = {
+      block_number: 4200000,
+      event_index: 0,
+      extrinsic_index: 1,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      netuid: null,
+      uid: null,
+      amount_tao: 1.5,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
     };
-    await callTool(
-      "get_account_transfers",
-      { ss58: SS58, direction: "all" },
-      { env },
-    );
-    await callTool("get_account_transfers", { ss58: SS58 }, { env });
-    assert.deepEqual(seenDirectionParams, [null, null]);
+    const seen: string[] = [];
+    for (const args of [{ direction: "all" }, {}]) {
+      const lake = lakehouse([ROW], { once: true });
+      try {
+        const res = await callTool(
+          "get_account_transfers",
+          { ss58: SS58, ...args },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(
+          res.body.result.structuredContent.transfers.length,
+          1,
+          JSON.stringify(args),
+        );
+        seen.push(lake.queries[0]);
+      } finally {
+        lake.restore();
+      }
+    }
+    assert.equal(seen[0], seen[1], "'all' and omitted must be one query");
+    assert.match(seen[0], /hotkey = '5G9hfkx/);
+    assert.match(seen[0], /coldkey = '5G9hfkx/);
   });
 
   test("get_account_transfers rejects a non-integer block_end", async () => {
@@ -17538,46 +17635,63 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       return { fetch: async (request: Request) => response ?? { request } };
     }
 
-    test("list_extrinsics: flag=postgres uses Postgres data, D1 never queried", async () => {
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 99,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [],
-        }),
-      );
-      const res = await callTool("list_extrinsics", {}, { env });
-      assert.equal(res.body.result.structuredContent.extrinsic_count, 99);
+    test("list_extrinsics: the lakehouse feed is what the page carries", async () => {
+      // WAS "flag=postgres uses Postgres data, D1 never queried", reading an
+      // `extrinsic_count: 99` off a tier response with an EMPTY extrinsics list
+      // -- a count no reader could produce from those rows, which is the tell
+      // that nothing derived it. METAGRAPH_EXTRINSICS_SOURCE reads "retired"
+      // and forwards nothing, so the request was never made either.
+      //
+      // loadExtrinsicFeedColdTier answers now, over chain.extrinsics with the
+      // generated EXTRINSICS_COLUMNS. The count is the page length, derived.
+      const tier = forbiddenDataApi();
+      const lake = lakehouse([
+        EXTRINSIC_ROW,
+        { ...EXTRINSIC_ROW, extrinsic_index: 4 },
+      ]);
+      try {
+        const res = await callTool(
+          "list_extrinsics",
+          {},
+          { env: { ...LAKEHOUSE_ENV, ...tier } },
+        );
+        const out = res.body.result.structuredContent;
+        assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+        assert.equal(out.extrinsic_count, 2);
+        assert.equal(out.extrinsics[0].call_module, "SubtensorModule");
+        assert.match(lake.queries[0], /FROM chain\.extrinsics/);
+      } finally {
+        lake.restore();
+      }
     });
 
     test("list_extrinsics: surfaces the action-sentence summary field, null for an unmatched call (#8525)", async () => {
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 2,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [
-            { ...EXTRINSIC_ROW, summary: "Set the chain timestamp." },
-            {
-              ...EXTRINSIC_ROW,
-              call_module: "NoSuchModule",
-              call_function: "no_such_function",
-              summary: null,
-            },
-          ],
-        }),
-      );
-      const res = await callTool("list_extrinsics", {}, { env });
-      const items = res.body.result.structuredContent.extrinsics;
-      assert.equal(items[0].summary, "Set the chain timestamp.");
-      assert.equal(items[1].summary, null);
+      // The summary is DERIVED from (call_module, call_function), so the retired
+      // tier's double handing back a `summary` string of its own proved nothing
+      // -- it asserted an echo. These rows carry no summary at all; the one
+      // below is composed by the formatter, and the unmatched call gets null
+      // because no sentence exists for it.
+      const lake = lakehouse([
+        { ...EXTRINSIC_ROW, call_module: "Timestamp", call_function: "set" },
+        {
+          ...EXTRINSIC_ROW,
+          extrinsic_index: 4,
+          call_module: "NoSuchModule",
+          call_function: "no_such_function",
+        },
+      ]);
+      try {
+        const res = await callTool(
+          "list_extrinsics",
+          {},
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        const items = res.body.result.structuredContent.extrinsics;
+        assert.equal(items[0].summary, "Set the chain timestamp.");
+        assert.equal(items[1].summary, null);
+      } finally {
+        lake.restore();
+      }
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
@@ -17609,85 +17723,47 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(res.body.result.structuredContent.extrinsic_count, 0);
     });
 
-    test("list_extrinsics: flag=postgres forwards filters as REST-equivalent query params", async () => {
-      const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-      let seenUrl: URL | undefined;
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = {
-        fetch: async (request: Request) => {
-          seenUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            extrinsics: [],
-          });
-        },
-      };
-      const callHash = "0x" + "b".repeat(64);
-      await callTool(
-        "list_extrinsics",
-        {
-          block: 4200000,
-          signer: SS58,
-          call_module: "SubtensorModule",
-          call_function: "set_weights",
-          call_hash: callHash,
-          success: true,
-          limit: 10,
-          offset: 20,
-        },
-        { env },
-      );
-      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics");
-      assert.equal(seenUrl!.searchParams.get("block"), "4200000");
-      assert.equal(seenUrl!.searchParams.get("offset"), "20");
-      assert.equal(seenUrl!.searchParams.get("signer"), SS58);
-      assert.equal(seenUrl!.searchParams.get("call_module"), "SubtensorModule");
-      assert.equal(seenUrl!.searchParams.get("call_function"), "set_weights");
-      assert.equal(seenUrl!.searchParams.get("call_hash"), callHash);
-      assert.equal(seenUrl!.searchParams.get("success"), "true");
-      assert.equal(seenUrl!.searchParams.get("limit"), "10");
-    });
-
-    test("get_extrinsic: flag=postgres uses Postgres data, D1 never queried", async () => {
-      const hash = "0x" + "c".repeat(64);
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          ref: hash,
-          extrinsic: { ...EXTRINSIC_ROW, signer: "postgres-signer" },
-          events: [],
-        }),
-      );
-      const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.signer,
-        "postgres-signer",
-      );
-    });
+    // "list_extrinsics: flag=postgres forwards filters as REST-equivalent query
+    // params" was here, asserting the query string tryPostgresTier built. The
+    // flag forwards nothing, and every filter it listed is now a SQL predicate
+    // -- asserted where it lands, in "list_extrinsics expresses every filter and
+    // skips the tier on call_hash" above, including the call_hash gate that
+    // keeps an unexpressible filter from being silently dropped.
+    // "get_extrinsic: flag=postgres uses Postgres data, D1 never queried"
+    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // back off the mocked tier. That flag forwards nothing (#10190), so the
+    // request was never made -- covered by "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
 
     test("get_extrinsic: surfaces the action-sentence summary field (#8525)", async () => {
+      // The summary is DERIVED from (call_module, call_function) by the shared
+      // formatter, so a tier double returning its own `summary` string asserted
+      // an echo. This row carries none; the sentence below is composed.
       const hash = "0x" + "d".repeat(64);
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = dataApi(
-        Response.json({
-          schema_version: 1,
-          ref: hash,
-          extrinsic: {
-            ...EXTRINSIC_ROW,
-            call_module: "Timestamp",
-            call_function: "set",
-            summary: "Set the chain timestamp.",
-          },
-          events: [],
-        }),
+      const lake = lakehouse((sql: string) =>
+        sql.includes("FROM chain.account_events")
+          ? []
+          : [
+              {
+                ...EXTRINSIC_ROW,
+                extrinsic_hash: hash,
+                call_module: "Timestamp",
+                call_function: "set",
+              },
+            ],
       );
-      const res = await callTool("get_extrinsic", { ref: hash }, { env });
-      assert.equal(
-        res.body.result.structuredContent.extrinsic.summary,
-        "Set the chain timestamp.",
-      );
+      try {
+        const res = await callTool(
+          "get_extrinsic",
+          { ref: hash },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(
+          res.body.result.structuredContent.extrinsic.summary,
+          "Set the chain timestamp.",
+        );
+      } finally {
+        lake.restore();
+      }
     });
 
     // extrinsics' D1 write path is retired (#4772) and the table is dropped
@@ -17707,23 +17783,10 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
       assert.equal(out.extrinsic, null);
     });
 
-    test("get_extrinsic: flag=postgres forwards the ref in the request path", async () => {
-      let seenUrl: URL | undefined;
-      const env: Row = { METAGRAPH_EXTRINSICS_SOURCE: "postgres" };
-      env.DATA_API = {
-        fetch: async (request: Request) => {
-          seenUrl = new URL(request.url);
-          return Response.json({
-            schema_version: 1,
-            ref: "4200000-3",
-            extrinsic: null,
-            events: [],
-          });
-        },
-      };
-      await callTool("get_extrinsic", { ref: "4200000-3" }, { env });
-      assert.equal(seenUrl!.pathname, "/api/v1/extrinsics/4200000-3");
-    });
+    // "get_extrinsic: flag=postgres forwards the ref in the request path"
+    // was here: it asserted the URL tryPostgresTier built and read a marker
+    // back off the mocked tier. That flag forwards nothing (#10190), so the
+    // request was never made -- the ref is now resolved into a SQL predicate, asserted in "get_extrinsic resolves a composite ref and embeds formatted events", through the transport that answers.
   });
 
   test("block-explorer payloads validate against their declared outputSchemas", async () => {
@@ -21476,53 +21539,10 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
     assert.match(badColdkey.body.result.content[0].text, /coldkey/);
   });
 
-  test("get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level", async () => {
-    // workers/data-api.ts's own nominators route wraps its response as
-    // { data: buildValidatorNominators(...), generatedAt } -- unlike the
-    // flat-shaped neurons-tier routes. Assert hotkey/nominator_count/
-    // nominators land at the TOP of structuredContent (matching this tool's
-    // own outputSchema), not nested under .data, so a future regression to a
-    // bare `tryPostgresTier(...) ?? builder(...)` (no unwrap) fails loudly
-    // here instead of only violating the schema silently in production.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5Cold",
-                  net_staked_tao: 10,
-                  gross_staked_tao: 10,
-                  unstaked_tao: 0,
-                  event_count: 1,
-                  last_observed_at: "2026-07-01T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_validator_nominators",
-      { hotkey: HOTKEY },
-      { env },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(out.data, undefined);
-    assert.equal(out.hotkey, HOTKEY);
-    assert.equal(out.nominator_count, 1);
-    assert.equal(out.nominators[0].coldkey, "5Cold");
-  });
+  // "get_validator_nominators: flag=postgres unwraps the DATA_API {data, generatedAt} envelope onto the top level"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- there is no envelope to unwrap now; the reader returns the built card, asserted in "get_validator_nominators serves the nominator list from the lakehouse", through the transport that answers.
 
   test("get_validator_history returns a schema-stable empty point series", async () => {
     const res = await callTool("get_validator_history", { hotkey: HOTKEY });
@@ -22285,25 +22305,63 @@ describe("MCP get_account_snapshot", () => {
     }
   });
 
-  test("composes all five live views under their named keys", async () => {
+  test("composes all five views, from the three transports that answer them", async () => {
+    // WAS "composes all five live views under their named keys", with four views
+    // on one DATA_API double and the balance on a stubbed RPC. `recent_events`
+    // was the fifth, and its flag is retired -- so that path was never
+    // requested and the card published `event_count: 0`. Fixed in the handler
+    // (it now reads the same cold tier `get_account_events` does, the #10320
+    // wired-card-vs-embedded-copy defect one composer over from the subnet
+    // snapshot's); this drives it.
+    //
+    // ONE fetch stub for both the RPC balance and the lakehouse events, routed
+    // by whether the body is an R2 SQL query -- they share globalThis.fetch, so
+    // a second stub would silently win.
     const orig = globalThis.fetch;
-    globalThis.fetch = (async () => ({
-      ok: true,
-      json: async () => ({
-        jsonrpc: "2.0",
-        id: 1,
-        // Same SCALE AccountInfo encoding as get_account_balance's own live
-        // test above: free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO.
-        result:
-          "0x" +
-          "00000000".repeat(4) +
-          "00943577000000000000000000000000" +
-          "0065cd1d000000000000000000000000",
-      }),
-    })) as unknown as typeof globalThis.fetch;
+    const EVENT = {
+      block_number: 4_200_000,
+      event_index: 0,
+      extrinsic_index: 1,
+      event_kind: "Transfer",
+      hotkey: SS58,
+      coldkey: null,
+      netuid: 7,
+      uid: null,
+      amount_tao: 1.5,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
+    };
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
+      const body = String(init?.body ?? "");
+      if (body.includes("chain.account_events")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            result: { rows: [EVENT] },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          // Same SCALE AccountInfo encoding as get_account_balance's own live
+          // test above: free 2_000_000_000 + reserved 500_000_000 rao = 2.5 TAO.
+          result:
+            "0x" +
+            "00000000".repeat(4) +
+            "00943577000000000000000000000000" +
+            "0065cd1d000000000000000000000000",
+        }),
+      };
+    }) as unknown as typeof globalThis.fetch;
     const env = {
       METAGRAPH_NEURONS_SOURCE: "postgres",
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      ...LAKEHOUSE_ENV,
       // A passing RPC_RATE_LIMITER here exercises the handler's own
       // success-path branch, distinct from the no-limiter-bound cold test
       // above and the failing-limiter test below.
@@ -22340,18 +22398,9 @@ describe("MCP get_account_snapshot", () => {
               positions: [],
             });
           }
-          if (url.pathname === `/api/v1/accounts/${SS58}/events`) {
-            assert.equal(url.searchParams.get("limit"), "10");
-            return Response.json({
-              schema_version: 1,
-              ss58: SS58,
-              event_count: 1,
-              limit: 10,
-              offset: 0,
-              next_cursor: null,
-              events: [{ kind: "Transfer" }],
-            });
-          }
+          // /accounts/:ss58/events is deliberately NOT served here: its flag is
+          // retired, so production never requests it. The events view reads the
+          // lakehouse, wired below.
           throw new Error(`unexpected DATA_API path: ${url.pathname}`);
         },
       },
@@ -22369,7 +22418,11 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.portfolio.position_count, 2);
       assert.equal(out.subnets.subnet_count, 3);
       assert.equal(out.positions.total_stake_alpha, 42);
-      assert.equal(out.recent_events.events[0].kind, "Transfer");
+      assert.equal(
+        out.recent_events.events[0].event_kind,
+        "Transfer",
+        "the events view must come from the lakehouse, not a zeroed card",
+      );
     } finally {
       globalThis.fetch = orig;
     }
@@ -22413,32 +22466,10 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.deepEqual(out.extrinsics, []);
   });
 
-  test("get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried", async () => {
-    let capturedPath;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedPath = new URL(req.url).pathname;
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 1,
-            extrinsics: [{ call_module: "Sudo" }],
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_sudo",
-      { call_function: "sudo_set_weights_set_rate_limit" },
-      { env },
-    );
-    assert.equal(capturedPath, "/api/v1/sudo");
-    assert.equal(
-      res.body.result.structuredContent.extrinsics[0].call_module,
-      "Sudo",
-    );
-  });
+  // "get_sudo: flag=postgres forwards to /api/v1/sudo, D1 never queried"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
   test("get_sudo rejects a non-boolean success filter", async () => {
     const res = await callTool("get_sudo", { success: "maybe" });
@@ -22452,24 +22483,10 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
     assert.deepEqual(out.extrinsics, []);
   });
 
-  test("get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes", async () => {
-    let capturedPath;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedPath = new URL(req.url).pathname;
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await callTool("get_governance_config_changes", {}, { env });
-    assert.equal(capturedPath, "/api/v1/governance/config-changes");
-  });
+  // "get_governance_config_changes: flag=postgres forwards to /api/v1/governance/config-changes"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_sudo and get_governance_config_changes serve their fixed modules", through the transport that answers.
 
   test("get_sudo_key returns hotkey:null for genuinely unset storage", async () => {
     const orig = globalThis.fetch;
@@ -23322,29 +23339,21 @@ describe("MCP extrinsics-tier chain analytics tools — Postgres tier wiring", (
       ? `${tool} (call_module)`
       : tool;
 
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: the retired tier flag is not consulted even when set`, async () => {
+      // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
+      // tryPostgresTier sent. METAGRAPH_EXTRINSICS_SOURCE reads
+      // "retired"/"d1" in wrangler.jsonc and is absent from
+      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // described a call production does not perform, over a payload it cannot
+      // produce. `path` stays in CASES as the documentation of what the REST twin
+      // serves; what is provable here is the retirement.
+      const tier = forbiddenDataApi();
+      const res = await callTool(tool, args, {
+        env: { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier },
+      });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
+      assert.deepEqual(tier.paths, [], label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
     });
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
@@ -23878,29 +23887,21 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
   for (const { tool, args, path } of CASES) {
     const label = path.includes("coldkey=") ? `${tool} (coldkey)` : tool;
 
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: the retired tier flag is not consulted even when set`, async () => {
+      // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
+      // tryPostgresTier sent. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+      // "retired"/"d1" in wrangler.jsonc and is absent from
+      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // described a call production does not perform, over a payload it cannot
+      // produce. `path` stays in CASES as the documentation of what the REST twin
+      // serves; what is provable here is the retirement.
+      const tier = forbiddenDataApi();
+      const res = await callTool(tool, args, {
+        env: { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres", ...tier },
+      });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
+      assert.deepEqual(tier.paths, [], label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
     });
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {
@@ -23947,28 +23948,47 @@ describe("MCP account_events-tier subnet/validator activity tools — Postgres t
 // and the DATA_API mock here must nest the marker under `data` to exercise
 // that unwrap, not sit at the top level like the flat-shaped CASES tools.
 describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring", () => {
-  test("get_subnet_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
+  test("get_subnet_stake_flow reads one subnet's rows out of the chain projection", async () => {
+    // WAS an assertion on "/api/v1/subnets/7/stake-flow?window=30d&direction=all"
+    // and a `marker` echoed back from the mocked tier. The flag forwards nothing.
+    //
+    // What answers is the CHAIN stake-flow lane, filtered to this netuid -- the
+    // per-subnet card has no projection of its own, it reads its row out of the
+    // network-wide one. So the fixture carries two subnets and the assertion is
+    // that the other one does not leak in.
+    const tier = forbiddenDataApi();
+    const rows = [
+      {
+        netuid: 7,
+        event_kind: "StakeAdded",
+        total_tao: 40,
+        event_count: 4,
+        last_observed: 1_750_000_000_000,
       },
-    };
-    const res = await callTool("get_subnet_stake_flow", { netuid: 7 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      "/api/v1/subnets/7/stake-flow?window=30d&direction=all",
+      {
+        netuid: 8,
+        event_kind: "StakeAdded",
+        total_tao: 900,
+        event_count: 90,
+        last_observed: 1_750_000_000_000,
+      },
+    ];
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-stake-flow.json"
+        ? { schema_version: 1, windows: { "7d": { rows }, "30d": { rows } } }
+        : null,
     );
+    const res = await callTool(
+      "get_subnet_stake_flow",
+      { netuid: 7 },
+      { env: { ...tier, ...(archive as unknown as Row) } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.window, "30d", "the tool's own default window");
+    assert.equal(out.total_staked_tao, 40, "netuid 8's 900 must not leak in");
   });
 
   test("get_subnet_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -23999,32 +24019,52 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
     assert.equal(res.body.result.structuredContent.marker, undefined);
   });
 
-  test("get_subnet_volume: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("get_subnet_volume reads its row out of the chain alpha-volume projection", async () => {
+    // Same shape as its stake-flow sibling: no per-subnet lane, one row filtered
+    // out of the network-wide 24h projection. The economics artifact still rides
+    // alongside for vol_mcap_ratio's denominator.
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv((key: string) =>
+      key === "metagraph/projections/chain-alpha-volume.json"
+        ? {
+            schema_version: 1,
+            windows: {
+              "24h": {
+                rows: [
+                  {
+                    netuid: 7,
+                    event_kind: "StakeAdded",
+                    alpha_volume: 100,
+                    tao_volume: 100,
+                    event_count: 5,
+                  },
+                  {
+                    netuid: 8,
+                    event_kind: "StakeAdded",
+                    alpha_volume: 9000,
+                    tao_volume: 9000,
+                    event_count: 900,
+                  },
+                ],
+                observed_at: 1_750_000_000_000,
+              },
+            },
+          }
+        : null,
+    );
     const deps = makeDeps({
       "/metagraph/economics.json": { subnets: [{ netuid: 7 }] },
     });
     const res = await callTool(
       "get_subnet_volume",
       { netuid: 7 },
-      { env, deps },
+      { env: { ...tier, ...(archive as unknown as Row) }, deps },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/subnets/7/volume");
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.netuid, 7);
+    assert.equal(out.buy_volume_tao, 100, "netuid 8's 9000 must not leak in");
   });
 
   test("get_subnet_volume: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24077,37 +24117,48 @@ describe("MCP get_subnet_stake_flow / get_subnet_volume — Postgres tier wiring
 // tryPostgresTier's result -- so the DATA_API mock here nests the marker
 // under `data` to exercise that unwrap.
 describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
-  test("flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
+  test("the candle series is assembled from the lakehouse trade buckets", async () => {
+    // WAS an assertion on "/api/v1/subnets/7/ohlc?interval=1d&days=30&limit=168"
+    // -- including a careful note about forwarding `limit` so the two surfaces
+    // agreed on the page. The flag forwards nothing, so none of that happened.
+    //
+    // The page bound still matters, and it is now the reader's own: the engine
+    // caps at MAX_CANDLES newest-first and the assembler re-sorts ascending, so
+    // what a caller's `days` controls is the WHERE cutoff, not a page size the
+    // tier had to be told about.
+    const tier = forbiddenDataApi();
+    const lake = lakehouse([
+      {
+        bucket_start: 1_750_000_000_000,
+        open_price: 1,
+        close_price: 2,
+        high_price: 3,
+        low_price: 0.5,
+        volume_alpha: 10,
+        volume_tao: 20,
+        event_count: 4,
+        last_observed: 1_750_050_000_000,
       },
-    };
-    const res = await callTool(
-      "get_subnet_ohlc",
-      { netuid: 7, interval: "1d", days: 30 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    // `limit` rides along even when the caller did not name one (#10318). The
-    // tool's page size is 168 where the route's default is the 2,000-candle
-    // cap, so the tier has to be told which one it is answering -- forwarding
-    // interval and days but not limit is how the two surfaces would come to
-    // disagree about the page while agreeing about the window.
-    assert.equal(
-      captured,
-      "/api/v1/subnets/7/ohlc?interval=1d&days=30&limit=168",
-    );
+    ]);
+    try {
+      const res = await callTool(
+        "get_subnet_ohlc",
+        { netuid: 7, interval: "1d", days: 30 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.netuid, 7);
+      assert.equal(out.interval, "1d");
+      assert.equal(out.candles.length, 1);
+      assert.equal(out.candles[0].open, 1);
+      assert.equal(out.candles[0].close, 2);
+      assert.match(lake.queries[0], /netuid = 7/);
+      assert.match(lake.queries[0], /ORDER BY bucket_start DESC LIMIT/);
+    } finally {
+      lake.restore();
+    }
   });
 
   test("flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24147,541 +24198,284 @@ describe("MCP get_subnet_ohlc — Postgres tier wiring", () => {
 // destructure `{ data, generatedAt }` from tryPostgresTier's result, so these
 // four tools unwrap `.data` before falling back -- the DATA_API mock here
 // nests the marker under `data` to exercise that unwrap.
-describe("MCP get_account_stake_flow / get_account_stake_moves / get_account_registrations / get_account_weight_setters — Postgres tier wiring", () => {
+describe("MCP account activity feeds — what answers now that the tier is gone", () => {
+  // WAS eight near-identical trios asserting the URL tryPostgresTier sent and a
+  // `marker` field read back off the mocked tier. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+  // reads "retired" in wrangler.jsonc and is absent from
+  // DATA_API_FORWARD_FLAGS, so none of those requests was ever made and the
+  // marker could never appear -- 24 tests over one dead code path.
+  //
+  // Seven of these eight tools DO have a reader: the lakehouse `account_events`
+  // rollups in src/account-feeds-cold-tier.ts, one GROUP BY netuid per feed.
+  // Each case below drives that reader with the columns its own SQL selects, so
+  // the fixture is wrong in exactly the way production would be wrong.
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  test("get_account_stake_flow: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
+  /** One netuid's rollup row, under the count alias the feed's SQL uses. */
+  const rollupRow = (countField: string) => [
+    {
+      netuid: 7,
+      [countField]: 3,
+      first_observed: 1_750_000_000_000,
+      last_observed: 1_750_090_000_000,
+    },
+  ];
+
+  const CASES: Array<{
+    tool: string;
+    /** Rows for the feed's own query, keyed off the SQL it emits. */
+    rows: (sql: string) => Row[];
+    /** The total the builder derives, and what it should come to. */
+    total: string;
+    expected: number;
+    /** Feeds whose predicate needs the live store as well as the lakehouse. */
+    store?: { tables: string[]; rows: Row[] };
+  }> = [
+    {
+      tool: "get_account_stake_flow",
+      // Grouped by (netuid, event_kind) with a SUM, not a bare COUNT.
+      rows: () => [
+        {
+          netuid: 7,
+          event_kind: "StakeAdded",
+          total_tao: 12.5,
+          event_count: 2,
+          last_observed: 1_750_090_000_000,
         },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
+      ],
+      total: "total_staked_tao",
+      expected: 12.5,
+    },
+    {
+      tool: "get_account_stake_moves",
+      rows: () => rollupRow("movements"),
+      total: "total_movements",
+      expected: 3,
+    },
+    {
+      tool: "get_account_registrations",
+      rows: () => rollupRow("registrations"),
+      total: "total_registrations",
+      expected: 3,
+    },
+    {
+      tool: "get_account_weight_setters",
+      // TWO STORES, not one. The weight-sets rollup is on the lakehouse, but the
+      // predicate it runs needs this account's (netuid, uid) slots first, and
+      // those come from `neurons` in the live store -- WeightsSet carries no
+      // hotkey at all, so the slots are the only way to attribute a set. An
+      // unbound store DECLINES the whole read, which is why this case has to
+      // bind both.
+      rows: (sql: string) =>
+        sql.includes("weight_sets") ? rollupRow("weight_sets") : [],
+      total: "total_weight_sets",
+      expected: 3,
+      store: { tables: ["neurons"], rows: [{ netuid: 7, uid: 4 }] },
+    },
+    {
+      tool: "get_account_serving",
+      rows: () => rollupRow("announcements"),
+      total: "total_announcements",
+      expected: 3,
+    },
+    {
+      tool: "get_account_prometheus",
+      rows: () => rollupRow("announcements"),
+      total: "total_announcements",
+      expected: 3,
+    },
+  ];
+
+  for (const { tool, rows, total, expected, store } of CASES) {
+    test(`${tool}: the lakehouse rollup is what reaches the payload`, async () => {
+      const tier = forbiddenDataApi();
+      const lake = lakehouse(rows);
+      if (store) pg.control.rows = store.rows;
+      try {
+        const res = await callTool(
+          tool,
+          { ss58: SS58 },
+          {
+            env: {
+              ...LAKEHOUSE_ENV,
+              ...tier,
+              ...(store ? pgMockEnv(store.tables) : {}),
+            },
+          },
+        );
+        const out = res.body.result.structuredContent;
+        assert.equal(res.body.result.isError, false, tool);
+        assert.deepEqual(tier.paths, [], `${tool} consulted the retired tier`);
+        assert.equal(out.address, SS58);
+        assert.equal(out[total], expected, `${tool}: ${total}`);
+        assert.equal(out.subnet_count, 1, tool);
+        assert.equal(out.subnets[0].netuid, 7, tool);
+        assert.ok(
+          lake.queries.some((sql) => sql.includes("chain.account_events")),
+          `${tool} never queried account_events`,
+        );
+      } finally {
+        lake.restore();
+      }
+    });
+
+    test(`${tool}: an unusable address declines before any scan`, async () => {
+      // The decline is what keeps an invalid address from becoming an
+      // unfiltered scan of every account. Asserting no query ran is the only
+      // way to tell that apart from a scan that happened to match nothing.
+      const lake = lakehouse(() => rollupRow("movements"));
+      try {
+        const res = await callTool(
+          tool,
+          { ss58: "not-an-address" },
+          { env: { ...LAKEHOUSE_ENV } },
+        );
+        assert.equal(res.body.result.isError, true, tool);
+        assert.deepEqual(lake.queries, [], `${tool} scanned anyway`);
+      } finally {
+        lake.restore();
+      }
+    });
+
+    test(`${tool}: a lakehouse miss is the schema-stable empty, never an error`, async () => {
+      const lake = lakehouse(() => {
+        throw new Error("boom");
+      });
+      try {
+        const res = await callTool(tool, { ss58: SS58 }, { env: {} });
+        const out = res.body.result.structuredContent;
+        assert.equal(res.body.result.isError, false, tool);
+        assert.equal(out.address, SS58, tool);
+        assert.equal(out[total], 0, `${tool} must publish a zero, not a throw`);
+        assert.deepEqual(out.subnets, [], tool);
+      } finally {
+        lake.restore();
+      }
+    });
+  }
+
+  test("get_account_deregistrations reads the by-hotkey projection", async () => {
+    // The one feed in this group NOT on the lakehouse: evictions are derived
+    // from metagraph diffs by the #9146 lane, keyed by hotkey, and stored as
+    // tuples rather than objects.
+    const tier = forbiddenDataApi();
+    const archive = archiveEnv((key: string) =>
+      key.includes("by-hotkey")
+        ? {
+            schema_version: 1,
+            hotkeys: { [SS58]: [[7, 3, 1_750_000_000_000, 900, 120]] },
+          }
+        : null,
     );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/stake-flow?window=30d&direction=all`,
-    );
-  });
-
-  test("get_account_stake_flow: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_flow: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_flow",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_moves: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/stake-moves?window=30d`);
-  });
-
-  test("get_account_stake_moves: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_stake_moves: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_stake_moves",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_registrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/registrations?window=30d`);
-  });
-
-  test("get_account_registrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_registrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_registrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_weight_setters: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/weight-setters?window=7d`);
-  });
-
-  test("get_account_weight_setters: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_weight_setters: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_weight_setters",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_serving: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/serving?window=30d`);
-  });
-
-  test("get_account_serving: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_serving: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool("get_account_serving", { ss58: SS58 }, { env });
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_axon_removals: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/axon-removals?window=30d`);
-  });
-
-  test("get_account_axon_removals: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_axon_removals: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_axon_removals",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_prometheus: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, `/api/v1/accounts/${SS58}/prometheus?window=30d`);
-  });
-
-  test("get_account_prometheus: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_prometheus: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_prometheus",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_deregistrations: flag=postgres uses Postgres data (unwrapped from {data, generatedAt}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          });
-        },
-      },
-    };
     const res = await callTool(
       "get_account_deregistrations",
       { ss58: SS58 },
-      { env },
+      { env: { ...tier, ...(archive as unknown as Row) } },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/deregistrations?window=30d`,
+    assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+    assert.equal(out.address, SS58);
+    assert.ok(
+      archive.keys.some((key) => key.includes("by-hotkey")),
+      "the by-hotkey projection was never read",
     );
   });
 
-  test("get_account_deregistrations: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
+  test("get_account_axon_removals has no rung to read", async () => {
+    // AxonInfoRemoved has zero rows in both chain.account_events and
+    // chain.chain_events (surveyed for #9146, recorded in
+    // src/chain-event-rollup-cold-tier.ts), so there is no reader to drive here
+    // and nothing to mock -- the same absence its chain-wide sibling publishes.
+    const tier = forbiddenDataApi();
+    const res = await callTool(
+      "get_account_axon_removals",
+      { ss58: SS58 },
+      {
+        env: {
+          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+          ...LAKEHOUSE_ENV,
+          ...tier,
         },
       },
-    };
-    const res = await callTool(
-      "get_account_deregistrations",
-      { ss58: SS58 },
-      { env },
     );
+    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, undefined);
-  });
-
-  test("get_account_deregistrations: flag absent uses the schema-stable empty shape even when DATA_API is bound (unflipped)", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: { schema_version: 1, marker: "should-not-be-used" },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
-    const res = await callTool(
-      "get_account_deregistrations",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.structuredContent.marker, undefined);
+    assert.deepEqual(tier.paths, []);
+    assert.equal(out.address, SS58);
+    assert.equal(out.total_removals ?? 0, 0);
   });
 });
-
-// get_block_events is also gated on METAGRAPH_ACCOUNT_EVENTS_SOURCE, but
-// unlike the flat-data-shaped tools in the account_events-tier CASES loop
-// above, entities.ts's handleBlockEvents destructures `{ data }` from
-// tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
-// route returns `json({ data: buildBlockEvents(...) })`, not a flat
-// buildBlockEvents(...) body -- so this tool unwraps `.data` before falling
-// back, and the DATA_API mock here must nest the marker under `data`.
 describe("MCP get_block_events — Postgres tier wiring", () => {
-  test("get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
-    const res = await callTool("get_block_events", { ref: "4200000" }, { env });
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(captured, "/api/v1/blocks/4200000/events?limit=100&offset=0");
-  });
+  // "get_block_events: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_block_events serves one block's events in read order", through the transport that answers.
 
-  test("get_block_events: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
+  test("get_block_events: a 0x hash ref costs a block lookup, and the page is sliced", async () => {
+    // WAS an assertion on `/api/v1/blocks/{hash}/events?limit=25&offset=50` --
+    // the URL tryPostgresTier built. The flag forwards nothing, and the two
+    // claims inside that URL now land in different places:
+    //
+    //   * the HASH is not a predicate on account_events at all. R2 SQL cannot
+    //     join, so the reader resolves it to a height off chain.blocks FIRST
+    //     and only then reads the events: two queries, and an unresolvable
+    //     hash must decline rather than scan every block.
+    //   * the OFFSET is emulated. R2 SQL has no OFFSET, so the reader
+    //     over-fetches and slices -- which is why offsetting past the rows
+    //     empties the page instead of paging into it.
     const hash = `0x${"ab".repeat(32)}`;
-    await callTool(
-      "get_block_events",
-      { ref: hash, limit: 25, offset: 50 },
-      { env },
+    const EVENT = {
+      block_number: 4200000,
+      event_index: 0,
+      extrinsic_index: 3,
+      event_kind: "WeightsSet",
+      hotkey: null,
+      coldkey: null,
+      netuid: 7,
+      uid: 3,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: 1_750_009_000_000,
+    };
+    const tier = forbiddenDataApi();
+    const lake = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [EVENT],
     );
-    assert.equal(captured, `/api/v1/blocks/${hash}/events?limit=25&offset=50`);
+    try {
+      const res = await callTool(
+        "get_block_events",
+        { ref: hash, limit: 25 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.block_number, 4200000, "the hash resolved to a height");
+      assert.equal(out.events.length, 1);
+      assert.match(
+        lake.queries[0],
+        /FROM chain\.blocks WHERE block_hash = '0xabab/,
+      );
+      assert.match(lake.queries[1], /block_number = 4200000/);
+    } finally {
+      lake.restore();
+    }
+
+    // The same ref with an offset past the block's only event: an emulated
+    // OFFSET slices what it fetched, so this is empty rather than a second page.
+    const deep = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [EVENT],
+    );
+    try {
+      const res = await callTool(
+        "get_block_events",
+        { ref: hash, limit: 25, offset: 50 },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.deepEqual(res.body.result.structuredContent.events, []);
+    } finally {
+      deep.restore();
+    }
   });
 
   test("get_block_events: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24726,59 +24520,90 @@ describe("MCP get_block_events — Postgres tier wiring", () => {
 describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
-  test("get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({ schema_version: 1, marker: "from-postgres" });
-        },
-      },
-    };
-    const res = await callTool(
-      "get_account_extrinsics",
-      { ss58: SS58 },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/extrinsics?limit=100&offset=0`,
-    );
-  });
+  // "get_account_extrinsics: flag=postgres uses Postgres data at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "get_account_extrinsics filters by signer from the lakehouse", through the transport that answers.
 
-  test("get_account_extrinsics: flag=postgres forwards block_start/block_end/limit/offset/cursor", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({ schema_version: 1, marker: "from-postgres" });
-        },
-      },
+  test("get_account_extrinsics: every range filter becomes a predicate, and an unusable cursor declines", async () => {
+    // WAS an assertion on the query string tryPostgresTier built. Same filters,
+    // asserted where they now take effect -- and one thing the URL form could
+    // not show: a cursor the codec cannot decode must DECLINE rather than page
+    // from the top, because a caller holding a stale token would otherwise be
+    // silently handed page one as if it were page five.
+    const ROW = {
+      block_number: 150,
+      extrinsic_index: 1,
+      extrinsic_hash: `0x${"c".repeat(64)}`,
+      signer: SS58,
+      call_module: "SubtensorModule",
+      call_function: "add_stake",
+      success: true,
+      fee_tao: 0.0005,
+      tip_tao: null,
+      call_args: null,
+      observed_at: 1_750_009_000_000,
     };
-    await callTool(
-      "get_account_extrinsics",
-      {
-        ss58: SS58,
-        block_start: 100,
-        block_end: 200,
-        limit: 5,
-        offset: 10,
-        cursor: "abc",
-      },
-      { env },
-    );
-    assert.equal(
-      captured,
-      `/api/v1/accounts/${SS58}/extrinsics?block_start=100&block_end=200&limit=5&offset=10&cursor=abc`,
-    );
+    const tier = forbiddenDataApi();
+    const lake = lakehouse([ROW]);
+    try {
+      const res = await callTool(
+        "get_account_extrinsics",
+        { ss58: SS58, block_start: 100, block_end: 200, limit: 5 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      assert.deepEqual(tier.paths, []);
+      assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
+      const sql = lake.queries[0];
+      assert.match(sql, new RegExp(`signer = '${SS58}'`));
+      assert.match(sql, /block_number >= 100/);
+      assert.match(sql, /block_number <= 200/);
+      assert.match(sql, /LIMIT/);
+    } finally {
+      lake.restore();
+    }
+
+    // A cursor is a 3-part tuple seek on the feed's own order key, and it
+    // REPLACES the offset -- the token already narrows past prior pages, so
+    // applying both would skip a page's worth of rows twice.
+    const paged = lakehouse([ROW]);
+    try {
+      await callTool(
+        "get_account_extrinsics",
+        {
+          ss58: SS58,
+          limit: 5,
+          offset: 10,
+          cursor: "1750009000000.4200000.3",
+        },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      const sql = paged.queries[0];
+      assert.match(
+        sql,
+        /\(observed_at, block_number, extrinsic_index\) < \(1750009000000, 4200000, 3\)/,
+      );
+    } finally {
+      paged.restore();
+    }
+
+    // A MALFORMED token decodes to null and is treated as no cursor, which
+    // serves page one. Deliberate, and asserted rather than left implicit: it is
+    // data-api's own documented cursor semantics, shared by every paged route
+    // here, so the reader that replaced the tier had to keep it or the same
+    // token would mean two different things on two surfaces.
+    const bad = lakehouse([ROW]);
+    try {
+      const res = await callTool(
+        "get_account_extrinsics",
+        { ss58: SS58, limit: 5, cursor: "abc" },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.equal(res.body.result.structuredContent.extrinsics.length, 1);
+      assert.doesNotMatch(bad.queries[0], /observed_at, block_number/);
+    } finally {
+      bad.restore();
+    }
   });
 
   test("get_account_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24817,57 +24642,65 @@ describe("MCP get_account_extrinsics — Postgres tier wiring", () => {
 });
 
 describe("MCP list_block_extrinsics — Postgres tier wiring", () => {
-  test("list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
-    const res = await callTool(
-      "list_block_extrinsics",
-      { ref: "4200000" },
-      { env },
-    );
-    assert.equal(res.body.result.isError, false);
-    assert.equal(res.body.result.structuredContent.marker, "from-postgres");
-    assert.equal(
-      captured,
-      "/api/v1/blocks/4200000/extrinsics?limit=50&offset=0",
-    );
-  });
+  // "list_block_extrinsics: flag=postgres uses Postgres data (unwrapped from {data}) at the REST-equivalent path"
+  // was here: it asserted the URL tryPostgresTier built and read a marker
+  // back off the mocked tier. That flag forwards nothing (#10190), so the
+  // request was never made -- covered by "list_block_extrinsics serves one block's extrinsics", through the transport that answers.
 
-  test("list_block_extrinsics: flag=postgres forwards a supplied limit/offset and a 0x hash ref", async () => {
-    let captured;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          const reqUrl = new URL(req.url);
-          captured = reqUrl.pathname + reqUrl.search;
-          return Response.json({
-            data: { schema_version: 1, marker: "from-postgres" },
-          });
-        },
-      },
-    };
+  test("list_block_extrinsics: a 0x hash ref costs a block lookup, and the page is sliced", async () => {
+    // Same two claims as its events twin, on the extrinsics table: the hash is
+    // resolved to a height off chain.blocks first, and the offset is emulated by
+    // over-fetch-and-slice because R2 SQL has no OFFSET.
     const hash = `0x${"ab".repeat(32)}`;
-    await callTool(
-      "list_block_extrinsics",
-      { ref: hash, limit: 25, offset: 60 },
-      { env },
+    const ROW = {
+      block_number: 4200000,
+      extrinsic_index: 3,
+      extrinsic_hash: `0x${"c".repeat(64)}`,
+      signer: null,
+      call_module: "Timestamp",
+      call_function: "set",
+      success: true,
+      fee_tao: null,
+      tip_tao: null,
+      call_args: null,
+      observed_at: 1_750_009_000_000,
+    };
+    const tier = forbiddenDataApi();
+    const lake = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
     );
-    assert.equal(
-      captured,
-      `/api/v1/blocks/${hash}/extrinsics?limit=25&offset=60`,
+    try {
+      const res = await callTool(
+        "list_block_extrinsics",
+        { ref: hash, limit: 25 },
+        { env: { ...LAKEHOUSE_ENV, ...tier } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(tier.paths, [], "the retired tier was consulted");
+      assert.equal(out.block_number, 4200000, "the hash resolved to a height");
+      assert.equal(out.extrinsics.length, 1);
+      assert.equal(out.extrinsics[0].extrinsic_index, 3);
+      assert.match(
+        lake.queries[0],
+        /FROM chain\.blocks WHERE block_hash = '0xabab/,
+      );
+    } finally {
+      lake.restore();
+    }
+
+    const deep = lakehouse((sql: string) =>
+      sql.includes("FROM chain.blocks") ? [{ block_number: 4200000 }] : [ROW],
     );
+    try {
+      const res = await callTool(
+        "list_block_extrinsics",
+        { ref: hash, limit: 25, offset: 60 },
+        { env: { ...LAKEHOUSE_ENV } },
+      );
+      assert.deepEqual(res.body.result.structuredContent.extrinsics, []);
+    } finally {
+      deep.restore();
+    }
   });
 
   test("list_block_extrinsics: flag=postgres falls back to the schema-stable empty shape on failure", async () => {
@@ -24982,29 +24815,21 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
   for (const { tool, args, path } of CASES) {
     const label = path.includes("window=30d") ? `${tool} (window=30d)` : tool;
 
-    test(`${label}: flag=postgres uses Postgres data at the REST-equivalent path`, async () => {
-      let captured;
-      const env = {
-        METAGRAPH_HEALTH_SOURCE: "postgres",
-        DATA_API: {
-          fetch: async (req: Request) => {
-            const reqUrl = new URL(req.url);
-            captured = reqUrl.pathname + reqUrl.search;
-            return Response.json({
-              schema_version: 1,
-              marker: "from-postgres",
-            });
-          },
-        },
-      };
-      const res = await callTool(tool, args, { env });
+    test(`${label}: the retired tier flag is not consulted even when set`, async () => {
+      // WAS "uses Postgres data at the REST-equivalent path", asserting the URL
+      // tryPostgresTier sent. METAGRAPH_HEALTH_SOURCE reads
+      // "retired"/"d1" in wrangler.jsonc and is absent from
+      // DATA_API_FORWARD_FLAGS, so that request was never made -- the assertion
+      // described a call production does not perform, over a payload it cannot
+      // produce. `path` stays in CASES as the documentation of what the REST twin
+      // serves; what is provable here is the retirement.
+      const tier = forbiddenDataApi();
+      const res = await callTool(tool, args, {
+        env: { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier },
+      });
       assert.equal(res.body.result.isError, false, label);
-      assert.equal(
-        res.body.result.structuredContent.marker,
-        "from-postgres",
-        label,
-      );
-      assert.equal(captured, path, label);
+      assert.deepEqual(tier.paths, [], label);
+      assert.equal(res.body.result.structuredContent.marker, undefined, label);
     });
 
     test(`${label}: flag=postgres falls back to the schema-stable empty shape on failure`, async () => {

@@ -57,7 +57,6 @@ export async function loadChainPrometheusColdTier(
   const rowLimit = limit ?? CHAIN_PROMETHEUS_LIMIT_DEFAULT;
   const rollup = await loadChainEventRollup(env, CHAIN_PROMETHEUS_ROLLUP, {
     windowDays: ANALYTICS_WINDOW_DAYS[label],
-    limit: rowLimit,
     query,
   });
   if (!rollup) return null;

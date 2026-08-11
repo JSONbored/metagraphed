@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { loadChainServingColdTier } from "../src/chain-serving-loader.ts";
+import { ROLLUP_POPULATION_CAP } from "../src/chain-event-rollup-cold-tier.ts";
 
 const NOW_ROWS = [{ netuid: 7, announcements: 9, distinct_servers: 4 }];
 const NETWORK = [{ distinct_servers: 4, newest_observed: 1_785_000_000_000 }];
@@ -138,23 +139,67 @@ describe("the loader resolves its window and limit exactly once", () => {
     });
   });
 
-  test("an omitted limit caps the scan at what the response can carry", async () => {
-    // loadChainEventRollup defaults to 200 and buildChainServing to 20, so
-    // leaving each to its own default scanned ten times the rows the card
-    // could hold. One resolved number has to feed both.
-    const engine = fakeEngine();
+  test("the page size never reaches the scan, whatever the caller asks for", async () => {
+    // WAS "an omitted limit caps the scan at what the response can carry",
+    // asserting `LIMIT 20` -- the builder's page default -- in the row SQL. That
+    // is the defect, not the contract: buildChainServing sums these rows for
+    // `network.announcements` and takes `intensity_distribution` over them, so a
+    // page-sized scan makes both describe the page. Measured live on
+    // 2026-08-11, /api/v1/chain/serving?window=30d over 59 subnets:
+    //
+    //   limit=1   network.announcements  6,292
+    //   limit=20  network.announcements 25,624
+    //   limit=59  network.announcements 27,359   <- the window's real total
+    //
+    // A network-wide figure that quadruples with a query parameter. The scan
+    // takes the population cap now and the builder pages, so no caller's limit
+    // can move it.
+    for (const limit of [undefined, 1, 20, 100]) {
+      const engine = fakeEngine();
+      const data = await loadChainServingColdTier({} as never, {
+        window: "7d",
+        ...(limit === undefined ? {} : { limit }),
+        query: engine.query,
+      });
+      assert.ok(data);
+      const rowsSql = engine.seen.find((sql) =>
+        sql.includes("GROUP BY netuid"),
+      )!;
+      assert.match(
+        rowsSql,
+        new RegExp(`LIMIT ${ROLLUP_POPULATION_CAP}\\b`),
+        `limit=${String(limit)} must not reach the scan: ${rowsSql}`,
+      );
+    }
+  });
+
+  test("the network total is the window's, not the page's", async () => {
+    // The end-to-end form of the same regression: three subnets in the window,
+    // a page of one, and a network block that still counts all three. This is
+    // what the live measurements above were reading, and it fails if the page
+    // slice ever moves back ahead of the rollup.
+    const engine = fakeEngine({
+      rows: [
+        { netuid: 1, announcements: 60, distinct_servers: 3 },
+        { netuid: 2, announcements: 30, distinct_servers: 2 },
+        { netuid: 3, announcements: 10, distinct_servers: 1 },
+      ],
+      network: [{ distinct_servers: 4, newest_observed: 1_785_000_000_000 }],
+    });
     const data = await loadChainServingColdTier({} as never, {
       window: "7d",
+      limit: 1,
       query: engine.query,
     });
     assert.ok(data);
-    const rowsSql = engine.seen.find((sql) => sql.includes("GROUP BY netuid"))!;
-    assert.match(
-      rowsSql,
-      /LIMIT 20\b/,
-      `scan cap must match the builder's own default: ${rowsSql}`,
+    assert.equal(data.subnets.length, 1, "the page is what the caller asked");
+    assert.equal(data.network.announcements, 100, "60 + 30 + 10, not 60");
+    assert.equal(data.subnet_count, 3);
+    assert.equal(
+      data.intensity_distribution?.count,
+      3,
+      "the spread covers every subnet in the window",
     );
-    assert.doesNotMatch(rowsSql, /LIMIT 200\b/);
   });
 });
 

@@ -11,7 +11,7 @@
 // than authoring new query logic -- exactly the discipline #6756 asked for.
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import { LEADERBOARD_BOARDS } from "./health-serving.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
 import {
   buildChainRegistrations,
   CHAIN_REGISTRATIONS_WINDOWS,
@@ -127,20 +127,6 @@ export const SAVED_QUERY_TEMPLATES: SavedQueryTemplate[] = [
   },
 ];
 
-// Same trick postgresTierRequest (src/graphql.ts) uses: tryPostgresTier only
-// inspects pathname + search (it forwards the Request as-is to the DATA_API
-// service binding, which routes on pathname), so a fixed internal origin is
-// fine here -- there is no real incoming request to borrow one from when this
-// runs from an MCP tool call.
-function internalTierRequest(
-  pathname: string,
-  params: URLSearchParams,
-): Request {
-  const url = new URL(pathname, "https://internal.metagraphed.workers/");
-  url.search = params.toString();
-  return new Request(url);
-}
-
 type SavedQueryHandler = (env: Env, params: Row) => Promise<unknown>;
 
 export const SAVED_QUERY_HANDLERS: Record<string, SavedQueryHandler> = {
@@ -152,15 +138,23 @@ export const SAVED_QUERY_HANDLERS: Record<string, SavedQueryHandler> = {
     return data;
   },
   async "chain-registrations-window"(env, { window, limit }) {
-    const tierParams = new URLSearchParams();
-    tierParams.set("window", String(window));
-    tierParams.set("limit", String(limit));
+    // NO TIER READ (#10190): this ran tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE)
+    // and fell to `buildChainRegistrations([])`. That flag reads "retired" in
+    // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier arm
+    // resolved to null on every call -- and unlike its three sibling surfaces
+    // this one had NO rung under it, so run_saved_query has been answering an
+    // empty leaderboard while GET /api/v1/chain/registrations served a full one
+    // for the same window.
+    //
+    // #9146: the same chain-registrations PROJECTION the REST route, the GraphQL
+    // field and the MCP tool read, so the four cannot disagree. The reader
+    // declines (null) when it cannot answer faithfully, which keeps the empty
+    // builder as the floor rather than the answer.
     return (
-      (await tryPostgresTier(
-        env,
-        internalTierRequest("/api/v1/chain/registrations", tierParams),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ??
+      (await loadChainRegistrationsFromArtifact(env, {
+        window: window as string,
+        limit: limit as number,
+      })) ??
       buildChainRegistrations([], {
         window: window as string,
         limit: limit as number,

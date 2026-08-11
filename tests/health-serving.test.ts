@@ -1,5 +1,16 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// One store since #10179: loadReliabilityAggregate reaches it through
+// src/read-store.ts, which builds `new Client(...)` itself -- there is no
+// binding to hand it. See tests/helpers/pg-mock.ts for why this is a module
+// mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { loadReliabilityAggregate } from "../src/reliability-badge.ts";
 import {
   OPERATIONAL_KINDS,
   buildGlobalHealth,
@@ -16,7 +27,6 @@ import {
   overlaySubnetHealth,
   formatUptime,
   loadSubnetReliability,
-  loadReliabilityAggregate,
   resolveLiveHealth,
   subnetBadgeStatus,
   summarizeRows,
@@ -3363,28 +3373,60 @@ describe("loadSubnetReliability (D1 retired, no Postgres-tier mirror yet)", () =
   });
 });
 
-// #8329: no longer a stub. It reads /api/v1/subnets/{netuid}/uptime through
-// the Postgres tier -- the mirror the old comment said didn't exist actually
-// did, just under the uptime route rather than a badge-specific one.
+// #8329: no longer a stub. It reads surface_uptime_daily through the same
+// loadSubnetUptime the /api/v1/subnets/{netuid}/uptime route calls -- the mirror
+// the old comment said didn't exist actually did, just under the uptime route
+// rather than a badge-specific one.
+//
+// It reached that route by SYNTHESIZING an internal request through
+// tryPostgresTier(METAGRAPH_HEALTH_SOURCE), which is how the badge came to
+// publish "n/a" again once that flag stopped forwarding (#10190): measured on
+// production 2026-08-11, /api/v1/subnets/64/badge.svg?metric=uptime said
+// "metagraphed: n/a" while /api/v1/subnets/64/uptime reported grade C at 0.9296
+// over 78,896 samples from the same table in the same second. These now drive
+// the loader, so the fixture is the table's own daily rows.
 describe("loadReliabilityAggregate", () => {
-  const req = () =>
-    new Request("https://metagraph.sh/api/v1/subnets/1/badge.svg");
-  // tryPostgresTier returns null unless the flag is "postgres" AND DATA_API is
-  // bound, so an unconfigured env exercises the no-data path without a stub.
+  beforeEach(() => {
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.postgres = null;
+  });
+
+  /** No store bound: readStore hands the loader nothing and it degrades to the
+   * schema-stable empty payload, which carries no reliability block. */
   const coldEnv = {} as unknown as Parameters<
     typeof loadReliabilityAggregate
   >[0];
 
-  test("returns null for an empty netuid list rather than querying", async () => {
-    assert.equal(
-      await loadReliabilityAggregate(coldEnv, req(), { netuids: [] }),
-      null,
-    );
+  /** One day-row of surface_uptime_daily, as the loader's own GROUP BY yields
+   * it -- the ratio is a column there, computed in SQL from the two sums. */
+  const dayRow = (surface: string, samples: number, ok: number) => ({
+    surface_id: surface,
+    surface_key: surface,
+    day: "2026-08-10",
+    samples,
+    ok_count: ok,
+    uptime_ratio: samples > 0 ? ok / samples : null,
+    avg_latency_ms: 400,
+    latency_samples: samples,
+    p50: 400,
+    p95: 400,
+    p99: 400,
+    status: ok === samples ? "ok" : ok === 0 ? "failed" : "degraded",
   });
 
-  test("returns null when the tier is cold, so the badge renders n/a", async () => {
+  test("returns null for an empty netuid list rather than querying", async () => {
     assert.equal(
-      await loadReliabilityAggregate(coldEnv, req(), { netuids: [64] }),
+      await loadReliabilityAggregate(coldEnv, { netuids: [] }),
+      null,
+    );
+    assert.deepEqual(pg.control.queries, [], "no netuids, no query");
+  });
+
+  test("returns null when the store is cold, so the badge renders n/a", async () => {
+    assert.equal(
+      await loadReliabilityAggregate(coldEnv, { netuids: [64] }),
       null,
     );
   });
@@ -3392,62 +3434,32 @@ describe("loadReliabilityAggregate", () => {
   test("weights by sample count and re-derives the grade from the composite", async () => {
     // A 100%-uptime subnet with 40 probes must not drag a 90%/30,000-probe
     // subnet up to a mean of 95% -- weighting is the whole point.
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          const netuid = Number(new URL(r.url).pathname.split("/")[4]);
-          const reliability =
-            netuid === 1
-              ? {
-                  uptime_ratio: 0.9,
-                  sample_count: 30000,
-                  avg_latency_ms: 400,
-                  latency_sample_count: 27000,
-                }
-              : {
-                  uptime_ratio: 1,
-                  sample_count: 40,
-                  avg_latency_ms: 400,
-                  latency_sample_count: 40,
-                };
-          // data-api returns the BARE payload -- tryPostgresTier hands the
-          // whole body back, and the ok/schema_version envelope is added by
-          // the public Worker downstream, not here.
-          return new Response(JSON.stringify({ reliability }), {
-            headers: { "content-type": "application/json" },
-          });
-        },
-      },
-    } as unknown as Parameters<typeof loadReliabilityAggregate>[0];
-    const out = await loadReliabilityAggregate(env, req(), { netuids: [1, 2] });
+    // `postgres`, not `answers`: both reads issue the SAME statement and differ
+    // only in the bound netuid, so a substring match cannot tell them apart.
+    pg.control.postgres = async (_text: string, values: unknown[]) =>
+      Number(values?.[0]) === 1
+        ? [dayRow("a", 30000, 27000)]
+        : [dayRow("a", 40, 40)];
+    const out = await loadReliabilityAggregate(
+      pgMockEnv() as unknown as Parameters<typeof loadReliabilityAggregate>[0],
+      { netuids: [1, 2] },
+    );
     assert.ok(out);
     // (0.9*30000 + 1*40) / 30040 ≈ 0.9001, not the 0.95 an unweighted mean gives.
     assert.ok(out.uptime_ratio > 0.9 && out.uptime_ratio < 0.905);
     // 90.01 with no latency penalty (400ms is under the free threshold) → "C".
     assert.equal(out.grade, "C");
+    assert.equal(pg.control.queries.length, 2, "one read per netuid");
+    assert.match(pg.control.queries[0]!.text, /FROM surface_uptime_daily/);
   });
 
   test("skips subnets with no probe samples instead of counting them as failures", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          const netuid = Number(new URL(r.url).pathname.split("/")[4]);
-          const reliability =
-            netuid === 1
-              ? { uptime_ratio: 1, sample_count: 100, avg_latency_ms: null }
-              : { uptime_ratio: null, sample_count: 0, avg_latency_ms: null };
-          // data-api returns the BARE payload -- tryPostgresTier hands the
-          // whole body back, and the ok/schema_version envelope is added by
-          // the public Worker downstream, not here.
-          return new Response(JSON.stringify({ reliability }), {
-            headers: { "content-type": "application/json" },
-          });
-        },
-      },
-    } as unknown as Parameters<typeof loadReliabilityAggregate>[0];
-    const out = await loadReliabilityAggregate(env, req(), { netuids: [1, 2] });
+    pg.control.postgres = async (_text: string, values: unknown[]) =>
+      Number(values?.[0]) === 1 ? [dayRow("a", 100, 100)] : [dayRow("a", 0, 0)];
+    const out = await loadReliabilityAggregate(
+      pgMockEnv() as unknown as Parameters<typeof loadReliabilityAggregate>[0],
+      { netuids: [1, 2] },
+    );
     assert.ok(out);
     assert.equal(out.uptime_ratio, 1);
     assert.equal(out.grade, "A");

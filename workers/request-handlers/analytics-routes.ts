@@ -77,6 +77,9 @@ import {
   buildDomainSummary,
 } from "../../src/domain-summary.ts";
 import { readStore } from "../../src/read-store.ts";
+import { COMPARE_SUBNETS_TABLES } from "../../src/read-store-tables.ts";
+import { d1All } from "../../src/analytics-live.ts";
+import { surfaceStatusAvgLatencySql } from "../../src/health-sql.ts";
 import {
   LEADERBOARD_TABLES,
   TAO_USD_TABLES,
@@ -404,30 +407,26 @@ export async function handleUptime(
   // tier miss now reads the dual-written surface_uptime_daily copy in D1
   // through loadSubnetUptime; with no binding that loader degrades to the
   // same schema-stable empty payload this served since 2026-07-17.
-  let isFallback = false;
-  let data = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_HEALTH_SOURCE",
-  )) as ReturnType<typeof formatUptime> | null;
-  if (!data) {
-    // Cacheable when D1-served — only an empty payload (no binding, or a D1
-    // read failure mid-load) is barred from the edge cache (see
-    // handleHealthTrends in analytics.ts).
-    const d1Generation = currentD1ReadFailureGeneration();
-    const healthMeta = await readHealthMetaKv(env);
-    data = (await loadSubnetUptime(netuid, {
-      window: windowParam,
-      observedAt: healthMeta?.last_run_at || null,
-      minSamples: (minSamples as number | undefined) ?? null,
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-    } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
-      typeof formatUptime
-    >;
-    isFallback =
-      !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation;
-  }
+  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+  // initialise `data` resolved to null on every request -- which made the
+  // branch below the only path, not the fallback.
+  // Cacheable when D1-served — only an empty payload (no binding, or a D1
+  // read failure mid-load) is barred from the edge cache (see
+  // handleHealthTrends in analytics.ts).
+  const d1Generation = currentD1ReadFailureGeneration();
+  const healthMeta = await readHealthMetaKv(env);
+  const data = (await loadSubnetUptime(netuid, {
+    window: windowParam,
+    observedAt: healthMeta?.last_run_at || null,
+    minSamples: (minSamples as number | undefined) ?? null,
+    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+  } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
+    typeof formatUptime
+  >;
+  const isFallback =
+    !env.HYPERDRIVE?.connectionString ||
+    currentD1ReadFailureGeneration() !== d1Generation;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
       uptimeCsvRows(data.surfaces),
@@ -850,21 +849,39 @@ export async function handleCompare(
   // caller's netuids=/dimensions= request unchanged (tryPostgresTier's usual
   // contract). D1 fully eliminated (2026-07-17): a tier miss now always
   // falls through to an empty row set (never a live D1 query).
+  // NO TIER READ (#10190), AND IT HAD NO RUNG. This synthesized an internal
+  // /api/v1/internal/compare-health request for METAGRAPH_HEALTH_SOURCE, a flag
+  // that reads "d1" and is absent from DATA_API_FORWARD_FLAGS -- so the read
+  // resolved to null and this leg returned `[]` on every request. The health
+  // dimension has been publishing `health: null` for every subnet while the
+  // get_compare_subnets MCP tool served real numbers for the same netuids, off
+  // the same table. That flag cannot be widened either: the same flag gates
+  // three routes data-api does not implement (see src/health-status-live.ts).
+  //
+  // So it reads `surface_status` directly, through the same store read and the
+  // same grouping loadCompareSubnets uses for MCP -- one source, two surfaces.
   let healthIsFallback = false;
   const healthPromise = dimensions.includes("health")
     ? (async () => {
-        const pgUrl = new URL(request.url);
-        pgUrl.pathname = "/api/v1/internal/compare-health";
-        pgUrl.search = `?netuids=${requestedNetuids.join(",")}`;
-        const pgData = await tryPostgresTier(
-          env,
-          new Request(pgUrl),
-          "METAGRAPH_HEALTH_SOURCE",
+        const wanted = new Set(
+          requestedNetuids.map((netuid) => Number(netuid)),
         );
-        if (pgData)
-          return pgData.rows as Array<Record<string, unknown>> | undefined;
-        healthIsFallback = true;
-        return [];
+        const grouped = await d1All(
+          readStore(env, COMPARE_SUBNETS_TABLES) as never,
+          `SELECT netuid,
+                  COUNT(*) AS surface_count,
+                  SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                  ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
+           FROM surface_status
+           GROUP BY netuid`,
+          [],
+        );
+        const rows = grouped.filter((row: Record<string, unknown>) =>
+          wanted.has(Number(row.netuid)),
+        );
+        // A store that cannot answer is a fallback, exactly as a tier miss was.
+        healthIsFallback = rows.length === 0;
+        return rows;
       })()
     : null;
   const [economicsRows, healthRows] = await Promise.all([

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
@@ -88,34 +89,26 @@ test("GET /api/v1/governance/config-changes is schema-stable when D1 is cold (ne
 });
 
 test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows via the Postgres tier", async () => {
-  const env = {
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [
-            {
-              block_number: 300,
-              extrinsic_index: 3,
-              extrinsic_hash: `0x${"c".repeat(64)}`,
-              signer: "5AdminKey",
-              call_module: "AdminUtils",
-              call_function: "sudo_set_tempo",
-              call_args: null,
-              success: true,
-              fee_tao: 0.000123,
-              tip_tao: 0,
-              observed_at: new Date(1750009000000).toISOString(),
-            },
-          ],
-        }),
+  // #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never asked.
+  // The lakehouse cold tier answers, and it feeds the SAME buildExtrinsicFeed --
+  // so the CSV below is produced from lakehouse rows exactly as in production.
+  const lake = lakehouse([
+    {
+      block_number: 300,
+      extrinsic_index: 3,
+      extrinsic_hash: `0x${"c".repeat(64)}`,
+      signer: "5AdminKey",
+      call_module: "AdminUtils",
+      call_function: "sudo_set_tempo",
+      call_args: null,
+      success: true,
+      fee_tao: 0.000123,
+      tip_tao: 0,
+      observed_at: new Date(1750009000000).toISOString(),
     },
-  };
+  ]);
+  const env = { ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req("/api/v1/governance/config-changes?format=csv"),
     env as unknown as Env,
@@ -126,4 +119,5 @@ test("GET /api/v1/governance/config-changes?format=csv exports the filtered rows
   const lines = (await res.text()).trim().split("\r\n");
   assert.equal(lines.length, 2);
   assert.match(lines[1], /^300-3,300,5AdminKey,AdminUtils,sudo_set_tempo,true/);
+  lake.restore();
 });

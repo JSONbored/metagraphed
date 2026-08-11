@@ -115,8 +115,20 @@ function buildResolver(
   return {
     name,
     body,
+    // WAS `/tryPostgresTier\(/ && a retired flag` (#10190). That predicate
+    // stopped selecting anything the moment the sweep deleted the last dead
+    // call: the population went to zero and the gate could no longer fail,
+    // which is the exact way #10250 says a gate blinds itself during the
+    // sweep it guards.
+    //
+    // The question is unchanged -- "this ladder's tier was retired, so does it
+    // still have a rung?" -- so it now keys on the marker the sweep leaves at
+    // every site it emptied. That set is fixed and cannot silently drain: a
+    // deleted note is a deleted ladder, and a new dead tier read gets a new
+    // note. `retired` still gates it so a note naming a LIVE flag (there are
+    // none today, and there should never be) is not counted.
     usesRetiredTier:
-      /tryPostgresTier\(/.test(body) &&
+      /NO TIER READ \(#10190\)/.test(body) &&
       [...retired].some((flag) => body.includes(flag)),
     // The rung: any shared cold-tier / artifact reader, OR a composer that owns
     // the whole ladder on the resolver's behalf.

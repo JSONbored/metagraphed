@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { archiveEnv, forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainStakeMoves,
@@ -217,11 +218,22 @@ describe("buildChainStakeMoves", () => {
 // (the D1-querying loader) is gone -- the handler now degrades straight to
 // buildChainStakeMoves([], {...}) on any Postgres miss/outage.
 describe("GET /api/v1/chain/stake-moves", () => {
-  function postgresEnv(body: Row) {
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and
+  // is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // asked -- the #9146 projection lane is what answers. Doubled at the same
+  // transport (the archive bucket) and given the lane's ROWS rather than a built
+  // payload, so the builder under test is the one production runs. `body` stays
+  // the fixture: the derived fields it carries get recomputed from its own rows,
+  // which is exactly what a built-payload double could never check.
+  function projectionEnv(body: Row) {
     return {
       ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json(body) },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": { network: body.network ?? null, rows: body.subnets ?? [] },
+        },
+      }),
     };
   }
   const req = (q = "") =>
@@ -248,7 +260,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("dispatches to the network stake-movement scorecard", async () => {
     const res = await handleRequest(
       req("?window=7d"),
-      postgresEnv(warmBody) as unknown as Env,
+      projectionEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -264,7 +276,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
         method: "HEAD",
       }),
-      postgresEnv(warmBody) as unknown as Env,
+      projectionEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -284,23 +296,24 @@ describe("GET /api/v1/chain/stake-moves", () => {
     assert.equal(body.data.intensity_distribution, null);
   });
 
-  test("flag=postgres serves the DATA_API response", async () => {
+  test("the retired tier flag is not consulted even when set (#10190)", async () => {
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
+    // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier at all.
+    // Binding a DATA_API that WOULD answer and proving nothing asks it is the
+    // whole assertion: a reintroduced tryPostgresTier call resolves to null too,
+    // so without this it would be invisible -- which is how it sat dead.
+    const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
-      postgresEnv({
-        schema_version: 1,
-        window: "7d",
-        observed_at: "2026-01-01T00:00:00.000Z",
-        subnet_count: 99,
-        network: {},
-        intensity_distribution: null,
-        subnets: [{ netuid: 42 }],
-      }) as unknown as Env,
+      {
+        ...createLocalArtifactEnv(),
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.subnet_count, 99);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("flag=postgres degrades to the empty card when DATA_API fails", async () => {
@@ -356,7 +369,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
   test("exports the per-subnet leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      postgresEnv(warmBody) as unknown as Env,
+      projectionEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -377,7 +390,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
       new Request("https://api.metagraph.sh/api/v1/chain/stake-moves", {
         headers: { accept: "text/csv" },
       }),
-      postgresEnv(warmBody) as unknown as Env,
+      projectionEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -401,7 +414,7 @@ describe("GET /api/v1/chain/stake-moves", () => {
         "https://api.metagraph.sh/api/v1/chain/stake-moves?format=csv",
         { method: "HEAD" },
       ),
-      postgresEnv(warmBody) as unknown as Env,
+      projectionEnv(warmBody) as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
@@ -452,42 +465,19 @@ describe("chain/stake-moves edge cache", () => {
             : null;
         },
       },
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: new Date(OBS).toISOString(),
-            subnet_count: 3,
-            network: {
-              distinct_movers: 12,
-              movements: 95,
-              movements_per_mover: 7.92,
-            },
-            intensity_distribution: { count: 3, min: 2.5, max: 15 },
-            subnets: [
-              {
-                netuid: 1,
-                distinct_movers: 4,
-                movements: 40,
-                movements_per_mover: 10,
-              },
-              {
-                netuid: 2,
-                distinct_movers: 2,
-                movements: 30,
-                movements_per_mover: 15,
-              },
-              {
-                netuid: 5,
-                distinct_movers: 10,
-                movements: 25,
-                movements_per_mover: 2.5,
-              },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            network: { distinct_movers: 12, movements: 95 },
+            rows: [
+              { netuid: 1, distinct_movers: 4, movements: 40 },
+              { netuid: 2, distinct_movers: 2, movements: 30 },
+              { netuid: 5, distinct_movers: 10, movements: 25 },
             ],
-          }),
-      },
+          },
+        },
+      }),
     };
     const waits: Promise<unknown>[] = [];
     const call = () =>

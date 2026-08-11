@@ -24,6 +24,7 @@ import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventRollup,
+  ROLLUP_POPULATION_CAP,
   safeColumnAlias,
   safeEventKind,
 } from "../src/chain-event-rollup-cold-tier.ts";
@@ -219,11 +220,17 @@ describe("what the rollup refuses to publish", () => {
     assert.deepEqual(engine.seen, [], "a refused kind must not reach SQL");
   });
 
-  test("a malformed limit falls back to the default rather than reaching SQL", async () => {
-    // An absurd limit clamps (asserted below); a NON-INTEGER one must not be
-    // interpolated at all -- `LIMIT NaN` is a syntax error that would take the
-    // whole route down rather than degrade it.
-    for (const limit of [Number.NaN, -1, 0, "20" as unknown as number]) {
+  test("no caller can put a page size into the scan, malformed or not", async () => {
+    // WAS "a malformed limit falls back to the default rather than reaching
+    // SQL", which guarded the interpolation of a value that must no longer be
+    // interpolated at all: the builders derive the network rollup and the
+    // distribution from these rows, so a page-sized scan silently redefines both
+    // (see ROLLUP_POPULATION_CAP for the live figures).
+    //
+    // `limit` is off the option type now, so this drives it through `as never`
+    // the way a JS caller or a stale build could -- the guarantee is that even
+    // then nothing but the population cap reaches the SQL.
+    for (const limit of [Number.NaN, -1, 0, 20, 5_000_000, "20"]) {
       const engine = fakeEngine();
       await loadChainEventRollup({} as never, CHAIN_SERVING_ROLLUP, {
         windowDays: 7,
@@ -233,8 +240,8 @@ describe("what the rollup refuses to publish", () => {
       } as never);
       assert.match(
         engine.rowsSql()!,
-        /LIMIT 200/,
-        `limit=${String(limit)} must fall back to the default`,
+        new RegExp(`LIMIT ${ROLLUP_POPULATION_CAP}\\b`),
+        `limit=${String(limit)} must not reach the scan`,
       );
     }
   });
@@ -383,13 +390,19 @@ describe("the SQL it emits", () => {
 
   test("the per-subnet rollup is row-capped, and the cap is bounded", async () => {
     // R2 SQL is second-scale with no indexes; an uncapped GROUP BY over
-    // account_events is the read here that could pin a request open.
-    const { engine, result } = load({}, { limit: 5_000_000 });
+    // account_events is the read here that could pin a request open. The bound
+    // is a safety bound and nothing else -- it is not a page size, and no
+    // caller supplies it.
+    const { engine, result } = load();
     await result;
     assert.match(
       engine.rowsSql()!,
-      /LIMIT 1000\b/,
-      "an absurd limit must clamp",
+      new RegExp(`LIMIT ${ROLLUP_POPULATION_CAP}\\b`),
+      "the population cap must bound the scan",
+    );
+    assert.ok(
+      ROLLUP_POPULATION_CAP >= 1000,
+      "the cap must clear the ~129-subnet population by an order of magnitude",
     );
   });
 
@@ -441,11 +454,14 @@ describe("what it hands back", () => {
   });
 
   test("the subnet count comes from its own query, not from the page", async () => {
-    // #10249. `rows` is capped, so counting it answers "how big was the page"
-    // the moment the cap binds -- measured live, /chain/weights published
-    // subnet_count 20 at ?limit=20 and 99 at ?limit=100 while the window
-    // covered 129. One row here against a count of 12 is the whole point: the
-    // two numbers must be allowed to disagree.
+    // #10249. `rows` used to be capped at the caller's page size, so counting it
+    // answered "how big was the page" the moment the cap bound -- measured live,
+    // /chain/weights published subnet_count 20 at ?limit=20 and 99 at ?limit=100
+    // while the window covered 129. The page size is out of the scan now, but
+    // this number keeps its own query: the safety cap can still bind in
+    // principle, and a population must not be read off a bounded page. One row
+    // here against a count of 12 is the whole point: the two numbers must be
+    // allowed to disagree.
     const { result } = load({
       rows: [{ netuid: 7, announcements: 9, distinct_servers: 4 }],
       subnets: [{ subnet_count: 12 }],
@@ -476,6 +492,31 @@ describe("what it hands back", () => {
       );
       assert.match(sql, /GROUP BY netuid/);
     }
+  });
+
+  test("the two per-subnet queries require a subnet; the network one does not", async () => {
+    // `account_events.netuid` is nullable and WeightsSet uses it. Visible from
+    // outside on 2026-08-11 in /api/v1/chain/weights/setters, which publishes
+    // `{"hotkey": null, "netuid": null, "uid": 0, "weight_sets": 633}` -- so
+    // grouping by netuid produced a row no builder can attribute to a subnet.
+    // Every builder here drops it, correctly, but it still spent a slot in the
+    // page and a unit in the subnet count: /chain/weights?limit=N published N-1
+    // subnets at every N, and ?limit=1 an entirely empty card beside a
+    // subnet_count of 129.
+    //
+    // The NETWORK query must stay unfiltered. It counts distinct participants,
+    // and a participant whose subnet the export did not record is still a
+    // participant -- narrowing it would drop real ones to fix a per-subnet
+    // problem.
+    const { engine, result } = load();
+    await result;
+    assert.match(engine.rowsSql()!, /netuid IS NOT NULL/);
+    assert.match(engine.subnetCountSql()!, /netuid IS NOT NULL/);
+    assert.doesNotMatch(
+      engine.networkSql()!,
+      /netuid IS NOT NULL/,
+      "the participant count is not a per-subnet question",
+    );
   });
 
   test("a missing subnet count degrades to null, it does not decline", async () => {

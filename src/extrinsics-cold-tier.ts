@@ -232,7 +232,13 @@ export async function loadBlockExtrinsicsColdTier(
     network,
   );
   if (rows === null) return null;
-  return buildBlockExtrinsics(rows.rows, ref, rows.nextCursor, {
+  // `height`, NOT the cursor: buildBlockExtrinsics' third parameter is the
+  // block number this page belongs to. Passing `rows.nextCursor` there published
+  // a cursor token (or null) as `block_number` on every lakehouse-served page --
+  // the sibling loadBlockEventsColdTier passes `height` here, and REST, GraphQL
+  // and MCP all read this one field from the same builder. Invisible until the
+  // retired tier stopped supplying `block_number` itself (#10190).
+  return buildBlockExtrinsics(rows.rows, ref, height, {
     limit: rows.limit,
     offset: rows.offset,
   });

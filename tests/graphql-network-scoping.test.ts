@@ -58,20 +58,6 @@ function recordingArchive(body: unknown) {
 /** Enough env for the lakehouse leg to be attempted at all. */
 const LAKEHOUSE_ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
-/** A DATA_API double that records every path it is asked for. */
-function recordingDataApi(payload: Row) {
-  const paths: string[] = [];
-  return {
-    paths,
-    binding: {
-      fetch: async (request: Request) => {
-        paths.push(new URL(request.url).pathname);
-        return Response.json(payload);
-      },
-    },
-  };
-}
-
 async function query(text: string, env: Row) {
   const res = await handleGraphQLRequest(
     new Request("https://api.metagraph.sh/api/v1/graphql", {
@@ -139,13 +125,23 @@ describe("the resolvers ask the twin path", () => {
     assert.notEqual(chainTable("blocks"), chainTable("blocks", "testnet"));
   });
 
-  test("a chain rollup forwards it too", async () => {
-    const api = recordingDataApi({ schema_version: 1, transfers: [] });
+  test("a chain rollup forwards it to the projection key", async () => {
+    // #10190: the tier this asserted a path against is retired. The rollup's
+    // real read is the #9146 projection, and the network arrives in the OBJECT
+    // KEY (#9412) rather than in a request path.
+    const archive = recordingArchive({ schema_version: 1, windows: {} });
     await query('{ chain_transfers(window: "7d", network: test) { window } }', {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: api.binding,
+      METAGRAPH_ARCHIVE: archive.binding,
     });
-    assert.deepEqual(api.paths, ["/api/v1/test/chain/transfers"]);
+    assert.equal(archive.keys.length, 1);
+    assert.match(archive.keys[0], /testnet/);
+
+    const mainnet = recordingArchive({ schema_version: 1, windows: {} });
+    await query('{ chain_transfers(window: "7d") { window } }', {
+      METAGRAPH_ARCHIVE: mainnet.binding,
+    });
+    assert.equal(mainnet.keys.length, 1);
+    assert.doesNotMatch(mainnet.keys[0], /testnet/);
   });
 
   test("a per-block read forwards it", async () => {
@@ -156,29 +152,26 @@ describe("the resolvers ask the twin path", () => {
   });
 
   test("a block-detail cascade forwards it to the hot/cold decision", async () => {
-    // `answerBlockDetail` is where the network decides whether the D1 hot tier
-    // is consulted at all -- off mainnet it is not, because blocks_head is
-    // written by the mainnet firehose poller and carries no network column.
-    const extrinsics = recordingDataApi({
-      data: { block_number: 9, extrinsic_count: 0, extrinsics: [] },
-    });
-    await query(
-      '{ block_extrinsics(ref: "9", network: test) { block_number } }',
-      {
-        METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-        DATA_API: extrinsics.binding,
-      },
-    );
-    assert.deepEqual(extrinsics.paths, ["/api/v1/test/blocks/9/extrinsics"]);
-
-    const events = recordingDataApi({
-      data: { block_number: 9, event_count: 0, events: [] },
-    });
-    await query('{ block_events(ref: "9", network: test) { block_number } }', {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: events.binding,
-    });
-    assert.deepEqual(events.paths, ["/api/v1/test/blocks/9/events"]);
+    // `answerBlockDetail` is where the network decides whether the hot tier is
+    // consulted at all -- off mainnet it is not, because blocks_head is written
+    // by the mainnet firehose poller and carries no network column.
+    //
+    // #10190: the tier leg is deleted, so the decision is now visible in the
+    // lakehouse TABLE the cold leg resolves rather than in a request path.
+    for (const field of ["block_extrinsics", "block_events"]) {
+      const queries = recordingLakehouse();
+      await query(
+        `{ ${field}(ref: "9", network: test) { block_number } }`,
+        LAKEHOUSE_ENV,
+      );
+      assert.ok(queries.length > 0, `${field}: the cold leg must be asked`);
+      const testnetNs = chainTable("x", "testnet").split(".")[0];
+      assert.notEqual(testnetNs, chainTable("x").split(".")[0]);
+      assert.ok(
+        queries.every((sql) => sql.includes(`${testnetNs}.`)),
+        `${field}: every read must name the testnet namespace; got ${queries[0]}`,
+      );
+    }
   });
 
   test("economics(network: test) skips the mainnet-only live KV", async () => {

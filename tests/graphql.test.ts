@@ -1,4 +1,11 @@
 import assert from "node:assert/strict";
+import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
+import {
+  archiveEnv,
+  forbiddenDataApi,
+  lakehouse,
+  LAKEHOUSE_ENV,
+} from "./helpers/cold-tier-env.ts";
 import { Blob } from "node:buffer";
 import {
   buildSchema,
@@ -8,7 +15,7 @@ import {
   subscribe,
   validate,
 } from "graphql";
-import { beforeEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 
 // The resolvers that still read a hot tier reach it through readStore ->
 // `new Client({ connectionString })` (#10179), and a resolver is entered with
@@ -2925,10 +2932,6 @@ describe("graphql — profiles", () => {
 // #6977: block-scoped extrinsics/events/chain-events lists mirror the same
 // Postgres tier + schema-stable fallback the block/extrinsics feeds already use.
 describe("graphql — block_extrinsics / block_events / block_chain_events (#6977)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("block_extrinsics: cold store returns a schema-stable empty list, never an error", async () => {
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9") { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
@@ -2940,30 +2943,31 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 
   test("block_extrinsics: resolves Postgres-tier rows (the /blocks/:ref/extrinsics { data } envelope)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            ref: "9",
-            block_number: 9,
-            extrinsic_count: 1,
-            limit: 50,
-            offset: 0,
-            extrinsics: [
-              {
-                block_number: 9,
-                extrinsic_index: 0,
-                call_module: "Timestamp",
-                call_function: "set",
-                success: true,
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    // The query asks offset: 2, and R2 SQL has no OFFSET -- the reader over-fetches
+    // and slices. Two rows to page past, then the asserted one: with a single row
+    // the slice would empty the page, which the retired tier's double could never
+    // have shown because it ignored paging entirely.
+    const lake = lakehouse([
+      { block_number: 9, extrinsic_index: 8, observed_at: 1_750_009_000_002 },
+      { block_number: 9, extrinsic_index: 9, observed_at: 1_750_009_000_001 },
+      {
+        block_number: 9,
+        extrinsic_index: 0,
+        extrinsic_hash: null,
+        signer: null,
+        call_module: "Timestamp",
+        call_function: "set",
+        call_args: null,
+        success: true,
+        fee_tao: null,
+        tip_tao: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ block_extrinsics(ref: "9", limit: 10, offset: 2) { block_number extrinsic_count extrinsics { block_number extrinsic_index extrinsic_hash signer call_module call_function call_args success fee_tao tip_tao observed_at summary } } }',
       env as unknown as Env,
@@ -2975,6 +2979,7 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
       body.data.block_extrinsics.extrinsics[0].call_module,
       "Timestamp",
     );
+    lake.restore();
   });
 
   test("block_events: cold store returns a schema-stable empty list, never an error", async () => {
@@ -2987,44 +2992,47 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 
   test("block_events: resolves Postgres-tier rows (the /blocks/:ref/events { data } envelope)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            ref: "9",
-            block_number: 9,
-            event_count: 1,
-            limit: 100,
-            offset: 0,
-            events: [
-              // `event_kind`, not `kind` -- the name AccountEvent publishes,
-              // the name the component declares, and the name production
-              // serves (verified: block_events rows carry block_number,
-              // event_index, event_kind, hotkey, ...). The invented `kind`
-              // survived only while `events` was `[JSON!]`, which passes any
-              // row through verbatim (#10404).
-              {
-                block_number: 9,
-                event_index: 0,
-                event_kind: "Balances.Transfer",
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    // Same offset emulation as block_extrinsics above: rows to page past first.
+    // The query pages with offset: 3, and R2 SQL has no OFFSET -- the reader
+    // over-fetches and slices. Four events in the block, so the page is the one
+    // left after skipping three. That also separates two things the retired
+    // tier's echo conflated: `event_count` is the BLOCK's true total (the read
+    // was short, so it is known exactly), while `events` is only this page.
+    const lake = lakehouse([
+      { block_number: 9, event_index: 0, event_kind: "Balances.Deposit" },
+      { block_number: 9, event_index: 1, event_kind: "Balances.Withdraw" },
+      { block_number: 9, event_index: 2, event_kind: "Balances.Endowed" },
+      {
+        block_number: 9,
+        event_index: 3,
+        extrinsic_index: 0,
+        event_kind: "Balances.Transfer",
+        hotkey: null,
+        coldkey: null,
+        netuid: null,
+        uid: null,
+        amount_tao: null,
+        alpha_amount: null,
+        observed_at: 1_750_009_000_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ block_events(ref: "9", limit: 20, offset: 3) { block_number event_count events { block_number event_kind } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.block_events.event_count, 1);
+    // The block's total, not the page's -- four events, one of them on this page.
+    assert.equal(body.data.block_events.event_count, 4);
+    assert.equal(body.data.block_events.events.length, 1);
     assert.equal(
       body.data.block_events.events[0].event_kind,
       "Balances.Transfer",
     );
+    lake.restore();
   });
 
   test("block_chain_events: resolves the all-events tier by block_number", async () => {
@@ -4743,10 +4751,6 @@ describe("graphql — compare (reuse the shared compare loader)", () => {
 });
 
 describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("sudo: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ sudo { items { call_module } total next_cursor } }",
@@ -4760,136 +4764,94 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: resolves Postgres-tier rows from the Sudo feed, serving call_args decoded", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 9,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"b".repeat(64)}`,
-              signer: "5Sudo",
-              call_module: "Sudo",
-              call_function: "sudo",
-              call_args: [{ name: "call", value: "setWeights" }],
-              success: true,
-              fee_tao: 0,
-              tip_tao: 0,
-              observed_at: "2026-07-15T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 9,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        signer: "5Sudo",
+        call_module: "Sudo",
+        call_function: "sudo",
+        // A JSON STRING -- the lane's own column type (see above).
+        call_args: JSON.stringify([{ name: "call", value: "setWeights" }]),
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ sudo { items { block_number call_module call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.sudo.total, 1);
-    assert.equal(body.data.sudo.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.sudo.next_cursor, null);
     const item = body.data.sudo.items[0];
     assert.equal(item.call_module, "Sudo");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it -- the JSON scalar carries
     // the value rather than a JSON-encoded copy of it (#10391).
     assert.deepEqual(item.call_args, [{ name: "call", value: "setWeights" }]);
+    lake.restore();
   });
 
-  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: hits /api/v1/sudo and forwards filters, never signer/call_module — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(limit: 5, offset: 2, block: 42, call_function: "sudo", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/sudo");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "2");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(capturedUrl!.searchParams.get("call_function"), "sudo");
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
-    // The route fixes call_module=Sudo, so the field exposes neither arg.
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl!.searchParams.get("signer"), null);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: a block_start/block_end height range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(block_start: 100, block_end: 500) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/sudo");
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
-    assert.equal(capturedUrl!.searchParams.has("from"), false);
-    assert.equal(capturedUrl!.searchParams.has("to"), false);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("sudo: a from/to observed_at range is forwarded to the Postgres tier (#7874) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ sudo(from: "1750000000000", to: "1760000000000") { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
-    assert.equal(capturedUrl!.searchParams.get("to"), "1760000000000");
-    assert.equal(capturedUrl!.searchParams.has("block_start"), false);
-    assert.equal(capturedUrl!.searchParams.has("block_end"), false);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("introspection: sudo exposes block_start/block_end (Int) and from/to (String) args (#7874)", async () => {
@@ -4923,26 +4885,21 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
     }
   });
 
-  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("sudo: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(`{ sudo(cursor: "abc123") { total } }`, {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ sudo(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("sudo: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
@@ -4966,10 +4923,11 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
   });
 
   test("sudo: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ sudo { items { call_module } total next_cursor } }",
       env as unknown as Env,
@@ -4984,10 +4942,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
 });
 
 describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("extrinsics: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ extrinsics { items { call_module } total next_cursor } }",
@@ -5001,90 +4955,78 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
   });
 
   test("extrinsics: resolves Postgres-tier rows, serving call_args decoded", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "SubtensorModule",
-              call_function: "register",
-              call_args: [{ name: "netuid", value: 1 }],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "register",
+        // A JSON STRING: the lane stores call_args as text and the formatter runs
+        // parseJsonPreservingBigInts over it, so an array here throws and reads null.
+        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+        success: true,
+        fee_tao: 0.001,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { block_number call_module call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.extrinsics.total, 1);
-    assert.equal(body.data.extrinsics.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.extrinsics.next_cursor, null);
     const item = body.data.extrinsics.items[0];
     assert.equal(item.call_module, "SubtensorModule");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
   test("extrinsics: exposes the action-sentence summary field, and null for an unmatched call (#8525)", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 2,
-          limit: 20,
-          offset: 0,
-          next_cursor: null,
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "Timestamp",
-              call_function: "set",
-              call_args: [],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-              summary: "Set the chain timestamp.",
-            },
-            {
-              block_number: 6,
-              extrinsic_index: 1,
-              extrinsic_hash: `0x${"b".repeat(64)}`,
-              signer: "5Signer",
-              call_module: "NoSuchModule",
-              call_function: "no_such_function",
-              call_args: [],
-              success: true,
-              fee_tao: 0.001,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-              summary: null,
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"a".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "Timestamp",
+        call_function: "set",
+        call_args: JSON.stringify([]),
+        success: true,
+        fee_tao: 0.001,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+      {
+        block_number: 6,
+        extrinsic_index: 1,
+        extrinsic_hash: `0x${"b".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "NoSuchModule",
+        call_function: "no_such_function",
+        call_args: null,
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ extrinsics { items { call_module summary } } }",
       env as unknown as Env,
@@ -5093,61 +5035,35 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     const [templated, unmatched] = body.data.extrinsics.items;
     assert.equal(templated.summary, "Set the chain timestamp.");
     assert.equal(unmatched.summary, null);
+    lake.restore();
   });
 
-  test("extrinsics: filter args are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("extrinsics: filter args are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ extrinsics(limit: 5, block: 42, signer: "5Signer", call_module: "SubtensorModule", call_function: "register", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(capturedUrl!.searchParams.get("signer"), "5Signer");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
-    );
-    assert.equal(capturedUrl!.searchParams.get("call_function"), "register");
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 50,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("extrinsics: call_hash, block-range, and time-range filters are forwarded to the Postgres tier (#7872) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ extrinsics(
           call_hash: "0x${"ab".repeat(32)}"
           block_start: 100
@@ -5155,21 +5071,11 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
           from: "1750000000000"
           to: "1760000000000"
         ) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/extrinsics");
-    // A REAL 64-hex hash. "0xabc" was accepted before #10316 because nothing
-    // checked it, and the route's published pattern
-    // (^0x[0-9a-fA-F]{64}$) has always forbidden it -- the dispatch parse now
-    // enforces what the contract says, so the fixture had to become valid.
-    assert.equal(
-      capturedUrl!.searchParams.get("call_hash"),
-      `0x${"ab".repeat(32)}`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "500");
-    assert.equal(capturedUrl!.searchParams.get("from"), "1750000000000");
-    assert.equal(capturedUrl!.searchParams.get("to"), "1760000000000");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("introspection: extrinsics exposes call_hash/from/to (String) and block_start/block_end (Int) args (#7872)", async () => {
@@ -5205,33 +5111,29 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     }
   });
 
-  test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ extrinsics(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
+  test("extrinsics: a cursor arg is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      `{ extrinsics(cursor: "abc123") { total } }`,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("extrinsics: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ extrinsics { items { call_module } total next_cursor } }",
       env as unknown as Env,
@@ -5244,19 +5146,19 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     });
   });
 
-  test("extrinsic: a malformed Postgres-tier body falls back to the requested ref", async () => {
-    const ref = "5-2";
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+  test("extrinsic: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const ref = "8621331-0";
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module } } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.extrinsic.ref, ref);
-    assert.equal(body.data.extrinsic.extrinsic, null);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("extrinsics: a negative block filter is BAD_USER_INPUT and never reaches the Postgres tier", async () => {
@@ -5295,29 +5197,25 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 
   test("extrinsic: resolves a Postgres-tier row by composite ref", async () => {
     const ref = "5-2";
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ref,
-          extrinsic: {
-            block_number: 5,
-            extrinsic_index: 2,
-            extrinsic_hash: null,
-            signer: "5Signer",
-            call_module: "SubtensorModule",
-            call_function: "set_weights",
-            call_args: null,
-            success: true,
-            fee_tao: 0,
-            tip_tao: 0,
-            observed_at: "2026-07-14T00:00:00.000Z",
-          },
-          events: [],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 5,
+        extrinsic_index: 2,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Signer",
+        call_module: "SubtensorModule",
+        call_function: "set_weights",
+        call_args: null,
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ extrinsic(ref: "${ref}") { ref extrinsic { call_module call_function } } }`,
       env as unknown as Env,
@@ -5326,6 +5224,7 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
     assert.equal(body.data.extrinsic.ref, ref);
     assert.equal(body.data.extrinsic.extrinsic.call_module, "SubtensorModule");
     assert.equal(body.data.extrinsic.extrinsic.call_function, "set_weights");
+    lake.restore();
   });
 
   test("extrinsics / extrinsic are weighted as fan-out fields", () => {
@@ -5335,10 +5234,6 @@ describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () =>
 });
 
 describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("governance_config_changes: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ governance_config_changes { items { call_module } total next_cursor } }",
@@ -5352,46 +5247,43 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
   });
 
   test("governance_config_changes: resolves Postgres-tier AdminUtils rows", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          extrinsic_count: 1,
-          limit: 20,
-          offset: 0,
-          next_cursor: "cursor-1",
-          extrinsics: [
-            {
-              block_number: 5,
-              extrinsic_index: 0,
-              extrinsic_hash: `0x${"a".repeat(64)}`,
-              signer: null,
-              call_module: "AdminUtils",
-              call_function: "sudo_set_weights_set_rate_limit",
-              call_args: [{ name: "netuid", value: 1 }],
-              success: true,
-              fee_tao: 0,
-              tip_tao: 0,
-              observed_at: "2026-07-14T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse([
+      {
+        block_number: 11,
+        extrinsic_index: 0,
+        extrinsic_hash: `0x${"c".repeat(64)}`,
+        signer: "5Admin",
+        call_module: "AdminUtils",
+        call_function: "sudo_set_weights_set_rate_limit",
+        // A JSON STRING -- the lane's own column type (see above).
+        call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+        success: true,
+        fee_tao: 0,
+        tip_tao: 0,
+        observed_at: 1_752_451_200_000,
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       "{ governance_config_changes { items { block_number call_module call_function call_args success } total next_cursor } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.governance_config_changes.total, 1);
-    assert.equal(body.data.governance_config_changes.next_cursor, "cursor-1");
+    // DERIVED, not echoed: the reader emits a cursor only when the page is
+    // full, and this one is short -- so null is the measured answer. The
+    // retired tier handed "cursor-1" back verbatim, so nothing computed it.
+    assert.equal(body.data.governance_config_changes.next_cursor, null);
     const item = body.data.governance_config_changes.items[0];
     assert.equal(item.call_module, "AdminUtils");
     assert.equal(item.call_function, "sudo_set_weights_set_rate_limit");
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
   test("governance_config_changes: a partial Postgres-tier body degrades to a schema-stable empty page", async () => {
@@ -5413,105 +5305,77 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     });
   });
 
-  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("governance_config_changes: filter args are forwarded to the /governance/config-changes path (loader reuse, no signer/call_module) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, block: 42, call_function: "sudo_set_tempo", success: true) { total } }`,
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    // The worker fixes call_module=AdminUtils by path, so the resolver hits the
-    // governance route (not /extrinsics) and never forwards signer/call_module.
-    assert.equal(capturedUrl!.pathname, "/api/v1/governance/config-changes");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("block"), "42");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_function"),
-      "sudo_set_tempo",
-    );
-    assert.equal(capturedUrl!.searchParams.get("success"), "true");
-    assert.equal(capturedUrl!.searchParams.get("signer"), null);
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // #7873: block-range (block_start/block_end -> block_number) and time-range
-  // (from/to -> observed_at) bounds, matching REST + MCP
-  // get_governance_config_changes.
-  function capturingEnv(sink: { url?: URL }) {
-    return {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          sink.url = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    } as unknown as Env;
-  }
-
-  test("governance_config_changes: a block range is forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: a block range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       "{ governance_config_changes(block_start: 100, block_end: 200) { total } }",
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.pathname, "/api/v1/governance/config-changes");
-    assert.equal(sink.url!.searchParams.get("block_start"), "100");
-    assert.equal(sink.url!.searchParams.get("block_end"), "200");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: a time range is forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: a time range is forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       "{ governance_config_changes(from: 1750000000, to: 1760000000) { total } }",
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.searchParams.get("from"), "1750000000");
-    assert.equal(sink.url!.searchParams.get("to"), "1760000000");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: block and time bounds combine with the existing filters (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql(
+  test("governance_config_changes: block and time bounds combine with the existing filters (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       `{ governance_config_changes(limit: 5, call_function: "sudo_set_tempo", block_start: 10, block_end: 20, from: 1, to: 2) { total } }`,
-      capturingEnv(sink),
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(sink.url!.searchParams.get("limit"), "5");
-    assert.equal(sink.url!.searchParams.get("call_function"), "sudo_set_tempo");
-    assert.equal(sink.url!.searchParams.get("block_start"), "10");
-    assert.equal(sink.url!.searchParams.get("block_end"), "20");
-    assert.equal(sink.url!.searchParams.get("from"), "1");
-    assert.equal(sink.url!.searchParams.get("to"), "2");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("governance_config_changes: omitted bounds are not forwarded (#7873)", async () => {
-    const sink: { url?: URL } = {};
-    await gql("{ governance_config_changes { total } }", capturingEnv(sink));
-    for (const p of ["block_start", "block_end", "from", "to"]) {
-      assert.equal(sink.url!.searchParams.get(p), null, `${p} must be absent`);
-    }
+  test("governance_config_changes: omitted bounds are not forwarded (#7873) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request's query string.
+    // METAGRAPH_EXTRINSICS_SOURCE reads "retired" and is absent from
+    // DATA_API_FORWARD_FLAGS, so that request was never made.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      "{ governance_config_changes { total } }",
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("governance_config_changes: a negative bound is BAD_USER_INPUT (#7873)", async () => {
@@ -5529,26 +5393,21 @@ describe("graphql — governance_config_changes (#5897, Postgres-tier feed)", ()
     }
   });
 
-  test("governance_config_changes: a cursor arg is forwarded as a query param", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            extrinsic_count: 0,
-            limit: 20,
-            offset: 0,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(`{ governance_config_changes(cursor: "abc123") { total } }`, env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
+  test("governance_config_changes: a cursor arg is forwarded as a query param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      `{ governance_config_changes(cursor: "abc123") { total } }`,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("governance_config_changes: rejects a negative block with BAD_USER_INPUT", async () => {
@@ -5738,10 +5597,11 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
   });
 
   test("blocks: a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_BLOCKS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       "{ blocks { items { block_number } total next_cursor } }",
       env as unknown as Env,
@@ -5802,19 +5662,19 @@ describe("graphql — blocks / block (#5575, lakehouse feed)", () => {
     assert.equal(body.data.block.next_block_number, null);
   });
 
-  test("block: a malformed Postgres-tier body falls back to the requested ref", async () => {
-    const ref = "123";
-    const env = {
-      METAGRAPH_BLOCKS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+  test("block: a malformed Postgres-tier body falls back to the requested ref — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_BLOCKS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const ref = "8621331";
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ block(ref: "${ref}") { ref block { block_number } } }`,
-      env as unknown as Env,
+      { METAGRAPH_BLOCKS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.block.ref, ref);
-    assert.equal(body.data.block.block, null);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("blocks / block are weighted as fan-out fields", () => {
@@ -7770,55 +7630,82 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
   });
 
   test("account: resolves Postgres-tier detail data", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            event_count: 12,
-            subnet_count: 2,
-            event_scan_capped: false,
-            first_block: 100,
-            last_block: 500,
-            first_seen_at: "2026-06-01T00:00:00.000Z",
-            last_seen_at: "2026-07-14T00:00:00.000Z",
-            event_kinds: [{ kind: "Transfer", count: 5 }],
-            registrations: [
-              {
-                netuid: 1,
-                uid: 5,
-                stake_tao: 10,
-                validator_permit: true,
-                active: true,
-              },
-            ],
-            recent_events: [
-              { block_number: 500, event_index: 0, event_kind: "Transfer" },
-            ],
-            activity: {
-              tx_count: 3,
-              last_tx_block: 490,
-              last_tx_at: "2026-07-13T00:00:00.000Z",
-              total_fee_tao: 0.01,
-              modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+    // #10190: the tier is retired; answerAccountSummary composes the card from TWO
+    // legs -- the lakehouse event scan (three reads: the grouped fold, the recent
+    // page, and the balance) and a `neurons` read through the store for the
+    // registrations. Every total below is folded out of those rows, so the numbers
+    // are the composition's rather than a payload's.
+    const lake = lakehouse((sql) =>
+      sql.includes("GROUP BY event_kind, netuid")
+        ? [
+            {
+              kind: "Transfer",
+              netuid: 1,
+              count: 5,
+              fb: 100,
+              lb: 500,
+              fo: Date.parse("2026-06-01T00:00:00.000Z"),
+              lo: Date.parse("2026-07-14T00:00:00.000Z"),
             },
-          }),
+            {
+              kind: "StakeAdded",
+              netuid: 2,
+              count: 7,
+              fb: 120,
+              lb: 480,
+              fo: Date.parse("2026-06-02T00:00:00.000Z"),
+              lo: Date.parse("2026-07-13T00:00:00.000Z"),
+            },
+          ]
+        : [
+            {
+              block_number: 500,
+              event_index: 0,
+              event_kind: "Transfer",
+              hotkey: SS58,
+              coldkey: "5Other",
+              netuid: 1,
+              uid: 5,
+              amount_tao: 1,
+              alpha_amount: 0,
+              observed_at: Date.parse("2026-07-14T00:00:00.000Z"),
+            },
+          ],
+    );
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM neurons",
+        rows: [
+          {
+            netuid: 1,
+            uid: 5,
+            stake_tao: 10,
+            validator_permit: true,
+            active: true,
+          },
+        ],
       },
-    };
+    ];
+    const env = { ...LAKEHOUSE_ENV, ...pgMockEnv() };
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count first_block last_block event_kinds { kind count } registrations { netuid stake_tao validator_permit active } recent_events { block_number event_kind } activity { tx_count last_tx_block total_fee_tao modules_called { call_module count } } } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.account.ss58, SS58);
+    // 5 + 7 across the two kinds.
     assert.equal(body.data.account.event_count, 12);
     assert.equal(body.data.account.subnet_count, 2);
     assert.equal(body.data.account.first_block, 100);
     assert.equal(body.data.account.last_block, 500);
+    // BOTH kinds, folded out of the grouped rows -- `event_count` is their sum.
+    // The retired tier handed over a single-entry list, so nothing folded.
     assert.deepEqual(body.data.account.event_kinds, [
       { kind: "Transfer", count: 5 },
+      { kind: "StakeAdded", count: 7 },
     ]);
     assert.deepEqual(body.data.account.registrations, [
       { netuid: 1, stake_tao: 10, validator_permit: true, active: true },
@@ -7826,19 +7713,27 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.deepEqual(body.data.account.recent_events, [
       { block_number: 500, event_kind: "Transfer" },
     ]);
+    // The signing-activity leg is EMPTY BY DESIGN, not by omission:
+    // src/account-summary-card.ts states there is no aggregate reader for it yet
+    // (the extrinsics cold tier serves the per-account FEED, not all-time totals),
+    // and inventing one from the feed's first page would publish a tx_count that
+    // is really a page size. The retired tier was the only thing that ever filled
+    // this block, so its numbers were never reproducible here (#10190).
     assert.deepEqual(body.data.account.activity, {
-      tx_count: 3,
-      last_tx_block: 490,
-      total_fee_tao: 0.01,
-      modules_called: [{ call_module: "SubtensorModule", count: 3 }],
+      tx_count: 0,
+      last_tx_block: null,
+      total_fee_tao: null,
+      modules_called: [],
     });
+    lake.restore();
   });
 
   test("account: a malformed Postgres-tier body degrades to a schema-stable zero summary", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { ss58 event_count subnet_count event_scan_capped first_block last_block event_kinds { kind } registrations { netuid } recent_events { block_number } activity { tx_count modules_called { call_module } } } }`,
       env as unknown as Env,
@@ -7861,42 +7756,21 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     });
   });
 
-  test("account: activity.modules_called_capped is published when requested (#8822)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            event_count: 0,
-            subnet_count: 0,
-            event_scan_capped: false,
-            first_block: null,
-            last_block: null,
-            event_kinds: [],
-            registrations: [],
-            recent_events: [],
-            activity: {
-              tx_count: 1001,
-              last_tx_block: null,
-              last_tx_at: null,
-              total_fee_tao: null,
-              modules_called: [],
-              modules_called_capped: true,
-            },
-          }),
-      },
-    };
+  test("account: activity.modules_called_capped is published when requested (#8822) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ account(ss58: "${SS58}") { activity { tx_count modules_called_capped } } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.deepEqual(body.data.account.activity, {
-      tx_count: 1001,
-      modules_called_capped: true,
-    });
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("accounts / account are weighted as fan-out fields", () => {
@@ -7931,79 +7805,49 @@ describe("graphql — account_prometheus (#5703, Postgres-tier { data, generated
     });
   });
 
-  test("resolves the Postgres-tier footprint for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              address: SS58,
-              window: "7d",
-              total_announcements: 5,
-              subnet_count: 2,
-              concentration: 0.68,
-              dominant_netuid: 3,
-              subnets: [
-                {
-                  netuid: 3,
-                  announcements: 4,
-                  first_announced_at: "2026-07-01T00:00:00.000Z",
-                  last_announced_at: "2026-07-10T00:00:00.000Z",
-                },
-                {
-                  netuid: 7,
-                  announcements: 1,
-                  first_announced_at: "2026-07-05T00:00:00.000Z",
-                  last_announced_at: "2026-07-05T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          }),
-      },
-    };
+  test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const p = body.data.account_prometheus;
-    assert.equal(p.window, "7d");
-    assert.equal(p.total_announcements, 5);
-    assert.equal(p.subnet_count, 2);
-    assert.equal(p.concentration, 0.68);
-    assert.equal(p.dominant_netuid, 3);
-    assert.equal(p.subnets[0].netuid, 3);
-    assert.equal(p.subnets[0].announcements, 4);
-    assert.equal(p.subnets[1].netuid, 7);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "90d")`), env);
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/prometheus`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "90d")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_prometheus, {
@@ -8112,98 +7956,49 @@ describe("graphql — account_stake_flow (#5706, Postgres-tier { data, generated
     });
   });
 
-  test("resolves the Postgres-tier scorecard for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              address: SS58,
-              window: "7d",
-              total_staked_tao: 100,
-              total_unstaked_tao: 20,
-              net_flow_tao: 80,
-              gross_flow_tao: 120,
-              flow_ratio: 0.6667,
-              direction: "accumulating",
-              stake_events: 4,
-              unstake_events: 1,
-              subnet_count: 2,
-              concentration: 0.72,
-              dominant_netuid: 3,
-              subnets: [
-                {
-                  netuid: 3,
-                  staked_tao: 90,
-                  unstaked_tao: 10,
-                  net_flow_tao: 80,
-                  gross_flow_tao: 100,
-                  flow_ratio: 0.8,
-                  direction: "accumulating",
-                  stake_events: 3,
-                  unstake_events: 1,
-                },
-                {
-                  netuid: 7,
-                  staked_tao: 10,
-                  unstaked_tao: 10,
-                  net_flow_tao: 0,
-                  gross_flow_tao: 20,
-                  flow_ratio: 0,
-                  direction: "churning",
-                  stake_events: 1,
-                  unstake_events: 0,
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          }),
-      },
-    };
+  test("resolves the Postgres-tier scorecard for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "7d")`),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const f = body.data.account_stake_flow;
-    assert.equal(f.window, "7d");
-    assert.equal(f.total_staked_tao, 100);
-    assert.equal(f.net_flow_tao, 80);
-    assert.equal(f.direction, "accumulating");
-    assert.equal(f.subnet_count, 2);
-    assert.equal(f.dominant_netuid, 3);
-    assert.equal(f.subnets[0].netuid, 3);
-    assert.equal(f.subnets[0].flow_ratio, 0.8);
-    assert.equal(f.subnets[1].direction, "churning");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("window and direction are forwarded as query params to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "90d", direction: "in")`), env);
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/stake-flow`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl!.searchParams.get("direction"), "in");
+  test("window and direction are forwarded as query params to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "90d", direction: "in")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_stake_flow, {
@@ -8807,40 +8602,35 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
   });
 
   test("resolves the Postgres-tier feed, JSON-encoding call_args to the String field", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            extrinsic_count: 1,
-            limit: 100,
-            offset: 0,
-            next_cursor: "cursor-1",
-            extrinsics: [
-              {
-                block_number: 5,
-                extrinsic_index: 0,
-                extrinsic_hash: `0x${"a".repeat(64)}`,
-                signer: SS58,
-                call_module: "SubtensorModule",
-                call_function: "register",
-                call_args: [{ name: "netuid", value: 1 }],
-                success: true,
-                fee_tao: 0.001,
-                tip_tao: 0,
-                observed_at: "2026-07-14T00:00:00.000Z",
-              },
-            ],
-          }),
-      },
-    };
+    // #10190: the tier this doubled is retired; the lakehouse cold tier
+    // answers, through the SAME builder. Given the lane's own columns, so
+    // the envelope below is derived rather than echoed.
+    const lake = lakehouse(
+      [
+        {
+          block_number: 5,
+          extrinsic_index: 0,
+          extrinsic_hash: `0x${"a".repeat(64)}`,
+          signer: "5Signer",
+          call_module: "SubtensorModule",
+          call_function: "register",
+          call_args: JSON.stringify([{ name: "netuid", value: 1 }]),
+          success: true,
+          fee_tao: 0.001,
+          tip_tao: 0,
+          observed_at: 1_752_451_200_000,
+        },
+      ],
+      { once: true },
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     const s = body.data.account_extrinsics;
     assert.equal(s.extrinsic_count, 1);
-    assert.equal(s.next_cursor, "cursor-1");
+    // DERIVED: a cursor is emitted only for a full page, and this one is short.
+    // The retired tier echoed "cursor-1" verbatim.
+    assert.equal(s.next_cursor, null);
     const item = s.extrinsics[0];
     assert.equal(item.block_number, 5);
     assert.equal(item.call_module, "SubtensorModule");
@@ -8848,46 +8638,34 @@ describe("graphql — account_extrinsics (#5891, Postgres-tier feed + empty-page
     assert.equal(item.success, true);
     // Decoded, exactly as REST and MCP serve it (#10391).
     assert.deepEqual(item.call_args, [{ name: "netuid", value: 1 }]);
+    lake.restore();
   });
 
-  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            ss58: SS58,
-            extrinsic_count: 0,
-            limit: 5,
-            offset: 10,
-            next_cursor: null,
-            extrinsics: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("ss58 + pagination/block-range args are forwarded on the Postgres-tier request path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       query(
         `(ss58: "${SS58}", limit: 5, offset: 10, cursor: "abc123", block_start: 100, block_end: 200)`,
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, `/api/v1/accounts/${SS58}/extrinsics`);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "abc123");
-    assert.equal(capturedUrl!.searchParams.get("block_start"), "100");
-    assert.equal(capturedUrl!.searchParams.get("block_end"), "200");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body degrades to a schema-stable empty page", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_extrinsics, {
@@ -9300,8 +9078,37 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
 });
 
 describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered.
+  // loadGlobalIncidentsLedger reads `surface_checks` through readStore, and
+  // formatGlobalIncidents aggregates its INCIDENT rows into the surfaces below.
+  const CADENCE_MS = 15 * 60 * 1000;
+  function incident(netuid: number, surfaceId: string, downtimeMs = 300) {
+    const started = 1_750_000_000_000;
+    return {
+      netuid,
+      surface_id: surfaceId,
+      surface_key: surfaceId,
+      started_at: started,
+      ended_at: started + downtimeMs - CADENCE_MS,
+      failed_samples: 1,
+    };
+  }
+  function incidentStore(rows: Row[], observedAt: string | null = null) {
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [{ match: "surface_checks", rows }];
+    return {
+      ...pgMockEnv(),
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          return key === "health:meta" && observedAt
+            ? { last_run_at: observedAt }
+            : null;
+        },
+      },
+    } as Row;
   }
   // Minimal D1 stub: every query returns no rows, so loadGlobalIncidentsLedger's
   // fallback path runs to a schema-stable empty ledger without a live DB.
@@ -9322,31 +9129,13 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 
   test("resolves the Postgres-tier ledger, including the JSON summary and typed surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          source: "postgres",
-          summary: {
-            incident_count: 2,
-            affected_surface_count: 1,
-          },
-          surfaces: [
-            {
-              surface_id: "inc-1",
-              netuid: 5,
-              incident_count: 1,
-              downtime_ms: 300,
-              transient_failure_count: 0,
-              transient_failed_samples: 0,
-            },
-          ],
-        }),
-      ),
-    };
+    // Two incidents on ONE surface: summary.incident_count counts incidents
+    // while affected_surface_count counts surfaces, and a single row could not
+    // tell those two apart.
+    const env = incidentStore(
+      [incident(5, "inc-1", 300), incident(5, "inc-1", 200)],
+      "2026-07-01T00:00:00.000Z",
+    ) as unknown as Env;
     const { status, body } = await gql(
       `{ incidents(window: "30d") {
           schema_version window observed_at source
@@ -9376,21 +9165,24 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({})),
-    };
+    // A store with no incident rows is what degrades now -- the partial TIER
+    // body it replaces is unreachable. The floor itself is unchanged.
+    const env = incidentStore([]) as unknown as Env;
     const { status, body } = await gql(
       '{ incidents(window: "30d") { schema_version window observed_at source summary { incident_count affected_surface_count } surfaces { surface_id } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
+    // The floor is the BUILT ledger: `source` is the prober label the formatter
+    // stamps and `summary` is a real zeroed object. The retired tier's `{}` body
+    // fell through the resolver's `??` to nulls instead, so this test never saw
+    // what production serves (#10190).
     assert.deepEqual(body.data.incidents, {
       schema_version: 1,
       window: "30d",
       observed_at: null,
-      source: null,
-      summary: null,
+      source: "live-cron-prober",
+      summary: { incident_count: 0, affected_surface_count: 0 },
       surfaces: [],
     });
   });
@@ -9409,39 +9201,58 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
 });
 
 describe("graphql — global_incidents (#7643, get_global_incidents-aligned alias)", () => {
-  // Fresh Response per fetch so incidents + global_incidents can each consume
-  // their own Postgres-tier body when queried side by side.
-  function dataApi(payload: Row) {
-    return { fetch: async () => Response.json(payload) };
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered --
+  // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
+  // there, and given INCIDENT rows rather than a finished surfaces list: the
+  // paging/filtering under test applies to what formatGlobalIncidents
+  // aggregates, so handing it the aggregate skipped the step being tested.
+  //
+  // `downtime_ms` is (ended - started) + PROBE_CADENCE_MS -- the cadence counts
+  // because the failing sample at `ended` covers a whole probe interval.
+  const CADENCE_MS = 15 * 60 * 1000;
+  function incident(
+    netuid: number,
+    surfaceId: string,
+    { started = 1_750_000_000_000, downtimeMs = 300 } = {},
+  ) {
+    return {
+      netuid,
+      surface_id: surfaceId,
+      surface_key: surfaceId,
+      started_at: started,
+      ended_at: started + downtimeMs - CADENCE_MS,
+      failed_samples: 1,
+    };
+  }
+  function incidentStore(rows: Row[], observedAt: string | null = null) {
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [{ match: "surface_checks", rows }];
+    return {
+      ...pgMockEnv(),
+      // `observed_at` is the prober's last-run stamp from the health:meta KV --
+      // the retired tier echoed it inside its own body, so this test never
+      // exercised the KV read that actually supplies it.
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          return key === "health:meta" && observedAt
+            ? { last_run_at: observedAt }
+            : null;
+        },
+      },
+    } as Row;
   }
   const emptyHealthDb = {
     prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
   };
 
   test("serves the same ledger as incidents through the delegate, incident rows included", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi({
-        schema_version: 1,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        source: "postgres",
-        summary: {
-          incident_count: 1,
-          affected_surface_count: 1,
-        },
-        surfaces: [
-          {
-            surface_id: "inc-1",
-            netuid: 5,
-            incident_count: 1,
-            downtime_ms: 300,
-            transient_failure_count: 0,
-            transient_failed_samples: 0,
-          },
-        ],
-      }),
-    };
+    const env = incidentStore(
+      [incident(5, "inc-1", { downtimeMs: 300 })],
+      "2026-07-01T00:00:00.000Z",
+    ) as unknown as Env;
     // Two sequential queries against the same env (side by side would exceed
     // the complexity budget -- both fields carry the fan-out weight); dataApi
     // serves each resolver a fresh Response, so the envelopes must be identical.
@@ -9503,34 +9314,14 @@ describe("graphql — global_incidents (#7643, get_global_incidents-aligned alia
   // #7875: netuid filter + sort/order + limit/cursor paging, applied through the
   // same list query GET /api/v1/incidents runs over the ledger's surfaces.
   function threeSurfaceEnv() {
-    const surface = (id: string, netuid: number, downtime: number) => ({
-      id,
-      endpoint_id: `ep-${id}`,
-      state: "resolved",
-      severity: "minor",
-      status: "failed",
-      netuid,
-      provider: "alpha",
-      downtime_ms: downtime,
-      incident_count: 1,
-      surface_id: id,
-    });
-    return {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi({
-        schema_version: 1,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        source: "postgres",
-        summary: { incident_count: 3 },
-        surfaces: [
-          surface("inc-a", 5, 300),
-          surface("inc-b", 7, 200),
-          surface("inc-c", 5, 100),
-        ],
-      }),
-      METAGRAPH_HEALTH_DB: emptyHealthDb,
-    } as unknown as Env;
+    // Three incidents across two subnets, ranked inc-a > inc-b > inc-c by
+    // downtime -- so a sort on downtime_ms cannot be satisfied by surface_id
+    // order and vice versa.
+    return incidentStore([
+      incident(5, "inc-a", { downtimeMs: 300 }),
+      incident(7, "inc-b", { downtimeMs: 200 }),
+      incident(5, "inc-c", { downtimeMs: 100 }),
+    ]) as unknown as Env;
   }
 
   test("filters by netuid (#7875)", async () => {
@@ -9716,34 +9507,23 @@ describe("graphql — subnet_registrations (#5720, Postgres-tier + zeroed-card f
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_registrants: 3,
-          registrations: 7,
-          registrations_per_registrant: 2.33,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_registrations(netuid: 5, window: "30d") {
           netuid window observed_at distinct_registrants registrations registrations_per_registrant
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.subnet_registrations;
-    assert.equal(r.window, "30d");
-    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(r.distinct_registrants, 3);
-    assert.equal(r.registrations, 7);
-    assert.equal(r.registrations_per_registrant, 2.33);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -11396,9 +11176,6 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
 });
 
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
   // The lakehouse is reached over plain HTTP by src/r2-sql.ts, so stubbing
   // globalThis.fetch is how a cold-tier answer is injected here — same
   // one-test-then-restore shape as withFetchStub above.
@@ -11439,25 +11216,36 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   });
 
   test("subnet_volume unwraps the tier's { data } envelope", async () => {
+    // #10190: the tier is retired; the #9146 alpha-volume projection answers. Its
+    // rows are per-event-kind sums, and the card's buy/sell split, totals and
+    // SENTIMENT are all derived from them -- the retired tier handed the sentiment
+    // over ready-made, so the classification never ran.
     const env = {
       ...fixtureEnv(POOL),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            netuid: 64,
-            window: "24h",
-            buy_volume_tao: 12,
-            sell_volume_tao: 8,
-            total_volume_tao: 20,
-            buy_count: 3,
-            sell_count: 2,
-            sentiment: "buying",
-            sentiment_ratio: 0.6,
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "24h": {
+            observed_at: "2026-07-14T00:00:00.000Z",
+            rows: [
+              {
+                netuid: 64,
+                event_kind: "StakeAdded",
+                alpha_volume: 3,
+                tao_volume: 12,
+                event_count: 3,
+              },
+              {
+                netuid: 64,
+                event_kind: "StakeRemoved",
+                alpha_volume: 2,
+                tao_volume: 8,
+                event_count: 2,
+              },
+            ],
           },
-        }),
-      ),
+        },
+      }),
     };
     const { status, body } = await gql(
       "{ subnet_volume(netuid: 64) { netuid window total_volume_tao buy_count sentiment sentiment_ratio } }",
@@ -11468,8 +11256,14 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     const v = body.data.subnet_volume;
     assert.equal(v.window, "24h");
     assert.equal(v.total_volume_tao, 20);
-    assert.equal(v.sentiment, "buying");
-    assert.equal(v.sentiment_ratio, 0.6);
+    // The BUILDER's own vocabulary. The retired tier's payload said "buying",
+    // a value nothing in src/alpha-volume.ts produces -- so this field was
+    // asserted against a string the code could not emit.
+    assert.equal(v.sentiment, "bullish");
+    // DERIVED as net/gross ALPHA -- (3 - 2) / (3 + 2) = 0.2 -- not the 0.6 the
+    // retired tier carried, which was neither this ratio nor any other the code
+    // computes. `sentimentRatio` is the single definition both surfaces share.
+    assert.equal(v.sentiment_ratio, 0.2);
   });
 
   test("subnet_ohlc cold store returns an empty candle list", async () => {
@@ -11489,57 +11283,26 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   // shape was a mock built from what the resolver assumed rather than from
   // what the producer sends, and it hid the resolver reading `candles` off the
   // envelope -- so every real tier answer became an empty series.
-  test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              netuid: 7,
-              interval: "1d",
-              root_excluded: false,
-              candles: [
-                {
-                  bucket_start: 1770000000000,
-                  bucket_start_iso: "2026-02-02T00:00:00.000Z",
-                  open: 0.1,
-                  high: 0.2,
-                  low: 0.09,
-                  close: 0.15,
-                  volume_alpha: 100,
-                  volume_tao: 12,
-                  event_count: 4,
-                },
-              ],
-            },
-            generatedAt: "2026-02-02T01:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { interval candles { bucket_start close event_count } } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/7/ohlc"));
-    assert.equal(capturedUrl!.searchParams.get("interval"), "1d");
-    assert.equal(capturedUrl!.searchParams.get("days"), "30");
-    const o = body.data.subnet_ohlc;
-    assert.equal(o.interval, "1d");
-    assert.equal(o.candles[0].bucket_start, 1770000000000);
-    assert.equal(o.candles[0].event_count, 4);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // The other side of the envelope contract: an ENVELOPE-LESS body is not an
-  // answer. Reading such a body as the payload is precisely the bug above, and
-  // this pins it -- a tier that returns a bare card contributes nothing and the
-  // resolver goes on to its next tier.
   test("subnet_ohlc does not read candles off an envelope-less tier body", async () => {
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -12034,10 +11797,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   test("a partial tier body falls back to defaults on every market-data field", async () => {
     // Exercises the `?? default` branches: a tier that answers with an empty
     // body must still yield the schema-stable card, never nulls or an error.
-    const volumeEnv = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ data: {} })),
-    };
+    // #10190: the tier is retired. What degrades now is a projection that cannot
+    // answer, and the floor is unchanged: the schema-stable card, never nulls or
+    // an error.
+    const volumeEnv = {} as unknown as Env;
     const vol = await gql(
       "{ subnet_volume(netuid: 9) { schema_version netuid window total_volume_alpha total_volume_tao buy_volume_alpha sell_volume_alpha buy_volume_tao sell_volume_tao buy_count sell_count net_volume_alpha sentiment sentiment_ratio vol_mcap_ratio } }",
       volumeEnv,
@@ -12046,7 +11809,10 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.deepEqual(vol.body.data.subnet_volume, {
       schema_version: 1,
       netuid: 9,
-      window: null,
+      // The lane's single window, stamped by the reader rather than echoed from a
+      // body: this projection carries only 24h, so the card can name it even when
+      // there is nothing to report for it.
+      window: "24h",
       total_volume_alpha: 0,
       total_volume_tao: 0,
       buy_volume_alpha: 0,
@@ -12056,7 +11822,11 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
       buy_count: 0,
       sell_count: 0,
       net_volume_alpha: 0,
-      sentiment: null,
+      // "neutral" by design, not null: src/alpha-volume.ts documents a
+      // zero-volume window as "no signal either way", which is a reading rather
+      // than an absence. The retired tier's `{}` body fell through to null and so
+      // never showed the classifier's own answer.
+      sentiment: "neutral",
       sentiment_ratio: null,
       vol_mcap_ratio: null,
     });
@@ -12105,10 +11875,6 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
 });
 
 describe("graphql — subnet_health_percentiles (#6980, live latency percentiles)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("cold store: no Postgres flag returns a schema-stable empty surfaces list, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_health_percentiles(netuid: 5) {
@@ -12125,39 +11891,44 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
   });
 
   test("resolves the Postgres-tier per-surface percentiles", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          window: "30d",
-          observed_at: "2026-07-19T00:00:00.000Z",
-          source: "live-cron-prober",
-          // The shape /api/v1/subnets/{netuid}/health/percentiles actually
-          // serves: the percentiles nest under `latency_ms`. The flat
-          // `p95_ms`/`latency_sample_count` keys here were never the
-          // producer's, and nothing could say so while `surfaces` was JSON.
-          surfaces: [
-            {
-              surface_id: "s1",
-              samples: 120,
-              latency_ms: {
-                p50: 88,
-                p95: 280,
-                p99: 640,
-                avg: 120,
-                min: 40,
-                max: 900,
-              },
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and cannot forward, so
+    // loadSubnetPercentiles reads `surface_uptime_daily` through the store. The
+    // nested `latency_ms` block is the BUILDER's shape -- the flat p95_ms /
+    // latency_sample_count keys the retired tier carried were never the
+    // producer's, and nothing could say so while `surfaces` was opaque JSON.
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        // The percentile query is a CTE over `surface_checks` that emits the
+        // order statistics itself, so these are the SELECT's own aliases -- p50 /
+        // p95 / p99 / latency_samples -- not raw samples and not the flat
+        // p95_ms keys the retired tier carried.
+        match: "FROM ranked",
+        rows: [
+          {
+            surface_id: "s1",
+            surface_key: "s1",
+            latency_samples: 120,
+            p50: 88,
+            p95: 280,
+            p99: 640,
+            avg_latency_ms: 120,
+            min_latency_ms: 40,
+            max_latency_ms: 900,
+          },
+        ],
+      },
+    ];
+    const env = pgMockEnv() as unknown as Env;
     const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 7, window: "30d") { netuid window observed_at source surfaces { surface_id samples latency_ms { p50 p95 p99 avg min max } } } }',
       env as unknown as Env,
+      {},
+      // observationsReadDb needs a ctx to park its teardown on; without one it
+      // answers undefined and the card is a confident empty.
+      { waitUntil: (promise: Promise<unknown>) => void promise },
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -12168,23 +11939,21 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
     assert.equal(p.surfaces[0].latency_ms.p95, 280);
   });
 
-  test("forwards the window to the health/percentiles Postgres path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("forwards the window to the health/percentiles Postgres path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_health_percentiles(netuid: 3, window: "30d") { netuid } }',
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/health/percentiles"));
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -12201,10 +11970,6 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
 });
 
 describe("graphql — subnet_event_summary (#6980, chain-event activity summary)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_event_summary(netuid: 5) {
@@ -12231,44 +11996,63 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
   });
 
   test("resolves the Postgres-tier summary", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 7,
-          window: "7d",
-          observed_at: "2026-07-19T00:00:00.000Z",
-          total_events: 42,
-          kind_count: 3,
-          category_count: 2,
-          recent_event_count: 2,
-          limit: 10,
-          categories: [
-            {
-              category: "stake",
-              event_count: 30,
-              // Non-null on the component; absent while this was opaque JSON.
-              kind_count: 1,
-              amount_tao: 0,
-              alpha_amount: 0,
-            },
-          ],
-          event_kinds: [
+    // #10190: the tier is retired; loadSubnetEventSummaryColdTier answers. It
+    // issues FOUR reads -- the per-kind rollup, a distinct-hotkey and a
+    // distinct-coldkey count per kind, and the recent-event page -- so the double
+    // routes on the SQL. total_events, kind_count and the category rollup are all
+    // DERIVED from the per-kind rows.
+    const lake = lakehouse((sql) =>
+      sql.includes("GROUP BY event_kind") && sql.includes("count(*)")
+        ? [
             {
               event_kind: "StakeAdded",
               event_count: 30,
-              category: "stake",
-              hotkey_count: 1,
-              coldkey_count: 1,
+              first_block: 1,
+              last_block: 91,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
               amount_tao: 0,
               alpha_amount: 0,
             },
-          ],
-          recent_events: [{ event_kind: "StakeAdded", block_number: 91 }],
-        }),
-      ),
-    };
+            {
+              event_kind: "WeightsSet",
+              event_count: 8,
+              first_block: 1,
+              last_block: 90,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-18T00:00:00.000Z"),
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+            {
+              event_kind: "Transfer",
+              event_count: 4,
+              first_block: 1,
+              last_block: 89,
+              first_observed_at: 1,
+              last_observed_at: Date.parse("2026-07-17T00:00:00.000Z"),
+              amount_tao: 0,
+              alpha_amount: 0,
+            },
+          ]
+        : sql.includes("hotkey") && sql.includes("count(*)")
+          ? [{ event_kind: "StakeAdded", c: 1 }]
+          : [
+              {
+                block_number: 91,
+                event_index: 0,
+                event_kind: "StakeAdded",
+                hotkey: "5F",
+                coldkey: "5G",
+                netuid: 7,
+                uid: 1,
+                amount_tao: 0,
+                alpha_amount: 0,
+                observed_at: Date.parse("2026-07-19T00:00:00.000Z"),
+              },
+            ],
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 7, window: "7d") { netuid window total_events kind_count categories { category event_count kind_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } event_kinds { event_kind category event_count hotkey_count coldkey_count amount_tao alpha_amount first_block last_block first_observed_at last_observed_at } recent_events { block_number event_kind } } }',
       env as unknown as Env,
@@ -12276,45 +12060,53 @@ describe("graphql — subnet_event_summary (#6980, chain-event activity summary)
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     const s = body.data.subnet_event_summary;
+    // DERIVED: 30 + 8 + 4 across the three kinds. The retired tier carried 42,
+    // which happens to match -- but nothing summed it there.
     assert.equal(s.total_events, 42);
     assert.equal(s.kind_count, 3);
     assert.equal(s.categories[0].category, "stake");
     assert.equal(s.recent_events[0].block_number, 91);
+    lake.restore();
   });
 
-  test("clamps the recent-event limit into 1..50 and forwards it", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("clamps the recent-event limit into 1..50 and forwards it — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_event_summary(netuid: 3, window: "90d", limit: 999) { netuid } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/event-summary"));
-    assert.equal(capturedUrl!.searchParams.get("window"), "90d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("clamps a below-range limit up to 1", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql("{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }", env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "1");
+  test("clamps a below-range limit up to 1 — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      "{ subnet_event_summary(netuid: 3, limit: 0) { netuid } }",
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an unsupported window is a GraphQL error, not a silent card", async () => {
@@ -13858,34 +13650,23 @@ describe("graphql — subnet_weights (#5711, Postgres-tier + zeroed-card fallbac
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_setters: 4,
-          weight_sets: 10,
-          sets_per_setter: 2.5,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_weights(netuid: 5, window: "30d") {
           netuid window observed_at distinct_setters weight_sets sets_per_setter
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const w = body.data.subnet_weights;
-    assert.equal(w.window, "30d");
-    assert.equal(w.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(w.distinct_setters, 4);
-    assert.equal(w.weight_sets, 10);
-    assert.equal(w.sets_per_setter, 2.5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -13948,75 +13729,44 @@ describe("graphql — subnet_weight_setters (#5712, Postgres-tier + empty-leader
     });
   });
 
-  test("resolves the Postgres-tier leaderboard for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_setters: 2,
-          weight_sets: 10,
-          setter_count: 2,
-          setters: [
-            {
-              hotkey: "5SetterA",
-              uid: 1,
-              weight_sets: 7,
-              share: 0.7,
-              first_set_at: "2026-06-20T00:00:00.000Z",
-              last_set_at: "2026-07-01T00:00:00.000Z",
-            },
-            {
-              hotkey: null,
-              uid: 2,
-              weight_sets: 3,
-              share: 0.3,
-              first_set_at: "2026-06-25T00:00:00.000Z",
-              last_set_at: "2026-06-30T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier leaderboard for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_weight_setters(netuid: 5, window: "30d") {
           netuid window observed_at distinct_setters weight_sets setter_count
           setters { hotkey uid weight_sets share first_set_at last_set_at }
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    const w = body.data.subnet_weight_setters;
-    assert.equal(w.window, "30d");
-    assert.equal(w.weight_sets, 10);
-    assert.equal(w.setter_count, 2);
-    assert.equal(w.setters[0].hotkey, "5SetterA");
-    assert.equal(w.setters[0].share, 0.7);
-    assert.equal(w.setters[1].hotkey, null);
-    assert.equal(w.setters[1].uid, 2);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       '{ subnet_weight_setters(netuid: 3, window: "30d") { setter_count } }',
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.ok(capturedUrl!.pathname.endsWith("/subnets/3/weights/setters"));
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14092,34 +13842,23 @@ describe("graphql — subnet_stake_moves (#5716, Postgres-tier + zeroed-card fal
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_movers: 6,
-          movements: 15,
-          movements_per_mover: 2.5,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_stake_moves(netuid: 5, window: "30d") {
           netuid window observed_at distinct_movers movements movements_per_mover
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const m = body.data.subnet_stake_moves;
-    assert.equal(m.window, "30d");
-    assert.equal(m.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(m.distinct_movers, 6);
-    assert.equal(m.movements, 15);
-    assert.equal(m.movements_per_mover, 2.5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14180,34 +13919,23 @@ describe("graphql — subnet_stake_transfers (#5717, Postgres-tier + zeroed-card
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_senders: 4,
-          transfers: 11,
-          transfers_per_sender: 2.75,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_stake_transfers(netuid: 5, window: "30d") {
           netuid window observed_at distinct_senders transfers transfers_per_sender
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const t = body.data.subnet_stake_transfers;
-    assert.equal(t.window, "30d");
-    assert.equal(t.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(t.distinct_senders, 4);
-    assert.equal(t.transfers, 11);
-    assert.equal(t.transfers_per_sender, 2.75);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14350,23 +14078,34 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_stake_flow forwards window/direction and unwraps { data }", async () => {
-    const captured: Row = {};
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        data: {
-          schema_version: 1,
-          netuid: 7,
-          window: "7d",
-          total_staked_tao: 10,
-          total_unstaked_tao: 4,
-          net_flow_tao: 6,
-          stake_events: 3,
-          unstake_events: 1,
+    // #10190: the tier is retired; the #9146 subnet stake-flow projection answers.
+    // `window` selects the bucket and the builder SUMS these rows into the card --
+    // net_flow_tao is 10 staked minus 4 unstaked, derived rather than echoed. The
+    // window and direction reach the read through the data, which is where they go
+    // now; the query string they used to travel in no longer exists.
+    const env = {
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            rows: [
+              {
+                netuid: 7,
+                event_kind: "StakeAdded",
+                total_tao: 10,
+                event_count: 3,
+              },
+              {
+                netuid: 7,
+                event_kind: "StakeRemoved",
+                total_tao: 4,
+                event_count: 1,
+              },
+            ],
+          },
         },
-      },
-      captured,
-    );
+      }),
+    };
     const { body } = await gql(
       `{ subnet_stake_flow(netuid: 7, window: "7d", direction: "in") {
           window net_flow_tao stake_events unstake_events total_staked_tao
@@ -14374,11 +14113,12 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/stake-flow"));
-    assert.equal(captured.url.searchParams.get("window"), "7d");
-    assert.equal(captured.url.searchParams.get("direction"), "in");
     const f = body.data.subnet_stake_flow;
-    assert.equal(f.net_flow_tao, 6);
+    // `direction: "in"` narrows the sum to INFLOWS, so the net flow is the 10
+    // staked alone -- which is the direction reaching the read, provable from the
+    // answer. The URL assertion this replaces could only show the parameter was
+    // put on a request nothing served.
+    assert.equal(f.net_flow_tao, 10);
     assert.equal(f.stake_events, 3);
     assert.equal(f.total_staked_tao, 10);
   });
@@ -14435,34 +14175,28 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_events forwards kind/block bounds/pagination and returns tier rows", async () => {
-    const captured: Row = {};
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        schema_version: 1,
-        netuid: 7,
-        event_count: 1,
-        limit: 50,
-        offset: 0,
-        next_cursor: null,
-        events: [
-          {
-            block_number: 100,
-            event_index: 2,
-            event_kind: "StakeAdded",
-            hotkey: "5F",
-            coldkey: "5G",
-            netuid: 7,
-            uid: 3,
-            amount_tao: 1.5,
-            alpha_amount: 2.5,
-            observed_at: "2026-07-01T00:00:00.000Z",
-            extrinsic_index: 4,
-          },
-        ],
-      },
-      captured,
+    // #10190: the tier is retired; answerSubnetEvents composes over the lakehouse.
+    // The kind and block bounds become SQL PREDICATES rather than query params,
+    // which is where they actually go -- and the assertion below checks them there.
+    const lake = lakehouse(
+      [
+        {
+          block_number: 100,
+          event_index: 2,
+          event_kind: "StakeAdded",
+          hotkey: "5F",
+          coldkey: "5G",
+          netuid: 7,
+          uid: 3,
+          amount_tao: 1.5,
+          alpha_amount: 2.5,
+          observed_at: Date.parse("2026-07-01T00:00:00.000Z"),
+          extrinsic_index: 4,
+        },
+      ],
+      { once: true },
     );
+    const env = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
       `{ subnet_events(netuid: 7, kind: "StakeAdded", block_start: 10, block_end: 200, limit: 50) {
           event_count limit events { event_kind amount_tao uid hotkey block_number }
@@ -14470,18 +14204,19 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/events"));
-    assert.equal(captured.url.searchParams.get("kind"), "StakeAdded");
-    assert.equal(captured.url.searchParams.get("block_start"), "10");
-    assert.equal(captured.url.searchParams.get("block_end"), "200");
-    assert.equal(captured.url.searchParams.get("limit"), "50");
     const f = body.data.subnet_events;
+    const sql = lake.queries[0];
+    assert.match(sql, /netuid = 7/);
+    assert.match(sql, /event_kind = 'StakeAdded'/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 200/);
     assert.equal(f.event_count, 1);
     assert.equal(f.limit, 50);
     assert.equal(f.events[0].event_kind, "StakeAdded");
     assert.equal(f.events[0].amount_tao, 1.5);
     assert.equal(f.events[0].uid, 3);
     assert.equal(f.events[0].block_number, 100);
+    lake.restore();
   });
 
   test("subnet_events: a partial tier body degrades to the resolver defaults", async () => {
@@ -14643,20 +14378,23 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   });
 
   test("subnet_prometheus forwards window and returns the tier card", async () => {
-    const captured: Row = {};
-    const env = tierEnv(
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      {
-        schema_version: 1,
-        netuid: 7,
-        window: "30d",
-        observed_at: "2026-07-01T00:00:00.000Z",
-        distinct_exporters: 5,
-        announcements: 12,
-        announcements_per_exporter: 2.4,
-      },
-      captured,
+    // #10190: the tier is retired; loadSubnetEventCardColdTier answers through the
+    // PrometheusServed rollup. That rollup issues THREE reads -- the row page, an
+    // ungrouped COUNT(*), and a GROUP BY subquery for the distinct count -- so the
+    // double routes on the SQL. `announcements_per_exporter` is DERIVED (12/5).
+    const lake = lakehouse((sql) =>
+      sql.includes("FROM (SELECT")
+        ? [{ distinct_exporters: 5 }]
+        : sql.includes("GROUP BY")
+          ? [{ netuid: 7, hotkey: "5Exporter", announcements: 12 }]
+          : [
+              {
+                announcements: 12,
+                newest_observed: Date.parse("2026-07-01T00:00:00.000Z"),
+              },
+            ],
     );
+    const env = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
       `{ subnet_prometheus(netuid: 7, window: "30d") {
           window observed_at distinct_exporters announcements announcements_per_exporter
@@ -14664,13 +14402,12 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       env as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.ok(captured.url.pathname.endsWith("/subnets/7/prometheus"));
-    assert.equal(captured.url.searchParams.get("window"), "30d");
     const p = body.data.subnet_prometheus;
     assert.equal(p.distinct_exporters, 5);
     assert.equal(p.announcements, 12);
     assert.equal(p.announcements_per_exporter, 2.4);
     assert.equal(p.observed_at, "2026-07-01T00:00:00.000Z");
+    lake.restore();
   });
 
   test("subnet_prometheus: a partial tier body degrades to the resolver defaults", async () => {
@@ -14755,34 +14492,23 @@ describe("graphql — subnet_deregistrations (#5719, Postgres-tier + zeroed-card
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_deregistered_hotkeys: 2,
-          deregistrations: 5,
-          deregistrations_per_hotkey: 2.5,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_deregistrations(netuid: 5, window: "30d") {
           netuid window observed_at distinct_deregistered_hotkeys deregistrations deregistrations_per_hotkey
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.subnet_deregistrations;
-    assert.equal(r.window, "30d");
-    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(r.distinct_deregistered_hotkeys, 2);
-    assert.equal(r.deregistrations, 5);
-    assert.equal(r.deregistrations_per_hotkey, 2.5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14843,34 +14569,23 @@ describe("graphql — subnet_serving (#5715, Postgres-tier + zeroed-card fallbac
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_servers: 3,
-          announcements: 9,
-          announcements_per_server: 3,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_serving(netuid: 5, window: "30d") {
           netuid window observed_at distinct_servers announcements announcements_per_server
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.subnet_serving;
-    assert.equal(r.window, "30d");
-    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(r.distinct_servers, 3);
-    assert.equal(r.announcements, 9);
-    assert.equal(r.announcements_per_server, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -14934,67 +14649,29 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
     assert.deepEqual(d.surfaces, []);
   });
 
-  test("resolves Postgres-tier data, forwarding netuid in the path + window param", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            surfaces: [
-              {
-                surface_id: "srf-1",
-                samples: 100,
-                uptime_ratio: 0.98,
-                incident_count: 1,
-                downtime_ms: 60000,
-                transient_failure_count: 0,
-                transient_failed_samples: 0,
-                incidents: [
-                  {
-                    started_at: 1000,
-                    ended_at: 61000,
-                    duration_ms: 60000,
-                    failed_samples: 3,
-                  },
-                ],
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data, forwarding netuid in the path + window param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID}, window: "30d")`),
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/subnets/${NETUID}/health/incidents`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    const d = body.data.subnet_health_incidents;
-    assert.equal(d.window, "30d");
-    const s = d.surfaces[0];
-    assert.equal(s.surface_id, "srf-1");
-    assert.equal(s.uptime_ratio, 0.98);
-    assert.equal(s.incident_count, 1);
-    assert.equal(s.incidents[0].duration_ms, 60000);
-    assert.equal(s.incidents[0].failed_samples, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("an empty Postgres-tier body degrades to schema-stable defaults with empty surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       incidentsQuery(`(netuid: ${NETUID})`),
       env as unknown as Env,
@@ -15005,7 +14682,9 @@ describe("graphql — subnet_health_incidents (#5884, Postgres-tier + D1-live fa
       netuid: NETUID,
       window: "7d",
       observed_at: null,
-      source: null,
+      // The BUILDER stamps the prober label; the retired tier's `{}` body fell
+      // through the resolver's `??` to null instead (#10190).
+      source: "live-cron-prober",
       surfaces: [],
     });
   });
@@ -15047,34 +14726,23 @@ describe("graphql — subnet_axon_removals (#5718, Postgres-tier + zeroed-card f
     });
   });
 
-  test("resolves the Postgres-tier card for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          netuid: 5,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          distinct_removers: 2,
-          removals: 5,
-          removals_per_remover: 2.5,
-        }),
-      ),
-    };
+  test("resolves the Postgres-tier card for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ subnet_axon_removals(netuid: 5, window: "30d") {
           netuid window observed_at distinct_removers removals removals_per_remover
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.subnet_axon_removals;
-    assert.equal(r.window, "30d");
-    assert.equal(r.observed_at, "2026-07-01T00:00:00.000Z");
-    assert.equal(r.distinct_removers, 2);
-    assert.equal(r.removals, 5);
-    assert.equal(r.removals_per_remover, 2.5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15139,32 +14807,24 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_registrations: 7,
-            subnet_count: 2,
-            concentration: 0.63,
-            dominant_netuid: 1,
-            subnets: [
-              {
-                netuid: 1,
-                registrations: 5,
-                first_registered_at: "2026-04-01T00:00:00.000Z",
-                last_registered_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 2, registrations: 2 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 1,
+        registrations: 5,
+        // The lane's own column names, and epoch ms: the reader selects
+        // MIN/MAX(observed_at) AS first_observed/last_observed, and the builder
+        // formats those into first_registered_at / last_registered_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      { netuid: 2, registrations: 2 },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_registrations(ss58: "${SS58}", window: "90d") {
           address window total_registrations subnet_count concentration dominant_netuid
@@ -15177,7 +14837,9 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
     assert.equal(r.window, "90d");
     assert.equal(r.total_registrations, 7);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.63);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.63, a number nothing computed.
+    assert.equal(r.concentration, 0.5918);
     assert.equal(r.dominant_netuid, 1);
     assert.deepEqual(r.subnets, [
       {
@@ -15193,6 +14855,7 @@ describe("graphql — account_registrations (#5704, Postgres-tier + zeroed-card 
         last_registered_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15268,31 +14931,30 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
+    // #10190: the tier is retired; the #9146 deregistrations projection answers.
+    // Its hotkey index is TUPLE-encoded -- [netuid, deregistrations,
+    // first_observed, last_observed], epoch ms -- and the builder derives
+    // concentration/dominant_netuid from it, so those are measured here rather
+    // than echoed from a hand-written payload.
     const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_deregistrations: 4,
-            subnet_count: 2,
-            concentration: 0.55,
-            dominant_netuid: 3,
-            subnets: [
-              {
-                netuid: 3,
-                deregistrations: 3,
-                first_deregistered_at: "2026-04-01T00:00:00.000Z",
-                last_deregistered_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 7, deregistrations: 1 },
-            ],
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "90d": {
+            hotkeys: {
+              [SS58]: [
+                [
+                  3,
+                  3,
+                  Date.parse("2026-04-01T00:00:00.000Z"),
+                  Date.parse("2026-06-01T00:00:00.000Z"),
+                ],
+                [7, 1, null, null],
+              ],
+            },
           },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
+        },
+      }),
     };
     const { status, body } = await gql(
       `{ account_deregistrations(ss58: "${SS58}", window: "90d") {
@@ -15306,7 +14968,9 @@ describe("graphql — account_deregistrations (#5701, Postgres-tier + zeroed-car
     assert.equal(r.window, "90d");
     assert.equal(r.total_deregistrations, 4);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.55);
+    // DERIVED from the rows above: (3/4)^2 + (1/4)^2 = 0.625. The retired tier
+    // carried 0.55, a number nothing computed.
+    assert.equal(r.concentration, 0.625);
     assert.equal(r.dominant_netuid, 3);
     assert.deepEqual(r.subnets, [
       {
@@ -15397,32 +15061,23 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_announcements: 8,
-            subnet_count: 2,
-            concentration: 0.68,
-            dominant_netuid: 4,
-            subnets: [
-              {
-                netuid: 4,
-                announcements: 6,
-                first_served_at: "2026-04-01T00:00:00.000Z",
-                last_served_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 9, announcements: 2 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 4,
+        announcements: 6,
+        // The lane selects MIN/MAX(observed_at) AS first_observed/last_observed;
+        // the builder formats those into first_served_at / last_served_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      { netuid: 9, announcements: 2 },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_serving(ss58: "${SS58}", window: "90d") {
           address window total_announcements subnet_count concentration dominant_netuid
@@ -15435,7 +15090,9 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
     assert.equal(r.window, "90d");
     assert.equal(r.total_announcements, 8);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.68);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.68, a number nothing computed.
+    assert.equal(r.concentration, 0.625);
     assert.equal(r.dominant_netuid, 4);
     assert.deepEqual(r.subnets, [
       {
@@ -15451,6 +15108,7 @@ describe("graphql — account_serving (#5705, Postgres-tier + zeroed-card fallba
         last_served_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15525,61 +15183,39 @@ describe("graphql — account_axon_removals (#5699, Postgres-tier + zeroed-card 
     });
   });
 
-  test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_removals: 5,
-            subnet_count: 2,
-            concentration: 0.72,
-            dominant_netuid: 6,
-            subnets: [
-              {
-                netuid: 6,
-                removals: 4,
-                first_removed_at: "2026-04-01T00:00:00.000Z",
-                last_removed_at: "2026-06-01T00:00:00.000Z",
-              },
-              { netuid: 11, removals: 1 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+  test("the card is a measured zero: AxonInfoRemoved has never been emitted (#9307)", async () => {
+    // WAS a tier-payload test. The retired tier was this field's ONLY source --
+    // the resolver has no loader under it, only buildAccountAxonRemovals -- so
+    // with the tier gone (#10190) the card is unconditionally zero.
+    //
+    // That is the correct answer, not a gap: `AxonInfoRemoved` has zero
+    // occurrences in the complete decoded stream, ever, so there is nothing for a
+    // cold tier to hold. tests/graphql-tier-cascade.test.ts carries the same
+    // claim in NO_TIER_ANYWHERE, with the MCP twin named as the evidence, and
+    // fails if either side stops matching.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       `{ account_axon_removals(ss58: "${SS58}", window: "90d") {
           address window total_removals subnet_count concentration dominant_netuid
           subnets { netuid removals first_removed_at last_removed_at }
         } }`,
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.account_axon_removals;
-    assert.equal(r.window, "90d");
-    assert.equal(r.total_removals, 5);
-    assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.72);
-    assert.equal(r.dominant_netuid, 6);
-    assert.deepEqual(r.subnets, [
-      {
-        netuid: 6,
-        removals: 4,
-        first_removed_at: "2026-04-01T00:00:00.000Z",
-        last_removed_at: "2026-06-01T00:00:00.000Z",
-      },
-      {
-        netuid: 11,
-        removals: 1,
-        first_removed_at: null,
-        last_removed_at: null,
-      },
-    ]);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
+    assert.deepEqual(body.data.account_axon_removals, {
+      address: SS58,
+      window: "90d",
+      total_removals: 0,
+      subnet_count: 0,
+      concentration: null,
+      dominant_netuid: null,
+      subnets: [],
+    });
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15655,33 +15291,36 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
   });
 
   test("resolves the Postgres-tier { data } envelope, mapping the per-subnet footprint", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          data: {
-            schema_version: 1,
-            address: SS58,
-            window: "90d",
-            total_movements: 6,
-            subnet_count: 2,
-            concentration: 0.61,
-            dominant_netuid: 8,
-            subnets: [
-              {
-                netuid: 8,
-                movements: 5,
-                first_moved_at: "2026-04-01T00:00:00.000Z",
-                last_moved_at: "2026-06-01T00:00:00.000Z",
-                price_tao_at_last_move: 0.042,
-              },
-              { netuid: 12, movements: 1 },
-            ],
-          },
-          generatedAt: "2026-06-01T00:00:00.000Z",
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        netuid: 8,
+        movements: 5,
+        // MIN/MAX(observed_at) AS first_observed/last_observed, epoch ms -- the
+        // builder renames them to first_moved_at / last_moved_at.
+        first_observed: Date.parse("2026-04-01T00:00:00.000Z"),
+        last_observed: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      { netuid: 12, movements: 1 },
+    ]);
+    // The #4332 price enrichment reads `subnet_snapshots` through the store, so
+    // the day of the last move must have a snapshot for the price to exist.
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [
+      {
+        match: "FROM subnet_snapshots",
+        rows: [
+          { netuid: 8, snapshot_date: "2026-06-01", alpha_price_tao: 0.042 },
+        ],
+      },
+    ];
+    const env = { ...LAKEHOUSE_ENV, ...pgMockEnv() };
     const { status, body } = await gql(
       `{ account_stake_moves(ss58: "${SS58}", window: "90d") {
           address window total_movements subnet_count concentration dominant_netuid
@@ -15694,7 +15333,9 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
     assert.equal(r.window, "90d");
     assert.equal(r.total_movements, 6);
     assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.61);
+    // The builder DERIVES this from the rows above; the retired tier's
+    // hand-written envelope carried 0.61, a number nothing computed.
+    assert.equal(r.concentration, 0.7222);
     assert.equal(r.dominant_netuid, 8);
     assert.deepEqual(r.subnets, [
       {
@@ -15712,6 +15353,8 @@ describe("graphql — account_stake_moves (#5707, Postgres-tier + zeroed-card fa
         price_tao_at_last_move: null,
       },
     ]);
+    pg.control.answers = [];
+    lake.restore();
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
@@ -15904,82 +15547,49 @@ describe("graphql — account_weight_setters (#6976, Postgres-tier { data, gener
     });
   });
 
-  test("resolves the Postgres-tier footprint for the requested window", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            data: {
-              schema_version: 1,
-              address: SS58,
-              window: "30d",
-              total_weight_sets: 12,
-              subnet_count: 2,
-              concentration: 0.61,
-              dominant_netuid: 5,
-              subnets: [
-                {
-                  netuid: 5,
-                  weight_sets: 9,
-                  first_set_at: "2026-06-01T00:00:00.000Z",
-                  last_set_at: "2026-07-01T00:00:00.000Z",
-                },
-                {
-                  netuid: 11,
-                  weight_sets: 3,
-                  first_set_at: "2026-06-15T00:00:00.000Z",
-                  last_set_at: "2026-06-20T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-01T00:00:00.000Z",
-          }),
-      },
-    };
+  test("resolves the Postgres-tier footprint for the requested window — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", window: "30d")`),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    const r = body.data.account_weight_setters;
-    assert.equal(r.window, "30d");
-    assert.equal(r.total_weight_sets, 12);
-    assert.equal(r.subnet_count, 2);
-    assert.equal(r.concentration, 0.61);
-    assert.equal(r.dominant_netuid, 5);
-    assert.equal(r.subnets[0].netuid, 5);
-    assert.equal(r.subnets[0].weight_sets, 9);
-    assert.equal(r.subnets[1].netuid, 11);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("window is forwarded as a query param to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            data: { schema_version: 1, address: SS58, subnets: [] },
-            generatedAt: null,
-          });
-        },
-      },
-    };
-    await gql(query(`(ss58: "${SS58}", window: "30d")`), env);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/accounts/${SS58}/weight-setters`,
+  test("window is forwarded as a query param to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
+      query(`(ss58: "${SS58}", window: "30d")`),
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a Postgres-tier body missing the data envelope degrades to a schema-stable zeroed card", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_weight_setters, {
@@ -16165,8 +15775,37 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
   const OTHER = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered. Both modes
+  // read the lakehouse: list mode scans this account's Transfer rows and
+  // buildCounterparties AGGREGATES them, relationship mode narrows to one pair.
+  //
+  // Raw rows, not a finished leaderboard: sent/received/net and the ranking are
+  // exactly what the aggregation computes, and a built payload skipped it.
+  let lake: ReturnType<typeof lakehouse> | undefined;
+  afterEach(() => {
+    lake?.restore();
+    lake = undefined;
+  });
+  function transfer(
+    from: string,
+    to: string,
+    amountTao: number,
+    block: number,
+  ) {
+    return {
+      hotkey: from,
+      coldkey: to,
+      event_kind: "Transfer",
+      amount_tao: amountTao,
+      block_number: block,
+      event_index: 0,
+      observed_at: 1_750_000_000_000 + block,
+    };
+  }
+  function transferStore(rows: Row[]) {
+    lake = lakehouse(rows, { once: true });
+    return { ...LAKEHOUSE_ENV } as unknown as Env;
   }
 
   test("cold store: no Postgres flag returns a schema-stable zero list card, never null", async () => {
@@ -16194,37 +15833,28 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("resolves the Postgres-tier list envelope, mapping each ranked counterparty", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          counterparty_count: 2,
-          transfers_scanned: 7,
-          scan_capped: false,
-          total_sent_tao: 12.5,
-          total_received_tao: 4.25,
-          counterparties: [
-            {
-              address: OTHER,
-              sent_tao: 10,
-              received_tao: 4.25,
-              net_tao: -5.75,
-              transfer_count: 5,
-              last_block: 4321,
-            },
-            {
-              address: "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
-              sent_tao: 2.5,
-              received_tao: 0,
-              net_tao: -2.5,
-              transfer_count: 2,
-            },
-          ],
-        }),
+    // Seven scanned transfers across two counterparties: OTHER nets -5.75 on
+    // five, the second nets -2.5 on two. Both the ranking and every total below
+    // are what buildCounterparties derives from these rows.
+    const env = transferStore([
+      transfer(SS58, OTHER, 4, 4321),
+      transfer(SS58, OTHER, 3, 4320),
+      transfer(SS58, OTHER, 3, 4319),
+      transfer(OTHER, SS58, 4.25, 4318),
+      transfer(SS58, OTHER, 0, 4317),
+      transfer(
+        SS58,
+        "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        2.5,
+        4000,
       ),
-    };
+      transfer(
+        SS58,
+        "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+        0,
+        3999,
+      ),
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", limit: 5) {
           ss58 counterparty_count transfers_scanned scan_capped
@@ -16255,64 +15885,37 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         received_tao: 0,
         net_tao: -2.5,
         transfer_count: 2,
-        last_block: null,
+        // DERIVED as the MAX block across this pair's rows. The retired tier's
+        // payload simply omitted the field, so it read null.
+        last_block: 4000,
       },
     ]);
   });
 
   test("relationship mode: maps the Postgres-tier composite envelope with transfer evidence", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          counterparty_count: 1,
-          transfers_scanned: 3,
-          scan_capped: false,
-          total_sent_tao: 8,
-          total_received_tao: 1,
-          counterparties: [
-            {
-              address: OTHER,
-              sent_tao: 8,
-              received_tao: 1,
-              net_tao: -7,
-              transfer_count: 3,
-              last_block: 900,
-            },
-          ],
-          relationship: {
-            schema_version: 1,
-            ss58: SS58,
-            counterparty: OTHER,
-            transfer_count: 3,
-            transfers_scanned: 3,
-            scan_capped: false,
-            total_sent_tao: 8,
-            total_received_tao: 1,
-            net_tao: -7,
-            first_block: 700,
-            last_block: 900,
-            first_seen_at: "2026-05-01T00:00:00.000Z",
-            last_seen_at: "2026-06-01T00:00:00.000Z",
-            limit: 50,
-            transfers: [
-              {
-                block_number: 900,
-                event_index: 2,
-                netuid: 0,
-                from: SS58,
-                to: OTHER,
-                amount_tao: 5,
-                direction: "sent",
-                observed_at: "2026-06-01T00:00:00.000Z",
-              },
-            ],
-          },
-        }),
-      ),
-    };
+    // Relationship mode narrows to ONE pair, so the same rows serve both the
+    // ranked list and the per-pair evidence -- the composite envelope is built,
+    // not echoed.
+    const env = transferStore([
+      {
+        ...transfer(SS58, OTHER, 5, 900),
+        event_index: 2,
+        netuid: 0,
+        observed_at: Date.parse("2026-06-01T00:00:00.000Z"),
+      },
+      {
+        ...transfer(SS58, OTHER, 3, 800),
+        event_index: 1,
+        netuid: 0,
+        observed_at: Date.parse("2026-05-15T00:00:00.000Z"),
+      },
+      {
+        ...transfer(OTHER, SS58, 1, 700),
+        event_index: 0,
+        netuid: 0,
+        observed_at: Date.parse("2026-05-01T00:00:00.000Z"),
+      },
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}", limit: 50) {
           counterparty_count
@@ -16333,6 +15936,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
     assert.equal(r.relationship.net_tao, -7);
     assert.equal(r.relationship.first_block, 700);
     assert.equal(r.relationship.limit, 50);
+    // ALL THREE, newest first -- the evidence list is the rows themselves, so a
+    // relationship that dropped one would be visible here. The retired tier
+    // handed over a single pre-selected transfer, which could not show that.
     assert.deepEqual(r.relationship.transfers, [
       {
         block_number: 900,
@@ -16343,6 +15949,26 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         amount_tao: 5,
         direction: "sent",
         observed_at: "2026-06-01T00:00:00.000Z",
+      },
+      {
+        block_number: 800,
+        event_index: 1,
+        netuid: 0,
+        from: SS58,
+        to: OTHER,
+        amount_tao: 3,
+        direction: "sent",
+        observed_at: "2026-05-15T00:00:00.000Z",
+      },
+      {
+        block_number: 700,
+        event_index: 0,
+        netuid: 0,
+        from: OTHER,
+        to: SS58,
+        amount_tao: 1,
+        direction: "received",
+        observed_at: "2026-05-01T00:00:00.000Z",
       },
     ]);
   });
@@ -16373,12 +15999,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("a partial Postgres-tier body degrades to the resolver's defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({ counterparties: [{ address: OTHER }] }),
-      ),
-    };
+    // A store with nothing to aggregate is what degrades now; the floor is
+    // unchanged.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}") {
           schema_version ss58 counterparty_count transfers_scanned scan_capped
@@ -16397,25 +16020,17 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
       scan_capped: false,
       total_sent_tao: 0,
       total_received_tao: 0,
-      counterparties: [
-        {
-          address: OTHER,
-          sent_tao: 0,
-          received_tao: 0,
-          net_tao: 0,
-          transfer_count: 0,
-          last_block: null,
-        },
-      ],
+      // No rows to aggregate means no counterparties -- the retired tier handed
+      // over a list entry with zeroed metrics, which nothing could have derived.
+      counterparties: [],
       relationship: null,
     });
   });
 
   test("a Postgres-tier body with no counterparties key degrades to an empty list, never null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ schema_version: 1 })),
-    };
+    // Same floor from the other direction: no rows means no counterparties,
+    // and the list must be empty rather than null.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}") {
           schema_version ss58 counterparty_count transfers_scanned scan_capped
@@ -16440,15 +16055,9 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
   });
 
   test("relationship mode: a bare relationship object degrades every field to the resolver's defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          counterparties: [{ address: OTHER }],
-          relationship: {},
-        }),
-      ),
-    };
+    // No rows at all: every relationship field must reach its default through
+    // the builder rather than surfacing undefined.
+    const env = transferStore([]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
           relationship {
@@ -16475,24 +16084,19 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
       last_block: null,
       first_seen_at: null,
       last_seen_at: null,
-      limit: 0,
+      // The builder's own default page size, not 0: the retired tier echoed
+      // whatever `limit` its body carried.
+      limit: 20,
       transfers: [],
     });
   });
 
   test("relationship mode: a partial transfer row degrades its nullable fields, keeping the required direction", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          counterparties: [{ address: OTHER }],
-          relationship: {
-            counterparty: OTHER,
-            transfers: [{ direction: "received" }],
-          },
-        }),
-      ),
-    };
+    // One received transfer carrying only what the lane always has -- the
+    // nullable columns are absent, so each must degrade on its own.
+    const env = transferStore([
+      { hotkey: OTHER, coldkey: SS58, event_kind: "Transfer", amount_tao: 0 },
+    ]);
     const { status, body } = await gql(
       `{ account_counterparties(ss58: "${SS58}", counterparty: "${OTHER}") {
           relationship {
@@ -16507,8 +16111,11 @@ describe("graphql — account_counterparties (#5893, Postgres-tier + retired-D1 
         block_number: null,
         event_index: null,
         netuid: null,
-        from: null,
-        to: null,
+        // `from`/`to` come from the row's own hotkey/coldkey, which the lane
+        // ALWAYS has -- they are how the direction is decided. The retired tier
+        // let a transfer arrive with neither, which its own SQL could not produce.
+        from: OTHER,
+        to: SS58,
         amount_tao: 0,
         direction: "received",
         observed_at: null,
@@ -16585,30 +16192,28 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("resolves the flat Postgres-tier envelope, mapping each transfer's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "b:1200:3",
-          transfers: [
-            {
-              block_number: 1200,
-              event_index: 3,
-              from: SS58,
-              to: OTHER,
-              amount_tao: 1.5,
-              direction: "sent",
-              observed_at: "2026-07-15T00:00:00.000Z",
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([
+      {
+        // The lakehouse row, per generated/lakehouse/types.ts's own column list:
+        // hotkey is the from side, coldkey the to side, and `direction` is
+        // DERIVED by the builder from which side this account is on. The retired
+        // tier handed over a finished `from`/`to`/`direction` triple, so none of
+        // that derivation ran here.
+        block_number: 1200,
+        event_index: 3,
+        event_kind: "Transfer",
+        hotkey: SS58,
+        coldkey: OTHER,
+        amount_tao: 1.5,
+        observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+      },
+    ]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
           schema_version ss58 transfer_count limit offset next_cursor
@@ -16622,9 +16227,12 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
       schema_version: 1,
       ss58: SS58,
       transfer_count: 1,
-      limit: 50,
+      // Derived, not echoed: `limit` is the query's own default and
+      // `next_cursor` is null for a page shorter than it. The retired tier
+      // handed both back verbatim, so neither was ever computed here.
+      limit: 100,
       offset: 0,
-      next_cursor: "b:1200:3",
+      next_cursor: null,
       transfers: [
         {
           block_number: 1200,
@@ -16637,58 +16245,53 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/transfers and forwards every filter", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          transfers: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: the filters used to be asserted as query params on the tier
+    // request. The lakehouse reader takes none of them as params -- they become
+    // SQL PREDICATES, which is both where they actually go now and a stronger
+    // statement: a dropped filter cannot hide behind a URL that still carries it.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 5, offset: 2, cursor: "c:9:1", direction: "received", block_start: 10, block_end: 20) { transfer_count } }`,
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/transfers`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
-    assert.equal(capture.url.searchParams.get("direction"), "received");
-    assert.equal(capture.url.searchParams.get("block_start"), "10");
-    assert.equal(capture.url.searchParams.get("block_end"), "20");
+    const sql = lake.queries[0];
+    // `direction: received` narrows to the TO side -- coldkey, per data-api's own
+    // semantics -- so the predicate is one-sided rather than the (hotkey OR
+    // coldkey) disjunction an unfiltered read uses.
+    assert.match(sql, new RegExp(`coldkey = '${SS58}'`));
+    assert.doesNotMatch(sql, /OR coldkey/);
+    assert.match(sql, /event_kind = 'Transfer'/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 20/);
+    // limit + offset, since R2 SQL has no OFFSET.
+    assert.match(sql, /LIMIT 7\b/);
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds before forwarding", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     await gql(
       `{ account_transfers(ss58: "${SS58}", limit: 100000, offset: -5) { transfer_count } }`,
       env as unknown as Env,
     );
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    // No filter params were supplied, so none are forwarded.
-    assert.equal(capture.url.searchParams.get("cursor"), null);
-    assert.equal(capture.url.searchParams.get("direction"), null);
-    assert.equal(capture.url.searchParams.get("block_start"), null);
-    assert.equal(capture.url.searchParams.get("block_end"), null);
+    const sql = lake.queries[0];
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, and no filters were supplied -- so the read
+    // is the unfiltered (hotkey OR coldkey) disjunction with no extra predicate.
+    assert.match(sql, /\(hotkey = '[^']+' OR coldkey = '[^']+'\)/);
+    assert.doesNotMatch(sql, /block_number [<>]/);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
@@ -16715,18 +16318,13 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
   });
 
   test("a transfer row with missing fields degrades each to null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          transfer_count: 1,
-          next_cursor: null,
-          transfers: [{}],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([{}], { once: true });
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       `{ account_transfers(ss58: "${SS58}") {
           transfers { block_number event_index from to amount_tao direction observed_at }
@@ -16745,6 +16343,7 @@ describe("graphql — account_transfers (#5892, Postgres-tier flat feed)", () =>
         observed_at: null,
       },
     ]);
+    lake.restore();
   });
 
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
@@ -16812,34 +16411,30 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("resolves the Postgres-tier envelope, mapping each event's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "b:1200:3",
-          events: [
-            {
-              block_number: 1200,
-              event_index: 3,
-              event_kind: "StakeAdded",
-              hotkey: SS58,
-              coldkey: OTHER,
-              netuid: 7,
-              uid: 42,
-              amount_tao: 1.5,
-              alpha_amount: 2.25,
-              observed_at: "2026-07-15T00:00:00.000Z",
-              extrinsic_index: 4,
-            },
-          ],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse(
+      [
+        {
+          block_number: 1200,
+          event_index: 3,
+          event_kind: "StakeAdded",
+          hotkey: SS58,
+          coldkey: OTHER,
+          netuid: 7,
+          uid: 42,
+          amount_tao: 1.5,
+          alpha_amount: 2.25,
+          observed_at: Date.parse("2026-07-15T00:00:00.000Z"),
+          extrinsic_index: 4,
+        },
+      ],
+      { once: true },
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -16847,9 +16442,11 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
       schema_version: 1,
       ss58: SS58,
       event_count: 1,
-      limit: 50,
+      // DERIVED: `limit` is the query's own default and `next_cursor` is null for
+      // a page shorter than it. The retired tier echoed both verbatim.
+      limit: 100,
       offset: 0,
-      next_cursor: "b:1200:3",
+      next_cursor: null,
       events: [
         {
           block_number: 1200,
@@ -16866,25 +16463,17 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/events and forwards every filter", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          events: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([], { once: true });
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
         `(ss58: "${SS58}", kind: "StakeAdded", netuid: 7, block_start: 10, block_end: 20, limit: 5, offset: 2, cursor: "c:9:1")`,
@@ -16892,33 +16481,36 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/events`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("kind"), "StakeAdded");
-    assert.equal(capture.url.searchParams.get("netuid"), "7");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:9:1");
-    assert.equal(capture.url.searchParams.get("block_start"), "10");
-    assert.equal(capture.url.searchParams.get("block_end"), "20");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`hotkey = '${SS58}'`));
+    assert.match(sql, /event_kind = 'StakeAdded'/);
+    assert.match(sql, /netuid = 7/);
+    assert.match(sql, /block_number >= 10/);
+    assert.match(sql, /block_number <= 20/);
+    // limit+offset is the LIMIT that goes out: R2 SQL has no OFFSET, so the
+    // reader over-fetches and slices.
+    assert.match(sql, /LIMIT 7\b/);
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the clamp used to be read off the tier request's query string. The
+    // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
+    // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
+    // produces no predicate. Asserting the SQL is what the clamp actually reaches.
+    const lake = lakehouse([], { once: true });
+    const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    // No filter params were supplied, so none are forwarded.
-    assert.equal(capture.url.searchParams.get("kind"), null);
-    assert.equal(capture.url.searchParams.get("netuid"), null);
-    assert.equal(capture.url.searchParams.get("cursor"), null);
-    assert.equal(capture.url.searchParams.get("block_start"), null);
-    assert.equal(capture.url.searchParams.get("block_end"), null);
+    const sql = lake.queries[0];
+    // The clamp is visible as the LIMIT that went out: bounded, and never
+    // the 100000 the caller asked for.
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, so the LIMIT is the limit alone.
+    // No filters were supplied, so none appear as predicates.
+    assert.doesNotMatch(sql, /event_kind = /);
+    assert.doesNotMatch(sql, /netuid = /);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
@@ -16940,18 +16532,13 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
   });
 
   test("an event row with missing fields degrades each to null", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 1,
-          next_cursor: null,
-          events: [{}],
-        }),
-      ),
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"/"d1" in wrangler.jsonc
+    // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled
+    // was never asked. The cold tier answers, and it feeds the SAME builder
+    // -- so the envelope below is derived from these rows, not asserted
+    // into existence by a hand-written payload.
+    const lake = lakehouse([{}], { once: true });
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_events.events, [
@@ -16969,6 +16556,7 @@ describe("graphql — account_events (#5890, Postgres-tier hotkey/coldkey feed)"
         extrinsic_index: null,
       },
     ]);
+    lake.restore();
   });
 
   test("an invalid ss58 is a GraphQL error and never reaches the Postgres tier", async () => {
@@ -17074,19 +16662,22 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("well-formed from/to bounds are accepted and forwarded to the tier", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ days: [] }), capture),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(
       query(`(ss58: "${SS58}", from: "2026-07-01", to: "2026-07-16")`),
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capture.url.searchParams.get("from"), "2026-07-01");
-    assert.equal(capture.url.searchParams.get("to"), "2026-07-16");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`observed_at >= ${Date.parse("2026-07-01")}`));
+    // Inclusive of the ?to day, so the bound is the START of the NEXT day.
+    assert.match(sql, new RegExp(`observed_at < ${Date.parse("2026-07-17")}`));
+    lake.restore();
   });
 
   // The regression the issue describes predates D1 elimination (2026-07-17):
@@ -17130,29 +16721,27 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("resolves the Postgres-tier envelope, mapping each day's fields", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          day_count: 1,
-          limit: 50,
-          offset: 0,
-          next_cursor: "c:20260625:7",
-          days: [
+    // #10190: the tier is retired. loadAccountHistoryColdTier issues TWO reads --
+    // the (day, netuid) rollup, and a separate (day, netuid, event_kind) grouping
+    // because R2 SQL rejects `string_agg(DISTINCT ...)`. A double that answered
+    // both alike would yield empty kinds, so it routes on the SQL.
+    const lake = lakehouse((sql) =>
+      sql.includes("event_kind")
+        ? [
+            { day: "2026-06-25", netuid: 7, event_kind: "StakeAdded" },
+            { day: "2026-06-25", netuid: 7, event_kind: "WeightsSet" },
+          ]
+        : [
             {
               day: "2026-06-25",
               netuid: 7,
               event_count: 3,
-              event_kinds: ["StakeAdded", "WeightsSet"],
               first_block: 1000,
               last_block: 1200,
             },
           ],
-        }),
-      ),
-    };
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -17160,9 +16749,10 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       schema_version: 1,
       ss58: SS58,
       day_count: 1,
-      limit: 50,
+      // DERIVED: the query's own default limit, and null for a short page.
+      limit: 100,
       offset: 0,
-      next_cursor: "c:20260625:7",
+      next_cursor: null,
       days: [
         {
           day: "2026-06-25",
@@ -17174,25 +16764,15 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
         },
       ],
     });
+    lake.restore();
   });
 
   test("hits /api/v1/accounts/{ss58}/history and forwards every filter", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          day_count: 0,
-          limit: 5,
-          offset: 2,
-          next_cursor: null,
-          days: [],
-        }),
-        capture,
-      ),
-    };
+    // #10190: the filters used to be read off the tier request's query string.
+    // The lakehouse reader takes none as params -- each becomes a SQL PREDICATE,
+    // which is where they actually go and a stronger thing to assert.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     const { status } = await gql(
       query(
         `(ss58: "${SS58}", netuid: 7, from: "2026-06-01", to: "2026-06-30", limit: 5, offset: 2, cursor: "c:20260615:3")`,
@@ -17200,30 +16780,33 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capture.url.pathname, `/api/v1/accounts/${SS58}/history`);
-    assert.equal(capture.url.searchParams.get("limit"), "5");
-    assert.equal(capture.url.searchParams.get("offset"), "2");
-    assert.equal(capture.url.searchParams.get("netuid"), "7");
-    assert.equal(capture.url.searchParams.get("from"), "2026-06-01");
-    assert.equal(capture.url.searchParams.get("to"), "2026-06-30");
-    assert.equal(capture.url.searchParams.get("cursor"), "c:20260615:3");
+    const sql = lake.queries[0];
+    assert.match(sql, new RegExp(`hotkey = '${SS58}'`));
+    assert.match(sql, /netuid = 7/);
+    // ?from/?to are UTC-day bounds, and ?to is INCLUSIVE of its day -- so the
+    // upper bound is that day's END, which the query string could never show.
+    assert.match(sql, /observed_at >= \d+/);
+    assert.match(sql, /observed_at < \d+/);
+    lake.restore();
   });
 
   test("clamps limit/offset to FEED_PAGINATION bounds and omits absent filters", async () => {
-    const capture: Row = {};
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({}), capture),
-    };
+    // #10190: the clamp used to be read off the tier request's query string. The
+    // lakehouse reader takes no params -- the clamped limit becomes the SQL LIMIT
+    // (limit+offset, since R2 SQL has no OFFSET) and an absent filter simply
+    // produces no predicate. Asserting the SQL is what the clamp actually reaches.
+    const lake = lakehouse([]);
+    const env = { ...LAKEHOUSE_ENV };
     await gql(query(`(ss58: "${SS58}", limit: 100000, offset: -5)`), env);
-    const forwardedLimit = Number(capture.url.searchParams.get("limit"));
-    const forwardedOffset = Number(capture.url.searchParams.get("offset"));
-    assert.ok(forwardedLimit > 0 && forwardedLimit < 100000);
-    assert.equal(forwardedOffset, 0);
-    assert.equal(capture.url.searchParams.get("netuid"), null);
-    assert.equal(capture.url.searchParams.get("from"), null);
-    assert.equal(capture.url.searchParams.get("to"), null);
-    assert.equal(capture.url.searchParams.get("cursor"), null);
+    const sql = lake.queries[0];
+    // The clamp is visible as the LIMIT that went out: bounded, and never
+    // the 100000 the caller asked for.
+    const limitOut = Number(/LIMIT (\d+)/.exec(sql)?.[1]);
+    assert.ok(limitOut > 0 && limitOut < 100000);
+    // A negative offset clamps to 0, so the LIMIT is the limit alone.
+    // No filters were supplied, so none appear as predicates.
+    assert.doesNotMatch(sql, /netuid = /);
+    lake.restore();
   });
 
   test("a partial tier envelope degrades missing scalars to schema-stable defaults", async () => {
@@ -17245,15 +16828,22 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
   });
 
   test("a day row with missing fields degrades each to null / empty kinds", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({ days: [{}] })),
-    };
+    // #10190: the tier is retired; one bare day row through the lakehouse is
+    // what degrades now. `event_kinds` comes from the SECOND read, so an empty
+    // kinds list here is the honest answer rather than an omitted field.
+    // The rollup row must carry its `day` -- that is the reader's grouping key,
+    // and a row without one is not a day. Every OTHER field is omitted, which is
+    // the degradation under test.
+    const lake = lakehouse((sql) =>
+      sql.includes("event_kind") ? [] : [{ day: "2026-06-25" }],
+    );
+    const env = { ...LAKEHOUSE_ENV };
     const { status, body } = await gql(query(`(ss58: "${SS58}")`), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.account_history.days, [
       {
-        day: null,
+        // The grouping key survives; everything else degrades.
+        day: "2026-06-25",
         netuid: null,
         event_count: null,
         event_kinds: [],
@@ -17261,6 +16851,7 @@ describe("graphql — account_history (#5888, Postgres-tier + D1 loadAccountHist
         last_block: null,
       },
     ]);
+    lake.restore();
   });
 
   // D1 fully eliminated (2026-07-17): loadAccountHistory (src/account-events.ts)
@@ -17949,65 +17540,32 @@ describe("graphql — chain_weights (#5689, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_setters: 4,
-              weight_sets: 40,
-              sets_per_setter: 10,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 10,
-              min: 10,
-              p25: 10,
-              median: 10,
-              p75: 10,
-              p90: 10,
-              max: 10,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_setters: 4,
-                weight_sets: 40,
-                sets_per_setter: 10,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       weightsQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_weights.window, "30d");
-    assert.equal(body.data.chain_weights.subnet_count, 1);
-    assert.equal(body.data.chain_weights.network.weight_sets, 40);
-    assert.equal(body.data.chain_weights.intensity_distribution.median, 10);
-    assert.equal(body.data.chain_weights.subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(weightsQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_weights.window, "7d");
@@ -18094,27 +17652,28 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("resolves Postgres-tier call-mix rows", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            group_by: "module_function",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            total_extrinsics: 8,
-            call_count: 1,
-            calls: [
-              {
-                call_module: "SubtensorModule",
-                call_function: "set_weights",
-                count: 6,
-                share: 0.75,
-              },
-            ],
-          }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            total: 8,
+            groups: {
+              module_function: [
+                {
+                  call_module: "SubtensorModule",
+                  call_function: "set_weights",
+                  count: 6,
+                },
+              ],
+            },
+          },
+        },
+      }),
     };
     const { status, body } = await gql(
       callsQuery(`(window: "30d", group_by: "module_function")`),
@@ -18134,14 +17693,17 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("a partial Postgres-tier body degrades every missing field to its schema-stable default", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // Only a row's call_module present; envelope + row omit the rest, so
-      // every ?? default fallback must fire (not surface undefined).
-      DATA_API: {
-        fetch: async () =>
-          Response.json({ calls: [{ call_module: "Balances" }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": { groups: { module: [{ call_module: "Balances" }] } },
+        },
+      }),
     };
     const { status, body } = await gql(callsQuery(""), env);
     assert.equal(status, 200);
@@ -18151,7 +17713,9 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
     assert.equal(d.group_by, "module");
     assert.equal(d.observed_at, null);
     assert.equal(d.total_extrinsics, 0);
-    assert.equal(d.call_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.call_count, 1);
     const c = d.calls[0];
     assert.equal(c.call_module, "Balances");
     assert.equal(c.call_function, null);
@@ -18160,10 +17724,11 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("an empty Postgres-tier body (no calls key) degrades to a schema-stable empty breakdown", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(callsQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_calls, {
@@ -18177,38 +17742,23 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
     });
   });
 
-  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            group_by: "module",
-            total_extrinsics: 0,
-            call_count: 0,
-            calls: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("window/group_by/limit/call_module args are forwarded to the /chain/calls path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       callsQuery(
         `(window: "30d", group_by: "module", limit: 5, call_module: "SubtensorModule")`,
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/calls");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("group_by"), "module");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(
-      capturedUrl!.searchParams.get("call_module"),
-      "SubtensorModule",
-    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18254,28 +17804,31 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("resolves the Postgres-tier per-day series", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            day_count: 1,
-            days: [
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            // TWO row sets, merged by UTC day: the lane keeps the extrinsic and
+            // block aggregates separate because they come from different tables.
+            extrinsic_rows: [
               {
                 day: "2026-07-14",
-                block_count: 7,
                 extrinsic_count: 4,
-                event_count: 12,
                 successful_extrinsics: 3,
-                success_rate: 0.75,
                 unique_signers: 2,
               },
             ],
-          }),
-      },
+            block_rows: [
+              { day: "2026-07-14", block_count: 7, event_count: 12 },
+            ],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(activityQuery(`(window: "30d")`), env);
     assert.equal(status, 200);
@@ -18288,57 +17841,35 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(d.days[0].unique_signers, 2);
   });
 
-  test("trims an 8-day series to the requested 7d window (#8421)", async () => {
-    // The UTC-day buckets span 8 calendar days for a 7d request; the resolver
-    // must trim to 7 so day_count can't contradict the window label.
-    const eightDays = [
-      "2026-07-26",
-      "2026-07-25",
-      "2026-07-24",
-      "2026-07-23",
-      "2026-07-22",
-      "2026-07-21",
-      "2026-07-20",
-      "2026-07-19",
-    ];
-    const env = {
+  test("trims an 8-day series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(activityQuery(`(window: "7d")`), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            days: eightDays.map((day) => ({
-              day,
-              block_count: 1,
-              extrinsic_count: 1,
-              event_count: 1,
-              successful_extrinsics: 1,
-              success_rate: 1,
-              unique_signers: 1,
-            })),
-          }),
-      },
-    };
-    const { status, body } = await gql(activityQuery(`(window: "7d")`), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    const d = body.data.chain_activity;
-    assert.equal(d.day_count, 7);
-    assert.equal(d.days.length, 7);
-    assert.equal(d.days[0].day, "2026-07-26");
-    assert.ok(!d.days.some((x: Row) => x.day === "2026-07-19"));
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // The day row carries only its required key; every other field is omitted
-      // so the per-item ?? default fallbacks must fire.
-      DATA_API: {
-        fetch: async () => Response.json({ days: [{ day: "2026-07-14" }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            extrinsic_rows: [{ day: "2026-07-14" }],
+            block_rows: [],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(activityQuery(""), env);
     assert.equal(status, 200);
@@ -18346,7 +17877,9 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(d.schema_version, 1);
     assert.equal(d.window, "7d");
     assert.equal(d.observed_at, null);
-    assert.equal(d.day_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.day_count, 1);
     const day = d.days[0];
     assert.equal(day.block_count, 0);
     assert.equal(day.extrinsic_count, 0);
@@ -18357,10 +17890,11 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("an empty Postgres-tier body (no days key) degrades to an empty series", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(activityQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_activity, {
@@ -18372,25 +17906,21 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     });
   });
 
-  test("the window arg is forwarded to the /chain/activity path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("the window arg is forwarded to the /chain/activity path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(activityQuery(`(window: "30d")`), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            day_count: 0,
-            days: [],
-          });
-        },
-      },
-    };
-    await gql(activityQuery(`(window: "30d")`), env);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/activity");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18426,29 +17956,28 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("resolves Postgres-tier daily series + top payers", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            day_count: 1,
-            daily: [
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            daily_rows: [
               {
                 day: "2026-07-14",
                 extrinsic_count: 4,
                 signed_extrinsic_count: 3,
                 total_fee_tao: 0.4,
-                avg_fee_tao: 0.1,
-                median_fee_tao: 0.1,
                 total_tip_tao: 0.02,
-                avg_tip_tao: 0.005,
-                median_tip_tao: 0.004,
               },
             ],
-            top_fee_payers: [
+            median_rows: [
+              { day: "2026-07-14", median_fee_tao: 0.1, median_tip_tao: 0.004 },
+            ],
+            payer_rows: [
               {
                 signer: "5Signer",
                 total_fee_tao: 0.4,
@@ -18456,8 +17985,9 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
                 extrinsic_count: 4,
               },
             ],
-          }),
-      },
+          },
+        },
+      }),
     };
     const { status, body } = await gql(feesQuery(`(window: "30d")`), env);
     assert.equal(status, 200);
@@ -18473,57 +18003,36 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.top_fee_payers[0].extrinsic_count, 4);
   });
 
-  test("trims an 8-day daily series to the requested 7d window (#8421)", async () => {
-    const eightDays = [
-      "2026-07-26",
-      "2026-07-25",
-      "2026-07-24",
-      "2026-07-23",
-      "2026-07-22",
-      "2026-07-21",
-      "2026-07-20",
-      "2026-07-19",
-    ];
-    const env = {
+  test("trims an 8-day daily series to the requested 7d window (#8421) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion over the tier request. METAGRAPH_EXTRINSICS_SOURCE
+    // reads "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that
+    // request was never made; the retirement is what is left to prove.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(feesQuery(`(window: "7d")`), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: null,
-            day_count: 8,
-            daily: eightDays.map((day) => ({
-              day,
-              extrinsic_count: 1,
-              total_fee_tao: 1,
-              total_tip_tao: 0,
-            })),
-            top_fee_payers: [],
-          }),
-      },
-    };
-    const { status, body } = await gql(feesQuery(`(window: "7d")`), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    const d = body.data.chain_fees;
-    assert.equal(d.day_count, 7);
-    assert.equal(d.daily.length, 7);
-    assert.equal(d.daily[0].day, "2026-07-26");
-    assert.ok(!d.daily.some((x: Row) => x.day === "2026-07-19"));
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // Each row carries only its required key; every other field is omitted so
-      // the per-item ?? default fallbacks (both lists) must fire.
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            daily: [{ day: "2026-07-14" }],
-            top_fee_payers: [{ signer: "5Signer" }],
-          }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            daily_rows: [{ day: "2026-07-14" }],
+            median_rows: [],
+            payer_rows: [{ signer: "5Signer" }],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(feesQuery(""), env);
     assert.equal(status, 200);
@@ -18531,27 +18040,35 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.schema_version, 1);
     assert.equal(d.window, "7d");
     assert.equal(d.observed_at, null);
-    assert.equal(d.day_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.day_count, 1);
     const day = d.daily[0];
     assert.equal(day.extrinsic_count, 0);
     assert.equal(day.signed_extrinsic_count, 0);
-    assert.equal(day.total_fee_tao, null);
+    // `toTao` coerces a NULL fee to 0 by contract -- "NULL fees never leak into
+    // the payload" (src/chain-analytics.ts) -- while the MEDIANs keep null,
+    // because a median over no rows is genuinely unknown rather than zero. The
+    // retired tier echoed data-api's nulls for all of them, so neither rule was
+    // ever exercised here.
+    assert.equal(day.total_fee_tao, 0);
     assert.equal(day.avg_fee_tao, null);
     assert.equal(day.median_fee_tao, null);
-    assert.equal(day.total_tip_tao, null);
+    assert.equal(day.total_tip_tao, 0);
     assert.equal(day.avg_tip_tao, null);
     assert.equal(day.median_tip_tao, null);
     const payer = d.top_fee_payers[0];
-    assert.equal(payer.total_fee_tao, null);
-    assert.equal(payer.total_tip_tao, null);
+    assert.equal(payer.total_fee_tao, 0);
+    assert.equal(payer.total_tip_tao, 0);
     assert.equal(payer.extrinsic_count, 0);
   });
 
   test("an empty Postgres-tier body (no daily/top_fee_payers keys) degrades to empty lists", async () => {
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(feesQuery(""), env);
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_fees, {
@@ -18564,31 +18081,21 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     });
   });
 
-  test("window/limit/call_module args are forwarded to the /chain/fees path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            day_count: 0,
-            daily: [],
-            top_fee_payers: [],
-          });
-        },
-      },
-    };
-    await gql(
+  test("window/limit/call_module args are forwarded to the /chain/fees path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(
       feesQuery(`(window: "30d", limit: 5, call_module: "Balances")`),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/fees");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects an unsupported window with BAD_USER_INPUT", async () => {
@@ -18659,66 +18166,32 @@ describe("graphql — chain_serving (#5873, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_servers: 4,
-              announcements: 40,
-              announcements_per_server: 10,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 10,
-              min: 10,
-              p25: 10,
-              median: 10,
-              p75: 10,
-              p90: 10,
-              max: 10,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_servers: 4,
-                announcements: 40,
-                announcements_per_server: 10,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       servingQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/serving");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_serving.window, "30d");
-    assert.equal(body.data.chain_serving.subnet_count, 1);
-    assert.equal(body.data.chain_serving.network.distinct_servers, 4);
-    assert.equal(body.data.chain_serving.network.announcements_per_server, 10);
-    assert.equal(body.data.chain_serving.intensity_distribution.median, 10);
-    assert.equal(body.data.chain_serving.subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(servingQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_serving.window, "7d");
@@ -18793,54 +18266,32 @@ describe("graphql — chain_weight_setters (#5689, Postgres-tier, D1 fully elimi
     });
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            distinct_setters: 2,
-            weight_sets: 40,
-            setter_count: 1,
-            setters: [
-              {
-                hotkey: "5Setter",
-                netuid: null,
-                uid: null,
-                weight_sets: 40,
-                share: 1,
-                first_set_at: "2026-06-20T00:00:00.000Z",
-                last_set_at: "2026-07-10T00:00:00.000Z",
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       weightSettersQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/weights/setters");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_weight_setters.window, "30d");
-    assert.equal(body.data.chain_weight_setters.setter_count, 1);
-    assert.equal(body.data.chain_weight_setters.setters[0].hotkey, "5Setter");
-    assert.equal(body.data.chain_weight_setters.setters[0].share, 1);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(weightSettersQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_weight_setters.window, "7d");
@@ -18929,100 +18380,46 @@ describe("graphql — chain_alpha_volume (#5685, Postgres-tier + D1-live fallbac
     });
   });
 
-  test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("resolves Postgres-tier data for an explicit limit, forwarding it as a query param — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "24h",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              buy_volume_alpha: 100,
-              sell_volume_alpha: 40,
-              total_volume_alpha: 140,
-              buy_volume_tao: 50,
-              sell_volume_tao: 20,
-              total_volume_tao: 70,
-              buy_count: 10,
-              sell_count: 5,
-              net_volume_alpha: 60,
-              sentiment_ratio: 0.4286,
-              sentiment: "bullish",
-            },
-            volume_distribution: {
-              count: 1,
-              mean: 70,
-              min: 70,
-              p25: 70,
-              median: 70,
-              p75: 70,
-              p90: 70,
-              max: 70,
-            },
-            subnets: [
-              {
-                schema_version: 1,
-                netuid: 3,
-                window: "24h",
-                buy_volume_alpha: 100,
-                sell_volume_alpha: 40,
-                total_volume_alpha: 140,
-                buy_volume_tao: 50,
-                sell_volume_tao: 20,
-                total_volume_tao: 70,
-                buy_count: 10,
-                sell_count: 5,
-                net_volume_alpha: 60,
-                sentiment_ratio: 0.4286,
-                sentiment: "bullish",
-                vol_mcap_ratio: null,
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(alphaVolumeQuery("(limit: 5)"), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/alpha-volume");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    const card = body.data.chain_alpha_volume;
-    assert.equal(card.window, "24h");
-    assert.equal(card.subnet_count, 1);
-    assert.equal(card.observed_at, "2026-07-10T00:00:00.000Z");
-    assert.equal(card.network.total_volume_tao, 70);
-    assert.equal(card.network.sentiment, "bullish");
-    assert.equal(card.volume_distribution.median, 70);
-    assert.equal(card.subnets[0].netuid, 3);
-    assert.equal(card.subnets[0].vol_mcap_ratio, null);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("clamps an over-max limit before forwarding it to the Postgres tier", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit before forwarding it to the Postgres tier — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(alphaVolumeQuery("(limit: 9999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({});
-        },
-      },
-    };
-    const { status } = await gql(alphaVolumeQuery("(limit: 9999)"), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(alphaVolumeQuery(), env);
     assert.equal(status, 200);
     const card = body.data.chain_alpha_volume;
@@ -19126,57 +18523,40 @@ describe("graphql — health_trends (#5722, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(body.data.health_trends.windows["30d"].subnets, []);
   });
 
-  test("resolves Postgres-tier data, forwarding the request unchanged", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("resolves Postgres-tier data, forwarding the request unchanged — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(trendsQuery(), {
       METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            windows: {
-              "7d": {
-                days: 7,
-                granularity: "1d",
-                subnet_count: 1,
-                subnets: [{ netuid: 3, samples: 10 }],
-              },
-              "30d": {
-                days: 30,
-                granularity: "1d",
-                subnet_count: 1,
-                subnets: [{ netuid: 3, samples: 40 }],
-              },
-            },
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(trendsQuery(), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/health/trends");
-    assert.equal(
-      body.data.health_trends.observed_at,
-      "2026-07-10T00:00:00.000Z",
-    );
-    assert.equal(body.data.health_trends.windows["7d"].subnet_count, 1);
-    assert.equal(body.data.health_trends.windows["30d"].subnets[0].netuid, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(trendsQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.health_trends.schema_version, 1);
     assert.equal(body.data.health_trends.observed_at, null);
-    assert.equal(body.data.health_trends.source, null);
-    assert.deepEqual(body.data.health_trends.windows, {});
+    // The floor is the BUILDER's zeroed card now, not the resolver's `??`
+    // defaults: with the tier gone there is no `{}` body to fall through, so
+    // the reader declines and the builder runs. `source` is the prober label
+    // the card carries, and the windows are materialised rather than absent --
+    // which is what production has been serving all along (#10190).
+    assert.equal(body.data.health_trends.source, "live-cron-prober");
+    assert.ok(Object.keys(body.data.health_trends.windows).length > 0);
   });
 
   // D1 fully eliminated (2026-07-17): surface_uptime_daily is Postgres-only
@@ -19267,63 +18647,41 @@ describe("graphql — subnet_health_trends (#5883, Postgres-tier + D1-live fallb
     assert.equal(d.windows["30d"].samples, 0);
   });
 
-  test("resolves Postgres-tier data, forwarding the netuid in the path", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("resolves Postgres-tier data, forwarding the netuid in the path — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(trendsQuery(NETUID), {
       METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            windows: {
-              "7d": {
-                samples: 20,
-                uptime_ratio: 0.95,
-                latency_sample_count: 18,
-                surfaces: [{ surface_id: "srf-1", samples: 20 }],
-              },
-              "30d": {
-                samples: 80,
-                uptime_ratio: 0.9,
-                latency_sample_count: 70,
-                surfaces: [{ surface_id: "srf-1", samples: 80 }],
-              },
-            },
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(trendsQuery(NETUID), env);
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/subnets/${NETUID}/health/trends`,
-    );
-    const d = body.data.subnet_health_trends;
-    assert.equal(d.netuid, NETUID);
-    assert.equal(d.observed_at, "2026-07-10T00:00:00.000Z");
-    assert.equal(d.windows["7d"].uptime_ratio, 0.95);
-    assert.equal(d.windows["30d"].surfaces[0].surface_id, "srf-1");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(trendsQuery(NETUID), env);
     assert.equal(status, 200);
-    assert.deepEqual(body.data.subnet_health_trends, {
-      schema_version: 1,
-      netuid: NETUID,
-      observed_at: null,
-      source: null,
-      windows: {},
-    });
+    // The floor is the BUILDER's zeroed card now, not the resolver's `??`
+    // defaults: with the tier gone there is no `{}` body to fall through, so
+    // the reader declines and the builder runs. `source` is the prober label
+    // the card carries, and the windows are materialised rather than absent --
+    // which is what production has been serving all along (#10190).
+    assert.equal(body.data.subnet_health_trends.schema_version, 1);
+    assert.equal(body.data.subnet_health_trends.netuid, NETUID);
+    assert.equal(body.data.subnet_health_trends.observed_at, null);
+    assert.equal(body.data.subnet_health_trends.source, "live-cron-prober");
+    assert.ok(Object.keys(body.data.subnet_health_trends.windows).length > 0);
   });
 
   test("subnet_health_trends is weighted as a fan-out field", () => {
@@ -19625,75 +18983,40 @@ describe("graphql — subnet_uptime (#5885, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("resolves Postgres-tier data and forwards window + min_samples", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            netuid: NETUID,
-            window: "1y",
-            observed_at: "2026-07-10T00:00:00.000Z",
-            source: "live-cron-prober",
-            reliability: {
-              score: 99,
-              grade: "A",
-              uptime_ratio: 0.995,
-              sample_count: 100,
-              window: "1y",
-            },
-            surfaces: [
-              {
-                surface_id: "api-root",
-                day_count: 1,
-                samples: 100,
-                uptime_ratio: 0.995,
-                days: [
-                  {
-                    day: "2026-07-09",
-                    samples: 100,
-                    uptime_ratio: 0.995,
-                    status: "ok",
-                    avg_latency_ms: 80,
-                  },
-                ],
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data and forwards window + min_samples — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_HEALTH_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       uptimeQuery(`netuid: ${NETUID}, window: "1y", min_samples: 5`),
-      env as unknown as Env,
+      { METAGRAPH_HEALTH_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, `/api/v1/subnets/${NETUID}/uptime`);
-    assert.equal(capturedUrl!.searchParams.get("window"), "1y");
-    assert.equal(capturedUrl!.searchParams.get("min_samples"), "5");
-    const d = body.data.subnet_uptime;
-    assert.equal(d.window, "1y");
-    assert.equal(d.reliability.score, 99);
-    assert.equal(d.surfaces[0].surface_id, "api-root");
-    assert.equal(d.surfaces[0].days[0].uptime_ratio, 0.995);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_HEALTH_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(uptimeQuery(), env);
     assert.equal(status, 200);
+    // `source` is the prober label the BUILDER stamps; the retired tier's `{}`
+    // body fell through the resolver's `??` to null instead, so this field never
+    // showed what production serves (#10190).
     assert.deepEqual(body.data.subnet_uptime, {
       schema_version: 1,
       netuid: NETUID,
       window: "90d",
       observed_at: null,
-      source: null,
+      source: "live-cron-prober",
       reliability: null,
       surfaces: [],
     });
@@ -20251,65 +19574,28 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.deepEqual(body.data.validator_nominators.nominators, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "7d",
-              sort: "gross_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/sort, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(
         `(hotkey: "${HOTKEY}", window: "7d", sort: "gross_staked")`,
       ),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(
-      capturedUrl!.pathname,
-      `/api/v1/validators/${HOTKEY}/nominators`,
-    );
-    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "gross_staked");
-    assert.equal(body.data.validator_nominators.window, "7d");
-    assert.equal(body.data.validator_nominators.sort, "gross_staked");
-    assert.equal(body.data.validator_nominators.nominator_count, 1);
-    assert.equal(
-      body.data.validator_nominators.nominators[0].net_staked_tao,
-      10,
-    );
-    assert.equal(body.data.validator_nominators.nominators[0].event_count, 3);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
-  // #4772 D1 retirement: the `account_events` D1 table is dropped in
-  // production, so this resolver no longer queries D1 at all -- even a
-  // "warm" D1 mock (real rows) must not change the response.
   test("no Postgres tier flag: never queries D1, returns the schema-stable empty list (retired -- #4772)", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: nominatorsD1([
@@ -20335,15 +19621,11 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
   });
 
   test("a malformed Postgres-tier body falls back to schema-stable defaults (no throw)", async () => {
-    // The tier answers with the right { data, generatedAt } envelope but an empty
-    // data object -- every field falls through to its own default rather than
-    // surfacing undefined or throwing.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => Response.json({ data: {}, generatedAt: null }),
-      },
-    };
+    // #10190: the tier that answered with an empty `{ data }` envelope is
+    // retired. What degrades now is a reader that cannot answer, and the fields
+    // below come from the BUILDER rather than from the resolver's `??` -- which
+    // is why `limit` is the query's own default here instead of 0.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}")`),
       env as unknown as Env,
@@ -20354,7 +19636,7 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       hotkey: HOTKEY,
       window: "30d",
       sort: "net_staked",
-      limit: 0,
+      limit: 20,
       offset: 0,
       nominator_count: 0,
       nominators: [],
@@ -20385,49 +19667,25 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
-  test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884)", async () => {
+  test("coldkey narrows to one nominator, forwarded to the Postgres tier as a query param (#7884) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
     const COLDKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 20,
-              offset: 0,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: COLDKEY,
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", coldkey: "${COLDKEY}")`),
-      env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.searchParams.get("coldkey"), COLDKEY);
-    assert.equal(body.data.validator_nominators.nominator_count, 1);
-    assert.equal(body.data.validator_nominators.nominators[0].coldkey, COLDKEY);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a malformed coldkey is a GraphQL error, not a silently ignored filter (#7884)", async () => {
@@ -20443,49 +19701,24 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
   });
 
-  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547)", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Request) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            data: {
-              schema_version: 1,
-              hotkey: HOTKEY,
-              window: "30d",
-              sort: "net_staked",
-              limit: 10,
-              offset: 10,
-              nominator_count: 1,
-              nominators: [
-                {
-                  coldkey: "5FNominatorColdkeyBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-                  staked_tao: 12.5,
-                  unstaked_tao: 2.5,
-                  net_staked_tao: 10,
-                  gross_staked_tao: 15,
-                  event_count: 3,
-                  last_observed_at: "2026-07-10T00:00:00.000Z",
-                },
-              ],
-            },
-            generatedAt: "2026-07-10T00:00:00.000Z",
-          });
-        },
-      },
-    };
+  test("limit/offset are forwarded to the Postgres tier as query params, matching REST (#8547) — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       nominatorsQuery(`(hotkey: "${HOTKEY}", limit: 10, offset: 10)`),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
-    assert.equal(capturedUrl!.searchParams.get("offset"), "10");
-    assert.equal(body.data.validator_nominators.limit, 10);
-    assert.equal(body.data.validator_nominators.offset, 10);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a cold store echoes the requested limit/offset in the schema-stable envelope (#8547)", async () => {
@@ -22302,66 +21535,34 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_exporters: 5,
-              announcements: 20,
-              announcements_per_exporter: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_exporters: 5,
-                announcements: 20,
-                announcements_per_exporter: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       prometheusQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/prometheus");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_prometheus.window, "30d");
-    assert.equal(body.data.chain_prometheus.subnet_count, 1);
-    assert.equal(body.data.chain_prometheus.network.distinct_exporters, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(prometheusQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22380,19 +21581,21 @@ describe("graphql — chain_prometheus (#5874, Postgres-tier + D1-live fallback)
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(prometheusQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(prometheusQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22509,65 +21712,34 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_removers: 5,
-              removals: 20,
-              removals_per_remover: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_removers: 5,
-                removals: 20,
-                removals_per_remover: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       removalsQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/axon-removals");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_axon_removals.window, "30d");
-    assert.equal(body.data.chain_axon_removals.network.distinct_removers, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(removalsQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22586,19 +21758,21 @@ describe("graphql — chain_axon_removals (#5875, Postgres-tier + D1-live fallba
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(removalsQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(removalsQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22718,65 +21892,31 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(regQuery('(window: "30d", limit: 5)'), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_registrants: 5,
-              registrations: 20,
-              registrations_per_registrant: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_registrants: 5,
-                registrations: 20,
-                registrations_per_registrant: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(
-      regQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
-    );
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/registrations");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_registrations.window, "30d");
-    assert.equal(body.data.chain_registrations.network.distinct_registrants, 5);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(regQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -22795,19 +21935,21 @@ describe("graphql — chain_registrations (#5876, Postgres-tier + D1-live fallba
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(regQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(regQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -22925,68 +22067,34 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     assert.deepEqual(got.subnets, []);
   });
 
-  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_deregistered_hotkeys: 5,
-              deregistrations: 20,
-              deregistrations_per_hotkey: 4,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 4,
-              min: 4,
-              p25: 4,
-              median: 4,
-              p75: 4,
-              p90: 4,
-              max: 4,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                distinct_deregistered_hotkeys: 5,
-                deregistrations: 20,
-                deregistrations_per_hotkey: 4,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a valid non-default window/limit, forwarding both as query params — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       deregQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/deregistrations");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_deregistrations.window, "30d");
-    assert.equal(
-      body.data.chain_deregistrations.network.distinct_deregistered_hotkeys,
-      5,
-    );
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(deregQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -23005,19 +22113,21 @@ describe("graphql — chain_deregistrations (#5877, Postgres-tier + D1-live fall
     });
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(deregQuery("(limit: 99999)"), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(deregQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented window is accepted", async () => {
@@ -23117,79 +22227,50 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     assert.deepEqual(got.signers, []);
   });
 
-  test("resolves Postgres-tier data, forwarding window/limit/sort/call_module", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            sort: "total_fee_tao",
-            observed_at: "2026-07-01T00:00:00.000Z",
-            signer_count: 1,
-            signers: [
-              {
-                signer: SIGNER,
-                tx_count: 3,
-                total_fee_tao: 9.5,
-                total_tip_tao: 0,
-                last_tx_block: 42,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data, forwarding window/limit/sort/call_module — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       signersQuery(
         '(window: "30d", limit: 5, sort: "total_fee_tao", call_module: "Balances")',
       ),
-      env as unknown as Env,
+      { METAGRAPH_EXTRINSICS_SOURCE: "postgres", ...tier } as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/signers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "total_fee_tao");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), "Balances");
-    assert.equal(body.data.chain_signers.sort, "total_fee_tao");
-    assert.equal(body.data.chain_signers.signers[0].total_fee_tao, 9.5);
+    assert.deepEqual(tier.paths, []);
   });
 
-  test("omits the optional sort/call_module params when the caller supplies neither", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("omits the optional sort/call_module params when the caller supplies neither — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(signersQuery(""), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({ signers: [] });
-        },
-      },
-    };
-    await gql(signersQuery(""), env);
-    // `sort` is FORWARDED now, carrying the default the route publishes
-    // (#10316) -- the same answer as before, stated by the surface that
-    // advertised it rather than re-derived downstream. `call_module` publishes
-    // no default and stays absent, which is what keeps this from reading as a
-    // blanket "everything is forwarded now".
-    assert.equal(capturedUrl!.searchParams.get("sort"), "tx_count");
-    assert.equal(capturedUrl!.searchParams.get("call_module"), null);
-    assert.equal(capturedUrl!.searchParams.get("window"), "7d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "50");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("a sparse Postgres-tier payload still resolves a schema-stable card", async () => {
     // The tier's shape is upstream-controlled, so every field falls back rather
     // than surfacing null through a non-null SDL field.
-    const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_EXTRINSICS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -23203,12 +22284,15 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
     });
   });
 
-  test("a signer row missing every optional metric resolves to nulls, not an error", async () => {
+  test("a signer row missing every optional metric resolves to the builder's zeros, not an error", async () => {
+    // #10190: the tier is retired; the #9146 signers projection answers, keyed
+    // by SORT. The subject is unchanged -- a row carrying only its signer must
+    // reach nulls through the builder, never an error.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => Response.json({ signers: [{ signer: SIGNER }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: { "7d": { sorts: { tx_count: [{ signer: SIGNER }] } } },
+      }),
     };
     const { status, body } = await gql(signersQuery(""), env);
     assert.equal(status, 200);
@@ -23217,26 +22301,32 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
       {
         signer: SIGNER,
         tx_count: 0,
-        total_fee_tao: null,
-        total_tip_tao: null,
+        // `toTao` coerces a NULL fee to 0 by contract -- "NULL fees never leak
+        // into the payload" (src/chain-analytics.ts). The retired tier echoed
+        // data-api's nulls straight through, so this field never went through
+        // that coercion in a test before.
+        total_fee_tao: 0,
+        total_tip_tao: 0,
         last_tx_block: null,
       },
     ]);
   });
 
-  test("clamps an over-max limit to the route's own ceiling", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("clamps an over-max limit to the route's own ceiling — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_EXTRINSICS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(signersQuery("(limit: 99999)"), {
       METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({});
-        },
-      },
-    };
-    await gql(signersQuery("(limit: 99999)"), env);
-    assert.equal(capturedUrl!.searchParams.get("limit"), "100");
+      ...tier,
+    } as unknown as Env);
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("every documented sort is accepted", async () => {
@@ -23433,67 +22523,21 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
+    const { status, body } = await gql(flowQuery('(window: "30d", limit: 5)'), {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              total_staked_tao: 100,
-              total_unstaked_tao: 40,
-              net_flow_tao: 60,
-              gross_flow_tao: 140,
-              stake_events: 5,
-              unstake_events: 2,
-              gaining: 1,
-              losing: 0,
-              flat: 0,
-            },
-            net_flow_distribution: {
-              count: 1,
-              mean: 60,
-              min: 60,
-              p25: 60,
-              median: 60,
-              p75: 60,
-              p90: 60,
-              max: 60,
-            },
-            subnets: [
-              {
-                netuid: 3,
-                total_staked_tao: 100,
-                total_unstaked_tao: 40,
-                net_flow_tao: 60,
-                gross_flow_tao: 140,
-                stake_events: 5,
-                unstake_events: 2,
-                direction: "inflow",
-              },
-            ],
-          });
-        },
-      },
-    };
-    const { status, body } = await gql(
-      flowQuery('(window: "30d", limit: 5)'),
-      env as unknown as Env,
-    );
+      ...tier,
+    } as unknown as Env);
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-flow");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "5");
-    assert.equal(body.data.chain_stake_flow.window, "30d");
-    assert.equal(body.data.chain_stake_flow.subnet_count, 1);
-    assert.equal(body.data.chain_stake_flow.network.net_flow_tao, 60);
-    assert.equal(body.data.chain_stake_flow.subnets[0].direction, "inflow");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23517,10 +22561,11 @@ describe("graphql — chain_stake_flow (#6975, Postgres-tier + cold-store fallba
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(flowQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_flow.subnet_count, 0);
@@ -23565,55 +22610,24 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_movers: 4,
-              movements: 12,
-              movements_per_mover: 3,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 3,
-              min: 3,
-              p25: 3,
-              median: 3,
-              p75: 3,
-              p90: 3,
-              max: 3,
-            },
-            subnets: [
-              {
-                netuid: 5,
-                distinct_movers: 4,
-                movements: 12,
-                movements_per_mover: 3,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       movesQuery('(window: "30d", limit: 8)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-moves");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "8");
-    assert.equal(body.data.chain_stake_moves.network.movements, 12);
-    assert.equal(body.data.chain_stake_moves.subnets[0].netuid, 5);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23626,10 +22640,11 @@ describe("graphql — chain_stake_moves (#6975, Postgres-tier + cold-store fallb
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(movesQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_moves.window, "7d");
@@ -23676,55 +22691,24 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            subnet_count: 1,
-            network: {
-              distinct_senders: 2,
-              transfers: 6,
-              transfers_per_sender: 3,
-            },
-            intensity_distribution: {
-              count: 1,
-              mean: 3,
-              min: 3,
-              p25: 3,
-              median: 3,
-              p75: 3,
-              p90: 3,
-              max: 3,
-            },
-            subnets: [
-              {
-                netuid: 9,
-                distinct_senders: 2,
-                transfers: 6,
-                transfers_per_sender: 3,
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       transfersQuery('(window: "30d", limit: 3)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/stake-transfers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "3");
-    assert.equal(body.data.chain_stake_transfers.network.transfers, 6);
-    assert.equal(body.data.chain_stake_transfers.subnets[0].netuid, 9);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23737,10 +22721,11 @@ describe("graphql — chain_stake_transfers (#6975, Postgres-tier + cold-store f
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(transfersQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_stake_transfers.subnet_count, 0);
@@ -23782,48 +22767,24 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
     });
   });
 
-  test("resolves Postgres-tier data forwarding window/sort/limit", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            sort: "count",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            total_volume_tao: 250,
-            transfer_count: 10,
-            unique_pairs: 2,
-            pair_count: 1,
-            top_pair_share: 0.8,
-            pairs: [
-              {
-                from: "5Sender",
-                to: "5Receiver",
-                volume_tao: 200,
-                transfer_count: 8,
-                last_block: 1000,
-                last_observed_at: "2026-07-20T00:00:00.000Z",
-              },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data forwarding window/sort/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       pairsQuery('(window: "30d", sort: "count", limit: 10)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfer-pairs");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("sort"), "count");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "10");
-    assert.equal(body.data.chain_transfer_pairs.sort, "count");
-    assert.equal(body.data.chain_transfer_pairs.pairs[0].from, "5Sender");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23856,10 +22817,11 @@ describe("graphql — chain_transfer_pairs (#6975, Postgres-tier + cold-store fa
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(pairsQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_transfer_pairs.pair_count, 0);
@@ -23902,43 +22864,24 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
     });
   });
 
-  test("resolves Postgres-tier data for a non-default window/limit", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async (r: Row) => {
-          capturedUrl = new URL(r.url);
-          return Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-20T00:00:00.000Z",
-            total_volume_tao: 500,
-            transfer_count: 20,
-            unique_senders: 3,
-            unique_receivers: 4,
-            top_sender_share: 0.6,
-            top_senders: [
-              { address: "5Alice", volume_tao: 300, transfer_count: 10 },
-            ],
-            top_receivers: [
-              { address: "5Bob", volume_tao: 200, transfer_count: 8 },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves Postgres-tier data for a non-default window/limit — the retired tier is not consulted (#10190)", async () => {
+    // WAS a forwarding assertion: it captured the URL tryPostgresTier sent
+    // and checked the path and query string. METAGRAPH_ACCOUNT_EVENTS_SOURCE reads
+    // "retired"/"d1" and is absent from DATA_API_FORWARD_FLAGS, so that request
+    // was never made -- the assertion described a call production does not
+    // perform. What is left to prove is the retirement itself: bind a DATA_API
+    // that WOULD answer, and show nothing asks it.
+    const tier = forbiddenDataApi();
     const { status, body } = await gql(
       xfersQuery('(window: "30d", limit: 15)'),
-      env as unknown as Env,
+      {
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain/transfers");
-    assert.equal(capturedUrl!.searchParams.get("window"), "30d");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "15");
-    assert.equal(body.data.chain_transfers.total_volume_tao, 500);
-    assert.equal(body.data.chain_transfers.top_senders[0].address, "5Alice");
-    assert.equal(body.data.chain_transfers.top_receivers[0].address, "5Bob");
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("unsupported window is BAD_USER_INPUT", async () => {
@@ -23951,10 +22894,11 @@ describe("graphql — chain_transfers (#6975, Postgres-tier + cold-store fallbac
   });
 
   test("malformed Postgres body falls back to schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: { fetch: async () => Response.json({}) },
-    };
+    // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE is retired, so a malformed TIER body is
+    // no longer reachable -- what degrades now is a reader that cannot answer.
+    // An empty store/projection is exactly that, and the schema-stable floor
+    // below is unchanged: this test's subject was always the fallback.
+    const env = {} as unknown as Env;
     const { status, body } = await gql(xfersQuery(), env);
     assert.equal(status, 200);
     assert.equal(body.data.chain_transfers.transfer_count, 0);
@@ -25152,8 +24096,6 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       ...extra,
     }) as unknown as Env;
   const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
-  const events = { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" };
-  const health = { METAGRAPH_HEALTH_SOURCE: "postgres" };
   const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
 
   test("subnet_conviction forwards field_sources", async () => {
@@ -25238,68 +24180,105 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("subnet_weight_setters forwards tempo and the overdue counters", async () => {
+    const TEMPO = 360;
+    const now = Date.now();
+    const lake = lakehouse((sql) =>
+      sql.includes("FROM (SELECT")
+        ? [{ distinct_setters: 2 }]
+        : sql.includes("GROUP BY")
+          ? [
+              // Overdue: `last_set` further back than tempo * the multiple. 360
+              // blocks is ~72 minutes, so a day ago is comfortably past 3x it.
+              // A zero/absent last_set would make `overdue` NULL instead --
+              // "not evaluated", which the count deliberately does not include.
+              {
+                netuid: 5,
+                hotkey: "5Late1",
+                weight_sets: 1,
+                last_set: now - 24 * 60 * 60 * 1000,
+              },
+              {
+                netuid: 5,
+                hotkey: "5Late2",
+                weight_sets: 1,
+                last_set: now - 24 * 60 * 60 * 1000,
+              },
+            ]
+          : [{ weight_sets: 2, newest_observed: now }],
+    );
+    function weightSettersEnv() {
+      pg.control.queries.length = 0;
+      pg.control.failNext = null;
+      pg.control.onQuery = null;
+      pg.control.answers = [
+        { match: "FROM subnet_hyperparams", rows: [{ tempo: TEMPO }] },
+      ];
+      return { ...LAKEHOUSE_ENV, ...pgMockEnv() };
+    }
     const { body } = await gql(
       "{ subnet_weight_setters(netuid: 5) { tempo overdue_tempo_multiple overdue_setter_count } }",
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          window: "7d",
-          setters: [],
-          tempo: 360,
-          overdue_tempo_multiple: 3,
-          overdue_setter_count: 2,
-        },
-        events,
-      ),
+      // #10190: the tier is retired, and these three fields come from TWO reads
+      // now. The WeightsSet rollup gives the setters (three reads of its own: the
+      // row page, an ungrouped COUNT(*), and a GROUP BY subquery for the distinct
+      // count), while `tempo` is a separate store read of subnet_hyperparams.
+      //
+      // `overdue_setter_count` is DERIVED from both: a setter is overdue when its
+      // last set is further back than tempo * overdue_tempo_multiple. With no
+      // tempo it cannot be computed at all, which is why the retired tier's
+      // hand-written 2 could stand beside a null tempo.
+      weightSettersEnv() as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.subnet_weight_setters, {
-      tempo: 360,
+      tempo: TEMPO,
       overdue_tempo_multiple: 3,
       overdue_setter_count: 2,
     });
+    lake.restore();
   });
 
   test("subnet_health_incidents forwards min_incident_samples", async () => {
     const { body } = await gql(
       "{ subnet_health_incidents(netuid: 5) { min_incident_samples } }",
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          incidents: [],
-          min_incident_samples: 3,
-        },
-        health,
-      ),
+      // #10190: the tier is retired; loadSubnetIncidents answers from the store.
+      // `min_incident_samples` is the SERVER's own threshold constant
+      // (MIN_INCIDENT_SAMPLES, src/health-serving.ts) -- it describes the rule the
+      // route applied, so it can only ever be that constant. The retired tier
+      // echoed whatever number its body carried, which is why a 3 stood here.
+      {} as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.subnet_health_incidents.min_incident_samples, 3);
+    assert.equal(
+      body.data.subnet_health_incidents.min_incident_samples,
+      MIN_INCIDENT_SAMPLES,
+    );
   });
 
   test("subnet_deregistrations forwards the per-UID events", async () => {
+    // The by-uid slice filters on a WALL-CLOCK window (Date.now() - windowDays),
+    // so a fixture dated in the past is correctly excluded. Recent, therefore.
+    const observedAt = Date.now() - 24 * 60 * 60 * 1000;
     const { body } = await gql(
       `{ subnet_deregistrations(netuid: 5) {
           events { uid hotkey replaced_by_hotkey block_number observed_at tenure_blocks }
         } }`,
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          events: [
-            {
-              uid: 3,
-              hotkey: "5Gone",
-              replaced_by_hotkey: "5New",
-              block_number: 900,
-              observed_at: "2026-07-01T00:00:00.000Z",
-              tenure_blocks: 120,
+      // #10190: the tier is retired. This reads TWO projections by key -- the
+      // window rollup for the count, and the by-uid index for these events -- so
+      // the archive double routes on the key it is asked for. The events are
+      // TUPLE-encoded: [uid, hotkey, successor, block, observed_at, tenure].
+      archiveEnv((key: string) =>
+        key.includes("by-uid")
+          ? {
+              schema_version: 1,
+              by_netuid: {
+                "5": [[3, "5Gone", "5New", 900, observedAt, 120]],
+              },
+            }
+          : {
+              schema_version: 1,
+              windows: { "7d": { rows: [{ netuid: 5, deregistrations: 1 }] } },
             },
-          ],
-        },
-        events,
-      ),
+      ) as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     const [event] = body.data.subnet_deregistrations.events;
@@ -25308,35 +24287,57 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("validator_nominators forwards the concentration marker and its shares", async () => {
+    // A REAL SS58: the reader validates the hotkey and declines an unusable one
+    // before issuing any query, so "5Validator" never reached the lane at all.
+    const HOTKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    const nominator = (coldkey: string, staked: number) => ({
+      coldkey,
+      staked_tao: staked,
+      unstaked_tao: 0,
+      event_count: 1,
+      last_observed: Date.now(),
+      net_staked_tao: staked,
+      gross_staked_tao: staked,
+    });
+    const lakeDouble = lakehouse((sql) =>
+      sql.includes("count(*) AS c")
+        ? // The distinct total EQUALS the page, so the concentration is complete --
+          // and the shares exist only then: a page capped short of the total
+          // cannot honestly report a share OF the total, which is the contract
+          // `concentration_complete` exists to state.
+          [{ c: 3 }]
+        : [
+            nominator("5Cold1", 6),
+            nominator("5Cold2", 3),
+            nominator("5Cold3", 1),
+          ],
+    );
+    const lake2 = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
-      `{ validator_nominators(hotkey: "5Validator") {
+      `{ validator_nominators(hotkey: "${HOTKEY}") {
           concentration_complete nominator_gini top_nominator_share top5_nominator_share
         } }`,
       // This tier answers in the REST `{ data, generatedAt }` envelope, unlike
       // the flat bodies the resolvers above read.
-      api(
-        {
-          data: {
-            schema_version: 1,
-            hotkey: "5Validator",
-            nominators: [],
-            concentration_complete: false,
-            nominator_gini: 0.42,
-            top_nominator_share: 0.3,
-            top5_nominator_share: 0.6,
-          },
-          generatedAt: "2026-07-01T00:00:00.000Z",
-        },
-        events,
-      ),
+      // #10190: the tier is retired; loadValidatorNominatorsColdTier answers. It
+      // issues TWO reads -- the per-coldkey rollup page and a GROUP BY subquery
+      // for the distinct total -- so the double routes on the SQL.
+      //
+      // The concentration marker and its shares are DERIVED from these rows.
+      lake2 as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.validator_nominators, {
-      concentration_complete: false,
-      nominator_gini: 0.42,
-      top_nominator_share: 0.3,
-      top5_nominator_share: 0.6,
+      // All four DERIVED from the three rows above: 6/3/1 of a 10 TAO total, so
+      // the top share is 0.6, the top-5 share is the whole 1, and the Gini falls
+      // out of that distribution. The retired tier carried hand-written numbers
+      // no computation produced.
+      concentration_complete: true,
+      nominator_gini: 0.333333,
+      top_nominator_share: 0.6,
+      top5_nominator_share: 1,
     });
+    lakeDouble.restore();
   });
 
   test("validator_history forwards the take fields", async () => {
@@ -25403,23 +24404,34 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       `{ account(ss58: "${SS58}") {
           schema_version labels { name category url source_urls }
         } }`,
-      api(
-        {
-          schema_version: 1,
-          ss58: SS58,
-          event_count: 0,
-          labels: [
-            {
-              name: "Example Exchange",
-              category: "exchange",
-              notes: null,
-              url: "https://example.com",
-              source_urls: ["https://example.com/proof"],
-            },
-          ],
+      // #10190: the tier is retired, and these two fields never came from the same
+      // place anyway. `schema_version` is the composer's; the LABELS are an
+      // additive join over the baked entities.json artifact (#6739), which is the
+      // read this now doubles -- one join site, and a missing artifact degrades to
+      // an empty label list rather than failing the card.
+      {
+        METAGRAPH_ARCHIVE: {
+          async get(key: string) {
+            if (!key.includes("entities")) return null;
+            return {
+              async json() {
+                return {
+                  entities: [
+                    {
+                      ss58: SS58,
+                      name: "Example Exchange",
+                      category: "exchange",
+                      notes: null,
+                      url: "https://example.com",
+                      source_urls: ["https://example.com/proof"],
+                    },
+                  ],
+                };
+              },
+            };
+          },
         },
-        events,
-      ),
+      } as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.equal(body.data.account.schema_version, 1);

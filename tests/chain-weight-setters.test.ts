@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import type { Row } from "./row-type.ts";
+import {
+  forbiddenDataApi,
+  lakehouse,
+  LAKEHOUSE_ENV,
+} from "./helpers/cold-tier-env.ts";
+import { afterEach, describe, test } from "vitest";
 import {
   buildChainWeightSetters,
   CHAIN_WEIGHT_SETTERS_WINDOWS,
@@ -241,20 +247,45 @@ describe("GET /api/v1/chain/weights/setters", () => {
   const req = (q = "") =>
     new Request(`https://api.metagraph.sh/api/v1/chain/weights/setters${q}`);
 
-  function postgresEnv(body: unknown) {
-    return {
-      ...createLocalArtifactEnv(),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => Response.json(body),
-      },
-    };
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and
+  // is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was never
+  // asked -- loadChainWeightSettersColdTier answers. Doubled at that transport
+  // and given the lane's ROWS, so buildChainWeightSetters runs here exactly as
+  // it does in production (`share` is derived, not asserted into existence).
+  let lake: ReturnType<typeof lakehouse> | undefined;
+  afterEach(() => {
+    lake?.restore();
+    lake = undefined;
+  });
+
+  // THREE reads, not one (src/chain-event-rollup-cold-tier.ts): the capped row
+  // page, an ungrouped COUNT(*) that is the honest `share` denominator, and a
+  // GROUP BY subquery for the distinct count. Answering all three with the row
+  // page makes every share 1 -- so the double routes on the SQL.
+  function coldTierEnv(body: Row) {
+    const rows = ((body.setters as Row[]) ?? []).map((r) => ({
+      netuid: r.netuid ?? 0,
+      hotkey: r.hotkey,
+      uid: r.uid,
+      weight_sets: r.weight_sets,
+      first_set: 1_750_000_000_000,
+      last_set: 1_750_009_000_000,
+    }));
+    const total = rows.reduce((n, r) => n + Number(r.weight_sets ?? 0), 0);
+    lake = lakehouse((sql) =>
+      sql.includes("FROM (SELECT")
+        ? [{ distinct_setters: rows.length }]
+        : sql.includes("GROUP BY")
+          ? rows
+          : [{ weight_sets: total, newest_observed: 1_750_009_000_000 }],
+    );
+    return { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   }
 
   test("returns the leaderboard at the requested window", async () => {
     const res = await handleRequest(
       req("?window=30d"),
-      postgresEnv({
+      coldTierEnv({
         schema_version: 1,
         window: "30d",
         observed_at: "2026-01-01T00:00:00.000Z",
@@ -341,21 +372,23 @@ describe("GET /api/v1/chain/weights/setters", () => {
     assert.deepEqual(body.data.setters, []);
   });
 
-  test("flag=postgres serves the DATA_API response", async () => {
+  test("the retired tier flag is not consulted even when set (#10190)", async () => {
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
+    // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier. Bind a
+    // DATA_API that WOULD answer and prove nothing asks it -- a reintroduced
+    // tryPostgresTier call resolves to null too, so nothing else would notice.
+    const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
-      postgresEnv({
-        schema_version: 1,
-        window: "7d",
-        observed_at: "2026-01-01T00:00:00.000Z",
-        setter_count: 99,
-        setters: [{ hotkey: "5Pg", weight_sets: 1 }],
-      }) as unknown as Env,
+      {
+        ...createLocalArtifactEnv(),
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.setter_count, 99);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("flag=postgres degrades to the empty leaderboard when DATA_API fails", async () => {
@@ -384,7 +417,7 @@ describe("GET /api/v1/chain/weights/setters", () => {
   test("exports the leaderboard as CSV with ?format=csv", async () => {
     const res = await handleRequest(
       req("?window=7d&format=csv"),
-      postgresEnv({
+      coldTierEnv({
         schema_version: 1,
         window: "7d",
         observed_at: "2026-01-01T00:00:00.000Z",

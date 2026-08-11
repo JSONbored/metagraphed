@@ -1227,8 +1227,6 @@ import {
   parseCompareHotkeyList,
   parseCompareNetuidList,
   parseUptimeWindow,
-  composeCompareData,
-  profilesProjectionFromRows,
   COMPARE_VALIDATORS_MAX,
   loadSubnetTrajectory,
 } from "./analytics-live.ts";
@@ -3108,78 +3106,6 @@ function mcpLiveHealth(ctx: McpCtx) {
 // the economics KV freshness/contract gate behaves the same over MCP.
 function mcpContractVersion(ctx: McpCtx) {
   return ctx.env?.METAGRAPH_CONTRACT_VERSION || CONTRACT_VERSION;
-}
-
-// Synthetic GET /api/v1/extrinsics{...} requests forwarded UNCHANGED to
-// DATA_API via tryPostgresTier (#4694) -- MCP tool handlers receive
-// structured args, not an inbound Request the way REST's handleExtrinsics
-// does, so this reconstructs the identical query-string shape
-// workers/data-api.ts's extrinsics routes parse. The host in the URL is
-// never dispatched to (DATA_API.fetch resolves the binding directly, the
-// same convention src/data-api-mcp.ts's dataApiFetchJson already uses).
-function mcpExtrinsicsListRequest(args: Row) {
-  const params = new URLSearchParams();
-  const block = optionalNonNegativeInt(args, "block");
-  if (block != null) params.set("block", String(block));
-  const signer = optionalString(args, "signer");
-  if (signer) params.set("signer", signer);
-  const callModule = optionalString(args, "call_module");
-  if (callModule) params.set("call_module", callModule);
-  const callFunction = optionalString(args, "call_function");
-  if (callFunction) params.set("call_function", callFunction);
-  const callHash = optionalString(args, "call_hash");
-  if (callHash) params.set("call_hash", callHash);
-  const success = optionalSuccessFilter(args);
-  if (success !== undefined) params.set("success", String(success));
-  const blockStart = optionalNonNegativeInt(args, "block_start");
-  if (blockStart != null) params.set("block_start", String(blockStart));
-  const blockEnd = optionalNonNegativeInt(args, "block_end");
-  if (blockEnd != null) params.set("block_end", String(blockEnd));
-  const from = optionalNonNegativeInt(args, "from");
-  if (from != null) params.set("from", String(from));
-  const to = optionalNonNegativeInt(args, "to");
-  if (to != null) params.set("to", String(to));
-  if (args?.limit != null) params.set("limit", String(args.limit));
-  if (args?.offset != null) params.set("offset", String(args.offset));
-  const cursor = optionalString(args, "cursor");
-  if (cursor) params.set("cursor", cursor);
-  return new Request(`https://d/api/v1/extrinsics?${params.toString()}`);
-}
-
-// Synthetic GET {pathname}{...} request for the two fixed-call_module
-// extrinsics-feed variants (get_sudo -> /api/v1/sudo, call_module=Sudo;
-// get_governance_config_changes -> /api/v1/governance/config-changes,
-// call_module=AdminUtils) -- same query-string shape as
-// mcpExtrinsicsListRequest MINUS signer/call_module (workers/data-api.ts
-// derives call_module from the pathname itself for these two routes, not a
-// query param -- see its PATH_TO_CALL_MODULE-style mapping), so passing the
-// correct fixed pathname is what selects the filter, nothing else needed.
-function mcpFixedCallModuleFeedRequest(pathname: string, args: Row) {
-  const params = new URLSearchParams();
-  const block = optionalNonNegativeInt(args, "block");
-  if (block != null) params.set("block", String(block));
-  const callFunction = optionalString(args, "call_function");
-  if (callFunction) params.set("call_function", callFunction);
-  const success = optionalSuccessFilter(args);
-  if (success !== undefined) params.set("success", String(success));
-  const blockStart = optionalNonNegativeInt(args, "block_start");
-  if (blockStart != null) params.set("block_start", String(blockStart));
-  const blockEnd = optionalNonNegativeInt(args, "block_end");
-  if (blockEnd != null) params.set("block_end", String(blockEnd));
-  const from = optionalNonNegativeInt(args, "from");
-  if (from != null) params.set("from", String(from));
-  const to = optionalNonNegativeInt(args, "to");
-  if (to != null) params.set("to", String(to));
-  if (args?.limit != null) params.set("limit", String(args.limit));
-  if (args?.offset != null) params.set("offset", String(args.offset));
-  const cursor = optionalString(args, "cursor");
-  if (cursor) params.set("cursor", cursor);
-  const qs = params.toString();
-  return new Request(`https://d${pathname}${qs ? `?${qs}` : ""}`);
-}
-
-function mcpExtrinsicDetailRequest(ref: string) {
-  return new Request(`https://d/api/v1/extrinsics/${encodeURIComponent(ref)}`);
 }
 
 // TWO REQUEST BUILDERS REMOVED HERE (#10190). They synthesised the
@@ -5718,27 +5644,22 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/validators`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildSubnetValidators([], netuid)),
-          tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/events`, {
-              limit: recentEventsLimit,
-              offset: 0,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-            // THE COLD RUNG, via the composer that owns the ladder (#10320).
-            // This card fell straight from the retired tier to
-            // `buildSubnetEvents([])`, so the snapshot served
-            // `event_count: 0` while its own standalone twin served ten rows
-            // for the same subnet in the same minute -- verified live on SN64,
-            // 2026-08-09. A card was wired and its embedded copy was not,
-            // which is precisely the class the widened tier-cascade gate now
-            // catches on all three surfaces.
-          ).then((data) =>
-            answerSubnetEvents(ctx.env, netuid, data as Row | null, {
-              limit: recentEventsLimit,
-              offset: 0,
-            }),
-          ),
+          // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
+          // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the
+          // promise this composer awaited resolved to null on every call -- the
+          // composer's own cold rung has been the answer.
+          //
+          // THE COLD RUNG, via the composer that owns the ladder (#10320). This
+          // card fell straight from the retired tier to `buildSubnetEvents([])`,
+          // so the snapshot served `event_count: 0` while its own standalone twin
+          // served ten rows for the same subnet in the same minute -- verified
+          // live on SN64, 2026-08-09. A card was wired and its embedded copy was
+          // not, which is precisely the class the widened tier-cascade gate now
+          // catches on all three surfaces.
+          answerSubnetEvents(ctx.env, netuid, null, {
+            limit: recentEventsLimit,
+            offset: 0,
+          }),
         ]);
       // list_subnet_validators' own limit post-filter (the loader already
       // ranks by stake_tao DESC, so slicing after is a no-op re-sort) --
@@ -5870,15 +5791,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/health/trends`),
-          "METAGRAPH_HEALTH_SOURCE",
-        )) ??
-        (await loadSubnetHealthTrends(netuid, {
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        await loadSubnetHealthTrends(netuid, {
           observedAt: await mcpObservedAt(ctx),
           db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
-        }))
+        })
       );
     },
   },
@@ -5918,20 +5837,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const offset = Number.isFinite(row?.offset)
         ? Math.max(0, Math.floor(row.offset as number))
         : 0;
-      // Forwarded on the tier request too, so the narrowing survives whichever
-      // tier answers -- a parameter honoured on one path and dropped on the
-      // other is the "looks filtered, is not" failure.
-      const query = new URLSearchParams();
-      if (window) query.set("window", window);
-      if (limit !== null) query.set("limit", String(limit));
-      if (offset) query.set("offset", String(offset));
-      const suffix = query.size ? `?${query}` : "";
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest(`/api/v1/health/trends${suffix}`),
-        "METAGRAPH_HEALTH_SOURCE",
-      );
-      if (postgres) return postgres;
+      // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier this narrowing was
+      // also encoded into a query string for never answered. The loader below
+      // takes the same three parameters directly, so nothing is dropped.
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
         db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
@@ -5964,19 +5873,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed!;
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(
-            `/api/v1/subnets/${netuid}/health/percentiles`,
-            { window: label },
-          ),
-          "METAGRAPH_HEALTH_SOURCE",
-        )) ??
-        (await loadSubnetPercentiles(netuid, {
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        await loadSubnetPercentiles(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
           db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
-        }))
+        })
       );
     },
   },
@@ -6004,18 +5908,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label } = parsed!;
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/health/incidents`, {
-            window: label,
-          }),
-          "METAGRAPH_HEALTH_SOURCE",
-        )) ??
-        (await loadSubnetIncidents(netuid, {
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        await loadSubnetIncidents(netuid, {
           window: label,
           observedAt: await mcpObservedAt(ctx),
           db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
-        }))
+        })
       );
     },
   },
@@ -6933,14 +6833,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_STAKE_FLOW_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/stake-flow", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
         // src/chain-stake-flow-artifact.ts.
@@ -6977,11 +6872,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_ALPHA_VOLUME_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/alpha-volume", { limit }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
         // src/chain-alpha-volume-artifact.ts. The market-cap index is
@@ -6990,8 +6883,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (await loadChainAlphaVolumeFromArtifact(ctx.env, {
           limit,
           marketCapByNetuid: await resolveMarketCapIndex(ctx.env),
-        })) ??
-        buildChainAlphaVolume([], { limit })
+        })) ?? buildChainAlphaVolume([], { limit })
       );
     },
   },
@@ -7027,14 +6919,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_WEIGHTS_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/weights", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // Same shared loader REST and GraphQL use (#9229's parity lesson).
         (await loadChainWeightsColdTier(
           ctx.env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
@@ -7082,21 +6969,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/weights/setters", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadChainWeightSettersColdTier(
           ctx.env as unknown as Parameters<
             typeof loadChainWeightSettersColdTier
           >[0],
           { window, limit },
-        )) ??
-        buildChainWeightSetters([], null, { window, limit })
+        )) ?? buildChainWeightSetters([], null, { window, limit })
       );
     },
   },
@@ -7136,14 +7017,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/stake-moves", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
         // src/chain-stake-moves-artifact.ts.
@@ -7188,22 +7064,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss. Postgres → schema-stable empty stub, never a live D1 read.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/stake-transfers", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
         // src/chain-stake-transfers-artifact.ts.
         (await loadChainStakeTransfersFromArtifact(ctx.env, {
           window,
           limit,
-        })) ??
-        buildChainStakeTransfers([], { window, limit })
+        })) ?? buildChainStakeTransfers([], { window, limit })
       );
     },
   },
@@ -7224,7 +7094,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetChainAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetChainAxonRemovalsInputSchema>,
-      ctx: McpCtx,
+      _ctx: McpCtx,
     ) {
       const window =
         optionalString(args, "window") ?? DEFAULT_CHAIN_AXON_REMOVALS_WINDOW;
@@ -7243,14 +7113,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss (#6013).
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/axon-removals", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainAxonRemovals([], { window, limit })
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        buildChainAxonRemovals([], { window, limit })
       );
     },
   },
@@ -7291,14 +7157,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss (#6013).
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/serving", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // Same shared loader the REST route and GraphQL use, so all three
         // surfaces answer from one implementation. Without this the tool kept
         // returning the zeroed card while /api/v1/chain/serving returned real
@@ -7306,8 +7167,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         (await loadChainServingColdTier(
           ctx.env as unknown as Parameters<typeof loadChainServingColdTier>[0],
           { window, limit },
-        )) ??
-        buildChainServing([], { window, limit })
+        )) ?? buildChainServing([], { window, limit })
       );
     },
   },
@@ -7348,22 +7208,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss (#6013).
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/prometheus", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The lakehouse rung, same as REST and GraphQL (#10248).
         (await loadChainPrometheusColdTier(
           ctx.env as unknown as Parameters<
             typeof loadChainPrometheusColdTier
           >[0],
           { window, limit },
-        )) ??
-        buildChainPrometheus([], { window, limit })
+        )) ?? buildChainPrometheus([], { window, limit })
       );
     },
   },
@@ -7563,16 +7417,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-flow`, {
-              window,
-              direction,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9146: same chain-stake-flow projection slice REST reads, so the
         // MCP tool and the route cannot disagree about one subnet's flow.
         (
@@ -7580,8 +7427,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             window,
             direction,
           })
-        )?.data ??
-        buildStakeFlow([], netuid, { window })
+        )?.data ?? buildStakeFlow([], netuid, { window })
       );
     },
   },
@@ -7619,14 +7465,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/event-summary`, {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9303: the lakehouse carries the same stream, so an agent gets the
         // real per-kind rollup instead of a zeroed card.
         (await loadSubnetEventSummaryColdTier(ctx.env, netuid, {
@@ -7665,13 +7506,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/weights`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightsColdTier(
           ctx.env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
           netuid,
@@ -7679,8 +7516,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetWeights(null, netuid, { window })
+        )) ?? buildSubnetWeights(null, netuid, { window })
       );
     },
   },
@@ -7710,13 +7546,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/weights/setters`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetWeightSettersColdTier(
           ctx.env as unknown as Parameters<
             typeof loadSubnetWeightSettersColdTier
@@ -7727,8 +7559,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window] ?? 7,
             limit: SUBNET_WEIGHT_SETTERS_LIMIT,
           },
-        )) ??
-        buildSubnetWeightSetters([], null, netuid, { window })
+        )) ?? buildSubnetWeightSetters([], null, netuid, { window })
       );
     },
   },
@@ -7757,13 +7588,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/registrations`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
             typeof loadSubnetEventCardColdTier
@@ -7775,8 +7602,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_REGISTRATIONS_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetRegistrations(null, netuid, { window })
+        )) ?? buildSubnetRegistrations(null, netuid, { window })
       );
     },
   },
@@ -7805,13 +7631,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-moves`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
             typeof loadSubnetEventCardColdTier
@@ -7823,8 +7645,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_STAKE_MOVES_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetStakeMoves(null, netuid, { window })
+        )) ?? buildSubnetStakeMoves(null, netuid, { window })
       );
     },
   },
@@ -7854,13 +7675,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/stake-transfers`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
             typeof loadSubnetEventCardColdTier
@@ -7872,8 +7689,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetStakeTransfers(null, netuid, { window })
+        )) ?? buildSubnetStakeTransfers(null, netuid, { window })
       );
     },
   },
@@ -7891,7 +7707,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetSubnetAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetAxonRemovalsInputSchema>,
-      ctx: McpCtx,
+      _ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
       const window =
@@ -7903,13 +7719,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/axon-removals`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetAxonRemovals(null, netuid, { window })
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        buildSubnetAxonRemovals(null, netuid, { window })
       );
     },
   },
@@ -7940,13 +7753,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/serving`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
             typeof loadSubnetEventCardColdTier
@@ -7958,8 +7767,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_SERVING_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetServing(null, netuid, { window })
+        )) ?? buildSubnetServing(null, netuid, { window })
       );
     },
   },
@@ -7990,13 +7798,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/prometheus`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #10322: same cold-tier rung as its REST and GraphQL twins.
         (await loadSubnetEventCardColdTier(
           ctx.env as unknown as Parameters<
@@ -8009,8 +7813,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             windowLabel: window,
             windowDays: SUBNET_PROMETHEUS_WINDOWS[window] ?? 7,
           },
-        )) ??
-        buildSubnetPrometheus(null, netuid, { window })
+        )) ?? buildSubnetPrometheus(null, netuid, { window })
       );
     },
   },
@@ -8050,13 +7853,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/deregistrations`, {
-            window,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9307: the UID-reuse derivation REST reads, then the same MARKED
         // empty when nothing derived it.
         (await loadSubnetDeregistrationsFromArtifact(ctx.env, netuid, {
@@ -8180,19 +7979,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const minSamples = optionalNonNegativeInt(args, "min_samples");
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/uptime`, {
-            window: window as string,
-            min_samples: minSamples,
-          }),
-          "METAGRAPH_HEALTH_SOURCE",
-        )) ??
-        ((await loadSubnetUptime(netuid, {
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        //
+        // `min_samples` reached the loader only through that dead tier request,
+        // so this tool accepted the argument, validated it, and then answered as
+        // if it had not been given -- a dropped filter reads as a real answer.
+        // Passed through here, exactly as handleUptime passes it.
+        (await loadSubnetUptime(netuid, {
           window: window ?? undefined,
           observedAt: await mcpObservedAt(ctx),
+          minSamples: minSamples ?? null,
           db: readStore(ctx.env, UPTIME_DAILY_TABLES) as never,
-        })) as Row)
+        } as unknown as Parameters<typeof loadSubnetUptime>[1])) as Row
       );
     },
   },
@@ -8323,30 +8123,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // request (structure/economics never touch D1/Postgres, they're
       // registry+economics-tier reads) -- mirror that exactly rather than
       // wrapping the whole tool in tryPostgresTier's usual passthrough.
-      if (dimensions.includes("health")) {
-        const postgres = await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/internal/compare-health", {
-            netuids: netuids.join(","),
-          }),
-          "METAGRAPH_HEALTH_SOURCE",
-        );
-        if (postgres) {
-          const { subnetMeta, mostComplete } =
-            profilesProjectionFromRows(profiles);
-          return composeCompareData({
-            requestedNetuids: netuids,
-            dimensions,
-            subnetMeta,
-            structureRows: mostComplete,
-            economicsRows: dimensions.includes("economics")
-              ? economicsRows
-              : null,
-            healthRows: postgres.rows as Row[],
-            observedAt,
-          });
-        }
-      }
+      // NO TIER READ (#10190): the health dimension used to try
+      // METAGRAPH_HEALTH_SOURCE first. That flag reads "d1" in wrangler.jsonc and
+      // is absent from DATA_API_FORWARD_FLAGS, so the read resolved to null and
+      // the composer below has answered every dimension all along.
       return loadCompareSubnets({
         profiles,
         economicsRows,
@@ -8376,24 +8156,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       }
       const { label, days } = parsed!;
       const data =
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/incidents", {
-            window: label,
-            netuid: args?.netuid,
-            limit: args?.limit,
-            cursor: args?.cursor,
-            sort: args?.sort,
-            order: args?.order,
-          }),
-          "METAGRAPH_HEALTH_SOURCE",
-        )) ??
-        (await loadGlobalIncidents({
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        await loadGlobalIncidents({
           windowLabel: label,
           windowDays: days,
           observedAt: await mcpObservedAt(ctx),
           db: readStore(ctx.env, HEALTH_CHECK_TABLES) as never,
-        }));
+        });
       return applyGlobalIncidentsListQuery(
         data as Record<string, unknown>,
         args,
@@ -8835,16 +8606,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // own outputSchema (hotkey/nominator_count/nominators at the top
       // level) the moment METAGRAPH_ACCOUNT_EVENTS_SOURCE flips to postgres.
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(
-              `/api/v1/validators/${encodeURIComponent(hotkey)}/nominators`,
-              { window, sort, limit, offset, coldkey },
-            ),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (
           await loadValidatorNominatorsColdTier(ctx.env, hotkey, {
             window,
@@ -9069,18 +8833,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       const tierResult =
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/events`, {
-            kind,
-            block_start: blockStart,
-            block_end: blockEnd,
-            limit,
-            offset,
-            cursor,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? null;
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        null;
       // Through the composer (src/subnet-events-answer.ts), which owns the tier
       // order and the empty floor for REST, MCP and GraphQL alike -- the
       // lakehouse leg it adds is why this tool no longer reports event_count 0
@@ -9239,19 +8995,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ? netEconomics.economics.alpha_market_cap_tao
           : null;
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/volume`),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (
           await loadSubnetAlphaVolumeFromArtifact(ctx.env, netuid, {
             marketCapTao,
           })
-        )?.data ??
-        buildAlphaVolume([], netuid, { marketCapTao })
+        )?.data ?? buildAlphaVolume([], netuid, { marketCapTao })
       );
     },
   },
@@ -9302,17 +9053,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/ohlc`, {
-              interval,
-              days,
-              limit,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The SAME lakehouse reader REST's handleSubnetOhlc falls to, so the
         // two surfaces cannot disagree about a subnet's candles.
         (
@@ -9321,8 +9064,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             days,
             limit,
           })
-        )?.data ??
-        buildSubnetOhlc([], netuid, { interval, limit })
+        )?.data ?? buildSubnetOhlc([], netuid, { interval, limit })
       );
     },
   },
@@ -10311,18 +10053,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetAccountInputSchema),
     async handler(args: z.infer<typeof GetAccountInputSchema>, ctx: McpCtx) {
       const ss58 = requireSs58(args);
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      );
+      // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // guarded resolved to null before it could touch DATA_API.
       // #9263: the SAME composition REST and GraphQL run. A tier that exists
       // and could not answer DECLINES here rather than handing back a zeroed
       // card -- an agent told an account has no history will reason from it and
       // will not think to re-ask, the way a person reloading a page might.
-      const answer = postgres
-        ? null
-        : await answerAccountSummary(ctx.env, ss58);
+      const answer = await answerAccountSummary(ctx.env, ss58);
       if (answer?.kind === "gap") {
         throw toolError(
           ACCOUNT_SUMMARY_GAP_CODE,
@@ -10330,24 +10068,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       const data =
-        postgres ??
-        (answer?.kind === "answer"
-          ? answer.data
-          : buildAccountSummary(ss58, {}));
+        answer?.kind === "answer" ? answer.data : buildAccountSummary(ss58, {});
       // Community-contributable entity labels (#6739), same REST-parity join
       // as workers/request-handlers/entities.ts's own handleAccount.
       const entitiesArtifact = rowOf(
         await ctx.readArtifact!(ctx.env, ENTITY_LABELS_ARTIFACT),
       );
-      (data as Row).labels = labelsForSs58(
-        entityLabelsIndex(
-          entitiesArtifact?.ok
-            ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
-            : [],
+      // SPREAD, not `(data as Row).labels = …`. That assertion compiled only
+      // while the tier arm widened `data` to a row: with the arm deleted
+      // (#10190) it narrows to AccountSummaryResult, and an interface has no
+      // index signature, so #10782's stricter `Row` rejects the cast. Building
+      // a fresh object is the structural conversion rather than an assertion
+      // over it -- and it stops mutating a value the composer owns.
+      return {
+        ...data,
+        labels: labelsForSs58(
+          entityLabelsIndex(
+            entitiesArtifact?.ok
+              ? rowsOf(rowOf(entitiesArtifact.data)?.entities)
+              : [],
+          ),
+          ss58,
         ),
-        ss58,
-      );
-      return data;
+      };
     },
   },
   {
@@ -10592,19 +10335,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/events`, {
-            kind,
-            netuid,
-            block_start: blockStart,
-            block_end: blockEnd,
-            limit,
-            offset,
-            cursor,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountEventsColdTier(ctx.env, ss58, {
           limit,
           offset,
@@ -10794,14 +10527,20 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
                 unavailableAccountPositions(ss58),
             ),
           ),
-          tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/events`, {
-              limit: recentEventsLimit,
-              offset: 0,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          ).then(
+          // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
+          // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this
+          // promise resolved to null on every call.
+          //
+          // THE COLD RUNG, the same one `get_account_events` resolves through
+          // (#10320). Without it this card fell straight from the retired tier to
+          // `buildAccountEvents([])` and published `event_count: 0` while the
+          // standalone tool served this coldkey's rows for the same address in the
+          // same second -- the exact defect the subnet snapshot's `recent_events`
+          // had, one composer over. A card is wired and its embedded copy is not.
+          loadAccountEventsColdTier(ctx.env, ss58, {
+            limit: recentEventsLimit,
+            offset: 0,
+          }).then(
             (data) =>
               data ??
               buildAccountEvents([], ss58, {
@@ -10960,23 +10699,15 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/stake-flow`, {
-              window,
-              direction,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (
           await loadAccountStakeFlowColdTier(ctx.env, ss58, {
             window,
             direction,
           })
-        )?.data ??
-        buildAccountStakeFlow([], ss58, { window })
+        )?.data ?? buildAccountStakeFlow([], ss58, { window })
       );
     },
   },
@@ -11007,18 +10738,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/stake-moves`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountStakeMovesColdTier(ctx.env, ss58, { window }))
-          ?.data ??
-        buildAccountStakeMoves([], ss58, { window })
+          ?.data ?? buildAccountStakeMoves([], ss58, { window })
       );
     },
   },
@@ -11037,7 +10761,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetAccountAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountAxonRemovalsInputSchema>,
-      ctx: McpCtx,
+      _ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
       const window =
@@ -11049,15 +10773,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/axon-removals`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ?? buildAccountAxonRemovals([], ss58, { window })
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        buildAccountAxonRemovals([], ss58, { window })
       );
     },
   },
@@ -11089,21 +10808,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/prometheus`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #10322: the cold-tier rung REST and GraphQL gained; without it this
         // tool alone would answer a confident zero and the three surfaces
         // would disagree on one event stream.
         (await loadAccountPrometheusColdTier(ctx.env, ss58, { window }))
-          ?.data ??
-        buildAccountPrometheus([], ss58, { window })
+          ?.data ?? buildAccountPrometheus([], ss58, { window })
       );
     },
   },
@@ -11134,20 +10846,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/registrations`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9146: same lakehouse read the REST handler uses, so the tool and
         // the route cannot report different footprints.
         (await loadAccountRegistrationsColdTier(ctx.env, ss58, { window }))
-          ?.data ??
-        buildAccountRegistrations([], ss58, { window })
+          ?.data ?? buildAccountRegistrations([], ss58, { window })
       );
     },
   },
@@ -11177,18 +10882,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/weight-setters`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountWeightSettersColdTier(ctx.env, ss58, { window }))
-          ?.data ??
-        buildAccountWeightSetters([], ss58, { window })
+          ?.data ?? buildAccountWeightSetters([], ss58, { window })
       );
     },
   },
@@ -11219,15 +10917,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/serving`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9146: same lakehouse read the REST handler uses.
         (await loadAccountServingColdTier(ctx.env, ss58, { window }))?.data ??
         buildAccountServing([], ss58, { window })
@@ -11262,15 +10954,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (
-          await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/deregistrations`, {
-              window,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )
-        )?.data ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9307: an account's deregistrations are the slots where it was the
         // PREVIOUS holder, derived from UID reuse.
         (
@@ -11315,14 +11001,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         cursor: cursor ?? undefined,
       };
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(
-            `/api/v1/accounts/${ss58}/history`,
-            historyOptions,
-          ),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? (await loadAccountHistory(ctx.env, ss58, historyOptions))
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        await loadAccountHistory(ctx.env, ss58, historyOptions)
       );
     },
   },
@@ -11354,17 +11036,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/extrinsics`, {
-            block_start: blockStart,
-            block_end: blockEnd,
-            limit,
-            offset,
-            cursor,
-          }),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountExtrinsicsColdTier(ctx.env, ss58, {
           limit,
           offset,
@@ -11436,18 +11110,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/transfers`, {
-            direction,
-            block_start: blockStart,
-            block_end: blockEnd,
-            limit,
-            offset,
-            cursor,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountTransfersColdTier(ctx.env, ss58, {
           limit,
           offset,
@@ -11508,14 +11173,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           { limit: args?.limit },
         );
         return (
-          (await tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/counterparties`, {
-              counterparty,
-              limit: args?.limit,
-            }),
-            "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-          )) ??
+          // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+          // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+          // resolved to null before it could touch DATA_API.
           (await loadCounterpartyRelationshipColdTier(
             ctx.env,
             ss58,
@@ -11535,17 +11195,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/counterparties`, {
-            limit: args?.limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         (await loadAccountCounterpartiesColdTier(ctx.env, ss58, {
           limit: args?.limit,
-        })) ??
-        buildCounterparties([], ss58, { limit: args?.limit })
+        })) ?? buildCounterparties([], ss58, { limit: args?.limit })
       );
     },
   },
@@ -11665,35 +11320,29 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/extrinsics
       // route returns `json({ data: buildBlockExtrinsics(...) })`, not a flat
       // buildBlockExtrinsics(...) body like the sibling account-extrinsics route.
-      const { data } = (await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest(
-          `/api/v1/blocks/${encodeURIComponent(ref)}/extrinsics`,
-          {
-            limit,
-            offset,
-          },
-        ),
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      )) ?? {
-        // Lazily built only when the Postgres tier missed, mirroring REST's
-        // handleBlockExtrinsics -- including #9208's hot/cold/decline routing,
-        // so an MCP caller and a REST caller get the same answer for the same
-        // block rather than the tool quietly keeping the old empty.
-        data: chainDetailAnswerOrThrow(
-          await answerBlockDetail(ctx.env, ref, {
-            hot: (height) =>
-              loadBlockExtrinsicsHotTier(ctx.env, ref, height, {
-                limit,
-                offset,
-              }),
-            cold: () =>
-              loadBlockExtrinsicsColdTier(ctx.env, ref, { limit, offset }),
-            isEmpty: isEmptyExtrinsicPayload,
-          }),
-          () => buildBlockExtrinsics([], ref, null, { limit, offset }),
-        ),
-      };
+      const { data } =
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        {
+          // Lazily built only when the Postgres tier missed, mirroring REST's
+          // handleBlockExtrinsics -- including #9208's hot/cold/decline routing,
+          // so an MCP caller and a REST caller get the same answer for the same
+          // block rather than the tool quietly keeping the old empty.
+          data: chainDetailAnswerOrThrow(
+            await answerBlockDetail(ctx.env, ref, {
+              hot: (height) =>
+                loadBlockExtrinsicsHotTier(ctx.env, ref, height, {
+                  limit,
+                  offset,
+                }),
+              cold: () =>
+                loadBlockExtrinsicsColdTier(ctx.env, ref, { limit, offset }),
+              isEmpty: isEmptyExtrinsicPayload,
+            }),
+            () => buildBlockExtrinsics([], ref, null, { limit, offset }),
+          ),
+        };
       return data;
     },
   },
@@ -11720,31 +11369,25 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // tryPostgresTier's result -- workers/data-api.ts's /blocks/:ref/events
       // route returns `json({ data: buildBlockEvents(...) })`, not a flat
       // buildBlockEvents(...) body like the sibling account-events routes.
-      const { data } = (await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest(
-          `/api/v1/blocks/${encodeURIComponent(ref)}/events`,
-          {
-            limit,
-            offset,
-          },
-        ),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) ?? {
-        // Lazily built only when the Postgres tier missed, mirroring REST's
-        // handleBlockEvents -- #9208's routing included, for the same reason as
-        // list_block_extrinsics above.
-        data: chainDetailAnswerOrThrow(
-          await answerBlockDetail(ctx.env, ref, {
-            hot: (height) =>
-              loadBlockEventsHotTier(ctx.env, ref, height, { limit, offset }),
-            cold: () =>
-              loadBlockEventsColdTier(ctx.env, ref, { limit, offset }),
-            isEmpty: isEmptyEventPayload,
-          }),
-          () => buildBlockEvents([], ref, null, { limit, offset }),
-        ),
-      };
+      const { data } =
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
+        {
+          // Lazily built only when the Postgres tier missed, mirroring REST's
+          // handleBlockEvents -- #9208's routing included, for the same reason as
+          // list_block_extrinsics above.
+          data: chainDetailAnswerOrThrow(
+            await answerBlockDetail(ctx.env, ref, {
+              hot: (height) =>
+                loadBlockEventsHotTier(ctx.env, ref, height, { limit, offset }),
+              cold: () =>
+                loadBlockEventsColdTier(ctx.env, ref, { limit, offset }),
+              isEmpty: isEmptyEventPayload,
+            }),
+            () => buildBlockEvents([], ref, null, { limit, offset }),
+          ),
+        };
       return data;
     },
   },
@@ -11815,11 +11458,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // tryPostgresTier contract, same METAGRAPH_EXTRINSICS_SOURCE flag, so this
       // tool and GET /api/v1/extrinsics never diverge on which tier answered.
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpExtrinsicsListRequest(args),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // call_hash matches inside call_args, which the lakehouse cannot
         // express -- its presence skips the tier entirely rather than
         // ignoring the filter (same gate as REST's handleExtrinsics).
@@ -11868,12 +11509,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
       // the schema-stable empty detail now that extrinsics' D1 write path is
       // retired (#4772) and the table is dropped in production.
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpExtrinsicDetailRequest(ref),
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
-      if (postgres) return postgres;
+      // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // guarded resolved to null before it could touch DATA_API.
       // #9208: hot tier ahead of the lakehouse, and a DECLINE when a composite
       // `<block>-<index>` ref names a position neither tier can answer. A HASH
       // ref keeps the schema-stable empty -- see answerExtrinsicDetail.
@@ -11897,11 +11535,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     inputSchema: inputJsonSchema(GetSudoInputSchema),
     async handler(args: z.infer<typeof GetSudoInputSchema>, ctx: McpCtx) {
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpFixedCallModuleFeedRequest("/api/v1/sudo", args),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The category predicate is data-api's own pathname->module mapping
         // ("Sudo"), expressed against the lakehouse verbatim.
         (await loadExtrinsicFeedColdTier(ctx.env, {
@@ -12011,14 +11647,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpFixedCallModuleFeedRequest(
-            "/api/v1/governance/config-changes",
-            args,
-          ),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The category predicate is data-api's own pathname->module mapping
         // ("AdminUtils"), expressed against the lakehouse verbatim.
         (await loadExtrinsicFeedColdTier(ctx.env, {
@@ -12347,16 +11978,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/calls", {
-            window: label,
-            group_by: groupBy,
-            limit,
-            call_module: callModule,
-          }),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse call
         // mix, sliced to this call's limit and fed through the same
         // formatter; a call_module scope declines. See
@@ -12408,17 +12032,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           "call_module must be at most 100 characters.",
         );
       }
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest("/api/v1/chain/signers", {
-          window: label,
-          sort,
-          limit,
-          call_module: callModule,
-        }),
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
-      if (postgres) return postgres;
+      // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // guarded resolved to null before it could touch DATA_API.
       // The projection tier (#9146): the cron-recomputed lakehouse
       // leaderboard, sliced to this call's limit and fed through the same
       // formatter; a call_module scope declines. See
@@ -12467,22 +12083,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
       // the table is dropped in production, so a D1 query here would always
       // miss. Postgres → schema-stable empty stub, never a live D1 read.
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest("/api/v1/chain/fees", {
-          window: label,
-          limit,
-          call_module: callModule,
-        }),
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
+      // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // guarded resolved to null before it could touch DATA_API.
       // #8421: mirror handleChainFees's #8242 fix -- trim the UTC-day buckets to
       // the requested window so a 7d request never reports 8 days.
-      if (postgres)
-        return trimChainFeesToWindow(
-          postgres as unknown as ReturnType<typeof buildChainFees>,
-          days,
-        );
       // The projection tier (#9146): the cron-recomputed lakehouse fee
       // series, sliced to this call's limit and fed through the same
       // formatter; a call_module scope declines. Trimmed like every other
@@ -12531,20 +12136,14 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss (#6013).
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/registrations", {
-            window: label,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9146: same chain-registrations projection REST and GraphQL read.
         (await loadChainRegistrationsFromArtifact(ctx.env, {
           window: label,
           limit,
-        })) ??
-        buildChainRegistrations([], { window: label, limit })
+        })) ?? buildChainRegistrations([], { window: label, limit })
       );
     },
   },
@@ -12584,14 +12183,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // and the table is dropped in production, so a D1 query here would
       // always miss (#6013).
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/deregistrations", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // #9307: NeuronDeregistered has never been emitted; the feed is
         // derived from UID reuse by the chain-deregistrations projection lane.
         (await loadChainDeregistrationsFromArtifact(ctx.env, {
@@ -12633,14 +12227,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_TRANSFER_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/transfers", {
-            window,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // scorecard, sliced to this call's limit and fed through the same
         // formatter. See src/chain-transfers-artifact.ts.
@@ -12690,15 +12279,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         CHAIN_TRANSFER_PAIR_LIMIT_MAX,
       );
       return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/chain/transfer-pairs", {
-            window,
-            sort,
-            limit,
-          }),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
+        // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this arm
+        // resolved to null before it could touch DATA_API.
         // The projection tier (#9146): the cron-recomputed lakehouse
         // corridor leaderboard, sliced to this call's limit and fed through
         // the same formatter. See src/chain-transfer-pairs-artifact.ts.
@@ -12740,19 +12323,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // (#4772) and the tables are dropped in production, so a D1 query here
       // would always miss. Postgres → schema-stable empty stub, never a live
       // D1 read.
-      const postgres = await tryPostgresTier(
-        ctx.env,
-        mcpNeuronsTierRequest("/api/v1/chain/activity", { window: label }),
-        "METAGRAPH_EXTRINSICS_SOURCE",
-      );
+      // NO TIER READ (#10190): METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc
+      // and is absent from DATA_API_FORWARD_FLAGS, so the tier read this branch
+      // guarded resolved to null before it could touch DATA_API.
       // #8421: mirror handleChainActivity's #8242 fix -- the UTC-day buckets
       // span one extra calendar day, so trim to the requested window before
       // returning so day_count can't contradict the window label.
-      if (postgres)
-        return trimChainActivityToWindow(
-          postgres as unknown as ReturnType<typeof buildChainActivity>,
-          days,
-        );
       // The projection tier (#9146): the cron-recomputed lakehouse daily
       // series, through the same formatter and the same trim. See
       // src/chain-activity-artifact.ts.

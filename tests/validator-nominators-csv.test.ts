@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -25,36 +26,21 @@ test("GET /validators/{hotkey}/nominators?format=csv emits a header-only CSV whe
 });
 
 test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominator rows via the Postgres tier", async () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          data: {
-            schema_version: 1,
-            hotkey: HOTKEY,
-            window: "30d",
-            sort: "net_staked",
-            limit: 20,
-            offset: 0,
-            nominator_count: 1,
-            nominators: [
-              {
-                coldkey: "5CoLdKeyExampleAddress000000000000000000000000",
-                staked_tao: 1200.5,
-                unstaked_tao: 200.25,
-                net_staked_tao: 1000.25,
-                gross_staked_tao: 1400.75,
-                event_count: 7,
-                last_observed_at: new Date(1750000000000).toISOString(),
-              },
-            ],
-          },
-          generatedAt: new Date(1750000000000).toISOString(),
-        }),
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
+  // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was
+  // never asked. The lakehouse cold tier answers, through the same builder.
+  const lake = lakehouse([
+    {
+      coldkey: "5CoLdKeyExampleAddress000000000000000000000000",
+      staked_tao: 1200.5,
+      unstaked_tao: 200.25,
+      net_staked_tao: 1000.25,
+      gross_staked_tao: 1400.75,
+      event_count: 7,
+      last_observed_at: new Date(1750000000000).toISOString(),
     },
-  };
+  ]);
+  const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req(`/api/v1/validators/${HOTKEY}/nominators?format=csv&window=30d`),
     env as unknown as Env,
@@ -69,6 +55,7 @@ test("GET /validators/{hotkey}/nominators?format=csv exports the ranked nominato
     lines[1],
     /^5CoLdKeyExampleAddress[0]+,1200\.5,200\.25,1000\.25,1400\.75,7,/,
   );
+  lake.restore();
 });
 
 test("GET /validators/{hotkey}/nominators rejects an invalid ?format with 400", async () => {

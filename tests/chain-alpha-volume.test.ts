@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainAlphaVolume,
@@ -389,54 +390,23 @@ describe("GET /api/v1/chain/alpha-volume", () => {
   // #4832 Tier 2 pattern: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events table
   // this handler already reads, no new flag) -- tryPostgresTier's own fallback contract is
   // unit-tested in workers/postgres-tier.ts's own tests, so these two just prove the wiring.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = {
-      ...alphaVolumeEnv([]),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "24h",
-            observed_at: "2026-01-01T00:00:00.000Z",
-            subnet_count: 99,
-            network: {},
-            volume_distribution: null,
-            subnets: [{ netuid: 42 }],
-          }),
-      },
-    };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
-    const res = await handleRequest(req(), env as unknown as Env, {});
+  test("the retired tier flag is not consulted even when set (#10190)", async () => {
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is
+    // absent from DATA_API_FORWARD_FLAGS, so this route reads no tier. Bind a
+    // DATA_API that WOULD answer and prove nothing asks it -- a reintroduced
+    // tryPostgresTier call resolves to null too, so nothing else would notice.
+    const tier = forbiddenDataApi();
+    const res = await handleRequest(
+      req(),
+      {
+        ...alphaVolumeEnv([]),
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
+      {},
+    );
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.subnet_count, 99);
-    assert.equal(d1Called, false);
-  });
-
-  // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real
-  // D1 read (account_events is retired) -- a Postgres failure degrades to the
-  // empty card, not to whatever a D1 mock might return.
-  test("flag=postgres falls back to the empty stub (not D1) when DATA_API fails", async () => {
-    const env = {
-      ...alphaVolumeEnv(ROWS),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-    };
-    const res = await handleRequest(req(), env as unknown as Env, {});
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(tier.paths, []);
   });
 
   test("rejects a ?window= param with 400 (fixed 24h window, no windowing on this route)", async () => {

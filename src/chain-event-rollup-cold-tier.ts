@@ -12,6 +12,11 @@
 // rows, small enough to serve at request time -- so this is a cold-tier read,
 // not a scheduled projection.
 //
+// THE PAGE SLICE DOES NOT. It belongs to the builders, which own the network
+// rollup and the distribution that are derived from these rows -- interpolating
+// the caller's `limit` here made both of those describe the page instead of the
+// window. See ROLLUP_POPULATION_CAP for the live measurements.
+//
 // THE NETWORK DISTINCT IS ITS OWN QUERY, because it is not summable. A hotkey
 // serving on five subnets is five per-subnet rows but ONE network-wide server,
 // so adding the per-netuid counts would overstate it (measured: 2,941
@@ -165,14 +170,50 @@ export interface ChainEventRollup {
   /**
    * How many subnets the WINDOW covers, not how many the page carries (#10249).
    *
-   * `rows` is capped, so counting it answers a different question the moment
-   * the cap binds -- measured live before this existed:
-   * `/api/v1/chain/weights?limit=20` published `subnet_count: 20`, `?limit=100`
-   * published 99, and the truth was 129. A field named for a population,
-   * tracking a query parameter nobody set.
+   * `rows` used to be capped at the CALLER'S page size, so counting it answered
+   * a different question the moment the cap bound -- measured live before this
+   * existed: `/api/v1/chain/weights?limit=20` published `subnet_count: 20`,
+   * `?limit=100` published 99, and the truth was 129. A field named for a
+   * population, tracking a query parameter nobody set.
+   *
+   * The page size no longer reaches SQL at all (see ROLLUP_POPULATION_CAP), so
+   * `rows.length` is the population again -- but this stays the authority,
+   * because it is the one number that survives the safety cap binding.
    */
   subnetCount: number | null;
 }
+
+/**
+ * How many grouped rows the scan may return, INDEPENDENT of the caller's page.
+ *
+ * The caller's `limit` used to be interpolated here, and that quietly redefined
+ * every window-wide number the builders derive from these rows. Measured live on
+ * 2026-08-11, same window, same second:
+ *
+ *   /api/v1/chain/weights?window=7d&limit=20  network.weight_sets  67,955
+ *   /api/v1/chain/weights?window=7d&limit=100 network.weight_sets 214,842
+ *   /api/v1/chain/weights/setters?window=7d   weight_sets         239,051  <- truth
+ *
+ *   /api/v1/chain/serving?window=30d&limit=1  network.announcements  6,292
+ *   /api/v1/chain/serving?window=30d&limit=59 network.announcements 27,359
+ *
+ * The builders sum these rows for the network block and take the spread over
+ * them for `intensity_distribution` -- buildChainWeights' own comment promises
+ * that distribution covers "EVERY subnet (not just the returned page)". It
+ * could not: the page was all it was given. So the page slice belongs to the
+ * builder, which already does it, and the scan's only job is to return the
+ * POPULATION.
+ *
+ * 1000 is a safety bound, not a page size: the grouping is per netuid and the
+ * network has ~129 subnets, so it is two orders of magnitude clear of the truth
+ * and exists only so a runaway grouping cannot stream unbounded rows into an
+ * isolate. It also costs nothing to raise the old default from 200: `LIMIT`
+ * applies AFTER the aggregation, so the bytes scanned are identical either way.
+ *
+ * If you ever put the caller's page size back in this SQL, you re-break the
+ * network rollup, the distribution, AND `subnet_count` in one edit.
+ */
+export const ROLLUP_POPULATION_CAP = 1000;
 
 /**
  * Every part of one rollup, or null to leave the caller's empty payload
@@ -191,7 +232,6 @@ export async function loadChainEventRollup(
   {
     windowDays,
     now = Date.now(),
-    limit = 200,
     // Injectable so both queries and every decline path are testable without a
     // lakehouse -- a branch that only runs against live infrastructure is a
     // branch nothing verifies.
@@ -199,7 +239,12 @@ export async function loadChainEventRollup(
   }: {
     windowDays: number;
     now?: number;
-    limit?: number;
+    /**
+     * NO `limit`. The page size is deliberately not an input here -- see
+     * ROLLUP_POPULATION_CAP for what taking one did to every window-wide number
+     * on these cards. Callers keep passing their limit to the BUILDER, which is
+     * where the page slice has always belonged.
+     */
     query?: R2SqlReader;
   },
 ): Promise<ChainEventRollup | null> {
@@ -218,10 +263,29 @@ export async function loadChainEventRollup(
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
   if (!Number.isSafeInteger(cutoff) || cutoff < 0) return null;
-  const cap =
-    Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
 
   const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
+  /**
+   * The two PER-SUBNET queries additionally require a subnet.
+   *
+   * `account_events.netuid` is nullable and WeightsSet uses it -- visible from
+   * outside on 2026-08-11 in /api/v1/chain/weights/setters, which publishes
+   * `{"hotkey": null, "netuid": null, "uid": 0, "weight_sets": 633}`. Grouped
+   * by netuid that becomes one row whose netuid is null, and every builder here
+   * drops it (correctly: it cannot be attributed to a subnet). It still cost a
+   * slot in the page and a unit in the subnet count, which is how
+   * `/chain/weights?limit=N` came to publish N-1 subnets and `?limit=1` an
+   * entirely empty card beside a `subnet_count` of 129.
+   *
+   * Filtered in SQL rather than left to the builder so the two numbers agree:
+   * `subnet_count` counts subnets the card COULD show. The network block below
+   * stays unfiltered -- "how many distinct participants" does not need to know
+   * which subnet each was on, and narrowing it would drop real participants.
+   *
+   * Same predicate `src/account-history-cold-tier.ts` already runs against this
+   * table in production, so the dialect support is proven rather than assumed.
+   */
+  const perSubnetWhere = `${where} AND netuid IS NOT NULL`;
 
   // What identifies ONE participant on the network block below. A uid is unique
   // only WITHIN a subnet -- uid 5 on twenty subnets is twenty neurons -- so the
@@ -255,9 +319,9 @@ export async function loadChainEventRollup(
       env,
       `SELECT netuid, sum(n) AS ${countField}, count(*) AS ${distinctField}` +
         ` FROM (SELECT netuid, ${distinctColumn}, count(*) AS n` +
-        ` FROM chain.account_events ${where}` +
+        ` FROM chain.account_events ${perSubnetWhere}` +
         ` GROUP BY netuid, ${distinctColumn})` +
-        ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${cap}`,
+        ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${ROLLUP_POPULATION_CAP}`,
     ),
     // Separate because a distinct count does not sum across subnets: one
     // participant active on five subnets is five rows above and one here.
@@ -293,8 +357,10 @@ export async function loadChainEventRollup(
     // before settling here:
     //
     //  * The first query cannot carry it: its outer level is `GROUP BY netuid
-    //    ... LIMIT cap`, so a window-wide aggregate cannot ride alongside a
-    //    capped page.
+    //    ... LIMIT`, so a window-wide aggregate cannot ride alongside a capped
+    //    page -- and while that cap is now a safety bound rather than the
+    //    caller's page size, a bound that can bind at all is one this number
+    //    must not depend on.
     //  * Widening the network block's grouping to (identity, netuid) and taking
     //    `count(DISTINCT identity)` / `count(DISTINCT netuid)` off the derived
     //    table LOOKS free -- same source scan -- and it executes at 7d for the
@@ -314,7 +380,8 @@ export async function loadChainEventRollup(
     query(
       env,
       `SELECT count(*) AS subnet_count` +
-        ` FROM (SELECT netuid FROM chain.account_events ${where} GROUP BY netuid)`,
+        ` FROM (SELECT netuid FROM chain.account_events ${perSubnetWhere}` +
+        ` GROUP BY netuid)`,
     ),
   ]);
 
