@@ -14,6 +14,8 @@
 // to drift apart -- which is the thing the hand-written SDL could not promise.
 import {
   DECLARED_ARGUMENT_TYPES,
+  DECLARED_MISSING_NETWORK,
+  DECLARED_UNPUBLISHED_ARGUMENTS,
   type DeclaredArgumentType,
 } from "./argument-divergences.ts";
 
@@ -117,6 +119,16 @@ export interface DeriveOptions {
   hasNetworkTwin: boolean;
   /** Is the field's return type fully typed (no `JSON` member)? */
   returnsProjectable: boolean;
+  /**
+   * Is this a NESTED field, whose parent already supplies the path parameters?
+   *
+   * `Subnet.surfaces` filters `/api/v1/subnets/{netuid}/surfaces` from inside a
+   * `Subnet`, so `netuid` is the parent's identity rather than an argument --
+   * which is exactly why the field is nested and not a root one. Only the
+   * query half derives. Default false: a root field publishes its path
+   * parameters as required arguments, because a GraphQL field has no path.
+   */
+  nested?: boolean;
 }
 
 /**
@@ -146,11 +158,19 @@ export interface DeriveOptions {
  */
 export function deriveQueryArguments(
   field: string,
-  route: string,
+  // NULL where no route serves the field. Its declared arguments still apply:
+  // `saved_query` mirrors nothing and publishes two of its own, and treating
+  // "no route" as "no arguments" is what dropped them from the generated
+  // schema entirely (#10772).
+  route: string | null,
   openapi: OpenApiParameters,
   options: DeriveOptions,
+  // Injectable so the GATE can derive without it and still see the difference
+  // the declaration covers. Filtered here, the argument simply never appears,
+  // and a check reading the filtered output would call every live entry stale.
+  missingNetwork: readonly string[] = DECLARED_MISSING_NETWORK,
 ): QueryArgument[] {
-  const published = (openapi.paths?.[route]?.get?.parameters ?? [])
+  const published = ((route && openapi.paths?.[route]?.get?.parameters) || [])
     .map((parameter) => deref(parameter, openapi))
     .filter((parameter): parameter is Parameter => Boolean(parameter?.name));
 
@@ -160,9 +180,19 @@ export function deriveQueryArguments(
     return entry?.type ?? derived;
   };
 
+  // A route parameter GraphQL deliberately does not publish -- a capability
+  // gap, declared with its reason. Read HERE and not only in the gate, so the
+  // generated schema omits it too: `buildSchema(SDL)` has no resolver map, so
+  // an argument the schema publishes is one a caller may send, and `health`
+  // would have accepted six filters its resolver never reads.
+  const unpublished = (name: string): boolean =>
+    `${field}.${name}` in DECLARED_UNPUBLISHED_ARGUMENTS;
+
   const args: QueryArgument[] = [];
   for (const parameter of published) {
     if (parameter.in !== "path") continue;
+    if (options.nested) continue;
+    if (unpublished(parameter.name)) continue;
     args.push({
       name: parameter.name,
       type: declaredType(parameter.name, `${scalarFor(parameter)}!`),
@@ -171,6 +201,7 @@ export function deriveQueryArguments(
   for (const parameter of published) {
     if (parameter.in !== "query") continue;
     if (parameter.name === "format") continue;
+    if (unpublished(parameter.name)) continue;
     if (parameter.name === "fields" && options.returnsProjectable) continue;
     const base = scalarFor(parameter);
     args.push({
@@ -181,7 +212,11 @@ export function deriveQueryArguments(
       ),
     });
   }
-  if (options.hasNetworkTwin && !args.some((a) => a.name === "network")) {
+  if (
+    options.hasNetworkTwin &&
+    !args.some((a) => a.name === "network") &&
+    !missingNetwork.includes(field)
+  ) {
     args.push({ name: "network", type: "Network" });
   }
 

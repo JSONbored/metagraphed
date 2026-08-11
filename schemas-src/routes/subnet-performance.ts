@@ -24,8 +24,11 @@ export const SubnetPerformanceArtifactSchema = z
     validator_count: z.int().min(0).optional(),
     active_count: z.int().min(0).optional(),
     captured_at: z.string().nullable().optional(),
-    incentive: ConcentrationMetricsSchema.describe(
-      "Incentive concentration across all neurons with positive incentive.",
+    // NULLABLE: the zeroed-card fallback writes `incentive: data.incentive ??
+    // null` (src/graphql.ts), because a subnet with no neuron carrying
+    // positive incentive has no concentration to report (#10772).
+    incentive: ConcentrationMetricsSchema.nullable().describe(
+      "Incentive concentration across all neurons with positive incentive; null when none carry any.",
     ),
     dividends: ConcentrationMetricsSchema.describe(
       "Dividends concentration across permitted validators only.",

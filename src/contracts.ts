@@ -6947,9 +6947,23 @@ export function getRouteForPathname(pathname: string): ApiRouteEntry | null {
  * whether the request is valid, and `plain` is what a rejection message is
  * derived from (the bound a caller violated is only legible in the published
  * form).
+ *
+ * `args` is the third form, and it is the one that was missing (#10772). The
+ * two above conflated a VOCABULARY affordance with an ENCODING one: `wire`
+ * carries the string->number coercion a query string needs AND the
+ * case-insensitive enum, which has nothing to do with encoding. A surface
+ * handed real JSON values -- GraphQL, MCP -- needs the second without the
+ * first, and had nowhere to get it, so the GraphQL dispatch parse validated
+ * against `plain` and came out STRICTER THAN THE ROUTE: `?status=Active`
+ * answers 200 with the filter applied, while the same value through GraphQL
+ * would have been rejected. `caseInsensitiveEnum`'s own comment already said
+ * the rule belongs "everywhere an enum is declared"; this is the layer that
+ * makes that true, with `wire` built on top of it so the rule has ONE
+ * definition rather than one per surface.
  */
 export interface RouteQuerySchemas {
   plain: z.ZodObject;
+  args: z.ZodObject;
   wire: z.ZodObject;
 }
 
@@ -7007,14 +7021,20 @@ export function routeQuerySchemasForPathname(
     if (!feed) return null;
     const cached = routeQuerySchemas.get(pathname);
     if (cached !== undefined) return cached;
-    const schemas = { plain: feed, wire: wireSchema(feed) };
+    const schemas = {
+      plain: feed,
+      args: argsSchema(feed),
+      wire: wireSchema(feed),
+    };
     routeQuerySchemas.set(pathname, schemas);
     return schemas;
   }
   const cached = routeQuerySchemas.get(entry.path);
   if (cached !== undefined) return cached;
   const plain = querySchemaForRoute(entry);
-  const schemas = plain ? { plain, wire: wireSchema(plain) } : null;
+  const schemas = plain
+    ? { plain, args: argsSchema(plain), wire: wireSchema(plain) }
+    : null;
   // Built once per route: the shape never changes at runtime, and this sits on
   // the request path for every GET.
   routeQuerySchemas.set(entry.path, schemas);
@@ -7052,7 +7072,7 @@ export function collectionQuerySchemas(
         : [],
     csvResponse,
   });
-  const schemas = { plain, wire: wireSchema(plain) };
+  const schemas = { plain, args: argsSchema(plain), wire: wireSchema(plain) };
   routeQuerySchemas.set(key, schemas);
   return schemas;
 }
@@ -7102,6 +7122,21 @@ function wireSchema(schema: z.ZodObject): z.ZodObject {
  * `z.toJSONSchema` per field is far more work and a second representation to
  * keep honest, and this runs for every parameter of every route.
  */
+/**
+ * The JSON kind a route parameter declares, in the vocabulary a published
+ * GraphQL type is compared against (#10772).
+ *
+ * Read off `def` like `declaredBaseType`, not by serializing the field:
+ * `publishedShape` says in its own doc that it is only ever computed on the
+ * rejection path, and this runs for every argument of every request. An enum
+ * crosses as a string, which is why it is folded to one here -- the question
+ * is whether the route's schema can HOLD the value, not what it names it.
+ */
+export function routeParameterKind(field: z.ZodType): string | undefined {
+  const declared = declaredBaseType(field);
+  return declared === "enum" ? "string" : declared;
+}
+
 function declaredBaseType(field: z.ZodType): string | undefined {
   // `def` is Zod v4's own public property, so this walks the schema through
   // its declared type rather than a hand-written shape. Only the WRAPPERS
@@ -7156,9 +7191,34 @@ function caseInsensitiveEnum(field: z.ZodType): z.ZodType {
   }, field);
 }
 
+/**
+ * The affordances that are about the VOCABULARY, not the encoding (#10772).
+ *
+ * Applied by every surface, because a value both understand should not depend
+ * on which one was asked. Read off `declaredBaseType(field)` on the RAW field:
+ * `z.preprocess` reports `def.type === "pipe"`, so wrapping first would blind
+ * the very detection that decides whether to wrap.
+ */
+function vocabularyField(field: z.ZodType): z.ZodType {
+  return declaredBaseType(field) === "enum"
+    ? caseInsensitiveEnum(field)
+    : field;
+}
+
+/** `plain` with the vocabulary affordances, for surfaces handed real JSON. */
+function argsSchema(schema: z.ZodObject): z.ZodObject {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [name, field] of Object.entries(schema.shape)) {
+    shape[name] = vocabularyField(field as z.ZodType);
+  }
+  return z.object(shape);
+}
+
 function wireField(field: z.ZodType): z.ZodType {
   const declared = declaredBaseType(field);
-  if (declared === "enum") return caseInsensitiveEnum(field);
+  // Delegated rather than repeated: the enum rule is surface-independent and
+  // has exactly one definition, which `args` reads too.
+  if (declared === "enum") return vocabularyField(field);
   switch (declared) {
     case "number":
     case "bigint":

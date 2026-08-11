@@ -43,6 +43,7 @@ import { JSONScalar, emitTypes } from "./emit.ts";
 import { GRAPHQL_ENUMS, enumFieldSites } from "./enums.ts";
 import {
   ALIASED_TYPE_NAMES,
+  FIELD_ARGUMENT_ROUTES,
   MIRROR_OVERLAYS,
   PROJECTED_TYPES,
   PUBLISHED_TYPE_NAMES,
@@ -237,6 +238,7 @@ export function buildGeneratedSchema(
           const republished = republish(field.type);
           const published = renamed.get(fieldName) ?? fieldName;
           fields[published] = {
+            ...fieldArguments(`${name}.${published}`),
             type: retype(
               `${name}.${published}`,
               (everywhere && !relaxed) ||
@@ -249,6 +251,7 @@ export function buildGeneratedSchema(
         }
         for (const [fieldName, added] of Object.entries(edits?.added ?? {})) {
           fields[fieldName] = {
+            ...fieldArguments(`${name}.${fieldName}`),
             type: fromSpelling(added) as GraphQLOutputType,
           };
         }
@@ -341,6 +344,30 @@ export function buildGeneratedSchema(
     return inner as GraphQLOutputType;
   }
 
+  /**
+   * A nested field's arguments, derived from the route it filters.
+   *
+   * The PATH parameters are dropped: the parent supplies them, which is what
+   * makes this a nested field rather than a root one.
+   */
+  function fieldArguments(site: string): {
+    args?: GraphQLFieldConfigArgumentMap;
+  } {
+    const route = FIELD_ARGUMENT_ROUTES[site];
+    if (!route) return {};
+    const args: GraphQLFieldConfigArgumentMap = {};
+    for (const argument of deriveQueryArguments(site, route, openapi, {
+      hasNetworkTwin: false,
+      returnsProjectable: true,
+      nested: true,
+    })) {
+      args[argument.name] = {
+        type: fromSpelling(argument.type) as GraphQLInputType,
+      };
+    }
+    return Object.keys(args).length ? { args } : {};
+  }
+
   /** An emitted field's type, with every object swapped for its published one. */
   function republish(type: GraphQLOutputType): GraphQLOutputType {
     if (type instanceof GraphQLNonNull) {
@@ -389,12 +416,11 @@ export function buildGeneratedSchema(
         Object.fromEntries(
           bindings.map((binding) => {
             const args: GraphQLFieldConfigArgumentMap = {};
-            if (
-              withArguments &&
-              binding.route &&
-              openapi.paths?.[binding.route]
-            ) {
-              const twin = binding.route.replace(
+            // No `binding.route` guard: a field that mirrors no route still
+            // publishes whatever it DECLARES, and skipping the derivation
+            // dropped `saved_query`'s two arguments from the schema (#10772).
+            if (withArguments) {
+              const twin = binding.route?.replace(
                 "/api/v1/",
                 "/api/v1/{network}/",
               );
@@ -404,7 +430,7 @@ export function buildGeneratedSchema(
                 binding.route,
                 openapi,
                 {
-                  hasNetworkTwin: Boolean(openapi.paths?.[twin]),
+                  hasNetworkTwin: Boolean(twin && openapi.paths?.[twin]),
                   returnsProjectable:
                     returns instanceof GraphQLObjectType &&
                     !Object.values(returns.getFields()).some((field) =>
@@ -431,7 +457,11 @@ export function buildGeneratedSchema(
   }
 
   const query = root("Query", QUERY_BINDINGS, true);
-  const subscription = root("Subscription", SUBSCRIPTION_BINDINGS, false);
+  // Arguments ON for the Subscription root too. It was built with them off,
+  // on the reasoning that a subscription mirrors no route -- true, and
+  // irrelevant: `chainEvents(tables:)` is DECLARED, and switching derivation
+  // off skipped the declarations as well as the derivation (#10772).
+  const subscription = root("Subscription", SUBSCRIPTION_BINDINGS, true);
   // The type set is what the ROOTS REACH, which is what a GraphQL schema's
   // type set means -- graphql-js collects it while building. Publishing every
   // registered component instead would advertise ~200 types no query can

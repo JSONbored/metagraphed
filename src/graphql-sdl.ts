@@ -24,7 +24,7 @@ export const SDL = /* GraphQL */ `
   }
 
   type Query {
-    "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order."
+    "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order. Mirrors GET /api/v1/subnets."
     subnets(
       netuid: Int
       network: Network
@@ -38,6 +38,8 @@ export const SDL = /* GraphQL */ `
       not_domain: String
       not_coverage_level: String
       not_curation_level: String
+      min_integration_readiness: Int
+      max_integration_readiness: Int
       min_readiness: Int
       max_readiness: Int
       min_surface_count: Int
@@ -61,7 +63,7 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: String
     ): SubnetList!
-    "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets."
+    "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}."
     subnet(netuid: Int!, network: Network): Subnet
     "Per-subnet neuron-registration activity over a 7d/30d window (distinct registrants, NeuronRegistered count, and registrations per registrant); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/registrations."
     subnet_registrations(netuid: Int!, window: String): SubnetRegistrations!
@@ -138,7 +140,7 @@ export const SDL = /* GraphQL */ `
       cursor: Int
       fields: String
     ): JSON
-    "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
+    "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default."
     saved_query(id: String!, params: JSON): JSON
     "The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures."
     fixtures(
@@ -395,7 +397,7 @@ export const SDL = /* GraphQL */ `
     subnet_overview(netuid: Int!): JSON
     "One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile."
     subnet_profile(netuid: Int!): JSON
-    "Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers)."
+    "Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). Mirrors GET /api/v1/providers."
     providers(
       id: String
       kind: String
@@ -406,7 +408,7 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: String
     ): ProviderList!
-    "One provider with its subnets."
+    "One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}."
     provider(id: String!): Provider
     "One adapter-backed public metrics snapshot by slug (e.g. 'gittensor', 'allways', 'sn-64'): the captured adapter snapshot, extension metadata, and netuid linkage. An invalid slug is a BAD_USER_INPUT error; a missing slug resolves to null (schema-stable, never a GraphQL error). Mirrors GET /api/v1/adapters/{slug}."
     adapter(slug: String!): Adapter
@@ -704,9 +706,9 @@ export const SDL = /* GraphQL */ `
       limit: Int
       cursor: Int
     ): HealthHistory!
-    "Global operational health rollup with per-subnet summaries."
+    "Global operational health rollup with per-subnet summaries. Mirrors GET /api/v1/health."
     health: GlobalHealth
-    "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are)."
+    "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). Each board is a FIELD here, so the route's board selector is the selection set's job. Mirrors GET /api/v1/registry/leaderboards."
     opportunity_boards(limit: Int): OpportunityBoards!
     "Cross-subnet comparison: registry structure, live economics, and live health placed side by side for the requested netuids, in requested order. Mirrors GET /api/v1/compare."
     compare(netuids: [Int!]!, dimensions: [String!]): Compare!
@@ -758,7 +760,7 @@ export const SDL = /* GraphQL */ `
     ): ChainEventsFeed!
     "Chain-activity aggregate over the most recent N blocks the decode lane has published (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the chain_events lakehouse table: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Pass network to aggregate testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
     chain_events_stats(blocks: Int, network: Network): ChainEventsStats!
-    "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
+    "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{hash}."
     extrinsic(ref: String!): ExtrinsicDetail
     "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
     governance_config_changes(
@@ -804,7 +806,7 @@ export const SDL = /* GraphQL */ `
       offset: Int
       network: Network
     ): BlockEvents!
-    "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{block_number}/chain-events."
+    "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{ref}/chain-events."
     block_chain_events(block_number: Int!, network: Network): BlockChainEvents!
     "Block-production summary over the recent-block window -- counts, inter-block timing, throughput, and author-concentration. Every aggregate is null (never a GraphQL error) when the retired-D1 store is cold. Mirrors GET /api/v1/blocks/summary."
     blocks_summary(network: Network): BlocksSummary!

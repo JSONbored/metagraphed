@@ -62,7 +62,24 @@ import {
   ALIASED_TYPE_NAMES,
   PROJECTED_TYPES,
   PUBLISHED_TYPE_NAMES,
+  QUERY_BINDINGS,
 } from "../schemas-src/graphql/published-names.ts";
+
+/**
+ * Query fields whose RESPONSE is deliberately not their route's component.
+ *
+ * `route` names the request; `reshapes` is the response-side fact (#10772).
+ * Seeding a reshaping field pairs two types the registry has already said are
+ * different -- `subnet` reads /api/v1/subnets/{netuid} and returns the index
+ * entry, so pairing `Subnet` with `SubnetDetailArtifact` reports that
+ * component's ENVELOPE (contract_version, generated_at, notes, schema_version)
+ * as fields the SDL forgot.
+ */
+const RESHAPING_FIELDS = new Set(
+  QUERY_BINDINGS.filter((binding) => binding.reshapes).map(
+    (binding) => binding.field,
+  ),
+);
 
 const SDL_PATH = "src/graphql-sdl.ts";
 const OPENAPI_PATH = "public/metagraph/openapi.json";
@@ -363,6 +380,7 @@ export function checkComponentParity(
       field.description?.value ?? "",
     );
     if (!mirrors) continue;
+    if (RESHAPING_FIELDS.has(field.name.value)) continue;
     const component = dataComponent(mirrors[1].replace(/\.$/, ""));
     if (component) queue.push([sdlTypeName(field.type), component]);
   }
@@ -410,12 +428,14 @@ export function checkComponentParity(
       const addedPagination = [...sdlFields].filter(
         (f) => PAGINATION_FIELDS.has(f) && !genNames.includes(f),
       );
+      const declaredView = projectedTypesMap[sdlName];
+      const declaredProjectionOfThis =
+        declaredView?.component === componentName;
       if (addedPagination.length >= 2) {
         // A paginated view, not a mirror -- but skipping it wholesale is what
         // hid 158 fields (#10404). It has to be DECLARED, and the projection
         // pass below applies every rule a projection gets.
-        const declaredView = projectedTypesMap[sdlName];
-        if (declaredView?.component === componentName) {
+        if (declaredProjectionOfThis) {
           projections.push(`${sdlName} <- ${componentName}`);
           continue;
         }
@@ -427,6 +447,18 @@ export function checkComponentParity(
         );
         continue;
       }
+      // A declared projection that is NOT a paginated view (#10772). The
+      // pagination heuristic was the only way in, so a type that simply picks a
+      // subset -- `Endpoint` omits sixteen of `EndpointResource`'s fields on
+      // purpose -- fell through to the mirror rule, and every declared drop
+      // came back as a violation. It never surfaced before because no Query
+      // field named the route that reaches it: the six `route: null` bindings
+      // kept `Endpoint` out of this walk entirely.
+      //
+      // Not counted as a pagination view and not skipped from checking: the
+      // declared-projection pass below reads `projectedTypesMap` directly and
+      // applies every rule a projection gets, this component included.
+      if (declaredProjectionOfThis) continue;
       comparedTypes += 1;
       // The SDL field nodes, for the two things a name comparison cannot see.
       const sdlNodes = new Map(

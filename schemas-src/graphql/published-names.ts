@@ -40,6 +40,16 @@ export const ALIASED_TYPE_NAMES: Readonly<Record<string, string>> = {
 
 /** Component id -> the name the published schema gives it. */
 export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
+  // The seven a `route: null` binding kept out of this check until #10772:
+  // the field named no route, so its response component was never paired
+  // with the type the SDL publishes for it. Naming the route surfaced all
+  // seven at once -- they are not new types, they are the ones that were
+  // never compared.
+  BlockChainEventsArtifact: "BlockChainEvents",
+  ExtrinsicDetailArtifact: "ExtrinsicDetail",
+  HealthSummaryArtifact: "GlobalHealth",
+  ProvidersArtifact: "ProviderList",
+  SubnetsArtifact: "SubnetList",
   AccountPortfolioArtifactStakeConcentration: "ConcentrationMetrics",
   BlocksSummaryArtifactAuthorConcentration: "ConcentrationMetrics",
   ChainConcentrationArtifactEmission: "ConcentrationMetrics",
@@ -568,14 +578,49 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
 /**
  * Every Query field, the route it mirrors, and the type it returns.
  *
- * `route: null` means the field reads a published artifact directly rather
- * than mirroring an `/api/v1` route with a component -- the eight static
- * index/detail readers. They still return a declared type; what they lack is a
- * route whose OpenAPI response names the component.
+ * `route` NAMES THE REQUEST, and that is the whole of what it means. It said
+ * two things at once until #10214 reached the Query root: six fields carried
+ * `route: null` on the grounds that they "read a published artifact directly
+ * rather than mirroring an `/api/v1` route with a component" -- and every one
+ * of the six had a route, with parameters, whose response named a component:
+ *
+ *   subnets              /api/v1/subnets                30 parameters
+ *   subnet               /api/v1/subnets/{netuid}        1
+ *   providers            /api/v1/providers               9
+ *   provider             /api/v1/providers/{slug}        1
+ *   health               /api/v1/health
+ *   opportunity_boards   /api/v1/registry/leaderboards   2
+ *
+ * What the null cost was not documentation. `deriveQueryArguments` reads the
+ * route's parameters, so a null route derives NO arguments -- and
+ * `buildSchema(SDL)` has no resolver hook that could add one back. The
+ * generated `subnet` field lost `netuid: Int!` entirely; 75 of the resolver
+ * suite's queries came back 400 against the generated schema, and every gate
+ * that could have caught it SKIPPED these fields for the same reason the
+ * generator did. `validate:graphql-query-arguments` printed "9 skipped" and
+ * passed, which is what a gate that skips always does.
+ *
+ * The response-side fact is real, and it is now `reshapes` -- separate,
+ * because it is a different claim about a different half of the exchange.
  */
 export interface QueryBinding {
   field: string;
+  /**
+   * The route whose published PARAMETERS this field's arguments derive from.
+   *
+   * Null only where no route serves the field at all -- a Subscription, or a
+   * Query the OpenAPI document does not publish.
+   */
   route: string | null;
+  /**
+   * Why the route's RESPONSE does not describe this field's return type.
+   *
+   * Present on the three where the resolver re-keys or re-scopes what the
+   * route returns, so response-side gates keep pairing them with the component
+   * the type is actually declared over rather than the route's. Absent means
+   * the two agree, which is the normal case and the checked one.
+   */
+  reshapes?: string;
   /** The published return type, nullability included -- `SubnetList!`. */
   returns: string;
   /**
@@ -601,17 +646,21 @@ export interface QueryBinding {
 export const QUERY_BINDINGS: readonly QueryBinding[] = [
   {
     field: "subnets",
-    route: null,
+    route: "/api/v1/subnets",
     returns: "SubnetList!",
     description:
-      "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order.",
+      "Paginated active-subnet index. Reads the same static /metagraph/subnets.json artifact as the list_subnets MCP tool and supports its full query surface: network scoping, categorical inclusion + negation filters, min_/max_ range bounds, and sort/order. Mirrors GET /api/v1/subnets.",
   },
   {
     field: "subnet",
-    route: null,
+    route: "/api/v1/subnets/{netuid}",
+    // The route serves the fuller `SubnetDetailArtifact`; this field returns
+    // the registry card the index publishes. The parameter is the same one.
+    reshapes:
+      "returns the registry card (SubnetIndexEntry), where the route's response is the fuller SubnetDetailArtifact",
     returns: "Subnet",
     description:
-      "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets.",
+      "One subnet with its health, surfaces, endpoints, and economics. network scopes which static artifact the registry-metric backfill reads (finney default, test for testnet), mirroring list_subnets. Mirrors GET /api/v1/subnets/{netuid}.",
   },
   {
     field: "subnet_registrations",
@@ -727,10 +776,17 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   },
   {
     field: "saved_query",
-    route: "/api/v1/queries/{id}",
+    // No such route, and there never has been: `/api/v1/queries/{id}` is
+    // absent from API_ROUTES and answers 404 live. The binding named a path
+    // the document does not describe, which `deriveQueryArguments` and every
+    // gate treated exactly like `route: null` -- silently, because a route
+    // that cannot be found and a route that is not claimed reached the same
+    // skip. Null states the fact instead of implying a mirror that does not
+    // exist.
+    route: null,
     returns: "JSON",
     description:
-      "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}.",
+      "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default.",
   },
   {
     field: "fixtures",
@@ -1119,16 +1175,19 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   },
   {
     field: "providers",
-    route: null,
+    route: "/api/v1/providers",
     returns: "ProviderList!",
     description:
-      "Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers).",
+      "Paginated provider/source registry -- filter by id/kind/authority, sort with sort/order, project with fields, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Cursor remains the pre-existing opaque string id-keyset (not REST's integer offset), and a cold/absent artifact still resolves to an empty list. Filter/sort reuse loadProvidersList (same logic as GET /api/v1/providers / list_providers). Mirrors GET /api/v1/providers.",
   },
   {
     field: "provider",
-    route: null,
+    route: "/api/v1/providers/{slug}",
+    reshapes:
+      "returns the provider row itself, where the route's response is the ProviderArtifact envelope around it",
     returns: "Provider",
-    description: "One provider with its subnets.",
+    description:
+      "One provider with its subnets. The id argument is the route's slug path parameter under the name the rest of this surface uses. Mirrors GET /api/v1/providers/{slug}.",
   },
   {
     field: "adapter",
@@ -1328,16 +1387,22 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   },
   {
     field: "health",
-    route: null,
+    route: "/api/v1/health",
     returns: "GlobalHealth",
-    description: "Global operational health rollup with per-subnet summaries.",
+    description:
+      "Global operational health rollup with per-subnet summaries. Mirrors GET /api/v1/health.",
   },
   {
     field: "opportunity_boards",
-    route: null,
+    route: "/api/v1/registry/leaderboards",
+    // The artifact keys its boards by NAME ("open-slots"), which are not valid
+    // GraphQL field names, so the resolver re-keys the six economic boards
+    // into fields -- which is what the `OpportunityBoards` component models.
+    reshapes:
+      "re-keys the leaderboards record into six named board fields, which RegistryLeaderboardsArtifact does not describe",
     returns: "OpportunityBoards!",
     description:
-      "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are).",
+      "Cross-subnet economic opportunity boards (where to register, what it costs, where the emission and validator headroom are). Each board is a FIELD here, so the route's board selector is the selection set's job. Mirrors GET /api/v1/registry/leaderboards.",
   },
   {
     field: "compare",
@@ -1383,10 +1448,14 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   },
   {
     field: "extrinsic",
-    route: "/api/v1/extrinsics/{ref}",
+    // `{hash}` is the published path parameter; the SDL takes `ref`, which
+    // accepts a hash OR a composite block_number-extrinsic_index (the
+    // description says so). The binding named `{ref}`, a path the document
+    // does not contain, so nothing derived and nothing complained.
+    route: "/api/v1/extrinsics/{hash}",
     returns: "ExtrinsicDetail",
     description:
-      "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}.",
+      "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{hash}.",
   },
   {
     field: "governance_config_changes",
@@ -1425,10 +1494,13 @@ export const QUERY_BINDINGS: readonly QueryBinding[] = [
   },
   {
     field: "block_chain_events",
-    route: "/api/v1/blocks/{block_number}/chain-events",
+    // `{ref}` is the published path parameter; this field takes a numeric
+    // `block_number`, which its own description states. Same silent skip as
+    // `extrinsic`: the binding named a path the document does not contain.
+    route: "/api/v1/blocks/{ref}/chain-events",
     returns: "BlockChainEvents!",
     description:
-      "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
+      "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{ref}/chain-events.",
   },
   {
     field: "blocks_summary",
@@ -2737,6 +2809,27 @@ export const MIRROR_OVERLAYS: Readonly<Record<string, MirrorOverlay>> = {
   // is a record keyed by subnet slug, which is the same reason
   // `ChangelogArtifactSummary.coverage_delta` is JSON where it is nested.
   Changelog: { added: { coverage_delta: "JSON" } },
+};
+
+/**
+ * NESTED fields that take arguments, and the route whose query parameters are
+ * those arguments (#10772).
+ *
+ * Only the two roots had arguments derived, on the assumption that only a root
+ * field takes any. Two nested fields do -- `Subnet.surfaces` and
+ * `Subnet.endpoints` are the per-subnet filtered lists -- and the generated
+ * schema published them bare, so `subnet { surfaces(kind: "api") }` stopped
+ * validating. Nothing caught it: `validate:graphql-query-arguments` walks
+ * `QUERY_BINDINGS`, which is the ROOT, so the whole nested class sat outside
+ * every argument check there is.
+ *
+ * The route's PATH parameters are deliberately not republished here -- the
+ * parent supplies `netuid`, which is exactly why these are nested fields
+ * rather than root ones. Only the query half derives.
+ */
+export const FIELD_ARGUMENT_ROUTES: Readonly<Record<string, string>> = {
+  "Subnet.surfaces": "/api/v1/subnets/{netuid}/surfaces",
+  "Subnet.endpoints": "/api/v1/subnets/{netuid}/endpoints",
 };
 
 /**

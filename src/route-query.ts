@@ -34,10 +34,12 @@
 import { z } from "zod";
 import {
   collectionQuerySchemas,
+  routeParameterKind,
   routeQuerySchemasForPathname,
   type RouteQuerySchemas,
 } from "./contracts.ts";
 import {
+  declaredArgumentKind,
   isDeclaredDivergence,
   toRouteShape,
   type RouteShape,
@@ -173,7 +175,7 @@ export function validateRouteArgs(
       supplied[name] = value;
     }
   }
-  const parsed = schemas.plain.safeParse(supplied);
+  const parsed = schemas.args.safeParse(supplied);
   if (parsed.success) return null;
   const issue = parsed.error.issues[0];
   const parameter = String(issue?.path[0] ?? "");
@@ -208,7 +210,7 @@ export function parseRouteArgs<T = Record<string, unknown>>(
       supplied[name] = value;
     }
   }
-  const parsed = schemas.plain.safeParse(supplied);
+  const parsed = schemas.args.safeParse(supplied);
   if (!parsed.success) return null;
   // `.meta({ default })` is published, not applied by parse -- the same reason
   // `pageLimit` reads it back rather than trusting the parsed object.
@@ -393,6 +395,49 @@ export interface RouteArgs<T> {
   clamped: ReadonlySet<string>;
 }
 
+/**
+ * Does GraphQL own this argument's spelling, rather than the route?
+ *
+ * Two ways it can, and BOTH have to be read here (#10772). The first is a
+ * declared PRESENCE (`DECLARED_ARGUMENTS`), which is all this asked before.
+ * The second is a declared TYPE (`DECLARED_ARGUMENT_TYPES`), and missing it is
+ * what regressed `providers(cursor: "<opaque string>")`: the route's `cursor`
+ * is an integer offset, GraphQL's is an opaque keyset, and the route's schema
+ * answered "cursor must be a non-negative integer" for a value it was never
+ * given.
+ *
+ * The second is DERIVED, not listed. A declared type only takes the argument
+ * away from the route when the route's schema cannot hold the value at all --
+ * so `Int` against a `z.number()` bound stays the route's, keeping its
+ * clamping and its published default, while `String` against that same bound
+ * does not. Skipping every declared type instead would have silently stripped
+ * the bounds off fourteen arguments to fix two.
+ *
+ * An argument the route does not declare is GraphQL's by definition: there is
+ * no schema to hold it (`addedByGraphql`).
+ *
+ * A shape the parse already CONVERTS is not a divergence either, and reading
+ * the kinds without asking cost two of these their validation: a GraphQL list
+ * against the route's comma-joined string, and a Boolean against its
+ * `["true","false"]`, are different kinds that `toRouteShape` turns into the
+ * route's spelling a line later -- so `compare_validators(hotkeys: [])` stopped
+ * being rejected. The conversion IS the codec; only a value nothing converts
+ * belongs to GraphQL.
+ */
+function graphqlOwnsSpelling(
+  field: string,
+  name: string,
+  declared: z.ZodType | undefined,
+  shape: RouteShape,
+): boolean {
+  if (isDeclaredDivergence(field, name)) return true;
+  const published = declaredArgumentKind(field, name);
+  if (published === null) return false;
+  if (!declared) return true;
+  if (shape !== "as-is") return false;
+  return published !== routeParameterKind(declared);
+}
+
 export function resolveRouteArgs<T = Record<string, unknown>>(
   routePath: string,
   field: string,
@@ -403,13 +448,16 @@ export function resolveRouteArgs<T = Record<string, unknown>>(
   const clamped = new Set<string>();
   for (const [name, value] of Object.entries(args)) {
     if (value === null || value === undefined) continue;
-    if (isDeclaredDivergence(field, name)) continue;
     const declared = schemas?.plain.shape[name] as z.ZodType | undefined;
+    // Resolved once and used twice: it decides whether the route can hold this
+    // spelling at all, and then how to write it in the route's terms.
+    const shape = routeShapeOf(declared);
+    if (graphqlOwnsSpelling(field, name, declared, shape)) continue;
     if (declared && isServingBound(declared)) {
       owned[name] = clampToPublished(declared, value);
       clamped.add(name);
     } else {
-      owned[name] = toRouteShape(value, routeShapeOf(declared));
+      owned[name] = toRouteShape(value, shape);
     }
   }
   const error = validateRouteArgs(routePath, owned);

@@ -11,9 +11,15 @@ export const SubnetAlphaVolumeArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int().min(0),
+    // NULLABLE: the cold-store fallback builds a zeroed card and the resolver
+    // writes `window: data.window ?? null` for it (src/graphql.ts). The label
+    // describes a window there was no data to cover (#10772).
     window: z
       .enum(["24h"])
-      .describe("The rolling window label this card covers (24h)."),
+      .nullable()
+      .describe(
+        "The rolling window label this card covers (24h); null on a zeroed cold-store card.",
+      ),
     buy_volume_alpha: z.number(),
     sell_volume_alpha: z.number(),
     total_volume_alpha: z.number(),
