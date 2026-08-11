@@ -14741,8 +14741,15 @@
                   ]
                 },
                 "identity_hash": {
-                  "description": "Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs.",
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. Null on a row with no computed hash."
                 },
                 "image": {
                   "anyOf": [

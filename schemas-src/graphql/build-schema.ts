@@ -225,13 +225,22 @@ export function buildGeneratedSchema(
           // nulled parent. So the union publishes it, nullable -- which is
           // exactly what the hand-written SDL already did by hand for
           // `featured`, `uid_count` and `stake_dominance`.
+          // Two ways a promise the component makes cannot be kept here. A
+          // field only SOME of the producers carry: ask the other one and it
+          // answers null, which graphql-js turns into a nulled parent -- what
+          // the SDL already did by hand for `featured`, `uid_count` and
+          // `stake_dominance`. And a field a PROJECTION declares nullable,
+          // because the resolver building the view fills fewer fields than the
+          // component's own producer does (`OpportunityEntry`, measured).
           const everywhere = carriers.length === contributors.length;
+          const relaxed = projection?.nullable?.includes(fieldName) ?? false;
           const republished = republish(field.type);
           const published = renamed.get(fieldName) ?? fieldName;
           fields[published] = {
             type: retype(
               `${name}.${published}`,
-              everywhere || !(republished instanceof GraphQLNonNull)
+              (everywhere && !relaxed) ||
+                !(republished instanceof GraphQLNonNull)
                 ? republished
                 : (republished.ofType as GraphQLOutputType),
             ),

@@ -50,10 +50,20 @@ const AccountIdentityHistoryEntrySchema = z
     discord: z.string().max(200).nullable().optional(),
     description: z.string().nullable().optional(),
     additional: z.string().nullable().optional(),
+    // NULLABLE, and for the reason #8055 already wrote down on the subnet
+    // sibling: `formatIdentityHistoryEntry` builds this as
+    // `row.identity_hash ?? null` (src/account-identity-history.ts), so a row
+    // with no computed hash yields null. `SubnetIdentityHistoryEntry` was
+    // corrected then; this one was not, and nothing noticed because the key is
+    // always PRESENT -- required and nullable are orthogonal, and only the
+    // first was true. Found by generating the GraphQL type from this schema:
+    // the generator promised non-null over a producer that can answer null,
+    // which graphql-js turns into a nulled parent plus an error (#10214).
     identity_hash: z
       .string()
+      .nullable()
       .describe(
-        "Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs.",
+        "Stable hash of this entry's tracked identity fields -- unchanged across entries where nothing actually differs. Null on a row with no computed hash.",
       ),
   })
   .strict()
