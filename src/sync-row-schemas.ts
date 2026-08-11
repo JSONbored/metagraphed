@@ -257,8 +257,7 @@ export function subnetIdentitySyncRowSchema({
         if (
           key === "netuid" ||
           key === "block_number" ||
-          key === "observed_at" ||
-          key === "captured_at"
+          key === "observed_at"
         ) {
           continue;
         }

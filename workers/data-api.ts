@@ -1940,7 +1940,7 @@ const SUBNET_IDENTITY_SYNC_MAX_NETUID = 65_535;
 const SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES = 4_096;
 
 const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
-  columns: [...SUBNET_IDENTITY_HISTORY_COLUMNS, "captured_at"],
+  columns: SUBNET_IDENTITY_HISTORY_COLUMNS,
   minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
   maxNetuid: SUBNET_IDENTITY_SYNC_MAX_NETUID,
   maxStringBytes: SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES,
@@ -2023,7 +2023,9 @@ async function handleSubnetIdentitySync(
       snapshot[field] = row[field] ?? null;
     }
     const hash = await subnetIdentityHash(snapshot);
-    const observedAt = row.observed_at ?? row.captured_at ?? null;
+    // `observed_at` is REQUIRED by the schema above, so there is no fallback
+    // to reach: a row without it never gets here.
+    const observedAt = row.observed_at;
     const base: Row = {
       netuid: row.netuid,
       block_number: row.block_number,

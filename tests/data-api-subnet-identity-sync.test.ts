@@ -230,3 +230,23 @@ test("a write failure is the request's failure, not a silent success", async () 
   const res = await call(req([row()]));
   assert.equal(res.status, 502);
 });
+
+test("an oversized body is a 413 before any parsing", async () => {
+  // Checked on the RAW text, so a 2 MB body is refused without being parsed
+  // into objects first -- the producer buffers a whole pass into one request,
+  // and a Worker that parses before measuring is one growth spurt from an OOM.
+  const huge = "x".repeat(2_000_001);
+  const res = await call(req(`{"rows":[],"pad":"${huge}"}`));
+  assert.equal(res.status, 413);
+});
+
+test("a lane absent from NEON_DUAL_WRITE_LANES fails rather than silently no-ops", async () => {
+  // mirrorFamilyToNeon early-returns `{ attempted: false }` for a lane the flag
+  // does not name. Since Neon is this family's only store, "not attempted" is
+  // a write that did not happen -- reporting ok would be indistinguishable from
+  // a successful pass, which is exactly how this table lost its writer for
+  // weeks without anyone noticing.
+  const res = await call(req([row()]), env({ NEON_DUAL_WRITE_LANES: "" }));
+  assert.equal(res.status, 502);
+  assert.equal(await count("subnet_identity"), 0);
+});
