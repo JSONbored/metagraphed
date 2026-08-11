@@ -7196,6 +7196,9 @@ export async function handleSubnetOwnerCut(
   request: Request,
   env: Env,
   netuid: number,
+  // Injected the same way /network/parameters' own siblings inject it, so the
+  // share can be driven in a test without a KV binding or an RPC.
+  deps: { loadParams?: typeof loadNetworkParameters } = {},
 ) {
   if (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535) {
     return errorResponse(
@@ -7205,14 +7208,16 @@ export async function handleSubnetOwnerCut(
     );
   }
   const { row } = await resolveSubnetEconomicsRow(env, netuid);
-  const parameters = await readArtifact(
-    env,
-    "/metagraph/network/parameters.json",
-  );
-  const ownerCut = parameters.ok
-    ? ((parameters.data as Record<string, unknown> | undefined)
-        ?.subnet_owner_cut_effective as number | null | undefined)
-    : null;
+  // THE LIVE READ, NOT THE ARTIFACT. `/metagraph/network/parameters.json`
+  // publishes no owner-cut field at all -- verified in production, where it
+  // carries no key matching /owner/ -- so reading it here returned undefined
+  // for all 129 subnets and every accrual served `owner cut share not read`.
+  // That is the #10566 shape exactly: a correct-looking decline standing in
+  // for a read that never happened. `/api/v1/network/parameters` computes the
+  // effective share (0.17999...) and is KV-cached, so this costs a cache hit
+  // rather than an RPC per request.
+  const parameters = await (deps.loadParams ?? loadNetworkParameters)(env);
+  const ownerCut = parameters?.subnet_owner_cut_effective;
   const view = loadSubnetOwnerCut({
     netuid,
     window_days: 30,

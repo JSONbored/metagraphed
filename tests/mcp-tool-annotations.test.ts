@@ -76,7 +76,14 @@ describe("MCP tool annotations", () => {
     // 22 since #9968 added list_crowdloans/get_crowdloan, which read the
     // Crowdloan pallet over live RPC -- genuinely outside our closed world,
     // the same reason get_subnet_lease carries the annotation.
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 22);
+    //
+    // 23 since get_subnet_owner_cut started reading the effective
+    // SubnetOwnerCut live. It used to read a served artifact that publishes no
+    // owner-cut field at all, so it reported "share not read" for all 129
+    // subnets -- a closed-world annotation that was only true because the read
+    // was broken. Widening the set here is the annotation catching up with a
+    // tool that now genuinely leaves our infrastructure.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 23);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,

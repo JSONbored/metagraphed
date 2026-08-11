@@ -2145,6 +2145,11 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   get_account_snapshot: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_evm_address_mapping: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_network_parameters: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  // #10514-adjacent: reads the effective SubnetOwnerCut live, because "unset on
+  // chain, so use the runtime default" and "the read failed" are different
+  // answers and only a real read tells them apart. That is outbound I/O to a
+  // node we do not operate, so the annotation says so.
+  get_subnet_owner_cut: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_randomness_status: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_burn: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_lease: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
@@ -9016,14 +9021,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       const economics = await mcpEconomicsRow(ctx, netuid);
-      const parameters = (await ctx.readArtifact!(
-        ctx.env,
-        "/metagraph/network/parameters.json",
-      )) as { ok?: boolean; data?: Record<string, unknown> } | null;
-      const ownerCut = parameters?.ok
-        ? (parameters.data?.subnet_owner_cut_effective as
-            number | null | undefined)
-        : null;
+      // The LIVE parameters read, not the served artifact: that artifact
+      // publishes no owner-cut field, so reading it returned undefined for
+      // every subnet and this tool reported "owner cut share not read" for all
+      // 129 (#10566's shape -- a decline standing in for a read that never
+      // happened). loadNetworkParameters is KV-cached.
+      // Injected when the caller supplies one, so a test drives the share
+      // without an outbound RPC -- the suite has no global fetch stub, and a
+      // live read here would put a public Bittensor node in the test path.
+      const loadParams =
+        (ctx as { loadNetworkParameters?: typeof loadNetworkParameters })
+          .loadNetworkParameters ?? loadNetworkParameters;
+      const parameters = await loadParams(ctx.env as never);
+      const ownerCut = parameters?.subnet_owner_cut_effective;
       const view = loadSubnetOwnerCut({
         netuid,
         window_days: 30,
