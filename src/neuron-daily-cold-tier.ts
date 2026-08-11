@@ -338,11 +338,13 @@ export function mergeHistoryDays<T extends { snapshot_date?: unknown }>(
     const day = row.snapshot_date;
     if (typeof day === "string" && day !== "") byDay.set(day, row);
   }
-  const merged = [...byDay.entries()]
-    .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
-    .map(([, row]) => row);
-  if (merged.length === 0) return [];
-  const newest = [...byDay.keys()].sort().at(-1)!;
+  // Sorted by KEY through the Map, so there is no equal case to handle: keys
+  // are unique by construction. A three-way comparator would carry a branch
+  // nothing can reach.
+  const dayKeys = [...byDay.keys()].sort();
+  if (dayKeys.length === 0) return [];
+  const merged = dayKeys.reverse().map((d) => byDay.get(d)!);
+  const newest = dayKeys[0]!;
   const floor = days == null ? null : shift(newest, -days);
   const windowed =
     floor == null

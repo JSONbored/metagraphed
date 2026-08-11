@@ -3505,7 +3505,10 @@ async function loadSubnetHistory(
   // for `all` must not get a shorter history than the same question over HTTP.
   return overlaySubnetHistoryColdTier(ctx.env, hot, netuid, {
     label: label as string,
-    days: (days ?? null) as number | null,
+    // No `?? null` guard: parseHistoryWindow always supplies `days`, null for
+    // the unbounded `all` window. A fallback here would be a branch nothing
+    // can reach.
+    days: days as number | null,
   });
 }
 
@@ -3557,7 +3560,10 @@ async function loadNeuronHistory(
   // See loadSubnetHistory: same seam, same reason to wire it on every surface.
   return overlayNeuronHistoryColdTier(ctx.env, hot, netuid, uid, {
     label: label as string,
-    days: (days ?? null) as number | null,
+    // No `?? null` guard: parseHistoryWindow always supplies `days`, null for
+    // the unbounded `all` window. A fallback here would be a branch nothing
+    // can reach.
+    days: days as number | null,
   });
 }
 

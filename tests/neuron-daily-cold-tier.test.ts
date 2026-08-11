@@ -24,7 +24,7 @@ import {
   buildNeuronHistory,
   buildSubnetHistory,
 } from "../src/neuron-history.ts";
-import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { R2_SQL_TOKEN_ENV, safeIsoDate } from "../src/r2-sql.ts";
 import { shiftIsoDate } from "../src/iso-date-window.ts";
 
 const ENV = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
@@ -444,5 +444,216 @@ describe("the overlay, where the tiers converge", () => {
     );
     assert.equal(out, hot);
     assert.deepEqual(r.seen, []);
+  });
+});
+
+describe("the edges the branch counter cares about", () => {
+  test("a null seam bounds nothing above, and a null start nothing below", () => {
+    assert.deepEqual(coldDateRange(null, null), { lo: null, hi: null });
+    assert.deepEqual(coldDateRange("2026-06-01", null), {
+      lo: "2026-06-01",
+      hi: null,
+    });
+  });
+
+  test("an unbounded range emits no date predicate at all", async () => {
+    const r = reader([]);
+    await loadSubnetHistoryColdTier(ENV, 7, null, null, 400, r.deps);
+    assert.doesNotMatch(r.seen[0]!, /snapshot_date [<>]/);
+  });
+
+  test("a malformed SEAM is refused, not just a malformed start", () => {
+    assert.equal(coldDateRange(null, "not-a-day"), null);
+  });
+
+  test("a bad uid never reaches the engine", async () => {
+    const r = reader([]);
+    assert.equal(
+      await loadNeuronHistoryColdTier(ENV, 5, -1, null, null, 400, r.deps),
+      null,
+    );
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("the neuron leg refuses a malformed day too", async () => {
+    const r = reader([]);
+    assert.equal(
+      await loadNeuronHistoryColdTier(
+        ENV,
+        5,
+        12,
+        "2026-02-31",
+        null,
+        400,
+        r.deps,
+      ),
+      null,
+    );
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("a declining engine on the NEURON leg is null as well", async () => {
+    assert.equal(
+      await loadNeuronHistoryColdTier(
+        ENV,
+        5,
+        12,
+        null,
+        null,
+        400,
+        reader(null).deps,
+      ),
+      null,
+    );
+  });
+
+  test("aggregate cells that are blank or unparseable become null, not NaN", async () => {
+    const r = reader([
+      {
+        snapshot_date: "2026-07-01",
+        neuron_count: "",
+        validator_count: "nope",
+        total_stake_tao: "1.5",
+        total_emission_tao: null,
+      },
+    ]);
+    const rows = await loadSubnetHistoryColdTier(
+      ENV,
+      1,
+      null,
+      null,
+      400,
+      r.deps,
+    );
+    assert.deepEqual(rows, [
+      {
+        snapshot_date: "2026-07-01",
+        neuron_count: null,
+        validator_count: null,
+        // A numeric STRING is still a number -- some engines return them.
+        total_stake_tao: 1.5,
+        total_emission_tao: null,
+      },
+    ]);
+  });
+
+  test("a coverage field that is not a string is treated as absent", () => {
+    // asDay's guard: a non-string would otherwise reach a date comparison and
+    // compare as garbage rather than fail.
+    assert.deepEqual(
+      coldWindow(
+        { oldest_day: "2026-07-10", newest_day: null },
+        30,
+        shiftIsoDate,
+      ),
+      // No newest_day to anchor on, so the seam anchors the window itself.
+      { start: "2026-06-10", seam: "2026-07-10" },
+    );
+  });
+
+  test("an unshiftable day declines rather than fetching unbounded", () => {
+    assert.equal(
+      coldWindow(
+        { oldest_day: "garbage", newest_day: "garbage" },
+        30,
+        () => null,
+      ),
+      null,
+    );
+  });
+
+  test("a payload with no points array at all still overlays", async () => {
+    const r = reader([
+      {
+        snapshot_date: "2026-07-05",
+        neuron_count: 1,
+        validator_count: 1,
+        total_stake_tao: 1,
+        total_emission_tao: 1,
+      },
+    ]);
+    const hot = { ...buildSubnetHistory([], 64, { window: "all" }) };
+    delete (hot as Record<string, unknown>).points;
+    (hot as Record<string, unknown>).oldest_day = "2026-07-10";
+    (hot as Record<string, unknown>).newest_day = "2026-07-10";
+    const out = await overlaySubnetHistoryColdTier(
+      ENV,
+      hot,
+      64,
+      { label: "all", days: null },
+      r.deps,
+    );
+    assert.equal(out.point_count, 1);
+  });
+});
+
+describe("safeIsoDate", () => {
+  test("accepts a real day and refuses everything else", () => {
+    assert.equal(safeIsoDate("2026-08-11"), "2026-08-11");
+    assert.equal(safeIsoDate(" 2026-08-11 "), "2026-08-11");
+    assert.equal(safeIsoDate(20260811), null);
+    assert.equal(safeIsoDate(null), null);
+    assert.equal(safeIsoDate("2026-8-1"), null);
+    assert.equal(safeIsoDate("2026-02-31"), null);
+    assert.equal(safeIsoDate("2026-13-01"), null);
+    assert.equal(safeIsoDate("0000-00-00"), null);
+  });
+});
+
+describe("the last three branches, on the neuron overlay", () => {
+  test("a non-string coverage field reads as absent", async () => {
+    // asDay's false arm: without it a number would reach a date comparison
+    // and compare as garbage rather than fail.
+    const r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const hot = buildNeuronHistory([], 5, 1, { window: "all" });
+    (hot as Record<string, unknown>).oldest_day = 20260710;
+    (hot as Record<string, unknown>).newest_day = 20260710;
+    const out = await overlayNeuronHistoryColdTier(
+      ENV,
+      hot,
+      5,
+      1,
+      { label: "all", days: null },
+      r.deps,
+    );
+    // oldest_day unusable -> seam null -> the cold side is the only side.
+    assert.equal(out.point_count, 1);
+  });
+
+  test("an empty cold answer leaves the neuron payload alone", async () => {
+    const hot = buildNeuronHistory(
+      [{ snapshot_date: "2026-07-10", uid: 1 }],
+      5,
+      1,
+      {
+        window: "all",
+      },
+    );
+    const out = await overlayNeuronHistoryColdTier(
+      ENV,
+      hot,
+      5,
+      1,
+      { label: "all", days: null },
+      reader([]).deps,
+    );
+    assert.equal(out, hot);
+  });
+
+  test("a neuron payload with no points array still overlays", async () => {
+    const r = reader([{ snapshot_date: "2026-07-05", uid: 1 }]);
+    const hot = { ...buildNeuronHistory([], 5, 1, { window: "all" }) };
+    delete (hot as Record<string, unknown>).points;
+    (hot as Record<string, unknown>).oldest_day = "2026-07-10";
+    (hot as Record<string, unknown>).newest_day = "2026-07-10";
+    const out = await overlayNeuronHistoryColdTier(
+      ENV,
+      hot,
+      5,
+      1,
+      { label: "all", days: null },
+      r.deps,
+    );
+    assert.equal(out.point_count, 1);
   });
 });
