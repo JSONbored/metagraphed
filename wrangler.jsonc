@@ -524,23 +524,23 @@
     // -- note this family's sync is DAILY, so the cold window can last up to
     // a day unless the refresh workflow is dispatched manually post-deploy).
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
-    // subnet_identity_history (#4832 gap-closure, final table): FLIPPED to
-    // "postgres" 2026-07-11, after a live parity pass with an unexpected
-    // finding -- D1's own write path (recordSubnetIdentityChanges) had never
-    // successfully appended a single row to production D1's
-    // subnet_identity_history table (confirmed empty via direct `wrangler d1
-    // execute`, both before and after a live cron tick), despite running
-    // every hour as part of writeSubnetSnapshot. In that SAME cron tick, the
-    // new Postgres mirror (syncSubnetIdentityToPostgres, called with the
-    // identical `profiles` array right after the D1 write) successfully
-    // appended 124 real rows across 124 distinct subnets, using the exact
-    // same identitySnapshotFromProfile/identityHash pure functions -- proving
-    // the new pipeline works end-to-end where the D1 path had a pre-existing,
-    // silent bug (filed as a follow-up, unrelated to this migration itself).
-    // tryPostgresTier still falls back to D1 on any failure, so this remains
-    // a single-flag revert -- though note D1's fallback is currently a no-op
-    // for reads (empty) until that bug is fixed.
-    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "retired",
+    // subnet_identity_history (#10710): BACK ON, pointing at Neon.
+    //
+    // The history of this one flag is the bug. It was flipped to "postgres" in
+    // 2026-07 on the strength of a live parity pass, then set to "retired" when
+    // D1 went away -- and "retired" makes tryPostgresTier return null, so the
+    // two serving routes fell through to the frozen lakehouse export. The
+    // Postgres mirror that was supposed to replace D1,
+    // syncSubnetIdentityToPostgres, was never written: it is named as "the sole
+    // writer now" in four places and does not exist. So the table had no writer
+    // AND no reader for weeks, and nothing said so, because a Postgres miss
+    // degrades to a schema-stable empty feed rather than a 404.
+    //
+    // #10740 built the writer (POST /api/v1/internal/subnet-identity-sync, fed
+    // by the chain-direct poller lane) and 0021/0023 gave it the tables. This
+    // is the read half: "postgres" is what makes tryPostgresTier forward, and
+    // without it the writer would fill a table nothing selects from.
+    "METAGRAPH_SUBNET_IDENTITY_SOURCE": "postgres",
     // rpc_proxy_events (#4832 gap-closure follow-up): FLIPPED to "postgres"
     // 2026-07-12, after a one-time historical backfill closed the only gap --
     // D1 had 70 rows (wrangler d1 execute, confirmed the same day), Postgres
