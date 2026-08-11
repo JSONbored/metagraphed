@@ -9,6 +9,65 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.19.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.18.0...ui-v0.19.0) (2026-08-11)
+
+
+### Features
+
+* **api:** document the two routes that were served but absent from the contract ([#9980](https://github.com/JSONbored/metagraphed/issues/9980)) ([7d3ff67](https://github.com/JSONbored/metagraphed/commit/7d3ff67b0ba441f24103ec01ee8251d5486970b4))
+* **api:** give /api/v1/health/trends the narrowing it never had ([#9989](https://github.com/JSONbored/metagraphed/issues/9989)) ([#9993](https://github.com/JSONbored/metagraphed/issues/9993)) ([59b2c59](https://github.com/JSONbored/metagraphed/commit/59b2c5986bcd652891fee54f75076e2cafdaa646))
+* **api:** publish how long a slot survived, from data already paired ([#9745](https://github.com/JSONbored/metagraphed/issues/9745)) ([2efb644](https://github.com/JSONbored/metagraphed/commit/2efb6445424fe5ef0e9896e174dff3445fd882bb)), closes [#9742](https://github.com/JSONbored/metagraphed/issues/9742)
+* **api:** publish the chain's own subnet deregistration order ([#10297](https://github.com/JSONbored/metagraphed/issues/10297)) ([1acd73b](https://github.com/JSONbored/metagraphed/commit/1acd73b3c1e3c9844213418695a9e9734a0058e8)), closes [#10285](https://github.com/JSONbored/metagraphed/issues/10285)
+* **api:** rank every subnet by how widely its rewards are spread ([#9719](https://github.com/JSONbored/metagraphed/issues/9719)) ([1e0037d](https://github.com/JSONbored/metagraphed/commit/1e0037d37f990eee2eb87122cf9c97aed80c3f7b)), closes [#9717](https://github.com/JSONbored/metagraphed/issues/9717)
+* **api:** serve subnet lifecycle across REST, MCP and GraphQL ([#10263](https://github.com/JSONbored/metagraphed/issues/10263)) ([#10268](https://github.com/JSONbored/metagraphed/issues/10268)) ([a26e7a2](https://github.com/JSONbored/metagraphed/commit/a26e7a26f71d2c5799da681951dfa7502cf76e88))
+* **registry:** flag surfaces whose URL names a moving target ([#9777](https://github.com/JSONbored/metagraphed/issues/9777)) ([4dd3cb7](https://github.com/JSONbored/metagraphed/commit/4dd3cb740e425c5ef32009b85d32240fb62a26bb)), closes [#9780](https://github.com/JSONbored/metagraphed/issues/9780)
+* **revenue:** serve the coverage ratio, over REST and to agents ([#10563](https://github.com/JSONbored/metagraphed/issues/10563)) ([0585aeb](https://github.com/JSONbored/metagraphed/commit/0585aeba5c39adf9afcb98b6d1b5522b5436c267))
+* **ui:** put the registration-cost trend on the tile that shows its price ([#10314](https://github.com/JSONbored/metagraphed/issues/10314)) ([565d4b1](https://github.com/JSONbored/metagraphed/commit/565d4b1f41aa0bc39cc869ed5ef435da6f465efb)), closes [#10313](https://github.com/JSONbored/metagraphed/issues/10313)
+* **ui:** render alpha in USD, and show where the USD actually starts ([#10408](https://github.com/JSONbored/metagraphed/issues/10408)) ([dfa4360](https://github.com/JSONbored/metagraphed/commit/dfa436074bb44c11b48f764971d175b1a3051c27)), closes [#10385](https://github.com/JSONbored/metagraphed/issues/10385)
+* **ui:** render every published route — 30 unrendered surfaces down to 0 ([#10515](https://github.com/JSONbored/metagraphed/issues/10515)) ([f8cd656](https://github.com/JSONbored/metagraphed/commit/f8cd65639fc19fca318e243f329d7b58888509de)), closes [#10300](https://github.com/JSONbored/metagraphed/issues/10300)
+* **ui:** render subnet lifecycle and deregistration standing ([#10388](https://github.com/JSONbored/metagraphed/issues/10388)) ([49b8eb7](https://github.com/JSONbored/metagraphed/commit/49b8eb7b2904283ebff75e650f8bd62b5b65a4b1)), closes [#10387](https://github.com/JSONbored/metagraphed/issues/10387)
+* **ui:** render the fiat leg beside price_at_tx, and say it is the less precise one ([#10433](https://github.com/JSONbored/metagraphed/issues/10433)) ([a86efdc](https://github.com/JSONbored/metagraphed/commit/a86efdc099a03fa5f9dee686d23a2c457a0c6a7a)), closes [#8602](https://github.com/JSONbored/metagraphed/issues/8602)
+* **ui:** revenue against emissions, where a null is never a zero ([#10477](https://github.com/JSONbored/metagraphed/issues/10477)) ([#10667](https://github.com/JSONbored/metagraphed/issues/10667)) ([2d3062f](https://github.com/JSONbored/metagraphed/commit/2d3062f5b383362b28d49aff3ce3098cf680dec4))
+* **ui:** the coverage leaderboard, where the unmeasured are never ranked ([#10478](https://github.com/JSONbored/metagraphed/issues/10478)) ([#10672](https://github.com/JSONbored/metagraphed/issues/10672)) ([32ca031](https://github.com/JSONbored/metagraphed/commit/32ca03185cefbb110c53cfa4231d17c3edd05d3d))
+* **ui:** the money map, with `unresolved` rendered as a fact rather than a flag ([#10511](https://github.com/JSONbored/metagraphed/issues/10511)) ([#10670](https://github.com/JSONbored/metagraphed/issues/10670)) ([520954b](https://github.com/JSONbored/metagraphed/commit/520954b052ac7ac5431c4ed748d15e550964e948))
+* **ui:** verify the checksum in the search boxes, and recognise what they missed ([#9755](https://github.com/JSONbored/metagraphed/issues/9755)) ([37e10a7](https://github.com/JSONbored/metagraphed/commit/37e10a73ecf742759222a9a57a4353b4edf63794))
+* **wallets:** the money map as two routes and two tools ([#10488](https://github.com/JSONbored/metagraphed/issues/10488)) ([#10625](https://github.com/JSONbored/metagraphed/issues/10625)) ([36fc8a9](https://github.com/JSONbored/metagraphed/commit/36fc8a9b7789c77c6db65aad0e3406899df7bf22)), closes [#10510](https://github.com/JSONbored/metagraphed/issues/10510)
+* **wallets:** the movement that is not supposed to happen, stated without an accusation ([#10512](https://github.com/JSONbored/metagraphed/issues/10512)) ([#10655](https://github.com/JSONbored/metagraphed/issues/10655)) ([7cc984e](https://github.com/JSONbored/metagraphed/commit/7cc984eff8ed507090272195af05d16613b14f06))
+
+
+### Bug Fixes
+
+* **api:** declare the 65 registry routes that testnet answers 404 for ([#9764](https://github.com/JSONbored/metagraphed/issues/9764)) ([89dbee5](https://github.com/JSONbored/metagraphed/commit/89dbee5114e02bb007a436b2ee9ae8247606287a))
+* **api:** the `_tao` suffix now means one unit inside a payload ([#10514](https://github.com/JSONbored/metagraphed/issues/10514)) ([#10663](https://github.com/JSONbored/metagraphed/issues/10663)) ([f6e31b6](https://github.com/JSONbored/metagraphed/commit/f6e31b63c76ec9193ccf22a5c977eea79ee8d952))
+* **crowdloans:** a failed storage read was published as 'all 15 were dissolved' ([#9898](https://github.com/JSONbored/metagraphed/issues/9898)) ([#10054](https://github.com/JSONbored/metagraphed/issues/10054)) ([a498923](https://github.com/JSONbored/metagraphed/commit/a4989236f9242eb44b5ff4ca135ba3a838f8ebaa))
+* **deps:** update dependency fumadocs-mdx to ^15.2.2 ([#10422](https://github.com/JSONbored/metagraphed/issues/10422)) ([08901de](https://github.com/JSONbored/metagraphed/commit/08901dedf16bab899dd6da67922160cd4b909953))
+* **deps:** update dependency fumadocs-openapi to ^11.2.3 ([#10427](https://github.com/JSONbored/metagraphed/issues/10427)) ([3aaac7c](https://github.com/JSONbored/metagraphed/commit/3aaac7c71efffae6b7e47441878ae56270fa7efa))
+* **deps:** update dependency graphql-ws to ^6.2.1 ([#10438](https://github.com/JSONbored/metagraphed/issues/10438)) ([4332001](https://github.com/JSONbored/metagraphed/commit/4332001a92eebcd1ccde5c64cfd8e3ba75184e51))
+* **deps:** update tanstack-router monorepo ([#10520](https://github.com/JSONbored/metagraphed/issues/10520)) ([04d646c](https://github.com/JSONbored/metagraphed/commit/04d646cd85197a3b8e4ebe984adc7ece4dbb3489))
+* **mcp:** the refusals agents could not act on, and the analytics that never fired ([#10618](https://github.com/JSONbored/metagraphed/issues/10618)) ([b4c7972](https://github.com/JSONbored/metagraphed/commit/b4c79724e66d962ebf064826597a271721df61b4))
+* **registry:** fail when the chain capture goes stale, with the command to fix it ([#9778](https://github.com/JSONbored/metagraphed/issues/9778)) ([08f3418](https://github.com/JSONbored/metagraphed/commit/08f34186cb4e63d191d0cfe5207417be46cf87f8)), closes [#9780](https://github.com/JSONbored/metagraphed/issues/9780)
+* **registry:** SN104 is Masx.ai, not a for-sale notice ([#9780](https://github.com/JSONbored/metagraphed/issues/9780)) ([c65c391](https://github.com/JSONbored/metagraphed/commit/c65c391e545faab26da66ec899415a0d21f2bbf9))
+* **telemetry:** gate $exception storms fleet-wide and stop billing expected conditions as errors ([#9905](https://github.com/JSONbored/metagraphed/issues/9905)) ([d64899b](https://github.com/JSONbored/metagraphed/commit/d64899ba494892b49decd41049f6ba8426dac020)), closes [#9900](https://github.com/JSONbored/metagraphed/issues/9900)
+* **test:** let an e2e navigation wait out the dev-server restart it already expects ([#10032](https://github.com/JSONbored/metagraphed/issues/10032)) ([00b5cfb](https://github.com/JSONbored/metagraphed/commit/00b5cfb74d94b6d06b63cc997ceced0454bf5644)), closes [#10013](https://github.com/JSONbored/metagraphed/issues/10013)
+* **ui:** pass an explicit locale everywhere, and gate the pattern that returns ([#10652](https://github.com/JSONbored/metagraphed/issues/10652)) ([143414c](https://github.com/JSONbored/metagraphed/commit/143414cc2633b27f86df7c4042810c55ca1bad4a))
+* **ui:** pin the compatibility date, which was floating to today ([#9726](https://github.com/JSONbored/metagraphed/issues/9726)) ([182e4d9](https://github.com/JSONbored/metagraphed/commit/182e4d9e814351150cefe20f1f3ff6c83a83eec4)), closes [#9725](https://github.com/JSONbored/metagraphed/issues/9725)
+* **ui:** regenerate the subnet catalog, which went stale on main ([#9756](https://github.com/JSONbored/metagraphed/issues/9756)) ([7ede386](https://github.com/JSONbored/metagraphed/commit/7ede3866bd2a1b98d56edddd853da3c7bbc98cf9))
+* **ui:** stop reporting a correct network-partition 404 as an exception ([#10642](https://github.com/JSONbored/metagraphed/issues/10642)) ([f04e382](https://github.com/JSONbored/metagraphed/commit/f04e382b2108e9afda442adddbcb108eaea754e8))
+* **ui:** take a pasted EVM address to the account it maps to ([#9750](https://github.com/JSONbored/metagraphed/issues/9750)) ([102abf1](https://github.com/JSONbored/metagraphed/commit/102abf1f483b57862a793591bf8d802aa8d66bad))
+* **ui:** take the TAO market figures from our own API, not coinpaprika ([#10303](https://github.com/JSONbored/metagraphed/issues/10303)) ([18b0921](https://github.com/JSONbored/metagraphed/commit/18b092118732ec37620194f756bacd523bcce67d)), closes [#10302](https://github.com/JSONbored/metagraphed/issues/10302)
+
+
+### Performance
+
+* **ci:** report every validator failure, and stop re-linting unchanged files ([#10615](https://github.com/JSONbored/metagraphed/issues/10615)) ([c059d8a](https://github.com/JSONbored/metagraphed/commit/c059d8ab54f29192af9596825c675b2d89c35671))
+
+
+### Documentation
+
+* **contract:** "burn" here is registration cost, and says so on all four routes ([#10538](https://github.com/JSONbored/metagraphed/issues/10538)) ([c7a6e56](https://github.com/JSONbored/metagraphed/commit/c7a6e567d45908ed1b502f5741b80c93b67d0ff0))
+* **revenue:** publish the method, since the method is the whole moat ([#10594](https://github.com/JSONbored/metagraphed/issues/10594)) ([dcf29c9](https://github.com/JSONbored/metagraphed/commit/dcf29c9fa42689726cfa1dc5d82926c091191bf0))
+* **wallets:** the role vocabulary, and what unresolved actually says ([#10513](https://github.com/JSONbored/metagraphed/issues/10513)) ([#10630](https://github.com/JSONbored/metagraphed/issues/10630)) ([067b39e](https://github.com/JSONbored/metagraphed/commit/067b39e5c051675d26ced87be0e38156c3efa2fe))
+
 ## [0.18.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.17.0...ui-v0.18.0) (2026-08-09)
 
 
