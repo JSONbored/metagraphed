@@ -33,7 +33,8 @@ CREATE TABLE public.account_balances (
     free_tao double precision NOT NULL,
     reserved_tao double precision NOT NULL,
     captured_at bigint NOT NULL
-);
+)
+WITH (fillfactor='85');
 
 --
 -- Name: account_balances_passes; Type: TABLE; Schema: public; Owner: -
@@ -116,7 +117,8 @@ CREATE TABLE public.account_position_daily (
     captured_at bigint NOT NULL,
     updated_at bigint NOT NULL,
     CONSTRAINT account_position_daily_captured_at_is_millis CHECK ((captured_at >= '1000000000000'::bigint))
-);
+)
+WITH (fillfactor='85');
 
 --
 -- Name: api_key_blocks; Type: TABLE; Schema: public; Owner: -
@@ -493,7 +495,8 @@ CREATE TABLE public.hotkey_alpha (
     netuid integer NOT NULL,
     total_alpha double precision NOT NULL,
     captured_at bigint NOT NULL
-);
+)
+WITH (fillfactor='85');
 
 --
 -- Name: hotkey_alpha_passes; Type: TABLE; Schema: public; Owner: -
@@ -546,7 +549,8 @@ CREATE TABLE public.neuron_daily (
     snapshot_date text NOT NULL,
     updated_at bigint NOT NULL,
     CONSTRAINT neuron_daily_captured_at_is_millis CHECK ((captured_at >= '1000000000000'::bigint))
-);
+)
+WITH (fillfactor='85');
 
 --
 -- Name: neurons; Type: TABLE; Schema: public; Owner: -
