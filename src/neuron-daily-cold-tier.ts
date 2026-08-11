@@ -47,6 +47,7 @@ import {
   type R2SqlDeps,
 } from "./r2-sql.ts";
 import { NEURON_DAILY_COLUMNS } from "../generated/lakehouse/types.ts";
+import type { NeuronDailyRow } from "../generated/lakehouse/types.ts";
 import { shiftIsoDate } from "./iso-date-window.ts";
 import {
   buildNeuronHistory,
@@ -90,6 +91,21 @@ const NEURON_HISTORY_FIELDS = [
   "captured_at",
   "take",
 ] as const satisfies readonly (typeof NEURON_DAILY_COLUMNS)[number][];
+
+/**
+ * One day of one neuron: exactly the columns `NEURON_HISTORY_FIELDS` projects,
+ * typed by PICKING them off the generated row rather than restated.
+ *
+ * `Record<string, unknown>` would have been accepted by every compiler here
+ * and rejected by `validate:untyped-db-reads`, which is the gate's whole
+ * point -- a read that will not name what it returns is how 124 untyped reads
+ * accumulated one PR at a time. Deriving it also means a column the catalog
+ * renames breaks HERE rather than as a silently-absent field in a payload.
+ */
+export type ColdNeuronHistoryRow = Pick<
+  NeuronDailyRow,
+  (typeof NEURON_HISTORY_FIELDS)[number]
+>;
 
 /** One day of one subnet, in the shape the hot tier's GROUP BY produces. */
 export interface ColdSubnetHistoryRow {
@@ -223,13 +239,13 @@ export async function loadNeuronHistoryColdTier(
   seam: string | null,
   limit: number,
   deps: R2SqlDeps = {},
-): Promise<Record<string, unknown>[] | null> {
+): Promise<ColdNeuronHistoryRow[] | null> {
   const id = safeBlockNumber(netuid);
   const slot = safeBlockNumber(uid);
   if (id == null || slot == null) return null;
   const range = coldDateRange(start, seam);
   if (range == null) return null;
-  const rows = await r2SqlQuery<Record<string, unknown>>(
+  const rows = await r2SqlQuery<ColdNeuronHistoryRow>(
     env,
     `SELECT ${NEURON_HISTORY_FIELDS.join(", ")}
       FROM ${NAMESPACE}.neuron_daily

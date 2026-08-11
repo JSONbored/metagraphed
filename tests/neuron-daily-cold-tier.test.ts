@@ -17,7 +17,13 @@ import {
   loadSubnetHistoryColdTier,
   mergeHistoryDays,
   needsColdRead,
+  overlayNeuronHistoryColdTier,
+  overlaySubnetHistoryColdTier,
 } from "../src/neuron-daily-cold-tier.ts";
+import {
+  buildNeuronHistory,
+  buildSubnetHistory,
+} from "../src/neuron-history.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { shiftIsoDate } from "../src/iso-date-window.ts";
 
@@ -302,5 +308,141 @@ describe("merging the two stores", () => {
 
   test("two empty legs are an empty series, not a throw", () => {
     assert.deepEqual(mergeHistoryDays([], [], 30, 400, shiftIsoDate), []);
+  });
+});
+
+describe("the overlay, where the tiers converge", () => {
+  const point = (d: string, n: number) => ({
+    snapshot_date: d,
+    neuron_count: n,
+    validator_count: 1,
+    total_stake_tao: 1,
+    total_emission_tao: 1,
+  });
+
+  test("a hot payload that already covers the window is returned unchanged", async () => {
+    const r = reader([]);
+    // The hot series must reach the window's own start (08-11 minus 7d =
+    // 08-04) for there to be nothing missing. An oldest_day ABOVE that start
+    // is a genuine hole and correctly opens a cold read -- which is what an
+    // earlier version of this fixture accidentally proved.
+    const hot = buildSubnetHistory(
+      [point("2026-08-11", 1), point("2026-08-04", 2)],
+      64,
+      { window: "7d" },
+    );
+    const out = await overlaySubnetHistoryColdTier(
+      ENV,
+      hot,
+      64,
+      { label: "7d", days: 7 },
+      r.deps,
+    );
+    assert.equal(out, hot);
+    // Not merely equal -- the engine was never asked.
+    assert.deepEqual(r.seen, []);
+  });
+
+  test("a window the hot tier ran out of is extended, and the coverage fields follow", async () => {
+    const r = reader([
+      {
+        snapshot_date: "2026-07-05",
+        neuron_count: 250,
+        validator_count: 10,
+        total_stake_tao: 5,
+        total_emission_tao: 2,
+      },
+    ]);
+    const hot = buildSubnetHistory([point("2026-07-10", 256)], 64, {
+      window: "1y",
+    });
+    assert.equal(hot.point_count, 1);
+    const out = await overlaySubnetHistoryColdTier(
+      ENV,
+      hot,
+      64,
+      { label: "1y", days: 365 },
+      r.deps,
+    );
+    assert.equal(out.point_count, 2);
+    // REBUILT, not patched: the coverage fields describe what is served.
+    assert.equal(out.oldest_day, "2026-07-05");
+    assert.equal(out.newest_day, "2026-07-10");
+    assert.equal(out.days_covered, 2);
+    assert.equal(out.window, "1y");
+  });
+
+  test("a declining engine leaves the hot answer exactly as it was", async () => {
+    const hot = buildSubnetHistory([point("2026-07-10", 256)], 64, {
+      window: "all",
+    });
+    const out = await overlaySubnetHistoryColdTier(
+      ENV,
+      hot,
+      64,
+      { label: "all", days: null },
+      reader(null).deps,
+    );
+    assert.equal(out, hot);
+  });
+
+  test("an empty cold answer is not mistaken for an extension", async () => {
+    const hot = buildSubnetHistory([point("2026-07-10", 256)], 64, {
+      window: "all",
+    });
+    const out = await overlaySubnetHistoryColdTier(
+      ENV,
+      hot,
+      64,
+      { label: "all", days: null },
+      reader([]).deps,
+    );
+    assert.equal(out, hot);
+  });
+
+  test("the neuron overlay extends its own series the same way", async () => {
+    const r = reader([
+      { snapshot_date: "2026-07-05", uid: 12, hotkey: "5Hot" },
+    ]);
+    const hot = buildNeuronHistory(
+      [{ snapshot_date: "2026-07-10", uid: 12, hotkey: "5Hot" }],
+      5,
+      12,
+      { window: "all" },
+    );
+    const out = await overlayNeuronHistoryColdTier(
+      ENV,
+      hot,
+      5,
+      12,
+      { label: "all", days: null },
+      r.deps,
+    );
+    assert.equal(out.point_count, 2);
+    assert.equal(out.oldest_day, "2026-07-05");
+    assert.match(r.seen[0]!, /netuid = 5 AND uid = 12/);
+  });
+
+  test("the neuron overlay declines when the hot tier already reached the window", async () => {
+    const r = reader([]);
+    const hot = buildNeuronHistory(
+      [
+        { snapshot_date: "2026-08-11", uid: 12 },
+        { snapshot_date: "2026-08-04", uid: 12 },
+      ],
+      5,
+      12,
+      { window: "7d" },
+    );
+    const out = await overlayNeuronHistoryColdTier(
+      ENV,
+      hot,
+      5,
+      12,
+      { label: "7d", days: 7 },
+      r.deps,
+    );
+    assert.equal(out, hot);
+    assert.deepEqual(r.seen, []);
   });
 });

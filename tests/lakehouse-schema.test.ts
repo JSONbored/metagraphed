@@ -37,32 +37,28 @@ const snapshot = readSnapshot();
 describe("the committed snapshot", () => {
   test("covers every chain.* table this repo reads", () => {
     // Named rather than derived from the file: the file is what could be
-    // wrong. The four the decoder appends to, plus the eleven the cold tiers
+    // wrong. The four the decoder appends to, plus the nine the cold tiers
     // read -- the set was four until the readers were included, which left
     // ten queried tables with no snapshot and no drift coverage.
-    //
-    // STILL WRITTEN OUT BY HAND after #10795 added the two daily rollups
-    // (#10800). Deriving this from the snapshot would have made it pass without
-    // anyone noticing they had arrived, which is the one thing the list is for:
-    // a table reaching the snapshot is a decision, and this is where the
-    // decision is recorded. The cost is that adding a table is two edits; that
-    // cost IS the check.
     //
     // account_events_daily is NOT here on purpose: it is named in four
     // comments and a route description and queried by nothing, because
     // src/account-history-cold-tier.ts computes its own day bucket from
     // account_events instead.
+    //
+    // neuron_daily and account_position_daily joined the list in #10794/#10797:
+    // they were a frozen 2026-08-02 seed holding a strict SUBSET of Neon until
+    // metagraphed-infra#445 gave them a producer, and src/neuron-daily-cold-
+    // tier.ts now reads them below the retention seam. The list grows when a
+    // READER appears, which is the rule refresh-lakehouse-schema.ts states.
     assert.deepEqual([...new Set(snapshot.map((c) => c.table))].sort(), [
       "account_events",
       "account_identity",
       "account_identity_history",
-      // The per-(account, netuid, day) position rollup #4908 added;
-      // src/account-position-history.ts serves from it.
       "account_position_daily",
       "blocks",
       "chain_events",
       "extrinsics",
-      // The per-(uid, day) neuron rollup the history routes read.
       "neuron_daily",
       "nominator_positions",
       "rpc_proxy_events",
