@@ -77,7 +77,38 @@ export interface FlushOutcome {
   undecodable: number;
   ok: boolean;
   reason?: string;
+  /**
+   * Whether statements were left behind -- a truncated list, or a stop on
+   * failure. THE CALLER MUST RE-ARM ON THIS. See the alarm handler.
+   */
+  remaining: boolean;
 }
+
+/**
+ * How many statement chunks one drain may list.
+ *
+ * BOUNDED BECAUSE `storage.list()` IS BOUNDED, and #10722 is what assuming
+ * otherwise cost. A drain that lists everything is not a thing the platform
+ * offers: `list()` caps its result, so a backlog past the cap comes back
+ * TRUNCATED and a flush that drains all of it still leaves rows behind.
+ * Stating the bound here makes the leftover a value the caller can act on
+ * (`remaining`) instead of an invisible remainder.
+ *
+ * Well under the platform cap so the truncation is OURS and predictable rather
+ * than the platform's and silent.
+ */
+export const FLUSH_LIST_LIMIT = 500;
+
+/**
+ * How soon to come back when a drain left work behind.
+ *
+ * SECONDS, NOT THE FULL INTERVAL. A backlog is the one state where waiting ten
+ * minutes is wrong: the rows are already late, and another full interval per
+ * batch turns a 3,000-statement backlog into an hour of latency. Ten seconds
+ * clears it at list-limit granularity while still being a wake the compute
+ * would have taken anyway.
+ */
+export const FLUSH_BACKLOG_RETRY_MS = 10_000;
 
 /** The storage surface this hub uses, narrowed so a test can supply a fake. */
 export interface BufferStorage {
@@ -163,9 +194,18 @@ export async function flushBuffer(
   const laneDb = deps.laneHealthDb ?? laneHealthStore(env);
   const capture = deps.captureException ?? recordExceptionEvent;
   const asEnv = env as unknown as Parameters<typeof recordExceptionEvent>[0];
-  const stored = await storage.list<Uint8Array>({ prefix: STATEMENT_PREFIX });
+  const stored = await storage.list<Uint8Array>({
+    prefix: STATEMENT_PREFIX,
+    limit: FLUSH_LIST_LIMIT,
+  });
   const groups = groupChunkKeys([...stored.keys()]);
-  if (groups.length === 0) return { drained: 0, undecodable: 0, ok: true };
+  // A full page back means there is almost certainly more behind it. Cheaper
+  // and more honest than a second count: the caller only needs to know whether
+  // to come back, not exactly how much is left.
+  const truncated = stored.size >= FLUSH_LIST_LIMIT;
+  if (groups.length === 0) {
+    return { drained: 0, undecodable: 0, ok: true, remaining: false };
+  }
 
   const sql =
     deps.sql ??
@@ -196,6 +236,7 @@ export async function flushBuffer(
       undecodable: 0,
       ok: false,
       reason: "hyperdrive unbound",
+      remaining: true,
     };
   }
 
@@ -251,7 +292,8 @@ export async function flushBuffer(
         detail: `drained ${drained}, stopped on ${statement.lane}: ${reason}`,
         checked_at: now(),
       });
-      return { drained, undecodable, ok: false, reason };
+      // Stopped mid-backlog: everything from here on is still stored.
+      return { drained, undecodable, ok: false, reason, remaining: true };
     }
     perLane.set(statement.lane, tally);
   }
@@ -267,7 +309,7 @@ export async function flushBuffer(
     }`,
     checked_at: now(),
   });
-  return { drained, undecodable, ok: true };
+  return { drained, undecodable, ok: true, remaining: truncated };
 }
 
 /**
@@ -378,16 +420,28 @@ export class NeonWriteBufferHub implements DurableObject {
         undecodable: 0,
         ok: false,
         reason: error instanceof Error ? error.message : String(error),
+        // The drain never ran, so assume work is still there and come back.
+        remaining: true,
       };
     }
-    // A FAILED flush is the only reason to re-arm. A successful one drained
-    // everything it listed, and the alarm has already fired and cleared -- so
-    // the next enqueue arms the next drain, which is exactly what
-    // enqueueStatement does when it finds no alarm pending. Re-arming after a
-    // clean drain would schedule a wake with nothing to do, which is the cost
-    // this whole file exists to avoid.
-    if (!outcome.ok) {
-      await storage.setAlarm(Date.now() + FLUSH_INTERVAL_MS);
+    // RE-ARM WHENEVER ANYTHING IS LEFT, not only on failure (#10722).
+    //
+    // This previously read `if (!outcome.ok)`, on the reasoning that a
+    // successful flush drained everything it listed and the next enqueue would
+    // arm the next drain. Both halves were wrong. `storage.list()` is bounded,
+    // so a backlog past the limit comes back TRUNCATED and a "successful" flush
+    // leaves rows behind; and the next enqueue only arms an alarm if it
+    // SUCCEEDS -- during a deploy the Durable Object is reset and enqueues fail
+    // ("Durable Object reset because its code was updated"), so the one path
+    // that could have recovered was failing at exactly the moment it was
+    // needed. The buffer stalled for 47 minutes on 2026-08-11 with no alarm
+    // pending and no way to arm one.
+    //
+    // A backlog comes back in SECONDS rather than the full interval: those rows
+    // are already late, and another ten minutes per batch would turn a large
+    // backlog into an hour of latency.
+    if (!outcome.ok || outcome.remaining) {
+      await storage.setAlarm(Date.now() + FLUSH_BACKLOG_RETRY_MS);
     }
   }
 }
