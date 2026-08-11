@@ -11,15 +11,15 @@ GET https://api.metagraph.sh/api/v1/feeds/registry
 
 ## Feeds
 
-| Path                             | Summary                                                                           | Item tags                                                                                                     |
-| -------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage. | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
-| `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.      | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
-| `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.            | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
-| `/api/v1/feeds/upgrades`         | Bittensor runtime upgrades — releases, observed chain spec-version changes, BITs. | `chain`, `upgrade`, and one of `release`/`mainnet`/`testnet`/`bit`                                            |
+| Path                             | Summary                                                                                    | Item tags                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/feeds/registry`         | Registry changes from the 6h changelog deltas — subnets, artifacts, and coverage.          | `registry` + one of `subnet`/`artifact`/`coverage` + the change verb (`added`/`removed`/`renamed`/`modified`) |
+| `/api/v1/feeds/incidents`        | Reconstructed incident history — one item per incident, opened and resolved.               | `incident`, `sn<netuid>`, and `ongoing` or `resolved`                                                         |
+| `/api/v1/feeds/gaps`             | Open coverage gaps — what each subnet is still missing, by queue lane.                     | `gaps`, the queue lane, `sn<netuid>`, and each missing/direct-submission kind                                 |
+| `/api/v1/feeds/upgrades`         | Bittensor runtime upgrades — releases, observed chain spec-version changes, BITs.          | `chain`, `upgrade`, and one of `release`/`mainnet`/`testnet`/`bit`                                            |
 | `/api/v1/feeds/revenue`          | Revenue-coverage movement — ratio moves, provenance changes, surfaces that stop answering. | `revenue` + one of `coverage-move`/`provenance`/`surface-new`/`surface-dark`/`surface-unreadable`             |
-| `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                    | the same tags as the feed each item came from                                                                 |
-| `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.     | the same tags as the feed each item came from                                                                 |
+| `/api/v1/feeds/subnets/{netuid}` | Everything above, narrowed to a single subnet.                                             | the same tags as the feed each item came from                                                                 |
+| `/api/v1/feeds/watch?ids=`       | Registry changes + incidents for a set of watched entities, named in the URL.              | the same tags as the feed each item came from                                                                 |
 
 ## Watchlist feed
 
