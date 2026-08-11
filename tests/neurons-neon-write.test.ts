@@ -30,6 +30,7 @@ import {
   NEURONS_NEON_LANE,
   pruneNeuronsToCapture,
 } from "../src/neurons-neon-write.ts";
+import { resetNeonWriteVerdictMemo } from "../src/neon-write.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 const NOW = 1_785_800_000_000;
@@ -87,6 +88,10 @@ beforeEach(() => {
   pg.control.onQuery = null;
   pg.control.failNext = null;
   pg.control.rows = null;
+  // Every test here drives a mirror run on the SAME frozen millisecond, which
+  // an isolate never sees in production. Without this, the second run's
+  // unchanged `ok` coalesces and reads as a verdict that was never written.
+  resetNeonWriteVerdictMemo();
 });
 
 describe("NEURON_MIRROR_PLANS", () => {
