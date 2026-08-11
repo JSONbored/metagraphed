@@ -17619,14 +17619,17 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("a partial Postgres-tier body degrades every missing field to its schema-stable default", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // Only a row's call_module present; envelope + row omit the rest, so
-      // every ?? default fallback must fire (not surface undefined).
-      DATA_API: {
-        fetch: async () =>
-          Response.json({ calls: [{ call_module: "Balances" }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": { groups: { module: [{ call_module: "Balances" }] } },
+        },
+      }),
     };
     const { status, body } = await gql(callsQuery(""), env);
     assert.equal(status, 200);
@@ -17636,7 +17639,9 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
     assert.equal(d.group_by, "module");
     assert.equal(d.observed_at, null);
     assert.equal(d.total_extrinsics, 0);
-    assert.equal(d.call_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.call_count, 1);
     const c = d.calls[0];
     assert.equal(c.call_module, "Balances");
     assert.equal(c.call_function, null);
@@ -17777,13 +17782,20 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("partial day rows degrade missing fields to their schema-stable defaults", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // The day row carries only its required key; every other field is omitted
-      // so the per-item ?? default fallbacks must fire.
-      DATA_API: {
-        fetch: async () => Response.json({ days: [{ day: "2026-07-14" }] }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            extrinsic_rows: [{ day: "2026-07-14" }],
+            block_rows: [],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(activityQuery(""), env);
     assert.equal(status, 200);
@@ -17791,7 +17803,9 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
     assert.equal(d.schema_version, 1);
     assert.equal(d.window, "7d");
     assert.equal(d.observed_at, null);
-    assert.equal(d.day_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.day_count, 1);
     const day = d.days[0];
     assert.equal(day.block_count, 0);
     assert.equal(day.extrinsic_count, 0);
@@ -17930,17 +17944,21 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("partial rows in each list degrade missing fields to their schema-stable defaults", async () => {
+    // #10190: the partial body was the TIER's; the projection lane is what
+    // answers now, so the partial row goes into its envelope. The subject is
+    // unchanged -- every omitted field must reach its schema-stable default
+    // through the builder rather than surfacing undefined.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      // Each row carries only its required key; every other field is omitted so
-      // the per-item ?? default fallbacks (both lists) must fire.
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            daily: [{ day: "2026-07-14" }],
-            top_fee_payers: [{ signer: "5Signer" }],
-          }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "7d": {
+            daily_rows: [{ day: "2026-07-14" }],
+            median_rows: [],
+            payer_rows: [{ signer: "5Signer" }],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(feesQuery(""), env);
     assert.equal(status, 200);
@@ -17948,7 +17966,9 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
     assert.equal(d.schema_version, 1);
     assert.equal(d.window, "7d");
     assert.equal(d.observed_at, null);
-    assert.equal(d.day_count, 0);
+    // DERIVED from the row list now, not defaulted: the partial TIER body
+    // omitted this count, so the resolver's `?? 0` fired. The builder counts.
+    assert.equal(d.day_count, 1);
     const day = d.daily[0];
     assert.equal(day.extrinsic_count, 0);
     assert.equal(day.signed_extrinsic_count, 0);
