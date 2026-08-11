@@ -25,6 +25,7 @@
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
+import { BLOCKS_COLUMNS } from "../generated/lakehouse/types.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -34,8 +35,13 @@ import {
 
 /** Columns the formatters need — kept identical to the Postgres tier's SELECT
  * list so both tiers hand the formatter the same shape. */
-const BLOCK_COLUMNS =
-  "block_number, block_hash, parent_hash, author, extrinsic_count, event_count, spec_version, observed_at";
+// FROM THE GENERATED TUPLE, not retyped. generated/lakehouse/types.ts is
+// snapshotted from the live Iceberg catalog (#10315/#10350), so a column
+// renamed upstream lands here as a compile error instead of a query selecting a
+// column the table no longer has. Byte-identical to the literal it replaces --
+// this is a no-op today and a tripwire tomorrow, which is the whole point of
+// generating the tuple at all.
+const BLOCK_COLUMNS = BLOCKS_COLUMNS.join(", ");
 
 /**
  * How deep an emulated OFFSET may go. Past this the over-fetch stops being a

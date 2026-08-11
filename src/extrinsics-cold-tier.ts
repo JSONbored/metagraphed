@@ -48,21 +48,22 @@ import {
   safeSs58Literal,
 } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+import {
+  ACCOUNT_EVENTS_COLUMNS,
+  EXTRINSICS_COLUMNS,
+} from "../generated/lakehouse/types.ts";
 
 /** Kept identical to the Postgres tier's SELECT list so both tiers hand the
  * formatter the same shape. */
-const EXTRINSIC_COLUMNS =
-  "block_number, extrinsic_index, extrinsic_hash, signer, call_module, " +
-  "call_function, success, fee_tao, tip_tao, call_args, observed_at";
+// The generated tuples, not retyped copies -- see src/r2-sql-blocks.ts for why.
+const EXTRINSIC_COLUMNS = EXTRINSICS_COLUMNS.join(", ");
 
 /** Events emitted by one extrinsic, embedded in the detail payload. The
  * column list and the bound match the Postgres tier's embedded-events query
  * exactly, and rows go through the same formatAccountEvent before embedding
  * -- buildExtrinsic embeds what it is given verbatim, so handing it raw rows
  * would leak an unformatted shape into a payload callers already parse. */
-const EVENT_COLUMNS =
-  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
-  "netuid, uid, amount_tao, alpha_amount, observed_at";
+const EVENT_COLUMNS = ACCOUNT_EVENTS_COLUMNS.join(", ");
 const MAX_EMBEDDED_EVENTS = 50;
 
 /** EXACTLY the Postgres tier's feed order. The observed_at-leading key is not
