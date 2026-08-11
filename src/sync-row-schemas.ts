@@ -235,9 +235,14 @@ export function accountIdentitySyncRowSchema({
  * would let a consumer overwrite a real curated fallback with nothing, which is
  * the failure the lane's own header calls out.
  *
- * netuid, block_number and observed_at are required: the table's
- * append-on-change contract is meaningless without them, since a row with no
- * block cannot be ordered against the revision it supersedes.
+ * netuid, block_number and captured_at are required: the append-on-change
+ * contract is meaningless without them, since a row with no block cannot be
+ * ordered against the revision it supersedes.
+ *
+ * `captured_at` on the WIRE, `observed_at` in the history table. Every other
+ * sync route here names the wire field captured_at, and the history column is
+ * called observed_at; the handler maps between them rather than making this
+ * lane the one that spells its timestamp differently from its siblings.
  */
 export function subnetIdentitySyncRowSchema({
   columns,
@@ -249,7 +254,7 @@ export function subnetIdentitySyncRowSchema({
     .looseObject({
       netuid: z.number().int().min(0).max(maxNetuid),
       block_number: z.number().int().min(0),
-      observed_at: capturedAtMs(minCapturedAtMs),
+      captured_at: capturedAtMs(minCapturedAtMs),
     })
     .superRefine((row, ctx) => {
       onlyKnownColumns(columns)(row as Row, ctx);
@@ -257,7 +262,7 @@ export function subnetIdentitySyncRowSchema({
         if (
           key === "netuid" ||
           key === "block_number" ||
-          key === "observed_at"
+          key === "captured_at"
         ) {
           continue;
         }

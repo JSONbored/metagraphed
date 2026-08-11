@@ -82,7 +82,7 @@ function row(overrides: Row = {}): Row {
   return {
     netuid: 1,
     block_number: 8_800_000,
-    observed_at: 1_780_000_000_000,
+    captured_at: 1_780_000_000_000,
     subnet_name: "Apex",
     symbol: "α",
     description: "Open competitions",
@@ -194,7 +194,7 @@ test("an unchanged identity appends nothing on a second pass", async () => {
   assert.equal(await count("subnet_identity_history"), 1);
 
   await call(
-    req([row({ observed_at: 1_780_000_999_000, block_number: 8_800_500 })]),
+    req([row({ captured_at: 1_780_000_999_000, block_number: 8_800_500 })]),
   );
   assert.equal(await count("subnet_identity_history"), 1);
   assert.equal(await count("subnet_identity"), 1);
@@ -203,7 +203,7 @@ test("an unchanged identity appends nothing on a second pass", async () => {
 test("a CHANGED identity appends a second history row", async () => {
   await call(req([row()]));
   await call(
-    req([row({ subnet_name: "Apex Reborn", observed_at: 1_780_001_000_000 })]),
+    req([row({ subnet_name: "Apex Reborn", captured_at: 1_780_001_000_000 })]),
   );
   assert.equal(await count("subnet_identity_history"), 2);
   // The card is latest-only: one row per netuid, carrying the new name.
