@@ -4,8 +4,18 @@
 // without routing through workers/api.ts.
 
 import assert from "node:assert/strict";
+
+// loadGlobalIncidentsLedger reads `surface_checks` through readStore, which
+// builds its own `new Client(...)` -- so the module is the seam (#10179). See
+// tests/helpers/pg-mock.ts.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { handleRequest } from "../workers/api.ts";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
 import {
   configureAnalytics,
   withEdgeCache,
@@ -1025,29 +1035,30 @@ describe("handleBulkHealthTrends", () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
+    // #10190: the tier this counted is retired; the STORE is the upstream the
+    // cache protects, so its queries are what the MISS/HIT counts measure.
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
+    Object.assign(env, pgMockEnv());
     let dataApiCalls = 0;
-    env.DATA_API = {
-      fetch: async () => {
-        dataApiCalls += 1;
-        return Response.json({
-          schema_version: 1,
-          windows: { "7d": {}, "30d": {} },
-        });
-      },
-    } as unknown as Fetcher;
+    pg.control.queries.length = 0;
+    pg.control.rows = [
+      { netuid: NETUID, day: "2026-06-30", surface_key: "api", samples: 10 },
+    ];
+    pg.control.onQuery = () => {
+      dataApiCalls += 1;
+    };
     const path = "/api/v1/health/trends";
 
     await handleBulkHealthTrends(req(path), env, url(path), ctx);
     await Promise.resolve();
-    assert.equal(dataApiCalls, 1, "the cold MISS must call DATA_API once");
+    assert.ok(dataApiCalls > 0, "the cold MISS must read the store");
 
     await handleBulkHealthTrends(req(path), env, url(path), ctx);
+    const afterMiss = dataApiCalls;
     assert.equal(
       dataApiCalls,
-      1,
-      "the warm HIT must be served from cache, not DATA_API",
+      afterMiss,
+      "the warm HIT must be served from cache, not the store",
     );
   });
 
@@ -1254,12 +1265,23 @@ describe("handleHealthPercentiles", () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
+    // #10190: the percentile route reads the store now, so a cacheable answer
+    // is a store-served one -- an empty payload is still barred from the cache.
     const env = analyticsEnv([]);
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({ schema_version: 1, netuid: NETUID, surfaces: [] }),
-    } as unknown as Fetcher;
+    Object.assign(env, pgMockEnv());
+    pg.control.queries.length = 0;
+    pg.control.onQuery = null;
+    pg.control.rows = [
+      {
+        netuid: NETUID,
+        surface_key: "api",
+        surface_id: "api",
+        samples: 10,
+        p50_ms: 100,
+        p95_ms: 200,
+        p99_ms: 300,
+      },
+    ];
     await handleHealthPercentiles(
       req(`${base}?window=7d`),
       env,
@@ -1462,30 +1484,43 @@ describe("handleGlobalIncidents", () => {
   // endpoint-incidents route. Non-empty surfaces come from the Postgres tier (the
   // D1 fallback ledger is always empty now), so these stub DATA_API with a payload
   // in the exact shape formatGlobalIncidents emits.
-  function withSurfaces(surfaces: Row[]) {
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this stubbed never answered --
+  // loadGlobalIncidentsLedger reads `surface_checks` through readStore. Doubled
+  // there, and given INCIDENT rows rather than a finished surfaces list: the
+  // pagination/sort/filter under test is applied to what formatGlobalIncidents
+  // aggregates, so handing it the aggregate skipped the step being tested.
+  function withSurfaces(incidentRows: Row[]) {
+    pg.control.queries.length = 0;
+    pg.control.rows = incidentRows;
     const { env } = dbWith({ rows: [] });
-    setSourceFlag(env, "METAGRAPH_HEALTH_SOURCE", "postgres");
-    env.DATA_API = {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: LAST_RUN_AT,
-          source: "live-cron-prober",
-          summary: {
-            incident_count: surfaces.length,
-            affected_surface_count: surfaces.length,
-          },
-          surfaces,
-        }),
-    } as unknown as Fetcher;
+    Object.assign(env, pgMockEnv());
     return env;
   }
 
+  // Three surfaces, ranked c > a > b by total downtime -- b has the MOST
+  // incidents and the LEAST downtime, so a sort on downtime_ms cannot be
+  // satisfied by incident_count order and vice versa.
+  const inc = (
+    netuid: number,
+    surface_id: string,
+    start: number,
+    ms: number,
+  ) => ({
+    netuid,
+    surface_id,
+    surface_key: surface_id,
+    started_at: start,
+    ended_at: start + ms,
+    failed_samples: 1,
+  });
   const SURFACE_ROWS = [
-    { netuid: 7, surface_id: "a", incident_count: 1, downtime_ms: 300 },
-    { netuid: 7, surface_id: "b", incident_count: 3, downtime_ms: 100 },
-    { netuid: 12, surface_id: "c", incident_count: 2, downtime_ms: 900 },
+    inc(7, "a", 1_000_000, 5_000_000),
+    inc(7, "b", 1_000_000, 1),
+    inc(7, "b", 3_000_000, 1),
+    inc(7, "b", 5_000_000, 1),
+    inc(12, "c", 1_000_000, 9_000_000),
+    inc(12, "c", 20_000_000, 1_000_000),
   ];
 
   test("paginates the surfaces ledger and advertises a Link header", async () => {
@@ -1935,25 +1970,22 @@ describe("chain analytics extrinsics-derived: postgres tier wiring", () => {
   // keep their coverage -- they call tryPostgresTier bare, which still forwards
   // on "postgres".
   for (const { name, path, handler, pgBody } of cases) {
-    test(`${name}: flag=postgres serves the DATA_API response, D1 never queried`, async () => {
-      let d1Called = false;
+    test(`${name}: the retired tier flag is not consulted even when set (#10190)`, async () => {
+      // METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+      // absent from DATA_API_FORWARD_FLAGS, so `pgBody` was never what this
+      // route served -- the #9146 projection was. Binding a DATA_API that WOULD
+      // answer and proving nothing asks it is what keeps the deletion honest:
+      // a reintroduced call resolves to null and would otherwise be invisible.
       const { env } = dbWith({ rows: [] });
       setSourceFlag(env, "METAGRAPH_EXTRINSICS_SOURCE", "postgres");
-      env.DATA_API = {
-        fetch: async () => Response.json(pgBody),
-      } as unknown as Fetcher;
-      env.METAGRAPH_HEALTH_DB.prepare = () => {
-        d1Called = true;
-        throw new Error(
-          "D1 must not be queried when Postgres serves the request",
-        );
-      };
+      const tier = forbiddenDataApi();
+      env.DATA_API = tier.DATA_API as unknown as Fetcher;
       const p = `${path}?window=7d`;
       const res = await handler(req(p), env, url(p), ctx);
       assert.equal(res.status, 200);
+      assert.deepEqual(tier.paths, []);
       const body = await jsonBody(res);
-      assert.deepEqual(body.data, pgBody);
-      assert.equal(d1Called, false);
+      assert.notDeepEqual(body.data, pgBody);
     });
 
     test(`${name}: flag=postgres falls back to D1 when DATA_API fails`, async () => {
