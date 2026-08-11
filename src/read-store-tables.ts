@@ -81,6 +81,14 @@ export const REVENUE_OBSERVATION_TABLES = [
 /** loadTaoUsdSeries */
 export const TAO_USD_TABLES = ["tao_usd_index"] as const;
 
+/** loadSweepRecord and the sweep lane's own write (#10489-#10509). Both tables
+ * move together: the verdict is meaningless without the candidates it counted,
+ * and a split store would return a count with nothing behind it. */
+export const ATTRIBUTION_SWEEP_TABLES = [
+  "attribution_sweeps",
+  "attribution_candidates",
+] as const;
+
 /** loadRevenueFeedItems (#10480). The observation pair plus the two tables the
  * coverage-ratio item's denominator is built from -- a ratio priced from one of
  * them would compare a dollar figure to a TAO figure. All four are Neon

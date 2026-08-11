@@ -12548,6 +12548,18 @@ export interface components {
         };
         /** @description One subnet's declared wallets with their roles, evidence and per-window activity. `owner` is chain-derived from SubnetOwner and flagged as such; every other role is a human attribution and carries the source_urls that prove it, in the response rather than only in the registry. An empty list means nothing has been attributed for this subnet — not that nothing exists. Mirrors GET /api/v1/subnets/{netuid}/wallets. */
         SubnetWalletsArtifact: {
+            /** @description Whether anyone has looked, and when (#10489-#10509). An empty wallet list beside a null search means nobody has searched; beside a `none-published` verdict it means somebody did, on the stated date, and the subnet publishes nothing. Those are different facts and an undated silence is not evidence. */
+            attribution_search: {
+                /** @description Checksum-valid addresses found in the fetched bytes. A CANDIDATE, never an attribution: an address appearing on a team's page is not thereby theirs — a `validator_hotkey` field inside their own API response is the common false positive — and clearing the evidence bar is a human judgement. */
+                candidates: number;
+                sources_checked: number;
+                /** @description How many of the checked sources actually answered. The gap between this and sources_checked is reach we did not have, published rather than folded into the verdict. */
+                sources_read: number;
+                /** @description When this subnet's published surfaces were last searched for an address. NULL means never, or that the sweep store could not be read — either way nobody has looked, which is a different fact from having looked and found nothing. */
+                swept_at: string | null;
+                /** @description `none-published` is the expected majority answer and IS a finding: we read at least one source and found no address. `unreachable` and `no-sources` are statements about US — we could not look, or there was nothing to look at — and must never be read as a finding about the subnet. */
+                verdict: ("none-published" | "candidates-found" | "unreachable" | "no-sources") | null;
+            } | null;
             contract_version?: string;
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
@@ -47836,6 +47848,13 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "attribution_search": {
+                     *           "candidates": 1,
+                     *           "sources_checked": 1,
+                     *           "sources_read": 1,
+                     *           "swept_at": "2026-06-01T00:00:00.000Z",
+                     *           "verdict": "none-published"
+                     *         },
                      *         "contract_version": "2026-06-29.1",
                      *         "field_sources": {
                      *           "example": {

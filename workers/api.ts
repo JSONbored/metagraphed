@@ -546,6 +546,7 @@ import {
   RAW_CAPTURE_CRON,
   SUBNET_BURN_CAPTURE_CRON,
   REVENUE_PROBE_CRON,
+  ATTRIBUTION_SWEEP_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
@@ -667,6 +668,13 @@ import {
   REVENUE_FEED_TABLES,
   REVENUE_OBSERVATION_TABLES,
 } from "../src/read-store-tables.ts";
+import {
+  SWEEP_FETCH_TIMEOUT_MS,
+  SWEEP_MAX_BYTES,
+  runAttributionSweepTick,
+  type SweepStoreDb,
+} from "../src/attribution-sweep.ts";
+import { ATTRIBUTION_SWEEP_TABLES } from "../src/read-store-tables.ts";
 import {
   loadRevenueFeedItems,
   type RevenueFeedDb,
@@ -2168,6 +2176,7 @@ function cronLabel(cron: string): string {
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
   if (cron === REVENUE_PROBE_CRON) return "revenue-probe";
+  if (cron === ATTRIBUTION_SWEEP_CRON) return "attribution-sweep";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
   if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
@@ -2360,6 +2369,43 @@ export async function resolveWalletFeedItems(env: Env): Promise<FeedItem[]> {
   });
 }
 
+/** The registry records the sweep reads, from the served artifact this Worker
+ * already publishes -- no new capture and no query on the indexer box. */
+export async function sweepableSubnets(
+  env: Env,
+): Promise<Array<{ netuid: number; record: Row }>> {
+  const artifact = await readArtifact(env, "/metagraph/subnets.json");
+  if (!artifact.ok) return [];
+  const list = (artifact.data as Row | undefined)?.subnets;
+  const out: Array<{ netuid: number; record: Row }> = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const record = (raw ?? {}) as Row;
+    const netuid = Number(record.netuid);
+    // Root is emission-ineligible, so there is no owner cut to account for and
+    // nothing this sweep is looking for on its behalf.
+    if (!Number.isInteger(netuid) || netuid <= 0) continue;
+    out.push({ netuid, record });
+  }
+  return out;
+}
+
+/** One source, bounded. A treasury address on a page is near the top of it;
+ * reading a megabyte of metagraph JSON whole would spend the budget on noise.
+ * Null on any failure -- the caller counts that as reach we did not have. */
+export async function fetchSweepText(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { "user-agent": "metagraphed-attribution-sweep" },
+      signal: AbortSignal.timeout(SWEEP_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.slice(0, SWEEP_MAX_BYTES);
+  } catch {
+    return null;
+  }
+}
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
@@ -2489,6 +2535,26 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === ATTRIBUTION_SWEEP_CRON) {
+    // #10489-#10509: look at what each subnet publishes, and record what was
+    // found -- including, and mostly, that nothing was.
+    //
+    // The store exists so a wallets response can say "searched on this date,
+    // nothing published" instead of an empty list that is equally consistent
+    // with nobody having looked. An undated silence is not evidence.
+    {
+      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
+      try {
+        return await runAttributionSweepTick(
+          store.db as SweepStoreDb,
+          await sweepableSubnets(env),
+          { fetchText: fetchSweepText },
+        );
+      } finally {
+        store.close();
+      }
+    }
   }
   if (cron === REVENUE_PROBE_CRON) {
     // #10566: the lane src/revenue-probe.ts has been waiting for since #10444.
