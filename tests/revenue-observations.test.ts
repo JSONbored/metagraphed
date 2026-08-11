@@ -212,16 +212,73 @@ describe("eligibleRevenueSurfaces", () => {
         netuid: 64,
         url: "https://example/a",
         auth_required: false,
-        revenue: { role: "external-revenue", provenance: "probe-derived" },
+        revenue: {
+          role: "external-revenue",
+          provenance: "probe-derived",
+          shape: "scalar",
+          currency: "USD",
+        },
       },
       { surface_id: "b", netuid: 2, url: "https://example/b" },
+      // Annotated but not EXTRACTABLE (#10783): `extractRevenue` refuses
+      // without a shape, so this is a surface the lane could fetch and never
+      // read. 30 of the live artifact's 35 looked exactly like this.
+      {
+        surface_id: "c",
+        netuid: 9,
+        url: "https://example/c",
+        revenue: { role: "not-revenue", provenance: "probe-derived" },
+      },
     ],
   };
 
-  test("only surfaces carrying a declaration are handed to the probe", () => {
+  test("only EXTRACTABLE surfaces are handed to the probe", () => {
+    // Not merely "carries a revenue block". `extractRevenue` opens with
+    // `if (!shape) return fail("no shape declared")` and refuses a missing
+    // currency the same way, so a surface without both is one this lane can
+    // fetch and can never read. Measured on the live artifact 2026-08-11: 35
+    // surfaces had a revenue block and 5 had a shape and a currency, so 30
+    // fetches an hour went out against other people's APIs to produce a
+    // failure row apiece.
     const out = eligibleRevenueSurfaces(ARTIFACT);
-    assert.equal(out.length, 1);
-    assert.equal(out[0].id, "a");
+    assert.deepEqual(
+      out.map((s) => s.id),
+      ["a"],
+    );
+  });
+
+  test("a shape with no currency is not eligible either", () => {
+    assert.deepEqual(
+      eligibleRevenueSurfaces({
+        surfaces: [
+          { surface_id: "x", netuid: 1, revenue: { shape: "scalar" } },
+          { surface_id: "y", netuid: 2, revenue: { currency: "USD" } },
+        ],
+      }),
+      [],
+      "extractRevenue needs both, so eligibility needs both",
+    );
+  });
+
+  test("an UNKNOWN shape is still eligible, deliberately", () => {
+    // extractRevenue validates the vocabulary and fails with `unknown shape`,
+    // which writes a failure row naming the surface -- and a typo in the
+    // registry is exactly what that row should surface. Filtering it here
+    // would make a registry error look like a surface never meant to be
+    // probed.
+    assert.deepEqual(
+      eligibleRevenueSurfaces({
+        surfaces: [
+          {
+            surface_id: "typo",
+            netuid: 1,
+            url: "https://example/typo",
+            revenue: { shape: "scalarr", currency: "USD" },
+          },
+        ],
+      }).map((s) => s.id),
+      ["typo"],
+    );
   });
 
   test("probe.enabled is restored rather than assumed away", () => {
@@ -483,7 +540,16 @@ describe("degenerate input", () => {
     // probeEligibility and the store both read these as strings; "undefined"
     // rendered into a surface_id would be written to the table as a real key.
     const [surface] = eligibleRevenueSurfaces({
-      surfaces: [{ netuid: 7, revenue: { role: "external-revenue" } }],
+      surfaces: [
+        {
+          netuid: 7,
+          revenue: {
+            role: "external-revenue",
+            shape: "scalar",
+            currency: "USD",
+          },
+        },
+      ],
     });
     assert.equal(surface.id, "");
     assert.equal(surface.url, "");
@@ -847,6 +913,11 @@ describe("the revenue queue, through the Worker's own handler", () => {
     revenue: {
       role: "external-revenue",
       provenance: "probe-derived",
+      // shape + currency are what make a surface EXTRACTABLE, and therefore
+      // what make it eligible (#10783). This fixture carried currency and no
+      // shape, which is a surface the lane could fetch and never read.
+      shape: "scalar",
+      fields: { amount: "revenue_usd" },
       currency: "USD",
       grain: "daily",
     },
