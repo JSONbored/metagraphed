@@ -91,6 +91,14 @@ const POSTHOG_API_HOST = (import.meta.env?.VITE_POSTHOG_HOST as string | undefin
 const POSTHOG_UI_HOST =
   (import.meta.env?.VITE_POSTHOG_UI_HOST as string | undefined) || "https://us.posthog.com";
 
+// The deploy this bundle came from, injected by vite.config.ts from
+// WORKERS_CI_COMMIT_SHA and equal to posthogRollupPlugin's own
+// `releaseVersion` -- runtime events and uploaded source maps must name the
+// same release for Error Tracking to line them up. Absent locally and in PR
+// CI, where there is no deploy to name; the super property below is simply
+// omitted then rather than registered as a lie like "dev" or "unknown".
+const POSTHOG_RELEASE = (import.meta.env?.VITE_POSTHOG_RELEASE as string | undefined) || undefined;
+
 // Tracks PostHog's own "SDK defaults" versioning (posthog.com/docs/libraries/js#sdk-defaults) --
 // bump deliberately when adopting a newer default set, not on every release.
 // A typo here can't silently fall back to posthog-js's own default handling:
@@ -300,12 +308,19 @@ function loadPostHog(): Promise<PostHog | null> {
       // -- a per-call-site property would miss exactly the events that need
       // it most.
       //
-      // Deliberately environment only, no `release`: #7766 removed the
-      // WORKERS_CI_COMMIT_SHA -> import.meta.env bridge on the grounds that
-      // no client code read it, and re-adding a build-config bridge is a
-      // larger change than this one. import.meta.env.PROD is already there.
+      // `release` rides along when the build knows one, matching the Worker's
+      // pair of dimensions exactly. `$exception_releases` is the field
+      // PostHog Error Tracking's own release filter reads, so it is set
+      // alongside the generic `release` -- the same two-for-one
+      // assignDeployment does server-side.
       posthog.register({
         environment: import.meta.env?.PROD ? "production" : "development",
+        ...(POSTHOG_RELEASE
+          ? {
+              release: POSTHOG_RELEASE,
+              $exception_releases: [POSTHOG_RELEASE],
+            }
+          : {}),
       });
       return posthog;
     })

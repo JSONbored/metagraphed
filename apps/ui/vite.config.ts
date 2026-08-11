@@ -20,6 +20,29 @@ import posthogRollupPlugin from "@posthog/rollup-plugin";
 // already false anyway.
 const commitSha = process.env.WORKERS_CI_COMMIT_SHA;
 
+// #7766 removed the old WORKERS_CI_COMMIT_SHA -> import.meta.env bridge on the
+// grounds that no client code read a release value once Sentry's runtime
+// capture was gone. One now does: analytics.ts registers `release` as a
+// PostHog super property, so a browser `$exception` can be pinned to a deploy
+// the way every Worker-side event already is (src/usage-telemetry.ts's
+// assignDeployment).
+//
+// Re-exposed by SETTING the prefixed variable rather than by a `define` block,
+// which is what #7766 actually removed. Vite's own env loader prioritises
+// inline `process.env` entries matching the `VITE_` prefix, so this reaches
+// `import.meta.env` through exactly the same path as
+// VITE_POSTHOG_PROJECT_TOKEN -- and therefore reads identically at the call
+// site, optional chaining and all. A `define` would not: it is a literal
+// text substitution on `import.meta.env.VITE_POSTHOG_RELEASE`, which the
+// `import.meta.env?.` idiom every other var here uses does not match, so the
+// value would silently resolve to undefined.
+//
+// The VALUE is commitSha, matching posthogRollupPlugin's `releaseVersion`
+// below -- runtime events and the uploaded source maps have to name the same
+// release or Error Tracking cannot line them up. Undefined locally and in PR
+// CI, exactly where sourcemap upload is already off.
+if (commitSha) process.env.VITE_POSTHOG_RELEASE = commitSha;
+
 // @posthog/rollup-plugin's own `writeBundle` hook (the step that actually
 // uploads source maps, node_modules/@posthog/rollup-plugin/src/index.ts) has
 // NO `errorHandler` option, unlike sentryVitePlugin above -- a rejected

@@ -123,6 +123,7 @@ describe("analytics (PostHog web analytics)", () => {
     // per-capture-site property would miss exactly the events that need it.
     it("registers an environment super property on every event", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      vi.stubEnv("VITE_POSTHOG_RELEASE", "");
       const { initAnalytics } = await import("./analytics");
       initAnalytics();
       await vi.waitFor(() => expect(register).toHaveBeenCalled());
@@ -131,6 +132,36 @@ describe("analytics (PostHog web analytics)", () => {
         // developer's machine takes -- and the whole point of the dimension.
         environment: "development",
       });
+    });
+
+    // vite.config.ts injects this from WORKERS_CI_COMMIT_SHA on deploys only,
+    // so both branches are real: a deploy names its release, a local build has
+    // none to name.
+    it("registers the release when the build injected one", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      vi.stubEnv("VITE_POSTHOG_RELEASE", "abc123def456");
+      const { initAnalytics } = await import("./analytics");
+      initAnalytics();
+      await vi.waitFor(() => expect(register).toHaveBeenCalled());
+      expect(register).toHaveBeenCalledWith({
+        environment: "development",
+        release: "abc123def456",
+        // The field PostHog Error Tracking's own release filter reads, set
+        // alongside the generic one exactly as the Worker's assignDeployment
+        // does.
+        $exception_releases: ["abc123def456"],
+      });
+    });
+
+    it("omits release entirely when the build had none, rather than faking one", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      vi.stubEnv("VITE_POSTHOG_RELEASE", "");
+      const { initAnalytics } = await import("./analytics");
+      initAnalytics();
+      await vi.waitFor(() => expect(register).toHaveBeenCalled());
+      const registered = register.mock.calls[0][0] as Record<string, unknown>;
+      expect("release" in registered).toBe(false);
+      expect("$exception_releases" in registered).toBe(false);
     });
 
     it("respects DNT and uses localStorage (no-cookie) persistence for cross-visit continuity", async () => {
