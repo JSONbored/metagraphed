@@ -24120,27 +24120,61 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("subnet_weight_setters forwards tempo and the overdue counters", async () => {
+    const TEMPO = 360;
+    const now = Date.now();
+    const lake = lakehouse((sql) =>
+      sql.includes("FROM (SELECT")
+        ? [{ distinct_setters: 2 }]
+        : sql.includes("GROUP BY")
+          ? [
+              // Overdue: `last_set` further back than tempo * the multiple. 360
+              // blocks is ~72 minutes, so a day ago is comfortably past 3x it.
+              // A zero/absent last_set would make `overdue` NULL instead --
+              // "not evaluated", which the count deliberately does not include.
+              {
+                netuid: 5,
+                hotkey: "5Late1",
+                weight_sets: 1,
+                last_set: now - 24 * 60 * 60 * 1000,
+              },
+              {
+                netuid: 5,
+                hotkey: "5Late2",
+                weight_sets: 1,
+                last_set: now - 24 * 60 * 60 * 1000,
+              },
+            ]
+          : [{ weight_sets: 2, newest_observed: now }],
+    );
+    function weightSettersEnv() {
+      pg.control.queries.length = 0;
+      pg.control.failNext = null;
+      pg.control.onQuery = null;
+      pg.control.answers = [
+        { match: "FROM subnet_hyperparams", rows: [{ tempo: TEMPO }] },
+      ];
+      return { ...LAKEHOUSE_ENV, ...pgMockEnv() };
+    }
     const { body } = await gql(
       "{ subnet_weight_setters(netuid: 5) { tempo overdue_tempo_multiple overdue_setter_count } }",
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          window: "7d",
-          setters: [],
-          tempo: 360,
-          overdue_tempo_multiple: 3,
-          overdue_setter_count: 2,
-        },
-        events,
-      ),
+      // #10190: the tier is retired, and these three fields come from TWO reads
+      // now. The WeightsSet rollup gives the setters (three reads of its own: the
+      // row page, an ungrouped COUNT(*), and a GROUP BY subquery for the distinct
+      // count), while `tempo` is a separate store read of subnet_hyperparams.
+      //
+      // `overdue_setter_count` is DERIVED from both: a setter is overdue when its
+      // last set is further back than tempo * overdue_tempo_multiple. With no
+      // tempo it cannot be computed at all, which is why the retired tier's
+      // hand-written 2 could stand beside a null tempo.
+      weightSettersEnv() as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.subnet_weight_setters, {
-      tempo: 360,
+      tempo: TEMPO,
       overdue_tempo_multiple: 3,
       overdue_setter_count: 2,
     });
+    lake.restore();
   });
 
   test("subnet_health_incidents forwards min_incident_samples", async () => {
