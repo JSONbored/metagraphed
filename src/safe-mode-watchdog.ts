@@ -268,6 +268,16 @@ export async function runSafeModeWatchdog(
       await record(env as never, {
         error: new Error(`SafeMode watchdog: ${reasons.join(", ")}`),
         route: "watchdog:safe-mode",
+        // fingerprintDetail (#10813). This route reports TWO independent
+        // subjects: the chain being paused, and this monitor's own read failing.
+        // Both fingerprinted `watchdog:safe-mode:Error`, which is also the storm
+        // guard's throttle key -- so a `safe_mode_active`, the single condition
+        // this watchdog exists to report, could be dropped as a repeat of a
+        // routine `extrinsics: HTTP 522` that fired minutes earlier. Measured
+        // 2026-08-11: 16 `watchdog_unreachable` captures in four days, every one
+        // of them holding that window open. Same fix #10673 made for lane-alarm,
+        // for the same reason.
+        fingerprintDetail: "safe_mode_active",
         errorCode: "safe_mode_active",
       }).catch(() => false);
     }
@@ -282,6 +292,8 @@ export async function runSafeModeWatchdog(
           historyError ??
           new Error("SafeMode history: the extrinsics tier declined the read"),
         route: "watchdog:safe-mode",
+        // See above: the two subjects must not share a throttle window.
+        fingerprintDetail: "watchdog_unreachable",
         errorCode: "watchdog_unreachable",
       }).catch(() => false);
     }
@@ -302,6 +314,8 @@ export async function runSafeModeWatchdog(
     await record(env as never, {
       error: err,
       route: "watchdog:safe-mode",
+      // See above: the two subjects must not share a throttle window.
+      fingerprintDetail: "watchdog_unreachable",
       errorCode: "watchdog_unreachable",
     }).catch(() => false);
     return {

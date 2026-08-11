@@ -440,3 +440,62 @@ test("a capture that fails on the BLIND-HALF report never breaks the tick", asyn
   assert.equal(result.ok, true);
   assert.equal(result.history_read, false);
 });
+
+// #10813: the two subjects this route reports must not share a throttle window.
+describe("the chain-paused signal cannot be throttled by our own probe", () => {
+  function captureSpy() {
+    const captures: Record<string, unknown>[] = [];
+    return {
+      captures,
+      recordExceptionEvent: (async (_env: unknown, event: unknown) => {
+        captures.push(event as Record<string, unknown>);
+        return true;
+      }) as never,
+    };
+  }
+
+  const pausedChain = (async () =>
+    new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }), {
+      status: 200,
+    })) as unknown as typeof fetch;
+
+  test("a paused chain and a blind history fingerprint separately", async () => {
+    // recordExceptionEvent throttles on `route:fingerprintDetail:type`, which is
+    // also what PostHog groups by. Without the detail BOTH of these were
+    // `watchdog:safe-mode:Error` -- so a SafeMode pause, the one condition this
+    // watchdog exists to report, could be dropped as a repeat of a routine
+    // `extrinsics: HTTP 522`. Measured 2026-08-11: 16 of those 522s in four
+    // days, every one holding the window open.
+    //
+    // Both faults in ONE tick, which is the case that matters: a chain that
+    // pauses while our own history read is failing is exactly when the wrong
+    // one must not win.
+    const spy = captureSpy();
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: pausedChain,
+      readExtrinsics: async () => null,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.equal(result.alerted, true);
+    assert.equal(spy.captures.length, 2, "both subjects reported");
+
+    const byCode = new Map(
+      spy.captures.map((capture) => [capture.errorCode, capture]),
+    );
+    assert.equal(
+      byCode.get("safe_mode_active")?.fingerprintDetail,
+      "safe_mode_active",
+    );
+    assert.equal(
+      byCode.get("watchdog_unreachable")?.fingerprintDetail,
+      "watchdog_unreachable",
+    );
+    // The property under test, stated as the thing it prevents: two DIFFERENT
+    // throttle keys, so neither can suppress the other.
+    assert.equal(
+      new Set(spy.captures.map((capture) => capture.fingerprintDetail)).size,
+      2,
+      "the two subjects share a throttle window",
+    );
+  });
+});

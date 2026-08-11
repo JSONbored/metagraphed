@@ -935,6 +935,26 @@ export interface McpToolCallEvent extends McpServerIdentity {
   /** Mcp-Session-Id header value; omitted from the payload when absent. */
   sessionId?: string | null;
   /**
+   * The HTTP method and masked path a PRE-DISPATCH REFUSAL arrived on
+   * (#10810).
+   *
+   * Only refusals set these, and only refusals need them: a dispatched call
+   * names its tool, so the request that produced it is never in question. A
+   * refusal has no tool by construction -- the gate runs in front of the
+   * dispatcher -- so `$mcp_tool_name` is null and the error code is all there
+   * is. That was not enough to triage the largest refusal class on the surface:
+   * 36 `method_not_allowed` in two days, with no way to tell a spec-compliant
+   * client hitting a verb the transport does not implement from a scanner
+   * probing paths. One is a compatibility bug worth fixing and the other is
+   * noise worth ignoring, and the event could not distinguish them.
+   *
+   * The path is MASKED with the same maskRouteParams every other route label
+   * uses, so a session id or an ss58 in the URL cannot turn one recurring
+   * refusal into thousands of distinct property values.
+   */
+  requestMethod?: string;
+  requestPath?: string;
+  /**
    * The tool call's raw arguments / result. Redacted (redactMcpSensitiveFields)
    * and size-capped (boundedMcpPayload) before ever being included in the
    * posted event — this module owns that, callers pass the raw value through.
@@ -1039,6 +1059,18 @@ export async function recordMcpToolCallEvent(
     if (intent !== undefined) {
       properties["$mcp_intent"] = intent;
       properties["$mcp_intent_source"] = "context_parameter";
+    }
+
+    // What a refusal arrived on (#10810). Only set by scheduleMcpRefusalEvent,
+    // so a dispatched call never carries them -- see the doc comment on
+    // McpToolCallEvent.requestMethod for why the refusal class alone needs it.
+    const requestMethod = sanitizeLabel(event.requestMethod);
+    if (requestMethod !== undefined) {
+      properties["$mcp_request_method"] = requestMethod;
+    }
+    const requestPath = sanitizeLabel(event.requestPath);
+    if (requestPath !== undefined) {
+      properties["$mcp_request_path"] = requestPath;
     }
 
     // Failure classification (#8963). Emitted only on failure: an

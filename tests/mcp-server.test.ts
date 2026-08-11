@@ -21251,13 +21251,17 @@ describe("MCP webhook/alert-trigger read tools (2026-07-14/15 audit follow-up)",
       { env },
     );
     assert.equal(res.body.result.isError, true);
-    assert.equal(
-      res.body.result.structuredContent.error.code,
-      "alert_trigger_error",
-    );
+    // The MESSAGE fallback is this test's claim -- an upstream `error` field
+    // that is not a string must not reach the caller as "[object Object]".
     assert.equal(
       res.body.result.structuredContent.error.message,
       "The alert triggers tier returned an error.",
+    );
+    // The CODE now follows the status (#10810): a 500 is somebody else's 5xx,
+    // which classifies as api_5xx rather than as our own `internal`.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "provider_error",
     );
   });
 
@@ -22280,6 +22284,43 @@ describe("MCP account identity/position-history tools (#5225 parity)", () => {
     assert.deepEqual(out.positions, []);
   });
 
+  test("get_account_positions never asks DATA_API, on either tool", async () => {
+    // #10808. The tier arm here was a REAL forward -- METAGRAPH_NEURONS_SOURCE
+    // is in DATA_API_FORWARD_FLAGS -- to a route DATA_API does not implement:
+    // matchNeuronsD1Route covers /portfolio, /subnets and
+    // /subnets/:netuid/history, and /positions fell through to the gone-tier
+    // 503 on all 36 occurrences measured in 4 days.
+    //
+    // Asserting the ABSENCE of the request, not the shape of the answer: the
+    // ladder below always caught the 503, so the card was correct throughout
+    // and no assertion over its payload could have found this. A reintroduced
+    // forward would be invisible the same way.
+    for (const [tool, args] of [
+      ["get_account_positions", { ss58: SS58 }],
+      ["get_account_snapshot", { ss58: SS58 }],
+    ] as [string, Row][]) {
+      const paths: string[] = [];
+      const res = await callTool(tool, args, {
+        env: {
+          // The value that WOULD forward, on the flag that genuinely forwards.
+          METAGRAPH_NEURONS_SOURCE: "d1",
+          DATA_API: {
+            fetch: async (request: Request) => {
+              paths.push(new URL(request.url).pathname);
+              return Response.json({ schema_version: 1, marker: "tier" });
+            },
+          },
+        },
+      });
+      assert.equal(res.body.result.isError, false, tool);
+      assert.deepEqual(
+        paths.filter((path) => path.endsWith("/positions")),
+        [],
+        `${tool} forwarded /positions to a handler that does not exist`,
+      );
+    }
+  });
+
   test("get_account_positions rejects a malformed ss58", async () => {
     const res = await callTool("get_account_positions", {
       ss58: "not-an-address",
@@ -22441,7 +22482,33 @@ describe("MCP get_account_snapshot", () => {
         }),
       };
     }) as unknown as typeof globalThis.fetch;
+    // The positions view's own store (#10808). THREE reads, not one, and the
+    // order matters -- `answers` is first-match. The loader issues the position
+    // page and the ledger stamp together (an empty stamp is the pre-cutover
+    // state and DECLINES), then side-loads the hotkeys' stake off `neurons` to
+    // price the shares. Miss any of the three and it falls through to the cold
+    // tier and then to the unavailable card.
+    const POSITION_HOTKEY = "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3";
+    pg.control.answers = [
+      { match: /MAX\(captured_at\)/i, rows: [{ latest: 1_750_000_000_000 }] },
+      {
+        match: /FROM neurons/i,
+        rows: [{ hotkey: POSITION_HOTKEY, netuid: 7, stake_tao: 100 }],
+      },
+      {
+        match: /FROM nominator_positions/i,
+        rows: [
+          {
+            hotkey: POSITION_HOTKEY,
+            netuid: 7,
+            share_fraction: 0.25,
+            captured_at: 1_750_000_000_000,
+          },
+        ],
+      },
+    ];
     const env = {
+      ...pgMockEnv(["nominator_positions", "neurons"]),
       METAGRAPH_NEURONS_SOURCE: "postgres",
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
       ...LAKEHOUSE_ENV,
@@ -22472,18 +22539,12 @@ describe("MCP get_account_snapshot", () => {
               subnets: [],
             });
           }
-          if (url.pathname === `/api/v1/accounts/${SS58}/positions`) {
-            return Response.json({
-              schema_version: 1,
-              ss58: SS58,
-              position_count: 1,
-              total_stake_alpha: 42,
-              positions: [],
-            });
-          }
-          // /accounts/:ss58/events is deliberately NOT served here: its flag is
-          // retired, so production never requests it. The events view reads the
-          // lakehouse, wired below.
+          // NEITHER /positions nor /events is served here. #10808 removed the
+          // positions forward (DATA_API has no handler for it, so it 503'd every
+          // time) and #10190 retired the events flag -- so a path served here is
+          // one production never gets an answer from. Positions reads
+          // nominator_positions in the live store, events reads the lakehouse;
+          // both are wired above.
           throw new Error(`unexpected DATA_API path: ${url.pathname}`);
         },
       },
@@ -22500,7 +22561,11 @@ describe("MCP get_account_snapshot", () => {
       assert.equal(out.balance.balance_tao, 2.5);
       assert.equal(out.portfolio.position_count, 2);
       assert.equal(out.subnets.subnet_count, 3);
-      assert.equal(out.positions.total_stake_alpha, 42);
+      assert.equal(
+        out.positions.position_count,
+        1,
+        "the positions view must come from the store, not a tier that 503s",
+      );
       assert.equal(
         out.recent_events.events[0].event_kind,
         "Transfer",
@@ -23178,11 +23243,11 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
       path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/portfolio",
     },
-    {
-      tool: "get_account_positions",
-      args: { ss58: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5" },
-      path: "/api/v1/accounts/5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5/positions",
-    },
+    // get_account_positions is NOT here (#10808). Every other entry names a path
+    // matchNeuronsD1Route actually implements; /positions was the one that did
+    // not, so this loop asserted a forward that answered 503 every time in
+    // production. Its replacement asserts the absence of the request --
+    // "get_account_positions never asks DATA_API, on either tool" above.
     {
       tool: "get_account_position_history",
       args: {
