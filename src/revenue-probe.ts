@@ -63,6 +63,29 @@ export interface RevenueFailureRow {
   netuid: number;
   reason: string;
   observed_at: number;
+  /**
+   * Whether redelivering this message could ever produce a different answer.
+   *
+   * NOT PERSISTED -- the insert names its columns, and this is a routing fact
+   * about the queue rather than something a reader of
+   * `revenue_probe_failures` needs. It exists because the two failures this
+   * lane records are opposites:
+   *
+   *   a FETCH failure is transient. The endpoint was slow, throttling, or
+   *   briefly 5xx, and the next delivery may well succeed.
+   *
+   *   an EXTRACTION failure is deterministic. `expected an array payload`
+   *   depends on the declaration and the payload's shape, neither of which a
+   *   redelivery changes, so every retry re-fetches somebody else's API to
+   *   write the identical row and then dead-letters.
+   *
+   * Measured 2026-08-11 (#10855): `sn-64-chutes-payments-list` declares
+   * `flat-array` against a paginated envelope, failed extraction on every tick
+   * for twelve hours, and held `revenue-probes-dlq` at `stale` the whole time.
+   * The failure row was already on disk each time -- the retry added nothing
+   * but load.
+   */
+  terminal: boolean;
 }
 
 export interface RevenueProbeResult {
@@ -152,6 +175,9 @@ export async function runRevenueProbe(
         netuid: surface.netuid,
         reason: `fetch failed: ${error instanceof Error ? error.message : String(error)}`,
         observed_at,
+        // Transient: a slow, throttling or briefly-5xx endpoint is worth
+        // asking again.
+        terminal: false,
       });
       continue;
     }
@@ -162,6 +188,9 @@ export async function runRevenueProbe(
         netuid: surface.netuid,
         reason: extracted.reason,
         observed_at,
+        // Deterministic: the declaration and the payload's shape decide this,
+        // and a redelivery changes neither.
+        terminal: true,
       });
       continue;
     }

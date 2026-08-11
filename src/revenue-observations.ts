@@ -61,10 +61,28 @@ export async function persistRevenueProbe(
   ok: boolean;
   written: number;
   failed: number;
+  /**
+   * Whether redelivering this work could produce a different answer (#10855).
+   *
+   * SEPARATE FROM `ok`, because `ok` answers "did this pass produce anything"
+   * -- a lane-verdict question -- and the queue needs a different one: "is
+   * asking again worth a round trip against somebody else's API". Conflating
+   * them is what dead-lettered a deterministic extraction failure hourly.
+   */
+  retryable: boolean;
   reason?: string;
 }> {
   if (!db?.prepare) {
-    return { ok: false, written: 0, failed: 0, reason: "no_store_binding" };
+    // Nothing was recorded, so the next delivery is the only chance this work
+    // gets. Retryable even though a missing binding will not fix itself: the
+    // alternative is acking work that left no trace anywhere.
+    return {
+      ok: false,
+      written: 0,
+      failed: 0,
+      retryable: true,
+      reason: "no_store_binding",
+    };
   }
   const { observations, failures } = result;
   try {
@@ -120,6 +138,8 @@ export async function persistRevenueProbe(
       ok: false,
       written: 0,
       failed: failures.length,
+      // The rows did NOT land, so this is the one failure a retry can fix.
+      retryable: true,
       reason: `write_failed: ${String((error as Error)?.message ?? error)}`,
     };
   }
@@ -131,6 +151,9 @@ export async function persistRevenueProbe(
     ok: observations.length > 0 || failures.length === 0,
     written: observations.length,
     failed: failures.length,
+    // The rows ARE on disk by here. Only a transient failure is worth another
+    // delivery; a terminal one would re-fetch and rewrite the identical row.
+    retryable: failures.some((failure) => !failure.terminal),
     ...(observations.length === 0 && failures.length === 0
       ? { reason: "no_eligible_surfaces" }
       : {}),
@@ -147,6 +170,8 @@ export async function runRevenueProbeLane(
   written: number;
   failed: number;
   skipped: number;
+  /** See persistRevenueProbe: whether another delivery could answer differently. */
+  retryable: boolean;
   reason?: string;
 }> {
   const result = await runRevenueProbe(surfaces, deps);
@@ -373,6 +398,19 @@ export async function handleRevenueProbeBatch(
       if (typeof id !== "string" || !id) return null;
       return deps.surfaceFor(id);
     },
-    run: async (surface) => (await runRevenueProbeLane([surface], db, deps)).ok,
+    run: async (surface) => {
+      const outcome = await runRevenueProbeLane([surface], db, deps);
+      // ACKED WHEN THERE IS NOTHING LEFT TO ASK (#10855). `consumeBatch` retries
+      // on a falsy return, so returning `ok` alone sent every deterministic
+      // extraction failure round the retry loop and then to
+      // `revenue-probes-dlq` -- hourly, for as long as the declaration and the
+      // payload disagreed. The failure row is already written by then, so the
+      // retry bought a second identical row and a second request against
+      // somebody else's API.
+      //
+      // A transient failure still retries: `retryable` is true for a fetch that
+      // threw and for a write that did not land.
+      return outcome.ok || !outcome.retryable;
+    },
   });
 }
