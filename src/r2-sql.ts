@@ -624,3 +624,27 @@ export function safeHexLiteral(value: unknown): string | null {
   if (typeof value !== "string") return null;
   return /^0x[0-9a-fA-F]{1,128}$/.test(value) ? value.toLowerCase() : null;
 }
+
+/** A `YYYY-MM-DD` day that is safe to inline, refused rather than escaped like
+ * every other guard here.
+ *
+ * SHAPE IS NOT ENOUGH, so this also checks the date EXISTS. `2026-02-31` and
+ * `2026-13-01` both satisfy the obvious regex and neither is a day; round-
+ * tripping through Date is what rejects them. A nonsense date reaching the
+ * engine would not be an injection, but it would silently match no rows, and
+ * "no rows" is indistinguishable from "no history" at the seam this feeds --
+ * which is the failure mode the whole cold tier exists to avoid.
+ *
+ * Deliberately NOT a range check. The lakehouse's own floor moves, and pinning
+ * a plausible window here would be a second seam constant to forget. */
+export function safeIsoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const day = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const parsed = new Date(`${day}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  // Date rolls an out-of-range component over (Feb 31 -> Mar 3) rather than
+  // failing, so the only way to know the input was a real day is to ask what
+  // it came back as.
+  return parsed.toISOString().slice(0, 10) === day ? day : null;
+}

@@ -1394,6 +1394,10 @@ import {
   parseHistoryWindow,
 } from "./neuron-history.ts";
 import {
+  overlayNeuronHistoryColdTier,
+  overlaySubnetHistoryColdTier,
+} from "./neuron-daily-cold-tier.ts";
+import {
   buildTurnover,
   buildTurnoverChanges,
   turnoverChangeDetail,
@@ -3484,16 +3488,25 @@ function requireHistoryWindow(args: Row) {
 // the Postgres tier first (METAGRAPH_NEURONS_SOURCE); the neuron_daily D1
 // table was retired (#4772), so buildSubnetHistory([]) yields the
 // schema-stable point_count:0 payload the same way a cold/absent D1 used to.
-async function loadSubnetHistory(ctx: McpCtx, netuid: number, { label }: Row) {
-  return (
+async function loadSubnetHistory(
+  ctx: McpCtx,
+  netuid: number,
+  { label, days }: Row,
+) {
+  const hot =
     (await tryPostgresTier(
       ctx.env,
       mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/history`, {
         window: label,
       }),
       "METAGRAPH_NEURONS_SOURCE",
-    )) ?? buildSubnetHistory([], netuid, { window: label })
-  );
+    )) ?? buildSubnetHistory([], netuid, { window: label });
+  // The cold leg is wired on every surface, not just REST: an MCP client asking
+  // for `all` must not get a shorter history than the same question over HTTP.
+  return overlaySubnetHistoryColdTier(ctx.env, hot, netuid, {
+    label: label as string,
+    days: (days ?? null) as number | null,
+  });
 }
 
 // Mirrors REST's handleSubnetIdentityHistory: try Postgres first, fall back
@@ -3528,9 +3541,9 @@ async function loadNeuronHistory(
   ctx: McpCtx,
   netuid: number,
   uid: number,
-  { label }: Row,
+  { label, days }: Row,
 ) {
-  return (
+  const hot =
     (await tryPostgresTier(
       ctx.env,
       mcpNeuronsTierRequest(
@@ -3540,8 +3553,12 @@ async function loadNeuronHistory(
         },
       ),
       "METAGRAPH_NEURONS_SOURCE",
-    )) ?? buildNeuronHistory([], netuid, uid, { window: label })
-  );
+    )) ?? buildNeuronHistory([], netuid, uid, { window: label });
+  // See loadSubnetHistory: same seam, same reason to wire it on every surface.
+  return overlayNeuronHistoryColdTier(ctx.env, hot, netuid, uid, {
+    label: label as string,
+    days: (days ?? null) as number | null,
+  });
 }
 
 // One provider's detail + (optionally) its endpoints, mirroring GET
