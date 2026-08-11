@@ -382,7 +382,7 @@ import {
   SUBNET_HYPERPARAMS_NEON_LANE,
   SUBNET_IDENTITY_NEON_LANE,
   SUBNET_IDENTITY_FIELDS,
-  SUBNET_IDENTITY_HISTORY_COLUMNS,
+  SUBNET_IDENTITY_INSERT_COLUMNS,
   failedTables,
   mirrorFamilyToNeon,
   FAMILY_MIRROR_PLANS,
@@ -1940,7 +1940,7 @@ const SUBNET_IDENTITY_SYNC_MAX_NETUID = 65_535;
 const SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES = 4_096;
 
 const SUBNET_IDENTITY_SYNC_ROW_SCHEMA = subnetIdentitySyncRowSchema({
-  columns: SUBNET_IDENTITY_HISTORY_COLUMNS,
+  columns: SUBNET_IDENTITY_INSERT_COLUMNS,
   minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
   maxNetuid: SUBNET_IDENTITY_SYNC_MAX_NETUID,
   maxStringBytes: SUBNET_IDENTITY_SYNC_MAX_STRING_BYTES,
@@ -2023,9 +2023,9 @@ async function handleSubnetIdentitySync(
       snapshot[field] = row[field] ?? null;
     }
     const hash = await subnetIdentityHash(snapshot);
-    // `observed_at` is REQUIRED by the schema above, so there is no fallback
-    // to reach: a row without it never gets here.
-    const observedAt = row.observed_at;
+    // captured_at on the wire, observed_at in the history table. Required by
+    // the schema, so there is no fallback to reach.
+    const observedAt = row.captured_at;
     const base: Row = {
       netuid: row.netuid,
       block_number: row.block_number,
