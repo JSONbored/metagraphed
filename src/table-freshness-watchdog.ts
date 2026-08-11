@@ -95,6 +95,26 @@ export interface FreshnessExpectation {
   /** An open issue explaining a table that is ALREADY breaching, so the alarm
    * points somewhere instead of merely being loud. */
   knownIssue?: string;
+  /**
+   * The `lane_health` lane that carries this table's liveness instead of a time
+   * bound. Only meaningful alongside `maxAgeMs: null`.
+   *
+   * A THIRD CLASSIFICATION, distinct from the two `null` already meant.
+   * `api_keys` is null because staleness is *meaningless* — a quiet signup
+   * table is not a fault in any sense. The registry cluster is different: it
+   * has a producer that CAN die, and when it did, five days passed unnoticed
+   * (#9779). Calling that "meaningless" would be the exemption this file's
+   * header warns about.
+   *
+   * What makes null correct there now is that the producer reports itself. So
+   * the classification is not "cannot be stale", it is "asked somewhere else",
+   * and naming where turns an exemption into a redirection that a reader — and
+   * the test beside this file — can follow and check.
+   *
+   * The bar for adding one: the named lane must alarm on BOTH the producer
+   * failing and the producer stopping, or this is a blind spot with a citation.
+   */
+  coveredBy?: string;
 }
 
 /**
@@ -398,33 +418,55 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // Not exempted. #9779 is a real outage -- the only writer was a retired
   // GitHub Actions lane -- and suppressing it here to keep the lane green
   // would be the exact thing a watchdog must never do.
+  // THE REGISTRY CLUSTER, and why a time bound was the wrong instrument.
+  //
+  // All four are written by src/registry-sync-neon.ts, on merge, when registry
+  // files change. A `MAX(updated_at)` bound on a change-driven producer measures
+  // TIME SINCE THE LAST REGISTRY CHANGE, not producer health -- so two quiet days
+  // breached the 48h cap with nothing wrong. Observed 2026-08-11: `providers`
+  // 57.2h > 48h while the producer had run 6 minutes earlier and correctly
+  // written nothing (`registry-sync` verdict `ok`, "no registry files changed").
+  //
+  // Widening the cap keeps the category error and buys quiet proportional to the
+  // guess. What changed since #9779 is that the producer now reports itself --
+  // its closing ask was "the cluster needs a lane_health lane so this cannot
+  // recur unseen", and src/registry-sync-lane.ts is that lane. It alarms on the
+  // producer failing (non-`ok` verdict) AND on the producer stopping (lane-alarm
+  // silence), which is the pair `coveredBy` requires.
+  //
+  // NOT the same `null` as api_keys. See `coveredBy` above: this is "asked
+  // somewhere else", not "cannot be stale". #9779 is dropped from all four
+  // because it is CLOSED and completed, and a citation to a closed issue was
+  // itself sending readers to a dead end (#10657).
   subnets: {
     column: "updated_at",
     kind: "ms",
-    maxAgeMs: 48 * HOUR,
-    reason: "registry sync on merge",
-    knownIssue: "#9779",
+    maxAgeMs: null,
+    reason: "registry sync on merge; quiet means the registry did not change",
+    coveredBy: "registry-sync",
   },
   surfaces: {
     column: "updated_at",
     kind: "ms",
-    maxAgeMs: 48 * HOUR,
-    reason: "registry sync on merge",
-    knownIssue: "#9779",
+    maxAgeMs: null,
+    reason: "registry sync on merge; quiet means the registry did not change",
+    coveredBy: "registry-sync",
   },
   providers: {
     column: "updated_at",
     kind: "ms",
-    maxAgeMs: 48 * HOUR,
-    reason: "registry sync on merge",
-    knownIssue: "#9779",
+    maxAgeMs: null,
+    reason: "registry sync on merge; quiet means the registry did not change",
+    coveredBy: "registry-sync",
   },
   surface_history: {
     column: "recorded_at",
     kind: "ms",
     maxAgeMs: null,
-    reason: "append-on-change, but its writer is dead",
-    knownIssue: "#9779",
+    // Was "append-on-change, but its writer is dead" -- the writer was re-homed
+    // when #9779 was fixed, so that half had been false since 2026-08-08.
+    reason: "append-on-change; quiet means no surface changed state",
+    coveredBy: "registry-sync",
   },
 
   // --- user state and control: change only when a human acts --------------
