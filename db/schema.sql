@@ -610,6 +610,21 @@ CREATE TABLE public.nominator_positions_passes (
 );
 
 --
+-- Name: origin_reachability; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.origin_reachability (
+    origin text NOT NULL,
+    checked_at bigint NOT NULL,
+    surface_count integer NOT NULL,
+    samples integer NOT NULL,
+    verdict text NOT NULL,
+    CONSTRAINT origin_reachability_checked_at_is_millis CHECK ((checked_at >= '1000000000000'::bigint)),
+    CONSTRAINT origin_reachability_counts_are_sane CHECK (((surface_count >= 0) AND (samples >= 0))),
+    CONSTRAINT origin_reachability_verdict_is_known CHECK ((verdict = ANY (ARRAY['serving'::text, 'unreachable'::text, 'not-routing'::text, 'indeterminate'::text])))
+);
+
+--
 -- Name: providers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1383,6 +1398,13 @@ ALTER TABLE ONLY public.nominator_positions
     ADD CONSTRAINT nominator_positions_pkey PRIMARY KEY (coldkey, hotkey, netuid);
 
 --
+-- Name: origin_reachability origin_reachability_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.origin_reachability
+    ADD CONSTRAINT origin_reachability_pkey PRIMARY KEY (origin);
+
+--
 -- Name: providers providers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2012,6 +2034,12 @@ CREATE INDEX idx_validator_nominator_counts_passes_completed ON public.validator
 --
 
 CREATE INDEX idx_wps_address ON public.watch_push_subscriptions USING btree (address, created_at DESC);
+
+--
+-- Name: origin_reachability_by_verdict; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX origin_reachability_by_verdict ON public.origin_reachability USING btree (verdict, checked_at DESC);
 
 --
 -- Name: subnet_emission_enabled_history_netuid_observed_idx; Type: INDEX; Schema: public; Owner: -

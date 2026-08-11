@@ -1518,6 +1518,36 @@
     "nullable": false
   },
   {
+    "table": "origin_reachability",
+    "column": "checked_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "origin_reachability",
+    "column": "origin",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "origin_reachability",
+    "column": "samples",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "origin_reachability",
+    "column": "surface_count",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "origin_reachability",
+    "column": "verdict",
+    "udt": "text",
+    "nullable": false
+  },
+  {
     "table": "providers",
     "column": "id",
     "udt": "text",
