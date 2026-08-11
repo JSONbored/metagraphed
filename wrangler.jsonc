@@ -1136,7 +1136,7 @@
       // sixty. A slice per tick; these offsets collide with nothing on this
       // grid. NOTE: Workers Builds does not apply cron triggers; this one needs
       // `wrangler triggers deploy` or the lane never fires.
-      "9,39 * * * *",
+      "17 * * * *",
       // 56 = the attribution sweep (#10489-#10509). Records, per subnet, that
       // its published surfaces were searched for an address on a date -- most
       // publish none, and "no declared treasury as of <date>" is evidence where

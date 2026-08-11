@@ -2422,7 +2422,7 @@ export async function fetchSweepText(url: string): Promise<string | null> {
 
 /** Every registered surface url, from the served artifact this Worker already
  * publishes -- including the probe-disabled ones, which is the entire point. */
-async function registeredSurfaces(env: Env): Promise<SurfaceRef[]> {
+export async function registeredSurfaces(env: Env): Promise<SurfaceRef[]> {
   const artifact = await readArtifact(env, "/metagraph/surfaces.json");
   if (!artifact.ok) return [];
   const list = (artifact.data as Row | undefined)?.surfaces;
@@ -2438,7 +2438,7 @@ async function registeredSurfaces(env: Env): Promise<SurfaceRef[]> {
 
 /** One sample. Reads the body only to HASH it -- never for content, and never
  * with a credential: the question is whether the host is there. */
-async function probeOrigin(
+export async function probeOrigin(
   url: string,
 ): Promise<{ status: number | null; bodyHash: string | null }> {
   try {

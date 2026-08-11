@@ -18,7 +18,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import { handleScheduled } from "../workers/api.ts";
+import {
+  handleScheduled,
+  probeOrigin,
+  registeredSurfaces,
+} from "../workers/api.ts";
 import { ORIGIN_REACHABILITY_CRON } from "../workers/config.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -508,7 +512,7 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
       wrangler.includes(`"${ORIGIN_REACHABILITY_CRON}"`),
       `${ORIGIN_REACHABILITY_CRON} is not in wrangler.jsonc triggers.crons`,
     );
-    assert.equal(ORIGIN_REACHABILITY_CRON, "9,39 * * * *");
+    assert.equal(ORIGIN_REACHABILITY_CRON, "17 * * * *");
   });
 
   test("dispatch and its label both know the cron", async () => {
@@ -558,5 +562,141 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     ]) {
       assert.ok(sql.includes(`'${verdict}'`), `${verdict} is not storable`);
     }
+  });
+});
+
+describe("the worker's two halves", () => {
+  function artifactEnv(payload: unknown) {
+    const target = "/metagraph/surfaces.json";
+    const hit = (p: string) => p === target && payload != null;
+    return {
+      ASSETS: {
+        async fetch(request: Request) {
+          const { pathname } = new URL(request.url);
+          return hit(pathname)
+            ? Response.json(payload as never)
+            : new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+          return hit(p)
+            ? {
+                async json() {
+                  return payload;
+                },
+              }
+            : null;
+        },
+      },
+    };
+  }
+
+  test("reads EVERY registered surface, including probe-disabled ones", async () => {
+    // The entire point: a probe-disabled surface is invisible to the prober,
+    // and must not be invisible here too.
+    const out = await registeredSurfaces(
+      artifactEnv({
+        surfaces: [
+          { id: "a", url: "https://x.example/a", probe: { enabled: true } },
+          { id: "b", url: "https://x.example/b", probe: { enabled: false } },
+          { id: "no-url" },
+          null,
+        ],
+      }) as never,
+    );
+    assert.deepEqual(
+      out.map((s) => s.id),
+      ["a", "b"],
+    );
+  });
+
+  test("no artifact is an empty list, never a throw", async () => {
+    assert.deepEqual(await registeredSurfaces(artifactEnv(null) as never), []);
+    assert.deepEqual(
+      await registeredSurfaces(artifactEnv({ surfaces: "nope" }) as never),
+      [],
+    );
+  });
+
+  test("a sample hashes the NORMALISED body, and any failure is a null status", async () => {
+    const original = globalThis.fetch;
+    try {
+      // Two responses differing only in their request id must hash the same,
+      // or the identical-placeholder signal never fires.
+      globalThis.fetch = (async () =>
+        new Response('{"m":"gone","request_id":"aaa"}', {
+          status: 404,
+        })) as typeof fetch;
+      const a = await probeOrigin("https://x.example/a");
+      globalThis.fetch = (async () =>
+        new Response('{"m":"gone","request_id":"zzz"}', {
+          status: 404,
+        })) as typeof fetch;
+      const b = await probeOrigin("https://x.example/b");
+      assert.equal(a.status, 404);
+      assert.equal(a.bodyHash, b.bodyHash);
+
+      globalThis.fetch = (async () => {
+        throw new Error("ECONNREFUSED");
+      }) as typeof fetch;
+      assert.deepEqual(await probeOrigin("https://x.example/a"), {
+        status: null,
+        bodyHash: null,
+      });
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("shapes the store can really produce", () => {
+  test("a thrown non-Error still names the failure", async () => {
+    const out = await persistOriginCheck(
+      {
+        prepare() {
+          throw "a bare string";
+        },
+      },
+      {
+        origin: "https://x",
+        checked_at: 1_786_320_000_000,
+        samples: [],
+        verdict: "indeterminate",
+        surface_ids: [],
+      },
+    );
+    assert.match(String(out.reason), /a bare string/);
+  });
+
+  test("a driver returning no results key reads as nothing dead", async () => {
+    const db = {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({}) }),
+        all: async () => ({}),
+      }),
+    };
+    assert.deepEqual(await loadDeadOrigins(db), []);
+    assert.equal((await loadOriginCheckedAt(db)).size, 0);
+  });
+
+  test("a row with no origin or verdict still reads without inventing one", async () => {
+    const db = {
+      prepare: () => ({
+        bind: () => ({ all: async () => ({ results: [{}] }) }),
+        all: async () => ({ results: [{}] }),
+      }),
+    };
+    const out = await loadDeadOrigins(db);
+    assert.equal(out?.[0].origin, "");
+    assert.equal(out?.[0].verdict, null);
+  });
+
+  test("a 2xx among errors keeps the origin serving", () => {
+    assert.equal(
+      classifyOrigin([sample(200, "a"), sample(404, "a")]),
+      "serving",
+    );
   });
 });

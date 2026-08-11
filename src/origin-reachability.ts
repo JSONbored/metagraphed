@@ -164,8 +164,10 @@ export function classifyOrigin(samples: OriginSample[]): OriginVerdict {
   // endpoint answering 401 exactly as it should. Refusing to guess here is the
   // difference between under-reporting a dead host and accusing a live one.
   if (responded.length < 2) return "serving";
+  // `responded` is already narrowed to non-null statuses above, so there is no
+  // fallback here: a `?? 0` would be an unreachable branch dressed as a guard.
   const allErrored = responded.every(
-    (s) => (s.status ?? 0) >= ERROR_STATUS_FLOOR,
+    (s) => (s.status as number) >= ERROR_STATUS_FLOOR,
   );
   if (!allErrored) return "serving";
   const hashes = new Set(responded.map((s) => s.body_hash));
@@ -390,7 +392,9 @@ export async function runOriginReachabilityTick(
   let affected = 0;
   const failures: string[] = [];
   for (const origin of due) {
-    const check = await checkOrigin(origin, byOrigin.get(origin) ?? [], deps);
+    // `due` is drawn from byOrigin's own keys, so the lookup always hits -- a
+    // `?? []` here would be an unreachable branch that reads like a guard.
+    const check = await checkOrigin(origin, byOrigin.get(origin)!, deps);
     verdicts[check.verdict] += 1;
     if (check.verdict === "not-routing" || check.verdict === "unreachable") {
       affected += check.surface_ids.length;
