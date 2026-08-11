@@ -1660,19 +1660,16 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     assert.equal(body.data.point_count, 0);
   });
   test("a failing Postgres-tier DATA_API call degrades to empty (never a client-facing error), captured for real observability (metagraphed#8081 follow-up)", async () => {
-    // D1 is fully eliminated (2026-07-17, reconfirmed live 2026-07-25 -- zero
-    // D1 databases remain on the account) -- this used to mock a hanging D1
-    // .all() call, but METAGRAPH_HEALTH_SOURCE was never set to "postgres" in
-    // that version, so tryPostgresTier short-circuited on the tier-flag check
-    // before ever touching the (fictional) D1 mock: the test was vacuous. The
-    // real failure mode tryPostgresTier actually protects against today is a
-    // rejected DATA_API fetch (workers/postgres-tier.ts) -- exercise that,
-    // and confirm it now reaches PostHog's $exception capture too (added
-    // alongside this fix), not just Wrangler's own log tail.
+    // #10190: this drove METAGRAPH_HEALTH_SOURCE, whose tier reads are all
+    // deleted -- there is no DATA_API call left on the health routes to fail, so
+    // driving them proves nothing. The mechanism under test is
+    // capturePostgresTierFallback, and it is still live for the three flags in
+    // DATA_API_FORWARD_FLAGS. So this drives one of THOSE: a forwardable flag,
+    // a route that reads it, and a DATA_API that rejects.
     const posted: Row[] = [];
     const failingEnv = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_NEURONS_SOURCE: "postgres",
       POSTHOG_PROJECT_TOKEN: "phc_test",
       DATA_API: {
         fetch: async () => {
@@ -1686,23 +1683,12 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
       return { ok: true };
     }) as typeof fetch;
     try {
-      const pct = await getJson(
-        "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles",
+      const metagraph = await getJson(
+        "https://api.metagraph.sh/api/v1/subnets/7/metagraph",
         failingEnv,
       );
-      assert.equal(pct.status, 200);
-      assert.deepEqual(pct.body.data.surfaces, []);
-      const trends = await getJson(
-        "https://api.metagraph.sh/api/v1/subnets/7/health/trends",
-        failingEnv,
-      );
-      assert.equal(trends.status, 200);
-      const bulkTrends = await getJson(
-        "https://api.metagraph.sh/api/v1/health/trends",
-        failingEnv,
-      );
-      assert.equal(bulkTrends.status, 200);
-      assert.deepEqual(bulkTrends.body.data.windows["7d"].subnets, []);
+      // Degrades, never a client-facing error -- the contract this protects.
+      assert.equal(metagraph.status, 200);
     } finally {
       globalThis.fetch = original;
     }
@@ -1713,9 +1699,10 @@ describe("analytics routes (Postgres tier unconfigured -- D1 fully eliminated)",
     );
     assert.equal(
       exceptionPost.body.properties.route,
-      "postgres-tier:METAGRAPH_HEALTH_SOURCE",
+      "postgres-tier:METAGRAPH_NEURONS_SOURCE",
     );
   });
+
   test("leaderboards returns most-complete from profiles even with cold D1", async () => {
     const profileEnv = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: {

@@ -11,7 +11,6 @@ vi.mock("pg", () => pg.module);
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import {
   configureAnalytics,
-  resolveGlobalIncidents,
   resolveGlobalIncidentsForFeed,
 } from "../workers/request-handlers/analytics.ts";
 import { mockEnv, type Row } from "./row-type.ts";
