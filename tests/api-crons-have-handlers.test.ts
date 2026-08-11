@@ -1,0 +1,117 @@
+// Both directions between wrangler.jsonc's 37 crons and the api Worker that
+// dispatches them (#10815) -- the twin of tests/data-api-crons-have-handlers,
+// and the worse of the two failures it guards.
+//
+// On data-api an unrecognised cron fell through to `{ skipped: true }`: a
+// no-op, wasteful but harmless. Here it fell through to `runHealthProber`,
+// unconditionally, because `*/15 * * * *` was the only one of the 37 with no
+// constant and no branch -- it WAS the fall-through. So a typo'd or retired
+// expression on this Worker did not go quiet, it ran a real producer that
+// writes surface_checks, surface_status, surface_uptime_daily, subnet_snapshots
+// and lane_health, on whatever cadence the stray expression happened to have.
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, test } from "vitest";
+import { API_HANDLED_CRONS } from "../workers/api.ts";
+import { HEALTH_PROBER_CRON } from "../workers/config.ts";
+
+const CONFIG = "wrangler.jsonc";
+
+/** The cron expressions declared in a wrangler config. JSONC, so parsed rather
+ * than JSON.parse'd -- see tests/data-api-crons-have-handlers.test.ts. */
+function declaredCrons(path: string): string[] {
+  const source = readFileSync(path, "utf8");
+  const block = /"crons"\s*:\s*\[([\s\S]*?)\]/.exec(source);
+  assert.ok(block, `no "crons" array found in ${path}`);
+  return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+}
+
+describe("wrangler.jsonc crons and their handlers", () => {
+  test("the parse finds the full grid, so the assertions below are real", () => {
+    const declared = declaredCrons(CONFIG);
+    assert.ok(
+      declared.length >= 30,
+      `only ${declared.length} cron(s) parsed out of ${CONFIG} -- the parse broke`,
+    );
+    assert.ok(
+      API_HANDLED_CRONS.length >= 30,
+      `only ${API_HANDLED_CRONS.length} handled crons declared`,
+    );
+  });
+
+  test("every DECLARED cron resolves to a handled lane", () => {
+    const unhandled = declaredCrons(CONFIG).filter(
+      (cron) => !API_HANDLED_CRONS.includes(cron),
+    );
+    assert.deepEqual(
+      unhandled,
+      [],
+      `these crons are declared in ${CONFIG} but API_HANDLED_CRONS does not name ` +
+        `them, so dispatchScheduled declines them:\n${unhandled.join("\n")}`,
+    );
+  });
+
+  test("every HANDLED cron is declared", () => {
+    const declared = new Set(declaredCrons(CONFIG));
+    const undeclared = API_HANDLED_CRONS.filter((cron) => !declared.has(cron));
+    assert.deepEqual(
+      undeclared,
+      [],
+      `these lanes are handled but never scheduled:\n${undeclared.join("\n")}`,
+    );
+  });
+
+  test("the health prober's cron is one of the declared set, not the fall-through", () => {
+    // THE ACTUAL FIX. Before #10815 this expression had no constant at all --
+    // `runHealthProber` sat at the bottom of dispatchScheduled and ran for
+    // anything unmatched. Asserting it is a NAMED member of the handled set is
+    // what stops it becoming the default again.
+    assert.ok(
+      API_HANDLED_CRONS.includes(HEALTH_PROBER_CRON),
+      "HEALTH_PROBER_CRON must be a declared member of API_HANDLED_CRONS",
+    );
+    assert.ok(
+      declaredCrons(CONFIG).includes(HEALTH_PROBER_CRON),
+      `${HEALTH_PROBER_CRON} must be scheduled in ${CONFIG}`,
+    );
+  });
+
+  test("the handled set has no duplicates", () => {
+    // Two entries for one expression would mean two branches believe they own
+    // it, and only the first would ever run.
+    const seen = new Set(API_HANDLED_CRONS);
+    assert.equal(
+      seen.size,
+      API_HANDLED_CRONS.length,
+      "API_HANDLED_CRONS contains a duplicate expression",
+    );
+  });
+  test("an undeclared cron is declined, and does NOT reach the health prober", () => {
+    // THE BEHAVIOUR, not just the bookkeeping. Before #10815 this expression
+    // would have run runHealthProber -- five tables written on a cadence
+    // nobody chose. Exercised through the real `scheduled` export so the guard
+    // is what is being tested, not a reimplementation of it.
+    return import("../workers/api.ts").then(async ({ default: worker }) => {
+      const result = (await worker.scheduled(
+        { cron: "7 7 7 7 7", scheduledTime: Date.now() } as never,
+        {} as never,
+        { waitUntil: () => {} } as never,
+      )) as Record<string, unknown>;
+      assert.equal(result.ok, false);
+      assert.equal(result.skipped, true);
+      assert.equal(result.reason, "unknown cron");
+    });
+  });
+
+  test("an empty cron is declined rather than treated as the prober's", () => {
+    return import("../workers/api.ts").then(async ({ default: worker }) => {
+      const result = (await worker.scheduled(
+        { scheduledTime: Date.now() } as never,
+        {} as never,
+        { waitUntil: () => {} } as never,
+      )) as Record<string, unknown>;
+      assert.equal(result.skipped, true);
+      assert.equal(result.reason, "unknown cron");
+    });
+  });
+});

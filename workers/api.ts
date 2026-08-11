@@ -664,6 +664,7 @@ import {
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
   GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN,
+  HEALTH_PROBER_CRON,
   HEALTH_PRUNE_CRON,
   LANE_HEARTBEAT_CRON,
   INCIDENTS_PATH_PATTERN,
@@ -2812,12 +2813,72 @@ function recordCronOutcome(
   }
 }
 
+/**
+ * Every cron expression this Worker handles.
+ *
+ * DATA, AND THE DISPATCHER READS IT, so a schedule nobody handles is declined
+ * in one place instead of falling through 36 comparisons into whatever sits at
+ * the bottom -- which until #10815 was `runHealthProber`, unconditionally.
+ *
+ * That fall-through is why this set exists rather than a tidier `switch`: an
+ * unrecognised cron did not go quiet here the way it did on data-api (#10814),
+ * it ran a REAL PRODUCER on the wrong cadence. `HEALTH_PROBER_CRON` is now a
+ * declared expression like the other 36, not the absence of one.
+ */
+export const API_HANDLED_CRONS: readonly string[] = [
+  HEALTH_PROBER_CRON,
+  WEBHOOK_DISPATCH_CRON,
+  HEALTH_PRUNE_CRON,
+  EMBEDDING_SYNC_CRON,
+  LANE_HEARTBEAT_CRON,
+  SUBNET_BURN_CAPTURE_CRON,
+  RAW_CAPTURE_CRON,
+  GITHUB_SIGNALS_SYNC_CRON,
+  LINK_STATUS_SYNC_CRON,
+  OPERATIONAL_SURFACES_SYNC_CRON,
+  SURFACE_VERIFICATION_SYNC_CRON,
+  SCHEMA_SNAPSHOTS_SYNC_CRON,
+  ABUSE_SCAN_CRON,
+  UPGRADE_RADAR_CRON,
+  SAFE_MODE_WATCHDOG_CRON,
+  LAKEHOUSE_SEAM_CRON,
+  PROJECTION_LANES_CRON,
+  FRESHNESS_WATCHDOG_CRON,
+  EMISSION_GATE_SAMPLE_CRON,
+  LANE_ALARM_CRON,
+  NEURONS_STALENESS_WATCHDOG_CRON,
+  PROJECTION_STALENESS_WATCHDOG_CRON,
+  NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+  VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
+  REGISTRY_SYNC_CRON,
+  REGISTRY_RESYNC_CRON,
+  DAILY_SERIES_COVERAGE_CRON,
+  CHAIN_DETAIL_PRUNE_CRON,
+  CHAIN_CONCENTRATION_ROLLUP_CRON,
+  CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
+  SUBNET_DEREGISTRATION_DAILY_CRON,
+  TOP_HOLDERS_FLOW_CRON,
+  TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
+  HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
+  ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
+  LIVE_ECONOMICS_REFRESH_CRON,
+  EMISSION_DRIFT_CHECK_CRON,
+];
+
 async function dispatchScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
   ctx: ExecutionContext = {} as unknown as ExecutionContext,
 ) {
   const cron = controller?.cron || "";
+  // DECLINED FIRST, against the declared set, so `API_HANDLED_CRONS` is
+  // load-bearing rather than documentation: an expression missing from it is
+  // refused even if a branch below would have matched, which makes drift loud
+  // instead of silent. The guard at the bottom is then the net for the other
+  // direction -- an entry added here whose branch nobody wrote.
+  if (!API_HANDLED_CRONS.includes(cron)) {
+    return { ok: false, skipped: true, reason: "unknown cron" };
+  }
   // The former fast-load cron (#1346 Option A, EVENTS_LOAD_CRON, "*/3 * * * *")
   // drained R2-staged batches into D1. Its last consumer, loadStagedAccountIdentity
   // (#4324/5.1), was removed once refresh-account-identity moved to a
@@ -3389,6 +3450,14 @@ async function dispatchScheduled(
       throw new Error(`emission drift: ${reasons.join("; ")}`);
     }
     return { ok: true, ...summary };
+  }
+  // EXPLICIT, where this used to be a fall-through. Everything below belongs to
+  // HEALTH_PROBER_CRON and nothing else may reach it: the firehose bootstrap is
+  // "piggybacked on the 15-minute probe tick" by design, and runHealthProber
+  // writes five tables. An unrecognised expression reaching either of those was
+  // the bug (#10815).
+  if (cron !== HEALTH_PROBER_CRON) {
+    return { ok: false, skipped: true, reason: "declared but unhandled" };
   }
   // #204: self-healing bootstrap for the firehose head poller, piggybacked on
   // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
