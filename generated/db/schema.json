@@ -2328,6 +2328,72 @@
     "nullable": true
   },
   {
+    "table": "subnet_identity",
+    "column": "block_number",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_identity",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_identity",
+    "column": "description",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "discord",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "github_repo",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "identity_hash",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "logo_url",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_identity",
+    "column": "subnet_name",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "subnet_url",
+    "udt": "text",
+    "nullable": true
+  },
+  {
+    "table": "subnet_identity",
+    "column": "symbol",
+    "udt": "text",
+    "nullable": true
+  },
+  {
     "table": "subnet_identity_history",
     "column": "block_number",
     "udt": "int8",
