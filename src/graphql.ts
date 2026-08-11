@@ -4,6 +4,7 @@ import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "./subnet-alpha-volume-artifact.ts";
 import {
+  CHAIN_PROMETHEUS_ROLLUP,
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
   CHAIN_STAKE_TRANSFERS_ROLLUP,
@@ -39,6 +40,7 @@ import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
 import {
   loadAccountCounterpartiesColdTier,
   loadAccountRegistrationsColdTier,
+  loadAccountPrometheusColdTier,
   loadAccountServingColdTier,
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
@@ -3964,6 +3966,21 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // #10322: the same cold-tier rung REST's handleSubnetPrometheus gained.
+      // Without it this resolver bottomed out in the zeroed builder while
+      // `chain_prometheus` answered from the same PrometheusServed stream.
+      ((await loadSubnetEventCardColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetEventCardColdTier
+        >[0],
+        CHAIN_PROMETHEUS_ROLLUP,
+        netuid,
+        buildSubnetPrometheus,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_PROMETHEUS_WINDOWS[windowParam] ?? 7,
+        },
+      )) as Row | null) ??
       buildSubnetPrometheus(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6521,6 +6538,13 @@ const rootValue = {
     );
     const data =
       (pg?.data as Row | undefined) ??
+      // #10322: the same cold-tier rung REST's handleAccountPrometheus gained.
+      // Without it this resolver answered a confident zero for every account.
+      ((
+        await loadAccountPrometheusColdTier(context.env, ss58, {
+          window: requestedWindow,
+        })
+      )?.data as Row | undefined) ??
       buildAccountPrometheus([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,

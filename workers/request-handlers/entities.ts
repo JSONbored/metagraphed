@@ -20,6 +20,7 @@
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
+import { CHAIN_PROMETHEUS_ROLLUP } from "../../src/chain-event-rollup-cold-tier.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
@@ -246,6 +247,7 @@ import {
 } from "../../src/chain-detail-hot-tier.ts";
 import {
   loadAccountRegistrationsColdTier,
+  loadAccountPrometheusColdTier,
   loadAccountServingColdTier,
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
@@ -2812,6 +2814,24 @@ export async function handleSubnetPrometheus(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetPrometheus> | null) ??
+    // #10322: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // reads "retired", so the tier above declines unconditionally and the zeroed
+    // builder below was the only thing left -- a confident 0 for every subnet,
+    // while /api/v1/chain/prometheus reads the SAME PrometheusServed stream
+    // through CHAIN_PROMETHEUS_ROLLUP and answers. Measured 2026-08-10: the
+    // chain card reported netuid 112 with 1 exporter and 1 announcement over
+    // 30d while this route answered 0 for that same subnet, so the two
+    // contradicted each other on one event stream.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_PROMETHEUS_ROLLUP,
+      netuid,
+      buildSubnetPrometheus,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_PROMETHEUS_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetPrometheus(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed PrometheusServed event, mirroring the sibling serving route.
@@ -4448,6 +4468,13 @@ export const handleAccountPrometheus = makeAccountEventHandler({
   defaultWindow: DEFAULT_PROMETHEUS_WINDOW,
   build: buildAccountPrometheus,
   urlSuffix: "prometheus",
+  // #10322: the rung this family never had. Without it the handler fell to
+  // `buildAccountPrometheus([])` for every account, because
+  // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" so the tier above declines
+  // unconditionally -- a confident zero while the chain-level card answered
+  // from the same PrometheusServed stream.
+  coldTier: (env, ss58, window) =>
+    loadAccountPrometheusColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/deregistrations: the account's per-subnet NeuronDeregistered footprint

@@ -254,20 +254,13 @@ const NO_TIER_ANYWHERE: Record<string, string> = {
   get_subnet_axon_removals:
     "the MCP twin of subnet_axon_removals -- same absent lane",
 
-  // ── PROMETHEUS. Never curated into a tier on any surface (#10248 wired the
-  // cold rung for the chain-level card; these three remain uncurated). All
-  // three surfaces bottom out in the same empty builder, so they agree -- which
-  // is what makes this a lane question rather than a wiring bug.
-  account_prometheus:
-    "get_account_prometheus falls to buildAccountPrometheus([]) on MCP too -- no lane exists for it",
-  subnet_prometheus:
-    "get_subnet_prometheus falls to buildSubnetPrometheus(null) on MCP too -- no lane exists for it",
-  handleSubnetPrometheus:
-    "the REST twin of subnet_prometheus -- same uncurated lane, same correct empty",
-  get_account_prometheus:
-    "the MCP twin of account_prometheus -- same uncurated lane",
-  get_subnet_prometheus:
-    "the MCP twin of subnet_prometheus -- same uncurated lane",
+  // ── PROMETHEUS is no longer here (#10322). The entries said all surfaces
+  // "agree, which is what makes this a lane question rather than a wiring
+  // bug" -- and that was false: /api/v1/chain/prometheus read the same
+  // PrometheusServed stream through CHAIN_PROMETHEUS_ROLLUP and reported
+  // netuid 112 with 1 exporter over 30d, while the per-subnet, per-account and
+  // GraphQL cards all answered 0 for it. They agreed with each other and
+  // disagreed with the chain card. All four now take the same cold rung.
 };
 
 // Positive control. A pure "nothing is broken" assertion passes just as well
