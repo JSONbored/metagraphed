@@ -537,3 +537,36 @@ describe("the enqueue retries a transient stub failure (#10729)", () => {
     assert.equal(n.calls, 1);
   });
 });
+
+describe("a non-Error throw from the stub", () => {
+  test("is still classified, retried, and surfaced as an Error", async () => {
+    // Workers RPC can reject with a bare string. Reading `.message` off that
+    // yields undefined, so the classifier would see "undefined", treat a
+    // genuine transient as fatal, and lose the row -- and the final throw
+    // would hand the caller a non-Error nothing up the stack expects.
+    let calls = 0;
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({
+        async fetch() {
+          calls += 1;
+          throw "Durable Object reset because its code was updated";
+        },
+      }),
+    };
+    await assert.rejects(
+      () =>
+        createBufferedPgSql(ns, "neurons").unsafe("INSERT INTO t VALUES (1)"),
+      (error: unknown) => {
+        assert.ok(error instanceof Error, "must surface as an Error");
+        assert.match(String((error as Error).message), /Durable Object reset/);
+        return true;
+      },
+    );
+    assert.equal(
+      calls,
+      ENQUEUE_ATTEMPTS,
+      "classified as transient, so retried",
+    );
+  });
+});
