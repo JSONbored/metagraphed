@@ -4942,10 +4942,6 @@ describe("graphql — sudo (#5895, Postgres-tier feed)", () => {
 });
 
 describe("graphql — extrinsics / extrinsic (#5580, Postgres-tier feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("extrinsics: cold/no-tier store returns a schema-stable empty page (fallback builder)", async () => {
     const { status, body } = await gql(
       "{ extrinsics { items { call_module } total next_cursor } }",
@@ -11180,9 +11176,6 @@ describe("graphql — subnet metagraph / overview / profile (#7169, composed-rou
 });
 
 describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validators)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
   // The lakehouse is reached over plain HTTP by src/r2-sql.ts, so stubbing
   // globalThis.fetch is how a cold-tier answer is injected here — same
   // one-test-then-restore shape as withFetchStub above.
@@ -11882,10 +11875,6 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
 });
 
 describe("graphql — subnet_health_percentiles (#6980, live latency percentiles)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("cold store: no Postgres flag returns a schema-stable empty surfaces list, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_health_percentiles(netuid: 5) {
@@ -11981,10 +11970,6 @@ describe("graphql — subnet_health_percentiles (#6980, live latency percentiles
 });
 
 describe("graphql — subnet_event_summary (#6980, chain-event activity summary)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
-  }
-
   test("cold store: no Postgres flag returns a schema-stable zeroed card, never null", async () => {
     const { status, body } = await gql(
       `{ subnet_event_summary(netuid: 5) {
@@ -24111,7 +24096,6 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       ...extra,
     }) as unknown as Env;
   const neurons = { METAGRAPH_NEURONS_SOURCE: "postgres" };
-  const events = { METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres" };
   const SS58 = "5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL";
 
   test("subnet_conviction forwards field_sources", async () => {
