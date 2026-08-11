@@ -1,0 +1,104 @@
+---
+title: Wallet attribution
+description: What each wallet role means and what evidence it requires, why a burn is a claim until proven, what `unresolved` means and how much of the network sits there, and the 18% owner cut that is paid as stake rather than cash.
+---
+
+Saying "this address belongs to that team" is an accusation as easily as it is a fact. Every address on this site that we attribute to somebody carries the evidence that backs it, in the response, so that anyone repeating the attribution can check it before they do.
+
+This page is the method behind that: what each role means, what proof it takes, and — the part most likely to be misread — what it means when we say we could not determine where something went.
+
+```
+GET https://api.metagraph.sh/api/v1/subnets/64/wallets
+GET https://api.metagraph.sh/api/v1/subnets/64/owner-cut
+```
+
+## Read this first: what an attribution is not
+
+**We do not cluster wallets.** No heuristic links addresses by co-spending, timing, or shared counterparties. An address appears here only because a subnet published it or because the chain names it. Everything else is absent, and absent is not "clean" — it is unexamined.
+
+**Attribution is only as good as the evidence published.** A team that publishes a treasury address gets one attributed; a team that publishes nothing gets an empty list. The empty list says nothing about the team. It says something about what has been disclosed.
+
+**Misattribution is possible.** A published address can be stale, a page can be wrong, and we can read one incorrectly. If an attribution on this site is wrong, [open an issue](https://github.com/JSONbored/metagraphed/issues/new) naming the address and the correction; the record is a file in a public repo, and correcting it is a pull request.
+
+**`unresolved` is not a red flag.** It means our indexing could not determine what happened to something. It is the answer for most of the network, and it describes our reach, not anyone's conduct.
+
+## The role vocabulary
+
+Five roles. One is read from the chain; four are human attributions and require published evidence.
+
+| Role                | Where it comes from           | Evidence required                                                                          |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `owner`             | `SubtensorModule.SubnetOwner` | **None** — the chain is the source. Carries `chain_derived: true` and empty `source_urls`. |
+| `treasury`          | Declared                      | A public page or repo, published by the team, naming the address as theirs.                |
+| `burn`              | Declared                      | The above, **plus** a basis for unspendability. See below.                                 |
+| `payment-collector` | Declared                      | A public page naming the address as where the team receives payment.                       |
+| `multisig`          | Declared                      | A public page naming the address and, where the team states it, the signing threshold.     |
+
+`chain_derived` is an explicit field rather than something you infer from an empty evidence list, because "needs no evidence" and "has no evidence" are opposite conditions that would otherwise serialise identically. `owner` is never declarable: a registry entry claiming the `owner` category is dropped rather than honoured, so no hand-written file can impersonate a chain read.
+
+Two owner keys are reported, not one — a coldkey and a hotkey. The cut accrues to the hotkey as stake; the coldkey is the account that controls it.
+
+## Why `burn` is a claim until proven
+
+A burn address is a claim that value was destroyed. It is the strongest claim in this vocabulary and the easiest to make carelessly, so it carries the highest bar.
+
+**An address with no observed outbound movement is not a burn address.** That is the mistake worth naming explicitly: silence is not proof of unspendability, it is proof of nothing yet. A key can sit unused for a year and sign on the next block.
+
+A `burn` role therefore carries `unspendable_proof_basis` — the stated grounds on which spending is believed impossible. A known black-hole address whose preimage cannot exist is a basis. A team saying "we will not spend this" is not; that is a promise, and a promise is a different kind of claim, correctly recorded as a `treasury`.
+
+If a declared burn address is later observed sending funds, that is surfaced as an event. The event states the claim, the observation, and the delta — and states that misattribution on our side is a possible explanation, because it is. It does not assert intent.
+
+## The 18% owner cut, and the thing most analyses get wrong
+
+Under dTAO, a share of each subnet's alpha emission goes to the subnet owner. That share is `SubnetOwnerCut`, a `u16` fraction: **11796 / 65535 ≈ 18%**.
+
+It is not one sixth. The "1/6" figure circulates widely and is wrong by about eight percent of the amount in question; where the value matters, read it from the chain rather than assuming either number. Our responses echo the share that was actually applied, so you never have to assume it — and when the share could not be resolved, the accrual is `null` rather than silently computed at 18%.
+
+**The cut is paid as stake, not as a liquid balance.** This is the detail third-party analyses most often miss, and it changes what you can conclude. The owner does not receive spendable TAO that then shows up moving in transfer data. Alpha accrues to the owner hotkey as stake. It becomes liquid only when someone unstakes it — and on dTAO, `StakeRemoved` takes alpha out of the AMM pool and returns TAO, which means **removing stake is the disposal**. There is no separate "sold" step for the chain to evidence, and any accounting that looks for one will find nothing and conclude wrongly.
+
+The practical consequence: an analysis that derives owner-cut disposition from transfer flows alone will report "held" for essentially every subnet, because the money it is looking for never took the form it is looking in. That is a false negative dressed as a finding, and it is why our disposition refuses to answer from a read it did not perform.
+
+## What `unresolved` means
+
+Disposition sorts accrued alpha into five buckets: `held-as-stake`, `unstaked`, `transferred-out`, `burned`, and `unresolved`.
+
+Five, not six — for the reason above. `sold` would be a distinction the chain cannot evidence, so it does not exist here.
+
+`unresolved` means: **we could not determine what became of this from what we index.** Not that it vanished, not that anything is wrong, not that anyone is hiding anything. It is a statement about our coverage.
+
+Three rules govern it, and each exists to prevent a specific false claim:
+
+1. **Null is not zero.** `"held-as-stake": null` means unread. `"held-as-stake": 0` would mean measured-and-nothing. Rendering the first as the second says "this owner kept nothing" about subnets we simply did not measure.
+2. **Absence of flow evidence resolves to `unresolved`, never to `held`.** If the stake and transfer streams were not read, the entire accrual is unresolved with a stated reason. Defaulting to `held-as-stake` would be inferring a fact from a read we skipped.
+3. **The buckets are not balanced to tie.** `residual_alpha` reports whatever is unaccounted for, including a **negative** residual when the parts exceed the whole. Assigning the remainder so the totals reconcile would convert "we cannot account for this" into a number that looks derived.
+
+**How much of the network sits there today: all of it.** The flow streams are not yet wired into the disposition, so `flows_observed` is unset and every subnet's accrual resolves to `unresolved` with that reason attached. `reconciles` is `false` and says so. This will change as the streams land; until it does, the honest answer is the one being served, and reading it as "128 subnets held everything" or "128 subnets moved everything" would be equally wrong.
+
+Likewise, the registry currently declares **zero** treasury, burn, payment-collector or multisig addresses across 129 subnets. Every wallet list is the two chain-derived owner keys and nothing else. That is not a rendering bug.
+
+## Registration burn is not a team burn
+
+Two unrelated things share the word "burn", and conflating them produces a headline that is wrong by orders of magnitude.
+
+**`/api/v1/subnets/{netuid}/burn` is the registration cost** — the TAO price of registering a UID on a subnet, a protocol parameter that rises and falls with demand. It is recycled by the protocol. It has nothing to do with any team, any treasury, or any decision anyone made about their own tokens.
+
+**A `burn` wallet role is a team's claim** that they destroyed value they held.
+
+The first is a market price. The second is a corporate action. If you are quoting a "burn" figure from this API, check which one you have — reading the registration cost as a team burn would attribute a protocol mechanic to a company as though it were policy.
+
+## Where the numbers come from
+
+| Field                            | Source                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `owner_coldkey` / `owner_hotkey` | `SubtensorModule.SubnetOwner`, read from chain                                                                                                   |
+| `accrual.owner_cut`              | `SubnetOwnerCut`. The storage item is unset on chain, so the effective value is the runtime default — reported as `reconstructed`, not as a read |
+| `accrual.alpha`                  | The subnet's own alpha emission × the cut, over the stated window                                                                                |
+| `accrual.tao`                    | Priced through the subnet's own alpha price. Alpha is a different token per subnet and is never priced through another subnet's pool             |
+| `wallets[].source_urls`          | The published pages that evidence the attribution                                                                                                |
+| `wallets[].activity`             | Observed movement, reported per denomination                                                                                                     |
+
+Activity is reported on separate legs per `(denomination, netuid)` and **never summed into a single figure**. TAO and alpha are different tokens, and alpha from two subnets are different tokens from each other; a combined total would be a unit error wearing the costume of a number. Movements that could not be placed on a leg are published in `skipped` with their reason rather than dropped — a quietly discarded row makes a net figure look complete when it is not.
+
+## Related
+
+- [Revenue coverage](/docs/revenue-coverage) — what a subnet earns from outside Bittensor, against what the network emits to it.
