@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { MIN_INCIDENT_SAMPLES } from "../src/health-serving.ts";
 import {
   archiveEnv,
   forbiddenDataApi,
@@ -24137,18 +24138,18 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   test("subnet_health_incidents forwards min_incident_samples", async () => {
     const { body } = await gql(
       "{ subnet_health_incidents(netuid: 5) { min_incident_samples } }",
-      api(
-        {
-          schema_version: 1,
-          netuid: 5,
-          incidents: [],
-          min_incident_samples: 3,
-        },
-        health,
-      ),
+      // #10190: the tier is retired; loadSubnetIncidents answers from the store.
+      // `min_incident_samples` is the SERVER's own threshold constant
+      // (MIN_INCIDENT_SAMPLES, src/health-serving.ts) -- it describes the rule the
+      // route applied, so it can only ever be that constant. The retired tier
+      // echoed whatever number its body carried, which is why a 3 stood here.
+      {} as unknown as Env,
     );
     assert.equal(body.errors, undefined);
-    assert.equal(body.data.subnet_health_incidents.min_incident_samples, 3);
+    assert.equal(
+      body.data.subnet_health_incidents.min_incident_samples,
+      MIN_INCIDENT_SAMPLES,
+    );
   });
 
   test("subnet_deregistrations forwards the per-UID events", async () => {
@@ -24184,35 +24185,57 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
   });
 
   test("validator_nominators forwards the concentration marker and its shares", async () => {
+    // A REAL SS58: the reader validates the hotkey and declines an unusable one
+    // before issuing any query, so "5Validator" never reached the lane at all.
+    const HOTKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    const nominator = (coldkey: string, staked: number) => ({
+      coldkey,
+      staked_tao: staked,
+      unstaked_tao: 0,
+      event_count: 1,
+      last_observed: Date.now(),
+      net_staked_tao: staked,
+      gross_staked_tao: staked,
+    });
+    const lakeDouble = lakehouse((sql) =>
+      sql.includes("count(*) AS c")
+        ? // The distinct total EQUALS the page, so the concentration is complete --
+          // and the shares exist only then: a page capped short of the total
+          // cannot honestly report a share OF the total, which is the contract
+          // `concentration_complete` exists to state.
+          [{ c: 3 }]
+        : [
+            nominator("5Cold1", 6),
+            nominator("5Cold2", 3),
+            nominator("5Cold3", 1),
+          ],
+    );
+    const lake2 = { ...LAKEHOUSE_ENV };
     const { body } = await gql(
-      `{ validator_nominators(hotkey: "5Validator") {
+      `{ validator_nominators(hotkey: "${HOTKEY}") {
           concentration_complete nominator_gini top_nominator_share top5_nominator_share
         } }`,
       // This tier answers in the REST `{ data, generatedAt }` envelope, unlike
       // the flat bodies the resolvers above read.
-      api(
-        {
-          data: {
-            schema_version: 1,
-            hotkey: "5Validator",
-            nominators: [],
-            concentration_complete: false,
-            nominator_gini: 0.42,
-            top_nominator_share: 0.3,
-            top5_nominator_share: 0.6,
-          },
-          generatedAt: "2026-07-01T00:00:00.000Z",
-        },
-        events,
-      ),
+      // #10190: the tier is retired; loadValidatorNominatorsColdTier answers. It
+      // issues TWO reads -- the per-coldkey rollup page and a GROUP BY subquery
+      // for the distinct total -- so the double routes on the SQL.
+      //
+      // The concentration marker and its shares are DERIVED from these rows.
+      lake2 as unknown as Env,
     );
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.validator_nominators, {
-      concentration_complete: false,
-      nominator_gini: 0.42,
-      top_nominator_share: 0.3,
-      top5_nominator_share: 0.6,
+      // All four DERIVED from the three rows above: 6/3/1 of a 10 TAO total, so
+      // the top share is 0.6, the top-5 share is the whole 1, and the Gini falls
+      // out of that distribution. The retired tier carried hand-written numbers
+      // no computation produced.
+      concentration_complete: true,
+      nominator_gini: 0.333333,
+      top_nominator_share: 0.6,
+      top5_nominator_share: 1,
     });
+    lakeDouble.restore();
   });
 
   test("validator_history forwards the take fields", async () => {
