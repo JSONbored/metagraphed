@@ -4,8 +4,9 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
+import { ss58Schema } from "./shared.ts";
+import { AccountHistoryArtifactSchema } from "../routes/account-events-feed.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
-import { netuidSchema, ss58Schema } from "./shared.ts";
 
 const RouteQuery_accounts_ss58_history =
   ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/history"];
@@ -31,35 +32,13 @@ export type GetAccountHistoryInput = z.infer<
   typeof GetAccountHistoryInputSchema
 >;
 
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch).
-const AccountHistoryDaySchema = z
-  .object({
-    day: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    event_count: z.int().nullable().optional(),
-    event_kinds: z.array(z.string()).optional(),
-    first_block: z.int().nullable().optional(),
-    last_block: z.int().nullable().optional(),
-  })
-  .strict();
-
-export const GetAccountHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    day_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z
-      .int()
-      .min(0)
-      .nullable()
-      .optional()
-      .describe("Null on the last page -- absence of a next page, not zero."),
-    days: z.array(AccountHistoryDaySchema),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790), and the collapse corrected a real error:
+// `next_cursor` was declared here as an `int` on the evidence of a single
+// `null` sample, while `loadAccountHistory` types it `string | null` and the
+// route has always said so. A guess from one observation against the producer's
+// own declaration -- the route wins, which is the whole reason to collapse
+// toward it rather than away.
+export const GetAccountHistoryOutputSchema = AccountHistoryArtifactSchema;
 export type GetAccountHistoryOutput = z.infer<
   typeof GetAccountHistoryOutputSchema
 >;
