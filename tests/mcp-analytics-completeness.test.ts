@@ -315,3 +315,100 @@ describe("a non-string tool name is handled everywhere it is read", () => {
     assert.equal(mcp[0].errorCode, "unknown_tool");
   });
 });
+
+// The DEFAULT recorder paths, which every test above injects past.
+//
+// `ctx?.recordX ?? recordX` and `deps.fetch ?? globalThis.fetch` are the
+// branches production actually takes — a real request injects nothing — and a
+// suite that always passes a double never executes either side. Same reasoning
+// and same shape as "falls back to the real recorder when none is injected" in
+// tests/mcp-usage-telemetry.test.ts.
+describe("the default recorders, with nothing injected", () => {
+  async function withStubbedFetch(fn: () => Promise<void>) {
+    const original = globalThis.fetch;
+    const posted: Row[] = [];
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      posted.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+      return { ok: true };
+    }) as unknown as typeof fetch;
+    try {
+      await fn();
+    } finally {
+      globalThis.fetch = original;
+    }
+    return posted;
+  }
+
+  test("get_more_tools posts $mcp_missing_capability through the platform fetch", async () => {
+    const scheduled: Promise<unknown>[] = [];
+    const posted = await withStubbedFetch(async () => {
+      await handleMcpRequest(
+        new Request("https://api.metagraph.sh/mcp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: MCP_MISSING_CAPABILITY_TOOL,
+              arguments: { context: "needed per-validator slippage curves" },
+            },
+          }),
+        }),
+        CONFIGURED_ENV as unknown as Env,
+        makeDeps({
+          executionCtx: {
+            waitUntil: (p: Promise<unknown>) => scheduled.push(p),
+          },
+        }),
+      );
+      // waitUntil defers the post, so it has to be drained before asserting.
+      await Promise.all(scheduled);
+    });
+
+    const capability = posted.find(
+      (p) => (p.body as Row).event === "$mcp_missing_capability",
+    );
+    assert.ok(capability, "the real recorder should have posted the event");
+    const props = (capability.body as Row).properties as Row;
+    assert.equal(props.$mcp_intent, "needed per-validator slippage curves");
+    assert.equal(props.$mcp_intent_source, "context_parameter");
+  });
+
+  test("a refusal posts $mcp_tool_call through the platform fetch, with no user-agent", async () => {
+    const scheduled: Promise<unknown>[] = [];
+    const posted = await withStubbedFetch(async () => {
+      scheduleMcpRefusalEvent(
+        // No user-agent header at all: the `?? undefined` side of the client
+        // read, which every other refusal test skips by sending one.
+        new Request("https://api.metagraph.sh/mcp", { method: "POST" }),
+        CONFIGURED_ENV as unknown as Env,
+        {
+          executionCtx: {
+            waitUntil: (p: Promise<unknown>) => scheduled.push(p),
+          },
+        },
+        new Response("no", { status: 429 }),
+        // Far past every other case's window so the shared throttle admits it.
+        Date.now() + 4242 * 3_600_000,
+      );
+      await Promise.all(scheduled);
+    });
+
+    const call = posted.find((p) => (p.body as Row).event === "$mcp_tool_call");
+    assert.ok(call, "the real recorder should have posted the refusal");
+    const props = (call.body as Row).properties as Row;
+    assert.equal(props.$mcp_is_error, true);
+    assert.equal(props.$mcp_error_code, "rate_limited");
+    assert.equal(props.$mcp_error_type, "rate_limited");
+    // No tool named, and no client name to report.
+    assert.equal(Object.hasOwn(props, "$mcp_tool_name"), false);
+    assert.equal(Object.hasOwn(props, "$mcp_client_name"), false);
+    // usage_event rides alongside it on the same refusal.
+    assert.ok(
+      posted.some((p) => (p.body as Row).event === "usage_event"),
+      "the usage_event should still post",
+    );
+  });
+});

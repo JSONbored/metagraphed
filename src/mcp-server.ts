@@ -17142,6 +17142,24 @@ export function scheduleMcpRefusalEvent(
           ok: false,
           status: response.status,
           method: request.method,
+          // REQUIRED, and its absence meant this event never existed.
+          //
+          // buildUsageProperties returns null — and recordUsageEvent then
+          // returns false, silently, per its no-throw contract — for any event
+          // whose durationMs is not a finite non-negative number. This call
+          // passed none, so every refusal usage_event since this function was
+          // written was built, dropped, and reported as "recorded". Confirmed
+          // against the live project: `route LIKE 'mcp:refused%'` matches ZERO
+          // rows in 30 days, over a window in which the gate demonstrably
+          // refused (the 429s and 401s are in $exception and now in
+          // $mcp_tool_call).
+          //
+          // Zero is the honest value rather than a filler: the gate refuses
+          // before any handler runs, so there is no handler time to report.
+          // It cannot distort a latency read either — refusals carry their own
+          // `mcp:refused:*` route label, so any percentile broken down by
+          // route excludes them by construction.
+          durationMs: 0,
           ...(suppressed > 0 ? { suppressed_occurrences: suppressed } : {}),
         },
         {},
