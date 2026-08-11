@@ -912,7 +912,12 @@ export async function loadAccountSummaryColdTier(
   const folded = foldSummaryGroups(groupRows);
 
   // The CTE read CAP + 1, so this is min(total, CAP + 1) -- the probe's number.
-  const scanned = Number(folded.agg.c ?? 0);
+  //
+  // No `?? 0`: foldSummaryGroups starts `count` at 0 and only ever adds a
+  // finite rowCount, so `agg.c` is always a number and the nullish half is a
+  // branch no test can reach. codecov/patch counts it as an uncovered branch,
+  // which is the correct reading -- an unreachable guard is not safety.
+  const scanned = Number(folded.agg.c);
 
   return {
     // Clamped back to the PUBLISHED window so the payload is unchanged: an
