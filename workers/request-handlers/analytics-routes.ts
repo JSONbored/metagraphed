@@ -404,30 +404,26 @@ export async function handleUptime(
   // tier miss now reads the dual-written surface_uptime_daily copy in D1
   // through loadSubnetUptime; with no binding that loader degrades to the
   // same schema-stable empty payload this served since 2026-07-17.
-  let isFallback = false;
-  let data = (await tryPostgresTier(
-    env,
-    request,
-    "METAGRAPH_HEALTH_SOURCE",
-  )) as ReturnType<typeof formatUptime> | null;
-  if (!data) {
-    // Cacheable when D1-served — only an empty payload (no binding, or a D1
-    // read failure mid-load) is barred from the edge cache (see
-    // handleHealthTrends in analytics.ts).
-    const d1Generation = currentD1ReadFailureGeneration();
-    const healthMeta = await readHealthMetaKv(env);
-    data = (await loadSubnetUptime(netuid, {
-      window: windowParam,
-      observedAt: healthMeta?.last_run_at || null,
-      minSamples: (minSamples as number | undefined) ?? null,
-      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
-    } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
-      typeof formatUptime
-    >;
-    isFallback =
-      !env.HYPERDRIVE?.connectionString ||
-      currentD1ReadFailureGeneration() !== d1Generation;
-  }
+  // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in wrangler.jsonc and is
+  // absent from DATA_API_FORWARD_FLAGS, so the tier read that used to
+  // initialise `data` resolved to null on every request -- which made the
+  // branch below the only path, not the fallback.
+  // Cacheable when D1-served — only an empty payload (no binding, or a D1
+  // read failure mid-load) is barred from the edge cache (see
+  // handleHealthTrends in analytics.ts).
+  const d1Generation = currentD1ReadFailureGeneration();
+  const healthMeta = await readHealthMetaKv(env);
+  const data = (await loadSubnetUptime(netuid, {
+    window: windowParam,
+    observedAt: healthMeta?.last_run_at || null,
+    minSamples: (minSamples as number | undefined) ?? null,
+    db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+  } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
+    typeof formatUptime
+  >;
+  const isFallback =
+    !env.HYPERDRIVE?.connectionString ||
+    currentD1ReadFailureGeneration() !== d1Generation;
   if (csvRequested(url, request)) {
     const csvRes = await csvResponse(
       uptimeCsvRows(data.surfaces),
@@ -856,13 +852,10 @@ export async function handleCompare(
         const pgUrl = new URL(request.url);
         pgUrl.pathname = "/api/v1/internal/compare-health";
         pgUrl.search = `?netuids=${requestedNetuids.join(",")}`;
-        const pgData = await tryPostgresTier(
-          env,
-          new Request(pgUrl),
-          "METAGRAPH_HEALTH_SOURCE",
-        );
-        if (pgData)
-          return pgData.rows as Array<Record<string, unknown>> | undefined;
+        // NO TIER READ (#10190): METAGRAPH_HEALTH_SOURCE reads "d1" in
+        // wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so the tier
+        // read that guarded this early return resolved to null on every call --
+        // the health leg has always been a fallback here.
         healthIsFallback = true;
         return [];
       })()

@@ -2972,28 +2972,17 @@ for (const [route, assertion, options = {}] of checks) {
     // projection -- covered by tests/blocks-cold-tier.test.ts,
     // tests/runtime-versions-cold-tier.test.ts and
     // tests/blocks-summary-artifact.test.ts.
-    {
-      flag: "METAGRAPH_EXTRINSICS_SOURCE",
-      route: "/api/v1/extrinsics",
-      upstreamPath: "/api/v1/extrinsics",
-      data: buildExtrinsicFeed([extrinsicRow], {
-        limit: BLOCK_PAGINATION.defaultLimit,
-        offset: 0,
-        nextCursor: null,
-      }),
-      assertion: (body) => assert.equal(body.data.extrinsics[0].signer, SS58),
-    },
-    {
-      flag: "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      route: `/api/v1/accounts/${SS58}/events`,
-      upstreamPath: `/api/v1/accounts/${SS58}/events`,
-      data: buildAccountEvents([accountEventRow], SS58, {
-        limit: FEED_PAGINATION.defaultLimit,
-        offset: 0,
-        nextCursor: null,
-      }),
-      assertion: (body) => assert.equal(body.data.events[0].netuid, 7),
-    },
+    // METAGRAPH_EXTRINSICS_SOURCE's and METAGRAPH_ACCOUNT_EVENTS_SOURCE's cases
+    // were REMOVED (#10190), with METAGRAPH_HEALTH_SOURCE's (which never had one).
+    // Every tryPostgresTier call under those three flags is gone across REST,
+    // GraphQL and MCP -- 174 sites -- so there is no forward left to prove. Their
+    // real legs are the lakehouse cold tiers and the #9146 projections, covered by
+    // the per-reader suites.
+    //
+    // THREE FLAGS REMAIN, and they are exactly DATA_API_FORWARD_FLAGS. That is not
+    // a coincidence to preserve by hand: a flag that gates a DATA_API leg must be
+    // in that set, or it cannot forward at all, which is what made the other eight
+    // families dead.
     {
       flag: "METAGRAPH_NEURONS_SOURCE",
       route: "/api/v1/subnets/7/metagraph",
@@ -3027,8 +3016,8 @@ for (const [route, assertion, options = {}] of checks) {
 
   assert.equal(
     postgresTierChecks.length,
-    5,
-    "postgres-tier AJV coverage must include all 5 flags that gate a DATA_API leg",
+    3,
+    "postgres-tier AJV coverage must include all 3 flags that gate a DATA_API leg",
   );
 
   for (const {
@@ -3097,10 +3086,12 @@ for (const [route, assertion, options = {}] of checks) {
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
   ]);
-  assert.equal(
-    postgresTierChecks.filter((check) => d1ForwardFlags.has(check.flag)).length,
-    d1ForwardFlags.size,
-    'every DATA_API_FORWARD_FLAGS flag needs a case here to drive at "d1"',
+  assert.deepEqual(
+    postgresTierChecks.map((check) => check.flag).sort(),
+    [...d1ForwardFlags].sort(),
+    "postgres-tier cases and DATA_API_FORWARD_FLAGS must be the SAME set: a " +
+      "flag in the set with no case here is an unproven forward, and a case " +
+      "here for a flag outside it is a route reading a tier that cannot answer",
   );
 
   for (const {
@@ -3166,10 +3157,70 @@ for (const [route, assertion, options = {}] of checks) {
     assertion(body);
   }
 
+  // THE NEGATIVE, WHICH NO LONGER HAS A ROUTE-LEVEL HOME ABOVE (#10190). The
+  // loop's `!shouldForward` branch used to be driven by the retired families'
+  // cases; those cases are gone with their tier reads, so the two sets are now
+  // equal and that branch is unreachable from here. The property it protected
+  // did not go away -- it moved:
+  //
+  //   "a flag outside DATA_API_FORWARD_FLAGS does not forward on 'd1'"
+  //       -> tests/postgres-tier.test.ts, driven with METAGRAPH_HEALTH_SOURCE
+  //          (the one flag #10660 guarantees can never enter the set)
+  //
+  //   "a swept route does not read a tier AT ALL"
+  //       -> here, below. This is the stronger statement and the one a
+  //          regression would break first: re-adding a tryPostgresTier call to
+  //          any of these routes brings back a read that resolves to null on
+  //          every request, and every previous such read went unnoticed for
+  //          months precisely because nothing asked this question.
+  //
+  // Driven at "postgres" -- the value that WOULD forward if a call existed --
+  // so a reintroduced call fails here even if its flag were also widened.
+  const sweptFamilyRoutes: { flag: string; route: string }[] = [
+    { flag: "METAGRAPH_BLOCKS_SOURCE", route: "/api/v1/blocks" },
+    { flag: "METAGRAPH_EXTRINSICS_SOURCE", route: "/api/v1/extrinsics" },
+    {
+      flag: "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      route: `/api/v1/accounts/${SS58}/events`,
+    },
+    { flag: "METAGRAPH_HEALTH_SOURCE", route: "/api/v1/health/trends" },
+  ];
+  for (const { flag, route } of sweptFamilyRoutes) {
+    assert.equal(
+      d1ForwardFlags.has(flag),
+      false,
+      `${flag}: a swept family's flag must not be in DATA_API_FORWARD_FLAGS`,
+    );
+    let asked: string | null = null;
+    const sweptEnv = createLocalArtifactEnv({
+      [flag]: "postgres",
+      DATA_API: {
+        async fetch(request: Request) {
+          asked = new URL(request.url).pathname;
+          return new Response(JSON.stringify({ schema_version: 1 }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        },
+      },
+    });
+    await handleRequest(
+      new Request(`https://metagraph.sh${route}`),
+      sweptEnv as unknown as Env,
+      {},
+    );
+    assert.equal(
+      asked,
+      null,
+      `${flag} ${route}: the tier read is retired (#10190) -- DATA_API must ` +
+        `not be asked even with the flag set to "postgres"`,
+    );
+  }
+
   console.log(
     `Validated ${postgresTierChecks.length} Postgres-tier Worker API route(s) ` +
-      `at "postgres", plus ${d1ForwardFlags.size} forwarding and ` +
-      `${postgresTierChecks.length - d1ForwardFlags.size} non-forwarding at "d1".`,
+      `at "postgres", plus ${d1ForwardFlags.size} forwarding at "d1", plus ` +
+      `${sweptFamilyRoutes.length} swept famil(ies) proven to read no tier.`,
   );
 }
 
