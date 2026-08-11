@@ -297,123 +297,157 @@ export async function loadSweepRecord(
   }
 }
 
-// ── the lane ────────────────────────────────────────────────────────────────
+// ── the queue lane ──────────────────────────────────────────────────────────
+//
+// WHY THIS IS A QUEUE AND NOT A BIGGER CRON SLICE. The cron lane this replaced
+// swept a slice of eight subnets per tick, because 128 subnets x up to 8 sources
+// is ~1000 outbound requests and one scheduled invocation cannot do that. A full
+// pass took sixteen hours. That was never a cadence -- it was the invocation
+// budget, dressed as one.
+//
+// A queue removes the constraint rather than working around it. One message per
+// subnet is one invocation per subnet, so the whole registry is swept from a
+// single tick.
+//
+// AND IT REMOVES THE SCHEDULING MACHINERY ENTIRELY. The old lane ordered subnets
+// by staleness and took the eight oldest, which meant a store read on every tick
+// purely to decide what to skip. Enqueuing everything skips nothing, so the
+// staleness ordering, the slice size, and the producer's database handle all go
+// with it -- `swept_at` is now only a fact the API serves, never an input to
+// scheduling.
+//
+// It also turns two silent failures into visible ones:
+//
+//   - a subnet whose fetch fails is RETRIED on its own, instead of being
+//     dropped until the next hour came round to it again;
+//   - a subnet that keeps failing lands in the dead-letter queue, which
+//     src/dead-letter.ts records as a lane verdict. Under the cron it simply
+//     produced a `unreachable` row forever and nothing said the lane itself was
+//     struggling.
 
-/** Subnets swept per tick.
- *
- * A full pass is ~129 subnets x up to 8 sources = a thousand outbound requests,
- * which is not a tick, it is an incident. The lane sweeps a SLICE and picks it
- * by staleness, so the pass completes over a day without ever bursting. */
-export const SWEEP_BATCH_SIZE = 8;
-
-/**
- * The subnets to sweep next: least recently swept first, never-swept before
- * that.
- *
- * Self-balancing on purpose. A fixed rotation drifts out of step the moment a
- * tick is skipped or a subnet is added; ordering by staleness means the lane
- * converges on whatever is oldest no matter what happened before it.
- */
-export function nextToSweep(
-  netuids: number[],
-  sweptAt: Map<number, number>,
-  batch = SWEEP_BATCH_SIZE,
-): number[] {
-  return [...netuids]
-    .sort((a, b) => {
-      // Never-swept sorts first: it is the only state where we have said
-      // nothing at all, and that is the gap worth closing before refreshing a
-      // finding that already exists.
-      const av = sweptAt.get(a) ?? -1;
-      const bv = sweptAt.get(b) ?? -1;
-      return av - bv || a - b;
-    })
-    .slice(0, batch);
+/** One subnet to sweep. Deliberately just the netuid: the registry record is
+ * read by the consumer at delivery time, so a message that sits in the queue
+ * for a minute cannot sweep a stale copy of the subnet's surfaces. */
+export interface SweepMessage {
+  netuid: number;
 }
 
-/** Every subnet's last sweep time. Empty on a read failure -- which makes the
- * lane treat everything as never-swept, and re-sweep rather than skip. Erring
- * toward re-reading is the safe direction: the cost is requests, and the
- * alternative is a subnet that silently never gets looked at. */
-export async function loadSweptAt(
-  db: SweepStoreDb | null | undefined,
-): Promise<Map<number, number>> {
-  const out = new Map<number, number>();
-  if (!db?.prepare) return out;
-  try {
-    const res = await db
-      .prepare(`SELECT netuid, swept_at FROM attribution_sweeps`)
-      .all?.();
-    for (const raw of res?.results ?? []) {
-      const row = raw as AttributionSweeps;
-      const netuid = Number(row.netuid);
-      const at = Number(row.swept_at);
-      if (Number.isInteger(netuid) && Number.isFinite(at)) out.set(netuid, at);
-    }
-  } catch {
-    return new Map();
-  }
-  return out;
+export const ATTRIBUTION_SWEEP_QUEUE = "attribution-sweeps";
+
+/** The minimal producer surface, injected so the enqueue is testable without a
+ * Cloudflare binding. */
+export interface SweepQueue {
+  sendBatch(messages: Array<{ body: SweepMessage }>): Promise<unknown>;
 }
 
-export interface SweepTickResult {
+/** Cloudflare caps a sendBatch at 100 messages. 128 subnets is one over two
+ * batches, which is exactly the kind of off-by-one that ships. */
+export const SWEEP_SEND_BATCH_MAX = 100;
+
+export interface EnqueueResult {
   ok: boolean;
-  swept: number;
-  candidates: number;
-  /** Verdict counts, so a pass that reached nothing is visible as such rather
-   * than as a quiet success. */
-  verdicts: Record<SweepVerdict, number>;
+  enqueued: number;
   reason?: string;
 }
 
 /**
- * One pass of the lane.
+ * Enqueue every subnet due for a sweep.
  *
- * `ok` is FALSE when the store could not be written, and when the batch was
- * empty. A lane that reports success while sweeping nothing is indistinguishable
- * from one that swept and found nothing -- the exact confusion that let the
- * revenue probe sit dead for two months (#10566).
+ * EVERY subnet, not a slice: the whole point of moving to a queue is that the
+ * producer no longer has to ration work to fit one invocation.
  */
-export async function runAttributionSweepTick(
-  db: SweepStoreDb | null | undefined,
-  subnets: Array<{ netuid: number; record: Record<string, unknown> }>,
-  deps: SweepDeps & { batch?: number },
-): Promise<SweepTickResult> {
-  const verdicts: Record<SweepVerdict, number> = {
-    "none-published": 0,
-    "candidates-found": 0,
-    unreachable: 0,
-    "no-sources": 0,
-  };
-  const byNetuid = new Map(subnets.map((s) => [s.netuid, s.record]));
-  const due = nextToSweep(
-    [...byNetuid.keys()],
-    await loadSweptAt(db),
-    deps.batch ?? SWEEP_BATCH_SIZE,
-  );
-  if (due.length === 0) {
+export async function enqueueSweeps(
+  queue: SweepQueue | null | undefined,
+  netuids: number[],
+): Promise<EnqueueResult> {
+  if (!queue?.sendBatch) {
+    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
+  }
+  if (netuids.length === 0) {
+    // Not a success. A producer reporting ok while enqueuing nothing is
+    // indistinguishable from one that enqueued and found nothing to do.
+    return { ok: false, enqueued: 0, reason: "no_subnets_to_sweep" };
+  }
+  let enqueued = 0;
+  try {
+    for (let i = 0; i < netuids.length; i += SWEEP_SEND_BATCH_MAX) {
+      const slice = netuids.slice(i, i + SWEEP_SEND_BATCH_MAX);
+      await queue.sendBatch(slice.map((netuid) => ({ body: { netuid } })));
+      enqueued += slice.length;
+    }
+  } catch (error) {
     return {
       ok: false,
-      swept: 0,
-      candidates: 0,
-      verdicts,
-      reason: "no_subnets_to_sweep",
+      enqueued,
+      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
     };
   }
-  let candidates = 0;
-  const failures: string[] = [];
-  for (const netuid of due) {
-    const result = await sweepSubnet(netuid, byNetuid.get(netuid), deps);
-    verdicts[result.verdict] += 1;
-    candidates += result.candidates.length;
-    const written = await persistSweep(db, result);
-    if (!written.ok) failures.push(`${netuid}: ${written.reason}`);
+  return { ok: true, enqueued };
+}
+
+/** One delivered message, as the consumer sees it. */
+export interface SweepBatchMessage {
+  body: unknown;
+  ack(): void;
+  retry(): void;
+}
+
+export interface SweepBatchResult {
+  swept: number;
+  /** Messages handed back for retry. A subnet that could not be swept is the
+   * queue's problem to re-deliver, not a finding to write. */
+  retried: number;
+  /** Messages acked without sweeping because the body was not a sweep message.
+   * Retrying those would loop them to the dead letter for no reason. */
+  malformed: number;
+}
+
+/**
+ * Consume a batch: one subnet per message.
+ *
+ * ACK ON SUCCESS, RETRY ON FAILURE, ACK ON MALFORMED. The third is the one
+ * worth stating: a message whose body is not a netuid will never become one, so
+ * retrying it spends the whole retry budget to reach the dead letter with a
+ * message nobody can act on. It is acked and counted instead.
+ */
+export async function handleSweepBatch(
+  messages: SweepBatchMessage[],
+  db: SweepStoreDb | null | undefined,
+  deps: SweepDeps & {
+    /** The subnet's registry record, read at DELIVERY time so a queued message
+     * cannot sweep a stale copy of its surfaces. */
+    recordFor: (netuid: number) => Promise<Record<string, unknown> | null>;
+  },
+): Promise<SweepBatchResult> {
+  let swept = 0;
+  let retried = 0;
+  let malformed = 0;
+  for (const message of messages) {
+    const body = message.body as SweepMessage | null;
+    const netuid = Number(body?.netuid);
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      message.ack();
+      malformed += 1;
+      continue;
+    }
+    try {
+      const record = await deps.recordFor(netuid);
+      const result = await sweepSubnet(netuid, record, deps);
+      const written = await persistSweep(db, result);
+      if (!written.ok) {
+        // The sweep happened; the WRITE did not. Retrying re-sweeps, which is
+        // wasteful but correct -- an unwritten sweep is a sweep that did not
+        // happen as far as anything reading the store is concerned.
+        message.retry();
+        retried += 1;
+        continue;
+      }
+      message.ack();
+      swept += 1;
+    } catch {
+      message.retry();
+      retried += 1;
+    }
   }
-  return {
-    ok: failures.length === 0,
-    swept: due.length,
-    candidates,
-    verdicts,
-    ...(failures.length > 0 ? { reason: failures.join("; ") } : {}),
-  };
+  return { swept, retried, malformed };
 }

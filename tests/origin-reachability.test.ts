@@ -18,7 +18,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import {
+import worker, {
   handleScheduled,
   probeOrigin,
   registeredSurfaces,
@@ -27,12 +27,13 @@ import { ORIGIN_REACHABILITY_CRON } from "../workers/config.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
-  ORIGIN_BATCH_SIZE,
   ORIGIN_SAMPLE_SIZE,
+  ORIGIN_SEND_BATCH_MAX,
+  enqueueOriginChecks,
+  handleOriginBatch,
+  type OriginMessage,
   loadDeadOrigins,
-  loadOriginCheckedAt,
   persistOriginCheck,
-  runOriginReachabilityTick,
   checkOrigin,
   classifyOrigin,
   normaliseBody,
@@ -398,108 +399,6 @@ describe("the store", () => {
     assert.equal(out?.[0].checked_at, null);
     assert.equal(out?.[0].surface_count, 0);
   });
-
-  test("reads every origin's last check for the staleness ordering", async () => {
-    const map = await loadOriginCheckedAt(
-      db(
-        [],
-        [
-          { origin: "https://a", checked_at: 5 },
-          { origin: "https://b", checked_at: "nope" },
-        ],
-      ),
-    );
-    assert.deepEqual([...map.entries()], [["https://a", 5]]);
-    assert.equal((await loadOriginCheckedAt(null)).size, 0);
-    assert.equal(
-      (
-        await loadOriginCheckedAt({
-          prepare() {
-            throw new Error("down");
-          },
-        })
-      ).size,
-      0,
-    );
-  });
-});
-
-describe("the lane", () => {
-  const store = () => ({
-    prepare: () => ({
-      bind: () => ({
-        run: async () => undefined,
-        all: async () => ({ results: [] }),
-      }),
-      all: async () => ({ results: [] }),
-    }),
-  });
-
-  const surfaces = [
-    { id: "dead-1", url: "https://dead.example/a" },
-    { id: "dead-2", url: "https://dead.example/b" },
-    { id: "live-1", url: "https://live.example/a" },
-    { id: "live-2", url: "https://live.example/b" },
-  ];
-
-  test("counts the verdicts and the SURFACES an adverse one covers", async () => {
-    // The number that makes the finding actionable. 128 across 11 origins, the
-    // first time this ran against the real registry.
-    const out = await runOriginReachabilityTick(store(), surfaces, {
-      probe: async (url) =>
-        url.startsWith("https://dead.example")
-          ? { status: 404, bodyHash: PLACEHOLDER }
-          : { status: 200, bodyHash: url },
-    });
-    assert.equal(out.checked, 2);
-    assert.equal(out.verdicts["not-routing"], 1);
-    assert.equal(out.verdicts.serving, 1);
-    assert.equal(out.surfaces_affected, 2, "both surfaces on the dead origin");
-    assert.equal(out.ok, true);
-  });
-
-  test("checks the LEAST RECENTLY checked first, never-checked before that", async () => {
-    const checked: string[] = [];
-    await runOriginReachabilityTick(store(), surfaces, {
-      probe: async (url) => {
-        checked.push(new URL(url).origin);
-        return { status: 200, bodyHash: url };
-      },
-      batch: 1,
-      checkedAt: new Map([["https://dead.example", 5_000]]),
-    });
-    // live.example has never been checked: the only state where we have said
-    // nothing at all about it.
-    assert.deepEqual([...new Set(checked)], ["https://live.example"]);
-  });
-
-  test("an EMPTY batch is not a success", async () => {
-    const out = await runOriginReachabilityTick(store(), [], {
-      probe: async () => ({ status: 200, bodyHash: "a" }),
-    });
-    assert.equal(out.ok, false);
-    assert.equal(out.reason, "no_origins_to_check");
-  });
-
-  test("a write failure fails the tick rather than being swallowed", async () => {
-    const out = await runOriginReachabilityTick(null, surfaces, {
-      probe: async () => ({ status: 200, bodyHash: "a" }),
-    });
-    assert.equal(out.ok, false);
-    assert.match(String(out.reason), /no_store_binding/);
-    assert.equal(out.checked, 2, "it still checked -- only the write failed");
-  });
-
-  test("the batch defaults to the declared size", async () => {
-    const many = Array.from({ length: ORIGIN_BATCH_SIZE + 5 }, (_, i) => ({
-      id: `s${i}`,
-      url: `https://h${i}.example/a`,
-    }));
-    const out = await runOriginReachabilityTick(store(), many, {
-      probe: async () => ({ status: 200, bodyHash: "a" }),
-    });
-    assert.equal(out.checked, ORIGIN_BATCH_SIZE);
-  });
 });
 
 describe("the wiring — a correct lane nobody calls is the defect", () => {
@@ -524,15 +423,18 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     assert.match(api, /return "origin-reachability"/);
   });
 
-  test("handleScheduled routes the cron to the lane", async () => {
+  test("handleScheduled routes the cron to the PRODUCER, and it declines cleanly", async () => {
+    // The cron no longer checks -- it enqueues. The BINDING is reported before
+    // the empty list, and that order is the useful one: a missing binding is a
+    // config error, and saying "no origins" would send someone to the registry.
     const result = (await handleScheduled(
       { cron: ORIGIN_REACHABILITY_CRON } as unknown as ScheduledController,
       {} as unknown as Parameters<typeof handleScheduled>[1],
       { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; checked: number; reason?: string };
+    )) as { ok: boolean; enqueued: number; reason?: string };
     assert.equal(result.ok, false);
-    assert.equal(result.checked, 0);
-    assert.equal(result.reason, "no_origins_to_check");
+    assert.equal(result.enqueued, 0);
+    assert.equal(result.reason, "no_queue_binding");
   });
 
   test("the table is declared Neon sole-store in every config", async () => {
@@ -678,7 +580,6 @@ describe("shapes the store can really produce", () => {
       }),
     };
     assert.deepEqual(await loadDeadOrigins(db), []);
-    assert.equal((await loadOriginCheckedAt(db)).size, 0);
   });
 
   test("a row with no origin or verdict still reads without inventing one", async () => {
@@ -698,5 +599,303 @@ describe("shapes the store can really produce", () => {
       classifyOrigin([sample(200, "a"), sample(404, "a")]),
       "serving",
     );
+  });
+});
+
+describe("the queue lane", () => {
+  function queue(sent: Array<Array<{ body: unknown }>>, fail = false) {
+    return {
+      async sendBatch(messages: Array<{ body: OriginMessage }>) {
+        if (fail) throw new Error("queue unavailable");
+        sent.push(messages);
+      },
+    };
+  }
+
+  test("enqueues EVERY origin, not a slice", async () => {
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const out = await enqueueOriginChecks(queue(sent), [
+      "https://a",
+      "https://b",
+    ]);
+    assert.deepEqual(out, { ok: true, enqueued: 2 });
+  });
+
+  test("splits at the sendBatch cap", async () => {
+    // 277 origins is three batches at Cloudflare's 100-message cap.
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const many = Array.from(
+      { length: ORIGIN_SEND_BATCH_MAX + 7 },
+      (_, i) => `https://h${i}`,
+    );
+    await enqueueOriginChecks(queue(sent), many);
+    assert.deepEqual(
+      sent.map((b) => b.length),
+      [ORIGIN_SEND_BATCH_MAX, 7],
+    );
+  });
+
+  test("no binding and an empty list are both stated refusals", async () => {
+    assert.equal(
+      (await enqueueOriginChecks(null, ["https://a"])).reason,
+      "no_queue_binding",
+    );
+    assert.equal(
+      (await enqueueOriginChecks(queue([]), [])).reason,
+      "no_origins_to_check",
+    );
+  });
+
+  test("a send failure reports what actually went out", async () => {
+    const out = await enqueueOriginChecks(queue([], true), ["https://a"]);
+    assert.equal(out.ok, false);
+    assert.equal(out.enqueued, 0);
+    assert.match(String(out.reason), /queue unavailable/);
+  });
+
+  test("a thrown non-Error still names the failure", async () => {
+    const out = await enqueueOriginChecks(
+      {
+        async sendBatch() {
+          throw "a bare string";
+        },
+      },
+      ["https://a"],
+    );
+    assert.match(String(out.reason), /a bare string/);
+  });
+});
+
+describe("consuming an origin batch", () => {
+  function message(body: unknown) {
+    const calls = { acked: 0, retried: 0 };
+    return {
+      body,
+      ack: () => void (calls.acked += 1),
+      retry: () => void (calls.retried += 1),
+      calls,
+    };
+  }
+
+  const store = () => ({
+    prepare: () => ({
+      bind: () => ({
+        run: async () => undefined,
+        all: async () => ({ results: [] }),
+      }),
+      all: async () => ({ results: [] }),
+    }),
+  });
+
+  const deps = (over: Record<string, unknown> = {}) => ({
+    probe: async () => ({ status: 200, bodyHash: "a" }),
+    now: () => 1_786_320_000_000,
+    surfacesFor: async () => [{ id: "s1", url: "https://x.example/a" }],
+    ...over,
+  });
+
+  test("acks a checked origin", async () => {
+    const m = message({ origin: "https://x.example" });
+    const out = await handleOriginBatch([m], store(), deps() as never);
+    assert.deepEqual(out, { checked: 1, retried: 0, malformed: 0 });
+    assert.equal(m.calls.acked, 1);
+  });
+
+  test("resolves the surfaces at DELIVERY, not from the message", async () => {
+    // A message that waited must not check a stale copy of what the registry
+    // advertises.
+    let askedFor: string | null = null;
+    await handleOriginBatch(
+      [message({ origin: "https://y.example" })],
+      store(),
+      deps({
+        surfacesFor: async (origin: string) => {
+          askedFor = origin;
+          return [];
+        },
+      }) as never,
+    );
+    assert.equal(askedFor, "https://y.example");
+  });
+
+  test("RETRIES when the check succeeded but the WRITE failed", async () => {
+    const m = message({ origin: "https://x.example" });
+    const out = await handleOriginBatch([m], null, deps() as never);
+    assert.deepEqual(out, { checked: 0, retried: 1, malformed: 0 });
+  });
+
+  test("RETRIES when resolving the surfaces throws", async () => {
+    const m = message({ origin: "https://x.example" });
+    const out = await handleOriginBatch(
+      [m],
+      store(),
+      deps({
+        surfacesFor: async () => {
+          throw new Error("artifact read exploded");
+        },
+      }) as never,
+    );
+    assert.equal(out.retried, 1);
+    assert.equal(m.calls.retried, 1);
+  });
+
+  test("ACKS a malformed message rather than looping it to the dead letter", async () => {
+    const bad = [message({ origin: 42 }), message({}), message(null)];
+    const out = await handleOriginBatch(bad, store(), deps() as never);
+    assert.deepEqual(out, { checked: 0, retried: 0, malformed: 3 });
+    for (const m of bad) assert.equal(m.calls.acked, 1);
+  });
+
+  test("one bad message does not stop the rest of the batch", async () => {
+    const good = message({ origin: "https://x.example" });
+    const out = await handleOriginBatch(
+      [message(null), good],
+      store(),
+      deps() as never,
+    );
+    assert.equal(out.checked, 1);
+    assert.equal(out.malformed, 1);
+  });
+});
+
+describe("the origin queue wiring", () => {
+  test("the dead-letter queue is registered as a lane", async () => {
+    const source = await fs.readFile(
+      path.join(repoRoot, "src/dead-letter.ts"),
+      "utf8",
+    );
+    assert.match(source, /"origin-reachability-dlq"/);
+  });
+
+  test("both queues are declared, with a dead letter", async () => {
+    const wrangler = await fs.readFile(
+      path.join(repoRoot, "wrangler.jsonc"),
+      "utf8",
+    );
+    assert.match(wrangler, /"binding": "ORIGIN_REACHABILITY"/);
+    assert.match(wrangler, /"dead_letter_queue": "origin-reachability-dlq"/);
+  });
+
+  test("the consumer branches on the queue name", async () => {
+    const api = await fs.readFile(
+      path.join(repoRoot, "workers/api.ts"),
+      "utf8",
+    );
+    assert.match(api, /batch\.queue === ORIGIN_REACHABILITY_QUEUE/);
+  });
+});
+
+describe("the origin queue, through the Worker's own handler", () => {
+  const SURFACES = "/metagraph/surfaces.json";
+
+  function env(payload: unknown, extra: Record<string, unknown> = {}) {
+    const hit = (p: string) => p === SURFACES && payload != null;
+    return {
+      ASSETS: {
+        async fetch(request: Request) {
+          const { pathname } = new URL(request.url);
+          return hit(pathname)
+            ? Response.json(payload as never)
+            : new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+          return hit(p)
+            ? {
+                async json() {
+                  return payload;
+                },
+              }
+            : null;
+        },
+      },
+      ...extra,
+    };
+  }
+
+  const registry = {
+    surfaces: [
+      { id: "a", url: "https://x.example/one" },
+      { id: "b", url: "https://x.example/two" },
+    ],
+  };
+
+  test("the cron producer enqueues every registered ORIGIN, deduplicated", async () => {
+    // Two surfaces on one host is one message, not two -- that is the whole
+    // saving over a per-surface pass.
+    const sent: string[] = [];
+    const result = (await handleScheduled(
+      { cron: ORIGIN_REACHABILITY_CRON } as unknown as ScheduledController,
+      env(registry, {
+        ORIGIN_REACHABILITY: {
+          async sendBatch(messages: Array<{ body: { origin: string } }>) {
+            for (const m of messages) sent.push(m.body.origin);
+          },
+        },
+      }) as never,
+      { waitUntil: () => {} } as unknown as ExecutionContext,
+    )) as { ok: boolean; enqueued: number };
+    assert.deepEqual(result, { ok: true, enqueued: 1 });
+    assert.deepEqual(sent, ["https://x.example"]);
+  });
+
+  test("an origin batch is routed to the origin consumer, not the webhook path", async () => {
+    const batch = {
+      queue: "origin-reachability",
+      messages: [
+        {
+          body: { origin: "https://x.example" },
+          ack: () => {},
+          retry: () => {},
+        },
+      ],
+    };
+    await assert.doesNotReject(() =>
+      worker.queue!(
+        batch as never,
+        env(registry) as never,
+        { waitUntil: () => {} } as never,
+      ),
+    );
+  });
+
+  test("an origin with no registered surfaces resolves to an empty list", async () => {
+    // A message for an origin the registry no longer advertises: the lookup
+    // misses, and the check runs against nothing rather than throwing.
+    const batch = {
+      queue: "origin-reachability",
+      messages: [
+        {
+          body: { origin: "https://gone.example" },
+          ack: () => {},
+          retry: () => {},
+        },
+      ],
+    };
+    await assert.doesNotReject(() =>
+      worker.queue!(
+        batch as never,
+        env(registry) as never,
+        { waitUntil: () => {} } as never,
+      ),
+    );
+  });
+
+  test("a malformed origin message is acked at the Worker level too", async () => {
+    let acked = 0;
+    const batch = {
+      queue: "origin-reachability",
+      messages: [
+        { body: { origin: 42 }, ack: () => void (acked += 1), retry: () => {} },
+      ],
+    };
+    await worker.queue!(
+      batch as never,
+      env(registry) as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.equal(acked, 1);
   });
 });

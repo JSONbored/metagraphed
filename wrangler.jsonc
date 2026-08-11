@@ -854,6 +854,12 @@
   "queues": {
     "producers": [
       { "binding": "WEBHOOK_DELIVERIES", "queue": "webhook-deliveries" },
+      // #10709: the attribution sweep's producer. The cron enqueues one message
+      // per subnet instead of sweeping a slice inline -- see
+      // src/attribution-sweep.ts for why the slice existed at all.
+      { "binding": "ATTRIBUTION_SWEEPS", "queue": "attribution-sweeps" },
+      { "binding": "ORIGIN_REACHABILITY", "queue": "origin-reachability" },
+      { "binding": "REVENUE_PROBES", "queue": "revenue-probes" },
     ],
     "consumers": [
       {
@@ -876,6 +882,63 @@
       //
       // "max_retries": 0 -- see the sync-batches-dlq consumer in
       // wrangler.data.jsonc for the full argument; it is the same one.
+      // #10709: one subnet per message. `max_batch_size` is small because each
+      // message fetches up to 8 sources of somebody else's -- the budget that
+      // forced the cron to ration itself is now per-message, and keeping the
+      // batch small is what keeps it that way.
+      {
+        "queue": "attribution-sweeps",
+        "max_batch_size": 3,
+        "max_batch_timeout": 10,
+        "max_retries": 3,
+        "max_concurrency": 5,
+        "dead_letter_queue": "attribution-sweeps-dlq",
+      },
+      // "max_retries": 0 -- same argument as the two DLQ consumers beside it: a
+      // message here has already spent its budget, and a retry would be a fifth
+      // attempt wearing a different hat.
+      // One origin per message; up to 3 samples each, so the batch stays small
+      // for the same reason the sweep's does.
+      {
+        "queue": "origin-reachability",
+        "max_batch_size": 5,
+        "max_batch_timeout": 10,
+        "max_retries": 3,
+        "max_concurrency": 5,
+        "dead_letter_queue": "origin-reachability-dlq",
+      },
+      // One surface per message. These are billing endpoints on somebody else's
+      // infrastructure, so concurrency stays low -- the cadence is for
+      // restatement, not freshness (see REVENUE_PROBE_CRON).
+      {
+        "queue": "revenue-probes",
+        "max_batch_size": 5,
+        "max_batch_timeout": 15,
+        "max_retries": 3,
+        "max_concurrency": 2,
+        "dead_letter_queue": "revenue-probes-dlq",
+      },
+      {
+        "queue": "revenue-probes-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
+      },
+      {
+        "queue": "origin-reachability-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
+      },
+      {
+        "queue": "attribution-sweeps-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
+      },
       {
         "queue": "webhook-deliveries-dlq",
         "max_batch_size": 100,

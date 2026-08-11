@@ -36,6 +36,13 @@ import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 export const DEAD_LETTER_LANES: Readonly<Record<string, string>> = {
   "sync-batches-dlq": "sync-batches-dlq",
   "webhook-deliveries-dlq": "webhook-deliveries-dlq",
+  // #10709: the attribution sweep. A subnet that keeps failing to fetch used to
+  // produce an `unreachable` row forever and nothing said the LANE was
+  // struggling; now it exhausts its retries and lands here as a verdict.
+  "attribution-sweeps-dlq": "attribution-sweeps-dlq",
+  // #10715: the origin-reachability lane, same argument as the sweep above.
+  "origin-reachability-dlq": "origin-reachability-dlq",
+  "revenue-probes-dlq": "revenue-probes-dlq",
 };
 
 /** Whether a delivered batch came from a dead-letter queue.

@@ -661,7 +661,15 @@ import {
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
 import {
-  runRevenueProbeTick,
+  OPERATIONAL_SURFACES_ARTIFACT,
+  REVENUE_PROBE_QUEUE,
+  eligibleRevenueSurfaces,
+  enqueueRevenueProbes,
+  fetchRevenuePayload,
+  handleRevenueProbeBatch,
+  sha256Hex,
+  type RevenueBatchMessage,
+  type RevenueProbeQueue,
   type RevenueStoreDb,
 } from "../src/revenue-observations.ts";
 import {
@@ -669,9 +677,13 @@ import {
   REVENUE_OBSERVATION_TABLES,
 } from "../src/read-store-tables.ts";
 import {
+  ATTRIBUTION_SWEEP_QUEUE,
   SWEEP_FETCH_TIMEOUT_MS,
   SWEEP_MAX_BYTES,
-  runAttributionSweepTick,
+  enqueueSweeps,
+  handleSweepBatch,
+  type SweepBatchMessage,
+  type SweepQueue,
   type SweepStoreDb,
 } from "../src/attribution-sweep.ts";
 import {
@@ -681,9 +693,13 @@ import {
 import {
   ORIGIN_PROBE_MAX_BYTES,
   ORIGIN_PROBE_TIMEOUT_MS,
-  loadOriginCheckedAt,
+  ORIGIN_REACHABILITY_QUEUE,
+  enqueueOriginChecks,
+  handleOriginBatch,
   normaliseBody,
-  runOriginReachabilityTick,
+  surfacesByOrigin,
+  type OriginBatchMessage,
+  type OriginQueue,
   type OriginStoreDb,
   type SurfaceRef,
 } from "../src/origin-reachability.ts";
@@ -1722,6 +1738,76 @@ export default {
       );
       return;
     }
+    if (batch.queue === ATTRIBUTION_SWEEP_QUEUE) {
+      // One subnet per message. The registry record is read HERE rather than
+      // carried in the message, so a message that waited in the queue cannot
+      // sweep a stale copy of the subnet's surfaces.
+      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
+      try {
+        const byNetuid = new Map(
+          (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
+        );
+        await handleSweepBatch(
+          batch.messages as unknown as SweepBatchMessage[],
+          store.db as SweepStoreDb,
+          {
+            fetchText: fetchSweepText,
+            recordFor: async (netuid: number) => byNetuid.get(netuid) ?? null,
+          },
+        );
+      } finally {
+        store.close();
+      }
+      return;
+    }
+    if (batch.queue === REVENUE_PROBE_QUEUE) {
+      // The eligible set is re-read HERE, so a message that waited cannot probe
+      // a surface the registry has since withdrawn.
+      const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
+      try {
+        const artifact = await readArtifact(
+          env,
+          `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
+        );
+        const byId = new Map(
+          eligibleRevenueSurfaces(
+            artifact.ok ? (artifact.data as Row | undefined) : null,
+          ).map((s) => [s.id, s]),
+        );
+        await handleRevenueProbeBatch(
+          batch.messages as unknown as RevenueBatchMessage[],
+          store.db as RevenueStoreDb,
+          {
+            fetchPayload: (url: string) => fetchRevenuePayload(url),
+            hash: sha256Hex,
+            now: Date.now,
+            surfaceFor: async (id: string) => byId.get(id) ?? null,
+          },
+        );
+      } finally {
+        store.close();
+      }
+      return;
+    }
+    if (batch.queue === ORIGIN_REACHABILITY_QUEUE) {
+      // The surfaces are resolved HERE, so a message that waited cannot check a
+      // stale copy of what the registry advertises.
+      const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
+      try {
+        const byOrigin = surfacesByOrigin(await registeredSurfaces(env));
+        await handleOriginBatch(
+          batch.messages as unknown as OriginBatchMessage[],
+          store.db as OriginStoreDb,
+          {
+            probe: probeOrigin,
+            surfacesFor: async (origin: string) => byOrigin.get(origin) ?? [],
+          },
+        );
+      } finally {
+        store.close();
+      }
+      return;
+    }
     return handleWebhookQueue(batch, env, ctx);
   },
 };
@@ -2597,16 +2683,21 @@ async function dispatchScheduled(
     // nothing published" instead of an empty list that is equally consistent
     // with nobody having looked. An undated silence is not evidence.
     {
-      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
-      try {
-        return await runAttributionSweepTick(
-          store.db as SweepStoreDb,
-          await sweepableSubnets(env),
-          { fetchText: fetchSweepText },
-        );
-      } finally {
-        store.close();
-      }
+      // THE CRON IS NOW A PRODUCER, not the lane. It reads which subnets are
+      // due and enqueues one message each; the consumer below sweeps them, one
+      // invocation per subnet. The slice of eight this used to sweep inline was
+      // never a cadence -- it was the invocation budget, and a queue removes it
+      // rather than working around it (#10709).
+      // No store handle and no staleness read: the producer enqueues EVERY
+      // subnet, so there is nothing to decide about which to skip. The old lane
+      // opened a connection each tick purely to order a slice it then threw
+      // most of away.
+      const subnets = await sweepableSubnets(env);
+      return await enqueueSweeps(
+        (env as unknown as { ATTRIBUTION_SWEEPS?: SweepQueue })
+          .ATTRIBUTION_SWEEPS,
+        subnets.map((s) => s.netuid),
+      );
     }
   }
   if (cron === ORIGIN_REACHABILITY_CRON) {
@@ -2618,50 +2709,30 @@ async function dispatchScheduled(
     // Checking origins rather than surfaces is what makes the disabled ones
     // covered at all, and costs one request instead of sixty.
     {
-      const store = producerStore(env, ctx, [...ORIGIN_REACHABILITY_TABLES]);
-      try {
-        const db = store.db as OriginStoreDb;
-        return await runOriginReachabilityTick(
-          db,
-          await registeredSurfaces(env),
-          {
-            probe: probeOrigin,
-            checkedAt: await loadOriginCheckedAt(db),
-          },
-        );
-      } finally {
-        store.close();
-      }
+      // Producer only: every registered origin, no staleness read and no store
+      // handle. Nothing is skipped, so there is nothing to order.
+      return await enqueueOriginChecks(
+        (env as unknown as { ORIGIN_REACHABILITY?: OriginQueue })
+          .ORIGIN_REACHABILITY,
+        [...surfacesByOrigin(await registeredSurfaces(env)).keys()],
+      );
     }
   }
   if (cron === REVENUE_PROBE_CRON) {
-    // #10566: the lane src/revenue-probe.ts has been waiting for since #10444.
-    //
-    // It shipped as a library with NO caller -- nothing imported it, no config
-    // carried a trigger -- so revenue_observations was never written and every
-    // revenue route reported null for all 129 subnets, including the two the
-    // epic exists to measure. Nothing failed, because "absent revenue is null,
-    // never zero" is exactly what a dead producer looks like.
-    //
-    // The tick itself lives in src/ so it can be driven end to end in a test;
-    // this branch is the store's lifetime and nothing else.
-    {
-      const store = producerStore(env, ctx, [...REVENUE_OBSERVATION_TABLES]);
-      try {
-        return await runRevenueProbeTick(env, store.db as RevenueStoreDb, {
-          readArtifact,
-          recordVerdict: (verdict) =>
-            ctx.waitUntil(
-              recordLaneVerdict(
-                laneHealthStore(env as unknown as Record<string, unknown>),
-                verdict as never,
-              ).then(() => undefined),
-            ),
-        });
-      } finally {
-        store.close();
-      }
-    }
+    // PRODUCER ONLY since #10715. This lane is the reason the "a producer that
+    // enqueues nothing must say so" rule exists: it shipped in #10444 with no
+    // caller and no trigger, so revenue_observations was never written and every
+    // revenue route reported null for all 129 subnets for two months (#10566).
+    const artifact = await readArtifact(
+      env,
+      `${OPERATIONAL_SURFACES_ARTIFACT}.json`,
+    );
+    return await enqueueRevenueProbes(
+      (env as unknown as { REVENUE_PROBES?: RevenueProbeQueue }).REVENUE_PROBES,
+      eligibleRevenueSurfaces(
+        artifact.ok ? (artifact.data as Row | undefined) : null,
+      ).map((s) => s.id),
+    );
   }
   if (cron === SUBNET_BURN_CAPTURE_CRON) {
     // #9402: one state_queryStorageAt covering every subnet, then one batched D1

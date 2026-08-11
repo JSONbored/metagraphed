@@ -341,101 +341,130 @@ export async function loadDeadOrigins(
   }
 }
 
-// ── the lane ────────────────────────────────────────────────────────────────
+// ── the queue lane ────────────────────────────────────────────────────────
+//
+// REPLACES A CRON SLICE, and removes its scheduling machinery with it. The lane
+// this supersedes checked twelve origins per tick, ordered by staleness, because
+// 277 origins x up to 3 samples is ~800 requests and one scheduled invocation
+// cannot do that. A full pass took a day.
+//
+// One message per origin is one invocation per origin, so every registered
+// origin is checked from a single tick. Nothing is skipped, so nothing needs
+// ordering: the staleness read, the batch size and the producer's database
+// handle all go with the slice they existed to choose.
+//
+// The two failures a cron branch could not express are the real gain. An origin
+// whose check fails is retried on its own rather than waiting a day for its turn
+// again; one that keeps failing reaches the dead-letter queue, which
+// src/dead-letter.ts records as a lane verdict instead of leaving the lane
+// looking healthy while it silently checks nothing.
 
-/** Origins checked per tick. 277 origins x up to 3 samples is ~800 requests,
- * which is not a tick. A slice ordered by staleness completes a pass inside a
- * day and never bursts -- the same shape as the attribution sweep. */
-export const ORIGIN_BATCH_SIZE = 12;
+/** One origin to check. The surfaces are resolved at DELIVERY, so a message
+ * that waited cannot check a stale copy of what the registry advertises. */
+export interface OriginMessage {
+  origin: string;
+}
 
-export interface OriginTickResult {
+export const ORIGIN_REACHABILITY_QUEUE = "origin-reachability";
+
+export interface OriginQueue {
+  sendBatch(messages: Array<{ body: OriginMessage }>): Promise<unknown>;
+}
+
+/** Cloudflare caps a sendBatch at 100. 277 origins is three batches. */
+export const ORIGIN_SEND_BATCH_MAX = 100;
+
+export interface OriginEnqueueResult {
   ok: boolean;
-  checked: number;
-  verdicts: Record<OriginVerdict, number>;
-  /** Surfaces covered by an adverse verdict this pass. The number that makes
-   * the finding actionable: 128 across 11 origins, when this first ran. */
-  surfaces_affected: number;
+  enqueued: number;
   reason?: string;
 }
 
-/**
- * One pass.
- *
- * `ok` is FALSE on an empty batch. A lane reporting success while checking
- * nothing is indistinguishable from one that checked and found everything
- * healthy -- the confusion that let the revenue probe sit dead for two months
- * (#10566).
- */
-export async function runOriginReachabilityTick(
-  db: OriginStoreDb | null | undefined,
-  surfaces: SurfaceRef[],
-  deps: OriginCheckDeps & { batch?: number; checkedAt?: Map<string, number> },
-): Promise<OriginTickResult> {
-  const verdicts: Record<OriginVerdict, number> = {
-    serving: 0,
-    unreachable: 0,
-    "not-routing": 0,
-    indeterminate: 0,
-  };
-  const byOrigin = surfacesByOrigin(surfaces);
-  const stale = deps.checkedAt ?? new Map<string, number>();
-  const due = [...byOrigin.keys()]
-    // Never-checked first: the only state where we have said nothing at all.
-    .sort(
-      (a, b) =>
-        (stale.get(a) ?? -1) - (stale.get(b) ?? -1) || a.localeCompare(b),
-    )
-    .slice(0, deps.batch ?? ORIGIN_BATCH_SIZE);
-  if (due.length === 0) {
+/** Enqueue every registered origin. */
+export async function enqueueOriginChecks(
+  queue: OriginQueue | null | undefined,
+  origins: string[],
+): Promise<OriginEnqueueResult> {
+  if (!queue?.sendBatch) {
+    return { ok: false, enqueued: 0, reason: "no_queue_binding" };
+  }
+  if (origins.length === 0) {
+    // Not a success. A producer reporting ok while enqueuing nothing is
+    // indistinguishable from one that enqueued and found nothing to do.
+    return { ok: false, enqueued: 0, reason: "no_origins_to_check" };
+  }
+  let enqueued = 0;
+  try {
+    for (let i = 0; i < origins.length; i += ORIGIN_SEND_BATCH_MAX) {
+      const slice = origins.slice(i, i + ORIGIN_SEND_BATCH_MAX);
+      await queue.sendBatch(slice.map((origin) => ({ body: { origin } })));
+      enqueued += slice.length;
+    }
+  } catch (error) {
     return {
       ok: false,
-      checked: 0,
-      verdicts,
-      surfaces_affected: 0,
-      reason: "no_origins_to_check",
+      enqueued,
+      reason: `send_failed: ${String((error as Error)?.message ?? error)}`,
     };
   }
-  let affected = 0;
-  const failures: string[] = [];
-  for (const origin of due) {
-    // `due` is drawn from byOrigin's own keys, so the lookup always hits -- a
-    // `?? []` here would be an unreachable branch that reads like a guard.
-    const check = await checkOrigin(origin, byOrigin.get(origin)!, deps);
-    verdicts[check.verdict] += 1;
-    if (check.verdict === "not-routing" || check.verdict === "unreachable") {
-      affected += check.surface_ids.length;
-    }
-    const written = await persistOriginCheck(db, check);
-    if (!written.ok) failures.push(`${origin}: ${written.reason}`);
-  }
-  return {
-    ok: failures.length === 0,
-    checked: due.length,
-    verdicts,
-    surfaces_affected: affected,
-    ...(failures.length > 0 ? { reason: failures.join("; ") } : {}),
-  };
+  return { ok: true, enqueued };
 }
 
-/** Every origin's last check time, for the staleness ordering. Empty on a read
- * failure, which re-checks rather than skips: the cost is requests, and the
- * alternative is an origin that silently never gets looked at. */
-export async function loadOriginCheckedAt(
+export interface OriginBatchMessage {
+  body: unknown;
+  ack(): void;
+  retry(): void;
+}
+
+export interface OriginBatchResult {
+  checked: number;
+  retried: number;
+  malformed: number;
+}
+
+/**
+ * Consume a batch: one origin per message.
+ *
+ * ACK ON SUCCESS, RETRY ON FAILURE, ACK ON MALFORMED -- the third because a body
+ * that is not an origin never will be, and retrying spends the whole budget to
+ * reach the dead letter with a message nobody can act on.
+ */
+export async function handleOriginBatch(
+  messages: OriginBatchMessage[],
   db: OriginStoreDb | null | undefined,
-): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
-  if (!db?.prepare) return out;
-  try {
-    const res = await db
-      .prepare(`SELECT origin, checked_at FROM origin_reachability`)
-      .all?.();
-    for (const raw of res?.results ?? []) {
-      const row = raw as OriginReachability;
-      const at = Number(row.checked_at);
-      if (row.origin && Number.isFinite(at)) out.set(String(row.origin), at);
+  deps: OriginCheckDeps & {
+    /** The origin's registered surfaces, resolved at DELIVERY time. */
+    surfacesFor: (origin: string) => Promise<SurfaceRef[]>;
+  },
+): Promise<OriginBatchResult> {
+  let checked = 0;
+  let retried = 0;
+  let malformed = 0;
+  for (const message of messages) {
+    const body = message.body as OriginMessage | null;
+    const origin = typeof body?.origin === "string" ? body.origin : "";
+    if (!origin) {
+      message.ack();
+      malformed += 1;
+      continue;
     }
-  } catch {
-    return new Map();
+    try {
+      const surfaces = await deps.surfacesFor(origin);
+      const check = await checkOrigin(origin, surfaces, deps);
+      const written = await persistOriginCheck(db, check);
+      if (!written.ok) {
+        // The check happened; the WRITE did not. An unwritten verdict is a
+        // verdict nothing can read, so the message is re-delivered.
+        message.retry();
+        retried += 1;
+        continue;
+      }
+      message.ack();
+      checked += 1;
+    } catch {
+      message.retry();
+      retried += 1;
+    }
   }
-  return out;
+  return { checked, retried, malformed };
 }
