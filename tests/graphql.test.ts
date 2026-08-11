@@ -17578,27 +17578,28 @@ describe("graphql — chain_calls (#5880, Postgres-tier call-mix + cold-store fa
   });
 
   test("resolves Postgres-tier call-mix rows", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            group_by: "module_function",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            total_extrinsics: 8,
-            call_count: 1,
-            calls: [
-              {
-                call_module: "SubtensorModule",
-                call_function: "set_weights",
-                count: 6,
-                share: 0.75,
-              },
-            ],
-          }),
-      },
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            total: 8,
+            groups: {
+              module_function: [
+                {
+                  call_module: "SubtensorModule",
+                  call_function: "set_weights",
+                  count: 6,
+                },
+              ],
+            },
+          },
+        },
+      }),
     };
     const { status, body } = await gql(
       callsQuery(`(window: "30d", group_by: "module_function")`),
@@ -17724,28 +17725,31 @@ describe("graphql — chain_activity (#5879, Postgres-tier activity series + col
   });
 
   test("resolves the Postgres-tier per-day series", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            day_count: 1,
-            days: [
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            // TWO row sets, merged by UTC day: the lane keeps the extrinsic and
+            // block aggregates separate because they come from different tables.
+            extrinsic_rows: [
               {
                 day: "2026-07-14",
-                block_count: 7,
                 extrinsic_count: 4,
-                event_count: 12,
                 successful_extrinsics: 3,
-                success_rate: 0.75,
                 unique_signers: 2,
               },
             ],
-          }),
-      },
+            block_rows: [
+              { day: "2026-07-14", block_count: 7, event_count: 12 },
+            ],
+          },
+        },
+      }),
     };
     const { status, body } = await gql(activityQuery(`(window: "30d")`), env);
     assert.equal(status, 200);
@@ -17864,29 +17868,28 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
   });
 
   test("resolves Postgres-tier daily series + top payers", async () => {
+    // #10190: the tier this doubled is retired; the #9146 projection answers.
+    // Doubled at the archive transport with the envelope the LANE writes, so
+    // the derived fields below are recomputed rather than echoed.
     const env = {
-      METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "30d",
-            observed_at: "2026-07-14T00:00:00.000Z",
-            day_count: 1,
-            daily: [
+      ...archiveEnv({
+        schema_version: 1,
+        windows: {
+          "30d": {
+            newest_observed: "2026-07-14T00:00:00.000Z",
+            daily_rows: [
               {
                 day: "2026-07-14",
                 extrinsic_count: 4,
                 signed_extrinsic_count: 3,
                 total_fee_tao: 0.4,
-                avg_fee_tao: 0.1,
-                median_fee_tao: 0.1,
                 total_tip_tao: 0.02,
-                avg_tip_tao: 0.005,
-                median_tip_tao: 0.004,
               },
             ],
-            top_fee_payers: [
+            median_rows: [
+              { day: "2026-07-14", median_fee_tao: 0.1, median_tip_tao: 0.004 },
+            ],
+            payer_rows: [
               {
                 signer: "5Signer",
                 total_fee_tao: 0.4,
@@ -17894,8 +17897,9 @@ describe("graphql — chain_fees (#5881, Postgres-tier fee series + cold-store f
                 extrinsic_count: 4,
               },
             ],
-          }),
-      },
+          },
+        },
+      }),
     };
     const { status, body } = await gql(feesQuery(`(window: "30d")`), env);
     assert.equal(status, 200);
