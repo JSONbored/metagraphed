@@ -354,6 +354,27 @@ jobs:
       # one. Verified against every combination: (0,0)->0, (1,0)->1, (0,1)->1,
       # (3,5)->5. Both still run even when the first fails, so one push shows
       # you both lists rather than making you fix them one at a time.
+      # Both tools skip a file whose CONTENT hash is unchanged (#10608).
+      # Measured on this tree: eslint 28.1s -> 2.6s warm, prettier 51.5s -> 2.7s
+      # warm, and the step is bounded by prettier because the two run
+      # concurrently. A cold or stale cache costs a full run, never a wrong
+      # pass -- both index by file hash, so a changed file is always re-read
+      # (verified: an unformatted file still exits 1 with the cache warm).
+      #
+      # Keyed on the lockfile AND both configs, because a rule change has to
+      # invalidate every file's entry; `restore-keys` falls back to the newest
+      # prior entry, and the run sha makes every run save a fresh one -- the
+      # same shape as the tsbuildinfo cache below.
+      - name: Cache lint + format indexes
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .eslintcache
+            .prettiercache
+          key: ${{ runner.os }}-lintcache-${{ hashFiles('package-lock.json', 'eslint.config.ts', '.prettierignore') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-lintcache-${{ hashFiles('package-lock.json', 'eslint.config.ts', '.prettierignore') }}-
+
       - name: Lint + format
         run: |
           npm run lint & lint=$!
@@ -395,37 +416,57 @@ jobs:
       # Skipped for a proven docs-only diff: **/*.md + .claude/skills/** cannot
       # touch schemas/, openapi.json, or any generated contract file, so there
       # is nothing for this to drift-check.
+      # Every validator below runs even when an earlier one fails, and the step
+      # fails at the end naming all of them (#10608).
+      #
+      # `bash -e` stopped at the FIRST failure, so one red validator hid every
+      # validator after it and each fix cost another ~5-minute round trip to
+      # discover the next one. Measured over one evening: #10577 reached this
+      # step, failed on validate:worker-types-parity, and skipped 39 of the
+      # job's 52 steps; #10572 skipped 20; #10563 skipped 14. Three PRs, three
+      # extra round trips, none of which learned anything a single run could
+      # not have said.
+      #
+      # `run_step` takes the command verbatim so every line below still spells
+      # the npm invocation in full. That is load-bearing:
+      # tests/pipeline-validator-parity.test.ts greps this file for those
+      # invocations to prove no declared validator has quietly stopped running
+      # in CI (#10251). Passing a list of bare script names to a runner script
+      # would blind that gate for every validator at once.
       - name: Validate committed contract (drift)
         if: env.DOCS_ONLY != 'true'
+        shell: bash
         run: |
-          npm run validate:contract-drift
-          npm run validate:db-types-drift
-          npm run validate:lakehouse-types-drift
-          npm run validate:schema-enums
-          npm run validate:openapi-examples
-          npm run validate:generated-client
-          npm run validate:graphql-types-drift
-          npm run validate:worker-types-parity
-          npm run validate:graphql-route-parity
-          npm run validate:graphql-hand-written-checks
-          npm run validate:graphql-component-parity
-          npm run validate:graphql-query-arguments
-          npm run validate:published-names
-          npm run validate:graphql-tier-parity
-          npm run validate:committed-seed
+          source .github/scripts/run-step.sh
+          run_step npm run validate:contract-drift
+          run_step npm run validate:db-types-drift
+          run_step npm run validate:lakehouse-types-drift
+          run_step npm run validate:schema-enums
+          run_step npm run validate:openapi-examples
+          run_step npm run validate:generated-client
+          run_step npm run validate:graphql-types-drift
+          run_step npm run validate:worker-types-parity
+          run_step npm run validate:graphql-route-parity
+          run_step npm run validate:graphql-hand-written-checks
+          run_step npm run validate:graphql-component-parity
+          run_step npm run validate:graphql-query-arguments
+          run_step npm run validate:published-names
+          run_step npm run validate:graphql-tier-parity
+          run_step npm run validate:committed-seed
           # Both of these were reachable only from the LOCAL gate, so a
           # contract-only PR -- the exact PR that invalidates them -- got no CI
           # coverage at all (#10251). They live in this step rather than the
           # `ui` job because that job is gated on a path filter that matches
           # neither schemas-src/ nor public/metagraph/openapi.json.
-          npm run validate:ui-docs-drift
+          run_step npm run validate:ui-docs-drift
           # #10300: published routes the UI renders nowhere. A RATCHET -- the
           # count may only fall, so a new route either gets rendered or fails
           # here rather than drifting up one PR at a time, which is how the
           # gap went 30 -> 35 with nothing watching.
-          npm run validate:ui-route-coverage
-          npm run validate:untyped-db-reads
-          npm run validate:readme-catalog
+          run_step npm run validate:ui-route-coverage
+          run_step npm run validate:untyped-db-reads
+          run_step npm run validate:readme-catalog
+          report_steps
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
       # committed fallback (dist/metagraph-r2/metagraph/*), and every post-build validator below reads
@@ -513,45 +554,29 @@ jobs:
           fi
           echo "All committed derived artifacts under public/ match a fresh build."
 
-      - name: Validate JSON schemas
+      # The contract surface: schemas, the Worker API, the MCP mirror of it, the
+      # query vocabulary, and the generated types. Every one reads the built
+      # tree and none of them writes, so they are independent and all of them
+      # run even when an earlier one fails -- see the drift step above for what
+      # stopping at the first cost. One step rather than eleven also drops
+      # eleven Actions step boundaries.
+      - name: Validate the API contract surface
         if: env.DOCS_ONLY != 'true'
-        run: npm run validate:schemas
-
-      - name: Validate Worker API
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:api
-
-      - name: Validate MCP server
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:mcp
-
-      - name: Validate the MCP route map
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:mcp-route-map
-      - name: Validate the MCP input parity
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:mcp-input-parity
-      - name: Validate every tool/route difference is declared
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:tool-route-divergence
-      - name: Validate the query-parameter vocabulary
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:query-vocabulary
-      - name: Validate the route query-schema parity
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:route-query-parity
-
-      - name: Validate AI routes
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:ai
-
-      - name: Validate OpenAPI
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:openapi
-
-      - name: Validate generated API types
-        if: env.DOCS_ONLY != 'true'
-        run: npm run validate:types
+        shell: bash
+        run: |
+          source .github/scripts/run-step.sh
+          run_step npm run validate:schemas
+          run_step npm run validate:api
+          run_step npm run validate:mcp
+          run_step npm run validate:mcp-route-map
+          run_step npm run validate:mcp-input-parity
+          run_step npm run validate:tool-route-divergence
+          run_step npm run validate:query-vocabulary
+          run_step npm run validate:route-query-parity
+          run_step npm run validate:ai
+          run_step npm run validate:openapi
+          run_step npm run validate:types
+          report_steps
 
       # Client-SDK drift gate: a contract-only PR (schemas → generated →
       # openapi.json) is NOT under packages/client/**, so release-please never
@@ -653,61 +678,50 @@ jobs:
       # only `git ls-files` output, costs well under a second, and a skip
       # predicate would itself be a hole (a "docs-only" PR can still add a
       # tracked .mjs file).
-      - name: Validate no hand-written .mjs/.js
-        run: npm run validate:no-hand-written-mjs
-
-      # Permanent lock on the single schema source (#9830): every published
-      # OpenAPI component comes from schemas-src/ and nowhere else. Runs
-      # unconditionally for the same reason the .mjs lock does — it reads the
-      # committed contract and the registry, costs well under a second, and a
-      # "docs-only" PR can still re-add a hand-written component file.
-      - name: Validate single schema source
-        run: npm run validate:single-schema-source
-
-      # Permanent lock on schema opacity (#9797): an object site published with
-      # no declared properties and no declared record value must carry a written
-      # reason in scripts/validate-schema-opacity.ts. Unconditional for the same
-      # reason as the two locks above — it reads the committed contract and the
-      # tool registry, and costs well under a second.
-      - name: Validate schema opacity
-        run: npm run validate:schema-opacity
-
-      # Permanent lock on vocabulary ownership (#9799): a string-literal list of
-      # three or more members may appear in only ONE schema file unless it is
-      # declared debt. Unconditional for the same reason as the locks above — it
-      # reads schemas-src/ and costs well under a second.
-      - name: Validate schema vocabularies
-        run: npm run validate:schema-vocabularies
-
-      - name: Validate unreferenced modules
-        run: npm run validate:unreferenced-modules
-
-      # The export half of the same question (#10292). A ratchet rather than a
-      # pass/fail: 880 today, almost all of them contract component names the
-      # registry links by string, which no static tool can follow.
-      - name: Validate unreferenced exports
-        run: npm run validate:unreferenced-exports
-
-      # Module-level mutable state in src/ and workers/ must register a reset
-      # (src/module-state-registry.ts), or it leaks across test files once the
-      # coverage pass runs with `isolate: false` (#8922). Static scan of the
-      # source tree only — sub-second, and unconditional for the same reason
-      # the .mjs lock is: the set it guards is computed, not declared.
-      - name: Validate module-state resets
-        run: npm run validate:module-state-resets
-
-      # A SQL bind whose static type is an array or a structured object is
-      # REINTERPRETED by node-postgres: an array becomes a Postgres array
-      # literal ({"a","b"}), which the column's own JSON.parse reader then
-      # degrades to null on every read. That is how a `table_filter` scoped to
-      # one table came to fire on all of them (#10179) — the generalisation of
-      # that fix, since `jsonColumn` only covers the two columns it reached.
-      # Type-directed because the bug is invisible in the source:
-      # `${v.tableFilter}` and `${v.name}` look identical, and only the type
-      # says one is a string[]. Unconditional for the same reason as the locks
-      # above — it reads only the source tree, and costs ~3s.
-      - name: Validate Postgres JSON binds
-        run: npm run validate:pg-json-binds
+      # The permanent source-tree locks. Every one reads only the committed
+      # source and costs about a second, which is why they run on the docs fast
+      # lane too -- a "docs-only" PR can still re-add a hand-written component
+      # file. Grouped so one failure does not hide the other seven; each keeps
+      # the reason it exists.
+      #
+      #   no-hand-written-mjs      the .ts migration lock (#7510)
+      #   single-schema-source     every published OpenAPI component comes from
+      #                            schemas-src/ and nowhere else (#9830)
+      #   schema-opacity           an object published with no declared
+      #                            properties carries a written reason (#9797)
+      #   schema-vocabularies      a value set of three or more members lives in
+      #                            ONE schema file unless declared debt (#9799)
+      #   unreferenced-modules     files nothing imports (#10221)
+      #   unreferenced-exports     the export half, a ratchet rather than
+      #                            pass/fail -- most of the count is contract
+      #                            names the registry links by string, which no
+      #                            static tool can follow (#10292)
+      #   module-state-resets      module-level mutable state in src/ and
+      #                            workers/ registers a reset, or it leaks
+      #                            across test files once the coverage pass runs
+      #                            with `isolate: false` (#8922)
+      #   pg-json-binds            a bind whose static type is an array is
+      #                            REINTERPRETED by node-postgres into a
+      #                            Postgres array literal, which the column's
+      #                            own JSON.parse reader then degrades to null
+      #                            on every read -- how a `table_filter` scoped
+      #                            to one table came to fire on all of them
+      #                            (#10179). Type-directed because the bug is
+      #                            invisible in the source: `${v.tableFilter}`
+      #                            and `${v.name}` look identical.
+      - name: Validate the source-tree locks
+        shell: bash
+        run: |
+          source .github/scripts/run-step.sh
+          run_step npm run validate:no-hand-written-mjs
+          run_step npm run validate:single-schema-source
+          run_step npm run validate:schema-opacity
+          run_step npm run validate:schema-vocabularies
+          run_step npm run validate:unreferenced-modules
+          run_step npm run validate:unreferenced-exports
+          run_step npm run validate:module-state-resets
+          run_step npm run validate:pg-json-binds
+          report_steps
 
       - name: Validate Cloudflare config
         if: env.DOCS_ONLY != 'true'
@@ -1266,6 +1280,20 @@ jobs:
       # apps/ui/**.
       - name: Lint packages/chain-summaries (app-logic import guardrail)
         run: npm run lint --workspace=packages/chain-summaries
+
+      # Same content-hashed indexes as the validate job's lint step (#10608).
+      # apps/ui has its OWN eslint/prettier config, so the key hashes those
+      # rather than the root's -- a rule change here must not be masked by a
+      # cache keyed on a file this workspace does not read.
+      - name: Cache lint + format indexes (apps/ui)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            apps/ui/.eslintcache
+            apps/ui/.prettiercache
+          key: ${{ runner.os }}-ui-lintcache-${{ hashFiles('package-lock.json', 'apps/ui/eslint.config.ts', 'apps/ui/.prettierrc', 'apps/ui/.prettierignore') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ui-lintcache-${{ hashFiles('package-lock.json', 'apps/ui/eslint.config.ts', 'apps/ui/.prettierrc', 'apps/ui/.prettierignore') }}-
 
       - name: Lint (ESLint + Prettier)
         run: npm run lint --workspace=apps/ui && npm run format:check --workspace=apps/ui
