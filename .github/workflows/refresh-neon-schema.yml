@@ -25,6 +25,15 @@ name: Refresh Neon schema
 on:
   schedule:
     - cron: "0 6 * * 4"
+  # A migration landing is exactly when the snapshot goes stale, and waiting up
+  # to a week for the Thursday run means the generated row interfaces describe a
+  # schema that has already moved -- and that the declared-tables check below
+  # cannot run against reality. Trigger on the merge instead, so the window is
+  # minutes.
+  push:
+    branches: [main]
+    paths:
+      - "migrations/neon/**"
   workflow_dispatch:
 
 permissions:
@@ -119,6 +128,15 @@ jobs:
         run: |
           npm run snapshot:neon-schema -- --write
           npm run build:db-types
+
+      # AGAINST THE FRESHLY-CAPTURED SCHEMA, which is the only place this can
+      # run without being flaky: a PR that adds a migration legitimately has a
+      # snapshot without its table yet, so a per-PR gate would fail on correct
+      # work. Here the snapshot is seconds old and any absence is real -- a
+      # migration that never applied, or one recorded as applied whose DDL
+      # failed (#9867).
+      - name: Every declared table exists in the live schema
+        run: node scripts/validate-declared-tables-exist.ts
 
       - name: Did the schema move?
         id: diff

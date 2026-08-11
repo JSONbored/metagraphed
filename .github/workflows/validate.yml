@@ -466,6 +466,7 @@ jobs:
           run_step npm run validate:ui-route-coverage
           run_step npm run validate:untyped-db-reads
           run_step npm run validate:untyped-lakehouse-reads
+          run_step npm run validate:declared-tables-exist
           run_step npm run validate:readme-catalog
           report_steps
 
