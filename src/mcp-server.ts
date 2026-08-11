@@ -1011,10 +1011,11 @@ import {
   ListProviderEndpointsInputSchema,
 } from "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts";
 import {
-  GetLineageInputSchema,
-  GetLineageOutputSchema,
+  GetContractsInputSchema,
   GetFreshnessInputSchema,
   GetFreshnessOutputSchema,
+  GetLineageInputSchema,
+  GetLineageOutputSchema,
   GetSourceHealthInputSchema,
   GetSourceHealthOutputSchema,
 } from "../schemas-src/mcp-tools/meta-artifacts-1.ts";
@@ -5980,9 +5981,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // NO TIER READ (#10190): METAGRAPH_SUBNET_SNAPSHOTS_SOURCE is retired and
       // absent from DATA_API_FORWARD_FLAGS, so that arm resolved to null on
       // every call.
-      return await loadSubnetTrajectory(netuid, {
+      const data = await loadSubnetTrajectory(netuid, {
         db: readStore(ctx.env, SUBNET_SNAPSHOT_TABLES) as never,
       });
+      // `netuid` is the SUBJECT here, not a filter -- the artifact already
+      // holds one subnet, so it is excluded from the query the same way
+      // every other per-subnet view excludes it.
+      return applySubnetListQuery(
+        data as Row,
+        args as Row,
+        "subnet-trajectory",
+        "points",
+        ["netuid"],
+      );
     },
   },
   {
@@ -12705,8 +12716,17 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Use it to discover which surfaces have a fixture, then fetch one with " +
       "get_fixture. Mirrors GET /api/v1/fixtures.",
     inputSchema: inputJsonSchema(ListFixturesInputSchema),
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadArtifactData(ctx, "/metagraph/fixtures.json");
+    async handler(args: z.infer<typeof ListFixturesInputSchema>, ctx: McpCtx) {
+      const data = await loadArtifactData(ctx, "/metagraph/fixtures.json");
+      // Through the SAME engine the route uses (#10605). No subject key: this
+      // is the network-wide index, so every argument is a filter over it.
+      return applySubnetListQuery(
+        data,
+        args as Row,
+        "fixtures",
+        "fixtures",
+        [],
+      );
     },
   },
   {
@@ -12852,8 +12872,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     ...GET_CONTRACTS_MCP_TOOL,
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadContracts(asMcpLoaderCtx(ctx));
+    async handler(args: z.infer<typeof GetContractsInputSchema>, ctx: McpCtx) {
+      const data = await loadContracts(asMcpLoaderCtx(ctx));
+      // `artifacts` is the rows key, declared once in
+      // API_QUERY_COLLECTIONS.contracts rather than restated here. No subject
+      // key: this is a network-wide index, so every argument filters it.
+      return applySubnetListQuery(
+        data as Row,
+        args as Row,
+        "contracts",
+        "artifacts",
+        [],
+      );
     },
   },
   {
@@ -12933,7 +12963,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           ctx,
           "/metagraph/agent-catalog.json",
         );
-        return overlayCatalogIndex(index, live) || index;
+        const overlaid = overlayCatalogIndex(index, live) || index;
+        // Paged AFTER the health overlay, so a page reports live health rather
+        // than the build-time stub -- and only on the INDEX arm. With a netuid
+        // this tool returns one subnet's catalog document, which is not a
+        // collection and has no page to turn.
+        return applySubnetListQuery(
+          overlaid,
+          args as Row,
+          "agent-catalog",
+          "subnets",
+          [],
+        );
       }
       const netuid = requireNetuid(args);
       const detail = await loadArtifactData(

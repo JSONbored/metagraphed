@@ -6,6 +6,15 @@
 // array). Neither mirrors an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { MAX_LIMIT } from "../../workers/request-params.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../../src/route-limits.ts";
+import {
+  offsetSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { AgentResourcesArtifactSchema } from "../routes/agent-catalog.ts";
 import { netuidSchema } from "./shared.ts";
 import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
@@ -13,6 +22,22 @@ import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
 export const GetAgentCatalogInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
+    // The page (#10605). Both numbers come from the constants that actually
+    // decide them: MAX_LIMIT is the ceiling listQuerySchema gives every list
+    // route, and MCP_LIST_LIMIT_DEFAULT is the default applyMcpQueryFilters
+    // really applies -- published rather than hidden, because #10101 found 83
+    // tools whose schema left a caller unable to tell what an omitted
+    // limit returns. Publishing the ceiling while hiding the default would
+    // recreate exactly that gap.
+    limit: limitSchema(MAX_LIMIT, MCP_LIST_LIMIT_DEFAULT).optional(),
+    // An integer OFFSET, which is what these routes publish
+    // (`{minimum: 0, type: integer}`) -- not the keyset cursor. Conflating the
+    // two is the mistake query-params.ts calls out by name.
+    cursor: offsetSchema().optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["agent-catalog"].sort_fields,
+    ).optional(),
+    order: orderSchema().optional(),
   })
   .strict();
 export type GetAgentCatalogInput = z.infer<typeof GetAgentCatalogInputSchema>;

@@ -133,7 +133,10 @@ describe("contracts-mcp", () => {
     assert.deepEqual(
       // z.toJSONSchema()'s return type declares `properties` as optional (#8075).
       Object.keys(GET_CONTRACTS_MCP_TOOL.inputSchema.properties ?? {}),
-      [],
+      // The page its route publishes (#10605). This used to pin `[]`, from when
+      // the tool took no arguments at all and the route it mirrors had no page
+      // either; #10599 gave the route one, and the tool now passes it.
+      ["limit", "cursor", "sort", "order"],
     );
     assert.ok(
       new Ajv2020({ strict: false }).compile(GET_CONTRACTS_OUTPUT_SCHEMA),
