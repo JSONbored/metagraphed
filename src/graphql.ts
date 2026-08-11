@@ -2409,8 +2409,13 @@ interface ListPageOptions {
    *
    * Read from the same memoized `loadArtifact` the rows come from, so this is
    * one read, not two.
+   *
+   * REQUIRED, with `[]` for a view that lifts nothing. There is one caller
+   * today and it lifts two fields, so an optional parameter left a fallback
+   * arm nothing could reach -- and "what does this view republish from the
+   * artifact" is a question a list view should have to answer out loud.
    */
-  envelope?: readonly string[];
+  envelope: readonly string[];
 }
 
 // `subnets`, the rest use `items`).
@@ -2444,13 +2449,15 @@ async function listPage(
   // `?? null`, never omitted: the SDL declares these nullable, and a key the
   // artifact has not stamped must read as "not stamped" rather than as the
   // field being absent from the response.
-  const lifted = envelope?.length
-    ? Object.fromEntries(
-        await loadArtifact(context, path).then((data) =>
-          envelope.map((field) => [field, data?.[field] ?? null]),
-        ),
-      )
-    : undefined;
+  //
+  // UNCONDITIONAL, and it costs nothing to be: `loadArtifact` is memoized per
+  // request and `loadRows` above has already read this path, so an empty
+  // envelope spreads `{}` without a second read. Guarding it with
+  // `envelope?.length` bought no reads and left an arm no caller could reach.
+  const artifact = await loadArtifact(context, path);
+  const lifted = Object.fromEntries(
+    envelope.map((field) => [field, artifact?.[field] ?? null]),
+  );
   return {
     ...lifted,
     [resultKey]: map ? page.map(map) : page,

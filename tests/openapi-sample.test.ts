@@ -1528,3 +1528,29 @@ describe("sampleFromSchema", () => {
     assert.equal(ajv.validate(schema, sample), true, ajv.errorsText());
   });
 });
+
+describe("feed paths sample to a real feed", () => {
+  test("a `^/api/v1/feeds/` pattern samples a path that MATCHES it", () => {
+    // The contract's `feeds` block is the catalog an agent reads to learn which
+    // feeds exist (#10790). The generic `^/api/v1` case returns
+    // `/api/v1/example`, which does not satisfy the narrower pattern -- so the
+    // published example failed its own schema until this case existed.
+    const schema = {
+      type: "object",
+      required: ["path"],
+      properties: { path: { type: "string", pattern: "^/api/v1/feeds/" } },
+    };
+    const sample = sampleFromSchema(schema, {}, "root") as { path: string };
+    assert.match(sample.path, /^\/api\/v1\/feeds\//);
+  });
+
+  test("and it names a feed the API actually serves", () => {
+    // A placeholder that matched the regex would pass the gate and still be the
+    // wrong kind of example: this block tells an agent where to GO.
+    const schema = { type: "string", pattern: "^/api/v1/feeds/" };
+    assert.equal(
+      sampleFromSchema(schema, {}, "path"),
+      "/api/v1/feeds/registry",
+    );
+  });
+});
