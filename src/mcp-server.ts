@@ -10459,17 +10459,27 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      // Shaped on the way out because the first arm forwards an upstream
-      // payload verbatim (#9804). Every locally-built decline already carries
-      // the full `degraded` block, so this is a no-op for them -- it exists for
-      // the one arm this file does not build.
+      // NO TIER ARM (#10808). The forward was real -- METAGRAPH_NEURONS_SOURCE
+      // reads "d1" and IS in DATA_API_FORWARD_FLAGS, so unlike #10190's
+      // deletions this request was genuinely sent. DATA_API just has no handler
+      // for it: matchNeuronsD1Route covers /portfolio, /subnets and
+      // /subnets/:netuid/history, and every unmatched GET falls through to the
+      // gone-tier 503. Measured 36 times in 4 days, and doubled by #10767's
+      // retry, which is right for a transient and wasted on a route that will
+      // never exist.
+      //
+      // Nothing was user-visible, which is the point: the ladder below caught
+      // every one. A fallback ladder hiding a dead dependency is the exact shape
+      // #10190 exists to remove -- and REST's account-positions handler and
+      // GraphQL's account_positions both start at loadAccountPositionsD1 with no
+      // tier arm at all, so this only ever made MCP the odd surface out.
+      //
+      // shapeForwardedPositions stays: it normalised the payload the tier arm
+      // forwarded verbatim (#9804), and every locally-built decline already
+      // carries the full `degraded` block, so it is a no-op for them -- but it
+      // is the one thing keeping this tool's shape identical to its REST twin's.
       return shapeForwardedPositions(
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
-          "METAGRAPH_NEURONS_SOURCE",
-        )) ??
-          (await loadAccountPositionsD1(ctx.env, ss58)) ??
+        (await loadAccountPositionsD1(ctx.env, ss58)) ??
           (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
           unavailableAccountPositions(ss58),
       );
@@ -10542,24 +10552,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildAccountSubnets([], ss58)),
-          // Same Postgres → lakehouse → empty-card chain get_account_positions
-          // resolves through, so the compound card and the single-facet tool
-          // cannot disagree about what this coldkey holds.
-          tryPostgresTier(
-            ctx.env,
-            mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
-            "METAGRAPH_NEURONS_SOURCE",
-          ).then(async (data) =>
-            // Same shaping as the single-facet tool above, for the same reason:
-            // this arm can forward a payload this file never built (#9804), and
-            // the compound card must not disagree with the tool it mirrors.
+          // The same hot → cold → empty-card chain get_account_positions resolves
+          // through, so the compound card and the single-facet tool cannot
+          // disagree about what this coldkey holds -- including the tier arm
+          // BOTH of them dropped in #10808, which had no handler behind it.
+          //
+          // Same shaping as the single-facet tool above, for the same reason:
+          // the compound card must not disagree with the tool it mirrors.
+          (async () =>
             shapeForwardedPositions(
-              data ??
-                (await loadAccountPositionsD1(ctx.env, ss58)) ??
+              (await loadAccountPositionsD1(ctx.env, ss58)) ??
                 (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
                 unavailableAccountPositions(ss58),
-            ),
-          ),
+            ))(),
           // NO TIER READ (#10190): METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired"
           // in wrangler.jsonc and is absent from DATA_API_FORWARD_FLAGS, so this
           // promise resolved to null on every call.
