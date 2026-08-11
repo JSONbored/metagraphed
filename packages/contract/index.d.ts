@@ -7573,6 +7573,8 @@ export interface components {
             contract_version?: string;
             curated_overlay_count: number;
             curation_level_counts: components["schemas"]["CountMap"];
+            domain_coverage: components["schemas"]["CountMap"];
+            first_party_subnet_count: number;
             generated_at: string;
             manifested_count: number;
             native_only_count: number;
@@ -7582,8 +7584,10 @@ export interface components {
             network: components["schemas"]["BittensorNetwork"];
             /** @description Public-safe notes; may be a string or a string list depending on the adapter. */
             notes?: string | string[];
+            official_surface_count: number;
             probed_count: number;
             probed_surface_count: number;
+            registry_observed_surface_count: number;
             root_subnet_count: number;
             /** @constant */
             schema_version: 1;
@@ -7601,6 +7605,7 @@ export interface components {
                 });
                 overlays: string;
             };
+            subnets_without_official_surface: number;
             surface_count: number;
         } & {
             [key: string]: unknown;
@@ -16935,6 +16940,10 @@ export interface operations {
                      *         "curation_level_counts": {
                      *           "example": 1
                      *         },
+                     *         "domain_coverage": {
+                     *           "example": 1
+                     *         },
+                     *         "first_party_subnet_count": 1,
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "manifested_count": 1,
                      *         "native_only_count": 1,
@@ -16943,8 +16952,10 @@ export interface operations {
                      *         "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "finney",
                      *         "notes": "Example description.",
+                     *         "official_surface_count": 1,
                      *         "probed_count": 1,
                      *         "probed_surface_count": 1,
+                     *         "registry_observed_surface_count": 1,
                      *         "root_subnet_count": 1,
                      *         "schema_version": 1,
                      *         "source": {
@@ -16952,6 +16963,7 @@ export interface operations {
                      *           "native": "example",
                      *           "overlays": "example"
                      *         },
+                     *         "subnets_without_official_surface": 1,
                      *         "surface_count": 1
                      *       },
                      *       "meta": {
@@ -24324,6 +24336,8 @@ export interface operations {
                      *           "contract_version": "2026-06-29.1",
                      *           "curated_overlay_count": 1,
                      *           "curation_level_counts": {},
+                     *           "domain_coverage": {},
+                     *           "first_party_subnet_count": 1,
                      *           "generated_at": "2026-06-01T00:00:00.000Z",
                      *           "manifested_count": 1,
                      *           "native_only_count": 1,
@@ -24332,8 +24346,10 @@ export interface operations {
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *           "network": "finney",
                      *           "notes": "Example description.",
+                     *           "official_surface_count": 1,
                      *           "probed_count": 1,
                      *           "probed_surface_count": 1,
+                     *           "registry_observed_surface_count": 1,
                      *           "root_subnet_count": 1,
                      *           "schema_version": 1,
                      *           "source": {
@@ -24341,6 +24357,7 @@ export interface operations {
                      *             "native": "example",
                      *             "overlays": "example"
                      *           },
+                     *           "subnets_without_official_surface": 1,
                      *           "surface_count": 1
                      *         },
                      *         "endpoint_count": 1,
@@ -30022,6 +30039,10 @@ export interface operations {
                      *         "curation_level_counts": {
                      *           "example": 1
                      *         },
+                     *         "domain_coverage": {
+                     *           "example": 1
+                     *         },
+                     *         "first_party_subnet_count": 1,
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "manifested_count": 1,
                      *         "native_only_count": 1,
@@ -30030,8 +30051,10 @@ export interface operations {
                      *         "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
                      *         "network": "finney",
                      *         "notes": "Example description.",
+                     *         "official_surface_count": 1,
                      *         "probed_count": 1,
                      *         "probed_surface_count": 1,
+                     *         "registry_observed_surface_count": 1,
                      *         "root_subnet_count": 1,
                      *         "schema_version": 1,
                      *         "source": {
@@ -30039,6 +30062,7 @@ export interface operations {
                      *           "native": "example",
                      *           "overlays": "example"
                      *         },
+                     *         "subnets_without_official_surface": 1,
                      *         "surface_count": 1
                      *       },
                      *       "meta": {

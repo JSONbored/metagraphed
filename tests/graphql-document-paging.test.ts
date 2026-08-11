@@ -55,7 +55,7 @@ describe("document-shaped collections page over GraphQL", () => {
 
   test("contracts takes limit and returns at most that many artifacts", async () => {
     const paged = dataOf(
-      await query("{ contracts(limit: 2) { artifacts } }"),
+      await query("{ contracts(limit: 2) { artifacts { id } } }"),
       "contracts",
     );
     assert.ok((paged.artifacts as Row[]).length <= 2);

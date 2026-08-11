@@ -18,6 +18,20 @@
 // that found it, so the fix is either the Zod (the producer really can answer
 // null) or nothing (the field is safe to tighten).
 //
+// TWO SOURCES, ONE QUESTION (#10214). Asking through GraphQL is the direct
+// measurement, and it is BLIND by construction on any field the published
+// schema serves as `JSON`: a probe that selects into one gets back `Field
+// "profiles" must not have a selection since type "[JSON!]!" has no subfields`
+// and the field is skipped entirely. That was every type #10214 published --
+// so the check could not see precisely the fields whose promises were new.
+// The same rows are also read off each binding's mirrored REST route, where
+// the shape is visible whatever GraphQL says about it, and both feed ONE set
+// of counts. Kept in one script rather than a sibling because it is one
+// question with two transports: split across two files the shared rule --
+// what counts as a violation -- gets decided twice and drifts, which it had
+// already started to do (a missing key was fatal in one reading and skipped
+// in the other).
+//
 // Out of band, like its conformance siblings: a check that needs production
 // data should not pretend to run on a pull request.
 //
@@ -41,6 +55,7 @@ import type {
   GraphQLOutputType,
 } from "graphql";
 import { buildGeneratedSchema } from "../schemas-src/graphql/build-schema.ts";
+import { emitTypes } from "../schemas-src/graphql/emit.ts";
 import { QUERY_BINDINGS } from "../schemas-src/graphql/published-names.ts";
 import type { OpenApiParameters } from "../schemas-src/graphql/query-arguments.ts";
 import { SDL } from "../src/graphql-sdl.ts";
@@ -75,6 +90,62 @@ const ARGUMENTS: Readonly<Record<string, string>> = {
   amount: "1.0",
 };
 
+/**
+ * Path-parameter values for the REST half, SEVERAL per parameter.
+ *
+ * One subject silently decides which types get measured: netuid 1 has 3
+ * monitored surfaces and no health incidents, so probing only it leaves
+ * `HealthIncidentsArtifactSurfacesIncidents` unobserved and reads that silence
+ * as coverage. netuid 64 has 34 surfaces and live incidents. Every value is
+ * tried and the observations pool into the same counts.
+ *
+ * Derived from `ARGUMENTS` where they overlap rather than restated, so the two
+ * halves cannot come to disagree about which account or block is known-good.
+ */
+const REST_PATH_VALUES: Readonly<Record<string, readonly string[]>> = {
+  netuid: ["1", "64", "4"],
+  hotkey: [ARGUMENTS.hotkey.replaceAll('"', "")],
+  coldkey: [ARGUMENTS.coldkey.replaceAll('"', "")],
+  ss58: [ARGUMENTS.ss58.replaceAll('"', "")],
+  address: [ARGUMENTS.address.replaceAll('"', "")],
+  slug: [ARGUMENTS.slug.replaceAll('"', "")],
+  block_number: [ARGUMENTS.block_number],
+  ref: [ARGUMENTS.ref.replaceAll('"', "")],
+  id: [ARGUMENTS.id.replaceAll('"', "")],
+  // Computed, not pinned: the archive is a rolling window, so a date literal
+  // would pass today and 404 in a month with nothing saying why.
+  date: [new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)],
+};
+
+/**
+ * Query arguments a route needs before it answers with anything to walk.
+ *
+ * `/api/v1/compare/validators` returns 200 with a null `subnet_context` on
+ * every row unless it is given a `netuid` -- an empty answer measures nothing,
+ * which is how a type inside a healthy route stays unobserved.
+ */
+const REST_REQUIRED_QUERY: Readonly<Record<string, string>> = {
+  "/api/v1/compare/validators": `hotkeys=${ARGUMENTS.hotkey.replaceAll('"', "")}&netuid=1`,
+};
+
+/**
+ * Where an observation came from, because the two see different things.
+ *
+ * GRAPHQL asks production for exactly the non-null leaves it wants and reads
+ * the answer. It is the direct measurement -- the same execution that will
+ * enforce the promise -- and it is the authority wherever it can reach.
+ *
+ * REST reads the same rows off the mirrored route. It exists because the
+ * GraphQL side is BLIND by construction on any field the published schema
+ * serves as `JSON`: a probe selecting into one gets `Field "profiles" must not
+ * have a selection since type "[JSON!]!" has no subfields` and the whole field
+ * is skipped. That was every type #10214 published, which is to say the
+ * measurement mattered most exactly where this check could not make it. The
+ * loader is shared, so the row REST returns IS the row the resolver hands
+ * graphql-js; only the promise attached to it differs.
+ */
+export type Source = "graphql" | "rest";
+
 export interface NullabilityFinding {
   /** `Type.field`, as the generated schema names it. */
   field: string;
@@ -88,6 +159,14 @@ export interface NullabilityFinding {
 export interface NullabilityReport {
   /** Query fields the probe could build and send. */
   probed: number;
+  /**
+   * Bindings the REST half read, which is a DIFFERENT number from `probed`.
+   *
+   * Printed separately rather than summed: a field GraphQL skipped and REST
+   * reached is measured, and one both reached is measured twice as thoroughly.
+   * One combined figure would make those indistinguishable.
+   */
+  restProbed: number;
   /** Query fields skipped entirely, with the reason -- 0 evidence for each. */
   skipped: string[];
   /**
@@ -289,6 +368,36 @@ function renderArguments(field: GraphQLField<unknown, unknown>): string | null {
  * So: the published type drives the walk, and a field is only judged when the
  * generated type has it too.
  */
+/**
+ * Walk one answer, counting what the generated schema promises non-null.
+ *
+ * A NULL counts. An ABSENT key does NOT, from either source, and the reason is
+ * worth stating because the opposite is tempting: graphql-js treats a missing
+ * property exactly like an explicit null, so absence looks like the same
+ * defect.
+ *
+ * It is not, because an absent key is not one fact but several, and this check
+ * cannot tell them apart. Over GraphQL, a key missing from the answer usually
+ * means the probe did not ask for it. Over REST, production serves whatever
+ * build is deployed, against a contract generated from THIS tree -- so a key
+ * the contract declares and the payload lacks may be a defect, or may simply
+ * be a field the deployed producer does not compute yet.
+ *
+ * `stake_tao`/`emission_tao` are the live example, and they are worth spelling
+ * out because the obvious reading of them is wrong. They are NOT a rename of
+ * the `stake_alpha`/`emission_alpha` the surface answers with: alpha and TAO
+ * are DIFFERENT TOKENS. A non-root subnet's stake is denominated in that
+ * subnet's own alpha, and #9058/#9066 made the `_tao` fields mean TAO by
+ * PRICING alpha through each subnet's alpha price -- a derived quantity, not
+ * the same number under a new name. So the deployed producer emitting the raw
+ * alpha figure and not the priced one is a gap in the producer, not a Zod that
+ * overstates it, and counting it here produced eight findings whose only
+ * available "fix" was loosening four correct components to match.
+ *
+ * What remains is the question this check was written to ask, and both sources
+ * can answer it: does the producer ever ANSWER null where the generated schema
+ * promises it cannot.
+ */
 function walk(
   value: unknown,
   publishedOn: GraphQLOutputType,
@@ -342,12 +451,105 @@ function walk(
   }
 }
 
+/**
+ * The component a route's `data` refs, read from the published spec.
+ *
+ * The same lookup `validate-graphql-component-parity.ts` uses to pair an SDL
+ * type with the Zod behind it -- and the honest root for a REST body, because
+ * the body IS that component.
+ */
+export function dataComponent(
+  openapi: OpenApiParameters,
+  route: string,
+): string | null {
+  const schema = (
+    openapi as unknown as {
+      paths?: Record<
+        string,
+        {
+          get?: {
+            responses?: Record<
+              string,
+              {
+                content?: Record<
+                  string,
+                  {
+                    schema?: {
+                      allOf?: { properties?: { data?: { $ref?: string } } }[];
+                    };
+                  }
+                >;
+              }
+            >;
+          };
+        }
+      >;
+    }
+  ).paths?.[route]?.get?.responses?.["200"]?.content?.["application/json"]
+    ?.schema;
+  for (const part of schema?.allOf ?? []) {
+    const ref = part?.properties?.data?.$ref;
+    if (typeof ref === "string")
+      return ref.replace("#/components/schemas/", "");
+  }
+  return null;
+}
+
+/** Every filling of a route's path parameters, or none if one has no value. */
+export function fillRoute(route: string): string[] {
+  let filled = [route];
+  for (const match of route.matchAll(/\{([^}]+)\}/g)) {
+    const values = REST_PATH_VALUES[match[1]];
+    if (values === undefined) return [];
+    filled = filled.flatMap((one) =>
+      values.map((value) => one.replace(match[0], encodeURIComponent(value))),
+    );
+  }
+  return filled;
+}
+
+/**
+ * `limit=<the route's own maximum>`, or nothing.
+ *
+ * Read from the published spec rather than guessed. The ceiling is per-route,
+ * and REST REJECTS both an unknown parameter and an over-ceiling one -- MCP is
+ * the surface that clamps -- so a blanket `?limit=100` turns 40 healthy routes
+ * into "did not answer" and reports that silence as coverage.
+ */
+export function limitFor(openapi: OpenApiParameters, route: string): string {
+  const parameters =
+    (
+      openapi as unknown as {
+        paths?: Record<
+          string,
+          {
+            get?: {
+              parameters?: Array<{
+                name?: string;
+                $ref?: string;
+                schema?: { maximum?: number };
+              }>;
+            };
+          }
+        >;
+      }
+    ).paths?.[route]?.get?.parameters ?? [];
+  for (const parameter of parameters) {
+    const name = parameter.name ?? parameter.$ref?.split("/").pop() ?? "";
+    if (!name.toLowerCase().includes("limit")) continue;
+    const maximum = parameter.schema?.maximum;
+    return `limit=${typeof maximum === "number" ? maximum : 100}`;
+  }
+  return "";
+}
+
 export async function checkNullability(
   openapi: OpenApiParameters,
   fetchImpl: typeof fetch = fetch,
 ): Promise<NullabilityReport> {
   const { schema: generated } = buildGeneratedSchema(openapi);
   const published = buildSchema(SDL);
+  const { types: emitted } = emitTypes();
   const root = generated.getQueryType()!;
   const counts = new Map<
     string,
@@ -356,7 +558,69 @@ export async function checkNullability(
   const skipped: string[] = [];
   const partial: string[] = [];
   const allLeaves = new Set<string>();
+  /** Bindings the REST half read, which is separate from what GraphQL probed. */
+  const restProbed = new Set<string>();
   let probed = 0;
+
+  /**
+   * The REST half, run for every binding that names a route -- including the
+   * ones the GraphQL probe handled.
+   *
+   * Not a fallback. Where both can see a field they agree (the loader is
+   * shared), and pooling both is what makes a field null on 1 row in 400 show
+   * up at all -- the GraphQL probe reads one answer per field, REST reads up
+   * to the route's whole page.
+   */
+  const probeRest = async (
+    binding: (typeof QUERY_BINDINGS)[number],
+  ): Promise<void> => {
+    if (!binding.route) return;
+    // The root to walk REST's `data` against is the route's COMPONENT, never
+    // the Query field's return type. For ~40 bindings the resolver returns a
+    // PROJECTION it builds -- `EndpointList {items, total, cursor, limit,
+    // returned}` over an `EndpointsArtifact {endpoints, summary, ...}` -- and
+    // walking a REST body against one reports every projection field as
+    // missing. That is a view compared to its source, which is the same
+    // mistake `PROJECTED_TYPES` exists to stop the parity gate making: it
+    // manufactured 84 findings, every one of them a `*List.items` or
+    // `*List.total`, before the root was resolved this way.
+    const component = dataComponent(openapi, binding.route);
+    const generatedType = component ? emitted.get(component) : undefined;
+    if (!generatedType) return;
+    const routes = fillRoute(binding.route);
+    if (routes.length === 0) return;
+    const query = [
+      limitFor(openapi, binding.route),
+      REST_REQUIRED_QUERY[binding.route] ?? "",
+    ].filter(Boolean);
+    for (const route of routes) {
+      const url = `${BASE}${route}${query.length ? `?${query.join("&")}` : ""}`;
+      let data: unknown;
+      try {
+        const res = await fetchImpl(url, {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) continue;
+        data = ((await res.json()) as { data?: unknown })?.data ?? null;
+      } catch {
+        continue;
+      }
+      if (data === null || data === undefined) continue;
+      // The generated type is passed as BOTH sides: a REST row is the
+      // component's own shape, so the published GraphQL type has no say here
+      // -- and it is precisely the side that is blind, since the fields this
+      // reaches are the ones it publishes as opaque JSON.
+      walk(
+        data,
+        generatedType,
+        generatedType,
+        binding.field,
+        counts,
+        `${binding.field} (REST)`,
+      );
+      restProbed.add(binding.field);
+    }
+  };
 
   for (const binding of QUERY_BINDINGS) {
     const field = root.getFields()[binding.field];
@@ -364,6 +628,10 @@ export async function checkNullability(
       skipped.push(`${binding.field} -- the generated root has no such field`);
       continue;
     }
+    // Before any GraphQL reasoning, so a binding the probe SKIPS still gets
+    // measured. That is the whole point of consolidating the two: the fields
+    // GraphQL cannot ask about are exactly the ones worth asking about.
+    await probeRest(binding);
     const publishedField = published.getQueryType()?.getFields()[binding.field];
     if (!publishedField) {
       skipped.push(`${binding.field} -- the served root has no such field`);
@@ -481,6 +749,7 @@ export async function checkNullability(
   }
   return {
     probed,
+    restProbed: restProbed.size,
     skipped,
     partial,
     observed: [...counts.values()].filter((c) => c.seen > 0).length,
@@ -501,7 +770,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // across every run is the one that decides the cutover: how many answered
   // null.
   console.log(
-    `graphql-nullability: probed ${report.probed} Query field(s) against ${BASE}; ` +
+    `graphql-nullability: probed ${report.probed} Query field(s) over GraphQL ` +
+      `and ${report.restProbed} over REST against ${BASE}; ` +
       `${report.observed} of ${report.observed + report.unobserved.length} ` +
       `generated non-null field(s) observed, ` +
       `${report.findings.length} answered NULL.`,

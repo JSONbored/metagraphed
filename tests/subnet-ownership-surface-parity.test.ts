@@ -162,7 +162,7 @@ async function graphqlOwnership(): Promise<Row> {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        query: `{ subnet_ownership_history(netuid: ${NETUID}) { schema_version netuid event_pallet event_method count observed_through ownership_changes } }`,
+        query: `{ subnet_ownership_history(netuid: ${NETUID}) { schema_version netuid event_pallet event_method count observed_through ownership_changes { netuid old_coldkey new_coldkey block_number observed_at source } } }`,
       }),
     }),
     mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test", DATA_API: DEGRADED_DATA_API }),

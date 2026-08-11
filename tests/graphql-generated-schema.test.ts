@@ -231,10 +231,33 @@ describe("the schema diff", () => {
     const report = diffSchemas(sdl, openapi);
     assert.ok(report.identical > 200, `only ${report.identical} identical`);
     assert.ok(report.tightened.length > 0, "no tightenings found");
-    assert.ok(report.newlyNamed.length > 0, "no newly-named types found");
+    // ZERO as of #10214, and measured rather than asserted away: this class is
+    // exactly "a type the generator builds that the schema publishes as an
+    // opaque JSON", which is the debt that issue closed. The class stays
+    // reported -- the fixture below proves it still populates -- because the
+    // number going back up is the regression it exists to name.
+    assert.deepEqual(report.newlyNamed, []);
     for (const line of report.tightened) {
       assert.match(line, / -- .+ becomes .+!$/);
     }
+  });
+
+  test("a type the schema under-types as JSON is reported newly-named", () => {
+    // Put `Adapter.snapshot` back the way it was before #10214 -- JSON over a
+    // component with a shape, and the named type deleted from the schema. A
+    // class that only ever reads zero is a class nobody would notice breaking.
+    const withoutType = sdl
+      .replace(/^ {2}type AdapterArtifactSnapshot \{[^}]*\}\n\n/m, "")
+      .replace(
+        /^ {4}snapshot: AdapterArtifactSnapshot$/m,
+        "    snapshot: JSON",
+      );
+    assert.notEqual(withoutType, sdl, "the fixture type must exist");
+    const report = diffSchemas(withoutType, openapi);
+    assert.ok(
+      report.newlyNamed.includes("AdapterArtifactSnapshot"),
+      `expected the under-typed type to be reported, got: ${report.newlyNamed.join("; ")}`,
+    );
   });
 
   test("a field the generator cannot build is reported, not silently equal", () => {

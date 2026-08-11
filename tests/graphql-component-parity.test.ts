@@ -273,11 +273,14 @@ describe("declared projections (#10214)", () => {
 // `JSON` read as agreement, so an emitter that retyped 348 fields as JSON
 // would have passed every gate in the repo.
 describe("scalar identity", () => {
-  test("every JSON under-typing is declared, and all of them are live", () => {
+  test("no field is published as JSON over a component that has a shape", () => {
     const report = checkComponentParity(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.undertyped, 50);
+    // Was 50, and 24 before #10409 counted the projections. Zero is the whole
+    // point of #10214: every one of them is a published type now, so there is
+    // no field left that a caller can reach but not select into.
+    assert.equal(report.undertyped, 0);
   });
 
   test("it FAILS when a field is retyped to a different scalar", () => {
@@ -317,22 +320,54 @@ describe("scalar identity", () => {
     );
   });
 
-  test("a CLOSED under-typing makes its declaration stale, so the list shrinks", () => {
-    // `Adapter.snapshot` is one of the 50 still open. Publishing the shape its
-    // component already describes has to make the declaration stale, or the
-    // list would keep an entry for a gap that no longer exists.
-    const fixed = inType(
-      sdl,
-      "Adapter",
-      /^ {4}snapshot: JSON\n/m,
-      "    snapshot: AdapterArtifactSnapshot\n",
-    );
-    const report = checkComponentParity(fixed, openapi);
-    assert.ok(
-      report.stale.includes("Adapter.snapshot"),
-      `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
-    );
-    assert.equal(report.undertyped, 49);
+  // The shrink-only rule, proven on an INJECTED declaration rather than a live
+  // one. `JSON_UNDERTYPED` is empty as of #10214, and a rule that can only be
+  // demonstrated while something still violates it is a rule that stops being
+  // tested on the day it finally works -- which is this day. `Adapter.snapshot`
+  // is the field the old fixture used, when it was one of the 50.
+  describe("the shrink-only rule, on an injected declaration", () => {
+    test("a declared under-typing that is still live is accepted, not a violation", () => {
+      const undertyped = inType(
+        sdl,
+        "Adapter",
+        /^ {4}snapshot: AdapterArtifactSnapshot\n/m,
+        "    snapshot: JSON\n",
+      );
+      const report = checkComponentParity(
+        undertyped,
+        openapi,
+        DECLARED,
+        PROJECTED_TYPES,
+        {
+          "Adapter.snapshot": "AdapterArtifactSnapshot",
+        },
+      );
+      assert.deepEqual(report.stale, []);
+      assert.equal(report.undertyped, 1);
+      assert.ok(
+        !report.violations.some((v) => v.startsWith("Adapter.snapshot")),
+        `a declared under-typing must not also be a violation, got: ${report.violations.join("; ")}`,
+      );
+    });
+
+    test("a CLOSED under-typing makes its declaration stale, so the list shrinks", () => {
+      // The SDL as committed already publishes the shape, which is what closing
+      // it means -- so the declaration below names a gap that no longer exists.
+      const report = checkComponentParity(
+        sdl,
+        openapi,
+        DECLARED,
+        PROJECTED_TYPES,
+        {
+          "Adapter.snapshot": "AdapterArtifactSnapshot",
+        },
+      );
+      assert.ok(
+        report.stale.includes("Adapter.snapshot"),
+        `expected the closed under-typing to be reported stale, got: ${report.stale.join("; ")}`,
+      );
+      assert.equal(report.undertyped, 0);
+    });
   });
 
   test("a Float over an Int component field is a WIDENING and stays allowed", () => {
@@ -366,7 +401,15 @@ describe("paginated views", () => {
     // verification until #10476 models it as its own SDL type. This number is
     // a completeness pin rather than a shrink-only ceiling, so it moves with a
     // deliberate drop; it moving WITHOUT one is the failure it exists to catch.
-    assert.equal(report.droppedFields, 195);
+    //
+    // 195 -> 193 (#10214): BlockChainEvents was declared over the WRONG
+    // component -- `BlockEventsArtifact`, the other block route -- and dropped
+    // its three unused envelope fields (ref/limit/offset). Pointed at the
+    // component openapi.json actually names for /blocks/{ref}/chain-events, it
+    // drops one instead (`count`, which the resolver republishes as
+    // `event_count`). Net -2, and the two it stopped dropping were fields that
+    // never existed on this payload.
+    assert.equal(report.droppedFields, 193);
   });
 
   test("it FAILS when a component field is neither published nor declared dropped", () => {

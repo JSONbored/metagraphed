@@ -721,8 +721,23 @@ export type Adapter = {
   schema_version: Scalars['Int']['output'];
   slug: Scalars['String']['output'];
   /** Captured adapter metrics payload; shape is adapter-specific. */
-  snapshot?: Maybe<Scalars['JSON']['output']>;
+  snapshot?: Maybe<AdapterArtifactSnapshot>;
   subnet?: Maybe<Scalars['String']['output']>;
+};
+
+export type AdapterArtifactSnapshot = {
+  __typename?: 'AdapterArtifactSnapshot';
+  adapter_kind?: Maybe<Scalars['String']['output']>;
+  contract_version?: Maybe<Scalars['String']['output']>;
+  dimensions?: Maybe<Scalars['JSON']['output']>;
+  excluded_dimensions?: Maybe<Array<Scalars['String']['output']>>;
+  generated_at?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  notes?: Maybe<Scalars['JSON']['output']>;
+  schema_version?: Maybe<Scalars['Int']['output']>;
+  slug?: Maybe<Scalars['String']['output']>;
+  source?: Maybe<Scalars['String']['output']>;
+  status?: Maybe<Scalars['String']['output']>;
 };
 
 /** Provenance for the USD fields: RECONSTRUCTED, never measured. The product of a measured alpha price and a measured TAO/USD index is our arithmetic, and a null storage says there is no single chain read behind it. */
@@ -744,13 +759,28 @@ export type Block = {
   spec_version?: Maybe<Scalars['Int']['output']>;
 };
 
-/** One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows are opaque JSON. */
+/** One block's raw all-events-tier events (#6977) -- every pallet.method event, distinct from the curated block_events stream. Rows carry the raw pallet-level shape (pallet, method, args, phase, summary), not the curated AccountEvent. */
 export type BlockChainEvents = {
   __typename?: 'BlockChainEvents';
   block_number?: Maybe<Scalars['Int']['output']>;
   event_count: Scalars['Int']['output'];
-  events: Array<Scalars['JSON']['output']>;
+  events: Array<BlockChainEventsArtifactEvents>;
   schema_version?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One raw pallet-level chain event from the all-events tier (distinct from the curated AccountEvent and from Subscription's ChainEvent firehose payload). */
+export type BlockChainEventsArtifactEvents = {
+  __typename?: 'BlockChainEventsArtifactEvents';
+  args?: Maybe<Scalars['JSON']['output']>;
+  block_number?: Maybe<Scalars['Int']['output']>;
+  event_index?: Maybe<Scalars['Int']['output']>;
+  extrinsic_index?: Maybe<Scalars['Int']['output']>;
+  method?: Maybe<Scalars['String']['output']>;
+  observed_at?: Maybe<Scalars['Float']['output']>;
+  pallet?: Maybe<Scalars['String']['output']>;
+  phase?: Maybe<Scalars['String']['output']>;
+  /** Deterministic human-readable action sentence for this event's pallet.method, or null when no template matches (#8525). */
+  summary?: Maybe<Scalars['String']['output']>;
 };
 
 export type BlockDetail = {
@@ -781,11 +811,27 @@ export type BlockExtrinsics = {
   __typename?: 'BlockExtrinsics';
   block_number?: Maybe<Scalars['Int']['output']>;
   extrinsic_count: Scalars['Int']['output'];
-  extrinsics: Array<Scalars['JSON']['output']>;
+  extrinsics?: Maybe<Array<BlockExtrinsicsArtifactExtrinsics>>;
   limit?: Maybe<Scalars['Int']['output']>;
   offset?: Maybe<Scalars['Int']['output']>;
   ref?: Maybe<Scalars['String']['output']>;
   schema_version?: Maybe<Scalars['Int']['output']>;
+};
+
+export type BlockExtrinsicsArtifactExtrinsics = {
+  __typename?: 'BlockExtrinsicsArtifactExtrinsics';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  call_args?: Maybe<Scalars['JSON']['output']>;
+  call_function?: Maybe<Scalars['String']['output']>;
+  call_module?: Maybe<Scalars['String']['output']>;
+  extrinsic_hash?: Maybe<Scalars['String']['output']>;
+  extrinsic_index?: Maybe<Scalars['Int']['output']>;
+  fee_tao?: Maybe<Scalars['Float']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  signer?: Maybe<Scalars['String']['output']>;
+  success?: Maybe<Scalars['Boolean']['output']>;
+  summary?: Maybe<Scalars['String']['output']>;
+  tip_tao?: Maybe<Scalars['Float']['output']>;
 };
 
 export type BlockList = {
@@ -852,14 +898,14 @@ export type BuildPublicContract = {
 export type BuildSummary = {
   __typename?: 'BuildSummary';
   adapter_count?: Maybe<Scalars['Int']['output']>;
-  artifact_budget_summary?: Maybe<Scalars['JSON']['output']>;
+  artifact_budget_summary?: Maybe<BuildSummaryArtifactArtifactBudgetSummary>;
   artifact_budgets?: Maybe<Array<BuildArtifactBudget>>;
   artifact_count: Scalars['Int']['output'];
   artifact_size_bytes?: Maybe<Scalars['Int']['output']>;
-  artifacts?: Maybe<Scalars['JSON']['output']>;
+  artifacts?: Maybe<Array<BuildSummaryArtifactArtifacts>>;
   candidate_count?: Maybe<Scalars['Int']['output']>;
   contract_version?: Maybe<Scalars['String']['output']>;
-  coverage?: Maybe<Scalars['JSON']['output']>;
+  coverage?: Maybe<CoverageArtifact>;
   endpoint_count?: Maybe<Scalars['Int']['output']>;
   full_artifact_count?: Maybe<Scalars['Int']['output']>;
   full_artifact_size_bytes?: Maybe<Scalars['Int']['output']>;
@@ -874,6 +920,21 @@ export type BuildSummary = {
   storage_tier_size_bytes?: Maybe<Scalars['JSON']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
   surface_count?: Maybe<Scalars['Int']['output']>;
+};
+
+export type BuildSummaryArtifactArtifactBudgetSummary = {
+  __typename?: 'BuildSummaryArtifactArtifactBudgetSummary';
+  fail_count: Scalars['Int']['output'];
+  ok_count: Scalars['Int']['output'];
+  warn_count: Scalars['Int']['output'];
+};
+
+export type BuildSummaryArtifactArtifacts = {
+  __typename?: 'BuildSummaryArtifactArtifacts';
+  path: Scalars['String']['output'];
+  sha256?: Maybe<Scalars['String']['output']>;
+  size_bytes?: Maybe<Scalars['Int']['output']>;
+  storage_tier?: Maybe<Scalars['String']['output']>;
 };
 
 /** Per-UTC-day network activity series (blocks, extrinsics, events, signers) over the window, newest day first. Mirrors GET /api/v1/chain/activity's data envelope. */
@@ -1093,19 +1154,31 @@ export type ChainConcentrationHistoryPoint = {
   /** Which definition of the metrics produced this point. */
   builder_version?: Maybe<Scalars['Int']['output']>;
   day: Scalars['String']['output'];
-  emission?: Maybe<Scalars['JSON']['output']>;
+  emission?: Maybe<ChainConcentrationScorecard>;
   entity_count?: Maybe<Scalars['Int']['output']>;
-  entity_emission?: Maybe<Scalars['JSON']['output']>;
-  entity_stake?: Maybe<Scalars['JSON']['output']>;
+  entity_emission?: Maybe<ChainConcentrationScorecard>;
+  entity_stake?: Maybe<ChainConcentrationScorecard>;
   /** The shape of the day the card was computed over -- a point across half the network is not comparable to one across all of it. */
   neuron_count?: Maybe<Scalars['Int']['output']>;
   /** WHEN the network looked like this, as distinct from when it was computed. */
   source_captured_at?: Maybe<Scalars['String']['output']>;
   /** NULL means no measurable distribution, NOT missing. */
-  stake?: Maybe<Scalars['JSON']['output']>;
+  stake?: Maybe<ChainConcentrationScorecard>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
   uids_per_entity?: Maybe<Scalars['Float']['output']>;
-  validator_stake?: Maybe<Scalars['JSON']['output']>;
+  validator_stake?: Maybe<ChainConcentrationScorecard>;
+};
+
+export type ChainConcentrationScorecard = {
+  __typename?: 'ChainConcentrationScorecard';
+  entropy?: Maybe<Scalars['Float']['output']>;
+  entropy_normalized?: Maybe<Scalars['Float']['output']>;
+  gini?: Maybe<Scalars['Float']['output']>;
+  hhi?: Maybe<Scalars['Float']['output']>;
+  hhi_normalized?: Maybe<Scalars['Float']['output']>;
+  holders: Scalars['Int']['output'];
+  nakamoto_coefficient?: Maybe<Scalars['Int']['output']>;
+  total: Scalars['Float']['output'];
 };
 
 export type ChainDeregistrations = {
@@ -1803,15 +1876,61 @@ export type ChainYield = {
 
 export type Changelog = {
   __typename?: 'Changelog';
-  artifacts?: Maybe<Scalars['JSON']['output']>;
+  artifacts?: Maybe<ChangelogArtifactArtifacts>;
   contract_version?: Maybe<Scalars['String']['output']>;
   coverage_delta?: Maybe<Scalars['JSON']['output']>;
   generated_at?: Maybe<Scalars['String']['output']>;
   notes?: Maybe<Scalars['JSON']['output']>;
   schema_version?: Maybe<Scalars['Int']['output']>;
   source?: Maybe<Scalars['String']['output']>;
-  subnets?: Maybe<Scalars['JSON']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
+  subnets?: Maybe<ChangelogArtifactSubnets>;
+  summary?: Maybe<ChangelogArtifactSummary>;
+};
+
+export type ChangelogArtifactArtifacts = {
+  __typename?: 'ChangelogArtifactArtifacts';
+  added: Array<Scalars['JSON']['output']>;
+  modified: Array<Scalars['JSON']['output']>;
+  removed: Array<Scalars['JSON']['output']>;
+};
+
+export type ChangelogArtifactSubnets = {
+  __typename?: 'ChangelogArtifactSubnets';
+  added: Array<ChangelogArtifactSubnetsAdded>;
+  removed: Array<ChangelogArtifactSubnetsRemoved>;
+  renamed: Array<ChangelogArtifactSubnetsRenamed>;
+};
+
+export type ChangelogArtifactSubnetsAdded = {
+  __typename?: 'ChangelogArtifactSubnetsAdded';
+  name?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
+};
+
+export type ChangelogArtifactSubnetsRemoved = {
+  __typename?: 'ChangelogArtifactSubnetsRemoved';
+  name?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
+};
+
+export type ChangelogArtifactSubnetsRenamed = {
+  __typename?: 'ChangelogArtifactSubnetsRenamed';
+  after?: Maybe<Scalars['String']['output']>;
+  before?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+};
+
+export type ChangelogArtifactSummary = {
+  __typename?: 'ChangelogArtifactSummary';
+  artifact_added_count: Scalars['Int']['output'];
+  artifact_modified_count: Scalars['Int']['output'];
+  artifact_removed_count: Scalars['Int']['output'];
+  coverage_delta?: Maybe<Scalars['JSON']['output']>;
+  netuid_added_count: Scalars['Int']['output'];
+  netuid_removed_count: Scalars['Int']['output'];
+  netuid_renamed_count: Scalars['Int']['output'];
 };
 
 export type Compare = {
@@ -1862,6 +1981,44 @@ export type CompareSubnet = {
   structure?: Maybe<CompareStructure>;
 };
 
+/** Self-reported on-chain identity (SubtensorModule::set_identity) for a `coldkey`. */
+export type CompareValidatorsArtifactValidatorsColdkeyIdentity = {
+  __typename?: 'CompareValidatorsArtifactValidatorsColdkeyIdentity';
+  additional?: Maybe<Scalars['String']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  discord?: Maybe<Scalars['String']['output']>;
+  github?: Maybe<Scalars['String']['output']>;
+  has_identity: Scalars['Boolean']['output'];
+  image?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  url?: Maybe<Scalars['String']['output']>;
+};
+
+export type CompareValidatorsArtifactValidatorsSubnetContext = {
+  __typename?: 'CompareValidatorsArtifactValidatorsSubnetContext';
+  active: Scalars['Boolean']['output'];
+  axon?: Maybe<Scalars['String']['output']>;
+  coldkey?: Maybe<Scalars['String']['output']>;
+  consensus?: Maybe<Scalars['Float']['output']>;
+  dividends?: Maybe<Scalars['Float']['output']>;
+  /** This row's emission on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `emission_tao` in #10514, because the entry's own `total_stake_tao` IS priced TAO and a shared `_tao` suffix across different units is a trap no description undoes. */
+  emission_alpha?: Maybe<Scalars['Float']['output']>;
+  hotkey?: Maybe<Scalars['String']['output']>;
+  incentive?: Maybe<Scalars['Float']['output']>;
+  is_immunity_period: Scalars['Boolean']['output'];
+  netuid: Scalars['Int']['output'];
+  rank?: Maybe<Scalars['Float']['output']>;
+  registered_at_block?: Maybe<Scalars['Int']['output']>;
+  /** This row's stake on the subnet named by the sibling `netuid`. ALPHA for non-root subnets, genuine TAO on root (#2550). Renamed from `stake_tao` in #10514 -- see the sibling emission field. Never summable across subnets; the entry's priced total already did that conversion. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
+  take?: Maybe<Scalars['Float']['output']>;
+  trust?: Maybe<Scalars['Float']['output']>;
+  uid: Scalars['Int']['output'];
+  validator_permit: Scalars['Boolean']['output'];
+  validator_trust?: Maybe<Scalars['Float']['output']>;
+};
+
 export type ComparedValidator = {
   __typename?: 'ComparedValidator';
   apy_estimate?: Maybe<Scalars['Float']['output']>;
@@ -1869,12 +2026,12 @@ export type ComparedValidator = {
   avg_validator_trust?: Maybe<Scalars['Float']['output']>;
   coldkey?: Maybe<Scalars['String']['output']>;
   /** The coldkey's self-declared on-chain identity; opaque JSON, matching the REST/MCP shape. */
-  coldkey_identity?: Maybe<Scalars['JSON']['output']>;
+  coldkey_identity?: Maybe<CompareValidatorsArtifactValidatorsColdkeyIdentity>;
   hotkey: Scalars['String']['output'];
   max_validator_trust?: Maybe<Scalars['Float']['output']>;
   nominator_count?: Maybe<Scalars['Int']['output']>;
   /** This validator's membership row in the requested netuid; null when netuid was omitted or it has no permit there. Opaque JSON, matching the REST/MCP shape. */
-  subnet_context?: Maybe<Scalars['JSON']['output']>;
+  subnet_context?: Maybe<CompareValidatorsArtifactValidatorsSubnetContext>;
   subnet_count: Scalars['Int']['output'];
   take?: Maybe<Scalars['Float']['output']>;
   total_emission_tao: Scalars['Float']['output'];
@@ -1900,7 +2057,7 @@ export type ConcentrationMetrics = {
 
 export type Contracts = {
   __typename?: 'Contracts';
-  artifacts: Array<Scalars['JSON']['output']>;
+  artifacts?: Maybe<Array<ContractsArtifactArtifacts>>;
   base_path?: Maybe<Scalars['String']['output']>;
   contract_version?: Maybe<Scalars['String']['output']>;
   generated_at?: Maybe<Scalars['String']['output']>;
@@ -1912,10 +2069,97 @@ export type Contracts = {
   type_definitions_url?: Maybe<Scalars['String']['output']>;
 };
 
+export type ContractsArtifactArtifacts = {
+  __typename?: 'ContractsArtifactArtifacts';
+  content_type?: Maybe<Scalars['String']['output']>;
+  contract_version: Scalars['String']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  path: Scalars['String']['output'];
+  retirement?: Maybe<ContractsArtifactArtifactsRetirement>;
+  schema_ref?: Maybe<Scalars['String']['output']>;
+  status: Scalars['String']['output'];
+  storage_tier: Scalars['String']['output'];
+};
+
+export type ContractsArtifactArtifactsRetirement = {
+  __typename?: 'ContractsArtifactArtifactsRetirement';
+  code: Scalars['String']['output'];
+  http_status: Scalars['Int']['output'];
+  message: Scalars['String']['output'];
+};
+
+export type CoverageArtifact = {
+  __typename?: 'CoverageArtifact';
+  application_subnet_count: Scalars['Int']['output'];
+  candidate_count: Scalars['Int']['output'];
+  candidate_subnet_count: Scalars['Int']['output'];
+  chain_subnet_count: Scalars['Int']['output'];
+  completeness?: Maybe<CoverageCompleteness>;
+  contract_version?: Maybe<Scalars['String']['output']>;
+  curated_overlay_count: Scalars['Int']['output'];
+  curation_level_counts: Scalars['JSON']['output'];
+  domain_coverage: Scalars['JSON']['output'];
+  first_party_subnet_count: Scalars['Int']['output'];
+  generated_at: Scalars['String']['output'];
+  manifested_count: Scalars['Int']['output'];
+  native_only_count: Scalars['Int']['output'];
+  native_only_with_candidates: Scalars['Int']['output'];
+  native_only_without_candidates: Scalars['Int']['output'];
+  native_snapshot_captured_at: Scalars['String']['output'];
+  network: Scalars['String']['output'];
+  /** Public-safe notes; may be a string or a string list depending on the adapter. */
+  notes?: Maybe<Scalars['JSON']['output']>;
+  official_surface_count: Scalars['Int']['output'];
+  probed_count: Scalars['Int']['output'];
+  probed_surface_count: Scalars['Int']['output'];
+  registry_observed_surface_count: Scalars['Int']['output'];
+  root_subnet_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  source: CoverageArtifactSource;
+  subnets_without_official_surface: Scalars['Int']['output'];
+  surface_count: Scalars['Int']['output'];
+};
+
+export type CoverageArtifactSource = {
+  __typename?: 'CoverageArtifactSource';
+  candidates: Scalars['String']['output'];
+  native: Scalars['JSON']['output'];
+  overlays: Scalars['String']['output'];
+};
+
+export type CoverageCompleteness = {
+  __typename?: 'CoverageCompleteness';
+  average_score?: Maybe<Scalars['Int']['output']>;
+  dimension_coverage?: Maybe<Scalars['JSON']['output']>;
+  fully_complete_count?: Maybe<Scalars['Int']['output']>;
+  fully_complete_pct?: Maybe<Scalars['Int']['output']>;
+  median_score?: Maybe<Scalars['Int']['output']>;
+  methodology?: Maybe<Scalars['String']['output']>;
+  score_distribution?: Maybe<Scalars['JSON']['output']>;
+  scored_subnet_count?: Maybe<Scalars['Int']['output']>;
+};
+
+export type CurationArtifactCuration = {
+  __typename?: 'CurationArtifactCuration';
+  candidate_count: Scalars['Int']['output'];
+  coverage_level: Scalars['String']['output'];
+  curation: CurationMetadata;
+  curation_level?: Maybe<Scalars['String']['output']>;
+  description?: Maybe<Scalars['String']['output']>;
+  gap_count?: Maybe<Scalars['Int']['output']>;
+  gaps: Gaps;
+  lifecycle?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  slug: Scalars['String']['output'];
+  surface_count: Scalars['Int']['output'];
+};
+
 /** Per-subnet curation state (coverage level, curation level, source counts). Mirrors GET /api/v1/curation (and MCP list_curation). */
 export type CurationList = {
   __typename?: 'CurationList';
-  curation: Array<Scalars['JSON']['output']>;
+  curation?: Maybe<Array<CurationArtifactCuration>>;
   cursor: Scalars['Int']['output'];
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
@@ -1926,6 +2170,16 @@ export type CurationList = {
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+export type CurationMetadata = {
+  __typename?: 'CurationMetadata';
+  gap_notes?: Maybe<Array<Scalars['String']['output']>>;
+  level: Scalars['String']['output'];
+  review_state: Scalars['String']['output'];
+  reviewed_at?: Maybe<Scalars['String']['output']>;
+  source_count?: Maybe<Scalars['Int']['output']>;
+  verified_at?: Maybe<Scalars['String']['output']>;
 };
 
 /** A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
@@ -2228,6 +2482,17 @@ export type EndpointIncidentWindow = {
   started_at: Scalars['Float']['output'];
 };
 
+export type EndpointIncidentsArtifactSummary = {
+  __typename?: 'EndpointIncidentsArtifactSummary';
+  active_count: Scalars['Int']['output'];
+  by_kind: Scalars['JSON']['output'];
+  by_layer: Scalars['JSON']['output'];
+  by_provider: Scalars['JSON']['output'];
+  by_severity: Scalars['JSON']['output'];
+  by_status: Scalars['JSON']['output'];
+  incident_count: Scalars['Int']['output'];
+};
+
 export type EndpointList = {
   __typename?: 'EndpointList';
   items: Array<Endpoint>;
@@ -2244,16 +2509,43 @@ export type EndpointPoolList = {
   next_cursor?: Maybe<Scalars['Int']['output']>;
   notes?: Maybe<Scalars['JSON']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  pools: Array<Scalars['JSON']['output']>;
+  pools?: Maybe<Array<RpcPool>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
 };
 
+export type EndpointScoreReason = {
+  __typename?: 'EndpointScoreReason';
+  points: Scalars['Int']['output'];
+  reason: Scalars['String']['output'];
+};
+
+export type EvidenceClaim = {
+  __typename?: 'EvidenceClaim';
+  claim: Scalars['String']['output'];
+  confidence: Scalars['String']['output'];
+  limits: Scalars['String']['output'];
+  source_tier: Scalars['String']['output'];
+  source_type: Scalars['String']['output'];
+  source_url: Scalars['String']['output'];
+  subject: Scalars['String']['output'];
+  support_summary: Scalars['String']['output'];
+  verified_at?: Maybe<Scalars['String']['output']>;
+};
+
+export type EvidenceLedgerArtifactSummary = {
+  __typename?: 'EvidenceLedgerArtifactSummary';
+  candidate_claim_count: Scalars['Int']['output'];
+  claim_count: Scalars['Int']['output'];
+  subnet_claim_count: Scalars['Int']['output'];
+  surface_claim_count: Scalars['Int']['output'];
+};
+
 export type EvidenceList = {
   __typename?: 'EvidenceList';
-  claims: Array<Scalars['JSON']['output']>;
+  claims?: Maybe<Array<EvidenceClaim>>;
   cursor: Scalars['Int']['output'];
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
@@ -2262,7 +2554,7 @@ export type EvidenceList = {
   returned: Scalars['Int']['output'];
   schema_version?: Maybe<Scalars['Int']['output']>;
   sort?: Maybe<Scalars['String']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
+  summary?: Maybe<EvidenceLedgerArtifactSummary>;
   total: Scalars['Int']['output'];
 };
 
@@ -2351,11 +2643,32 @@ export type FailureReasonsDay = {
   total_checks: Scalars['Int']['output'];
 };
 
+export type Gaps = {
+  __typename?: 'Gaps';
+  gap_notes: Array<Scalars['String']['output']>;
+  missing_kinds: Array<Scalars['String']['output']>;
+  moving_target_surfaces?: Maybe<Array<Scalars['String']['output']>>;
+  supported_kinds: Array<Scalars['String']['output']>;
+};
+
+export type GapsArtifactGaps = {
+  __typename?: 'GapsArtifactGaps';
+  coverage_level: Scalars['String']['output'];
+  curation_level: Scalars['String']['output'];
+  gap_count?: Maybe<Scalars['Int']['output']>;
+  gap_priority?: Maybe<Scalars['Int']['output']>;
+  gap_severity?: Maybe<Scalars['String']['output']>;
+  gaps: Gaps;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  slug: Scalars['String']['output'];
+};
+
 /** Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps). */
 export type GapsList = {
   __typename?: 'GapsList';
   cursor: Scalars['Int']['output'];
-  gaps: Array<Scalars['JSON']['output']>;
+  gaps?: Maybe<Array<GapsArtifactGaps>>;
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
@@ -2416,12 +2729,19 @@ export type GlobalIncidents = {
   sort?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
   /** Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape. */
-  summary?: Maybe<Scalars['JSON']['output']>;
+  summary?: Maybe<GlobalIncidentsArtifactSummary>;
   /** Per-surface incident summaries -- NOT endpoint incidents. Published as [EndpointIncident!]! until #10214: those rows carry surface_id/netuid/incident_count/downtime_ms and answered null for all 18 of that type's own fields, on every one of 232 sampled. */
   surfaces: Array<GlobalIncidentSurface>;
   /** Surfaces matching the filters before paging (#7875). Equals the surfaces length when no limit/cursor is supplied. */
   total: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
+};
+
+/** Aggregate counts -- incident_count, active_count, and by_kind/by_layer/by_provider/by_severity/by_status maps. Opaque JSON: the by_* maps are dynamic-keyed, matching the MCP get_global_incidents summary shape. */
+export type GlobalIncidentsArtifactSummary = {
+  __typename?: 'GlobalIncidentsArtifactSummary';
+  affected_surface_count: Scalars['Int']['output'];
+  incident_count: Scalars['Int']['output'];
 };
 
 export type HealthHistory = {
@@ -2433,9 +2753,69 @@ export type HealthHistory = {
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
-  surfaces: Array<Scalars['JSON']['output']>;
+  summary?: Maybe<HealthProbeSummary>;
+  surfaces?: Maybe<Array<HealthHistoryArtifactSurfaces>>;
   total: Scalars['Int']['output'];
+};
+
+export type HealthHistoryArtifactSurfaces = {
+  __typename?: 'HealthHistoryArtifactSurfaces';
+  classification: Scalars['String']['output'];
+  error_class?: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  last_checked?: Maybe<Scalars['String']['output']>;
+  last_ok?: Maybe<Scalars['String']['output']>;
+  latency_ms?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  provider: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  status_code?: Maybe<Scalars['Int']['output']>;
+  surface_id: Scalars['String']['output'];
+  verified_at?: Maybe<Scalars['String']['output']>;
+};
+
+export type HealthIncidentsArtifactSurfaces = {
+  __typename?: 'HealthIncidentsArtifactSurfaces';
+  downtime_ms: Scalars['Int']['output'];
+  incident_count: Scalars['Int']['output'];
+  incidents: Array<HealthIncidentsArtifactSurfacesIncidents>;
+  samples: Scalars['Int']['output'];
+  surface_id: Scalars['String']['output'];
+  transient_failed_samples: Scalars['Int']['output'];
+  transient_failure_count: Scalars['Int']['output'];
+  uptime_ratio?: Maybe<Scalars['Float']['output']>;
+};
+
+export type HealthIncidentsArtifactSurfacesIncidents = {
+  __typename?: 'HealthIncidentsArtifactSurfacesIncidents';
+  duration_ms: Scalars['Int']['output'];
+  ended_at: Scalars['Float']['output'];
+  failed_samples: Scalars['Int']['output'];
+  started_at: Scalars['Float']['output'];
+};
+
+export type HealthPercentilesArtifactSurfaces = {
+  __typename?: 'HealthPercentilesArtifactSurfaces';
+  latency_ms: HealthPercentilesArtifactSurfacesLatencyMs;
+  samples: Scalars['Int']['output'];
+  surface_id: Scalars['String']['output'];
+};
+
+export type HealthPercentilesArtifactSurfacesLatencyMs = {
+  __typename?: 'HealthPercentilesArtifactSurfacesLatencyMs';
+  avg?: Maybe<Scalars['Int']['output']>;
+  max?: Maybe<Scalars['Int']['output']>;
+  min?: Maybe<Scalars['Int']['output']>;
+  p50?: Maybe<Scalars['Int']['output']>;
+  p95?: Maybe<Scalars['Int']['output']>;
+  p99?: Maybe<Scalars['Int']['output']>;
+};
+
+export type HealthProbeSummary = {
+  __typename?: 'HealthProbeSummary';
+  classification_counts: Scalars['JSON']['output'];
+  status_counts: Scalars['JSON']['output'];
+  surface_count: Scalars['Int']['output'];
 };
 
 /** All-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history. Mirrors GET /api/v1/health/trends' data envelope. */
@@ -2520,7 +2900,7 @@ export type IncidentList = {
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
+  summary?: Maybe<EndpointIncidentsArtifactSummary>;
   total: Scalars['Int']['output'];
 };
 
@@ -2562,6 +2942,28 @@ export type IndexerLagWindow = {
   newest_observed_at?: Maybe<Scalars['String']['output']>;
   oldest_block?: Maybe<Scalars['Int']['output']>;
   oldest_observed_at?: Maybe<Scalars['String']['output']>;
+};
+
+export type IntegrationReadiness = {
+  __typename?: 'IntegrationReadiness';
+  components: IntegrationReadinessComponents;
+  readiness_tier: Scalars['String']['output'];
+  readiness_verified?: Maybe<Scalars['Boolean']['output']>;
+  readiness_version: Scalars['Int']['output'];
+  score: Scalars['Int']['output'];
+};
+
+export type IntegrationReadinessComponents = {
+  __typename?: 'IntegrationReadinessComponents';
+  active_lifecycle?: Maybe<Scalars['Boolean']['output']>;
+  auth_clarity?: Maybe<Scalars['Boolean']['output']>;
+  callable_now?: Maybe<Scalars['Boolean']['output']>;
+  documented?: Maybe<Scalars['Boolean']['output']>;
+  has_callable_api?: Maybe<Scalars['Boolean']['output']>;
+  has_candidate_api?: Maybe<Scalars['Boolean']['output']>;
+  has_public_docs?: Maybe<Scalars['Boolean']['output']>;
+  has_source_repo?: Maybe<Scalars['Boolean']['output']>;
+  profile_complete?: Maybe<Scalars['Boolean']['output']>;
 };
 
 /** Spread of per-subnet update intensity (WeightsSet events per validator) across every subnet that set weights in the window. */
@@ -2807,7 +3209,7 @@ export type PoolList = {
   notes?: Maybe<Scalars['JSON']['output']>;
   operational_observed_at?: Maybe<Scalars['String']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  pools: Array<Scalars['JSON']['output']>;
+  pools?: Maybe<Array<RpcPool>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   source?: Maybe<Scalars['String']['output']>;
@@ -2822,7 +3224,7 @@ export type ProfileList = {
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  profiles: Array<Scalars['JSON']['output']>;
+  profiles?: Maybe<Array<SubnetProfile>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
@@ -3823,7 +4225,6 @@ export type QueryEndpointsArgs = {
 
 export type QueryEvidenceArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
   q?: InputMaybe<Scalars['String']['input']>;
@@ -3901,7 +4302,6 @@ export type QueryGapsArgs = {
 
 export type QueryGlobal_IncidentsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3928,7 +4328,6 @@ export type QueryHealth_HistoryArgs = {
   classification?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
   date: Scalars['String']['input'];
-  fields?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
@@ -3948,7 +4347,6 @@ export type QueryHealth_TrendsArgs = {
 
 export type QueryIncidentsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -3989,7 +4387,6 @@ export type QueryProfilesArgs = {
   confidence?: InputMaybe<Scalars['String']['input']>;
   curation_level?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4068,7 +4465,6 @@ export type QueryReview_Enrichment_EvidenceArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   direct_submission_kinds?: InputMaybe<Scalars['String']['input']>;
   evidence_action?: InputMaybe<Scalars['String']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   lane?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   missing_kinds?: InputMaybe<Scalars['String']['input']>;
@@ -4084,7 +4480,6 @@ export type QueryReview_Enrichment_QueueArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
   direct_submission_kinds?: InputMaybe<Scalars['String']['input']>;
   evidence_action?: InputMaybe<Scalars['String']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   identity_level?: InputMaybe<Scalars['String']['input']>;
   lane?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -4104,7 +4499,6 @@ export type QueryReview_Enrichment_TargetsArgs = {
   auto_review_candidate?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
   evidence_action?: InputMaybe<Scalars['String']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   identity_level?: InputMaybe<Scalars['String']['input']>;
   kind?: InputMaybe<Scalars['String']['input']>;
   lane?: InputMaybe<Scalars['String']['input']>;
@@ -4199,7 +4593,6 @@ export type QuerySaved_QueryArgs = {
 
 export type QuerySearchArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4211,7 +4604,6 @@ export type QuerySearchArgs = {
 
 export type QuerySearch_IndexArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   netuid?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
@@ -4223,7 +4615,6 @@ export type QuerySearch_IndexArgs = {
 
 export type QuerySource_SnapshotsArgs = {
   cursor?: InputMaybe<Scalars['Int']['input']>;
-  fields?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
   q?: InputMaybe<Scalars['String']['input']>;
@@ -4817,9 +5208,27 @@ export type RevenueVerificationCheck = {
   ok: Scalars['Boolean']['output'];
 };
 
+export type ReviewAdapterCandidate = {
+  __typename?: 'ReviewAdapterCandidate';
+  candidate_api_count: Scalars['Int']['output'];
+  candidate_api_ids: Array<Scalars['String']['output']>;
+  candidate_api_kinds: Array<Scalars['String']['output']>;
+  curation_level: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  operational_kinds: Array<Scalars['String']['output']>;
+  operational_surface_count: Scalars['Int']['output'];
+  operational_surface_ids: Array<Scalars['String']['output']>;
+  priority_score: Scalars['Int']['output'];
+  reason_codes: Array<Scalars['String']['output']>;
+  recommended_adapter_kind: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  suggested_next_action: Scalars['String']['output'];
+};
+
 export type ReviewAdapterCandidateList = {
   __typename?: 'ReviewAdapterCandidateList';
-  candidates: Array<Scalars['JSON']['output']>;
+  candidates?: Maybe<Array<ReviewAdapterCandidate>>;
   cursor: Scalars['Int']['output'];
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
@@ -4831,18 +5240,94 @@ export type ReviewAdapterCandidateList = {
   total: Scalars['Int']['output'];
 };
 
+export type ReviewEnrichmentEvidenceArtifactEntries = {
+  __typename?: 'ReviewEnrichmentEvidenceArtifactEntries';
+  candidate_evidence_by_kind: Scalars['JSON']['output'];
+  candidate_evidence_summary: ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary;
+  direct_submission_kinds: Array<Scalars['String']['output']>;
+  evidence_action: Scalars['String']['output'];
+  lane: Scalars['String']['output'];
+  missing_kinds: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  priority_score: Scalars['Int']['output'];
+  slug: Scalars['String']['output'];
+};
+
+export type ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary = {
+  __typename?: 'ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary';
+  candidate_count: Scalars['Int']['output'];
+  kinds_with_candidates: Array<Scalars['String']['output']>;
+  live_kinds: Array<Scalars['String']['output']>;
+  live_or_redirected_count: Scalars['Int']['output'];
+  reviewable_count: Scalars['Int']['output'];
+  stale_kinds: Array<Scalars['String']['output']>;
+  stale_or_failed_count: Scalars['Int']['output'];
+  unverified_count: Scalars['Int']['output'];
+  unverified_kinds: Array<Scalars['String']['output']>;
+};
+
 export type ReviewEnrichmentEvidenceList = {
   __typename?: 'ReviewEnrichmentEvidenceList';
   cursor: Scalars['Int']['output'];
-  entries: Array<Scalars['JSON']['output']>;
+  entries?: Maybe<Array<ReviewEnrichmentEvidenceArtifactEntries>>;
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
-  notes?: Maybe<Scalars['JSON']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+export type ReviewEnrichmentQueueArtifactQueue = {
+  __typename?: 'ReviewEnrichmentQueueArtifactQueue';
+  adapter_score: Scalars['Int']['output'];
+  candidate_count: Scalars['Int']['output'];
+  candidate_evidence_summary: ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary;
+  completeness_score: Scalars['Int']['output'];
+  contribution_hint: Scalars['String']['output'];
+  curation_level: Scalars['String']['output'];
+  direct_submission_kinds: Array<Scalars['String']['output']>;
+  endpoint_count: Scalars['Int']['output'];
+  evidence_action: Scalars['String']['output'];
+  identity_level: Scalars['String']['output'];
+  identity_surface_count: Scalars['Int']['output'];
+  lane: Scalars['String']['output'];
+  manual_review_required: Scalars['Boolean']['output'];
+  missing_identity: Array<Scalars['String']['output']>;
+  missing_kinds: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  operational_interface_count: Scalars['Int']['output'];
+  priority_score: Scalars['Int']['output'];
+  profile_level: Scalars['String']['output'];
+  reason_codes: Array<Scalars['String']['output']>;
+  recommended_action: Scalars['String']['output'];
+  review_state: Scalars['String']['output'];
+  sample_candidate_ids: Array<Scalars['String']['output']>;
+  sample_live_candidate_ids: Array<Scalars['String']['output']>;
+  sample_stale_candidate_ids: Array<Scalars['String']['output']>;
+  sample_target_candidate_ids: Array<Scalars['String']['output']>;
+  slug: Scalars['String']['output'];
+  source_urls: Array<Scalars['String']['output']>;
+  stale_candidate_count: Scalars['Int']['output'];
+  surface_count: Scalars['Int']['output'];
+  verified_candidate_count: Scalars['Int']['output'];
+};
+
+export type ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary = {
+  __typename?: 'ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary';
+  candidate_count: Scalars['Int']['output'];
+  kinds_with_candidates: Array<Scalars['String']['output']>;
+  live_kinds: Array<Scalars['String']['output']>;
+  live_or_redirected_count: Scalars['Int']['output'];
+  reviewable_count: Scalars['Int']['output'];
+  stale_kinds: Array<Scalars['String']['output']>;
+  stale_or_failed_count: Scalars['Int']['output'];
+  unverified_count: Scalars['Int']['output'];
+  unverified_kinds: Array<Scalars['String']['output']>;
 };
 
 export type ReviewEnrichmentQueueList = {
@@ -4851,9 +5336,9 @@ export type ReviewEnrichmentQueueList = {
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
-  notes?: Maybe<Scalars['JSON']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  queue: Array<Scalars['JSON']['output']>;
+  queue?: Maybe<Array<ReviewEnrichmentQueueArtifactQueue>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
@@ -4865,12 +5350,87 @@ export type ReviewEnrichmentTargetList = {
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
-  notes?: Maybe<Scalars['JSON']['output']>;
+  notes?: Maybe<Scalars['String']['output']>;
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
-  targets: Array<Scalars['JSON']['output']>;
+  targets?: Maybe<Array<ReviewEnrichmentTargetsArtifactTargets>>;
   total: Scalars['Int']['output'];
+};
+
+export type ReviewEnrichmentTargetsArtifactTargets = {
+  __typename?: 'ReviewEnrichmentTargetsArtifactTargets';
+  auto_review_candidate: Scalars['Boolean']['output'];
+  candidate_command?: Maybe<Scalars['String']['output']>;
+  candidate_evidence?: Maybe<ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence>;
+  contribution_prompt: Scalars['String']['output'];
+  evidence_action: Scalars['String']['output'];
+  identity_level: Scalars['String']['output'];
+  kind?: Maybe<Scalars['String']['output']>;
+  lane: Scalars['String']['output'];
+  manual_review_required: Scalars['Boolean']['output'];
+  missing_kinds: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  priority_score: Scalars['Int']['output'];
+  profile_level: Scalars['String']['output'];
+  queue_context: ReviewEnrichmentTargetsArtifactTargetsQueueContext;
+  reason_codes: Array<Scalars['String']['output']>;
+  recommended_action: Scalars['String']['output'];
+  sample_live_candidate_ids: Array<Scalars['String']['output']>;
+  sample_stale_candidate_ids: Array<Scalars['String']['output']>;
+  sample_target_candidate_ids: Array<Scalars['String']['output']>;
+  slug: Scalars['String']['output'];
+  source_requirements: Array<Scalars['String']['output']>;
+  source_urls: Array<Scalars['String']['output']>;
+  submission_route: Scalars['String']['output'];
+  target_action: Scalars['String']['output'];
+  target_id: Scalars['String']['output'];
+  target_type: Scalars['String']['output'];
+};
+
+export type ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence = {
+  __typename?: 'ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence';
+  candidate_count: Scalars['Int']['output'];
+  classifications: Scalars['JSON']['output'];
+  live_or_redirected_count: Scalars['Int']['output'];
+  reviewable_count: Scalars['Int']['output'];
+  sample_candidate_ids: Array<Scalars['String']['output']>;
+  stale_or_failed_count: Scalars['Int']['output'];
+  unverified_count: Scalars['Int']['output'];
+};
+
+export type ReviewEnrichmentTargetsArtifactTargetsQueueContext = {
+  __typename?: 'ReviewEnrichmentTargetsArtifactTargetsQueueContext';
+  adapter_score: Scalars['Int']['output'];
+  candidate_count: Scalars['Int']['output'];
+  completeness_score: Scalars['Int']['output'];
+  curation_level: Scalars['String']['output'];
+  direct_submission_kind_count: Scalars['Int']['output'];
+  endpoint_count: Scalars['Int']['output'];
+  identity_surface_count: Scalars['Int']['output'];
+  operational_interface_count: Scalars['Int']['output'];
+  profile_level: Scalars['String']['output'];
+  review_state: Scalars['String']['output'];
+  source_url_count: Scalars['Int']['output'];
+  stale_candidate_count: Scalars['Int']['output'];
+  surface_count: Scalars['Int']['output'];
+  verified_candidate_count: Scalars['Int']['output'];
+};
+
+export type ReviewGapPriority = {
+  __typename?: 'ReviewGapPriority';
+  candidate_count: Scalars['Int']['output'];
+  curation_level: Scalars['String']['output'];
+  missing_kinds: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  priority_score: Scalars['Int']['output'];
+  review_state: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  suggested_next_action: Scalars['String']['output'];
+  surface_count: Scalars['Int']['output'];
+  verified_candidate_count: Scalars['Int']['output'];
 };
 
 export type ReviewGapPriorityList = {
@@ -4881,10 +5441,57 @@ export type ReviewGapPriorityList = {
   next_cursor?: Maybe<Scalars['Int']['output']>;
   notes?: Maybe<Scalars['JSON']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  priorities: Array<Scalars['JSON']['output']>;
+  priorities?: Maybe<Array<ReviewGapPriority>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+export type ReviewProfileCompletenessArtifactProfiles = {
+  __typename?: 'ReviewProfileCompletenessArtifactProfiles';
+  candidate_count: Scalars['Int']['output'];
+  completeness_score: Scalars['Int']['output'];
+  confidence: Scalars['String']['output'];
+  curation_level: Scalars['String']['output'];
+  gap_reasons: Array<Scalars['String']['output']>;
+  identity_evidence: SubnetProfileIdentityEvidence;
+  identity_level: Scalars['String']['output'];
+  identity_promotion_kind_count: Scalars['Int']['output'];
+  identity_promotion_kinds: Array<Scalars['String']['output']>;
+  identity_surface_count: Scalars['Int']['output'];
+  live_identity_candidate_kind_count: Scalars['Int']['output'];
+  missing_critical_count: Scalars['Int']['output'];
+  missing_identity: Array<Scalars['String']['output']>;
+  missing_operational: Array<Scalars['String']['output']>;
+  missing_required: Array<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  native_identity_signal_count: Scalars['Int']['output'];
+  native_name_quality: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  operational_interface_count: Scalars['Int']['output'];
+  priority_score: Scalars['Int']['output'];
+  profile_level: Scalars['String']['output'];
+  review_state: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  source_count: Scalars['Int']['output'];
+  stale_identity_candidate_kind_count: Scalars['Int']['output'];
+  suggested_next_action: Scalars['String']['output'];
+  supported_interface_kinds: Array<Scalars['String']['output']>;
+};
+
+export type ReviewProfileCompletenessArtifactSummary = {
+  __typename?: 'ReviewProfileCompletenessArtifactSummary';
+  average_completeness_score: Scalars['Int']['output'];
+  by_confidence: Scalars['JSON']['output'];
+  by_identity_level: Scalars['JSON']['output'];
+  by_profile_level: Scalars['JSON']['output'];
+  critical_gap_counts: Scalars['JSON']['output'];
+  identity_promotion_candidate_count: Scalars['Int']['output'];
+  native_identity_count: Scalars['Int']['output'];
+  native_identity_unpromoted_count: Scalars['Int']['output'];
+  needs_identity_count: Scalars['Int']['output'];
+  needs_operational_count: Scalars['Int']['output'];
+  profile_count: Scalars['Int']['output'];
 };
 
 export type ReviewProfileCompletenessList = {
@@ -4895,10 +5502,10 @@ export type ReviewProfileCompletenessList = {
   next_cursor?: Maybe<Scalars['Int']['output']>;
   notes?: Maybe<Scalars['JSON']['output']>;
   order?: Maybe<Scalars['String']['output']>;
-  profiles: Array<Scalars['JSON']['output']>;
+  profiles?: Maybe<Array<ReviewProfileCompletenessArtifactProfiles>>;
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
+  summary?: Maybe<ReviewProfileCompletenessArtifactSummary>;
   total: Scalars['Int']['output'];
 };
 
@@ -4923,6 +5530,43 @@ export type RootClaimType = {
   __typename?: 'RootClaimType';
   kind: Scalars['String']['output'];
   subnets?: Maybe<Array<Scalars['Int']['output']>>;
+};
+
+export type RpcPool = {
+  __typename?: 'RpcPool';
+  best_endpoint_id?: Maybe<Scalars['String']['output']>;
+  eligible_count: Scalars['Int']['output'];
+  endpoint_count: Scalars['Int']['output'];
+  endpoints: Array<RpcPoolEndpoints>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+};
+
+export type RpcPoolEndpoints = {
+  __typename?: 'RpcPoolEndpoints';
+  archive_support?: Maybe<Scalars['Boolean']['output']>;
+  auth_required?: Maybe<Scalars['Boolean']['output']>;
+  health_source: Scalars['String']['output'];
+  health_stale: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  kind?: Maybe<Scalars['String']['output']>;
+  last_ok?: Maybe<Scalars['String']['output']>;
+  latency_ms?: Maybe<Scalars['Int']['output']>;
+  latest_block?: Maybe<Scalars['Int']['output']>;
+  layer?: Maybe<Scalars['String']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  pool_eligibility_reasons?: Maybe<Array<Scalars['String']['output']>>;
+  pool_eligible: Scalars['Boolean']['output'];
+  provider: Scalars['String']['output'];
+  public_safe?: Maybe<Scalars['Boolean']['output']>;
+  reliability_grade?: Maybe<Scalars['String']['output']>;
+  reliability_score?: Maybe<Scalars['Int']['output']>;
+  score: Scalars['Int']['output'];
+  score_reasons?: Maybe<Array<EndpointScoreReason>>;
+  status: Scalars['String']['output'];
+  surface_id?: Maybe<Scalars['String']['output']>;
+  surface_key?: Maybe<Scalars['String']['output']>;
+  url: Scalars['String']['output'];
 };
 
 /** RPC reverse-proxy usage analytics over a 7d/30d window. Mirrors GET /api/v1/rpc/usage's data envelope. */
@@ -5078,19 +5722,48 @@ export type ScoreDistribution = {
   p90?: Maybe<Scalars['Float']['output']>;
 };
 
+export type SearchArtifactDocuments = {
+  __typename?: 'SearchArtifactDocuments';
+  artifact_path: Scalars['String']['output'];
+  categories?: Maybe<Array<Scalars['String']['output']>>;
+  id: Scalars['String']['output'];
+  netuid?: Maybe<Scalars['Int']['output']>;
+  service_kinds?: Maybe<Array<Scalars['String']['output']>>;
+  slug?: Maybe<Scalars['String']['output']>;
+  subtitle?: Maybe<Scalars['String']['output']>;
+  title: Scalars['String']['output'];
+  tokens: Array<Scalars['String']['output']>;
+  type: Scalars['String']['output'];
+  url?: Maybe<Scalars['String']['output']>;
+};
+
 export type SearchDocumentList = {
   __typename?: 'SearchDocumentList';
   /** Heterogeneous per-type documents (subnet/surface/provider/doc), passed through verbatim as opaque JSON. */
-  documents: Array<Scalars['JSON']['output']>;
+  documents?: Maybe<Array<SearchArtifactDocuments>>;
   next_cursor?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+export type SearchIndexArtifactDocuments = {
+  __typename?: 'SearchIndexArtifactDocuments';
+  artifact_path: Scalars['String']['output'];
+  categories?: Maybe<Array<Scalars['String']['output']>>;
+  id: Scalars['String']['output'];
+  netuid?: Maybe<Scalars['Int']['output']>;
+  service_kinds?: Maybe<Array<Scalars['String']['output']>>;
+  slug?: Maybe<Scalars['String']['output']>;
+  subtitle?: Maybe<Scalars['String']['output']>;
+  title: Scalars['String']['output'];
+  type: Scalars['String']['output'];
+  url?: Maybe<Scalars['String']['output']>;
 };
 
 /** Filtered and paginated search-index documents with full REST list-query pagination metadata (#7877). Mirrors GET /api/v1/search-index (and MCP list_search_index). */
 export type SearchIndexList = {
   __typename?: 'SearchIndexList';
   cursor: Scalars['Int']['output'];
-  documents: Array<Scalars['JSON']['output']>;
+  documents?: Maybe<Array<SearchIndexArtifactDocuments>>;
   generated_at?: Maybe<Scalars['String']['output']>;
   limit: Scalars['Int']['output'];
   next_cursor?: Maybe<Scalars['Int']['output']>;
@@ -5175,9 +5848,29 @@ export type SourceSnapshotList = {
   returned: Scalars['Int']['output'];
   schema_version?: Maybe<Scalars['Int']['output']>;
   sort?: Maybe<Scalars['String']['output']>;
-  sources: Array<Scalars['JSON']['output']>;
-  summary?: Maybe<Scalars['JSON']['output']>;
+  sources?: Maybe<Array<SourceSnapshotsArtifactSources>>;
+  summary?: Maybe<SourceSnapshotsArtifactSummary>;
   total: Scalars['Int']['output'];
+};
+
+export type SourceSnapshotsArtifactSources = {
+  __typename?: 'SourceSnapshotsArtifactSources';
+  captured_at: Scalars['String']['output'];
+  hash: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  path: Scalars['String']['output'];
+  record_count: Scalars['Int']['output'];
+};
+
+export type SourceSnapshotsArtifactSummary = {
+  __typename?: 'SourceSnapshotsArtifactSummary';
+  adapter_snapshot_count: Scalars['Int']['output'];
+  candidate_count: Scalars['Int']['output'];
+  overlay_count: Scalars['Int']['output'];
+  provider_count: Scalars['Int']['output'];
+  source_count: Scalars['Int']['output'];
+  verification_result_count: Scalars['Int']['output'];
 };
 
 export type Subnet = {
@@ -5338,12 +6031,20 @@ export type SubnetConviction = {
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
   king?: Maybe<Scalars['String']['output']>;
-  leaderboard: Array<Scalars['JSON']['output']>;
+  leaderboard?: Maybe<Array<SubnetConvictionArtifactLeaderboard>>;
   maturity_rate?: Maybe<Scalars['Float']['output']>;
   netuid: Scalars['Int']['output'];
   queried_at_block?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   unlock_rate?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetConvictionArtifactLeaderboard = {
+  __typename?: 'SubnetConvictionArtifactLeaderboard';
+  conviction?: Maybe<Scalars['Float']['output']>;
+  hotkey?: Maybe<Scalars['String']['output']>;
+  is_owner?: Maybe<Scalars['Boolean']['output']>;
+  locked_mass?: Maybe<Scalars['Float']['output']>;
 };
 
 export type SubnetDeregistrationEvent = {
@@ -5460,10 +6161,10 @@ export type SubnetEmissionDecomposition = {
 export type SubnetEventSummary = {
   __typename?: 'SubnetEventSummary';
   /** Per event category: its kind list and rolled-up counts. Opaque JSON passed through verbatim, matching the get_subnet_event_summary MCP/REST shape. */
-  categories: Scalars['JSON']['output'];
+  categories?: Maybe<Array<SubnetEventSummaryArtifactCategories>>;
   category_count: Scalars['Int']['output'];
   /** Per event kind: event_count, hotkey/coldkey participation counts, TAO/alpha amounts, and first/last block + observed_at. Opaque JSON passed through verbatim. */
-  event_kinds: Scalars['JSON']['output'];
+  event_kinds?: Maybe<Array<SubnetEventSummaryArtifactEventKinds>>;
   kind_count: Scalars['Int']['output'];
   /** The resolved recent-event cap actually applied (1-50, default 10). */
   limit: Scalars['Int']['output'];
@@ -5476,6 +6177,34 @@ export type SubnetEventSummary = {
   total_events: Scalars['Int']['output'];
   /** The resolved window label (7d/30d/90d). */
   window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetEventSummaryArtifactCategories = {
+  __typename?: 'SubnetEventSummaryArtifactCategories';
+  alpha_amount: Scalars['Float']['output'];
+  amount_tao: Scalars['Float']['output'];
+  category: Scalars['String']['output'];
+  event_count: Scalars['Int']['output'];
+  first_block?: Maybe<Scalars['Int']['output']>;
+  first_observed_at?: Maybe<Scalars['String']['output']>;
+  kind_count: Scalars['Int']['output'];
+  last_block?: Maybe<Scalars['Int']['output']>;
+  last_observed_at?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetEventSummaryArtifactEventKinds = {
+  __typename?: 'SubnetEventSummaryArtifactEventKinds';
+  alpha_amount: Scalars['Float']['output'];
+  amount_tao: Scalars['Float']['output'];
+  category: Scalars['String']['output'];
+  coldkey_count: Scalars['Int']['output'];
+  event_count: Scalars['Int']['output'];
+  event_kind: Scalars['String']['output'];
+  first_block?: Maybe<Scalars['Int']['output']>;
+  first_observed_at?: Maybe<Scalars['String']['output']>;
+  hotkey_count: Scalars['Int']['output'];
+  last_block?: Maybe<Scalars['Int']['output']>;
+  last_observed_at?: Maybe<Scalars['String']['output']>;
 };
 
 /** One subnet's paginated first-party chain-event feed (#7172), newest first, offset-paginated. event_count is the page count, not a grand total. Each item is an AccountEvent. Empty feed on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/events' data envelope. */
@@ -5516,7 +6245,7 @@ export type SubnetHealthIncidents = {
   schema_version: Scalars['Int']['output'];
   source?: Maybe<Scalars['String']['output']>;
   /** Per operational surface: its sample count, uptime_ratio, incident_count, total downtime_ms, and gap-island incident list (started_at/ended_at/duration_ms/failed_samples, epoch-ms). Opaque JSON passed through verbatim, matching the get_subnet_health_incidents MCP/REST shape (like SubnetHealthTrends.windows). */
-  surfaces: Scalars['JSON']['output'];
+  surfaces?: Maybe<Array<HealthIncidentsArtifactSurfaces>>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -5528,7 +6257,7 @@ export type SubnetHealthPercentiles = {
   schema_version: Scalars['Int']['output'];
   source?: Maybe<Scalars['String']['output']>;
   /** Per operational surface: its success-only latency sample count and p50/p90/p95/p99 latency percentiles in ms. Opaque JSON passed through verbatim, matching the get_subnet_health_percentiles MCP/REST shape (like SubnetHealthIncidents.surfaces). */
-  surfaces: Scalars['JSON']['output'];
+  surfaces?: Maybe<Array<HealthPercentilesArtifactSurfaces>>;
   window?: Maybe<Scalars['String']['output']>;
 };
 
@@ -5667,11 +6396,24 @@ export type SubnetLease = {
   __typename?: 'SubnetLease';
   /** Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
   field_sources?: Maybe<Scalars['JSON']['output']>;
-  lease?: Maybe<Scalars['JSON']['output']>;
+  lease?: Maybe<SubnetLeaseArtifactLease>;
   leased?: Maybe<Scalars['Boolean']['output']>;
   netuid: Scalars['Int']['output'];
   queried_at?: Maybe<Scalars['String']['output']>;
   schema_version: Scalars['Int']['output'];
+};
+
+export type SubnetLeaseArtifactLease = {
+  __typename?: 'SubnetLeaseArtifactLease';
+  accumulated_dividends_alpha?: Maybe<Scalars['Float']['output']>;
+  beneficiary: Scalars['String']['output'];
+  coldkey: Scalars['String']['output'];
+  cost_tao?: Maybe<Scalars['Float']['output']>;
+  emissions_share_percent?: Maybe<Scalars['Int']['output']>;
+  end_block?: Maybe<Scalars['Int']['output']>;
+  hotkey: Scalars['String']['output'];
+  lease_id: Scalars['Int']['output'];
+  netuid: Scalars['Int']['output'];
 };
 
 /** Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had, decoded from the account_events stream. Mirrors GET /api/v1/subnets/{netuid}/lease/history. */
@@ -5680,9 +6422,17 @@ export type SubnetLeaseHistory = {
   count: Scalars['Int']['output'];
   event_kinds?: Maybe<Array<Scalars['String']['output']>>;
   event_pallet?: Maybe<Scalars['String']['output']>;
-  lease_events: Array<Scalars['JSON']['output']>;
+  lease_events?: Maybe<Array<SubnetLeaseHistoryArtifactLeaseEvents>>;
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
+};
+
+export type SubnetLeaseHistoryArtifactLeaseEvents = {
+  __typename?: 'SubnetLeaseHistoryArtifactLeaseEvents';
+  beneficiary?: Maybe<Scalars['String']['output']>;
+  block_number?: Maybe<Scalars['Int']['output']>;
+  event_kind?: Maybe<Scalars['String']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
 };
 
 export type SubnetLifecycle = {
@@ -5823,8 +6573,18 @@ export type SubnetOwnershipHistory = {
   /** The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read. */
   observed_through?: Maybe<Scalars['String']['output']>;
   /** Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null). */
-  ownership_changes: Array<Scalars['JSON']['output']>;
+  ownership_changes?: Maybe<Array<SubnetOwnershipHistoryArtifactOwnershipChanges>>;
   schema_version: Scalars['Int']['output'];
+};
+
+export type SubnetOwnershipHistoryArtifactOwnershipChanges = {
+  __typename?: 'SubnetOwnershipHistoryArtifactOwnershipChanges';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  new_coldkey?: Maybe<Scalars['String']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  old_coldkey?: Maybe<Scalars['String']['output']>;
+  source?: Maybe<Scalars['String']['output']>;
 };
 
 /** Per-subnet reward-distribution & score-spread card (#5714). Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/performance. */
@@ -5896,6 +6656,160 @@ export type SubnetPipelineHistory = {
   points: Array<PipelineHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetProfile = {
+  __typename?: 'SubnetProfile';
+  candidate_count: Scalars['Int']['output'];
+  categories: Array<Scalars['String']['output']>;
+  completeness: SubnetProfileCompleteness;
+  completeness_score: Scalars['Int']['output'];
+  confidence: Scalars['String']['output'];
+  curation_level: Scalars['String']['output'];
+  derived_categories: Array<Scalars['String']['output']>;
+  derived_description?: Maybe<Scalars['String']['output']>;
+  endpoint_count: Scalars['Int']['output'];
+  gap_reasons: Array<Scalars['String']['output']>;
+  github_commits_weekly?: Maybe<Array<SubnetProfileGithubCommitsWeekly>>;
+  github_languages?: Maybe<Scalars['JSON']['output']>;
+  github_last_push_at?: Maybe<Scalars['String']['output']>;
+  github_releases?: Maybe<Array<SubnetProfileGithubReleases>>;
+  github_stars?: Maybe<Scalars['Int']['output']>;
+  github_unreachable?: Maybe<Scalars['Boolean']['output']>;
+  identity_evidence: SubnetProfileIdentityEvidence;
+  identity_level: Scalars['String']['output'];
+  identity_surface_count: Scalars['Int']['output'];
+  injection_scrubbed?: Maybe<Scalars['Boolean']['output']>;
+  integration_readiness?: Maybe<Scalars['Int']['output']>;
+  interface_count?: Maybe<Scalars['Int']['output']>;
+  lineage?: Maybe<SubnetProfileLineage>;
+  missing_critical_count: Scalars['Int']['output'];
+  missing_identity: Array<Scalars['String']['output']>;
+  missing_operational: Array<Scalars['String']['output']>;
+  missing_required: Array<Scalars['String']['output']>;
+  monitored_endpoint_count: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+  native_identity?: Maybe<SubnetProfileNativeIdentity>;
+  native_name?: Maybe<Scalars['String']['output']>;
+  native_name_quality?: Maybe<Scalars['String']['output']>;
+  netuid: Scalars['Int']['output'];
+  operational_interface_count?: Maybe<Scalars['Int']['output']>;
+  operational_interface_kinds: Array<Scalars['String']['output']>;
+  primary_app_surface?: Maybe<SubnetProfilePrimaryAppSurface>;
+  primary_links: SubnetProfilePrimaryLinks;
+  profile_level: Scalars['String']['output'];
+  project_name: Scalars['String']['output'];
+  provenance: SubnetProfileProvenance;
+  readiness?: Maybe<IntegrationReadiness>;
+  review_state: Scalars['String']['output'];
+  slug: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  subnet_type: Scalars['String']['output'];
+  suggested_submission_kinds: Array<Scalars['String']['output']>;
+  supported_interface_kinds: Array<Scalars['String']['output']>;
+  surface_count: Scalars['Int']['output'];
+  symbol?: Maybe<Scalars['String']['output']>;
+  team?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetProfileCompleteness = {
+  __typename?: 'SubnetProfileCompleteness';
+  confidence: Scalars['String']['output'];
+  gap_reasons: Array<Scalars['String']['output']>;
+  identity_level: Scalars['String']['output'];
+  identity_surface_count: Scalars['Int']['output'];
+  missing_critical_count: Scalars['Int']['output'];
+  missing_identity: Array<Scalars['String']['output']>;
+  missing_operational: Array<Scalars['String']['output']>;
+  missing_required: Array<Scalars['String']['output']>;
+  profile_level: Scalars['String']['output'];
+  score: Scalars['Int']['output'];
+};
+
+export type SubnetProfileGithubCommitsWeekly = {
+  __typename?: 'SubnetProfileGithubCommitsWeekly';
+  count: Scalars['Int']['output'];
+  week: Scalars['String']['output'];
+};
+
+export type SubnetProfileGithubReleases = {
+  __typename?: 'SubnetProfileGithubReleases';
+  name?: Maybe<Scalars['String']['output']>;
+  prerelease: Scalars['Boolean']['output'];
+  published_at: Scalars['String']['output'];
+  tag: Scalars['String']['output'];
+  url: Scalars['String']['output'];
+};
+
+export type SubnetProfileIdentityEvidence = {
+  __typename?: 'SubnetProfileIdentityEvidence';
+  candidate_identity_count: Scalars['Int']['output'];
+  curated_identity_count: Scalars['Int']['output'];
+  curated_identity_kinds: Array<Scalars['String']['output']>;
+  live_candidate_identity_kinds: Array<Scalars['String']['output']>;
+  native_contact_present: Scalars['Boolean']['output'];
+  native_description_present: Scalars['Boolean']['output'];
+  native_identity_count: Scalars['Int']['output'];
+  native_identity_kinds: Array<Scalars['String']['output']>;
+  needs_promotion_kinds: Array<Scalars['String']['output']>;
+  stale_candidate_identity_kinds: Array<Scalars['String']['output']>;
+  unverified_candidate_identity_kinds: Array<Scalars['String']['output']>;
+};
+
+export type SubnetProfileLineage = {
+  __typename?: 'SubnetProfileLineage';
+  also_on?: Maybe<Array<SubnetProfileLineageAlsoOn>>;
+  graduated_from_testnet?: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type SubnetProfileLineageAlsoOn = {
+  __typename?: 'SubnetProfileLineageAlsoOn';
+  matched_by?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  network?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetProfileNativeIdentity = {
+  __typename?: 'SubnetProfileNativeIdentity';
+  additional?: Maybe<Scalars['String']['output']>;
+  contact_present: Scalars['Boolean']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  discord?: Maybe<Scalars['String']['output']>;
+  discord_url?: Maybe<Scalars['String']['output']>;
+  github_url?: Maybe<Scalars['String']['output']>;
+  logo_url?: Maybe<Scalars['String']['output']>;
+  source: Scalars['String']['output'];
+  subnet_name?: Maybe<Scalars['String']['output']>;
+  website_url?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetProfilePrimaryAppSurface = {
+  __typename?: 'SubnetProfilePrimaryAppSurface';
+  id: Scalars['String']['output'];
+  key?: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  url: Scalars['String']['output'];
+};
+
+export type SubnetProfilePrimaryLinks = {
+  __typename?: 'SubnetProfilePrimaryLinks';
+  dashboard_url?: Maybe<Scalars['String']['output']>;
+  docs_url?: Maybe<Scalars['String']['output']>;
+  source_repo?: Maybe<Scalars['String']['output']>;
+  website_url?: Maybe<Scalars['String']['output']>;
+};
+
+export type SubnetProfileProvenance = {
+  __typename?: 'SubnetProfileProvenance';
+  curation_level: Scalars['String']['output'];
+  identity_source: Scalars['String']['output'];
+  interface_source_count: Scalars['Int']['output'];
+  review_state: Scalars['String']['output'];
+  reviewed_at?: Maybe<Scalars['String']['output']>;
+  source_urls: Array<Scalars['String']['output']>;
 };
 
 /** Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
@@ -6870,12 +7784,15 @@ export type ResolversTypes = ResolversObject<{
   AccountWeightSetters: ResolverTypeWrapper<AccountWeightSetters>;
   AccountWeightSettersSubnet: ResolverTypeWrapper<AccountWeightSettersSubnet>;
   Adapter: ResolverTypeWrapper<Adapter>;
+  AdapterArtifactSnapshot: ResolverTypeWrapper<AdapterArtifactSnapshot>;
   AlphaUsdFieldSource: ResolverTypeWrapper<AlphaUsdFieldSource>;
   Block: ResolverTypeWrapper<Block>;
   BlockChainEvents: ResolverTypeWrapper<BlockChainEvents>;
+  BlockChainEventsArtifactEvents: ResolverTypeWrapper<BlockChainEventsArtifactEvents>;
   BlockDetail: ResolverTypeWrapper<BlockDetail>;
   BlockEvents: ResolverTypeWrapper<BlockEvents>;
   BlockExtrinsics: ResolverTypeWrapper<BlockExtrinsics>;
+  BlockExtrinsicsArtifactExtrinsics: ResolverTypeWrapper<BlockExtrinsicsArtifactExtrinsics>;
   BlockList: ResolverTypeWrapper<BlockList>;
   BlockTimeDistribution: ResolverTypeWrapper<BlockTimeDistribution>;
   BlocksSummary: ResolverTypeWrapper<BlocksSummary>;
@@ -6884,6 +7801,8 @@ export type ResolversTypes = ResolversObject<{
   BuildArtifactBudget: ResolverTypeWrapper<BuildArtifactBudget>;
   BuildPublicContract: ResolverTypeWrapper<BuildPublicContract>;
   BuildSummary: ResolverTypeWrapper<BuildSummary>;
+  BuildSummaryArtifactArtifactBudgetSummary: ResolverTypeWrapper<BuildSummaryArtifactArtifactBudgetSummary>;
+  BuildSummaryArtifactArtifacts: ResolverTypeWrapper<BuildSummaryArtifactArtifacts>;
   ChainActivity: ResolverTypeWrapper<ChainActivity>;
   ChainActivityDay: ResolverTypeWrapper<ChainActivityDay>;
   ChainAlphaVolume: ResolverTypeWrapper<ChainAlphaVolume>;
@@ -6899,6 +7818,7 @@ export type ResolversTypes = ResolversObject<{
   ChainConcentration: ResolverTypeWrapper<ChainConcentration>;
   ChainConcentrationHistory: ResolverTypeWrapper<ChainConcentrationHistory>;
   ChainConcentrationHistoryPoint: ResolverTypeWrapper<ChainConcentrationHistoryPoint>;
+  ChainConcentrationScorecard: ResolverTypeWrapper<ChainConcentrationScorecard>;
   ChainDeregistrations: ResolverTypeWrapper<ChainDeregistrations>;
   ChainDeregistrationsNetwork: ResolverTypeWrapper<ChainDeregistrationsNetwork>;
   ChainDeregistrationsSubnet: ResolverTypeWrapper<ChainDeregistrationsSubnet>;
@@ -6957,15 +7877,30 @@ export type ResolversTypes = ResolversObject<{
   ChainWeightsSubnet: ResolverTypeWrapper<ChainWeightsSubnet>;
   ChainYield: ResolverTypeWrapper<ChainYield>;
   Changelog: ResolverTypeWrapper<Changelog>;
+  ChangelogArtifactArtifacts: ResolverTypeWrapper<ChangelogArtifactArtifacts>;
+  ChangelogArtifactSubnets: ResolverTypeWrapper<ChangelogArtifactSubnets>;
+  ChangelogArtifactSubnetsAdded: ResolverTypeWrapper<ChangelogArtifactSubnetsAdded>;
+  ChangelogArtifactSubnetsRemoved: ResolverTypeWrapper<ChangelogArtifactSubnetsRemoved>;
+  ChangelogArtifactSubnetsRenamed: ResolverTypeWrapper<ChangelogArtifactSubnetsRenamed>;
+  ChangelogArtifactSummary: ResolverTypeWrapper<ChangelogArtifactSummary>;
   Compare: ResolverTypeWrapper<Compare>;
   CompareEconomics: ResolverTypeWrapper<CompareEconomics>;
   CompareHealth: ResolverTypeWrapper<CompareHealth>;
   CompareStructure: ResolverTypeWrapper<CompareStructure>;
   CompareSubnet: ResolverTypeWrapper<CompareSubnet>;
+  CompareValidatorsArtifactValidatorsColdkeyIdentity: ResolverTypeWrapper<CompareValidatorsArtifactValidatorsColdkeyIdentity>;
+  CompareValidatorsArtifactValidatorsSubnetContext: ResolverTypeWrapper<CompareValidatorsArtifactValidatorsSubnetContext>;
   ComparedValidator: ResolverTypeWrapper<ComparedValidator>;
   ConcentrationMetrics: ResolverTypeWrapper<ConcentrationMetrics>;
   Contracts: ResolverTypeWrapper<Contracts>;
+  ContractsArtifactArtifacts: ResolverTypeWrapper<ContractsArtifactArtifacts>;
+  ContractsArtifactArtifactsRetirement: ResolverTypeWrapper<ContractsArtifactArtifactsRetirement>;
+  CoverageArtifact: ResolverTypeWrapper<CoverageArtifact>;
+  CoverageArtifactSource: ResolverTypeWrapper<CoverageArtifactSource>;
+  CoverageCompleteness: ResolverTypeWrapper<CoverageCompleteness>;
+  CurationArtifactCuration: ResolverTypeWrapper<CurationArtifactCuration>;
   CurationList: ResolverTypeWrapper<CurationList>;
+  CurationMetadata: ResolverTypeWrapper<CurationMetadata>;
   DegradedInfo: ResolverTypeWrapper<DegradedInfo>;
   DeregistrationDerivation: ResolverTypeWrapper<DeregistrationDerivation>;
   DeregistrationTenure: ResolverTypeWrapper<DeregistrationTenure>;
@@ -6985,8 +7920,12 @@ export type ResolversTypes = ResolversObject<{
   Endpoint: ResolverTypeWrapper<Endpoint>;
   EndpointIncident: ResolverTypeWrapper<EndpointIncident>;
   EndpointIncidentWindow: ResolverTypeWrapper<EndpointIncidentWindow>;
+  EndpointIncidentsArtifactSummary: ResolverTypeWrapper<EndpointIncidentsArtifactSummary>;
   EndpointList: ResolverTypeWrapper<EndpointList>;
   EndpointPoolList: ResolverTypeWrapper<EndpointPoolList>;
+  EndpointScoreReason: ResolverTypeWrapper<EndpointScoreReason>;
+  EvidenceClaim: ResolverTypeWrapper<EvidenceClaim>;
+  EvidenceLedgerArtifactSummary: ResolverTypeWrapper<EvidenceLedgerArtifactSummary>;
   EvidenceList: ResolverTypeWrapper<EvidenceList>;
   EvmAddressMapping: ResolverTypeWrapper<EvmAddressMapping>;
   Extrinsic: ResolverTypeWrapper<Extrinsic>;
@@ -6996,11 +7935,20 @@ export type ResolversTypes = ResolversObject<{
   FailureReasons: ResolverTypeWrapper<FailureReasons>;
   FailureReasonsDay: ResolverTypeWrapper<FailureReasonsDay>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
+  Gaps: ResolverTypeWrapper<Gaps>;
+  GapsArtifactGaps: ResolverTypeWrapper<GapsArtifactGaps>;
   GapsList: ResolverTypeWrapper<GapsList>;
   GlobalHealth: ResolverTypeWrapper<GlobalHealth>;
   GlobalIncidentSurface: ResolverTypeWrapper<GlobalIncidentSurface>;
   GlobalIncidents: ResolverTypeWrapper<GlobalIncidents>;
+  GlobalIncidentsArtifactSummary: ResolverTypeWrapper<GlobalIncidentsArtifactSummary>;
   HealthHistory: ResolverTypeWrapper<HealthHistory>;
+  HealthHistoryArtifactSurfaces: ResolverTypeWrapper<HealthHistoryArtifactSurfaces>;
+  HealthIncidentsArtifactSurfaces: ResolverTypeWrapper<HealthIncidentsArtifactSurfaces>;
+  HealthIncidentsArtifactSurfacesIncidents: ResolverTypeWrapper<HealthIncidentsArtifactSurfacesIncidents>;
+  HealthPercentilesArtifactSurfaces: ResolverTypeWrapper<HealthPercentilesArtifactSurfaces>;
+  HealthPercentilesArtifactSurfacesLatencyMs: ResolverTypeWrapper<HealthPercentilesArtifactSurfacesLatencyMs>;
+  HealthProbeSummary: ResolverTypeWrapper<HealthProbeSummary>;
   HealthTrends: ResolverTypeWrapper<HealthTrends>;
   Hyperparameters: ResolverTypeWrapper<Hyperparameters>;
   HyperparamsHistoryEntry: ResolverTypeWrapper<HyperparamsHistoryEntry>;
@@ -7011,6 +7959,8 @@ export type ResolversTypes = ResolversObject<{
   IndexerLagLatency: ResolverTypeWrapper<IndexerLagLatency>;
   IndexerLagWindow: ResolverTypeWrapper<IndexerLagWindow>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  IntegrationReadiness: ResolverTypeWrapper<IntegrationReadiness>;
+  IntegrationReadinessComponents: ResolverTypeWrapper<IntegrationReadinessComponents>;
   IntensityDistribution: ResolverTypeWrapper<IntensityDistribution>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Network: ResolverTypeWrapper<Network>;
@@ -7038,15 +7988,28 @@ export type ResolversTypes = ResolversObject<{
   RevenueSource: ResolverTypeWrapper<RevenueSource>;
   RevenueVerification: ResolverTypeWrapper<RevenueVerification>;
   RevenueVerificationCheck: ResolverTypeWrapper<RevenueVerificationCheck>;
+  ReviewAdapterCandidate: ResolverTypeWrapper<ReviewAdapterCandidate>;
   ReviewAdapterCandidateList: ResolverTypeWrapper<ReviewAdapterCandidateList>;
+  ReviewEnrichmentEvidenceArtifactEntries: ResolverTypeWrapper<ReviewEnrichmentEvidenceArtifactEntries>;
+  ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary: ResolverTypeWrapper<ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary>;
   ReviewEnrichmentEvidenceList: ResolverTypeWrapper<ReviewEnrichmentEvidenceList>;
+  ReviewEnrichmentQueueArtifactQueue: ResolverTypeWrapper<ReviewEnrichmentQueueArtifactQueue>;
+  ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary: ResolverTypeWrapper<ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary>;
   ReviewEnrichmentQueueList: ResolverTypeWrapper<ReviewEnrichmentQueueList>;
   ReviewEnrichmentTargetList: ResolverTypeWrapper<ReviewEnrichmentTargetList>;
+  ReviewEnrichmentTargetsArtifactTargets: ResolverTypeWrapper<ReviewEnrichmentTargetsArtifactTargets>;
+  ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence: ResolverTypeWrapper<ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence>;
+  ReviewEnrichmentTargetsArtifactTargetsQueueContext: ResolverTypeWrapper<ReviewEnrichmentTargetsArtifactTargetsQueueContext>;
+  ReviewGapPriority: ResolverTypeWrapper<ReviewGapPriority>;
   ReviewGapPriorityList: ResolverTypeWrapper<ReviewGapPriorityList>;
+  ReviewProfileCompletenessArtifactProfiles: ResolverTypeWrapper<ReviewProfileCompletenessArtifactProfiles>;
+  ReviewProfileCompletenessArtifactSummary: ResolverTypeWrapper<ReviewProfileCompletenessArtifactSummary>;
   ReviewProfileCompletenessList: ResolverTypeWrapper<ReviewProfileCompletenessList>;
   RootClaimEntry: ResolverTypeWrapper<RootClaimEntry>;
   RootClaimHotkey: ResolverTypeWrapper<RootClaimHotkey>;
   RootClaimType: ResolverTypeWrapper<RootClaimType>;
+  RpcPool: ResolverTypeWrapper<RpcPool>;
+  RpcPoolEndpoints: ResolverTypeWrapper<RpcPoolEndpoints>;
   RpcUsage: ResolverTypeWrapper<RpcUsage>;
   RpcUsageBucket: ResolverTypeWrapper<RpcUsageBucket>;
   RpcUsageCoverage: ResolverTypeWrapper<RpcUsageCoverage>;
@@ -7060,13 +8023,17 @@ export type ResolversTypes = ResolversObject<{
   RuntimeTransition: ResolverTypeWrapper<RuntimeTransition>;
   RuntimeVersionHistory: ResolverTypeWrapper<RuntimeVersionHistory>;
   ScoreDistribution: ResolverTypeWrapper<ScoreDistribution>;
+  SearchArtifactDocuments: ResolverTypeWrapper<SearchArtifactDocuments>;
   SearchDocumentList: ResolverTypeWrapper<SearchDocumentList>;
+  SearchIndexArtifactDocuments: ResolverTypeWrapper<SearchIndexArtifactDocuments>;
   SearchIndexList: ResolverTypeWrapper<SearchIndexList>;
   SelfHealth: ResolverTypeWrapper<SelfHealth>;
   SelfHealthComponentView: ResolverTypeWrapper<SelfHealthComponentView>;
   SelfHealthDay: ResolverTypeWrapper<SelfHealthDay>;
   SelfHealthLane: ResolverTypeWrapper<SelfHealthLane>;
   SourceSnapshotList: ResolverTypeWrapper<SourceSnapshotList>;
+  SourceSnapshotsArtifactSources: ResolverTypeWrapper<SourceSnapshotsArtifactSources>;
+  SourceSnapshotsArtifactSummary: ResolverTypeWrapper<SourceSnapshotsArtifactSummary>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   Subnet: ResolverTypeWrapper<Subnet>;
   SubnetAxonRemovals: ResolverTypeWrapper<SubnetAxonRemovals>;
@@ -7077,11 +8044,14 @@ export type ResolversTypes = ResolversObject<{
   SubnetConcentrationHistory: ResolverTypeWrapper<SubnetConcentrationHistory>;
   SubnetConcentrationHistoryPoint: ResolverTypeWrapper<SubnetConcentrationHistoryPoint>;
   SubnetConviction: ResolverTypeWrapper<SubnetConviction>;
+  SubnetConvictionArtifactLeaderboard: ResolverTypeWrapper<SubnetConvictionArtifactLeaderboard>;
   SubnetDeregistrationEvent: ResolverTypeWrapper<SubnetDeregistrationEvent>;
   SubnetDeregistrations: ResolverTypeWrapper<SubnetDeregistrations>;
   SubnetEconomics: ResolverTypeWrapper<SubnetEconomics>;
   SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
   SubnetEventSummary: ResolverTypeWrapper<SubnetEventSummary>;
+  SubnetEventSummaryArtifactCategories: ResolverTypeWrapper<SubnetEventSummaryArtifactCategories>;
+  SubnetEventSummaryArtifactEventKinds: ResolverTypeWrapper<SubnetEventSummaryArtifactEventKinds>;
   SubnetEvents: ResolverTypeWrapper<SubnetEvents>;
   SubnetHealth: ResolverTypeWrapper<SubnetHealth>;
   SubnetHealthIncidents: ResolverTypeWrapper<SubnetHealthIncidents>;
@@ -7098,7 +8068,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetIdentityHistoryEntry: ResolverTypeWrapper<SubnetIdentityHistoryEntry>;
   SubnetIdleStake: ResolverTypeWrapper<SubnetIdleStake>;
   SubnetLease: ResolverTypeWrapper<SubnetLease>;
+  SubnetLeaseArtifactLease: ResolverTypeWrapper<SubnetLeaseArtifactLease>;
   SubnetLeaseHistory: ResolverTypeWrapper<SubnetLeaseHistory>;
+  SubnetLeaseHistoryArtifactLeaseEvents: ResolverTypeWrapper<SubnetLeaseHistoryArtifactLeaseEvents>;
   SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
   SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
@@ -7108,10 +8080,22 @@ export type ResolversTypes = ResolversObject<{
   SubnetOhlc: ResolverTypeWrapper<SubnetOhlc>;
   SubnetOhlcCandle: ResolverTypeWrapper<SubnetOhlcCandle>;
   SubnetOwnershipHistory: ResolverTypeWrapper<SubnetOwnershipHistory>;
+  SubnetOwnershipHistoryArtifactOwnershipChanges: ResolverTypeWrapper<SubnetOwnershipHistoryArtifactOwnershipChanges>;
   SubnetPerformance: ResolverTypeWrapper<SubnetPerformance>;
   SubnetPerformanceHistory: ResolverTypeWrapper<SubnetPerformanceHistory>;
   SubnetPerformanceHistoryPoint: ResolverTypeWrapper<SubnetPerformanceHistoryPoint>;
   SubnetPipelineHistory: ResolverTypeWrapper<SubnetPipelineHistory>;
+  SubnetProfile: ResolverTypeWrapper<SubnetProfile>;
+  SubnetProfileCompleteness: ResolverTypeWrapper<SubnetProfileCompleteness>;
+  SubnetProfileGithubCommitsWeekly: ResolverTypeWrapper<SubnetProfileGithubCommitsWeekly>;
+  SubnetProfileGithubReleases: ResolverTypeWrapper<SubnetProfileGithubReleases>;
+  SubnetProfileIdentityEvidence: ResolverTypeWrapper<SubnetProfileIdentityEvidence>;
+  SubnetProfileLineage: ResolverTypeWrapper<SubnetProfileLineage>;
+  SubnetProfileLineageAlsoOn: ResolverTypeWrapper<SubnetProfileLineageAlsoOn>;
+  SubnetProfileNativeIdentity: ResolverTypeWrapper<SubnetProfileNativeIdentity>;
+  SubnetProfilePrimaryAppSurface: ResolverTypeWrapper<SubnetProfilePrimaryAppSurface>;
+  SubnetProfilePrimaryLinks: ResolverTypeWrapper<SubnetProfilePrimaryLinks>;
+  SubnetProfileProvenance: ResolverTypeWrapper<SubnetProfileProvenance>;
   SubnetPrometheus: ResolverTypeWrapper<SubnetPrometheus>;
   SubnetRecycled: ResolverTypeWrapper<SubnetRecycled>;
   SubnetRegistrations: ResolverTypeWrapper<SubnetRegistrations>;
@@ -7231,12 +8215,15 @@ export type ResolversParentTypes = ResolversObject<{
   AccountWeightSetters: AccountWeightSetters;
   AccountWeightSettersSubnet: AccountWeightSettersSubnet;
   Adapter: Adapter;
+  AdapterArtifactSnapshot: AdapterArtifactSnapshot;
   AlphaUsdFieldSource: AlphaUsdFieldSource;
   Block: Block;
   BlockChainEvents: BlockChainEvents;
+  BlockChainEventsArtifactEvents: BlockChainEventsArtifactEvents;
   BlockDetail: BlockDetail;
   BlockEvents: BlockEvents;
   BlockExtrinsics: BlockExtrinsics;
+  BlockExtrinsicsArtifactExtrinsics: BlockExtrinsicsArtifactExtrinsics;
   BlockList: BlockList;
   BlockTimeDistribution: BlockTimeDistribution;
   BlocksSummary: BlocksSummary;
@@ -7245,6 +8232,8 @@ export type ResolversParentTypes = ResolversObject<{
   BuildArtifactBudget: BuildArtifactBudget;
   BuildPublicContract: BuildPublicContract;
   BuildSummary: BuildSummary;
+  BuildSummaryArtifactArtifactBudgetSummary: BuildSummaryArtifactArtifactBudgetSummary;
+  BuildSummaryArtifactArtifacts: BuildSummaryArtifactArtifacts;
   ChainActivity: ChainActivity;
   ChainActivityDay: ChainActivityDay;
   ChainAlphaVolume: ChainAlphaVolume;
@@ -7260,6 +8249,7 @@ export type ResolversParentTypes = ResolversObject<{
   ChainConcentration: ChainConcentration;
   ChainConcentrationHistory: ChainConcentrationHistory;
   ChainConcentrationHistoryPoint: ChainConcentrationHistoryPoint;
+  ChainConcentrationScorecard: ChainConcentrationScorecard;
   ChainDeregistrations: ChainDeregistrations;
   ChainDeregistrationsNetwork: ChainDeregistrationsNetwork;
   ChainDeregistrationsSubnet: ChainDeregistrationsSubnet;
@@ -7317,15 +8307,30 @@ export type ResolversParentTypes = ResolversObject<{
   ChainWeightsSubnet: ChainWeightsSubnet;
   ChainYield: ChainYield;
   Changelog: Changelog;
+  ChangelogArtifactArtifacts: ChangelogArtifactArtifacts;
+  ChangelogArtifactSubnets: ChangelogArtifactSubnets;
+  ChangelogArtifactSubnetsAdded: ChangelogArtifactSubnetsAdded;
+  ChangelogArtifactSubnetsRemoved: ChangelogArtifactSubnetsRemoved;
+  ChangelogArtifactSubnetsRenamed: ChangelogArtifactSubnetsRenamed;
+  ChangelogArtifactSummary: ChangelogArtifactSummary;
   Compare: Compare;
   CompareEconomics: CompareEconomics;
   CompareHealth: CompareHealth;
   CompareStructure: CompareStructure;
   CompareSubnet: CompareSubnet;
+  CompareValidatorsArtifactValidatorsColdkeyIdentity: CompareValidatorsArtifactValidatorsColdkeyIdentity;
+  CompareValidatorsArtifactValidatorsSubnetContext: CompareValidatorsArtifactValidatorsSubnetContext;
   ComparedValidator: ComparedValidator;
   ConcentrationMetrics: ConcentrationMetrics;
   Contracts: Contracts;
+  ContractsArtifactArtifacts: ContractsArtifactArtifacts;
+  ContractsArtifactArtifactsRetirement: ContractsArtifactArtifactsRetirement;
+  CoverageArtifact: CoverageArtifact;
+  CoverageArtifactSource: CoverageArtifactSource;
+  CoverageCompleteness: CoverageCompleteness;
+  CurationArtifactCuration: CurationArtifactCuration;
   CurationList: CurationList;
+  CurationMetadata: CurationMetadata;
   DegradedInfo: DegradedInfo;
   DeregistrationDerivation: DeregistrationDerivation;
   DeregistrationTenure: DeregistrationTenure;
@@ -7345,8 +8350,12 @@ export type ResolversParentTypes = ResolversObject<{
   Endpoint: Endpoint;
   EndpointIncident: EndpointIncident;
   EndpointIncidentWindow: EndpointIncidentWindow;
+  EndpointIncidentsArtifactSummary: EndpointIncidentsArtifactSummary;
   EndpointList: EndpointList;
   EndpointPoolList: EndpointPoolList;
+  EndpointScoreReason: EndpointScoreReason;
+  EvidenceClaim: EvidenceClaim;
+  EvidenceLedgerArtifactSummary: EvidenceLedgerArtifactSummary;
   EvidenceList: EvidenceList;
   EvmAddressMapping: EvmAddressMapping;
   Extrinsic: Extrinsic;
@@ -7356,11 +8365,20 @@ export type ResolversParentTypes = ResolversObject<{
   FailureReasons: FailureReasons;
   FailureReasonsDay: FailureReasonsDay;
   Float: Scalars['Float']['output'];
+  Gaps: Gaps;
+  GapsArtifactGaps: GapsArtifactGaps;
   GapsList: GapsList;
   GlobalHealth: GlobalHealth;
   GlobalIncidentSurface: GlobalIncidentSurface;
   GlobalIncidents: GlobalIncidents;
+  GlobalIncidentsArtifactSummary: GlobalIncidentsArtifactSummary;
   HealthHistory: HealthHistory;
+  HealthHistoryArtifactSurfaces: HealthHistoryArtifactSurfaces;
+  HealthIncidentsArtifactSurfaces: HealthIncidentsArtifactSurfaces;
+  HealthIncidentsArtifactSurfacesIncidents: HealthIncidentsArtifactSurfacesIncidents;
+  HealthPercentilesArtifactSurfaces: HealthPercentilesArtifactSurfaces;
+  HealthPercentilesArtifactSurfacesLatencyMs: HealthPercentilesArtifactSurfacesLatencyMs;
+  HealthProbeSummary: HealthProbeSummary;
   HealthTrends: HealthTrends;
   Hyperparameters: Hyperparameters;
   HyperparamsHistoryEntry: HyperparamsHistoryEntry;
@@ -7371,6 +8389,8 @@ export type ResolversParentTypes = ResolversObject<{
   IndexerLagLatency: IndexerLagLatency;
   IndexerLagWindow: IndexerLagWindow;
   Int: Scalars['Int']['output'];
+  IntegrationReadiness: IntegrationReadiness;
+  IntegrationReadinessComponents: IntegrationReadinessComponents;
   IntensityDistribution: IntensityDistribution;
   JSON: Scalars['JSON']['output'];
   NetworkParameters: NetworkParameters;
@@ -7397,15 +8417,28 @@ export type ResolversParentTypes = ResolversObject<{
   RevenueSource: RevenueSource;
   RevenueVerification: RevenueVerification;
   RevenueVerificationCheck: RevenueVerificationCheck;
+  ReviewAdapterCandidate: ReviewAdapterCandidate;
   ReviewAdapterCandidateList: ReviewAdapterCandidateList;
+  ReviewEnrichmentEvidenceArtifactEntries: ReviewEnrichmentEvidenceArtifactEntries;
+  ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary: ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary;
   ReviewEnrichmentEvidenceList: ReviewEnrichmentEvidenceList;
+  ReviewEnrichmentQueueArtifactQueue: ReviewEnrichmentQueueArtifactQueue;
+  ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary: ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary;
   ReviewEnrichmentQueueList: ReviewEnrichmentQueueList;
   ReviewEnrichmentTargetList: ReviewEnrichmentTargetList;
+  ReviewEnrichmentTargetsArtifactTargets: ReviewEnrichmentTargetsArtifactTargets;
+  ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence: ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence;
+  ReviewEnrichmentTargetsArtifactTargetsQueueContext: ReviewEnrichmentTargetsArtifactTargetsQueueContext;
+  ReviewGapPriority: ReviewGapPriority;
   ReviewGapPriorityList: ReviewGapPriorityList;
+  ReviewProfileCompletenessArtifactProfiles: ReviewProfileCompletenessArtifactProfiles;
+  ReviewProfileCompletenessArtifactSummary: ReviewProfileCompletenessArtifactSummary;
   ReviewProfileCompletenessList: ReviewProfileCompletenessList;
   RootClaimEntry: RootClaimEntry;
   RootClaimHotkey: RootClaimHotkey;
   RootClaimType: RootClaimType;
+  RpcPool: RpcPool;
+  RpcPoolEndpoints: RpcPoolEndpoints;
   RpcUsage: RpcUsage;
   RpcUsageBucket: RpcUsageBucket;
   RpcUsageCoverage: RpcUsageCoverage;
@@ -7419,13 +8452,17 @@ export type ResolversParentTypes = ResolversObject<{
   RuntimeTransition: RuntimeTransition;
   RuntimeVersionHistory: RuntimeVersionHistory;
   ScoreDistribution: ScoreDistribution;
+  SearchArtifactDocuments: SearchArtifactDocuments;
   SearchDocumentList: SearchDocumentList;
+  SearchIndexArtifactDocuments: SearchIndexArtifactDocuments;
   SearchIndexList: SearchIndexList;
   SelfHealth: SelfHealth;
   SelfHealthComponentView: SelfHealthComponentView;
   SelfHealthDay: SelfHealthDay;
   SelfHealthLane: SelfHealthLane;
   SourceSnapshotList: SourceSnapshotList;
+  SourceSnapshotsArtifactSources: SourceSnapshotsArtifactSources;
+  SourceSnapshotsArtifactSummary: SourceSnapshotsArtifactSummary;
   String: Scalars['String']['output'];
   Subnet: Subnet;
   SubnetAxonRemovals: SubnetAxonRemovals;
@@ -7436,11 +8473,14 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetConcentrationHistory: SubnetConcentrationHistory;
   SubnetConcentrationHistoryPoint: SubnetConcentrationHistoryPoint;
   SubnetConviction: SubnetConviction;
+  SubnetConvictionArtifactLeaderboard: SubnetConvictionArtifactLeaderboard;
   SubnetDeregistrationEvent: SubnetDeregistrationEvent;
   SubnetDeregistrations: SubnetDeregistrations;
   SubnetEconomics: SubnetEconomics;
   SubnetEmissionDecomposition: SubnetEmissionDecomposition;
   SubnetEventSummary: SubnetEventSummary;
+  SubnetEventSummaryArtifactCategories: SubnetEventSummaryArtifactCategories;
+  SubnetEventSummaryArtifactEventKinds: SubnetEventSummaryArtifactEventKinds;
   SubnetEvents: SubnetEvents;
   SubnetHealth: SubnetHealth;
   SubnetHealthIncidents: SubnetHealthIncidents;
@@ -7457,7 +8497,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetIdentityHistoryEntry: SubnetIdentityHistoryEntry;
   SubnetIdleStake: SubnetIdleStake;
   SubnetLease: SubnetLease;
+  SubnetLeaseArtifactLease: SubnetLeaseArtifactLease;
   SubnetLeaseHistory: SubnetLeaseHistory;
+  SubnetLeaseHistoryArtifactLeaseEvents: SubnetLeaseHistoryArtifactLeaseEvents;
   SubnetLifecycle: SubnetLifecycle;
   SubnetLifecycleEntry: SubnetLifecycleEntry;
   SubnetList: SubnetList;
@@ -7467,10 +8509,22 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetOhlc: SubnetOhlc;
   SubnetOhlcCandle: SubnetOhlcCandle;
   SubnetOwnershipHistory: SubnetOwnershipHistory;
+  SubnetOwnershipHistoryArtifactOwnershipChanges: SubnetOwnershipHistoryArtifactOwnershipChanges;
   SubnetPerformance: SubnetPerformance;
   SubnetPerformanceHistory: SubnetPerformanceHistory;
   SubnetPerformanceHistoryPoint: SubnetPerformanceHistoryPoint;
   SubnetPipelineHistory: SubnetPipelineHistory;
+  SubnetProfile: SubnetProfile;
+  SubnetProfileCompleteness: SubnetProfileCompleteness;
+  SubnetProfileGithubCommitsWeekly: SubnetProfileGithubCommitsWeekly;
+  SubnetProfileGithubReleases: SubnetProfileGithubReleases;
+  SubnetProfileIdentityEvidence: SubnetProfileIdentityEvidence;
+  SubnetProfileLineage: SubnetProfileLineage;
+  SubnetProfileLineageAlsoOn: SubnetProfileLineageAlsoOn;
+  SubnetProfileNativeIdentity: SubnetProfileNativeIdentity;
+  SubnetProfilePrimaryAppSurface: SubnetProfilePrimaryAppSurface;
+  SubnetProfilePrimaryLinks: SubnetProfilePrimaryLinks;
+  SubnetProfileProvenance: SubnetProfileProvenance;
   SubnetPrometheus: SubnetPrometheus;
   SubnetRecycled: SubnetRecycled;
   SubnetRegistrations: SubnetRegistrations;
@@ -8101,8 +9155,22 @@ export type AdapterResolvers<ContextType = GqlContext, ParentType extends Resolv
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  snapshot?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  snapshot?: Resolver<Maybe<ResolversTypes['AdapterArtifactSnapshot']>, ParentType, ContextType>;
   subnet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type AdapterArtifactSnapshotResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AdapterArtifactSnapshot'] = ResolversParentTypes['AdapterArtifactSnapshot']> = ResolversObject<{
+  adapter_kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  dimensions?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  excluded_dimensions?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type AlphaUsdFieldSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AlphaUsdFieldSource'] = ResolversParentTypes['AlphaUsdFieldSource']> = ResolversObject<{
@@ -8124,8 +9192,20 @@ export type BlockResolvers<ContextType = GqlContext, ParentType extends Resolver
 export type BlockChainEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockChainEvents'] = ResolversParentTypes['BlockChainEvents']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  events?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  events?: Resolver<Array<ResolversTypes['BlockChainEventsArtifactEvents']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type BlockChainEventsArtifactEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockChainEventsArtifactEvents'] = ResolversParentTypes['BlockChainEventsArtifactEvents']> = ResolversObject<{
+  args?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  event_index?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  extrinsic_index?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  method?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pallet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  phase?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type BlockDetailResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockDetail'] = ResolversParentTypes['BlockDetail']> = ResolversObject<{
@@ -8149,11 +9229,26 @@ export type BlockEventsResolvers<ContextType = GqlContext, ParentType extends Re
 export type BlockExtrinsicsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockExtrinsics'] = ResolversParentTypes['BlockExtrinsics']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   extrinsic_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  extrinsics?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  extrinsics?: Resolver<Maybe<Array<ResolversTypes['BlockExtrinsicsArtifactExtrinsics']>>, ParentType, ContextType>;
   limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   offset?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   ref?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type BlockExtrinsicsArtifactExtrinsicsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockExtrinsicsArtifactExtrinsics'] = ResolversParentTypes['BlockExtrinsicsArtifactExtrinsics']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  call_args?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  call_function?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  call_module?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  extrinsic_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  extrinsic_index?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  signer?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  success?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type BlockListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BlockList'] = ResolversParentTypes['BlockList']> = ResolversObject<{
@@ -8209,14 +9304,14 @@ export type BuildPublicContractResolvers<ContextType = GqlContext, ParentType ex
 
 export type BuildSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BuildSummary'] = ResolversParentTypes['BuildSummary']> = ResolversObject<{
   adapter_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  artifact_budget_summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  artifact_budget_summary?: Resolver<Maybe<ResolversTypes['BuildSummaryArtifactArtifactBudgetSummary']>, ParentType, ContextType>;
   artifact_budgets?: Resolver<Maybe<Array<ResolversTypes['BuildArtifactBudget']>>, ParentType, ContextType>;
   artifact_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   artifact_size_bytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  artifacts?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  artifacts?: Resolver<Maybe<Array<ResolversTypes['BuildSummaryArtifactArtifacts']>>, ParentType, ContextType>;
   candidate_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  coverage?: Resolver<Maybe<ResolversTypes['CoverageArtifact']>, ParentType, ContextType>;
   endpoint_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   full_artifact_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   full_artifact_size_bytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -8231,6 +9326,19 @@ export type BuildSummaryResolvers<ContextType = GqlContext, ParentType extends R
   storage_tier_size_bytes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   surface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type BuildSummaryArtifactArtifactBudgetSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BuildSummaryArtifactArtifactBudgetSummary'] = ResolversParentTypes['BuildSummaryArtifactArtifactBudgetSummary']> = ResolversObject<{
+  fail_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ok_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  warn_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type BuildSummaryArtifactArtifactsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['BuildSummaryArtifactArtifacts'] = ResolversParentTypes['BuildSummaryArtifactArtifacts']> = ResolversObject<{
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sha256?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  size_bytes?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  storage_tier?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type ChainActivityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainActivity'] = ResolversParentTypes['ChainActivity']> = ResolversObject<{
@@ -8393,16 +9501,27 @@ export type ChainConcentrationHistoryResolvers<ContextType = GqlContext, ParentT
 export type ChainConcentrationHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistoryPoint'] = ResolversParentTypes['ChainConcentrationHistoryPoint']> = ResolversObject<{
   builder_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  emission?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  emission?: Resolver<Maybe<ResolversTypes['ChainConcentrationScorecard']>, ParentType, ContextType>;
   entity_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  entity_emission?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  entity_stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  entity_emission?: Resolver<Maybe<ResolversTypes['ChainConcentrationScorecard']>, ParentType, ContextType>;
+  entity_stake?: Resolver<Maybe<ResolversTypes['ChainConcentrationScorecard']>, ParentType, ContextType>;
   neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   source_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  stake?: Resolver<Maybe<ResolversTypes['ChainConcentrationScorecard']>, ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   uids_per_entity?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
-  validator_stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  validator_stake?: Resolver<Maybe<ResolversTypes['ChainConcentrationScorecard']>, ParentType, ContextType>;
+}>;
+
+export type ChainConcentrationScorecardResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationScorecard'] = ResolversParentTypes['ChainConcentrationScorecard']> = ResolversObject<{
+  entropy?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  entropy_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gini?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hhi_normalized?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  holders?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  nakamoto_coefficient?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
 export type ChainDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrations'] = ResolversParentTypes['ChainDeregistrations']> = ResolversObject<{
@@ -8933,15 +10052,55 @@ export type ChainYieldResolvers<ContextType = GqlContext, ParentType extends Res
 }>;
 
 export type ChangelogResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Changelog'] = ResolversParentTypes['Changelog']> = ResolversObject<{
-  artifacts?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  artifacts?: Resolver<Maybe<ResolversTypes['ChangelogArtifactArtifacts']>, ParentType, ContextType>;
   contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   coverage_delta?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  subnets?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  subnets?: Resolver<Maybe<ResolversTypes['ChangelogArtifactSubnets']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['ChangelogArtifactSummary']>, ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactArtifactsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactArtifacts'] = ResolversParentTypes['ChangelogArtifactArtifacts']> = ResolversObject<{
+  added?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  modified?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  removed?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactSubnetsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactSubnets'] = ResolversParentTypes['ChangelogArtifactSubnets']> = ResolversObject<{
+  added?: Resolver<Array<ResolversTypes['ChangelogArtifactSubnetsAdded']>, ParentType, ContextType>;
+  removed?: Resolver<Array<ResolversTypes['ChangelogArtifactSubnetsRemoved']>, ParentType, ContextType>;
+  renamed?: Resolver<Array<ResolversTypes['ChangelogArtifactSubnetsRenamed']>, ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactSubnetsAddedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactSubnetsAdded'] = ResolversParentTypes['ChangelogArtifactSubnetsAdded']> = ResolversObject<{
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactSubnetsRemovedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactSubnetsRemoved'] = ResolversParentTypes['ChangelogArtifactSubnetsRemoved']> = ResolversObject<{
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactSubnetsRenamedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactSubnetsRenamed'] = ResolversParentTypes['ChangelogArtifactSubnetsRenamed']> = ResolversObject<{
+  after?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  before?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ChangelogArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChangelogArtifactSummary'] = ResolversParentTypes['ChangelogArtifactSummary']> = ResolversObject<{
+  artifact_added_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  artifact_modified_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  artifact_removed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  coverage_delta?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  netuid_added_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  netuid_removed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  netuid_renamed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type CompareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Compare'] = ResolversParentTypes['Compare']> = ResolversObject<{
@@ -8987,16 +10146,49 @@ export type CompareSubnetResolvers<ContextType = GqlContext, ParentType extends 
   structure?: Resolver<Maybe<ResolversTypes['CompareStructure']>, ParentType, ContextType>;
 }>;
 
+export type CompareValidatorsArtifactValidatorsColdkeyIdentityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CompareValidatorsArtifactValidatorsColdkeyIdentity'] = ResolversParentTypes['CompareValidatorsArtifactValidatorsColdkeyIdentity']> = ResolversObject<{
+  additional?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  discord?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  github?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  has_identity?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  image?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type CompareValidatorsArtifactValidatorsSubnetContextResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CompareValidatorsArtifactValidatorsSubnetContext'] = ResolversParentTypes['CompareValidatorsArtifactValidatorsSubnetContext']> = ResolversObject<{
+  active?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  axon?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  incentive?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  is_immunity_period?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rank?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  registered_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validator_permit?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
 export type ComparedValidatorResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ComparedValidator'] = ResolversParentTypes['ComparedValidator']> = ResolversObject<{
   apy_estimate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   apy_estimate_eligible_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   avg_validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  coldkey_identity?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  coldkey_identity?: Resolver<Maybe<ResolversTypes['CompareValidatorsArtifactValidatorsColdkeyIdentity']>, ParentType, ContextType>;
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   max_validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   nominator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  subnet_context?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  subnet_context?: Resolver<Maybe<ResolversTypes['CompareValidatorsArtifactValidatorsSubnetContext']>, ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
@@ -9019,7 +10211,7 @@ export type ConcentrationMetricsResolvers<ContextType = GqlContext, ParentType e
 }>;
 
 export type ContractsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Contracts'] = ResolversParentTypes['Contracts']> = ResolversObject<{
-  artifacts?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  artifacts?: Resolver<Maybe<Array<ResolversTypes['ContractsArtifactArtifacts']>>, ParentType, ContextType>;
   base_path?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9031,8 +10223,88 @@ export type ContractsResolvers<ContextType = GqlContext, ParentType extends Reso
   type_definitions_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type ContractsArtifactArtifactsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ContractsArtifactArtifacts'] = ResolversParentTypes['ContractsArtifactArtifacts']> = ResolversObject<{
+  content_type?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  contract_version?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  retirement?: Resolver<Maybe<ResolversTypes['ContractsArtifactArtifactsRetirement']>, ParentType, ContextType>;
+  schema_ref?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  storage_tier?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ContractsArtifactArtifactsRetirementResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ContractsArtifactArtifactsRetirement'] = ResolversParentTypes['ContractsArtifactArtifactsRetirement']> = ResolversObject<{
+  code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  http_status?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type CoverageArtifactResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CoverageArtifact'] = ResolversParentTypes['CoverageArtifact']> = ResolversObject<{
+  application_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  chain_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  completeness?: Resolver<Maybe<ResolversTypes['CoverageCompleteness']>, ParentType, ContextType>;
+  contract_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  curated_overlay_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  curation_level_counts?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  domain_coverage?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  first_party_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  generated_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  manifested_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_only_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_only_with_candidates?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_only_without_candidates?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_snapshot_captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  network?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  official_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  probed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  probed_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  registry_observed_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  root_subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['CoverageArtifactSource'], ParentType, ContextType>;
+  subnets_without_official_surface?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type CoverageArtifactSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CoverageArtifactSource'] = ResolversParentTypes['CoverageArtifactSource']> = ResolversObject<{
+  candidates?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  native?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  overlays?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type CoverageCompletenessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CoverageCompleteness'] = ResolversParentTypes['CoverageCompleteness']> = ResolversObject<{
+  average_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  dimension_coverage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  fully_complete_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  fully_complete_pct?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  median_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  methodology?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  score_distribution?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  scored_subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type CurationArtifactCurationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CurationArtifactCuration'] = ResolversParentTypes['CurationArtifactCuration']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  coverage_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  curation?: Resolver<ResolversTypes['CurationMetadata'], ParentType, ContextType>;
+  curation_level?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  gap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  gaps?: Resolver<ResolversTypes['Gaps'], ParentType, ContextType>;
+  lifecycle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type CurationListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CurationList'] = ResolversParentTypes['CurationList']> = ResolversObject<{
-  curation?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  curation?: Resolver<Maybe<Array<ResolversTypes['CurationArtifactCuration']>>, ParentType, ContextType>;
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9042,6 +10314,15 @@ export type CurationListResolvers<ContextType = GqlContext, ParentType extends R
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type CurationMetadataResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CurationMetadata'] = ResolversParentTypes['CurationMetadata']> = ResolversObject<{
+  gap_notes?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reviewed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type DegradedInfoResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DegradedInfo'] = ResolversParentTypes['DegradedInfo']> = ResolversObject<{
@@ -9268,6 +10549,16 @@ export type EndpointIncidentWindowResolvers<ContextType = GqlContext, ParentType
   started_at?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
 }>;
 
+export type EndpointIncidentsArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointIncidentsArtifactSummary'] = ResolversParentTypes['EndpointIncidentsArtifactSummary']> = ResolversObject<{
+  active_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  by_kind?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_layer?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_provider?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_severity?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_status?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  incident_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type EndpointListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointList'] = ResolversParentTypes['EndpointList']> = ResolversObject<{
   items?: Resolver<Array<ResolversTypes['Endpoint']>, ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9281,15 +10572,39 @@ export type EndpointPoolListResolvers<ContextType = GqlContext, ParentType exten
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  pools?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  pools?: Resolver<Maybe<Array<ResolversTypes['RpcPool']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type EndpointScoreReasonResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointScoreReason'] = ResolversParentTypes['EndpointScoreReason']> = ResolversObject<{
+  points?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type EvidenceClaimResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvidenceClaim'] = ResolversParentTypes['EvidenceClaim']> = ResolversObject<{
+  claim?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  confidence?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  limits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_tier?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subject?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  support_summary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type EvidenceLedgerArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvidenceLedgerArtifactSummary'] = ResolversParentTypes['EvidenceLedgerArtifactSummary']> = ResolversObject<{
+  candidate_claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_claim_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvidenceList'] = ResolversParentTypes['EvidenceList']> = ResolversObject<{
-  claims?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  claims?: Resolver<Maybe<Array<ResolversTypes['EvidenceClaim']>>, ParentType, ContextType>;
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9298,7 +10613,7 @@ export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends R
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['EvidenceLedgerArtifactSummary']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -9368,9 +10683,28 @@ export type FailureReasonsDayResolvers<ContextType = GqlContext, ParentType exte
   total_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type GapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Gaps'] = ResolversParentTypes['Gaps']> = ResolversObject<{
+  gap_notes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  moving_target_surfaces?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  supported_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type GapsArtifactGapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsArtifactGaps'] = ResolversParentTypes['GapsArtifactGaps']> = ResolversObject<{
+  coverage_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  gap_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  gap_priority?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  gap_severity?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  gaps?: Resolver<ResolversTypes['Gaps'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type GapsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsList'] = ResolversParentTypes['GapsList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  gaps?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  gaps?: Resolver<Maybe<Array<ResolversTypes['GapsArtifactGaps']>>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -9419,10 +10753,15 @@ export type GlobalIncidentsResolvers<ContextType = GqlContext, ParentType extend
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['GlobalIncidentsArtifactSummary']>, ParentType, ContextType>;
   surfaces?: Resolver<Array<ResolversTypes['GlobalIncidentSurface']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type GlobalIncidentsArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GlobalIncidentsArtifactSummary'] = ResolversParentTypes['GlobalIncidentsArtifactSummary']> = ResolversObject<{
+  affected_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  incident_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type HealthHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthHistory'] = ResolversParentTypes['HealthHistory']> = ResolversObject<{
@@ -9433,9 +10772,63 @@ export type HealthHistoryResolvers<ContextType = GqlContext, ParentType extends 
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  surfaces?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['HealthProbeSummary']>, ParentType, ContextType>;
+  surfaces?: Resolver<Maybe<Array<ResolversTypes['HealthHistoryArtifactSurfaces']>>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type HealthHistoryArtifactSurfacesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthHistoryArtifactSurfaces'] = ResolversParentTypes['HealthHistoryArtifactSurfaces']> = ResolversObject<{
+  classification?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  error_class?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  last_checked?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  last_ok?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  provider?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status_code?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  surface_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  verified_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type HealthIncidentsArtifactSurfacesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthIncidentsArtifactSurfaces'] = ResolversParentTypes['HealthIncidentsArtifactSurfaces']> = ResolversObject<{
+  downtime_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  incident_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  incidents?: Resolver<Array<ResolversTypes['HealthIncidentsArtifactSurfacesIncidents']>, ParentType, ContextType>;
+  samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  transient_failed_samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  transient_failure_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  uptime_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type HealthIncidentsArtifactSurfacesIncidentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthIncidentsArtifactSurfacesIncidents'] = ResolversParentTypes['HealthIncidentsArtifactSurfacesIncidents']> = ResolversObject<{
+  duration_ms?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  ended_at?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  failed_samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  started_at?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type HealthPercentilesArtifactSurfacesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthPercentilesArtifactSurfaces'] = ResolversParentTypes['HealthPercentilesArtifactSurfaces']> = ResolversObject<{
+  latency_ms?: Resolver<ResolversTypes['HealthPercentilesArtifactSurfacesLatencyMs'], ParentType, ContextType>;
+  samples?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type HealthPercentilesArtifactSurfacesLatencyMsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthPercentilesArtifactSurfacesLatencyMs'] = ResolversParentTypes['HealthPercentilesArtifactSurfacesLatencyMs']> = ResolversObject<{
+  avg?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  max?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  min?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  p50?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  p95?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  p99?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type HealthProbeSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthProbeSummary'] = ResolversParentTypes['HealthProbeSummary']> = ResolversObject<{
+  classification_counts?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  status_counts?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type HealthTrendsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HealthTrends'] = ResolversParentTypes['HealthTrends']> = ResolversObject<{
@@ -9510,7 +10903,7 @@ export type IncidentListResolvers<ContextType = GqlContext, ParentType extends R
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['EndpointIncidentsArtifactSummary']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -9543,6 +10936,26 @@ export type IndexerLagWindowResolvers<ContextType = GqlContext, ParentType exten
   newest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   oldest_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type IntegrationReadinessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IntegrationReadiness'] = ResolversParentTypes['IntegrationReadiness']> = ResolversObject<{
+  components?: Resolver<ResolversTypes['IntegrationReadinessComponents'], ParentType, ContextType>;
+  readiness_tier?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  readiness_verified?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  readiness_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type IntegrationReadinessComponentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IntegrationReadinessComponents'] = ResolversParentTypes['IntegrationReadinessComponents']> = ResolversObject<{
+  active_lifecycle?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  auth_clarity?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  callable_now?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  documented?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  has_callable_api?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  has_candidate_api?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  has_public_docs?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  has_source_repo?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  profile_complete?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
 }>;
 
 export type IntensityDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IntensityDistribution'] = ResolversParentTypes['IntensityDistribution']> = ResolversObject<{
@@ -9741,7 +11154,7 @@ export type PoolListResolvers<ContextType = GqlContext, ParentType extends Resol
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   operational_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  pools?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  pools?: Resolver<Maybe<Array<ResolversTypes['RpcPool']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9754,7 +11167,7 @@ export type ProfileListResolvers<ContextType = GqlContext, ParentType extends Re
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  profiles?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  profiles?: Resolver<Maybe<Array<ResolversTypes['SubnetProfile']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10038,8 +11451,25 @@ export type RevenueVerificationCheckResolvers<ContextType = GqlContext, ParentTy
   ok?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
+export type ReviewAdapterCandidateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewAdapterCandidate'] = ResolversParentTypes['ReviewAdapterCandidate']> = ResolversObject<{
+  candidate_api_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_api_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  candidate_api_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  operational_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_surface_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reason_codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  recommended_adapter_kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suggested_next_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type ReviewAdapterCandidateListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewAdapterCandidateList'] = ResolversParentTypes['ReviewAdapterCandidateList']> = ResolversObject<{
-  candidates?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  candidates?: Resolver<Maybe<Array<ResolversTypes['ReviewAdapterCandidate']>>, ParentType, ContextType>;
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10051,17 +11481,89 @@ export type ReviewAdapterCandidateListResolvers<ContextType = GqlContext, Parent
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type ReviewEnrichmentEvidenceArtifactEntriesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentEvidenceArtifactEntries'] = ResolversParentTypes['ReviewEnrichmentEvidenceArtifactEntries']> = ResolversObject<{
+  candidate_evidence_by_kind?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  candidate_evidence_summary?: Resolver<ResolversTypes['ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary'], ParentType, ContextType>;
+  direct_submission_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  evidence_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  lane?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary'] = ResolversParentTypes['ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  kinds_with_candidates?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  live_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  live_or_redirected_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reviewable_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stale_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  stale_or_failed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unverified_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unverified_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type ReviewEnrichmentEvidenceListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentEvidenceList'] = ResolversParentTypes['ReviewEnrichmentEvidenceList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  entries?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  entries?: Resolver<Maybe<Array<ResolversTypes['ReviewEnrichmentEvidenceArtifactEntries']>>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentQueueArtifactQueueResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentQueueArtifactQueue'] = ResolversParentTypes['ReviewEnrichmentQueueArtifactQueue']> = ResolversObject<{
+  adapter_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_evidence_summary?: Resolver<ResolversTypes['ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary'], ParentType, ContextType>;
+  completeness_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  contribution_hint?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  direct_submission_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  endpoint_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  evidence_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  lane?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  manual_review_required?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  missing_identity?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_interface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reason_codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  recommended_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sample_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  sample_live_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  sample_stale_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  sample_target_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_urls?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  stale_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  verified_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary'] = ResolversParentTypes['ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  kinds_with_candidates?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  live_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  live_or_redirected_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reviewable_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stale_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  stale_or_failed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unverified_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unverified_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type ReviewEnrichmentQueueListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentQueueList'] = ResolversParentTypes['ReviewEnrichmentQueueList']> = ResolversObject<{
@@ -10069,9 +11571,9 @@ export type ReviewEnrichmentQueueListResolvers<ContextType = GqlContext, ParentT
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  queue?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  queue?: Resolver<Maybe<Array<ResolversTypes['ReviewEnrichmentQueueArtifactQueue']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10082,12 +11584,83 @@ export type ReviewEnrichmentTargetListResolvers<ContextType = GqlContext, Parent
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  targets?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  targets?: Resolver<Maybe<Array<ResolversTypes['ReviewEnrichmentTargetsArtifactTargets']>>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentTargetsArtifactTargetsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargets'] = ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargets']> = ResolversObject<{
+  auto_review_candidate?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  candidate_command?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  candidate_evidence?: Resolver<Maybe<ResolversTypes['ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence']>, ParentType, ContextType>;
+  contribution_prompt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  evidence_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lane?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  manual_review_required?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  queue_context?: Resolver<ResolversTypes['ReviewEnrichmentTargetsArtifactTargetsQueueContext'], ParentType, ContextType>;
+  reason_codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  recommended_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sample_live_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  sample_stale_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  sample_target_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_requirements?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  source_urls?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  submission_route?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  target_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  target_id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  target_type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentTargetsArtifactTargetsCandidateEvidenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence'] = ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  classifications?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  live_or_redirected_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reviewable_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sample_candidate_ids?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  stale_or_failed_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unverified_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewEnrichmentTargetsArtifactTargetsQueueContextResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargetsQueueContext'] = ResolversParentTypes['ReviewEnrichmentTargetsArtifactTargetsQueueContext']> = ResolversObject<{
+  adapter_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  completeness_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  direct_submission_kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  endpoint_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  identity_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_interface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_url_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stale_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  verified_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewGapPriorityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewGapPriority'] = ResolversParentTypes['ReviewGapPriority']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  missing_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suggested_next_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  verified_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ReviewGapPriorityListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewGapPriorityList'] = ResolversParentTypes['ReviewGapPriorityList']> = ResolversObject<{
@@ -10097,10 +11670,55 @@ export type ReviewGapPriorityListResolvers<ContextType = GqlContext, ParentType 
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  priorities?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  priorities?: Resolver<Maybe<Array<ResolversTypes['ReviewGapPriority']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ReviewProfileCompletenessArtifactProfilesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewProfileCompletenessArtifactProfiles'] = ResolversParentTypes['ReviewProfileCompletenessArtifactProfiles']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  completeness_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  confidence?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  gap_reasons?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  identity_evidence?: Resolver<ResolversTypes['SubnetProfileIdentityEvidence'], ParentType, ContextType>;
+  identity_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_promotion_kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  identity_promotion_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  identity_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  live_identity_candidate_kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  missing_critical_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  missing_identity?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_operational?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_required?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  native_identity_signal_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_name_quality?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_interface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  priority_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stale_identity_candidate_kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  suggested_next_action?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  supported_interface_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ReviewProfileCompletenessArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewProfileCompletenessArtifactSummary'] = ResolversParentTypes['ReviewProfileCompletenessArtifactSummary']> = ResolversObject<{
+  average_completeness_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  by_confidence?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_identity_level?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  by_profile_level?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  critical_gap_counts?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  identity_promotion_candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_identity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_identity_unpromoted_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  needs_identity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  needs_operational_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  profile_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ReviewProfileCompletenessListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ReviewProfileCompletenessList'] = ResolversParentTypes['ReviewProfileCompletenessList']> = ResolversObject<{
@@ -10110,10 +11728,10 @@ export type ReviewProfileCompletenessListResolvers<ContextType = GqlContext, Par
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  profiles?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  profiles?: Resolver<Maybe<Array<ResolversTypes['ReviewProfileCompletenessArtifactProfiles']>>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['ReviewProfileCompletenessArtifactSummary']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
@@ -10132,6 +11750,41 @@ export type RootClaimHotkeyResolvers<ContextType = GqlContext, ParentType extend
 export type RootClaimTypeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RootClaimType'] = ResolversParentTypes['RootClaimType']> = ResolversObject<{
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   subnets?: Resolver<Maybe<Array<ResolversTypes['Int']>>, ParentType, ContextType>;
+}>;
+
+export type RpcPoolResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcPool'] = ResolversParentTypes['RpcPool']> = ResolversObject<{
+  best_endpoint_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  eligible_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  endpoint_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  endpoints?: Resolver<Array<ResolversTypes['RpcPoolEndpoints']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type RpcPoolEndpointsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcPoolEndpoints'] = ResolversParentTypes['RpcPoolEndpoints']> = ResolversObject<{
+  archive_support?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  auth_required?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  health_source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  health_stale?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  last_ok?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latency_ms?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  latest_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  layer?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pool_eligibility_reasons?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  pool_eligible?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  provider?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  public_safe?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  reliability_grade?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reliability_score?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  score_reasons?: Resolver<Maybe<Array<ResolversTypes['EndpointScoreReason']>>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  surface_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  surface_key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type RpcUsageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsage'] = ResolversParentTypes['RpcUsage']> = ResolversObject<{
@@ -10244,15 +11897,42 @@ export type ScoreDistributionResolvers<ContextType = GqlContext, ParentType exte
   p90?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
+export type SearchArtifactDocumentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SearchArtifactDocuments'] = ResolversParentTypes['SearchArtifactDocuments']> = ResolversObject<{
+  artifact_path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  categories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  service_kinds?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  subtitle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tokens?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SearchDocumentListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SearchDocumentList'] = ResolversParentTypes['SearchDocumentList']> = ResolversObject<{
-  documents?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  documents?: Resolver<Maybe<Array<ResolversTypes['SearchArtifactDocuments']>>, ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SearchIndexArtifactDocumentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SearchIndexArtifactDocuments'] = ResolversParentTypes['SearchIndexArtifactDocuments']> = ResolversObject<{
+  artifact_path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  categories?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  service_kinds?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
+  slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  subtitle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export type SearchIndexListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SearchIndexList'] = ResolversParentTypes['SearchIndexList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  documents?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  documents?: Resolver<Maybe<Array<ResolversTypes['SearchIndexArtifactDocuments']>>, ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -10307,9 +11987,27 @@ export type SourceSnapshotListResolvers<ContextType = GqlContext, ParentType ext
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  sources?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
-  summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  sources?: Resolver<Maybe<Array<ResolversTypes['SourceSnapshotsArtifactSources']>>, ParentType, ContextType>;
+  summary?: Resolver<Maybe<ResolversTypes['SourceSnapshotsArtifactSummary']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SourceSnapshotsArtifactSourcesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SourceSnapshotsArtifactSources'] = ResolversParentTypes['SourceSnapshotsArtifactSources']> = ResolversObject<{
+  captured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hash?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  record_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SourceSnapshotsArtifactSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SourceSnapshotsArtifactSummary'] = ResolversParentTypes['SourceSnapshotsArtifactSummary']> = ResolversObject<{
+  adapter_snapshot_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  overlay_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  provider_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  source_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  verification_result_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type SubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Subnet'] = ResolversParentTypes['Subnet']> = ResolversObject<{
@@ -10411,12 +12109,19 @@ export type SubnetConvictionResolvers<ContextType = GqlContext, ParentType exten
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   king?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  leaderboard?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  leaderboard?: Resolver<Maybe<Array<ResolversTypes['SubnetConvictionArtifactLeaderboard']>>, ParentType, ContextType>;
   maturity_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   queried_at_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   unlock_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetConvictionArtifactLeaderboardResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetConvictionArtifactLeaderboard'] = ResolversParentTypes['SubnetConvictionArtifactLeaderboard']> = ResolversObject<{
+  conviction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  is_owner?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  locked_mass?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetDeregistrationEventResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeregistrationEvent'] = ResolversParentTypes['SubnetDeregistrationEvent']> = ResolversObject<{
@@ -10506,9 +12211,9 @@ export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, Paren
 }>;
 
 export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummary'] = ResolversParentTypes['SubnetEventSummary']> = ResolversObject<{
-  categories?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  categories?: Resolver<Maybe<Array<ResolversTypes['SubnetEventSummaryArtifactCategories']>>, ParentType, ContextType>;
   category_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  event_kinds?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  event_kinds?: Resolver<Maybe<Array<ResolversTypes['SubnetEventSummaryArtifactEventKinds']>>, ParentType, ContextType>;
   kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -10518,6 +12223,32 @@ export type SubnetEventSummaryResolvers<ContextType = GqlContext, ParentType ext
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_events?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEventSummaryArtifactCategoriesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummaryArtifactCategories'] = ResolversParentTypes['SubnetEventSummaryArtifactCategories']> = ResolversObject<{
+  alpha_amount?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  amount_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  category?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  first_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  first_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  last_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  last_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetEventSummaryArtifactEventKindsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEventSummaryArtifactEventKinds'] = ResolversParentTypes['SubnetEventSummaryArtifactEventKinds']> = ResolversObject<{
+  alpha_amount?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  amount_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  category?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  coldkey_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  event_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  event_kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  first_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  first_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hotkey_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  last_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  last_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEvents'] = ResolversParentTypes['SubnetEvents']> = ResolversObject<{
@@ -10552,7 +12283,7 @@ export type SubnetHealthIncidentsResolvers<ContextType = GqlContext, ParentType 
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  surfaces?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  surfaces?: Resolver<Maybe<Array<ResolversTypes['HealthIncidentsArtifactSurfaces']>>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10561,7 +12292,7 @@ export type SubnetHealthPercentilesResolvers<ContextType = GqlContext, ParentTyp
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  surfaces?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  surfaces?: Resolver<Maybe<Array<ResolversTypes['HealthPercentilesArtifactSurfaces']>>, ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10668,20 +12399,39 @@ export type SubnetIdleStakeResolvers<ContextType = GqlContext, ParentType extend
 
 export type SubnetLeaseResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLease'] = ResolversParentTypes['SubnetLease']> = ResolversObject<{
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  lease?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  lease?: Resolver<Maybe<ResolversTypes['SubnetLeaseArtifactLease']>, ParentType, ContextType>;
   leased?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type SubnetLeaseArtifactLeaseResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLeaseArtifactLease'] = ResolversParentTypes['SubnetLeaseArtifactLease']> = ResolversObject<{
+  accumulated_dividends_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  beneficiary?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emissions_share_percent?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  end_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  lease_id?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetLeaseHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLeaseHistory'] = ResolversParentTypes['SubnetLeaseHistory']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   event_kinds?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   event_pallet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  lease_events?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  lease_events?: Resolver<Maybe<Array<ResolversTypes['SubnetLeaseHistoryArtifactLeaseEvents']>>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetLeaseHistoryArtifactLeaseEventsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLeaseHistoryArtifactLeaseEvents'] = ResolversParentTypes['SubnetLeaseHistoryArtifactLeaseEvents']> = ResolversObject<{
+  beneficiary?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  event_kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetLifecycleResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLifecycle'] = ResolversParentTypes['SubnetLifecycle']> = ResolversObject<{
@@ -10792,8 +12542,17 @@ export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType
   event_pallet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_through?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  ownership_changes?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  ownership_changes?: Resolver<Maybe<Array<ResolversTypes['SubnetOwnershipHistoryArtifactOwnershipChanges']>>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetOwnershipHistoryArtifactOwnershipChangesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnershipHistoryArtifactOwnershipChanges'] = ResolversParentTypes['SubnetOwnershipHistoryArtifactOwnershipChanges']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  new_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  old_coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetPerformanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPerformance'] = ResolversParentTypes['SubnetPerformance']> = ResolversObject<{
@@ -10848,6 +12607,149 @@ export type SubnetPipelineHistoryResolvers<ContextType = GqlContext, ParentType 
   points?: Resolver<Array<ResolversTypes['PipelineHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfile'] = ResolversParentTypes['SubnetProfile']> = ResolversObject<{
+  candidate_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  categories?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  completeness?: Resolver<ResolversTypes['SubnetProfileCompleteness'], ParentType, ContextType>;
+  completeness_score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  confidence?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  derived_categories?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  derived_description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  endpoint_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  gap_reasons?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  github_commits_weekly?: Resolver<Maybe<Array<ResolversTypes['SubnetProfileGithubCommitsWeekly']>>, ParentType, ContextType>;
+  github_languages?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  github_last_push_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  github_releases?: Resolver<Maybe<Array<ResolversTypes['SubnetProfileGithubReleases']>>, ParentType, ContextType>;
+  github_stars?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  github_unreachable?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  identity_evidence?: Resolver<ResolversTypes['SubnetProfileIdentityEvidence'], ParentType, ContextType>;
+  identity_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  injection_scrubbed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  integration_readiness?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  interface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  lineage?: Resolver<Maybe<ResolversTypes['SubnetProfileLineage']>, ParentType, ContextType>;
+  missing_critical_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  missing_identity?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_operational?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_required?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  monitored_endpoint_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  native_identity?: Resolver<Maybe<ResolversTypes['SubnetProfileNativeIdentity']>, ParentType, ContextType>;
+  native_name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  native_name_quality?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  operational_interface_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  operational_interface_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  primary_app_surface?: Resolver<Maybe<ResolversTypes['SubnetProfilePrimaryAppSurface']>, ParentType, ContextType>;
+  primary_links?: Resolver<ResolversTypes['SubnetProfilePrimaryLinks'], ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  project_name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  provenance?: Resolver<ResolversTypes['SubnetProfileProvenance'], ParentType, ContextType>;
+  readiness?: Resolver<Maybe<ResolversTypes['IntegrationReadiness']>, ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subnet_type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suggested_submission_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  supported_interface_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  symbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  team?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileCompletenessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileCompleteness'] = ResolversParentTypes['SubnetProfileCompleteness']> = ResolversObject<{
+  confidence?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  gap_reasons?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  identity_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  missing_critical_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  missing_identity?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_operational?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  missing_required?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  profile_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetProfileGithubCommitsWeeklyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileGithubCommitsWeekly'] = ResolversParentTypes['SubnetProfileGithubCommitsWeekly']> = ResolversObject<{
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetProfileGithubReleasesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileGithubReleases'] = ResolversParentTypes['SubnetProfileGithubReleases']> = ResolversObject<{
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  prerelease?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  published_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tag?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetProfileIdentityEvidenceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileIdentityEvidence'] = ResolversParentTypes['SubnetProfileIdentityEvidence']> = ResolversObject<{
+  candidate_identity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  curated_identity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  curated_identity_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  live_candidate_identity_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  native_contact_present?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  native_description_present?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  native_identity_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  native_identity_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  needs_promotion_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  stale_candidate_identity_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  unverified_candidate_identity_kinds?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileLineageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileLineage'] = ResolversParentTypes['SubnetProfileLineage']> = ResolversObject<{
+  also_on?: Resolver<Maybe<Array<ResolversTypes['SubnetProfileLineageAlsoOn']>>, ParentType, ContextType>;
+  graduated_from_testnet?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileLineageAlsoOnResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileLineageAlsoOn'] = ResolversParentTypes['SubnetProfileLineageAlsoOn']> = ResolversObject<{
+  matched_by?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileNativeIdentityResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileNativeIdentity'] = ResolversParentTypes['SubnetProfileNativeIdentity']> = ResolversObject<{
+  additional?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  contact_present?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  description?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  discord?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  discord_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  github_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  logo_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subnet_name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfilePrimaryAppSurfaceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfilePrimaryAppSurface'] = ResolversParentTypes['SubnetProfilePrimaryAppSurface']> = ResolversObject<{
+  id?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  key?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  provider?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  url?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetProfilePrimaryLinksResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfilePrimaryLinks'] = ResolversParentTypes['SubnetProfilePrimaryLinks']> = ResolversObject<{
+  dashboard_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  docs_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source_repo?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  website_url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetProfileProvenanceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetProfileProvenance'] = ResolversParentTypes['SubnetProfileProvenance']> = ResolversObject<{
+  curation_level?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  identity_source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  interface_source_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  review_state?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reviewed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source_urls?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPrometheus'] = ResolversParentTypes['SubnetPrometheus']> = ResolversObject<{
@@ -11568,12 +13470,15 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   AccountWeightSetters?: AccountWeightSettersResolvers<ContextType>;
   AccountWeightSettersSubnet?: AccountWeightSettersSubnetResolvers<ContextType>;
   Adapter?: AdapterResolvers<ContextType>;
+  AdapterArtifactSnapshot?: AdapterArtifactSnapshotResolvers<ContextType>;
   AlphaUsdFieldSource?: AlphaUsdFieldSourceResolvers<ContextType>;
   Block?: BlockResolvers<ContextType>;
   BlockChainEvents?: BlockChainEventsResolvers<ContextType>;
+  BlockChainEventsArtifactEvents?: BlockChainEventsArtifactEventsResolvers<ContextType>;
   BlockDetail?: BlockDetailResolvers<ContextType>;
   BlockEvents?: BlockEventsResolvers<ContextType>;
   BlockExtrinsics?: BlockExtrinsicsResolvers<ContextType>;
+  BlockExtrinsicsArtifactExtrinsics?: BlockExtrinsicsArtifactExtrinsicsResolvers<ContextType>;
   BlockList?: BlockListResolvers<ContextType>;
   BlockTimeDistribution?: BlockTimeDistributionResolvers<ContextType>;
   BlocksSummary?: BlocksSummaryResolvers<ContextType>;
@@ -11581,6 +13486,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   BuildArtifactBudget?: BuildArtifactBudgetResolvers<ContextType>;
   BuildPublicContract?: BuildPublicContractResolvers<ContextType>;
   BuildSummary?: BuildSummaryResolvers<ContextType>;
+  BuildSummaryArtifactArtifactBudgetSummary?: BuildSummaryArtifactArtifactBudgetSummaryResolvers<ContextType>;
+  BuildSummaryArtifactArtifacts?: BuildSummaryArtifactArtifactsResolvers<ContextType>;
   ChainActivity?: ChainActivityResolvers<ContextType>;
   ChainActivityDay?: ChainActivityDayResolvers<ContextType>;
   ChainAlphaVolume?: ChainAlphaVolumeResolvers<ContextType>;
@@ -11596,6 +13503,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainConcentration?: ChainConcentrationResolvers<ContextType>;
   ChainConcentrationHistory?: ChainConcentrationHistoryResolvers<ContextType>;
   ChainConcentrationHistoryPoint?: ChainConcentrationHistoryPointResolvers<ContextType>;
+  ChainConcentrationScorecard?: ChainConcentrationScorecardResolvers<ContextType>;
   ChainDeregistrations?: ChainDeregistrationsResolvers<ContextType>;
   ChainDeregistrationsNetwork?: ChainDeregistrationsNetworkResolvers<ContextType>;
   ChainDeregistrationsSubnet?: ChainDeregistrationsSubnetResolvers<ContextType>;
@@ -11653,15 +13561,30 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainWeightsSubnet?: ChainWeightsSubnetResolvers<ContextType>;
   ChainYield?: ChainYieldResolvers<ContextType>;
   Changelog?: ChangelogResolvers<ContextType>;
+  ChangelogArtifactArtifacts?: ChangelogArtifactArtifactsResolvers<ContextType>;
+  ChangelogArtifactSubnets?: ChangelogArtifactSubnetsResolvers<ContextType>;
+  ChangelogArtifactSubnetsAdded?: ChangelogArtifactSubnetsAddedResolvers<ContextType>;
+  ChangelogArtifactSubnetsRemoved?: ChangelogArtifactSubnetsRemovedResolvers<ContextType>;
+  ChangelogArtifactSubnetsRenamed?: ChangelogArtifactSubnetsRenamedResolvers<ContextType>;
+  ChangelogArtifactSummary?: ChangelogArtifactSummaryResolvers<ContextType>;
   Compare?: CompareResolvers<ContextType>;
   CompareEconomics?: CompareEconomicsResolvers<ContextType>;
   CompareHealth?: CompareHealthResolvers<ContextType>;
   CompareStructure?: CompareStructureResolvers<ContextType>;
   CompareSubnet?: CompareSubnetResolvers<ContextType>;
+  CompareValidatorsArtifactValidatorsColdkeyIdentity?: CompareValidatorsArtifactValidatorsColdkeyIdentityResolvers<ContextType>;
+  CompareValidatorsArtifactValidatorsSubnetContext?: CompareValidatorsArtifactValidatorsSubnetContextResolvers<ContextType>;
   ComparedValidator?: ComparedValidatorResolvers<ContextType>;
   ConcentrationMetrics?: ConcentrationMetricsResolvers<ContextType>;
   Contracts?: ContractsResolvers<ContextType>;
+  ContractsArtifactArtifacts?: ContractsArtifactArtifactsResolvers<ContextType>;
+  ContractsArtifactArtifactsRetirement?: ContractsArtifactArtifactsRetirementResolvers<ContextType>;
+  CoverageArtifact?: CoverageArtifactResolvers<ContextType>;
+  CoverageArtifactSource?: CoverageArtifactSourceResolvers<ContextType>;
+  CoverageCompleteness?: CoverageCompletenessResolvers<ContextType>;
+  CurationArtifactCuration?: CurationArtifactCurationResolvers<ContextType>;
   CurationList?: CurationListResolvers<ContextType>;
+  CurationMetadata?: CurationMetadataResolvers<ContextType>;
   DegradedInfo?: DegradedInfoResolvers<ContextType>;
   DeregistrationDerivation?: DeregistrationDerivationResolvers<ContextType>;
   DeregistrationTenure?: DeregistrationTenureResolvers<ContextType>;
@@ -11681,8 +13604,12 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Endpoint?: EndpointResolvers<ContextType>;
   EndpointIncident?: EndpointIncidentResolvers<ContextType>;
   EndpointIncidentWindow?: EndpointIncidentWindowResolvers<ContextType>;
+  EndpointIncidentsArtifactSummary?: EndpointIncidentsArtifactSummaryResolvers<ContextType>;
   EndpointList?: EndpointListResolvers<ContextType>;
   EndpointPoolList?: EndpointPoolListResolvers<ContextType>;
+  EndpointScoreReason?: EndpointScoreReasonResolvers<ContextType>;
+  EvidenceClaim?: EvidenceClaimResolvers<ContextType>;
+  EvidenceLedgerArtifactSummary?: EvidenceLedgerArtifactSummaryResolvers<ContextType>;
   EvidenceList?: EvidenceListResolvers<ContextType>;
   EvmAddressMapping?: EvmAddressMappingResolvers<ContextType>;
   Extrinsic?: ExtrinsicResolvers<ContextType>;
@@ -11691,11 +13618,20 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReason?: FailureReasonResolvers<ContextType>;
   FailureReasons?: FailureReasonsResolvers<ContextType>;
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
+  Gaps?: GapsResolvers<ContextType>;
+  GapsArtifactGaps?: GapsArtifactGapsResolvers<ContextType>;
   GapsList?: GapsListResolvers<ContextType>;
   GlobalHealth?: GlobalHealthResolvers<ContextType>;
   GlobalIncidentSurface?: GlobalIncidentSurfaceResolvers<ContextType>;
   GlobalIncidents?: GlobalIncidentsResolvers<ContextType>;
+  GlobalIncidentsArtifactSummary?: GlobalIncidentsArtifactSummaryResolvers<ContextType>;
   HealthHistory?: HealthHistoryResolvers<ContextType>;
+  HealthHistoryArtifactSurfaces?: HealthHistoryArtifactSurfacesResolvers<ContextType>;
+  HealthIncidentsArtifactSurfaces?: HealthIncidentsArtifactSurfacesResolvers<ContextType>;
+  HealthIncidentsArtifactSurfacesIncidents?: HealthIncidentsArtifactSurfacesIncidentsResolvers<ContextType>;
+  HealthPercentilesArtifactSurfaces?: HealthPercentilesArtifactSurfacesResolvers<ContextType>;
+  HealthPercentilesArtifactSurfacesLatencyMs?: HealthPercentilesArtifactSurfacesLatencyMsResolvers<ContextType>;
+  HealthProbeSummary?: HealthProbeSummaryResolvers<ContextType>;
   HealthTrends?: HealthTrendsResolvers<ContextType>;
   Hyperparameters?: HyperparametersResolvers<ContextType>;
   HyperparamsHistoryEntry?: HyperparamsHistoryEntryResolvers<ContextType>;
@@ -11705,6 +13641,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   IndexerLagDegraded?: IndexerLagDegradedResolvers<ContextType>;
   IndexerLagLatency?: IndexerLagLatencyResolvers<ContextType>;
   IndexerLagWindow?: IndexerLagWindowResolvers<ContextType>;
+  IntegrationReadiness?: IntegrationReadinessResolvers<ContextType>;
+  IntegrationReadinessComponents?: IntegrationReadinessComponentsResolvers<ContextType>;
   IntensityDistribution?: IntensityDistributionResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   NetworkParameters?: NetworkParametersResolvers<ContextType>;
@@ -11731,15 +13669,28 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   RevenueSource?: RevenueSourceResolvers<ContextType>;
   RevenueVerification?: RevenueVerificationResolvers<ContextType>;
   RevenueVerificationCheck?: RevenueVerificationCheckResolvers<ContextType>;
+  ReviewAdapterCandidate?: ReviewAdapterCandidateResolvers<ContextType>;
   ReviewAdapterCandidateList?: ReviewAdapterCandidateListResolvers<ContextType>;
+  ReviewEnrichmentEvidenceArtifactEntries?: ReviewEnrichmentEvidenceArtifactEntriesResolvers<ContextType>;
+  ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary?: ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummaryResolvers<ContextType>;
   ReviewEnrichmentEvidenceList?: ReviewEnrichmentEvidenceListResolvers<ContextType>;
+  ReviewEnrichmentQueueArtifactQueue?: ReviewEnrichmentQueueArtifactQueueResolvers<ContextType>;
+  ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary?: ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummaryResolvers<ContextType>;
   ReviewEnrichmentQueueList?: ReviewEnrichmentQueueListResolvers<ContextType>;
   ReviewEnrichmentTargetList?: ReviewEnrichmentTargetListResolvers<ContextType>;
+  ReviewEnrichmentTargetsArtifactTargets?: ReviewEnrichmentTargetsArtifactTargetsResolvers<ContextType>;
+  ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence?: ReviewEnrichmentTargetsArtifactTargetsCandidateEvidenceResolvers<ContextType>;
+  ReviewEnrichmentTargetsArtifactTargetsQueueContext?: ReviewEnrichmentTargetsArtifactTargetsQueueContextResolvers<ContextType>;
+  ReviewGapPriority?: ReviewGapPriorityResolvers<ContextType>;
   ReviewGapPriorityList?: ReviewGapPriorityListResolvers<ContextType>;
+  ReviewProfileCompletenessArtifactProfiles?: ReviewProfileCompletenessArtifactProfilesResolvers<ContextType>;
+  ReviewProfileCompletenessArtifactSummary?: ReviewProfileCompletenessArtifactSummaryResolvers<ContextType>;
   ReviewProfileCompletenessList?: ReviewProfileCompletenessListResolvers<ContextType>;
   RootClaimEntry?: RootClaimEntryResolvers<ContextType>;
   RootClaimHotkey?: RootClaimHotkeyResolvers<ContextType>;
   RootClaimType?: RootClaimTypeResolvers<ContextType>;
+  RpcPool?: RpcPoolResolvers<ContextType>;
+  RpcPoolEndpoints?: RpcPoolEndpointsResolvers<ContextType>;
   RpcUsage?: RpcUsageResolvers<ContextType>;
   RpcUsageBucket?: RpcUsageBucketResolvers<ContextType>;
   RpcUsageCoverage?: RpcUsageCoverageResolvers<ContextType>;
@@ -11753,13 +13704,17 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   RuntimeTransition?: RuntimeTransitionResolvers<ContextType>;
   RuntimeVersionHistory?: RuntimeVersionHistoryResolvers<ContextType>;
   ScoreDistribution?: ScoreDistributionResolvers<ContextType>;
+  SearchArtifactDocuments?: SearchArtifactDocumentsResolvers<ContextType>;
   SearchDocumentList?: SearchDocumentListResolvers<ContextType>;
+  SearchIndexArtifactDocuments?: SearchIndexArtifactDocumentsResolvers<ContextType>;
   SearchIndexList?: SearchIndexListResolvers<ContextType>;
   SelfHealth?: SelfHealthResolvers<ContextType>;
   SelfHealthComponentView?: SelfHealthComponentViewResolvers<ContextType>;
   SelfHealthDay?: SelfHealthDayResolvers<ContextType>;
   SelfHealthLane?: SelfHealthLaneResolvers<ContextType>;
   SourceSnapshotList?: SourceSnapshotListResolvers<ContextType>;
+  SourceSnapshotsArtifactSources?: SourceSnapshotsArtifactSourcesResolvers<ContextType>;
+  SourceSnapshotsArtifactSummary?: SourceSnapshotsArtifactSummaryResolvers<ContextType>;
   Subnet?: SubnetResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
@@ -11769,11 +13724,14 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetConcentrationHistory?: SubnetConcentrationHistoryResolvers<ContextType>;
   SubnetConcentrationHistoryPoint?: SubnetConcentrationHistoryPointResolvers<ContextType>;
   SubnetConviction?: SubnetConvictionResolvers<ContextType>;
+  SubnetConvictionArtifactLeaderboard?: SubnetConvictionArtifactLeaderboardResolvers<ContextType>;
   SubnetDeregistrationEvent?: SubnetDeregistrationEventResolvers<ContextType>;
   SubnetDeregistrations?: SubnetDeregistrationsResolvers<ContextType>;
   SubnetEconomics?: SubnetEconomicsResolvers<ContextType>;
   SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
   SubnetEventSummary?: SubnetEventSummaryResolvers<ContextType>;
+  SubnetEventSummaryArtifactCategories?: SubnetEventSummaryArtifactCategoriesResolvers<ContextType>;
+  SubnetEventSummaryArtifactEventKinds?: SubnetEventSummaryArtifactEventKindsResolvers<ContextType>;
   SubnetEvents?: SubnetEventsResolvers<ContextType>;
   SubnetHealth?: SubnetHealthResolvers<ContextType>;
   SubnetHealthIncidents?: SubnetHealthIncidentsResolvers<ContextType>;
@@ -11790,7 +13748,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetIdentityHistoryEntry?: SubnetIdentityHistoryEntryResolvers<ContextType>;
   SubnetIdleStake?: SubnetIdleStakeResolvers<ContextType>;
   SubnetLease?: SubnetLeaseResolvers<ContextType>;
+  SubnetLeaseArtifactLease?: SubnetLeaseArtifactLeaseResolvers<ContextType>;
   SubnetLeaseHistory?: SubnetLeaseHistoryResolvers<ContextType>;
+  SubnetLeaseHistoryArtifactLeaseEvents?: SubnetLeaseHistoryArtifactLeaseEventsResolvers<ContextType>;
   SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
   SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;
@@ -11800,10 +13760,22 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetOhlc?: SubnetOhlcResolvers<ContextType>;
   SubnetOhlcCandle?: SubnetOhlcCandleResolvers<ContextType>;
   SubnetOwnershipHistory?: SubnetOwnershipHistoryResolvers<ContextType>;
+  SubnetOwnershipHistoryArtifactOwnershipChanges?: SubnetOwnershipHistoryArtifactOwnershipChangesResolvers<ContextType>;
   SubnetPerformance?: SubnetPerformanceResolvers<ContextType>;
   SubnetPerformanceHistory?: SubnetPerformanceHistoryResolvers<ContextType>;
   SubnetPerformanceHistoryPoint?: SubnetPerformanceHistoryPointResolvers<ContextType>;
   SubnetPipelineHistory?: SubnetPipelineHistoryResolvers<ContextType>;
+  SubnetProfile?: SubnetProfileResolvers<ContextType>;
+  SubnetProfileCompleteness?: SubnetProfileCompletenessResolvers<ContextType>;
+  SubnetProfileGithubCommitsWeekly?: SubnetProfileGithubCommitsWeeklyResolvers<ContextType>;
+  SubnetProfileGithubReleases?: SubnetProfileGithubReleasesResolvers<ContextType>;
+  SubnetProfileIdentityEvidence?: SubnetProfileIdentityEvidenceResolvers<ContextType>;
+  SubnetProfileLineage?: SubnetProfileLineageResolvers<ContextType>;
+  SubnetProfileLineageAlsoOn?: SubnetProfileLineageAlsoOnResolvers<ContextType>;
+  SubnetProfileNativeIdentity?: SubnetProfileNativeIdentityResolvers<ContextType>;
+  SubnetProfilePrimaryAppSurface?: SubnetProfilePrimaryAppSurfaceResolvers<ContextType>;
+  SubnetProfilePrimaryLinks?: SubnetProfilePrimaryLinksResolvers<ContextType>;
+  SubnetProfileProvenance?: SubnetProfileProvenanceResolvers<ContextType>;
   SubnetPrometheus?: SubnetPrometheusResolvers<ContextType>;
   SubnetRecycled?: SubnetRecycledResolvers<ContextType>;
   SubnetRegistrations?: SubnetRegistrationsResolvers<ContextType>;

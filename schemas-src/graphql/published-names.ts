@@ -464,6 +464,105 @@ export const PUBLISHED_TYPE_NAMES: Readonly<Record<string, string>> = {
   ValidatorPermitModelAgreement: "ValidatorPermitModelAgreement",
   ValidatorSetComposition: "ValidatorSetComposition",
   ValidatorTakeDistribution: "ValidatorTakeDistribution",
+  // ── the 69 types #10214 stopped publishing as opaque JSON ─────────────────
+  //
+  // Every one is an IDENTITY entry, and that is the point rather than an
+  // omission. The 50 fields these back were `JSON` in the hand-written SDL --
+  // a caller could read them, but nothing said what was inside, so nothing
+  // checked. They are emitted from their Zod components now, and a component
+  // that has never had a published name has no name to preserve: the component
+  // id IS the contract, first published here.
+  //
+  // The renamed entries above exist because the hand-written SDL chose a name
+  // before the component did (`SubnetIndexEntry` -> `Subnet`). There was no
+  // such choice to honour here -- inventing one would mint a public name no
+  // caller has ever seen, and it can still be chosen later, in the issue that
+  // wants it, without this diff having pre-empted it.
+  AdapterArtifactSnapshot: "AdapterArtifactSnapshot",
+  BlockChainEventsArtifactEvents: "BlockChainEventsArtifactEvents",
+  BlockExtrinsicsArtifactExtrinsics: "BlockExtrinsicsArtifactExtrinsics",
+  BuildSummaryArtifactArtifactBudgetSummary:
+    "BuildSummaryArtifactArtifactBudgetSummary",
+  BuildSummaryArtifactArtifacts: "BuildSummaryArtifactArtifacts",
+  ChainConcentrationScorecard: "ChainConcentrationScorecard",
+  ChangelogArtifactArtifacts: "ChangelogArtifactArtifacts",
+  ChangelogArtifactSubnets: "ChangelogArtifactSubnets",
+  ChangelogArtifactSubnetsAdded: "ChangelogArtifactSubnetsAdded",
+  ChangelogArtifactSubnetsRemoved: "ChangelogArtifactSubnetsRemoved",
+  ChangelogArtifactSubnetsRenamed: "ChangelogArtifactSubnetsRenamed",
+  ChangelogArtifactSummary: "ChangelogArtifactSummary",
+  CompareValidatorsArtifactValidatorsColdkeyIdentity:
+    "CompareValidatorsArtifactValidatorsColdkeyIdentity",
+  CompareValidatorsArtifactValidatorsSubnetContext:
+    "CompareValidatorsArtifactValidatorsSubnetContext",
+  ContractsArtifactArtifacts: "ContractsArtifactArtifacts",
+  ContractsArtifactArtifactsRetirement: "ContractsArtifactArtifactsRetirement",
+  CoverageArtifact: "CoverageArtifact",
+  CoverageArtifactSource: "CoverageArtifactSource",
+  CoverageCompleteness: "CoverageCompleteness",
+  CurationArtifactCuration: "CurationArtifactCuration",
+  CurationMetadata: "CurationMetadata",
+  EndpointIncidentsArtifactSummary: "EndpointIncidentsArtifactSummary",
+  EndpointScoreReason: "EndpointScoreReason",
+  EvidenceClaim: "EvidenceClaim",
+  EvidenceLedgerArtifactSummary: "EvidenceLedgerArtifactSummary",
+  Gaps: "Gaps",
+  GapsArtifactGaps: "GapsArtifactGaps",
+  GlobalIncidentsArtifactSummary: "GlobalIncidentsArtifactSummary",
+  HealthHistoryArtifactSurfaces: "HealthHistoryArtifactSurfaces",
+  HealthIncidentsArtifactSurfaces: "HealthIncidentsArtifactSurfaces",
+  HealthIncidentsArtifactSurfacesIncidents:
+    "HealthIncidentsArtifactSurfacesIncidents",
+  HealthPercentilesArtifactSurfaces: "HealthPercentilesArtifactSurfaces",
+  HealthPercentilesArtifactSurfacesLatencyMs:
+    "HealthPercentilesArtifactSurfacesLatencyMs",
+  HealthProbeSummary: "HealthProbeSummary",
+  IntegrationReadiness: "IntegrationReadiness",
+  IntegrationReadinessComponents: "IntegrationReadinessComponents",
+  ReviewAdapterCandidate: "ReviewAdapterCandidate",
+  ReviewEnrichmentEvidenceArtifactEntries:
+    "ReviewEnrichmentEvidenceArtifactEntries",
+  ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary:
+    "ReviewEnrichmentEvidenceArtifactEntriesCandidateEvidenceSummary",
+  ReviewEnrichmentQueueArtifactQueue: "ReviewEnrichmentQueueArtifactQueue",
+  ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary:
+    "ReviewEnrichmentQueueArtifactQueueCandidateEvidenceSummary",
+  ReviewEnrichmentTargetsArtifactTargets:
+    "ReviewEnrichmentTargetsArtifactTargets",
+  ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence:
+    "ReviewEnrichmentTargetsArtifactTargetsCandidateEvidence",
+  ReviewEnrichmentTargetsArtifactTargetsQueueContext:
+    "ReviewEnrichmentTargetsArtifactTargetsQueueContext",
+  ReviewGapPriority: "ReviewGapPriority",
+  ReviewProfileCompletenessArtifactProfiles:
+    "ReviewProfileCompletenessArtifactProfiles",
+  ReviewProfileCompletenessArtifactSummary:
+    "ReviewProfileCompletenessArtifactSummary",
+  RpcPool: "RpcPool",
+  RpcPoolEndpoints: "RpcPoolEndpoints",
+  SearchArtifactDocuments: "SearchArtifactDocuments",
+  SearchIndexArtifactDocuments: "SearchIndexArtifactDocuments",
+  SourceSnapshotsArtifactSources: "SourceSnapshotsArtifactSources",
+  SourceSnapshotsArtifactSummary: "SourceSnapshotsArtifactSummary",
+  SubnetConvictionArtifactLeaderboard: "SubnetConvictionArtifactLeaderboard",
+  SubnetEventSummaryArtifactCategories: "SubnetEventSummaryArtifactCategories",
+  SubnetEventSummaryArtifactEventKinds: "SubnetEventSummaryArtifactEventKinds",
+  SubnetLeaseArtifactLease: "SubnetLeaseArtifactLease",
+  SubnetLeaseHistoryArtifactLeaseEvents:
+    "SubnetLeaseHistoryArtifactLeaseEvents",
+  SubnetOwnershipHistoryArtifactOwnershipChanges:
+    "SubnetOwnershipHistoryArtifactOwnershipChanges",
+  SubnetProfile: "SubnetProfile",
+  SubnetProfileCompleteness: "SubnetProfileCompleteness",
+  SubnetProfileGithubCommitsWeekly: "SubnetProfileGithubCommitsWeekly",
+  SubnetProfileGithubReleases: "SubnetProfileGithubReleases",
+  SubnetProfileIdentityEvidence: "SubnetProfileIdentityEvidence",
+  SubnetProfileLineage: "SubnetProfileLineage",
+  SubnetProfileLineageAlsoOn: "SubnetProfileLineageAlsoOn",
+  SubnetProfileNativeIdentity: "SubnetProfileNativeIdentity",
+  SubnetProfilePrimaryAppSurface: "SubnetProfilePrimaryAppSurface",
+  SubnetProfilePrimaryLinks: "SubnetProfilePrimaryLinks",
+  SubnetProfileProvenance: "SubnetProfileProvenance",
 };
 
 /**
@@ -2135,10 +2234,35 @@ export const PROJECTED_TYPES: Readonly<Record<string, ProjectedType>> = {
     added: {},
     dropped: ["schema_version", "events"],
   },
+  // Was declared over `BlockEventsArtifact` -- the component behind the OTHER
+  // block route, /api/v1/blocks/{ref}/events, whose `events` are curated
+  // `AccountEvent` rows. This field mirrors /api/v1/blocks/{ref}/chain-events,
+  // and openapi.json says so: its `data` refs `BlockChainEventsArtifact`.
+  //
+  // Measured against production, the two payloads are not the same shape:
+  //
+  //   /blocks/{ref}/chain-events   {block_number, count, events[...]}
+  //   /blocks/{ref}/events         {block_number, event_count, events[...],
+  //                                 limit, offset, ref, schema_version}
+  //
+  // and their rows differ entirely -- raw pallet-level `{pallet, method, args,
+  // phase, summary}` here against the curated `{event_kind, hotkey, coldkey,
+  // netuid, amount_tao}` there. The component's own comment says as much:
+  // "distinct from the curated AccountEvent".
+  //
+  // It cost nothing while `events` was published as `[JSON!]!`, because JSON
+  // serialises whatever it is handed. It stops being free the moment the field
+  // is TYPED (#10214): every row would be checked against AccountEvent, match
+  // none of its fields, and serve `event_kind: null, hotkey: null, ...` for
+  // data that is sitting right there.
+  //
+  // `schema_version` and `event_count` are resolver-added: the artifact carries
+  // `count`, and the resolver renames it and stamps a version, which is what
+  // this route's GraphQL card has always published.
   BlockChainEvents: {
-    component: "BlockEventsArtifact",
-    added: {},
-    dropped: ["ref", "limit", "offset"],
+    component: "BlockChainEventsArtifact",
+    added: { schema_version: "Int", event_count: "Int!" },
+    dropped: ["count"],
   },
   AccountEntry: { component: "AccountsListArtifactAccounts", added: {} },
   // ── the three that had NO component until #10409 ─────────────────────────
