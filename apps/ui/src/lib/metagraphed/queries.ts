@@ -7020,32 +7020,38 @@ export const subnetStakeQuoteQuery = (
 // #10488: one subnet's declared wallets. `owner` is chain-derived and flagged
 // as such; every other role carries the source_urls that prove it, so a UI can
 // render the evidence beside the claim rather than asserting it bare.
-export function subnetWalletsQuery(netuid: number) {
-  return {
+export const subnetWalletsQuery = (netuid: number) =>
+  queryOptions({
     queryKey: k("subnet-wallets", netuid),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/wallets`, {
-        signal: undefined,
+        signal,
       });
-      return res;
+      return {
+        data: isRecord(res.data) ? res.data : {},
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<Record<string, unknown>>;
     },
-  };
-}
+    staleTime: STALE_MED,
+  });
 
 // #10488: the owner-cut accrual and its disposition. `unresolved` is a
 // first-class bucket and may be the majority state -- a UI must render it
 // plainly rather than as a warning, and never as 0.
-export function subnetOwnerCutQuery(netuid: number) {
-  return {
+export const subnetOwnerCutQuery = (netuid: number) =>
+  queryOptions({
     queryKey: k("subnet-owner-cut", netuid),
-    queryFn: async () => {
-      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/owner-cut`, {
-        signal: undefined,
-      });
-      return res;
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<unknown>(`/api/v1/subnets/${netuid}/owner-cut`, { signal });
+      return {
+        data: isRecord(res.data) ? res.data : {},
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<Record<string, unknown>>;
     },
-  };
-}
+    staleTime: STALE_MED,
+  });
 
 // #10447: one subnet's external revenue against the TAO the network emits to
 // it. coverage_ratio and subsidy_multiple stay NULL when revenue is not
