@@ -9,6 +9,7 @@ interface __BaseEnv_Env {
 	HYPERDRIVE: Hyperdrive;
 	RPC_USAGE_ANALYTICS: AnalyticsEngineDataset;
 	WEBHOOK_DELIVERIES: Queue;
+	ATTRIBUTION_SWEEPS: Queue;
 	MCP_RATE_LIMITER_COMMUNITY: RateLimit;
 	MCP_RATE_LIMITER_PAID: RateLimit;
 	AI_RATE_LIMITER_COMMUNITY: RateLimit;

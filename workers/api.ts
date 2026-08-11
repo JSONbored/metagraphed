@@ -669,9 +669,13 @@ import {
   REVENUE_OBSERVATION_TABLES,
 } from "../src/read-store-tables.ts";
 import {
+  ATTRIBUTION_SWEEP_QUEUE,
   SWEEP_FETCH_TIMEOUT_MS,
   SWEEP_MAX_BYTES,
-  runAttributionSweepTick,
+  enqueueSweeps,
+  handleSweepBatch,
+  type SweepBatchMessage,
+  type SweepQueue,
   type SweepStoreDb,
 } from "../src/attribution-sweep.ts";
 import {
@@ -1722,6 +1726,28 @@ export default {
       );
       return;
     }
+    if (batch.queue === ATTRIBUTION_SWEEP_QUEUE) {
+      // One subnet per message. The registry record is read HERE rather than
+      // carried in the message, so a message that waited in the queue cannot
+      // sweep a stale copy of the subnet's surfaces.
+      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
+      try {
+        const byNetuid = new Map(
+          (await sweepableSubnets(env)).map((s) => [s.netuid, s.record]),
+        );
+        await handleSweepBatch(
+          batch.messages as unknown as SweepBatchMessage[],
+          store.db as SweepStoreDb,
+          {
+            fetchText: fetchSweepText,
+            recordFor: async (netuid: number) => byNetuid.get(netuid) ?? null,
+          },
+        );
+      } finally {
+        store.close();
+      }
+      return;
+    }
     return handleWebhookQueue(batch, env, ctx);
   },
 };
@@ -2597,16 +2623,21 @@ async function dispatchScheduled(
     // nothing published" instead of an empty list that is equally consistent
     // with nobody having looked. An undated silence is not evidence.
     {
-      const store = producerStore(env, ctx, [...ATTRIBUTION_SWEEP_TABLES]);
-      try {
-        return await runAttributionSweepTick(
-          store.db as SweepStoreDb,
-          await sweepableSubnets(env),
-          { fetchText: fetchSweepText },
-        );
-      } finally {
-        store.close();
-      }
+      // THE CRON IS NOW A PRODUCER, not the lane. It reads which subnets are
+      // due and enqueues one message each; the consumer below sweeps them, one
+      // invocation per subnet. The slice of eight this used to sweep inline was
+      // never a cadence -- it was the invocation budget, and a queue removes it
+      // rather than working around it (#10709).
+      // No store handle and no staleness read: the producer enqueues EVERY
+      // subnet, so there is nothing to decide about which to skip. The old lane
+      // opened a connection each tick purely to order a slice it then threw
+      // most of away.
+      const subnets = await sweepableSubnets(env);
+      return await enqueueSweeps(
+        (env as unknown as { ATTRIBUTION_SWEEPS?: SweepQueue })
+          .ATTRIBUTION_SWEEPS,
+        subnets.map((s) => s.netuid),
+      );
     }
   }
   if (cron === ORIGIN_REACHABILITY_CRON) {

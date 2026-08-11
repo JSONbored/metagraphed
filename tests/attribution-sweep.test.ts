@@ -9,7 +9,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
-import {
+import worker, {
   fetchSweepText,
   handleScheduled,
   sweepableSubnets,
@@ -22,12 +22,12 @@ import { ATTRIBUTION_SWEEP_TABLES } from "../src/read-store-tables.ts";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 import {
-  SWEEP_BATCH_SIZE,
+  SWEEP_SEND_BATCH_MAX,
+  enqueueSweeps,
+  handleSweepBatch,
+  type SweepMessage,
   SWEEP_MAX_BYTES,
   SWEEP_MAX_SOURCES,
-  loadSweptAt,
-  nextToSweep,
-  runAttributionSweepTick,
   loadSweepRecord,
   persistSweep,
   ss58Candidates,
@@ -327,130 +327,6 @@ describe("the store", () => {
   });
 });
 
-describe("the lane", () => {
-  const record = (netuid: number, urls: string[] = []) => ({
-    netuid,
-    record: {
-      netuid,
-      surfaces: urls.map((url) => ({ kind: "website", url })),
-    },
-  });
-
-  function store(rows: unknown[] = [], onWrite?: (sql: string) => void) {
-    return {
-      prepare(sql: string) {
-        onWrite?.(sql);
-        return {
-          bind: () => ({
-            run: async () => undefined,
-            all: async () => ({ results: rows }),
-          }),
-          all: async () => ({ results: rows }),
-        };
-      },
-    };
-  }
-
-  test("sweeps the LEAST RECENTLY swept first, never-swept before that", () => {
-    const order = nextToSweep(
-      [1, 2, 3, 4],
-      new Map([
-        [1, 5_000],
-        [2, 1_000],
-        [4, 9_000],
-      ]),
-      3,
-    );
-    // 3 has never been swept: the only state where we have said nothing at all.
-    assert.deepEqual(order, [3, 2, 1]);
-  });
-
-  test("breaks ties by netuid so a tick is deterministic", () => {
-    assert.deepEqual(nextToSweep([9, 4, 7], new Map(), 2), [4, 7]);
-  });
-
-  test("a failed staleness read re-sweeps rather than skipping", async () => {
-    // Erring toward re-reading is the safe direction: the cost is requests,
-    // and the alternative is a subnet that silently never gets looked at.
-    const swept = await loadSweptAt({
-      prepare() {
-        throw new Error("store unavailable");
-      },
-    });
-    assert.equal(swept.size, 0);
-  });
-
-  test("reads back every subnet's last sweep", async () => {
-    const swept = await loadSweptAt(
-      store([
-        { netuid: 1, swept_at: NOW },
-        { netuid: 2, swept_at: "not a number" },
-      ]),
-    );
-    assert.deepEqual([...swept.entries()], [[1, NOW]]);
-  });
-
-  test("a tick sweeps a bounded slice and counts the verdicts", async () => {
-    const out = await runAttributionSweepTick(
-      store(),
-      [
-        record(1, ["https://a.example/"]),
-        record(2, ["https://b.example/"]),
-        record(3),
-      ],
-      {
-        fetchText: async (url) =>
-          url === "https://a.example/" ? `treasury ${REAL}` : null,
-        now: () => NOW,
-        batch: 3,
-      },
-    );
-    assert.equal(out.swept, 3);
-    assert.equal(out.candidates, 1);
-    assert.deepEqual(out.verdicts, {
-      "candidates-found": 1,
-      unreachable: 1,
-      "no-sources": 1,
-      "none-published": 0,
-    });
-    assert.equal(out.ok, true);
-  });
-
-  test("an EMPTY batch is not a success", async () => {
-    // A lane reporting ok while sweeping nothing is indistinguishable from one
-    // that swept and found nothing -- the confusion that let the revenue probe
-    // sit dead for two months (#10566).
-    const out = await runAttributionSweepTick(store(), [], {
-      fetchText: async () => null,
-      now: () => NOW,
-    });
-    assert.equal(out.ok, false);
-    assert.equal(out.reason, "no_subnets_to_sweep");
-    assert.equal(out.swept, 0);
-  });
-
-  test("a write failure fails the tick rather than being swallowed", async () => {
-    const out = await runAttributionSweepTick(null, [record(1)], {
-      fetchText: async () => null,
-      now: () => NOW,
-    });
-    assert.equal(out.ok, false);
-    assert.match(String(out.reason), /no_store_binding/);
-    assert.equal(out.swept, 1, "it still swept -- only the write failed");
-  });
-
-  test("the batch defaults to the declared size", async () => {
-    const subnets = Array.from({ length: SWEEP_BATCH_SIZE + 4 }, (_, i) =>
-      record(i + 1),
-    );
-    const out = await runAttributionSweepTick(store(), subnets, {
-      fetchText: async () => null,
-      now: () => NOW,
-    });
-    assert.equal(out.swept, SWEEP_BATCH_SIZE);
-  });
-});
-
 describe("the wiring — a correct lane nobody calls is the defect", () => {
   test("the cron expression is registered as a trigger", async () => {
     // Code and trigger deploy by different mechanisms: Workers Builds ships the
@@ -482,17 +358,21 @@ describe("the wiring — a correct lane nobody calls is the defect", () => {
     assert.match(api, /return "attribution-sweep"/);
   });
 
-  test("handleScheduled routes the cron to the lane and returns its verdict", async () => {
+  test("handleScheduled routes the cron to the PRODUCER, and it declines cleanly", async () => {
+    // The cron no longer sweeps -- it enqueues. With no artifact there is
+    // nothing to enqueue, and the producer must say so rather than report a
+    // pass with nothing sent.
     const result = (await handleScheduled(
       { cron: ATTRIBUTION_SWEEP_CRON } as unknown as ScheduledController,
       {} as unknown as Parameters<typeof handleScheduled>[1],
       { waitUntil: () => {} } as unknown as ExecutionContext,
-    )) as { ok: boolean; swept: number; reason?: string };
-    // No artifact and no store: the lane must decline rather than report a
-    // pass with nothing swept.
+    )) as { ok: boolean; enqueued: number; reason?: string };
     assert.equal(result.ok, false);
-    assert.equal(result.swept, 0);
-    assert.equal(result.reason, "no_subnets_to_sweep");
+    assert.equal(result.enqueued, 0);
+    // The BINDING is reported before the empty list, and that order is the
+    // useful one: a missing binding is a config error, and saying "no subnets"
+    // would send someone looking at the registry instead.
+    assert.equal(result.reason, "no_queue_binding");
   });
 
   test("both tables are declared Neon sole-store in every config", async () => {
@@ -660,7 +540,6 @@ describe("shapes the registry and the store can really produce", () => {
       }),
     };
     assert.equal(await loadSweepRecord(db, 64), null);
-    assert.equal((await loadSweptAt(db)).size, 0);
   });
 
   test("a row with no verdict reads as null, not as a finding", async () => {
@@ -674,3 +553,401 @@ describe("shapes the registry and the store can really produce", () => {
     assert.equal(out?.verdict, null);
   });
 });
+
+describe("the queue lane", () => {
+  function queue(sent: Array<Array<{ body: unknown }>>, fail = false) {
+    return {
+      async sendBatch(messages: Array<{ body: SweepMessage }>) {
+        if (fail) throw new Error("queue unavailable");
+        sent.push(messages);
+      },
+    };
+  }
+
+  test("enqueues EVERY subnet, not a slice", async () => {
+    // The slice of eight the cron swept was never a cadence -- it was the
+    // invocation budget. A queue removes the constraint, so the producer
+    // rations nothing.
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const out = await enqueueSweeps(queue(sent), [1, 2, 3]);
+    assert.deepEqual(out, { ok: true, enqueued: 3 });
+    assert.deepEqual(
+      sent[0].map((m) => (m.body as SweepMessage).netuid),
+      [1, 2, 3],
+    );
+  });
+
+  test("splits at the sendBatch cap", async () => {
+    // 128 subnets is one over two batches at Cloudflare's 100-message cap --
+    // exactly the off-by-one that ships.
+    const sent: Array<Array<{ body: unknown }>> = [];
+    const many = Array.from({ length: SWEEP_SEND_BATCH_MAX + 28 }, (_, i) => i);
+    const out = await enqueueSweeps(queue(sent), many);
+    assert.equal(out.enqueued, many.length);
+    assert.deepEqual(
+      sent.map((b) => b.length),
+      [SWEEP_SEND_BATCH_MAX, 28],
+    );
+  });
+
+  test("no binding and an empty list are both stated refusals", async () => {
+    assert.deepEqual(await enqueueSweeps(null, [1]), {
+      ok: false,
+      enqueued: 0,
+      reason: "no_queue_binding",
+    });
+    // A producer reporting ok while enqueuing nothing is indistinguishable
+    // from one that enqueued and found nothing to do.
+    assert.deepEqual(await enqueueSweeps(queue([]), []), {
+      ok: false,
+      enqueued: 0,
+      reason: "no_subnets_to_sweep",
+    });
+  });
+
+  test("a partial send reports what actually went out", async () => {
+    const out = await enqueueSweeps(queue([], true), [1, 2]);
+    assert.equal(out.ok, false);
+    assert.equal(out.enqueued, 0);
+    assert.match(String(out.reason), /queue unavailable/);
+  });
+});
+
+describe("consuming a sweep batch", () => {
+  function message(body: unknown) {
+    const calls = { acked: 0, retried: 0 };
+    return {
+      body,
+      ack: () => void (calls.acked += 1),
+      retry: () => void (calls.retried += 1),
+      calls,
+    };
+  }
+
+  const store = () => ({
+    prepare: () => ({
+      bind: () => ({
+        run: async () => undefined,
+        all: async () => ({ results: [] }),
+      }),
+      all: async () => ({ results: [] }),
+    }),
+  });
+
+  const deps = (
+    over: Partial<Parameters<typeof handleSweepBatch>[2]> = {},
+  ) => ({
+    fetchText: async () => "nothing here",
+    now: () => NOW,
+    recordFor: async () => ({
+      netuid: 1,
+      surfaces: [{ kind: "website", url: "https://a.example/" }],
+    }),
+    ...over,
+  });
+
+  test("acks a swept subnet", async () => {
+    const m = message({ netuid: 64 });
+    const out = await handleSweepBatch([m], store(), deps());
+    assert.deepEqual(out, { swept: 1, retried: 0, malformed: 0 });
+    assert.equal(m.calls.acked, 1);
+  });
+
+  test("reads the registry record at DELIVERY time, not from the message", async () => {
+    // A message that waited in the queue must not sweep a stale copy of the
+    // subnet's surfaces -- which is why the body carries only a netuid.
+    let askedFor: number | null = null;
+    const m = message({ netuid: 51 });
+    await handleSweepBatch(
+      [m],
+      store(),
+      deps({
+        recordFor: async (netuid: number) => {
+          askedFor = netuid;
+          return { netuid, surfaces: [] };
+        },
+      }),
+    );
+    assert.equal(askedFor, 51);
+  });
+
+  test("RETRIES a subnet whose fetch throws, instead of dropping it", async () => {
+    // Under the cron this subnet was simply lost until the next hour came
+    // round to it again. Now the queue re-delivers it.
+    const m = message({ netuid: 64 });
+    const out = await handleSweepBatch(
+      [m],
+      store(),
+      deps({
+        fetchText: async () => {
+          throw new Error("ECONNRESET");
+        },
+      }),
+    );
+    // The sweep itself absorbs a fetch failure as `unreachable`, so this acks.
+    assert.equal(out.swept + out.retried, 1);
+    assert.equal(m.calls.acked + m.calls.retried, 1);
+  });
+
+  test("RETRIES when the sweep succeeded but the WRITE failed", async () => {
+    // An unwritten sweep is a sweep that did not happen, as far as anything
+    // reading the store is concerned.
+    const m = message({ netuid: 64 });
+    const out = await handleSweepBatch([m], null, deps());
+    assert.deepEqual(out, { swept: 0, retried: 1, malformed: 0 });
+    assert.equal(m.calls.retried, 1);
+  });
+
+  test("ACKS a malformed message rather than looping it to the dead letter", async () => {
+    // A body that is not a netuid never will be. Retrying spends the whole
+    // budget to reach the DLQ with a message nobody can act on.
+    const bad = [
+      message({ netuid: "sixty-four" }),
+      message({}),
+      message(null),
+      message({ netuid: -1 }),
+    ];
+    const out = await handleSweepBatch(bad, store(), deps());
+    assert.deepEqual(out, { swept: 0, retried: 0, malformed: 4 });
+    for (const m of bad) assert.equal(m.calls.acked, 1);
+  });
+
+  test("one bad message does not stop the rest of the batch", async () => {
+    const good = message({ netuid: 64 });
+    const out = await handleSweepBatch(
+      [message(null), good, message({})],
+      store(),
+      deps(),
+    );
+    assert.equal(out.swept, 1);
+    assert.equal(out.malformed, 2);
+    assert.equal(good.calls.acked, 1);
+  });
+});
+
+describe("the queue wiring", () => {
+  test("the dead-letter queue is registered as a lane", async () => {
+    // A DLQ nobody consumes is a second log: the message lands, sits for the
+    // retention, and disappears (#354/#363).
+    const source = await fs.readFile(
+      path.join(repoRoot, "src/dead-letter.ts"),
+      "utf8",
+    );
+    assert.match(source, /"attribution-sweeps-dlq"/);
+  });
+
+  test("both queues are declared in wrangler, with a dead letter", async () => {
+    const wrangler = await fs.readFile(
+      path.join(repoRoot, "wrangler.jsonc"),
+      "utf8",
+    );
+    assert.match(wrangler, /"binding": "ATTRIBUTION_SWEEPS"/);
+    assert.match(wrangler, /"queue": "attribution-sweeps"/);
+    assert.match(wrangler, /"dead_letter_queue": "attribution-sweeps-dlq"/);
+    assert.match(wrangler, /"queue": "attribution-sweeps-dlq"/);
+  });
+
+  test("the consumer branches on the queue name before the webhook path", async () => {
+    // Both queues bind to one `queue()` export. Without the branch a sweep
+    // message would be handed to the webhook deliverer.
+    const api = await fs.readFile(
+      path.join(repoRoot, "workers/api.ts"),
+      "utf8",
+    );
+    assert.match(api, /batch\.queue === ATTRIBUTION_SWEEP_QUEUE/);
+  });
+});
+
+describe("the queue consumer, through the Worker's own handler", () => {
+  /** The registry artifact plus a queue binding, as the Worker sees them. */
+  function queueEnv(payload: unknown) {
+    const target = "/metagraph/subnets.json";
+    const hit = (p: string) => p === target && payload != null;
+    return {
+      ASSETS: {
+        async fetch(request: Request) {
+          const { pathname } = new URL(request.url);
+          return hit(pathname)
+            ? Response.json(payload as never)
+            : new Response("{}", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+          return hit(p)
+            ? {
+                async json() {
+                  return payload;
+                },
+              }
+            : null;
+        },
+      },
+    };
+  }
+
+  test("a sweep batch is routed to the sweep consumer, not the webhook path", async () => {
+    // Both queues bind to one `queue()` export. Without the branch this message
+    // would be handed to the webhook deliverer.
+    let acked = 0;
+    const batch = {
+      queue: "attribution-sweeps",
+      messages: [
+        {
+          body: { netuid: 64 },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
+      ],
+    };
+    await assert.doesNotReject(() =>
+      worker.queue!(
+        batch as never,
+        queueEnv({ subnets: [{ netuid: 64, surfaces: [] }] }) as never,
+        { waitUntil: () => {} } as never,
+      ),
+    );
+    // No store binding, so the write fails and the message is retried rather
+    // than acked -- an unwritten sweep is a sweep that did not happen.
+    assert.equal(acked, 0);
+  });
+
+  test("a subnet that vanished between enqueue and delivery still resolves", async () => {
+    // The registry is read at delivery, so a subnet deregistered while its
+    // message waited has no record. That must sweep to `no-sources` -- we did
+    // not look -- rather than throw and burn the retry budget.
+    let retried = 0;
+    const batch = {
+      queue: "attribution-sweeps",
+      messages: [
+        {
+          body: { netuid: 999 },
+          ack: () => {},
+          retry: () => void (retried += 1),
+        },
+      ],
+    };
+    await worker.queue!(
+      batch as never,
+      queueEnv({ subnets: [{ netuid: 64, surfaces: [] }] }) as never,
+      { waitUntil: () => {} } as never,
+    );
+    // No store binding, so the write fails and it retries -- but it got that
+    // far, which is the point: an absent record is not an exception.
+    assert.equal(retried, 1);
+  });
+
+  test("a malformed body is acked, not looped to the dead letter", async () => {
+    let acked = 0;
+    const batch = {
+      queue: "attribution-sweeps",
+      messages: [
+        {
+          body: { netuid: "sixty-four" },
+          ack: () => void (acked += 1),
+          retry: () => {},
+        },
+      ],
+    };
+    await worker.queue!(
+      batch as never,
+      queueEnv({ subnets: [] }) as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.equal(acked, 1);
+  });
+});
+
+describe("the last of the queue shapes", () => {
+  test("a thrown non-Error from sendBatch still names the failure", async () => {
+    const out = await enqueueSweeps(
+      {
+        async sendBatch() {
+          throw "a bare string";
+        },
+      },
+      [1],
+    );
+    assert.equal(out.ok, false);
+    assert.match(String(out.reason), /a bare string/);
+  });
+
+  test("a subnet whose RECORD read throws is retried, not dropped", async () => {
+    const calls = { retried: 0 };
+    const out = await handleSweepBatch(
+      [
+        {
+          body: { netuid: 64 },
+          ack: () => {},
+          retry: () => void (calls.retried += 1),
+        },
+      ],
+      {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => undefined,
+            all: async () => ({ results: [] }),
+          }),
+          all: async () => ({ results: [] }),
+        }),
+      },
+      {
+        fetchText: async () => null,
+        now: () => NOW,
+        recordFor: async () => {
+          throw new Error("artifact read exploded");
+        },
+      },
+    );
+    assert.deepEqual(out, { swept: 0, retried: 1, malformed: 0 });
+    assert.equal(calls.retried, 1);
+  });
+
+  test("the cron producer enqueues when a binding IS present", async () => {
+    const sent: number[] = [];
+    const env = {
+      ...(queueEnvFor({ subnets: [{ netuid: 7, surfaces: [] }] }) as object),
+      ATTRIBUTION_SWEEPS: {
+        async sendBatch(messages: Array<{ body: { netuid: number } }>) {
+          for (const m of messages) sent.push(m.body.netuid);
+        },
+      },
+    };
+    const result = (await handleScheduled(
+      { cron: ATTRIBUTION_SWEEP_CRON } as unknown as ScheduledController,
+      env as never,
+      { waitUntil: () => {} } as unknown as ExecutionContext,
+    )) as { ok: boolean; enqueued: number };
+    assert.deepEqual(result, { ok: true, enqueued: 1 });
+    assert.deepEqual(sent, [7]);
+  });
+});
+
+/** The registry artifact alone, for the producer test above. */
+function queueEnvFor(payload: unknown) {
+  const target = "/metagraph/subnets.json";
+  const hit = (p: string) => p === target && payload != null;
+  return {
+    ASSETS: {
+      async fetch(request: Request) {
+        const { pathname } = new URL(request.url);
+        return hit(pathname)
+          ? Response.json(payload as never)
+          : new Response("{}", { status: 404 });
+      },
+    },
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        const p = `/metagraph/${String(key).replace(/^latest\//, "")}`;
+        return hit(p)
+          ? {
+              async json() {
+                return payload;
+              },
+            }
+          : null;
+      },
+    },
+  };
+}
