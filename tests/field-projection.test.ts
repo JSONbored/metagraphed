@@ -76,16 +76,35 @@ describe("parseFieldsParam", () => {
     }
   });
 
-  test("an unsupported field names itself and its collection", () => {
+  // The message now also carries the VOCABULARY, for the same reason the
+  // tool-argument guards do: naming only what the caller cannot have leaves it
+  // with nothing to retry against. Two production examples this fixes, both
+  // observed on live $mcp_tool_call events:
+  //
+  //   get_emission_pipeline  fields=...,name   correct refusal (those rows are
+  //                                            pure chain state), but `name`
+  //                                            lives on get_economics and the
+  //                                            caller had no way to learn that
+  //   get_economics          total_stake_tao   correct refusal -- the field is
+  //                                            `total_stake_alpha`, one suffix
+  //                                            away, and unlistable before now
+  test("an unsupported field names itself, its collection, and the alternatives", () => {
     const result = parseFieldsParam(
       params("?fields=uid,stake"),
       schemaResolver,
       "neurons",
     );
-    assert.equal(
-      result.error?.message,
-      "fields includes unsupported field for neurons: stake.",
+    assert.match(
+      result.error!.message,
+      /^fields includes unsupported field for neurons: stake\./,
     );
+    // Every field the schema declares, so the caller can correct in one step.
+    for (const field of Object.keys(NeuronSchema.shape)) {
+      assert.ok(
+        result.error!.message.includes(field),
+        `should offer \`${field}\`: ${result.error!.message}`,
+      );
+    }
   });
 
   test("several unsupported fields pluralize and list every one", () => {
@@ -94,9 +113,61 @@ describe("parseFieldsParam", () => {
       schemaResolver,
       "validators",
     );
+    assert.match(
+      result.error!.message,
+      /^fields includes unsupported fields for validators: stake, nope\./,
+    );
+    assert.match(result.error!.message, /Valid fields: /);
+  });
+
+  // The row-union resolver reaches the same message from a different place,
+  // and is the one the emission-pipeline surface uses.
+  test("the row-union resolver offers the union, not just the first row", () => {
+    const result = parseFieldsParam(
+      params("?fields=name"),
+      unknownAgainstRows([{ netuid: 64 }, { emission_share: 0.06 }]),
+      "emission pipeline subnets",
+    );
+    assert.match(
+      result.error!.message,
+      /^fields includes unsupported field for emission pipeline subnets: name\./,
+    );
+    // `emission_share` appears only on the SECOND row -- a message built from
+    // the first row alone would omit it and mislead the retry.
+    assert.match(
+      result.error!.message,
+      /Valid fields: emission_share, netuid\./,
+    );
+  });
+
+  // The lazy scan is the reason `known` is a separate call. A VALID request
+  // must still settle without materialising the union.
+  test("a valid request never asks for the vocabulary", () => {
+    let knownCalls = 0;
+    const resolver = unknownAgainstRows([{ netuid: 64 }, { name: "apex" }]);
+    const inner = resolver.known!;
+    resolver.known = () => {
+      knownCalls += 1;
+      return inner();
+    };
+
+    const ok = parseFieldsParam(params("?fields=netuid"), resolver, "subnets");
+    assert.deepEqual(ok.fields, ["netuid"]);
+    assert.equal(knownCalls, 0, "the happy path must not build the union");
+
+    parseFieldsParam(params("?fields=nope"), resolver, "subnets");
+    assert.equal(knownCalls, 1, "the error path is where it is paid");
+  });
+
+  // A resolver with no `known` (nothing in-tree, but the type allows it)
+  // degrades to the old message rather than emitting a dangling label.
+  test("a resolver that cannot enumerate omits the list cleanly", () => {
+    const bare = ((requested: string[]) =>
+      requested.filter((f) => f !== "uid")) as typeof schemaResolver;
+    const result = parseFieldsParam(params("?fields=nope"), bare, "things");
     assert.equal(
       result.error?.message,
-      "fields includes unsupported fields for validators: stake, nope.",
+      "fields includes unsupported field for things: nope.",
     );
   });
 });
@@ -255,5 +326,32 @@ describe("the published MCP enum is the schema's own field list (#9082)", () => 
 
   test("every advertised name is one the route resolver accepts", () => {
     assert.deepEqual(schemaResolver([...NEURON_FIELD_NAMES]), []);
+  });
+});
+
+// A row set is not guaranteed to be rows (#10617).
+//
+// `unknownAgainstRows` is handed whatever a route already has in hand, and the
+// error path calls `.known()` over ALL of it to name the valid fields. A JSON
+// array whose entries are null, or nested arrays, reaches here unchanged --
+// `Object.keys(null)` throws, and `Object.keys([1,2])` would offer "0" and "1"
+// as field names. The guard exists for both; this is what proves it.
+describe("unknownAgainstRows tolerates a row set that is not objects", () => {
+  test("null, arrays and primitives contribute no field names", () => {
+    const resolver = unknownAgainstRows([
+      null,
+      undefined,
+      42,
+      "a string",
+      ["nested", "array"],
+      { netuid: 64 },
+    ] as never);
+    // The one real object still resolves, so the scan is not simply skipped.
+    assert.deepEqual(resolver.known!().sort(), ["netuid"]);
+  });
+
+  test("a row set with no objects at all yields an empty known set", () => {
+    const resolver = unknownAgainstRows([null, [1, 2]] as never);
+    assert.deepEqual(resolver.known!(), []);
   });
 });

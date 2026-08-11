@@ -54,7 +54,19 @@ export interface FieldProjectionResult {
  * (see {@link unknownAgainstRows}) instead of materialising every row's keys
  * to answer a question that is usually settled by the first row.
  */
-export type UnknownFieldResolver = (requested: string[]) => string[];
+export type UnknownFieldResolver = ((requested: string[]) => string[]) & {
+  /**
+   * The full vocabulary, for the unsupported-field message.
+   *
+   * Separate from the resolver call, and only ever invoked on the ERROR path,
+   * because the two have opposite cost profiles: {@link unknownAgainstRows}
+   * settles a VALID request from the first row and must keep doing so, while
+   * listing every field necessarily materialises the union. Paying that on a
+   * request that has already failed is free; paying it on every request is the
+   * lazy scan thrown away.
+   */
+  known?: () => string[];
+};
 
 /**
  * Resolve against a published row schema -- anything in its shape is a field.
@@ -67,7 +79,10 @@ export function unknownAgainstSchema(schema: {
   shape: Record<string, unknown>;
 }): UnknownFieldResolver {
   const allowed = new Set(Object.keys(schema.shape));
-  return (requested) => requested.filter((field) => !allowed.has(field));
+  const resolve: UnknownFieldResolver = (requested) =>
+    requested.filter((field) => !allowed.has(field));
+  resolve.known = () => [...allowed];
+  return resolve;
 }
 
 /**
@@ -81,7 +96,7 @@ export function unknownAgainstSchema(schema: {
  * workers/list-query.ts did before this module existed.
  */
 export function unknownAgainstRows(rows: Row[]): UnknownFieldResolver {
-  return (requested) => {
+  const resolve: UnknownFieldResolver = (requested) => {
     const unresolved = new Set(requested);
     for (const row of rows) {
       if (unresolved.size === 0) break;
@@ -91,6 +106,19 @@ export function unknownAgainstRows(rows: Row[]): UnknownFieldResolver {
     }
     return [...unresolved];
   };
+  // The full union, which is exactly what the lazy scan above exists to avoid
+  // computing. Safe here only because parseFieldsParam calls it on the error
+  // path alone -- see UnknownFieldResolver.known.
+  resolve.known = () => {
+    const union = new Set<string>();
+    for (const row of rows) {
+      if (row && typeof row === "object" && !Array.isArray(row)) {
+        for (const key of Object.keys(row)) union.add(key);
+      }
+    }
+    return [...union];
+  };
+  return resolve;
 }
 
 /**
@@ -128,10 +156,31 @@ export function parseFieldsParam(
   const fields = [...new Set(requested)];
   const unknown = resolveUnknown(fields);
   if (unknown.length > 0) {
+    // Name the vocabulary, not just the miss. Two live examples of why the
+    // bare form was a dead end, both from production $mcp_tool_call events:
+    //
+    //   get_emission_pipeline  fields=...,name    rows are pure chain state;
+    //                                             `name` is registry metadata
+    //                                             and lives on get_economics
+    //   get_economics          total_stake_tao    the row carries
+    //                                             `total_stake_alpha` -- subnet
+    //                                             stake is alpha-denominated,
+    //                                             so the guessed unit suffix
+    //                                             names nothing
+    //
+    // Both refusals are CORRECT. Both were unactionable, because the caller
+    // was told what it could not have and never what it could -- and in the
+    // second case the field it wanted was one suffix away. This is the same
+    // idiom the tool-argument guards use ("Valid fields: ...").
+    const known = resolveUnknown.known?.() ?? [];
     return {
       error: {
         parameter: "fields",
-        message: `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${subject}: ${unknown.join(", ")}.`,
+        message:
+          `fields includes unsupported field${unknown.length === 1 ? "" : "s"} for ${subject}: ${unknown.join(", ")}.` +
+          (known.length > 0
+            ? ` Valid fields: ${[...known].sort().join(", ")}.`
+            : ""),
       },
     };
   }

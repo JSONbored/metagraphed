@@ -91,6 +91,14 @@ const POSTHOG_API_HOST = (import.meta.env?.VITE_POSTHOG_HOST as string | undefin
 const POSTHOG_UI_HOST =
   (import.meta.env?.VITE_POSTHOG_UI_HOST as string | undefined) || "https://us.posthog.com";
 
+// The deploy this bundle came from, injected by vite.config.ts from
+// WORKERS_CI_COMMIT_SHA and equal to posthogRollupPlugin's own
+// `releaseVersion` -- runtime events and uploaded source maps must name the
+// same release for Error Tracking to line them up. Absent locally and in PR
+// CI, where there is no deploy to name; the super property below is simply
+// omitted then rather than registered as a lie like "dev" or "unknown".
+const POSTHOG_RELEASE = (import.meta.env?.VITE_POSTHOG_RELEASE as string | undefined) || undefined;
+
 // Tracks PostHog's own "SDK defaults" versioning (posthog.com/docs/libraries/js#sdk-defaults) --
 // bump deliberately when adopting a newer default set, not on every release.
 // A typo here can't silently fall back to posthog-js's own default handling:
@@ -284,6 +292,35 @@ function loadPostHog(): Promise<PostHog | null> {
         // module's author didn't audit. Console capture is out of scope
         // for what this replay rollout reviewed.
         enable_recording_console_log: false,
+      });
+      // #8963 gave every Worker-side event an `environment` dimension
+      // (src/usage-telemetry.ts's assignDeployment). The browser half never
+      // got one, so it is the only surface left whose events cannot be
+      // separated from a developer's laptop: measured on the live project,
+      // every `$lib: web` exception in the last three days carries
+      // `environment: (unset)`, while the Worker's carry `production`.
+      //
+      // That matters most for Error Tracking, where it is the difference
+      // between "this is happening to users" and "this is somebody running
+      // `vite dev`". Registered as a super property rather than passed at
+      // each capture site because exception AUTOCAPTURE bypasses this
+      // module's wrappers entirely (the same reason before_send above exists)
+      // -- a per-call-site property would miss exactly the events that need
+      // it most.
+      //
+      // `release` rides along when the build knows one, matching the Worker's
+      // pair of dimensions exactly. `$exception_releases` is the field
+      // PostHog Error Tracking's own release filter reads, so it is set
+      // alongside the generic `release` -- the same two-for-one
+      // assignDeployment does server-side.
+      posthog.register({
+        environment: import.meta.env?.PROD ? "production" : "development",
+        ...(POSTHOG_RELEASE
+          ? {
+              release: POSTHOG_RELEASE,
+              $exception_releases: [POSTHOG_RELEASE],
+            }
+          : {}),
       });
       return posthog;
     })

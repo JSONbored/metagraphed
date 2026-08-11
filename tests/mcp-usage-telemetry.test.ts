@@ -127,7 +127,14 @@ describe("MCP tool-dispatch usage telemetry", () => {
 
     assert.equal(payload.result.isError, true);
     assert.equal(spy.events.length, 1);
-    assert.equal(spy.events[0].event.mcpTool, "no_such_tool_at_all");
+    // The name is BUCKETED, not recorded verbatim: `params.name` is
+    // caller-supplied and reaches PostHog as a breakdown dimension, so an
+    // unregistered one is folded into a single label rather than minting a new
+    // property value per guess (see mcpToolLabel, and
+    // tests/mcp-tool-name-cardinality.test.ts for the full contract). What this
+    // test is actually about -- that an unknown tool is COUNTED as a failure --
+    // is unchanged, and rides on `ok` and `errorCode` below.
+    assert.equal(spy.events[0].event.mcpTool, "unregistered_tool");
     assert.equal(spy.events[0].event.ok, false);
     // metagraphed#7726: the one isError path with no toolError behind it
     // still gets its own literal code.

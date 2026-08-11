@@ -201,6 +201,10 @@ import {
   recordAiDegradedEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
+  recordMcpPromptGetEvent,
+  recordMcpPromptsListEvent,
+  recordMcpResourceReadEvent,
+  recordMcpResourcesListEvent,
   recordMcpToolCallEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
@@ -1752,6 +1756,10 @@ interface McpCtx {
   recordMcpToolCallEvent?: AnyFn;
   recordMcpInitializeEvent?: AnyFn;
   recordMcpToolsListEvent?: AnyFn;
+  recordMcpResourcesListEvent?: AnyFn;
+  recordMcpResourceReadEvent?: AnyFn;
+  recordMcpPromptsListEvent?: AnyFn;
+  recordMcpPromptGetEvent?: AnyFn;
   recordExceptionEvent?: AnyFn;
   recordAiDegradedEvent?: AnyFn;
 }
@@ -3737,18 +3745,47 @@ export function validateToolArguments(tool: Row, args: Row) {
   // path skipped them (#10306).
   if (args === undefined || args === null)
     return applyPublishedDefaults(tool, {});
-  if (
-    typeof args !== "object" ||
-    Array.isArray(args) ||
-    (tool.inputSchema?.additionalProperties === false &&
-      Object.keys(args).some(
-        (key) => !Object.hasOwn(tool.inputSchema?.properties ?? {}, key),
-      ))
-  ) {
+  if (typeof args !== "object" || Array.isArray(args)) {
     throw toolError(
       "invalid_params",
-      `Invalid arguments for tool ${tool.name}.`,
+      `Invalid arguments for tool ${tool.name}: expected an object of named arguments.`,
     );
+  }
+  // Naming the rejected key, and what the tool WOULD have accepted, is the
+  // difference between a dead end and a call the agent can retry correctly.
+  //
+  // The bare "Invalid arguments for tool X." this replaced was the single
+  // most common live MCP failure that a caller could not act on: measured on
+  // production $mcp_tool_call events, agents were sending `limit` to tools
+  // that page by `window` (get_subnet_registrations, get_validator_history),
+  // `address` to a tool keyed on `ss58` (get_account_identity), and a filler
+  // `random_string` to a tool that takes nothing (get_self_health) -- then
+  // retrying the identical call, because the refusal named no key and offered
+  // no vocabulary. Every one of those is one list away from self-correcting.
+  //
+  // This does NOT introduce schema validation at dispatch -- that remains
+  // settled against (#8942, tests/mcp-schema-enforcement.test.ts). It reports
+  // the unknown-key rejection this function already performed, in the shape
+  // the handlers' own guards already use ("Valid fields: ...").
+  const declared = (tool.inputSchema?.properties ?? {}) as Record<
+    string,
+    unknown
+  >;
+  if (tool.inputSchema?.additionalProperties === false) {
+    const unknown = Object.keys(args).filter(
+      (key) => !Object.hasOwn(declared, key),
+    );
+    if (unknown.length > 0) {
+      const accepted = Object.keys(declared);
+      throw toolError(
+        "invalid_params",
+        `Unknown argument${unknown.length > 1 ? "s" : ""} for tool ` +
+          `${tool.name}: ${unknown.map((key) => `\`${key}\``).join(", ")}. ` +
+          (accepted.length > 0
+            ? `Accepted arguments: ${accepted.join(", ")}.`
+            : "This tool accepts no arguments."),
+      );
+    }
   }
   // #9642: the intent argument is analytics metadata, never tool input, so it
   // is removed before any handler sees it -- the same contract @posthog/mcp's
@@ -3870,9 +3907,39 @@ export function splitMcpIntent(args: Row): { intent?: string; rest: Row } {
   };
 }
 
+/**
+ * A non-negative integer, from a number OR from the decimal string spelling
+ * of one -- because the REST side of the same request already accepts both.
+ *
+ * `GET /api/v1/subnets/080/health` serves netuid 80; `get_subnet_health` with
+ * `{"netuid":"080"}` answered `invalid_params`. Same logical request, two
+ * answers, and the MCP one was the wrong answer: HTTP hands every path and
+ * query value over as a string, so the REST parser has always had to coerce,
+ * and coercion is the established contract of this pair of surfaces rather
+ * than a leniency being invented here. Live agents hit it -- zero-padded
+ * netuids were three of the day's failures.
+ *
+ * Strictly the decimal-digit spelling, so nothing else widens with it: REST
+ * rejects `one` and `-5` (404) and so does this. `1.5`, `1e3`, `+5`, ``, and
+ * whitespace-only are rejected for the same reason -- they are not how the
+ * REST parser reads an unsigned integer either.
+ */
+const UNSIGNED_INT_TEXT = /^\d+$/;
+
+function coerceNonNegativeInt(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value >= 0 ? value : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  if (!UNSIGNED_INT_TEXT.test(text)) return undefined;
+  const parsed = Number(text);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
 function requireNonNegativeInt(args: Row, key: string) {
-  const value = args?.[key];
-  if (!Number.isInteger(value) || value < 0) {
+  const value = coerceNonNegativeInt(args?.[key]);
+  if (value === undefined) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a non-negative integer.`,
@@ -3882,9 +3949,10 @@ function requireNonNegativeInt(args: Row, key: string) {
 }
 
 function optionalNonNegativeInt(args: Row, key: string) {
-  const value = args?.[key];
-  if (value === undefined || value === null) return null;
-  if (!Number.isInteger(value) || value < 0) {
+  const raw = args?.[key];
+  if (raw === undefined || raw === null) return null;
+  const value = coerceNonNegativeInt(raw);
+  if (value === undefined) {
     throw toolError(
       "invalid_params",
       `Argument \`${key}\` must be a non-negative integer.`,
@@ -15240,8 +15308,11 @@ async function callTool(params: Row, ctx: McpCtx) {
   const startedAt = Date.now();
   const result = await dispatchTool(params, ctx);
   const durationMs = Date.now() - startedAt;
+  // One bucket for both events, so the tool dimension can never disagree
+  // between usage_event and $mcp_tool_call. See mcpToolLabel.
+  const toolLabel = mcpToolLabel(params?.name);
   scheduleToolUsageEvent(ctx, {
-    mcpTool: typeof params?.name === "string" ? params.name : undefined,
+    mcpTool: toolLabel,
     ok: result.isError !== true,
     durationMs,
     // metagraphed#7726: every isError result already carries a code from a
@@ -15262,7 +15333,7 @@ async function callTool(params: Row, ctx: McpCtx) {
     params?.arguments as Row,
   );
   scheduleMcpToolCallEvent(ctx, {
-    toolName: typeof params?.name === "string" ? params.name : undefined,
+    toolName: toolLabel,
     isError: result.isError === true,
     durationMs,
     sessionId: ctx?.sessionId,
@@ -15376,6 +15447,36 @@ function mcpMethodLabel(method: string): string {
   return MCP_LABELLED_METHODS.has(method) ? method : "unknown";
 }
 
+/**
+ * The bucket a tool name is COUNTED under, which is not always the name the
+ * caller sent.
+ *
+ * `params.name` on a tools/call is caller-supplied and reaches PostHog as
+ * `$mcp_tool_name` (and `usage_event`'s tool label). Unregistered names were
+ * passing through verbatim, so anyone could mint an unbounded number of
+ * distinct property values by calling tools/call in a loop with random names
+ * -- exactly the defect MCP_LABELLED_METHODS above exists to prevent for
+ * `method`, whose comment warns that "getting it right in one place and wrong
+ * in the next is how that class of bug survives". It survived here.
+ *
+ * Not hypothetical: a third-party MCP verifier probes this server with a
+ * per-run name (`__verifymcp_auth_probe_<hash>__`), and 30+ single-use tool
+ * names from it are already sitting in the project's `$mcp_tool_name`
+ * breakdown alongside the real 232, on a free-tier plan.
+ *
+ * Folding them into one sentinel costs no signal. "Agents are guessing tool
+ * names" stays countable -- dispatchTool's `unknown_tool` code still rides on
+ * $mcp_error_code, and the guessed name itself is still readable in
+ * $mcp_parameters on the sampled events that carry it -- but the breakdown
+ * dimension stops being writable by strangers.
+ */
+const UNREGISTERED_MCP_TOOL_LABEL = "unregistered_tool";
+
+function mcpToolLabel(name: unknown): string | undefined {
+  if (typeof name !== "string") return undefined;
+  return TOOLS_BY_NAME.has(name) ? name : UNREGISTERED_MCP_TOOL_LABEL;
+}
+
 function scheduleMcpProtocolUsageEvent(
   ctx: McpCtx,
   method: string,
@@ -15415,6 +15516,60 @@ function scheduleMcpToolCallEvent(ctx: McpCtx, event: Row) {
 function scheduleMcpToolsListEvent(ctx: McpCtx, event: Row) {
   try {
     const record = ctx?.recordMcpToolsListEvent ?? recordMcpToolsListEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+// The resource/prompt half of the surface, previously silent. One scheduler
+// per method rather than one that takes an event name, so the dispatch site
+// reads as a statement of WHICH event it emits and a test can stub exactly one.
+// Same waitUntil/no-throw discipline as every scheduler here.
+function scheduleMcpResourcesListEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record =
+      ctx?.recordMcpResourcesListEvent ?? recordMcpResourcesListEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+function scheduleMcpResourceReadEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record =
+      ctx?.recordMcpResourceReadEvent ?? recordMcpResourceReadEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+function scheduleMcpPromptsListEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record = ctx?.recordMcpPromptsListEvent ?? recordMcpPromptsListEvent;
+    const pending = Promise.resolve(
+      record(ctx?.env, event, { distinctId: ctx?.distinctId }),
+    ).catch(() => false);
+    ctx?.executionCtx?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the tool path.
+  }
+}
+
+function scheduleMcpPromptGetEvent(ctx: McpCtx, event: Row) {
+  try {
+    const record = ctx?.recordMcpPromptGetEvent ?? recordMcpPromptGetEvent;
     const pending = Promise.resolve(
       record(ctx?.env, event, { distinctId: ctx?.distinctId }),
     ).catch(() => false);
@@ -15926,18 +16081,47 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         const result = await callTool(params, ctx);
         return isNotification ? null : rpcResult(id, result);
       }
-      case "resources/list":
-        return isNotification
-          ? null
-          : rpcResult(id, await listResources(params, ctx));
+      // The four resource/prompt cases below each keep their original
+      // "notification does no work" behaviour -- the early return replaces the
+      // await-inside-the-ternary, it does not change when the handler runs (see
+      // the resources/subscribe note further down for why that matters here).
+      // The event is therefore scheduled only on the request path, which is the
+      // only path that did anything to record.
+      case "resources/list": {
+        if (isNotification) return null;
+        const result = await listResources(params, ctx);
+        scheduleMcpResourcesListEvent(ctx, {
+          sessionId: ctx?.sessionId,
+          ...mcpAttributionFor(ctx),
+        });
+        return rpcResult(id, result);
+      }
       case "resources/templates/list":
         return isNotification
           ? null
           : rpcResult(id, { resourceTemplates: MCP_RESOURCE_TEMPLATES });
-      case "resources/read":
-        return isNotification
-          ? null
-          : rpcResult(id, await readResource(params, ctx));
+      case "resources/read": {
+        if (isNotification) return null;
+        // Scheduled AFTER the read resolves, which is also what bounds the
+        // name: readResource throws for a uri that is neither a live-stream nor
+        // a resolvable artifact path, so `$mcp_resource_name` can only ever
+        // carry a uri this server actually serves. A caller cannot mint
+        // dimension values here the way it could through tools/call
+        // (see mcpToolLabel).
+        const result = await readResource(params, ctx);
+        scheduleMcpResourceReadEvent(ctx, {
+          // No `typeof ... : undefined` guard: readResource above THREW unless
+          // `uri` matched a resource this server serves, and every one of those
+          // is a string. The false half was unreachable, and codecov counts an
+          // unreachable branch the same as an untested one.
+          resourceName: params.uri as string,
+          sessionId: ctx?.sessionId,
+          parameters: params,
+          response: result,
+          ...mcpAttributionFor(ctx),
+        });
+        return rpcResult(id, result);
+      }
       // #9017: the await stays INSIDE the ternary here, deliberately. A
       // notification-shaped subscribe is a malformed request (MCP defines
       // resources/subscribe as a request, so a conforming client always sends
@@ -15954,12 +16138,31 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
         return isNotification
           ? null
           : rpcResult(id, await unsubscribeResource(params, ctx));
-      case "prompts/list":
-        return isNotification
-          ? null
-          : rpcResult(id, { prompts: listPromptDefinitions() });
-      case "prompts/get":
-        return isNotification ? null : rpcResult(id, getPrompt(params));
+      case "prompts/list": {
+        if (isNotification) return null;
+        const prompts = listPromptDefinitions();
+        scheduleMcpPromptsListEvent(ctx, {
+          sessionId: ctx?.sessionId,
+          ...mcpAttributionFor(ctx),
+        });
+        return rpcResult(id, { prompts });
+      }
+      case "prompts/get": {
+        if (isNotification) return null;
+        // Same ordering, same reason as resources/read: getPrompt throws for a
+        // name PROMPTS_BY_NAME does not hold, so the recorded name is always
+        // one of this server's own.
+        const prompt = getPrompt(params);
+        scheduleMcpPromptGetEvent(ctx, {
+          // Same as resources/read above: getPrompt threw unless the name is
+          // one of PROMPTS_BY_NAME's own keys, all of which are strings.
+          resourceName: params.name as string,
+          sessionId: ctx?.sessionId,
+          parameters: params,
+          ...mcpAttributionFor(ctx),
+        });
+        return rpcResult(id, prompt);
+      }
       // #9686. Declared in MCP_CAPABILITIES as `completions`, so a client that
       // reads the handshake knows to offer it rather than discovering it by
       // trying.
@@ -16157,6 +16360,13 @@ function buildContext(
     recordMcpToolCallEvent: deps.recordMcpToolCallEvent,
     recordMcpInitializeEvent: deps.recordMcpInitializeEvent,
     recordMcpToolsListEvent: deps.recordMcpToolsListEvent,
+    // The resource/prompt four belong in the same list for the same reason the
+    // comment above gives -- declaring them on McpCtx without copying them here
+    // is precisely the silent fall-through it describes.
+    recordMcpResourcesListEvent: deps.recordMcpResourcesListEvent,
+    recordMcpResourceReadEvent: deps.recordMcpResourceReadEvent,
+    recordMcpPromptsListEvent: deps.recordMcpPromptsListEvent,
+    recordMcpPromptGetEvent: deps.recordMcpPromptGetEvent,
     recordExceptionEvent: deps.recordExceptionEvent,
     recordAiDegradedEvent: deps.recordAiDegradedEvent,
   };

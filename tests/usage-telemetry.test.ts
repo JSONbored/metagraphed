@@ -23,6 +23,10 @@ import {
   recordMcpInitializeEvent,
   normalizeExceptionMessage,
   recordMcpToolCallEvent,
+  recordMcpPromptGetEvent,
+  recordMcpPromptsListEvent,
+  recordMcpResourceReadEvent,
+  recordMcpResourcesListEvent,
   recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
@@ -2871,6 +2875,35 @@ describe("every recorder stamps the deployment dimensions", () => {
       "$mcp_tools_list",
       (env, deps) => recordMcpToolsListEvent(env, { toolCount: 3 }, deps),
     ],
+    // The resource/prompt four. They share one poster
+    // (postMcpResourceEvent), so these four rows prove the shared stamp is
+    // reached from each entry point rather than four separate stamps.
+    [
+      "$mcp_resources_list",
+      (env, deps) => recordMcpResourcesListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_resource_read",
+      (env, deps) =>
+        recordMcpResourceReadEvent(
+          env,
+          { resourceName: "metagraph://registry/summary" },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_prompts_list",
+      (env, deps) => recordMcpPromptsListEvent(env, {}, deps),
+    ],
+    [
+      "$mcp_prompt_get",
+      (env, deps) =>
+        recordMcpPromptGetEvent(
+          env,
+          { resourceName: "integrate_with_subnet" },
+          deps,
+        ),
+    ],
     [
       "ai_degraded",
       (env, deps) =>
@@ -3235,5 +3268,92 @@ describe("usageEventProperties #9900 dimensions", () => {
     });
     assert.equal(props?.query_kind, "chain.blocks");
     assert.equal(props?.query_shape, "SELECT 1");
+  });
+});
+
+// The optional halves of the resource/prompt poster (#10617).
+//
+// postMcpResourceEvent is the single body behind all four of
+// $mcp_resources_list / $mcp_resource_read / $mcp_prompts_list /
+// $mcp_prompt_get, and three of its fields are optional: the session id, the
+// arguments, and the result. The table above drives every recorder through the
+// same populated path, so the branch where a field is ABSENT was never taken --
+// and "absent" is the common case for the two list events, which name nothing
+// and carry no payload.
+//
+// That matters beyond coverage: an undefined slipping into `properties` as a
+// literal key is how a PostHog dimension becomes the string "undefined" for a
+// whole event family, which is only visible once it is already in the data.
+describe("the resource/prompt poster's optional fields", () => {
+  const CONFIGURED = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" };
+
+  test("a session id is forwarded as $session_id", async () => {
+    const calls: Row[] = [];
+    await recordMcpResourceReadEvent(
+      mockEnv(CONFIGURED),
+      { resourceName: "metagraph://registry/summary", sessionId: " sess-1 " },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const properties = (calls[0].body as Row).properties as Row;
+    // Trimmed, not passed through raw.
+    assert.equal(properties.$session_id, "sess-1");
+  });
+
+  test("a blank or absent session id sets no key at all", async () => {
+    for (const sessionId of [undefined, null, "", "   "]) {
+      const calls: Row[] = [];
+      await recordMcpResourcesListEvent(
+        mockEnv(CONFIGURED),
+        { sessionId } as Row,
+        { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+      );
+      const properties = (calls[0].body as Row).properties as Row;
+      assert.ok(
+        !("$session_id" in properties),
+        `sessionId ${JSON.stringify(sessionId)} should leave the key unset, ` +
+          "not set it to undefined",
+      );
+    }
+  });
+
+  test("arguments and result are omitted when the caller sends none", async () => {
+    // The shape of both list events: no resource name, no parameters, no
+    // response.
+    const calls: Row[] = [];
+    await recordMcpPromptsListEvent(mockEnv(CONFIGURED), {}, {
+      fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+    } as Row);
+    const properties = (calls[0].body as Row).properties as Row;
+    assert.ok(!("$mcp_parameters" in properties));
+    assert.ok(!("$mcp_response" in properties));
+    assert.ok(!("$mcp_resource_name" in properties));
+  });
+
+  test("arguments and result are carried when they are present", async () => {
+    const calls: Row[] = [];
+    await recordMcpPromptGetEvent(
+      mockEnv(CONFIGURED),
+      {
+        resourceName: "explain-subnet",
+        parameters: { netuid: 64 },
+        response: { text: "ok" },
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const properties = (calls[0].body as Row).properties as Row;
+    assert.ok(properties.$mcp_parameters !== undefined);
+    assert.ok(properties.$mcp_response !== undefined);
+    assert.equal(properties.$mcp_resource_name, "explain-subnet");
+  });
+
+  test("a throwing transport returns false rather than propagating", async () => {
+    // Same no-throw contract every recorder in this module holds: telemetry
+    // must never be the reason an MCP method fails.
+    const emitted = await recordMcpResourceReadEvent(
+      mockEnv(CONFIGURED),
+      { resourceName: "metagraph://registry/summary" },
+      { fetch: fakeFetch({ throws: true }) },
+    );
+    assert.equal(emitted, false);
   });
 });
