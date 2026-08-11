@@ -922,6 +922,10 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
     ): EmissionPipeline!
+    "One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue."
+    subnet_revenue(netuid: Int!): SubnetRevenueCard!
+    "Every subnet's revenue coverage in one response. Subnets with no observed revenue are INCLUDED with null ratios rather than dropped, because omitting them would make the covered set look like the whole network -- observed_count against subnet_count is the honest headline. Mirrors GET /api/v1/chain/revenue-coverage."
+    chain_revenue_coverage: ChainRevenueCoverage!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
     registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -1285,6 +1289,105 @@ export const SDL = /* GraphQL */ `
     validator_count: Int
     miner_count: Int
     mean_emission_share: Float
+  }
+
+  "One subnet's external revenue against the TAO the network emits to it (#10476). Mirrors GET /api/v1/subnets/{netuid}/revenue."
+  type SubnetRevenueCard {
+    schema_version: Int!
+    generated_at: String!
+    contract_version: String
+    "Public-safe notes; a string or a string list depending on the adapter."
+    notes: JSON
+    netuid: Int!
+    revenue: SubnetRevenue!
+    "Per-field { kind, storage } map: every value is labelled measured or reconstructed. ADR 0023 decision 5."
+    field_sources: JSON!
+  }
+
+  "Every subnet's coverage in one response. Subnets with NO observed revenue are INCLUDED with null ratios rather than dropped -- omitting them would make the covered set look like the whole network. Mirrors GET /api/v1/chain/revenue-coverage."
+  type ChainRevenueCoverage {
+    schema_version: Int!
+    generated_at: String!
+    contract_version: String
+    "Public-safe notes; a string or a string list depending on the adapter."
+    notes: JSON
+    window_days: Int!
+    "How many subnets have a readable revenue figure. Against subnet_count this is the honest headline, stated rather than left to be inferred from nulls."
+    observed_count: Int!
+    subnet_count: Int!
+    subnets: [SubnetRevenue!]!
+  }
+
+  "The coverage ratio and the evidence behind it. Every nullable field here is nullable because ABSENT REVENUE IS NULL, NEVER ZERO: a subnet that earned nothing and a subnet nobody could measure are different facts, and 127 of 129 are the second."
+  type SubnetRevenue {
+    netuid: Int!
+    window_days: Int!
+    emission: RevenueEmission!
+    "Summed external revenue over the window, from chain-verified and probe-derived surfaces ONLY. NULL means not observed -- render it as 'not observed', never as 0."
+    revenue_usd: Float
+    "The strongest evidence class present across this subnet's declarations. Required, so a caller cannot read a figure without knowing how it was obtained."
+    provenance: String!
+    "When absence was established. An undated absence is not evidence."
+    searched_at: String
+    "revenue / emission. NULL whenever revenue_usd is null, which is the majority case. A client must render null as 'not observed', never as 0%."
+    coverage_ratio: Float
+    "emission / revenue, the ecosystem's own phrasing. NULL when revenue is null OR zero -- dividing by zero is undefined, not infinite, and Infinity would sort as the worst possible subsidy rather than as not-applicable."
+    subsidy_multiple: Float
+    sources: [RevenueSource!]!
+    verification: RevenueVerification!
+  }
+
+  "The denominator, and the alternates that are published beside it rather than silently substituted."
+  type RevenueEmission {
+    "Always tao_total -- SubnetTaoInEmission + SubnetExcessTao, fully measured. A ratio whose denominator changed without saying so is worse than no ratio, so the basis is a field."
+    basis: String!
+    tao: Float!
+    usd: Float!
+    alternates: RevenueEmissionAlternates!
+  }
+
+  type RevenueEmissionAlternates {
+    "Alpha emitted, priced at the subnet's alpha price. Null when no alpha price resolves."
+    alpha_out_priced: RevenueCoverageBasis
+    "The owner's 18% share of the SAME denominator -- SubnetOwnerCut is 11796/65535, not one sixth."
+    owner_take: RevenueCoverageBasis!
+  }
+
+  type RevenueCoverageBasis {
+    tao: Float!
+    usd: Float!
+  }
+
+  "One declared revenue surface, reported whether or not it reached the headline."
+  type RevenueSource {
+    surface_id: String!
+    provenance: String!
+    currency: String!
+    grain: String!
+    "Surface ids this one subsumes. A subsumed surface is reported with its own figure and NEVER summed -- SN64 publishes an all-channel daily total and a TAO-channel subset of it, and adding them inflates the headline."
+    supersedes: [String!]
+    "The figure for the requested window, or null when one cannot be formed."
+    amount_usd: Float
+    "Whether this surface's figure reached revenue_usd. Published per source so a caller can see WHY a subnet with visible figures reports a null headline."
+    contributes: Boolean!
+    "Null when it contributed; otherwise why it did not."
+    excluded_reason: String
+    periods_observed: Int
+    periods_expected: Int
+    response_hash: String
+    observed_at: String
+  }
+
+  "False means the response is not defensible and must not be presented as fact."
+  type RevenueVerification {
+    verified: Boolean!
+    checks: [RevenueVerificationCheck!]!
+  }
+
+  type RevenueVerificationCheck {
+    name: String!
+    ok: Boolean!
+    detail: String!
   }
 
   "The v440 emission pipeline replayed over one pinned block (#8744) -- the per-subnet share decomposition, the network aggregate, and the identity checks evaluated on the rows being served."

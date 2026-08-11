@@ -24874,3 +24874,213 @@ describe("graphql — chain analytics read the projection tier (#10217)", () => 
     assert.equal(body.data.chain_signers.signers[0].signer, "5SignerA");
   });
 });
+
+describe("revenue coverage over GraphQL (#10476)", () => {
+  // SN64's real declarations, trimmed to what the resolvers read.
+  const SUBNET_64 = {
+    netuid: 64,
+    surfaces: [
+      {
+        id: "sn-64-chutes-daily-revenue-summary",
+        revenue: {
+          role: "external-revenue",
+          provenance: "probe-derived",
+          currency: "USD",
+          grain: "daily",
+          supersedes: ["sn-64-chutes-payments-list"],
+        },
+      },
+      {
+        id: "sn-64-chutes-payments-list",
+        revenue: {
+          role: "external-revenue",
+          provenance: "chain-verified",
+          currency: "USD",
+          grain: "cumulative",
+        },
+      },
+      { id: "sn-64-chutes-models", name: "no revenue block" },
+    ],
+  };
+  const ECONOMICS = {
+    subnets: [
+      {
+        netuid: 64,
+        tao_in_emission_tao: 0.012416161,
+        excess_tao: 0.051199103,
+        alpha_out_emission: 1,
+        alpha_price_tao: 0.086933658,
+      },
+    ],
+  };
+  const TAO_USD = { latest: { usd: 204.03 } };
+
+  function revenueEnv() {
+    return fixtureEnv(
+      {
+        "/metagraph/subnets/64.json": SUBNET_64,
+        "/metagraph/network/tao-usd.json": TAO_USD,
+        "/metagraph/economics.json": ECONOMICS,
+      },
+      { kv: { [KV_ECONOMICS_CURRENT]: JSON.stringify(ECONOMICS) } },
+    );
+  }
+
+  test("serves the emission side and the declarations with no observations", async () => {
+    // The normal case: the probe has nothing for this subnet yet. Every ratio
+    // is null and the emission side is still fully real -- an error here would
+    // make the state of 127 of 129 subnets look like a broken endpoint.
+    const { status, body } = await gql(
+      `query { subnet_revenue(netuid: 64) {
+         netuid
+         revenue {
+           netuid window_days revenue_usd coverage_ratio subsidy_multiple provenance
+           emission { basis tao usd alternates { owner_take { tao usd } } }
+           sources { surface_id provenance contributes excluded_reason amount_usd }
+           verification { verified checks { name ok } }
+         }
+       } }`,
+      revenueEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal((body.data.subnet_revenue as Row).netuid, 64);
+    const r = (body.data.subnet_revenue as Row).revenue as Row;
+    assert.equal(r.netuid, 64);
+    assert.equal(r.revenue_usd, null, "not observed is null, never 0");
+    assert.equal(r.coverage_ratio, null);
+    assert.equal(r.subsidy_multiple, null);
+    assert.ok((r.emission as Row).tao > 0, "the denominator is still real");
+    assert.equal((r.emission as Row).basis, "tao_total");
+    // The subset is REPORTED even though it can never contribute -- hiding it
+    // would make the subnet look like it publishes less than it does.
+    const ids = (r.sources as Row[]).map((s) => s.surface_id);
+    assert.deepEqual(ids.sort(), [
+      "sn-64-chutes-daily-revenue-summary",
+      "sn-64-chutes-payments-list",
+    ]);
+    const subset = (r.sources as Row[]).find(
+      (s) => s.surface_id === "sn-64-chutes-payments-list",
+    ) as Row;
+    assert.equal(subset.contributes, false);
+    assert.match(String(subset.excluded_reason), /superseded/);
+  });
+
+  test("a surface with no revenue block is not listed as a source", () => {
+    // Asserted through the query above rather than separately: a response
+    // listing a models endpoint among its revenue "sources" invites exactly
+    // the reading the role vocabulary exists to prevent.
+    assert.ok(SUBNET_64.surfaces.some((s) => !("revenue" in s)));
+  });
+
+  test("provenance is non-null, so a figure cannot be read without its class", async () => {
+    const { body } = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { provenance } } }`,
+      revenueEnv(),
+    );
+    const card = body.data.subnet_revenue as Row;
+    assert.equal(typeof (card.revenue as Row).provenance, "string");
+  });
+
+  test("an unknown subnet answers rather than erroring", async () => {
+    // 127 of 129 have no revenue data; an error would make the normal case
+    // look broken and a caller sweeping the network would see failures.
+    const { status, body } = await gql(
+      `query { subnet_revenue(netuid: 9999) { netuid revenue { revenue_usd coverage_ratio } } }`,
+      revenueEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal((body.data.subnet_revenue as Row).netuid, 9999);
+    assert.equal(
+      ((body.data.subnet_revenue as Row).revenue as Row).revenue_usd,
+      null,
+    );
+  });
+
+  test("the network table includes the uncovered rather than dropping them", async () => {
+    const { status, body } = await gql(
+      `query { chain_revenue_coverage {
+         window_days observed_count subnet_count
+         subnets { netuid revenue_usd coverage_ratio }
+       } }`,
+      revenueEnv(),
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const c = body.data.chain_revenue_coverage as Row;
+    assert.equal(c.subnet_count, 1);
+    assert.equal(c.observed_count, 0, "nothing observed yet");
+    // Included WITH a null ratio -- dropping it would make the covered set
+    // look like the whole network.
+    assert.equal((c.subnets as Row[]).length, 1);
+    assert.equal((c.subnets as Row[])[0].coverage_ratio, null);
+  });
+
+  test("malformed artifacts degrade to null rather than throwing", async () => {
+    // Every branch here is a "the artifact was not what we expected" path, and
+    // in a revenue surface those must produce a MISSING figure, never a wrong
+    // one -- a subnet whose surfaces key is a string must not read as a subnet
+    // that declared nothing AND must not crash the field.
+    const env = fixtureEnv(
+      {
+        "/metagraph/subnets/64.json": { netuid: 64, surfaces: "not-an-array" },
+        // usd 0 is not a rate. Priced at 0 the emission side is $0, which
+        // computeCoverage turns into null ratios -- the honest answer.
+        "/metagraph/network/tao-usd.json": { latest: { usd: 0 } },
+        "/metagraph/economics.json": {
+          subnets: [
+            // A junk row must be skipped, not counted into subnet_count.
+            { netuid: "sixty-four" },
+            { netuid: 64, tao_in_emission_tao: 0.01, excess_tao: 0.05 },
+          ],
+        },
+      },
+      {
+        kv: {
+          [KV_ECONOMICS_CURRENT]: JSON.stringify({
+            subnets: [
+              // A junk row must be skipped, not counted into subnet_count.
+              { netuid: "sixty-four" },
+              { netuid: 64, tao_in_emission_tao: 0.01, excess_tao: 0.05 },
+            ],
+          }),
+        },
+      },
+    );
+    const { status, body } = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { revenue_usd coverage_ratio emission { usd } sources { surface_id } } } }`,
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = (body.data.subnet_revenue as Row).revenue as Row;
+    assert.deepEqual(
+      r.sources,
+      [],
+      "a non-array surfaces key declares nothing",
+    );
+    assert.equal((r.emission as Row).usd, 0, "no usable rate prices it at 0");
+    assert.equal(r.coverage_ratio, null);
+
+    const table = await gql(
+      `query { chain_revenue_coverage { subnet_count subnets { netuid } } }`,
+      env,
+    );
+    const c = table.body.data.chain_revenue_coverage as Row;
+    assert.equal(c.subnet_count, 1, "the junk netuid row is skipped");
+    assert.equal((c.subnets as Row[])[0].netuid, 64);
+  });
+
+  test("with no artifacts at all it still answers, with a zero denominator", async () => {
+    const { status, body } = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { revenue_usd coverage_ratio emission { tao usd } } } }`,
+      emptyEnv,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = (body.data.subnet_revenue as Row).revenue as Row;
+    assert.equal((r.emission as Row).tao, 0);
+    assert.equal(r.coverage_ratio, null);
+  });
+});

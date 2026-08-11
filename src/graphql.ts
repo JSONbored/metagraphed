@@ -910,6 +910,12 @@ import type {
 } from "../generated/graphql/types.ts";
 import { readStore } from "./read-store.ts";
 import {
+  loadSubnetRevenue,
+  SUBNET_REVENUE_FIELD_SOURCES,
+} from "./revenue-load.ts";
+import { loadRevenueObservations } from "./revenue-observations.ts";
+import { REVENUE_OBSERVATION_TABLES } from "./read-store-tables.ts";
+import {
   ALPHA_PRICING_TABLES,
   CHAIN_CONCENTRATION_HISTORY_TABLES,
   EMISSION_CHANGES_TABLES,
@@ -1297,6 +1303,8 @@ export const FIELD_COMPLEXITY = {
   block: RELATIONSHIP_FIELD_COMPLEXITY,
   economics_trends: RELATIONSHIP_FIELD_COMPLEXITY,
   emission_pipeline: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_revenue: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_revenue_coverage: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_movers: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_turnover: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -1738,6 +1746,58 @@ function loadObservedAt(context: GqlContext): Promise<string | null> {
 
 // Economics subnet rows for compare, reusing the live-preferring economics memo
 // (same source the `economics` root + opportunity boards serve).
+/** One subnet's declared surfaces, from the per-subnet artifact the REST
+ * handler reads. Null rather than [] on a miss, so revenueSourcesFor treats it
+ * as "no declarations" rather than "declared nothing". */
+async function surfacesForNetuid(
+  context: GqlContext,
+  netuid: number,
+): Promise<Row[] | null> {
+  const artifact = await readArtifact(
+    context.env,
+    `/metagraph/subnets/${netuid}.json`,
+  );
+  if (!artifact.ok) return null;
+  const surfaces = (artifact.data as Row | undefined)?.surfaces;
+  return Array.isArray(surfaces) ? (surfaces as Row[]) : null;
+}
+
+/** Latest TAO/USD, or null. A missing rate prices the emission at 0 USD, which
+ * computeCoverage turns into null ratios -- the honest output, since without a
+ * rate there is no USD comparison to make. */
+async function taoUsdForRevenue(context: GqlContext): Promise<number | null> {
+  const artifact = await readArtifact(
+    context.env,
+    "/metagraph/network/tao-usd.json",
+  );
+  if (!artifact.ok) return null;
+  const latest = (artifact.data as Row | undefined)?.latest as Row | undefined;
+  const usd = Number(latest?.usd);
+  return Number.isFinite(usd) && usd > 0 ? usd : null;
+}
+
+/** One subnet's composed revenue view, shared by the per-subnet field and any
+ * future caller. Never throws on a missing piece. */
+async function revenueForNetuid(
+  context: GqlContext,
+  netuid: number,
+): Promise<Row> {
+  const rows = (await loadEconomicsRows(context)) as Row[];
+  const economics = rows.find((row) => Number(row?.netuid) === netuid) ?? null;
+  const observations = await loadRevenueObservations(
+    readStore(context.env, REVENUE_OBSERVATION_TABLES) as never,
+    netuid,
+  );
+  return loadSubnetRevenue({
+    netuid,
+    window_days: 1,
+    economics,
+    surfaces: await surfacesForNetuid(context, netuid),
+    usd_per_tao: await taoUsdForRevenue(context),
+    observations: observations ?? undefined,
+  });
+}
+
 async function loadEconomicsRows(context: GqlContext) {
   const data = await loadEconomics(context);
   return Array.isArray(data?.subnets) ? data.subnets : [];
@@ -7725,6 +7785,66 @@ const rootValue = {
       window: data.window ?? label,
       day_count: data.day_count ?? 0,
       days: data.days || [],
+    };
+  },
+
+  // #10476: the coverage ratio, mirrored onto GraphQL.
+  //
+  // A THIN PROJECTION over the same src/revenue-load.ts the REST route and the
+  // MCP tool compose from, so the three surfaces cannot disagree about a
+  // subnet's ratio. Nothing is recomputed here.
+  //
+  // Deliberately schema-stable rather than erroring: 127 of 129 subnets have no
+  // readable figure, so an error would make the NORMAL case look like a broken
+  // endpoint and a caller sweeping the network would see 127 failures instead
+  // of 127 answers. Every missing piece degrades to a null ratio with the
+  // emission side still served.
+  async subnet_revenue({ netuid }: { netuid: number }, context: GqlContext) {
+    const revenue = await revenueForNetuid(context, netuid);
+    return {
+      schema_version: 1,
+      generated_at: new Date().toISOString(),
+      netuid,
+      revenue,
+      field_sources: SUBNET_REVENUE_FIELD_SOURCES,
+    };
+  },
+
+  // The network-wide table. Subnets with no observed revenue are INCLUDED with
+  // null ratios rather than dropped -- omitting them would make the covered set
+  // look like the whole network, which is the single most misleading thing this
+  // field could do.
+  async chain_revenue_coverage(_args: Row, context: GqlContext) {
+    const rows = await loadEconomicsRows(context);
+    const usd = await taoUsdForRevenue(context);
+    // ONE observation read for the whole network rather than one per subnet:
+    // 129 round trips would price this field out of existence.
+    const observations = await loadRevenueObservations(
+      readStore(context.env, REVENUE_OBSERVATION_TABLES) as never,
+      null,
+    );
+    const subnets = [];
+    for (const row of rows as Row[]) {
+      const netuid = Number(row?.netuid);
+      if (!Number.isInteger(netuid)) continue;
+      subnets.push(
+        loadSubnetRevenue({
+          netuid,
+          window_days: 1,
+          economics: row,
+          surfaces: await surfacesForNetuid(context, netuid),
+          usd_per_tao: usd,
+          observations: observations ?? undefined,
+        }),
+      );
+    }
+    return {
+      schema_version: 1,
+      generated_at: new Date().toISOString(),
+      window_days: 1,
+      observed_count: subnets.filter((s) => s.revenue_usd !== null).length,
+      subnet_count: subnets.length,
+      subnets,
     };
   },
 

@@ -82,7 +82,7 @@ describe("checkQueryArguments", () => {
     const report = checkQueryArguments(sdl, openapi);
     assert.deepEqual(report.violations, []);
     assert.deepEqual(report.stale, []);
-    assert.equal(report.exact, 187);
+    assert.equal(report.exact, 189);
   });
 
   test("it FAILS when an argument's type stops matching the route", () => {
