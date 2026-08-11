@@ -878,6 +878,68 @@ describe("runLaneAlarm", () => {
     assert.equal(seen.length, 1);
   });
 
+  // #10673: every alarm in a tick used to fingerprint `watchdog:lane-alarm:Error`,
+  // which is also the storm guard's throttle key — so the first alarming lane
+  // consumed the window and the rest were dropped as repeats of it. Measured on
+  // production: exactly one event per tick for six consecutive hours while this
+  // watchdog's own verdict read "4 alarming". Tagging each capture with its lane
+  // is what makes the "recorded for every alarm" claim above true.
+  test("tags each capture with its lane, so a tick's alarms do not collapse", async () => {
+    const db = healthDb({
+      latest: [
+        {
+          lane: "table-freshness",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+        {
+          lane: "metagraph",
+          verdict: "stale",
+          age_ms: 1,
+          detail: null,
+          checked_at: NOW,
+        },
+      ],
+      runs: [
+        { lane: "table-freshness", since: NOW - 28 * HOUR, ticks: 100 },
+        { lane: "metagraph", since: NOW - 28 * HOUR, ticks: 100 },
+      ],
+    });
+    const seen: {
+      error: unknown;
+      route?: string;
+      fingerprintDetail?: string;
+    }[] = [];
+    await runLaneAlarm(db.env, {
+      now: () => NOW,
+      recordException: async (_env, payload) => {
+        seen.push(payload);
+        return true;
+      },
+    });
+    assert.equal(seen.length, 2);
+    // The route stays the shared one — it mirrors UsageEvent's vocabulary. It is
+    // fingerprintDetail that separates the findings.
+    assert.deepEqual(
+      seen.map((payload) => payload.route),
+      ["watchdog:lane-alarm", "watchdog:lane-alarm"],
+    );
+    assert.deepEqual(
+      [...seen.map((payload) => payload.fingerprintDetail)].sort(),
+      ["metagraph", "table-freshness"],
+    );
+    // Each detail equals the lane named in its own message, so a capture can
+    // never be attributed to the wrong lane.
+    for (const payload of seen) {
+      assert.match(
+        String((payload.error as Error).message),
+        new RegExp(`^lane ${payload.fingerprintDetail} is `),
+      );
+    }
+  });
+
   test("counts a rejected create as not opened", async () => {
     const db = healthDb({
       latest: [

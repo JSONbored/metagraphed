@@ -1223,6 +1223,104 @@ describe("recordExceptionEvent", () => {
     assert.equal("query_shape" in calls[0].body.properties, false);
   });
 
+  // #10673: the deliberate counterpart to the test above. queryKind/queryShape
+  // stay OUT of the fingerprint so N payloads of ONE finding cost one window;
+  // fingerprintDetail goes IN, because it separates N genuinely DIFFERENT
+  // findings that happen to share a route. Collapsing those is not a saving,
+  // it is data loss: watchdog:lane-alarm emitted once per alarming lane and the
+  // storm guard dropped every lane after the first in each tick.
+  test("fingerprintDetail splits the fingerprint between route and type", async () => {
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(Error, "lane table-freshness is stale: 9.2h"),
+        route: "watchdog:lane-alarm",
+        fingerprintDetail: "table-freshness",
+        errorCode: "lane_stale",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const { properties } = calls[0].body;
+    assert.equal(
+      properties.$exception_fingerprint,
+      "watchdog:lane-alarm:table-freshness:Error",
+    );
+    // route keeps mirroring UsageEvent's vocabulary — the lane is NOT folded in.
+    assert.equal(properties.route, "watchdog:lane-alarm");
+    assert.equal(properties.error_code, "lane_stale");
+  });
+
+  test("omitting fingerprintDetail leaves the fingerprint byte-identical", async () => {
+    // The regression guard for every pre-existing capture site: none of them
+    // may move PostHog issues because this field was added.
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom"), route: "r2-sql" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(
+      calls[0].body.properties.$exception_fingerprint,
+      "r2-sql:Error",
+    );
+  });
+
+  test("a fingerprintDetail longer than the label cap is truncated", async () => {
+    // sanitizeLabel bounds the LENGTH. It cannot bound the cardinality, which
+    // is why the field's contract restricts callers to a closed set.
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(Error, "boom"),
+        route: "watchdog:lane-alarm",
+        fingerprintDetail: "l".repeat(400),
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(
+      calls[0].body.properties.$exception_fingerprint,
+      `watchdog:lane-alarm:${"l".repeat(256)}:Error`,
+    );
+  });
+
+  test("two details on one route both survive a shared storm window", async () => {
+    // THE BUG, as a test. With one window open on `watchdog:lane-alarm:Error`,
+    // the second lane in the same tick was admitted by nothing and vanished.
+    // Distinct details mean distinct windows, so both findings are recorded —
+    // and a repeat of the SAME detail is still throttled.
+    const windowed = {
+      [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    } as unknown as Env;
+    const calls: Row[] = [];
+    const fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    const emit = (lane: string) =>
+      recordExceptionEvent(
+        windowed,
+        {
+          error: thrownError(Error, `lane ${lane} is stale: 1.0h`),
+          route: "watchdog:lane-alarm",
+          fingerprintDetail: lane,
+        },
+        { fetch },
+      );
+    assert.equal(await emit("table-freshness"), true);
+    assert.equal(await emit("metagraph"), true);
+    assert.equal(await emit("subnet-hyperparams"), true);
+    // Same lane again inside the window: still one event per finding per window.
+    assert.equal(await emit("table-freshness"), false);
+    assert.deepEqual(
+      calls.map((call) => call.body.properties.$exception_fingerprint),
+      [
+        "watchdog:lane-alarm:table-freshness:Error",
+        "watchdog:lane-alarm:metagraph:Error",
+        "watchdog:lane-alarm:subnet-hyperparams:Error",
+      ],
+    );
+  });
+
   test("a query shape longer than the label cap is truncated, not dropped", async () => {
     const calls: Row[] = [];
     await recordExceptionEvent(
