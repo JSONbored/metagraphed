@@ -58,13 +58,73 @@ export function isDeadLetterQueue(name: unknown): boolean {
 }
 
 /**
+ * The field naming a message's SUBJECT, per queue family — first match wins.
+ *
+ * ONE LIST, CHECKED IN ORDER, because a summariser with a per-queue branch is
+ * a summariser that silently stops naming the next queue somebody adds. That
+ * is exactly what happened: this read `lane ?? subscription_id`, which covers
+ * `sync-batches` and `webhook-deliveries` and nothing else, and #10715/#10739
+ * then added three more queues whose bodies carry none of them. All three
+ * reported `(unidentified)` — a dead-letter verdict that says something was
+ * lost and cannot say what, which is most of the value of having one.
+ *
+ * Measured 2026-08-11: `2 dead-lettered message(s) on revenue-probes-dlq
+ * (unidentified)`, with the two `surface_id`s sitting unread in the bodies.
+ *
+ * The keys, and the queue each belongs to:
+ *
+ *   lane            sync-batches          the producer lane
+ *   subscription_id webhook-deliveries    the subscriber
+ *   surface_id      revenue-probes        the surface being probed
+ *   origin          origin-reachability   the origin being checked
+ *   netuid          attribution-sweeps    the subnet being swept
+ *
+ * A new queue whose body carries none of these still reports `unidentified`,
+ * which is the honest answer — but the fix is one entry here rather than a
+ * branch, and tests/dead-letter.test.ts asserts every live queue is covered so
+ * the next omission fails rather than degrading quietly.
+ */
+export const DEAD_LETTER_SUBJECT_KEYS = [
+  "lane",
+  "subscription_id",
+  "surface_id",
+  "origin",
+  "netuid",
+] as const;
+
+/**
+ * How many distinct subjects the summary will name before counting the rest.
+ *
+ * A DLQ batch is up to 100 messages and this string lands in a log line and a
+ * `lane_health.detail` column. Naming a hundred netuids there is the dump this
+ * function exists to avoid; naming a dozen is the shape a reader needs, and
+ * "+N more" keeps the total honest.
+ */
+export const DEAD_LETTER_MAX_NAMED_SUBJECTS = 12;
+
+/** The subject a body names, or null when it names none of them. */
+function subjectOf(body: Record<string, unknown>): string | null {
+  for (const key of DEAD_LETTER_SUBJECT_KEYS) {
+    const value = body[key];
+    // Numbers count -- `netuid` is one, and rejecting it would have left the
+    // sweep queue unidentified for the same reason the string-only check left
+    // all three. NaN and Infinity do not: neither names a subject.
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return `${key}=${value}`;
+    }
+    if (typeof value === "string" && value) return value;
+  }
+  return null;
+}
+
+/**
  * One line describing what landed, for the log and the lane verdict.
  *
  * SUMMARISED, NOT DUMPED. A dead-lettered `sync-batches` message can carry
  * 5,000 rows and a `webhook-deliveries` one carries a whole event body; neither
  * belongs in a log line or a `lane_health.detail` column. What is worth keeping
- * is the shape — how many, from which lanes or subscriptions — because that is
- * what tells a reader whether one producer broke or the database did.
+ * is the shape — how many, and which subjects — because that is what tells a
+ * reader whether one producer broke or the database did.
  *
  * Pure, so the summary is testable without a queue.
  */
@@ -79,13 +139,14 @@ export function summarizeDeadLetterBatch(
       keys.add("unparseable");
       continue;
     }
-    // `lane` for sync-batches, `subscription_id` for webhook-deliveries. One
-    // reader for both queues means reading whichever identity the message has,
-    // rather than two near-identical modules that drift.
-    const key = body.lane ?? body.subscription_id;
-    keys.add(typeof key === "string" && key ? key : "unidentified");
+    keys.add(subjectOf(body) ?? "unidentified");
   }
-  const named = [...keys].sort().join(",");
+  const sorted = [...keys].sort();
+  const shown = sorted.slice(0, DEAD_LETTER_MAX_NAMED_SUBJECTS);
+  const named =
+    sorted.length > shown.length
+      ? `${shown.join(",")},+${sorted.length - shown.length} more`
+      : shown.join(",");
   return `${messages.length} dead-lettered message(s) on ${queueName} (${named})`;
 }
 
