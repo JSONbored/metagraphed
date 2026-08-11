@@ -118,11 +118,22 @@ export interface FreshnessExpectation {
 }
 
 /**
- * Every table in tests/fixtures/sqlite-schema, and what its freshness means.
+ * Every table in db/schema.sql, and what its freshness means.
  *
  * Thresholds are set from MEASURED cadence (2026-08-07 sweep) with headroom,
  * not from what the producer claims. A threshold under one producer interval
  * alarms forever; one at ten times it never alarms at all.
+ *
+ * THE CENSUS IS db/schema.sql -- the snapshot of the live Neon schema -- and
+ * was tests/fixtures/sqlite-schema until #10817. That directory is the FROZEN
+ * D1-era migration set, kept as a test fixture; it names 49 tables, which were
+ * exactly the 49 this map classified. So every Neon-era table added after the
+ * D1 cutover was structurally invisible to the coverage test: not classified,
+ * not exempted, and indistinguishable from healthy. Fourteen had accumulated,
+ * including both halves of the ownership family and our own `self_health_*`.
+ *
+ * An exemption list is only worth anything if it can see what it exempts, so
+ * the census has to come from the schema that actually exists.
  */
 export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // --- live capture: minutes old in steady state -------------------------
@@ -162,20 +173,11 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: 2 * HOUR,
     reason: "RAW_CAPTURE_CRON every 5 min",
   },
-  raw_capture_state_v2: {
-    // EXCLUDED because the table does not exist in production. It is declared
-    // in tests/fixtures/sqlite-schema/0013_raw_capture_network.sql and was never applied (17
-    // migrations later), which #9867 tracks. Sweeping it made its whole batch
-    // throw, and at FRESHNESS_BATCH = 4 that blinded three healthy tables with
-    // it. Left declared rather than deleted so the map still accounts for
-    // every table tests/fixtures/sqlite-schema names -- the invariant
-    // tests/table-freshness-watchdog.test.ts asserts.
-    column: "",
-    kind: "ms",
-    maxAgeMs: null,
-    reason:
-      "declared in tests/fixtures/sqlite-schema/0013 but never applied to production (#9867)",
-  },
+  // `raw_capture_state_v2` was declared here purely to satisfy the old
+  // invariant -- "account for every table tests/fixtures/sqlite-schema names"
+  // -- against a table that has never existed in production (#9867). With the
+  // census taken from db/schema.sql it is not a table at all, so the entry has
+  // nothing left to account for and is gone (#10817).
   tao_usd_index: {
     column: "observed_at",
     kind: "ms",
@@ -529,6 +531,150 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     kind: "ms",
     maxAgeMs: null,
     reason: "a watch list, edited by hand",
+  },
+
+  // --- the fourteen the fixture census could not see (#10817) -------------
+  //
+  // Every table below is in db/schema.sql and was absent from this map, because
+  // the census this file was written against was tests/fixtures/sqlite-schema
+  // -- the FROZEN D1-era set. Its 49 tables were exactly the 49 classified
+  // here, so the coverage test passed while the map ignored every Neon-era
+  // table added since. An exemption list that cannot see what it exempts.
+
+  // The hourly LANE_HEARTBEAT_CRON enqueues all three queue producers. Four
+  // ticks, so a single failed enqueue does not alarm but a dead heartbeat does.
+  attribution_sweeps: {
+    column: "swept_at",
+    kind: "ms",
+    maxAgeMs: 4 * HOUR,
+    reason: "LANE_HEARTBEAT_CRON hourly -> attribution-sweeps queue",
+  },
+  origin_reachability: {
+    column: "checked_at",
+    kind: "ms",
+    maxAgeMs: 4 * HOUR,
+    reason: "LANE_HEARTBEAT_CRON hourly -> origin-reachability queue",
+  },
+  revenue_observations: {
+    column: "observed_at",
+    kind: "ms",
+    maxAgeMs: 4 * HOUR,
+    reason: "LANE_HEARTBEAT_CRON hourly -> revenue-probes queue",
+  },
+  // Both of these record an OUTCOME that may not happen: a sweep that finds no
+  // candidate and a probe that does not fail each write nothing. Bounding them
+  // would alarm on the healthy case. `attribution_candidates` is currently
+  // empty (0 rows against 128 sweeps), which is either correct or a defect --
+  // #10818 is where that gets decided, and a `null` here does not prejudge it.
+  attribution_candidates: {
+    column: "last_seen",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "written only when a sweep yields a candidate",
+    coveredBy: "attribution-sweep",
+  },
+  revenue_probe_failures: {
+    column: "observed_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "written only when a probe fails; quiet means nothing failed",
+    coveredBy: "revenue-probe",
+  },
+
+  // Our own uptime record, written by the registry-sync-api Worker's cron
+  // twelve times an hour. If this goes quiet we stop being able to say whether
+  // we were up, which is the one outage nobody else will report for us.
+  self_health_checks: {
+    column: "checked_at_ms",
+    kind: "ms",
+    maxAgeMs: 2 * HOUR,
+    reason: "SELF_HEALTH_PROBE_CRON, 12x/hour",
+  },
+  self_health_daily: {
+    column: "day",
+    kind: "date",
+    maxAgeMs: 48 * HOUR,
+    reason: "daily rollup of self_health_checks",
+  },
+
+  // Daily lane (`17 5 * * *`). Two days of slack so one missed run is not an
+  // alarm, which matters more here than elsewhere: nothing READS this table
+  // yet (#10818), so its verdict is the only thing that would notice it stop.
+  subnet_deregistration_daily: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: 48 * HOUR,
+    reason: "SUBNET_DEREGISTRATION_DAILY_CRON, once a day",
+  },
+
+  // The subnet-identity family, the same card+history shape as hyperparams.
+  // Twelve ticks matches its sibling deliberately -- one hourly producer, one
+  // ratio, so the two cannot drift apart.
+  subnet_identity: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: missedTicksMs("subnet_identity", 12),
+    reason: "12 ticks of SUBNET_IDENTITY_POLL_SECS (1h)",
+    producer: "subnet_identity",
+  },
+  subnet_identity_history: {
+    column: "observed_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "append-on-change; quiet means nobody renamed a subnet",
+    coveredBy: "subnet_identity",
+  },
+
+  // The ownership family (#10811). The card is upserted every pass; the
+  // history appends only when `owner_changed` -- 7 rows across 128 subnets in
+  // the whole seeded history, so quiet is its normal state.
+  //
+  // NOT CADENCE-DERIVED, and cannot be. Its producer runs every 300s, so the
+  // ceiling this file's cadence test allows -- 12 ticks -- is ONE HOUR, and
+  // the sweep's own floor is TWO (it runs hourly; anything tighter alarms on
+  // its own sampling gap). The two rules have no overlap for a lane this fast,
+  // so `producer` is deliberately omitted and the bound is the sweep's floor,
+  // the same shape as `chain-detail` (sized against a downstream consumer) and
+  // `rpc-usage` (sized against a traffic floor). What notices a single missed
+  // 5-minute pass is the lane's own `subnet-ownership` verdict, not this.
+  //
+  // EXPECT THIS TO ALARM until metagraphed-infra#461 lands: the card carries
+  // the 2026-08-02 lakehouse seed's stamp and the lane cannot write until its
+  // container image ships #450's lane list. A `stale` verdict is CORRECT today
+  // and must not be suppressed to quiet it.
+  subnet_ownership: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: 2 * HOUR,
+    reason:
+      "the sweep's hourly floor; 12 ticks of its 300s producer would be 1h",
+    knownIssue: "metagraphed-infra#461",
+  },
+  subnet_ownership_history: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "append-on-change; quiet means no subnet changed hands",
+    coveredBy: "subnet_ownership",
+  },
+
+  // An event log: rows appear when a subnet is created or removed, and a chain
+  // where neither happened for a week is not a fault.
+  subnet_lifecycle: {
+    column: "observed_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "append-on-event; quiet means no subnet was added or removed",
+    coveredBy: "subnet-lifecycle",
+  },
+
+  // Written by scripts/neon-migrate.ts, once per migration. The same "only
+  // when a human acts" class as api_keys above.
+  schema_migrations: {
+    column: "applied_at",
+    kind: "ms",
+    maxAgeMs: null,
+    reason: "one row per migration applied",
   },
 };
 
