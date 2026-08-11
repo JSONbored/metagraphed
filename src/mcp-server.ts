@@ -14713,7 +14713,7 @@ const TOOL_OUTPUT_SCHEMAS = {
 };
 
 export function listToolDefinitions() {
-  return MCP_TOOLS.map((tool: Row) => {
+  return MCP_TOOLS.map((tool) => {
     // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
     // artifact of `z.int()`, not a property of which side of the call a schema
     // describes, so it landed on 1,083 of 1,083 output integer fields while

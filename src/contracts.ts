@@ -7060,13 +7060,19 @@ function wireSchema(schema: z.ZodObject): z.ZodObject {
  * keep honest, and this runs for every parameter of every route.
  */
 function declaredBaseType(field: z.ZodType): string | undefined {
-  let current = field as unknown as {
-    def?: { type?: string; innerType?: unknown };
-  };
-  for (let hops = 0; hops < 10 && current?.def?.innerType; hops += 1) {
-    current = current.def.innerType as typeof current;
+  // `def` is Zod v4's own public property, so this walks the schema through
+  // its declared type rather than a hand-written shape. Only the WRAPPERS
+  // (optional/default/nullable) carry `innerType`, which is why each hop is
+  // narrowed rather than assumed -- the loop ends at the first def without one.
+  /** The wrapper shape: only optional/default/nullable carry an inner schema. */
+  type Wrapper = { innerType?: { def?: z.core.$ZodTypeDef } };
+  let current: z.core.$ZodTypeDef = field.def;
+  for (let hops = 0; hops < 10; hops += 1) {
+    const inner = (current as Wrapper).innerType?.def;
+    if (!inner) break;
+    current = inner;
   }
-  return current?.def?.type;
+  return current.type;
 }
 
 /**
