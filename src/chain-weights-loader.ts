@@ -22,7 +22,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
  * One window of weight-setting activity from the lakehouse, already built into
@@ -33,7 +33,7 @@ import type { r2SqlQuery } from "./r2-sql.ts";
  * schema-stable card rather than an error, and that belongs at the call site.
  */
 export async function loadChainWeightsColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   {
     window,
     limit,
@@ -42,7 +42,7 @@ export async function loadChainWeightsColdTier(
     window: string;
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildChainWeights> | null> {
   const rollup = await loadChainEventRollup(env, CHAIN_WEIGHTS_ROLLUP, {

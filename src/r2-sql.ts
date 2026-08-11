@@ -352,11 +352,29 @@ export function isExpectedR2SqlFailure(errorCode: string): boolean {
  * injection surface. Callers pass literal-safe values (integers they parsed,
  * hashes they regex-validated) and are responsible for that validation.
  */
-export async function r2SqlQuery(
+/**
+ * The shape an injected r2-sql reader must have.
+ *
+ * NOT `R2SqlReader`, now that the real one is generic. A generic
+ * signature is not satisfied by the concrete stubs every loader test passes --
+ * a double returning `Promise<Record<string, unknown>[] | null>` cannot stand
+ * in for a function that promises `Row[]` for any `Row` the CALLER picks.
+ *
+ * The seam does not need that freedom: every loader that takes a `query` dep
+ * reads the default row shape and narrows afterwards. `r2SqlQuery` itself is
+ * assignable here, because its type parameter defaults.
+ */
+export type R2SqlReader = (
+  env: Env | null | undefined,
+  sql: string,
+  deps?: R2SqlDeps,
+) => Promise<Record<string, unknown>[] | null>;
+
+export async function r2SqlQuery<Row = Record<string, unknown>>(
   env: Env | null | undefined,
   sql: string,
   deps: R2SqlDeps = {},
-): Promise<Record<string, unknown>[] | null> {
+): Promise<Row[] | null> {
   if (!isR2SqlConfigured(env)) {
     // Unconfigured is not a fault: self-hosters and local/CI runs simply have
     // no lakehouse, and the caller's existing empty payload is correct there.
@@ -439,7 +457,7 @@ export async function r2SqlQuery(
     const rows = body?.result?.rows;
     // A successful query with no rows is a legitimate answer (no such block),
     // and must not be conflated with a failure — hence [] rather than null.
-    return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
+    return Array.isArray(rows) ? (rows as Row[]) : [];
   } catch (error) {
     r2SqlFailureGeneration += 1;
     const detail = String((error as Error)?.message ?? error);

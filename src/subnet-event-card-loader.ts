@@ -21,7 +21,7 @@
 // would have been a fix for a bug that is not there.
 import { loadChainEventIdentityRollup } from "./chain-event-rollup-cold-tier.ts";
 import type { ChainEventRollupSpec } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -38,7 +38,7 @@ type Row = Record<string, unknown>;
  * because a summary card needs no rows.
  */
 export async function loadSubnetEventCardColdTier<T>(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   spec: ChainEventRollupSpec,
   netuid: number,
   build: (row: Row | null, netuid: unknown, options: { window?: unknown }) => T,
@@ -50,7 +50,7 @@ export async function loadSubnetEventCardColdTier<T>(
     windowLabel?: string;
     windowDays: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<T | null> {
   const rollup = await loadChainEventIdentityRollup(env, spec, {

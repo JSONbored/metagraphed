@@ -7,7 +7,7 @@
 // and therefore the order a hand-built row must be written in.
 
 /** `chain.blocks` */
-export interface BlocksRow {
+export type BlocksRow = {
   block_number: number | null;
   block_hash: string | null;
   parent_hash: string | null;
@@ -16,7 +16,7 @@ export interface BlocksRow {
   event_count: number | null;
   spec_version: number | null;
   observed_at: number | null;
-}
+};
 
 /** `chain.blocks` columns, in field-id order. */
 export const BLOCKS_COLUMNS = [
@@ -31,7 +31,7 @@ export const BLOCKS_COLUMNS = [
 ] as const;
 
 /** `chain.extrinsics` */
-export interface ExtrinsicsRow {
+export type ExtrinsicsRow = {
   block_number: number | null;
   extrinsic_index: number | null;
   extrinsic_hash: string | null;
@@ -43,7 +43,7 @@ export interface ExtrinsicsRow {
   tip_tao: number | null;
   call_args: string | null;
   observed_at: number | null;
-}
+};
 
 /** `chain.extrinsics` columns, in field-id order. */
 export const EXTRINSICS_COLUMNS = [
@@ -61,7 +61,7 @@ export const EXTRINSICS_COLUMNS = [
 ] as const;
 
 /** `chain.chain_events` */
-export interface ChainEventsRow {
+export type ChainEventsRow = {
   block_number: number | null;
   event_index: number | null;
   pallet: string | null;
@@ -70,7 +70,7 @@ export interface ChainEventsRow {
   phase: string | null;
   extrinsic_index: number | null;
   observed_at: number | null;
-}
+};
 
 /** `chain.chain_events` columns, in field-id order. */
 export const CHAIN_EVENTS_COLUMNS = [
@@ -85,7 +85,7 @@ export const CHAIN_EVENTS_COLUMNS = [
 ] as const;
 
 /** `chain.account_events` */
-export interface AccountEventsRow {
+export type AccountEventsRow = {
   block_number: number | null;
   event_index: number | null;
   extrinsic_index: number | null;
@@ -97,7 +97,7 @@ export interface AccountEventsRow {
   amount_tao: number | null;
   alpha_amount: number | null;
   observed_at: number | null;
-}
+};
 
 /** `chain.account_events` columns, in field-id order. */
 export const ACCOUNT_EVENTS_COLUMNS = [
@@ -115,7 +115,7 @@ export const ACCOUNT_EVENTS_COLUMNS = [
 ] as const;
 
 /** `chain.account_identity` */
-export interface AccountIdentityRow {
+export type AccountIdentityRow = {
   account: string | null;
   name: string | null;
   url: string | null;
@@ -125,7 +125,7 @@ export interface AccountIdentityRow {
   description: string | null;
   additional: string | null;
   captured_at: number | null;
-}
+};
 
 /** `chain.account_identity` columns, in field-id order. */
 export const ACCOUNT_IDENTITY_COLUMNS = [
@@ -141,7 +141,7 @@ export const ACCOUNT_IDENTITY_COLUMNS = [
 ] as const;
 
 /** `chain.account_identity_history` */
-export interface AccountIdentityHistoryRow {
+export type AccountIdentityHistoryRow = {
   id: number | null;
   account: string | null;
   observed_at: number | null;
@@ -153,7 +153,7 @@ export interface AccountIdentityHistoryRow {
   description: string | null;
   additional: string | null;
   identity_hash: string | null;
-}
+};
 
 /** `chain.account_identity_history` columns, in field-id order. */
 export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
@@ -171,13 +171,13 @@ export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
 ] as const;
 
 /** `chain.nominator_positions` */
-export interface NominatorPositionsRow {
+export type NominatorPositionsRow = {
   coldkey: string | null;
   hotkey: string | null;
   netuid: number | null;
   share_fraction: number | null;
   captured_at: number | null;
-}
+};
 
 /** `chain.nominator_positions` columns, in field-id order. */
 export const NOMINATOR_POSITIONS_COLUMNS = [
@@ -189,7 +189,7 @@ export const NOMINATOR_POSITIONS_COLUMNS = [
 ] as const;
 
 /** `chain.rpc_proxy_events` */
-export interface RpcProxyEventsRow {
+export type RpcProxyEventsRow = {
   id: number | null;
   observed_at: number | null;
   network: string | null;
@@ -200,7 +200,7 @@ export interface RpcProxyEventsRow {
   attempts: number | null;
   latency_ms: number | null;
   cache: string | null;
-}
+};
 
 /** `chain.rpc_proxy_events` columns, in field-id order. */
 export const RPC_PROXY_EVENTS_COLUMNS = [
@@ -217,12 +217,12 @@ export const RPC_PROXY_EVENTS_COLUMNS = [
 ] as const;
 
 /** `chain.self_health_daily` */
-export interface SelfHealthDailyRow {
+export type SelfHealthDailyRow = {
   day: string | null;
   component: string | null;
   checks: number | null;
   ok_count: number | null;
-}
+};
 
 /** `chain.self_health_daily` columns, in field-id order. */
 export const SELF_HEALTH_DAILY_COLUMNS = [
@@ -233,7 +233,7 @@ export const SELF_HEALTH_DAILY_COLUMNS = [
 ] as const;
 
 /** `chain.subnet_hyperparams` */
-export interface SubnetHyperparamsRow {
+export type SubnetHyperparamsRow = {
   netuid: number | null;
   kappa_ratio: number | null;
   immunity_period: number | null;
@@ -270,7 +270,7 @@ export interface SubnetHyperparamsRow {
   min_childkey_take_ratio: number | null;
   block_number: number | null;
   captured_at: number | null;
-}
+};
 
 /** `chain.subnet_hyperparams` columns, in field-id order. */
 export const SUBNET_HYPERPARAMS_COLUMNS = [
@@ -313,7 +313,7 @@ export const SUBNET_HYPERPARAMS_COLUMNS = [
 ] as const;
 
 /** `chain.subnet_hyperparams_history` */
-export interface SubnetHyperparamsHistoryRow {
+export type SubnetHyperparamsHistoryRow = {
   id: number | null;
   netuid: number | null;
   block_number: number | null;
@@ -352,7 +352,7 @@ export interface SubnetHyperparamsHistoryRow {
   owner_cut_auto_lock_enabled: boolean | null;
   min_childkey_take_ratio: number | null;
   hyperparams_hash: string | null;
-}
+};
 
 /** `chain.subnet_hyperparams_history` columns, in field-id order. */
 export const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
@@ -397,7 +397,7 @@ export const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
 ] as const;
 
 /** `chain.subnet_identity_history` */
-export interface SubnetIdentityHistoryRow {
+export type SubnetIdentityHistoryRow = {
   id: number | null;
   netuid: number | null;
   block_number: number | null;
@@ -410,7 +410,7 @@ export interface SubnetIdentityHistoryRow {
   discord: string | null;
   logo_url: string | null;
   identity_hash: string | null;
-}
+};
 
 /** `chain.subnet_identity_history` columns, in field-id order. */
 export const SUBNET_IDENTITY_HISTORY_COLUMNS = [
@@ -429,13 +429,13 @@ export const SUBNET_IDENTITY_HISTORY_COLUMNS = [
 ] as const;
 
 /** `chain.subnet_ownership_history` */
-export interface SubnetOwnershipHistoryRow {
+export type SubnetOwnershipHistoryRow = {
   id: number | null;
   netuid: number | null;
   owner_hotkey: string | null;
   owner_coldkey: string | null;
   captured_at: number | null;
-}
+};
 
 /** `chain.subnet_ownership_history` columns, in field-id order. */
 export const SUBNET_OWNERSHIP_HISTORY_COLUMNS = [

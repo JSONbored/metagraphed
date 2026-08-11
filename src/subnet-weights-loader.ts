@@ -27,7 +27,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
  * One subnet's window of weight-setting activity as the summary card — or null when the
@@ -44,7 +44,7 @@ import type { r2SqlQuery } from "./r2-sql.ts";
  * also why no limit is passed -- the card needs no rows at all.
  */
 export async function loadSubnetWeightsColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   netuid: number,
   {
     windowLabel,
@@ -54,7 +54,7 @@ export async function loadSubnetWeightsColdTier(
     windowLabel?: string;
     windowDays: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildSubnetWeights> | null> {
   const rollup = await loadChainEventIdentityRollup(env, CHAIN_WEIGHTS_ROLLUP, {

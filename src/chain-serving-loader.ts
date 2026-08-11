@@ -22,7 +22,7 @@ import {
   CHAIN_SERVING_ROLLUP,
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
  * One window of chain-serving activity from the lakehouse, already built into
@@ -46,7 +46,7 @@ import type { r2SqlQuery } from "./r2-sql.ts";
  * from the REST call site's types rather than merely defensive.
  */
 export async function loadChainServingColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   {
     window,
     limit,
@@ -57,7 +57,7 @@ export async function loadChainServingColdTier(
      * have to restate it here. */
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildChainServing> | null> {
   const label = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)

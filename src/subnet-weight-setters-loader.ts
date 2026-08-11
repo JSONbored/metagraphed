@@ -18,7 +18,7 @@ import {
   CHAIN_WEIGHTS_ROLLUP,
   loadChainEventIdentityRollup,
 } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
  * One subnet's window of weight-setting activity per setter, already built into
@@ -29,7 +29,7 @@ import type { r2SqlQuery } from "./r2-sql.ts";
  * that decision belongs at the call site.
  */
 export async function loadSubnetWeightSettersColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   netuid: number,
   {
     windowLabel,
@@ -41,7 +41,7 @@ export async function loadSubnetWeightSettersColdTier(
     windowDays: number;
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildSubnetWeightSetters> | null> {
   const rollup = await loadChainEventIdentityRollup(env, CHAIN_WEIGHTS_ROLLUP, {
@@ -74,7 +74,7 @@ export async function loadSubnetWeightSettersColdTier(
  * because a cadence was unknown would trade a useful answer for no answer.
  */
 async function loadSubnetTempo(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   netuid: number,
 ): Promise<unknown> {
   // readStore, NOT observationsReadDb (#10179). Two reasons, either fatal:

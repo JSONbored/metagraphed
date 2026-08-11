@@ -30,14 +30,14 @@ import {
   CHAIN_PROMETHEUS_ROLLUP,
   loadChainEventRollup,
 } from "./chain-event-rollup-cold-tier.ts";
-import type { r2SqlQuery } from "./r2-sql.ts";
+import type { R2SqlReader } from "./r2-sql.ts";
 
 /**
  * One window of prometheus-serving activity from the lakehouse, already built
  * into the response shape -- or null when the lakehouse cannot answer.
  */
 export async function loadChainPrometheusColdTier(
-  env: Parameters<typeof r2SqlQuery>[0],
+  env: Parameters<R2SqlReader>[0],
   {
     window,
     limit,
@@ -48,7 +48,7 @@ export async function loadChainPrometheusColdTier(
      * have to restate it here. */
     limit?: number;
     /** Injectable for tests; forwarded to the rollup reader. */
-    query?: typeof r2SqlQuery;
+    query?: R2SqlReader;
   },
 ): Promise<ReturnType<typeof buildChainPrometheus> | null> {
   const label = Object.hasOwn(ANALYTICS_WINDOW_DAYS, window)
