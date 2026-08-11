@@ -1500,6 +1500,12 @@
     "nullable": true
   },
   {
+    "table": "nominator_positions",
+    "column": "source",
+    "udt": "text",
+    "nullable": false
+  },
+  {
     "table": "nominator_positions_passes",
     "column": "captured_at",
     "udt": "int8",

@@ -601,7 +601,8 @@ CREATE TABLE public.nominator_positions (
     netuid integer NOT NULL,
     share_fraction double precision,
     captured_at bigint NOT NULL,
-    shares numeric
+    shares numeric,
+    source text DEFAULT 'alpha'::text NOT NULL
 );
 
 --
@@ -2164,6 +2165,12 @@ CREATE INDEX idx_validator_nominator_counts_passes_completed ON public.validator
 CREATE INDEX idx_wps_address ON public.watch_push_subscriptions USING btree (address, created_at DESC);
 
 --
+-- Name: nominator_positions_coldkey_source_captured_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX nominator_positions_coldkey_source_captured_idx ON public.nominator_positions USING btree (coldkey, source, captured_at);
+
+--
 -- Name: nominator_positions_hotkey_netuid_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2216,6 +2223,12 @@ CREATE INDEX subnet_ownership_captured_at_idx ON public.subnet_ownership USING b
 --
 
 CREATE INDEX subnet_ownership_history_netuid_captured_at_idx ON public.subnet_ownership_history USING btree (netuid, captured_at);
+
+--
+-- Name: subnet_ownership_history_netuid_owner_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX subnet_ownership_history_netuid_owner_idx ON public.subnet_ownership_history USING btree (netuid, owner_hotkey, owner_coldkey);
 
 --
 -- Name: ux_surface_failure_daily_key; Type: INDEX; Schema: public; Owner: -
