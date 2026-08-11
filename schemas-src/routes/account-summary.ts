@@ -40,7 +40,6 @@
 import { z } from "zod";
 import { EntityLabelSchema } from "./account-entities.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
-import { EntityCategorySchema } from "../shared.ts";
 
 const AccountRegistrationSchema = z
   .object({

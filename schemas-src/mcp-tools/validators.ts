@@ -17,6 +17,9 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { SubnetValidatorsArtifactSchema } from "../routes/subnet-metagraph.ts";
+import { CompareValidatorsArtifactSchema } from "../routes/compare-validators.ts";
+import { projectableRows } from "./shared.ts";
 import {
   NOMINATOR_LIMIT_DEFAULT,
   NOMINATOR_LIMIT_MAX,
@@ -40,8 +43,6 @@ import {
   ValidatorNominatorPositionsSchema,
   ValidatorNominatorsArtifactSchema,
 } from "../routes/validator-nominators.ts";
-import { NeuronSchema } from "../routes/subnet-metagraph.ts";
-import { CompareValidatorEntrySchema } from "../routes/compare-validators.ts";
 import {} from "../routes/validator-nominators.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
@@ -99,21 +100,12 @@ export type ListSubnetValidatorsInput = z.infer<
   typeof ListSubnetValidatorsInputSchema
 >;
 
-export const ListSubnetValidatorsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    validator_count: z.int(),
-    captured_at: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
-    // tool advertises `fields`: a caller who projects the row must still
-    // satisfy the schema the tool publishes, which is the contract #9884
-    // restored after the derivation in #9855/#9859 broke it. Verified against
-    // production 2026-08-07, whole and projected.
-    validators: z.array(NeuronSchema.partial()),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA, with the ONE delta this surface really has (#10790):
+// `list_subnet_validators` advertises `fields`, so its rows are projectable.
+export const ListSubnetValidatorsOutputSchema =
+  SubnetValidatorsArtifactSchema.extend({
+    validators: projectableRows(SubnetValidatorsArtifactSchema.shape.validators),
+  });
 export type ListSubnetValidatorsOutput = z.infer<
   typeof ListSubnetValidatorsOutputSchema
 >;
@@ -182,19 +174,11 @@ export type CompareValidatorsInput = z.infer<
   typeof CompareValidatorsInputSchema
 >;
 
-export const CompareValidatorsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    validator_count: z.int(),
-    // Typed from the route's own CompareValidatorEntrySchema (#9797). This
-    // is the SECOND `validators` site in this file -- list_subnet_validators'
-    // is a neuron row, compare_validators' is the side-by-side comparison
-    // entry, and they are deliberately different shapes. Verified against
-    // production 2026-08-07.
-    validators: z.array(CompareValidatorEntrySchema),
-  })
-  .strict();
+// THE ROUTE'S OWN SCHEMA (#10790). `compare_validators` serves
+// /api/v1/compare-validators' payload unchanged, so no delta survives -- and
+// the route's `netuid` carries the prose saying what the optional subnet scope
+// MEANS, which the copy dropped.
+export const CompareValidatorsOutputSchema = CompareValidatorsArtifactSchema;
 export type CompareValidatorsOutput = z.infer<
   typeof CompareValidatorsOutputSchema
 >;
