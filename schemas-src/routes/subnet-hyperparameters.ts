@@ -17,6 +17,7 @@
 // *.schema.json file), and all three are converted together in this same
 // batch, so both hand-edited component keys become fully orphaned.
 import { z } from "zod";
+import { subnetEntryListSchema } from "../shared.ts";
 
 const SubnetHyperparametersSchema = z
   .object({
@@ -101,17 +102,9 @@ const SubnetHyperparamsHistoryEntrySchema = z
     "One observed hyperparameter change: the full block as of that block_number, plus the hash the diff-on-change writer keyed it by.",
   );
 
-export const SubnetHyperparamsHistoryArtifactSchema = z
-  .object({
-    schema_version: z.int(),
-    netuid: z.int().min(0),
-    entry_count: z.int().min(0),
-    limit: z.int().min(1).max(1000).nullable().optional(),
-    offset: z.int().min(0).nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    entries: z.array(SubnetHyperparamsHistoryEntrySchema),
-  })
-  .strict();
+export const SubnetHyperparamsHistoryArtifactSchema = subnetEntryListSchema(
+  SubnetHyperparamsHistoryEntrySchema,
+);
 export type SubnetHyperparamsHistoryArtifact = z.infer<
   typeof SubnetHyperparamsHistoryArtifactSchema
 >;

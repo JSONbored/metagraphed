@@ -13,7 +13,10 @@
 // more times -- so the published GraphQL schema grew five anonymous twins of
 // a type it already had a name for.
 import { z } from "zod";
-import { ConcentrationMetricsSchema } from "../shared.ts";
+import {
+  ConcentrationMetricsSchema,
+  subnetHistoryArtifactSchema,
+} from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
 export const SUBNET_CONCENTRATION_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
@@ -78,20 +81,8 @@ const SubnetConcentrationHistoryPointSchema = z
   })
   .strict();
 
-export const SubnetConcentrationHistoryArtifactSchema = z
-  .object({
-    schema_version: z.int(),
-    netuid: z.int().min(0),
-    window: z
-      .string()
-      .nullable()
-      .optional()
-      .describe("The resolved window label (7d/30d/90d)."),
-    point_count: z.int().min(0),
-    points: z.array(SubnetConcentrationHistoryPointSchema),
-  })
-  .strict()
-  .describe(
+export const SubnetConcentrationHistoryArtifactSchema =
+  subnetHistoryArtifactSchema(SubnetConcentrationHistoryPointSchema).describe(
     "Per-subnet per-day concentration trend (#5901) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/concentration/history.",
   );
 export type SubnetConcentrationHistoryArtifact = z.infer<

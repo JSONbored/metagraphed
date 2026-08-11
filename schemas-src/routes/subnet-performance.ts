@@ -11,6 +11,7 @@ import { z } from "zod";
 import {
   ConcentrationMetricsSchema,
   ScoreDistributionSchema,
+  subnetHistoryArtifactSchema,
 } from "../shared.ts";
 
 /** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
@@ -93,20 +94,8 @@ const SubnetPerformanceHistoryPointSchema = z
     "One day's point in a subnet's concentration trend (#5901). Flattened (not nested) stake/emission metrics keep the series trivial to plot; each is null on a cold/empty day.",
   );
 
-export const SubnetPerformanceHistoryArtifactSchema = z
-  .object({
-    schema_version: z.int(),
-    netuid: z.int().min(0),
-    window: z
-      .string()
-      .nullable()
-      .optional()
-      .describe("The resolved window label (7d/30d/90d)."),
-    point_count: z.int().min(0),
-    points: z.array(SubnetPerformanceHistoryPointSchema),
-  })
-  .strict()
-  .describe(
+export const SubnetPerformanceHistoryArtifactSchema =
+  subnetHistoryArtifactSchema(SubnetPerformanceHistoryPointSchema).describe(
     "Per-subnet per-day reward-distribution trend (#6981) from the neuron_daily rollup, newest first. An empty series (point_count 0) on a cold store, never a GraphQL error. The history twin of subnet_performance, mirroring GET /api/v1/subnets/{netuid}/performance/history.",
   );
 export type SubnetPerformanceHistoryArtifact = z.infer<

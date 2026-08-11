@@ -730,3 +730,57 @@ export function distributionStatsSchema(
     })
     .strict();
 }
+
+/**
+ * A per-subnet, per-day trend series -- ONE envelope, three point types (#10790).
+ *
+ * `{schema_version, netuid, window, point_count, points}` was written out three
+ * times, for concentration, performance and yield, differing only in what a
+ * point IS. The envelope is one vocabulary; the point is the parameter.
+ *
+ * `point_count` is the rows RETURNED. An empty series on a cold store is a
+ * measurement, never an error -- which is why every one of these resolves to a
+ * schema-stable empty card rather than null.
+ */
+export function subnetHistoryArtifactSchema(point: z.ZodType) {
+  return z
+    .object({
+      schema_version: z.int(),
+      netuid: z.int().min(0),
+      window: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("The resolved window label (7d/30d/90d)."),
+      point_count: z.int().min(0),
+      points: z.array(point),
+    })
+    .strict();
+}
+
+/**
+ * A per-subnet, offset-paged entry list -- ONE envelope, three entry types
+ * (#10790).
+ *
+ * `{schema_version, netuid, entry_count, limit, offset, next_cursor, entries}`
+ * was written out three times, for hyperparameter history, identity history and
+ * lifecycle, differing only in what an entry IS.
+ *
+ * `limit`/`offset` are NULLABLE rather than merely optional: the REST layer
+ * defaults them before the loader runs, so a live response carries integers,
+ * but the loader is reachable without them and a schema that promised numbers
+ * would be wrong on that path.
+ */
+export function subnetEntryListSchema(entry: z.ZodType) {
+  return z
+    .object({
+      schema_version: z.int(),
+      netuid: z.int().min(0),
+      entry_count: z.int().min(0),
+      limit: z.int().min(1).max(1000).nullable().optional(),
+      offset: z.int().min(0).nullable().optional(),
+      next_cursor: z.string().nullable().optional(),
+      entries: z.array(entry),
+    })
+    .strict();
+}
