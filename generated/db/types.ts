@@ -618,6 +618,23 @@ export interface SubnetLifecycle {
   predates_capture: boolean;
 }
 
+/** `public.subnet_ownership` */
+export interface SubnetOwnership {
+  captured_at: number | string;
+  netuid: number;
+  owner_coldkey: string;
+  owner_hotkey: string;
+}
+
+/** `public.subnet_ownership_history` */
+export interface SubnetOwnershipHistory {
+  captured_at: number | string;
+  id: number | string;
+  netuid: number;
+  owner_coldkey: string;
+  owner_hotkey: string;
+}
+
 /** `public.subnet_snapshots` */
 export interface SubnetSnapshots {
   alpha_in_emission: number | null;
@@ -836,6 +853,8 @@ export interface DatabaseTables {
   SubnetIdentity: SubnetIdentity;
   SubnetIdentityHistory: SubnetIdentityHistory;
   SubnetLifecycle: SubnetLifecycle;
+  SubnetOwnership: SubnetOwnership;
+  SubnetOwnershipHistory: SubnetOwnershipHistory;
   SubnetSnapshots: SubnetSnapshots;
   Subnets: Subnets;
   SurfaceChecks: SurfaceChecks;

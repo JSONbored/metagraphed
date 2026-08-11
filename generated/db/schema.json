@@ -2502,6 +2502,60 @@
     "nullable": false
   },
   {
+    "table": "subnet_ownership",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership",
+    "column": "owner_coldkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership",
+    "column": "owner_hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "column": "captured_at",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "column": "id",
+    "udt": "int8",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "column": "netuid",
+    "udt": "int4",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "column": "owner_coldkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
+    "table": "subnet_ownership_history",
+    "column": "owner_hotkey",
+    "udt": "text",
+    "nullable": false
+  },
+  {
     "table": "subnet_snapshots",
     "column": "alpha_in_emission",
     "udt": "float8",

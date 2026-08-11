@@ -80,6 +80,18 @@ export const PRODUCER_CADENCE_SECS = {
   /** SUBNET_HYPERPARAMS_POLL_SECS. Hourly, the fastest of the poller's
    * non-firehose lanes; observed writing at :05 every hour. */
   subnet_hyperparams: 3_600,
+  /**
+   * SUBNET_OWNERSHIP_POLL_SECS, and `SubnetOwnershipWorkflow.intervalSeconds`.
+   * Five minutes -- the fastest non-firehose lane by an order of magnitude,
+   * because an ownership flip is the one subnet fact a user acts on
+   * immediately.
+   *
+   * DECLARED BEFORE IT IS OBSERVED, which is the opposite of every entry
+   * above. The lane has never written to Neon -- its two tables did not exist
+   * until #10811 -- so there is no measured gap to floor this against yet.
+   * Revisit once it has run a full day (metagraphed-infra#454).
+   */
+  subnet_ownership: 300,
 } as const;
 
 export type ProducerLane = keyof typeof PRODUCER_CADENCE_SECS;
@@ -119,6 +131,10 @@ export const LANE_PRODUCER: Readonly<Record<string, ProducerLane>> = {
   "neon:account-identity": "account_identity",
   "subnet-hyperparams": "subnet_hyperparams",
   "neon:subnet-hyperparams": "subnet_hyperparams",
+  // No `neon:` sibling: this lane writes Postgres directly rather than through
+  // a sync route, so there is no per-write verdict to map -- only the poller's
+  // own lane-health report.
+  "subnet-ownership": "subnet_ownership",
   metagraph: "metagraph",
   "neon:neurons": "metagraph",
   "neon:neurons-pass": "metagraph",
