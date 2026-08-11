@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { lakehouse, LAKEHOUSE_ENV } from "./helpers/cold-tier-env.ts";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -24,31 +25,20 @@ test("GET /accounts/{ss58}/history?format=csv emits a header-only CSV when cold"
 });
 
 test("GET /accounts/{ss58}/history?format=csv exports the per-day rows via the Postgres tier", async () => {
-  const env = {
-    ...createLocalArtifactEnv(),
-    METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          ss58: SS58,
-          day_count: 1,
-          limit: 1000,
-          offset: 0,
-          next_cursor: null,
-          days: [
-            {
-              day: "2026-06-25",
-              netuid: 1,
-              event_count: 5,
-              event_kinds: ["StakeAdded", "Transfer"],
-              first_block: 8454300,
-              last_block: 8454388,
-            },
-          ],
-        }),
+  // #10190: METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc
+  // and is absent from DATA_API_FORWARD_FLAGS, so the tier this doubled was
+  // never asked. The lakehouse cold tier answers, through the same builder.
+  const lake = lakehouse([
+    {
+      day: "2026-06-25",
+      netuid: 1,
+      event_count: 5,
+      event_kinds: ["StakeAdded", "Transfer"],
+      first_block: 8454300,
+      last_block: 8454388,
     },
-  };
+  ]);
+  const env = { ...createLocalArtifactEnv(), ...LAKEHOUSE_ENV };
   const res = await handleRequest(
     req(`/api/v1/accounts/${SS58}/history?format=csv`),
     env as unknown as Env,
