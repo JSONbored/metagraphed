@@ -9071,8 +9071,37 @@ describe("graphql — runtime (#5898, lakehouse spec-version timeline)", () => {
 });
 
 describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledger)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+  // #10190: METAGRAPH_HEALTH_SOURCE reads "d1" and is absent from
+  // DATA_API_FORWARD_FLAGS, so the tier this doubled never answered.
+  // loadGlobalIncidentsLedger reads `surface_checks` through readStore, and
+  // formatGlobalIncidents aggregates its INCIDENT rows into the surfaces below.
+  const CADENCE_MS = 15 * 60 * 1000;
+  function incident(netuid: number, surfaceId: string, downtimeMs = 300) {
+    const started = 1_750_000_000_000;
+    return {
+      netuid,
+      surface_id: surfaceId,
+      surface_key: surfaceId,
+      started_at: started,
+      ended_at: started + downtimeMs - CADENCE_MS,
+      failed_samples: 1,
+    };
+  }
+  function incidentStore(rows: Row[], observedAt: string | null = null) {
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.answers = [{ match: "surface_checks", rows }];
+    return {
+      ...pgMockEnv(),
+      METAGRAPH_CONTROL: {
+        async get(key: string) {
+          return key === "health:meta" && observedAt
+            ? { last_run_at: observedAt }
+            : null;
+        },
+      },
+    } as Row;
   }
   // Minimal D1 stub: every query returns no rows, so loadGlobalIncidentsLedger's
   // fallback path runs to a schema-stable empty ledger without a live DB.
@@ -9093,31 +9122,13 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 
   test("resolves the Postgres-tier ledger, including the JSON summary and typed surfaces", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(
-        Response.json({
-          schema_version: 1,
-          window: "30d",
-          observed_at: "2026-07-01T00:00:00.000Z",
-          source: "postgres",
-          summary: {
-            incident_count: 2,
-            affected_surface_count: 1,
-          },
-          surfaces: [
-            {
-              surface_id: "inc-1",
-              netuid: 5,
-              incident_count: 1,
-              downtime_ms: 300,
-              transient_failure_count: 0,
-              transient_failed_samples: 0,
-            },
-          ],
-        }),
-      ),
-    };
+    // Two incidents on ONE surface: summary.incident_count counts incidents
+    // while affected_surface_count counts surfaces, and a single row could not
+    // tell those two apart.
+    const env = incidentStore(
+      [incident(5, "inc-1", 300), incident(5, "inc-1", 200)],
+      "2026-07-01T00:00:00.000Z",
+    ) as unknown as Env;
     const { status, body } = await gql(
       `{ incidents(window: "30d") {
           schema_version window observed_at source
@@ -9147,21 +9158,24 @@ describe("graphql — incidents (#5660, Postgres-tier + retired-D1 fallback ledg
   });
 
   test("a partial Postgres-tier body degrades to the schema-stable defaults", async () => {
-    const env = {
-      METAGRAPH_HEALTH_SOURCE: "postgres",
-      DATA_API: dataApi(Response.json({})),
-    };
+    // A store with no incident rows is what degrades now -- the partial TIER
+    // body it replaces is unreachable. The floor itself is unchanged.
+    const env = incidentStore([]) as unknown as Env;
     const { status, body } = await gql(
       '{ incidents(window: "30d") { schema_version window observed_at source summary { incident_count affected_surface_count } surfaces { surface_id } } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
+    // The floor is the BUILT ledger: `source` is the prober label the formatter
+    // stamps and `summary` is a real zeroed object. The retired tier's `{}` body
+    // fell through the resolver's `??` to nulls instead, so this test never saw
+    // what production serves (#10190).
     assert.deepEqual(body.data.incidents, {
       schema_version: 1,
       window: "30d",
       observed_at: null,
-      source: null,
-      summary: null,
+      source: "live-cron-prober",
+      summary: { incident_count: 0, affected_surface_count: 0 },
       surfaces: [],
     });
   });
