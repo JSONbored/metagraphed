@@ -41,7 +41,7 @@ const PATH = "/api/v1/internal/subnet-identity-sync";
 // hand-written fixture that omitted it would pass tests production could not.
 const MIGRATIONS = [
   "migrations/neon/0021_subnet_identity_history.sql",
-  "migrations/neon/0022_subnet_identity_latest.sql",
+  "migrations/neon/0023_subnet_identity_latest.sql",
 ].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"));
 
 let db: PGlite;

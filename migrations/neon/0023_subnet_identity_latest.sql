@@ -1,5 +1,8 @@
 -- #10710: the latest-only half of the subnet identity family.
 --
+-- Numbered 0023 rather than 0022: main took 0022 while this branch was open,
+-- and two migrations sharing a number leaves their relative order undefined.
+--
 -- 0021 gave the history table back. This is its card -- one row per netuid,
 -- overwritten in place -- and it is the half the REGISTRY needs. History
 -- answers "what was this subnet called before"; the card answers "what is it
