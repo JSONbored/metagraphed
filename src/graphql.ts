@@ -1815,7 +1815,12 @@ async function loadEconomicsRows(context: GqlContext) {
 function postgresTierRequest(
   context: GqlContext,
   pathname: string,
-  params?: Row,
+  // URLSearchParams, which is what every one of the 70+ call sites passes and
+  // the only thing the body uses (`params.toString()`). It was typed `Row`,
+  // and `Row` was `Record<string, any>` -- so the signature said "a row bag"
+  // while the contract was "a query string builder", and `any` let the two
+  // coexist (#10782).
+  params?: URLSearchParams,
   // #10394: which chain's rows to read. Mainnet keeps the base path, so every
   // existing caller is unchanged; testnet reaches the `/api/v1/{network}/…`
   // twin the router already serves and REST callers already use.
