@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { forbiddenDataApi } from "./helpers/cold-tier-env.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainRegistrations,
@@ -304,39 +305,24 @@ describe("GET /api/v1/chain/registrations", () => {
   // fallback contract is unit-tested in workers/postgres-tier.ts's own
   // tests, so these two just prove the wiring: a Postgres hit is served
   // as-is with D1 never queried, and a Postgres failure falls back to D1.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
-    const env = {
-      ...registrationsEnv(cold),
-      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-      DATA_API: {
-        fetch: async () =>
-          Response.json({
-            schema_version: 1,
-            window: "7d",
-            observed_at: "2026-01-01T00:00:00.000Z",
-            subnet_count: 99,
-            network: {},
-            intensity_distribution: null,
-            subnets: [{ netuid: 42 }],
-          }),
-      },
-    };
-    env.METAGRAPH_HEALTH_DB.prepare = () => {
-      d1Called = true;
-      throw new Error(
-        "D1 must not be queried when Postgres serves the request",
-      );
-    };
+  test("the retired tier flag is not consulted even when set (#10190)", async () => {
+    // METAGRAPH_ACCOUNT_EVENTS_SOURCE reads "retired" in wrangler.jsonc and is absent from
+    // DATA_API_FORWARD_FLAGS, so this route reads no tier at all. Binding a
+    // DATA_API that WOULD answer and proving nothing asks it is the assertion:
+    // a reintroduced tryPostgresTier call also resolves to null, so without
+    // this it would be invisible -- which is how the call sat dead for months.
+    const tier = forbiddenDataApi();
     const res = await handleRequest(
       req("?window=7d"),
-      env as unknown as Env,
+      {
+        ...registrationsEnv(cold),
+        METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+        ...tier,
+      } as unknown as Env,
       {},
     );
     assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.subnet_count, 99);
-    assert.equal(d1Called, false);
+    assert.deepEqual(tier.paths, []);
   });
 
   // #4909/#6013: the D1 "fallback" is a schema-stable empty stub, not a real

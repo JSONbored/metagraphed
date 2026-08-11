@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { archiveEnv } from "./helpers/cold-tier-env.ts";
 import { describe, test } from "vitest";
 import {
   buildChainActivity,
@@ -43,44 +44,41 @@ function installMapCache() {
   };
 }
 
-// D1 fully eliminated (2026-07-16): extrinsics'/blocks' D1 write path is
-// retired (#4772) and the tables are dropped in production, so
-// handleChainActivity now goes tryPostgresTier -> buildChainActivity([...])
-// on any miss/outage, never a live D1 read. This mocks the Postgres tier
-// instead of D1.
-function chainActivityPostgresEnv() {
+// #10190: METAGRAPH_EXTRINSICS_SOURCE reads "retired" in wrangler.jsonc and is
+// absent from DATA_API_FORWARD_FLAGS, so the tier this used to double was never
+// asked. handleChainActivity reads the #9146 projection lane, so that is what is
+// doubled -- at the same transport (the archive bucket), with the envelope the
+// lane writes. A wrong envelope must fail: the reader declines on one, and in
+// production a decline means the route serves its zeroed floor.
+function chainActivityProjectionEnv() {
   return {
     ...createLocalArtifactEnv(),
-    METAGRAPH_EXTRINSICS_SOURCE: "postgres",
-    DATA_API: {
-      fetch: async () =>
-        Response.json({
-          schema_version: 1,
-          window: "7d",
-          observed_at: "2026-06-26T12:00:00.000Z",
-          day_count: 2,
-          days: [
+    ...archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: "2026-06-26T12:00:00.000Z",
+          extrinsic_rows: [
             {
               day: "2026-06-25",
-              block_count: 7200,
               extrinsic_count: 100,
-              event_count: 30000,
               successful_extrinsics: 99,
-              success_rate: 0.99,
               unique_signers: 40,
             },
             {
               day: "2026-06-24",
-              block_count: 7100,
               extrinsic_count: 50,
-              event_count: 29000,
               successful_extrinsics: 50,
-              success_rate: 1,
               unique_signers: 20,
             },
           ],
-        }),
-    },
+          block_rows: [
+            { day: "2026-06-25", block_count: 7200, event_count: 30000 },
+            { day: "2026-06-24", block_count: 7100, event_count: 29000 },
+          ],
+        },
+      },
+    }),
   };
 }
 
@@ -236,7 +234,7 @@ test("ignores junk rows (null, non-object, missing/non-string day)", () => {
 test("GET /api/v1/chain/activity merges + groups the chain tiers by UTC day", async () => {
   const res = await handleRequest(
     activityReq("?window=7d"),
-    chainActivityPostgresEnv() as unknown as Env,
+    chainActivityProjectionEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 200);

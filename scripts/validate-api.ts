@@ -15,17 +15,12 @@ import {
   readJson,
   repoRoot,
 } from "./lib.ts";
-import { buildExtrinsicFeed } from "../src/extrinsics.ts";
-import { buildAccountEvents } from "../src/account-events.ts";
 import { buildSubnetMetagraph } from "../src/metagraph-neurons.ts";
 import { buildSubnetHyperparams } from "../src/subnet-hyperparams.ts";
 import { buildAccountIdentity } from "../src/account-identity.ts";
 import { blockEmissionForIssuance } from "../src/block-emission.ts";
 import { taoToRao } from "../src/emission-decomposition.ts";
-import {
-  BLOCK_PAGINATION,
-  FEED_PAGINATION,
-} from "../workers/request-params.ts";
+import {} from "../workers/request-params.ts";
 
 // OpenAPI document + Worker response bodies are dynamic JSON read only for
 // assertion purposes -- never trusted for control flow. Mirrors the
@@ -2876,36 +2871,12 @@ for (const [route, assertion, options = {}] of checks) {
   const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const OBSERVED_AT_MS = 1_750_009_000_000;
   const BLOCK_NUM = 1_000_000;
-  const HASH = `0x${"a".repeat(64)}`;
+  // `HASH` went with the block/extrinsic fixtures it keyed (#10190).
 
   // `blockRow` went with the METAGRAPH_BLOCKS_SOURCE case (#10190) -- it was
   // the only fixture that used it.
-  const extrinsicRow = {
-    block_number: BLOCK_NUM,
-    extrinsic_index: 2,
-    extrinsic_hash: HASH,
-    signer: SS58,
-    call_module: "SubtensorModule",
-    call_function: "add_stake",
-    call_args: null,
-    fee_tao: 0.0125,
-    tip_tao: 0,
-    success: 1,
-    observed_at: OBSERVED_AT_MS,
-  };
-  const accountEventRow = {
-    block_number: BLOCK_NUM,
-    event_index: 1,
-    event_kind: "StakeAdded",
-    hotkey: SS58,
-    coldkey: null,
-    netuid: 7,
-    uid: 3,
-    amount_tao: 1.5,
-    alpha_amount: null,
-    observed_at: OBSERVED_AT_MS,
-    extrinsic_index: 2,
-  };
+  // `extrinsicRow` went with its postgres-tier case (#10190).
+  // `accountEventRow` went with its postgres-tier case (#10190).
   const neuronRow = {
     uid: 3,
     hotkey: SS58,
