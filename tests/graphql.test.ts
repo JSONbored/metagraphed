@@ -24163,7 +24163,7 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
       // window rollup for the count, and the by-uid index for these events -- so
       // the archive double routes on the key it is asked for. The events are
       // TUPLE-encoded: [uid, hotkey, successor, block, observed_at, tenure].
-      archiveEnv((key) =>
+      archiveEnv((key: string) =>
         key.includes("by-uid")
           ? {
               schema_version: 1,
