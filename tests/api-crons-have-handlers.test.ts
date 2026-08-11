@@ -114,4 +114,41 @@ describe("wrangler.jsonc crons and their handlers", () => {
       assert.equal(result.reason, "unknown cron");
     });
   });
+  test("every handled cron has an `if (cron === ...)` branch in the dispatcher", () => {
+    // WHAT MAKES API_HANDLED_CRONS LOAD-BEARING. The dispatcher does not read
+    // it -- an earlier cut had it decline against the set first, which made the
+    // guard at the bottom unreachable, i.e. a branch no test could cover. So
+    // the tie between the set and the branches is asserted here instead.
+    //
+    // An entry with no branch would fall through to the bottom `return
+    // { skipped: true }` and simply never run, which is the #10814 failure
+    // wearing this file's clothes.
+    const source = readFileSync("workers/api.ts", "utf8");
+    const branched = new Set(
+      [...source.matchAll(/^ {2}if \(cron === (\w+)\) \{/gm)].map((m) => m[1]),
+    );
+    assert.ok(
+      branched.size >= 30,
+      `only ${branched.size} dispatch branches parsed -- the scan broke, so this ` +
+        `test is passing on nothing`,
+    );
+    // HEALTH_PROBER_CRON is branched too, just further down (it guards the
+    // firehose bootstrap as well as the prober), so it is expected here.
+    assert.ok(
+      source.includes("if (cron === HEALTH_PROBER_CRON) {"),
+      "the health prober must be a named branch, not the fall-through",
+    );
+    branched.add("HEALTH_PROBER_CRON");
+
+    const names = new Set(
+      [...source.matchAll(/^ {2}([A-Z0-9_]+_CRON),$/gm)].map((m) => m[1]),
+    );
+    const unbranched = [...names].filter((n) => !branched.has(n));
+    assert.deepEqual(
+      unbranched,
+      [],
+      `these are in API_HANDLED_CRONS but no branch dispatches on them, so they ` +
+        `would fire and do nothing:\n${unbranched.join("\n")}`,
+    );
+  });
 });
