@@ -382,6 +382,50 @@ export const RevenueSearchSchema = z
   })
   .strict();
 
+// #10586: the sibling of RevenueSearchSchema, one phase later.
+//
+// registry/entities/ holds addresses that EXIST, so a subnet declaring no
+// treasury has no address to write and its absence has nowhere to live. Without
+// this record, "N of 128 subnets publish no treasury address" cannot be claimed
+// at all -- nothing distinguishes a subnet nobody looked at from one that was
+// looked at and had none.
+//
+// Both value sets are exported so validate:schema-vocabularies can pin them
+// against schemas/subnet-manifest.schema.json. The entity-category enum drifted
+// exactly this way (#10483): the JSON Schema gained four values, the Zod copy
+// did not, and nothing noticed because no document used them yet.
+export const WALLET_SEARCH_OUTCOME_VALUES = [
+  "none-found",
+  "wallets-declared",
+] as const;
+
+export const WALLET_SEARCH_CHECKED_VALUES = [
+  "website",
+  "docs",
+  "blog",
+  "source-repo",
+  "explorer",
+  "whitepaper",
+  "chain",
+] as const;
+
+export const WalletSearchSchema = z
+  .object({
+    checked: z.array(z.enum(WALLET_SEARCH_CHECKED_VALUES)).min(1).meta({
+      description:
+        'Where the search actually looked. Without it, "we searched" is unfalsifiable and nobody else can re-run it. `chain` means the on-chain owner keys were read (SubnetOwner), which is always available and is NOT a declaration by the team.',
+    }),
+    notes: z.string().optional(),
+    outcome: z.enum(WALLET_SEARCH_OUTCOME_VALUES).meta({
+      description:
+        "Cross-checked against registry/entities/ itself, so the summary cannot drift from the data it summarises.",
+    }),
+    searched_at: z.string().meta({
+      description: "An absence with no date is not evidence.",
+    }),
+  })
+  .strict();
+
 export const SubnetDetailSchema = z
   .object({
     block: z.int().min(0).optional(),
@@ -457,6 +501,7 @@ export const SubnetDetailSchema = z
     netuid: z.int().min(0),
     notes: z.string().nullable().optional(),
     revenue_search: RevenueSearchSchema.optional(),
+    wallet_search: WalletSearchSchema.optional(),
     participant_count: z.int().min(0).optional(),
     partnership: z.union([PartnershipMetadataSchema, z.null()]).optional(),
     previously_known_as: z.array(z.string()).optional(),

@@ -54,10 +54,20 @@ import { repoRoot } from "./lib.ts";
 /**
  * The most unreferenced exports allowed. THE CEILING ONLY FALLS.
  *
- * 752 after #10582 deleted the 164 precomputed response envelopes. Lower it
- * whenever exports are removed.
+/**
+ * The most unreferenced exports allowed. THE CEILING ONLY FALLS.
+ *
+ * 752 after #10582 deleted the 164 precomputed response envelopes.
+ *
+ * Then lower again (#10586): nothing was deleted.
+ * `scripts/validate-schema-vocabularies.ts` loads its mirror modules through
+ * literal import specifiers, so knip can see `schemas-src/shared.ts` and
+ * `schemas-src/routes/subnet-detail.ts` as reached from an entry -- exports
+ * that were only ever counted as unreferenced because the linkage was
+ * invisible, not because nothing used them. A measurement fix, and the ceiling
+ * takes it the same way it takes a deletion.
  */
-export const MAX_UNREFERENCED_EXPORTS: number = 752;
+export const MAX_UNREFERENCED_EXPORTS: number = 738;
 
 /** knip's JSON shape, as much of it as this gate reads. */
 interface KnipIssue {

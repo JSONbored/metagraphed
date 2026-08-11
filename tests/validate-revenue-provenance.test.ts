@@ -7,6 +7,7 @@ import { describe, test } from "vitest";
 import {
   checkEntityRole,
   checkRevenueSearch,
+  checkWalletSearch,
   checkSurfaceRevenue,
   collectViolations,
 } from "../scripts/validate-revenue-provenance.ts";
@@ -203,6 +204,57 @@ describe("revenue provenance validator (#10443/#10516)", () => {
         [],
         role,
       );
+    }
+  });
+
+  test("wallet_search none-found contradicted by a registered entity is rejected", () => {
+    // The direction that rots: a subnet recorded none-found in August keeps
+    // asserting it after a treasury is registered in September, and the
+    // "N of 128 publish no treasury" headline silently overcounts.
+    const v = checkWalletSearch(
+      { netuid: 64, wallet_search: { outcome: "none-found" } },
+      new Set([64]),
+    );
+    assert.equal(v.length, 1);
+    assert.match(v[0].message, /none-found/);
+  });
+
+  test("wallet_search wallets-declared with no entity is rejected", () => {
+    const v = checkWalletSearch(
+      { netuid: 64, wallet_search: { outcome: "wallets-declared" } },
+      new Set([51]),
+    );
+    assert.equal(v.length, 1);
+    assert.match(v[0].message, /wallets-declared/);
+  });
+
+  test("wallet_search that agrees with the entities passes, both ways", () => {
+    assert.deepEqual(
+      checkWalletSearch(
+        { netuid: 64, wallet_search: { outcome: "wallets-declared" } },
+        new Set([64]),
+      ),
+      [],
+    );
+    assert.deepEqual(
+      checkWalletSearch(
+        { netuid: 64, wallet_search: { outcome: "none-found" } },
+        new Set([51]),
+      ),
+      [],
+    );
+  });
+
+  test("a subnet with no wallet_search is not the validator's business", () => {
+    // 128 subnets have none yet. Absence of the record is not a violation --
+    // only a record that disagrees with its data is.
+    for (const subnet of [
+      { netuid: 1 },
+      { netuid: 1, wallet_search: null },
+      { netuid: 1, wallet_search: "yes" },
+      {},
+    ]) {
+      assert.deepEqual(checkWalletSearch(subnet, new Set([1])), []);
     }
   });
 

@@ -246,22 +246,74 @@ for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
 const JSON_SCHEMA_MIRRORS: Array<{
   schemaFile: string;
   pointer: string[];
+  module: string;
   zodExport: string;
 }> = [
   {
     schemaFile: "schemas/entity.schema.json",
     pointer: ["properties", "category", "enum"],
+    module: "../schemas-src/shared.ts",
     zodExport: "ENTITY_CATEGORY_VALUES",
+  },
+  // #10586, declared alongside the vocabulary rather than after it drifted.
+  // The entity-category pair above was added the other way round.
+  {
+    schemaFile: "schemas/subnet-manifest.schema.json",
+    pointer: ["$defs", "wallet_search", "properties", "outcome", "enum"],
+    module: "../schemas-src/routes/subnet-detail.ts",
+    zodExport: "WALLET_SEARCH_OUTCOME_VALUES",
+  },
+  {
+    schemaFile: "schemas/subnet-manifest.schema.json",
+    pointer: [
+      "$defs",
+      "wallet_search",
+      "properties",
+      "checked",
+      "items",
+      "enum",
+    ],
+    module: "../schemas-src/routes/subnet-detail.ts",
+    zodExport: "WALLET_SEARCH_CHECKED_VALUES",
   },
 ];
 
-const schemaSrcShared =
-  (await import("../schemas-src/shared.ts")) as unknown as Record<
-    string,
-    readonly string[]
-  >;
+/**
+ * Every mirror module, imported by LITERAL specifier.
+ *
+ * `await import(module)` with a variable reads better and is invisible to
+ * static analysis: knip resolves a literal specifier and nothing else, so the
+ * moment this stopped being one, `schemas-src/shared.ts` went from "reached
+ * from an entry" to 18 unreferenced type exports and
+ * validate:unreferenced-exports counted 898 against its 880 ceiling (#10292).
+ * The table above stays the declaration; this is only how it is loaded.
+ */
+const MIRROR_MODULE_LOADERS: Record<string, () => Promise<unknown>> = {
+  "../schemas-src/shared.ts": () => import("../schemas-src/shared.ts"),
+  "../schemas-src/routes/subnet-detail.ts": () =>
+    import("../schemas-src/routes/subnet-detail.ts"),
+};
 
-for (const { schemaFile, pointer, zodExport } of JSON_SCHEMA_MIRRORS) {
+const mirrorModules = new Map<string, Record<string, readonly string[]>>();
+for (const { module } of JSON_SCHEMA_MIRRORS) {
+  if (mirrorModules.has(module)) continue;
+  const load = MIRROR_MODULE_LOADERS[module];
+  if (!load) {
+    // A new mirror whose module was added to the table but not here would
+    // otherwise throw a bare TypeError at the call below.
+    throw new Error(
+      `${module} is named by JSON_SCHEMA_MIRRORS but has no entry in ` +
+        `MIRROR_MODULE_LOADERS -- add one, with a literal import specifier.`,
+    );
+  }
+  mirrorModules.set(
+    module,
+    (await load()) as unknown as Record<string, readonly string[]>,
+  );
+}
+
+for (const { schemaFile, pointer, module, zodExport } of JSON_SCHEMA_MIRRORS) {
+  const schemaSrcShared = mirrorModules.get(module)!;
   const raw = JSON.parse(
     await fs.readFile(path.join(repoRoot, schemaFile), "utf8"),
   ) as unknown;

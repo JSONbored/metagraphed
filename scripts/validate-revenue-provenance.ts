@@ -172,6 +172,56 @@ export function checkRevenueSearch(
   return [];
 }
 
+/**
+ * #10586: the subnet-level WALLET search record must agree with the entities.
+ *
+ * The exact sibling of checkRevenueSearch, against a different store. A summary
+ * that cannot disagree with its data is a comment, not a record -- and this one
+ * rots in a direction that matters: "96 of 128 subnets publish no treasury
+ * address" is the headline claim the attribution issues exist to earn, and a
+ * subnet recorded `none-found` in August keeps asserting it after a treasury is
+ * registered in September.
+ *
+ * `netuidsWithEntities` is passed in rather than read here so the check stays a
+ * pure function over two inputs -- the same reason checkSurfaceRevenue takes a
+ * document instead of a path.
+ */
+export function checkWalletSearch(
+  subnet: Row,
+  netuidsWithEntities: ReadonlySet<number>,
+  file = "<memory>",
+): ProvenanceViolation[] {
+  const search = subnet?.wallet_search;
+  if (!search || typeof search !== "object") return [];
+  const netuid = Number(subnet?.netuid);
+  const declared = Number.isInteger(netuid) && netuidsWithEntities.has(netuid);
+  const subject = `netuid ${subnet?.netuid ?? "?"}`;
+  if (search.outcome === "none-found" && declared) {
+    return [
+      {
+        file,
+        subject,
+        message:
+          'wallet_search says "none-found" but registry/entities/ registers at least one ' +
+          "address against this netuid. The search record has gone stale against its own data.",
+      },
+    ];
+  }
+  if (search.outcome === "wallets-declared" && !declared) {
+    return [
+      {
+        file,
+        subject,
+        message:
+          'wallet_search says "wallets-declared" but no entity file carries this netuid. ' +
+          "Either the entry was removed and the summary was not updated, or the outcome " +
+          'should be "none-found".',
+      },
+    ];
+  }
+  return [];
+}
+
 /** Check one entity label. Exported for the same reason as above. */
 export function checkEntityRole(
   entity: Row,
@@ -196,18 +246,24 @@ export function checkEntityRole(
 export async function collectViolations(): Promise<ProvenanceViolation[]> {
   const violations: ProvenanceViolation[] = [];
 
+  // Entities first: the wallet-search cross-check needs to know which netuids
+  // have a registered address before it can judge a subnet's own summary.
+  const entityDir = path.join(repoRoot, "registry/entities");
+  const netuidsWithEntities = new Set<number>();
+  for (const file of await listJsonFiles(entityDir)) {
+    const entity = (await readJson(file)) as Row;
+    violations.push(...checkEntityRole(entity, path.relative(repoRoot, file)));
+    const netuid = Number(entity?.netuid);
+    if (Number.isInteger(netuid)) netuidsWithEntities.add(netuid);
+  }
+
   const subnetDir = path.join(repoRoot, "registry/subnets");
   for (const file of await listJsonFiles(subnetDir)) {
     const subnet = (await readJson(file)) as Row;
     const rel = path.relative(repoRoot, file);
     violations.push(...checkSurfaceRevenue(subnet, rel));
     violations.push(...checkRevenueSearch(subnet, rel));
-  }
-
-  const entityDir = path.join(repoRoot, "registry/entities");
-  for (const file of await listJsonFiles(entityDir)) {
-    const entity = (await readJson(file)) as Row;
-    violations.push(...checkEntityRole(entity, path.relative(repoRoot, file)));
+    violations.push(...checkWalletSearch(subnet, netuidsWithEntities, rel));
   }
 
   return violations;

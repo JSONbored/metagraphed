@@ -9250,6 +9250,13 @@
               "surface_count": 1,
               "symbol": "example",
               "tempo": 1,
+              "wallet_search": {
+                "checked": [
+                  "website"
+                ],
+                "outcome": "none-found",
+                "searched_at": "2026-06-01T00:00:00.000Z"
+              },
               "website_url": "https://api.metagraph.sh/example"
             },
             "surfaces": [
@@ -11017,6 +11024,13 @@
               "surface_count": 1,
               "symbol": "example",
               "tempo": 1,
+              "wallet_search": {
+                "checked": [
+                  "website"
+                ],
+                "outcome": "none-found",
+                "searched_at": "2026-06-01T00:00:00.000Z"
+              },
               "website_url": "https://api.metagraph.sh/example"
             },
             "surfaces": [
@@ -44801,6 +44815,49 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "wallet_search": {
+            "additionalProperties": false,
+            "properties": {
+              "checked": {
+                "description": "Where the search actually looked. Without it, \"we searched\" is unfalsifiable and nobody else can re-run it. `chain` means the on-chain owner keys were read (SubnetOwner), which is always available and is NOT a declaration by the team.",
+                "items": {
+                  "enum": [
+                    "website",
+                    "docs",
+                    "blog",
+                    "source-repo",
+                    "explorer",
+                    "whitepaper",
+                    "chain"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "outcome": {
+                "description": "Cross-checked against registry/entities/ itself, so the summary cannot drift from the data it summarises.",
+                "enum": [
+                  "none-found",
+                  "wallets-declared"
+                ],
+                "type": "string"
+              },
+              "searched_at": {
+                "description": "An absence with no date is not evidence.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "checked",
+              "outcome",
+              "searched_at"
+            ],
+            "type": "object"
           },
           "website_url": {
             "anyOf": [
