@@ -318,7 +318,10 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install
-        run: npm ci
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
 
       # Report-only SCA for the ROOT workspace — workers/** (the Worker API, MCP
       # server, webhook dispatcher), src/**, and scripts/** — the repo's larger,
@@ -841,7 +844,10 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install
-        run: npm ci
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
 
       # Report-only SCA for the ROOT workspace — workers/** (the Worker API, MCP
       # server, webhook dispatcher), src/**, and scripts/** — the repo's larger,
@@ -1142,7 +1148,10 @@ jobs:
       # from the one root lockfile -- there is no way to `npm ci` a single
       # workspace in isolation.
       - name: Install
-        run: npm ci
+        # Behind the lockfile-keyed node_modules cache: a hit skips npm ci and
+        # every postinstall's network reach with it (#10871) -- see the
+        # composite's header for why setup-node's tarball cache cannot do this.
+        uses: ./.github/actions/install-deps
 
       # apps/ui consumes packages/client as a live workspace link (#3066), not
       # a published package. packages/client/dist/index.js + index.cjs (the
