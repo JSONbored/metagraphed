@@ -5,10 +5,11 @@
 // there is a backlog, a flat "none" once it is cleared, so the thing that was
 // fixed cannot come back one `?? null` at a time.
 //
-// WHY THIS CANNOT BE LEFT TO THE PROBE. `conformance:graphql-nullability` asks
-// production and gets an honest answer about the HAPPY PATH -- production is
-// not degraded when you ask it. Every finding this gate exists for lives on a
-// cold-tier or zeroed-card arm, which is exactly where the cost is highest:
+// WHY THIS CANNOT BE LEFT TO A PROBE. `conformance:graphql-nullability` (the
+// production sweep, retired once #10214 put the enforcement in the executor)
+// asked production and got an honest answer about the HAPPY PATH -- production
+// is not degraded when you ask it. Every finding this gate exists for lives on
+// a cold-tier or zeroed-card arm, which is exactly where the cost is highest:
 // graphql-js enforces non-null at execution, so one null nulls the whole
 // surrounding object and attaches an error, turning a degraded-but-readable
 // card into nothing at all.
