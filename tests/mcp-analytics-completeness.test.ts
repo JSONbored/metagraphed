@@ -276,6 +276,9 @@ describe("the alert-triggers tier's status, classified (#10810)", () => {
       [401, "auth_required", "permission"],
       [403, "forbidden", "permission"],
       [404, "not_found", "missing_context"],
+      // The tier's own 400 -- "malformed trigger id", a non-object body -- is
+      // the caller's request, refused.
+      [400, "bad_request", "validation"],
       // Somebody else's 5xx, from the caller's side -- the reading
       // provider_error already carries for an adapter's upstream.
       [500, "provider_error", "api_5xx"],

@@ -17458,6 +17458,12 @@ export function alertTriggerErrorCode(status: number): string {
   if (status === 404) return "not_found";
   if (status === 401) return "auth_required";
   if (status === 403) return "forbidden";
+  // The tier's 400s ("malformed trigger id", a non-object body) are the
+  // caller's request, refused -- the same reading bad_request already carries
+  // for the pre-dispatch gate. #10810 left this one out, so the nightly
+  // conformance probe's malformed id was the only caller fault still filed
+  // as `internal`.
+  if (status === 400) return "bad_request";
   // Somebody else's 5xx, from the caller's side -- the same reading
   // provider_error already carries for an adapter's upstream.
   if (status >= 500) return "provider_error";
