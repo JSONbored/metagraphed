@@ -2500,7 +2500,7 @@ function normalizeRuntimeTransition(raw: unknown): RuntimeTransition | null {
   };
 }
 
-/** Spec-version upgrade timeline from the `blocks` D1 tier (#4316/3.1). Small,
+/** Spec-version upgrade timeline from the `blocks` store tier (#4316/3.1). Small,
  * bounded dataset (runtime upgrades are rare) — no pagination params. */
 export const runtimeVersionHistoryQuery = () =>
   queryOptions({
@@ -6753,7 +6753,7 @@ function normalizeSurfaceSlas(raw: unknown): SurfaceSla[] {
 }
 
 // #1114: per-surface latency distribution (p50/p95/p99) over a 7d/30d window,
-// computed live from D1.
+// computed live from the store.
 export const subnetHealthPercentilesQuery = (netuid: number, window = "7d") =>
   queryOptions({
     queryKey: k("subnet-health-percentiles", netuid, window),
@@ -6772,7 +6772,7 @@ export const subnetHealthPercentilesQuery = (netuid: number, window = "7d") =>
   });
 
 // #1114: per-surface SLA (uptime ratio) + reconstructed downtime incidents over
-// a 7d/30d window, computed live from D1.
+// a 7d/30d window, computed live from the store.
 export const subnetHealthIncidentsQuery = (netuid: number, window = "7d") =>
   queryOptions({
     queryKey: k("subnet-health-incidents", netuid, window),
@@ -6851,7 +6851,7 @@ export const subnetUptimeQuery = (netuid: number, window = "90d") =>
   });
 
 // One subnet's consensus/economic/governance hyperparameters (#4307/1.4),
-// refreshed daily from the subnet_hyperparams D1 tier. Cold/absent snapshot ->
+// refreshed daily from the subnet_hyperparams store. Cold/absent snapshot ->
 // hyperparameters: null, never an error.
 function normalizeSubnetHyperparameters(raw: unknown): SubnetHyperparameters | null {
   if (!isRecord(raw)) return null;
@@ -7247,7 +7247,7 @@ function normalizeSubnetIdentityHistory(netuid: number, raw: unknown): SubnetIde
 }
 
 // #1647: append-only on-chain identity timeline for one subnet (newest first),
-// from the subnet_identity_history D1 tier. No paging params surfaced yet — the
+// from the subnet_identity_history store tier. No paging params surfaced yet — the
 // default page (limit<=1000) is enough for the profile tab that consumes this.
 export const subnetIdentityHistoryQuery = (netuid: number) =>
   queryOptions({

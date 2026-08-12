@@ -10,7 +10,7 @@ import { Panel } from "@/components/metagraphed/primitives";
 import type { SurfaceLatencyPercentiles, SurfaceSla } from "@/lib/metagraphed/types";
 
 // #1114: per-surface reliability — uptime SLA + latency percentiles (p50/p95/p99)
-// over a 7d/30d window, both computed live from D1. The window toggle is the
+// over a 7d/30d window, both computed live from the store. The window toggle is the
 // "trends" dimension (7d vs 30d). Non-blocking useQuery; renders its own states.
 const WINDOWS = ["7d", "30d"] as const;
 type WindowKey = (typeof WINDOWS)[number];

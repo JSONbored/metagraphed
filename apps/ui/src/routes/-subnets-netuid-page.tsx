@@ -594,7 +594,7 @@ function ApiEndpointsPanel({ netuid }: { netuid: number }) {
           id="reliability"
           title="Reliability"
           subtitle="Per-surface uptime SLA and latency percentiles (p50/p95/p99) over 7d/30d."
-          info="Live from the 2-minute health prober's D1 history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
+          info="Live from the 2-minute health prober's history: uptime ratio, reconstructed downtime incidents, and latency distribution per operational surface."
         >
           <ReliabilityPanel netuid={netuid} />
         </SectionAnchor>
@@ -2510,7 +2510,7 @@ function HyperparametersPanel({ netuid }: { netuid: number }) {
       id="hyperparameters"
       title="Hyperparameters"
       subtitle="Consensus, economic, and governance settings for this subnet."
-      info="GET /api/v1/subnets/{netuid}/hyperparameters — refreshed daily from the subnet_hyperparams D1 tier."
+      info="GET /api/v1/subnets/{netuid}/hyperparameters — refreshed daily from the subnet_hyperparams store."
     >
       <AsyncPanel height="xl">
         <HyperparametersTable netuid={netuid} />

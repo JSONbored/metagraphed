@@ -25,7 +25,6 @@ const WORD_OVERRIDES: Record<string, string> = {
   rpc: "RPC",
   id: "ID",
   ss58: "SS58",
-  d1: "D1",
   hhi: "HHI",
   ai: "AI",
   url: "URL",
