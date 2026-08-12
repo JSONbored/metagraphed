@@ -249,8 +249,12 @@ export type GlobalIncidentsArtifact = z.infer<
 
 // See this file's header -- deliberately NOT the registered HealthSurface
 // component below; overlaySubnetHealth()'s live-merged rows are a distinct,
-// much smaller shape.
-const HealthSubnetSurfaceSchema = z
+// much smaller shape. Exported (#10904): the MCP tool serving these exact
+// rows (get_subnet_health) carried a hand-copied, NARROWER row schema, and
+// the copy lagging the route by five fields had the outbound tripwire
+// refusing every root-network call. One declaration, like #10790 collapsed
+// the other 42.
+export const HealthSubnetSurfaceSchema = z
   .object({
     surface_id: z.string(),
     netuid: z.int().min(0),
