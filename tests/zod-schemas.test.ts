@@ -4054,9 +4054,8 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
     // / alpha_fdv_usd. Driven through the REAL overlay over the REAL artifact
     // -- a hand-built row would only re-specify the schema and would miss the
     // required fields the committed data actually carries.
-    const { withAlphaUsdEconomics } = await import(
-      "../src/alpha-usd-overlay.ts"
-    );
+    const { withAlphaUsdEconomics } =
+      await import("../src/alpha-usd-overlay.ts");
     const env = createLocalArtifactEnv();
     const res = await handleRequest(
       new Request("https://api.metagraph.sh/api/v1/economics"),
@@ -4064,7 +4063,8 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
       {},
     );
     assert.equal(res.status, 200);
-    const served = ((await res.json()) as { data: Record<string, unknown> }).data;
+    const served = ((await res.json()) as { data: Record<string, unknown> })
+      .data;
     const overlaid = withAlphaUsdEconomics(
       served,
       {
