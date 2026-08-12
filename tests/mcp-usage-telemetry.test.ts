@@ -1932,3 +1932,89 @@ describe("MCP agent intent capture (#9642)", () => {
     assert.deepEqual(events[0]!.parameters, { netuid: 64 });
   });
 });
+
+// ── The caller, not the connection (#10606) ────────────────────────────────
+//
+// A session id is minted per CONNECTION, and MCP clients reconnect constantly.
+// Measured 2026-08-12: 462 distinct `mcp-session:` ids in one day against 4
+// authenticated users and 51 distinct client names — so "unique callers" read
+// ~462 and nothing about that number was true. Every reconnect also minted a
+// person profile, which is the same fact costing money.
+describe("mcpDistinctId — an address outranks a connection", () => {
+  test("a resolved address is preferred over the session", () => {
+    assert.equal(
+      mcpDistinctId(undefined, "s1", { anonymousId: "ip:0123456789abcdef" }),
+      "ip:0123456789abcdef",
+    );
+  });
+
+  test("the session is still the fallback when no address resolved", () => {
+    // Not a regression to the old behaviour — the honest answer when
+    // cf-connecting-ip is absent, which is exactly when an `ip:` id would be
+    // one shared bucket masquerading as a caller.
+    assert.equal(mcpDistinctId(undefined, "s1", {}), "mcp-session:s1");
+    assert.equal(
+      mcpDistinctId(undefined, "s1", { anonymousId: undefined }),
+      "mcp-session:s1",
+    );
+  });
+
+  test("a presented identity outranks an observed address", () => {
+    // Same precedence REST applies: what the caller PROVED beats what we
+    // noticed, and only the proved one becomes a person.
+    assert.equal(
+      mcpDistinctId("octocat", "s1", {
+        accountId: "acct_1",
+        anonymousId: "ip:0123456789abcdef",
+      }),
+      "github:octocat",
+    );
+    assert.equal(
+      mcpDistinctId(undefined, "s1", {
+        accountId: "acct_1",
+        anonymousId: "ip:0123456789abcdef",
+      }),
+      "account:acct_1",
+    );
+  });
+
+  test("a blank or non-string account is not an identity", () => {
+    assert.equal(
+      mcpDistinctId(undefined, "s1", { accountId: "" }),
+      "mcp-session:s1",
+    );
+    assert.equal(
+      mcpDistinctId(undefined, "s1", { accountId: 42 }),
+      "mcp-session:s1",
+    );
+    assert.equal(
+      mcpDistinctId(undefined, "s1", { accountId: null }),
+      "mcp-session:s1",
+    );
+  });
+
+  test("the two-argument form is unchanged", () => {
+    // Every pre-#10606 call site passes two arguments and must keep meaning
+    // what it did — the initialize path (mcpDistinctId(undefined, pendingId))
+    // among them.
+    assert.equal(mcpDistinctId("octocat", "s1"), "github:octocat");
+    assert.equal(mcpDistinctId(undefined, "s1"), "mcp-session:s1");
+    assert.equal(mcpDistinctId(undefined, null), undefined);
+  });
+
+  test("one address is one caller across many sessions", () => {
+    // THE POINT. Three reconnects, three session ids, one caller.
+    const ids = new Set(
+      ["s1", "s2", "s3"].map((session) =>
+        mcpDistinctId(undefined, session, {
+          anonymousId: "ip:0123456789abcdef",
+        }),
+      ),
+    );
+    assert.equal(
+      ids.size,
+      1,
+      "reconnects must not each count as a new caller — that is the defect",
+    );
+  });
+});

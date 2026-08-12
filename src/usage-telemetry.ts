@@ -106,6 +106,35 @@ export const USAGE_DISTINCT_ID_SALT_ENV = "USAGE_DISTINCT_ID_SALT";
  */
 export const USAGE_ANONYMOUS_ID_HEX_LENGTH = 16;
 
+/**
+ * The `ip:` distinct_id for one client address.
+ *
+ * ONE IMPLEMENTATION for every surface. REST and MCP both need to answer "how
+ * many callers", and two hashes of the same address that disagreed would make
+ * the same client count as two -- which is the failure this whole namespace
+ * exists to remove. Callers resolve the address (through `resolveClientIp`, so
+ * the answer agrees with the rate limiters) and decide whether it is
+ * attributable; this only turns one into an id.
+ *
+ * Returns undefined for a missing salt or a blank address, so the single place
+ * that can emit an UNSALTED hash is nowhere.
+ */
+export async function anonymousUsageDistinctId(
+  salt: string | undefined,
+  clientIp: string | undefined,
+): Promise<string | undefined> {
+  if (!salt || !clientIp) return undefined;
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`${salt}:${clientIp}`),
+  );
+  const hex = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, USAGE_ANONYMOUS_ID_HEX_LENGTH);
+  return `${USAGE_ANONYMOUS_NAMESPACE}${hex}`;
+}
+
 /** PostHog event name owned by this wrapper — do not emit it elsewhere. */
 export const USAGE_EVENT_NAME = "usage_event";
 
@@ -617,9 +646,18 @@ export function assignUsagePersonProcessing(
   properties: Record<string, unknown>,
   distinctId?: string,
 ): void {
-  properties["$process_person_profile"] = (
-    distinctId ?? USAGE_EVENT_DISTINCT_ID
-  ).startsWith(USAGE_ACCOUNT_NAMESPACE);
+  const id = distinctId ?? USAGE_EVENT_DISTINCT_ID;
+  // BOTH person namespaces, because one request produces events on both
+  // paths. An authenticated MCP call emits `$mcp_*` (which key on
+  // MCP_PERSON_NAMESPACE) AND a `usage_event` carrying the same `github:` id
+  // -- so checking only `account:` here would have this capture disagree with
+  // those about whether the very same caller is a person. Disagreement is not
+  // a labelling nit: PostHog creates the profile if ANY event on the id asks
+  // for one, so the two files must answer identically or the flag means
+  // nothing.
+  properties["$process_person_profile"] =
+    id.startsWith(USAGE_ACCOUNT_NAMESPACE) ||
+    id.startsWith(MCP_PERSON_NAMESPACE);
 }
 
 /**
@@ -2208,6 +2246,12 @@ export async function recordExceptionEvent(
     const queryShape = sanitizeLabel(event.queryShape);
     if (queryShape !== undefined) properties.query_shape = queryShape;
     assignDeployment(properties, env);
+    // #10606: a fault carries the SAME distinct_id as the request that
+    // produced it, so leaving the flag off here would have re-opened the leak
+    // the other captures close -- one unflagged event on an id is enough to
+    // mint the profile, which is exactly how usage_event kept minting one per
+    // MCP session while all six $mcp_* events said false.
+    assignUsagePersonProcessing(properties, deps.distinctId);
 
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
